@@ -7,5 +7,5 @@
  */
 
 export type UploadAiVideoSourceImageBody = {
-  file: unknown;
+  file: Blob;
 };

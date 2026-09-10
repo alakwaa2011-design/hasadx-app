@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoute, useLocation } from "wouter";
 import { useGetAssignment, useListSubmissions, useDeleteAssignment, useUpdateSubmission, useGetSubmissionDetails, useUpdateAnswerGrade } from "@workspace/api-client-react";
@@ -16,6 +16,7 @@ import { getSuggestions } from "@/lib/suggestions";
 import { resolveImageUrl } from "@/lib/image-url";
 import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import { SelfChallengeIcon } from "@/components/game-icons";
+import { AssignmentEditor } from "./assignment-editor";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -247,12 +248,116 @@ export default function TeacherAssignmentDetail() {
   }, [assignment, id]);
 
   const [isEditingAssignment, setIsEditingAssignment] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editSubject, setEditSubject] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editTargetClass, setEditTargetClass] = useState("");
-  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
-  const [editQuestions, setEditQuestions] = useState<EditQuestion[]>([]);
+  const [isEditorDirty, setIsEditorDirty] = useState(false);
+  const editorDirtyRef = useRef(false);
+  const suppressNextPopRef = useRef(false);
+  const editorPathRef = useRef("");
+  const navigationPromptRef = useRef(false);
+  const bypassHistoryGuardRef = useRef(false);
+
+  const setEditorDirty = useCallback((dirty: boolean) => {
+    editorDirtyRef.current = dirty;
+    setIsEditorDirty(dirty);
+  }, []);
+
+  const confirmEditorLeave = useCallback(() => {
+    if (!editorDirtyRef.current || navigationPromptRef.current) return true;
+    navigationPromptRef.current = true;
+    const confirmed = window.confirm(lang === "ar"
+      ? "لديك تغييرات غير محفوظة. هل تريد مغادرة الصفحة؟"
+      : "You have unsaved changes. Leave this page and discard them?");
+    navigationPromptRef.current = false;
+    return confirmed;
+  }, [lang]);
+
+  /* The Layout owns the app-wide links, so guard those links here while the
+     editor is mounted. A capture handler prevents the router from changing
+     location before the confirmation has been answered. */
+  const handleEditorNavigationClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isEditorDirty || event.defaultPrevented || event.button !== 0 ||
+        event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as HTMLElement).closest("a");
+    const href = anchor?.getAttribute("href");
+    if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+    let target: URL;
+    try {
+      target = new URL(href, window.location.href);
+    } catch {
+      return;
+    }
+    if (target.origin !== window.location.origin ||
+        `${target.pathname}${target.search}${target.hash}` === `${window.location.pathname}${window.location.search}${window.location.hash}`) return;
+    if (!confirmEditorLeave()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setEditorDirty(false);
+    setLocation(`${target.pathname}${target.search}${target.hash}`);
+  }, [confirmEditorLeave, isEditorDirty, setEditorDirty, setLocation]);
+
+  useEffect(() => {
+    if (!isEditingAssignment) return;
+    const listener = handleEditorNavigationClick as unknown as EventListener;
+    window.addEventListener("click", listener, true);
+    return () => window.removeEventListener("click", listener, true);
+  }, [handleEditorNavigationClick, isEditingAssignment]);
+
+  useEffect(() => {
+    if (!isEditingAssignment) return;
+    const originalPushState = history.pushState.bind(history);
+    const originalReplaceState = history.replaceState.bind(history);
+    const guardMutation = (
+      original: typeof history.pushState,
+      data: unknown,
+      unused: string,
+      url?: string | URL | null,
+    ) => {
+      if (!bypassHistoryGuardRef.current && editorDirtyRef.current && url) {
+        const target = new URL(String(url), window.location.href);
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        const next = `${target.pathname}${target.search}${target.hash}`;
+        if (target.origin === window.location.origin && next !== current) {
+          if (!confirmEditorLeave()) return;
+          setEditorDirty(false);
+        }
+      }
+      original(data, unused, url);
+    };
+    history.pushState = (data, unused, url) => guardMutation(originalPushState, data, unused, url);
+    history.replaceState = (data, unused, url) => guardMutation(originalReplaceState, data, unused, url);
+    return () => {
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+    };
+  }, [confirmEditorLeave, isEditingAssignment, setEditorDirty]);
+
+  /* Wouter cannot cancel a popstate after it has begun. Restore the editor
+     URL first, then replay the back navigation only after confirmation. */
+  useEffect(() => {
+    if (!isEditingAssignment) return;
+    editorPathRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const onPopState = () => {
+      if (suppressNextPopRef.current) {
+        suppressNextPopRef.current = false;
+        return;
+      }
+      if (!editorDirtyRef.current) return;
+      const editorPath = editorPathRef.current;
+      bypassHistoryGuardRef.current = true;
+      history.pushState({ assignmentEditor: true }, "", editorPath);
+      bypassHistoryGuardRef.current = false;
+      if (!confirmEditorLeave()) return;
+      setEditorDirty(false);
+      suppressNextPopRef.current = true;
+      history.back();
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [confirmEditorLeave, isEditingAssignment, setEditorDirty]);
+
   const deleteMutation = useDeleteAssignment({
     mutation: {
       onSuccess: () => setLocation("/teacher")
@@ -322,6 +427,48 @@ export default function TeacherAssignmentDetail() {
     return pending;
   }, [classRoster, submissions, lang]);
 
+  const summaryStats = useMemo(() => {
+    if (!assignment || !submissions) return { submitted: 0, pending: 0, late: 0 };
+    const pendingCount = classRoster ? pendingStudents.length : 0;
+    const submittedCount = submissions.length;
+    let lateCount = 0;
+    if ((assignment as any).deadline) {
+      const deadlineDate = new Date((assignment as any).deadline);
+      lateCount = submissions.filter(sub => new Date(sub.submittedAt) > deadlineDate).length;
+    }
+    return { submitted: submittedCount, pending: pendingCount, late: lateCount };
+  }, [assignment, submissions, classRoster, pendingStudents]);
+
+  const toggleLifecycleMutation = useMutation({
+    mutationFn: async (closed: boolean) => {
+      const res = await fetch(`${BASE}/api/assignments/${id}/lifecycle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ closed, version: (assignment as any).version }),
+      });
+      if (!res.ok) {
+        if (res.status === 409) {
+          throw new Error(lang === "ar" ? "نسخة غير متطابقة، يرجى تحديث الصفحة." : "Version conflict, please refresh the page.");
+        }
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.message || "Error");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData([`/api/assignments/${id}`], (current: any) =>
+        current ? { ...current, closedAt: data.closedAt, version: data.version, updatedAt: data.updatedAt } : current
+      );
+      queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      toast.success(data.closedAt ? (lang === "ar" ? "تم إغلاق الواجب" : "Assignment closed") : (lang === "ar" ? "تم إعادة فتح الواجب" : "Assignment reopened"));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
   const sortedFilteredSubmissions = useMemo(() => {
     if (!submissions) return [];
     const query = resultsSearch.trim().toLowerCase();
@@ -353,7 +500,9 @@ export default function TeacherAssignmentDetail() {
     mutationFn: async (questionId: number) => {
       const res = await fetch(`${BASE}/api/assignments/${id}/questions/${questionId}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ version: (assignment as any)?.version }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
@@ -420,13 +569,16 @@ export default function TeacherAssignmentDetail() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ isShared: !assignmentShared }),
+        body: JSON.stringify({ isShared: !assignmentShared, version: (assignment as any).version }),
       });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
     onSuccess: (data) => {
       setAssignmentShared(data.isShared);
+      queryClient.setQueryData([`/api/assignments/${id}`], (current: any) =>
+        current ? { ...current, isShared: data.isShared, version: data.version, updatedAt: data.updatedAt } : current
+      );
       toast.success(data.isShared
         ? (lang === "ar" ? "تم مشاركة الواجب" : "Assignment shared")
         : (lang === "ar" ? "تم إلغاء المشاركة" : "Assignment unshared"));
@@ -442,8 +594,10 @@ export default function TeacherAssignmentDetail() {
         body: JSON.stringify(data),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || t.assignmentDetail.updateError);
+        const payload = await res.json().catch(() => null);
+        const error = new Error(payload?.message || t.assignmentDetail.updateError) as Error & { code?: string };
+        error.code = payload?.code;
+        throw error;
       }
       return res.json();
     },
@@ -451,123 +605,32 @@ export default function TeacherAssignmentDetail() {
       queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       setIsEditingAssignment(false);
+      setEditorDirty(false);
       toast.success(lang === "ar" ? "تم تحديث الواجب بنجاح" : "Assignment updated successfully");
     },
     onError: (err: any) => {
+      if (err.code === "ASSIGNMENT_VERSION_CONFLICT") {
+        const reload = window.confirm(lang === "ar"
+          ? `${err.message}\n\nهل تريد تحميل النسخة الأحدث الآن؟ ستُفقد التغييرات الحالية.`
+          : `${err.message}\n\nLoad the latest version now? Your current edits will be discarded.`);
+        if (reload) {
+          setEditorDirty(false);
+          queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+          setIsEditingAssignment(false);
+        }
+        return;
+      }
       toast.error(err.message || t.assignmentDetail.updateError);
     },
   });
 
   const startEditingAssignment = () => {
     if (!assignment) return;
-    // إذا كان نشاط استماع، وجّه لصفحة التعديل الخاصة به
     if ((assignment as any).activityType === "listening") {
       setLocation(`/teacher/new/dictation?edit=${assignment.id}`);
       return;
     }
-    setEditTitle(assignment.title);
-    setEditSubject(assignment.subject ?? "");
-    setEditDescription(assignment.description || "");
-    setEditTargetClass(assignment.targetClass || "");
-    fetch(`${BASE}/api/teacher/grade-levels`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : [])
-      .then(setGradeLevels)
-      .catch(() => {});
-    setEditQuestions(
-      assignment.questions.map((q) => ({
-        id: q.id,
-        text: q.text,
-        questionType: (q.questionType || "mcq") as EditQuestion["questionType"],
-        optionA: q.optionA || "",
-        optionB: q.optionB || "",
-        optionC: q.optionC || "",
-        optionD: q.optionD || "",
-        correctAnswer: q.correctAnswer || "",
-        points: q.points,
-        imageUrl: (q as any).imageUrl || null,
-      }))
-    );
     setIsEditingAssignment(true);
-  };
-
-  const addNewQuestion = () => {
-    setEditQuestions([
-      ...editQuestions,
-      { text: "", questionType: "mcq", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", points: 1 },
-    ]);
-  };
-
-  const handleEditQuestionTypeChange = (index: number, newType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "whiteboard_blank") => {
-    setEditQuestions(prev => {
-      const updated = [...prev];
-      const q = { ...updated[index] };
-      q.questionType = newType === "whiteboard_blank" ? "whiteboard" : newType;
-      q.optionA = "";
-      q.optionB = "";
-      q.optionC = "";
-      q.optionD = "";
-      if (newType === "true_false") {
-        q.correctAnswer = "true";
-      } else if (newType === "fill_blank") {
-        q.correctAnswer = "";
-      } else if (newType === "whiteboard") {
-        q.optionA = "lined";
-        q.correctAnswer = "";
-      } else if (newType === "whiteboard_blank") {
-        q.optionA = "blank";
-        q.correctAnswer = "";
-      } else {
-        q.correctAnswer = "";
-      }
-      updated[index] = q;
-      return updated;
-    });
-  };
-
-  const removeQuestion = (index: number) => {
-    setEditQuestions(editQuestions.filter((_, i) => i !== index));
-  };
-
-  const updateQuestion = (index: number, field: keyof EditQuestion, value: string | number) => {
-    const updated = [...editQuestions];
-    (updated[index] as any)[field] = value;
-    setEditQuestions(updated);
-  };
-
-  const saveAssignment = () => {
-    if (!editTitle.trim()) {
-      toast.error(t.assignmentDetail.titleRequired);
-      return;
-    }
-    if (editQuestions.length === 0) {
-      toast.error(t.assignmentDetail.questionRequired);
-      return;
-    }
-    for (const q of editQuestions) {
-      if (!q.text.trim()) {
-        toast.error(t.assignmentDetail.questionTextRequired);
-        return;
-      }
-    }
-
-    updateAssignmentMutation.mutate({
-      title: editTitle,
-      subject: editSubject.trim() || undefined,
-      description: editDescription || undefined,
-      targetClass: editTargetClass || null,
-      questions: editQuestions.map((q) => ({
-        id: q.id,
-        text: q.text,
-        questionType: q.questionType || "mcq",
-        optionA: q.optionA || null,
-        optionB: q.optionB || null,
-        optionC: q.optionC || null,
-        optionD: q.optionD || null,
-        correctAnswer: q.correctAnswer || null,
-        points: q.points || 1,
-        imageUrl: q.imageUrl || null,
-      })),
-    });
   };
 
   const openReportModal = async (sub: (typeof sortedFilteredSubmissions)[0]) => {
@@ -871,322 +934,33 @@ export default function TeacherAssignmentDetail() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <button 
-          onClick={() => setLocation("/teacher")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold mb-6 transition-colors"
-        >
-          <BackArrowIcon className="w-5 h-5" />
-          {t.assignmentDetail.backToDashboard}
-        </button>
+        {!isEditingAssignment && (
+          <button
+            onClick={() => setLocation("/teacher")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground font-semibold mb-6 transition-colors"
+          >
+            <BackArrowIcon className="w-5 h-5" />
+            {t.assignmentDetail.backToDashboard}
+          </button>
+        )}
 
         {isEditingAssignment ? (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-black text-foreground">{t.assignmentDetail.editAssignment}</h1>
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => setIsEditingAssignment(false)}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  {t.assignmentDetail.cancelEdit}
-                </Button>
-                <Button
-                  onClick={saveAssignment}
-                  disabled={updateAssignmentMutation.isPending}
-                  className="gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {updateAssignmentMutation.isPending ? t.assignmentDetail.savingChanges : t.assignmentDetail.saveChanges}
-                </Button>
-              </div>
-            </div>
-
-            {updateAssignmentMutation.isError && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-red-700 dark:text-red-300 font-bold text-sm">
-                {(updateAssignmentMutation.error as Error).message}
-              </div>
-            )}
-
-            <Card className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold mb-1.5">{t.assignmentDetail.assignmentTitleLabel}</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border font-bold text-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-bold mb-1.5">{t.assignmentDetail.subjectLabel}</label>
-                  <input
-                    type="text"
-                    value={editSubject}
-                    onChange={(e) => setEditSubject(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-1.5">{t.assignmentDetail.descriptionLabel}</label>
-                  <input
-                    type="text"
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-1.5 flex items-center gap-1.5">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    {lang === "ar" ? "الصف" : "Class"}
-                  </label>
-                  {gradeLevels.length > 0 ? (
-                    <select
-                      value={editTargetClass}
-                      onChange={e => setEditTargetClass(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border font-medium focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                    >
-                      <option value="">{lang === "ar" ? "— بدون صف —" : "— No class —"}</option>
-                      {gradeLevels.map(g => (
-                        <option key={g.gradeLevel} value={g.gradeLevel}>
-                          {g.gradeLevel} ({g.count} {lang === "ar" ? "طالب" : "students"})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        value={editTargetClass}
-                        onChange={e => setEditTargetClass(e.target.value)}
-                        placeholder={lang === "ar" ? "مثال: الصف الخامس" : "e.g. Grade 5"}
-                        className="w-full px-4 py-3 rounded-xl bg-background border-2 border-border focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                        list="edit-class-suggestions"
-                      />
-                      <datalist id="edit-class-suggestions">
-                        {getSuggestions("classes").map((c, i) => <option key={i} value={c} />)}
-                      </datalist>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <FileText className="w-6 h-6 text-primary" />
-                {t.assignmentDetail.questionsCount} ({editQuestions.length})
-              </h2>
-              <Button onClick={addNewQuestion} className="gap-2">
-                <Plus className="w-4 h-4" />
-                {t.assignmentDetail.addQuestion}
-              </Button>
-            </div>
-
-            <div className="space-y-4">
-              {editQuestions.map((q, idx) => (
-                <Card key={idx} className={`p-5 ${lang === "ar" ? "border-r-4 border-r-primary" : "border-l-4 border-l-primary"}`}>
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-sm">{idx + 1}</span>
-                      <h3 className="font-bold text-lg">{t.assignmentDetail.questionLabel} {idx + 1}</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <label className="text-xs font-bold text-muted-foreground">{t.assignmentDetail.gradeLabel}</label>
-                        <input
-                          type="number"
-                          min="0.5"
-                          step="0.5"
-                          value={q.points}
-                          onChange={(e) => updateQuestion(idx, "points", parseFloat(e.target.value) || 1)}
-                          className="w-16 px-2 py-1.5 rounded-lg bg-background border-2 border-border text-center font-bold text-sm focus:outline-none focus:border-primary transition-all"
-                        />
-                      </div>
-                      {editQuestions.length > 1 && (
-                        <button
-                          onClick={() => removeQuestion(idx)}
-                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          title={t.assignmentDetail.deleteQuestion}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground mb-1">{t.assignmentDetail.questionText}</label>
-                      <input
-                        type="text"
-                        value={q.text}
-                        onChange={(e) => updateQuestion(idx, "text", e.target.value)}
-                        placeholder={t.assignmentDetail.questionPlaceholder}
-                        className="w-full px-3 py-2.5 rounded-lg bg-background border-2 border-border font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                        list={`edit-question-suggestions-${idx}`}
-                      />
-                      <datalist id={`edit-question-suggestions-${idx}`}>
-                        {getSuggestions("questions").map((s, i) => <option key={i} value={s} />)}
-                      </datalist>
-                      <div className="mt-2 flex items-center gap-2">
-                        {q.imageUrl ? (
-                          <div className="relative inline-block">
-                            <img src={resolveImageUrl(q.imageUrl) ?? ""} alt="" className="max-h-20 rounded-lg border border-border object-contain" />
-                            <button
-                              type="button"
-                              onClick={() => updateQuestion(idx, "imageUrl", "")}
-                              className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-muted-foreground hover:text-primary hover:bg-primary/10 border border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer">
-                            <Image className="w-3.5 h-3.5" />
-                            {lang === "ar" ? "إضافة صورة" : "Add image"}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="sr-only"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const base64 = await fileToBase64(file);
-                                  updateQuestion(idx, "imageUrl", base64);
-                                }
-                                e.target.value = "";
-                              }}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="block text-xs font-bold text-muted-foreground mb-1">{t.createAssignment.questionTypeLabel}</label>
-                      <select
-                        value={q.questionType === "whiteboard" ? (q.optionA === "lined" ? "whiteboard" : "whiteboard_blank") : (q.questionType || "mcq")}
-                        onChange={(e) => handleEditQuestionTypeChange(idx, e.target.value as any)}
-                        className="w-full sm:w-48 px-3 py-2 rounded-lg bg-background border-2 border-border text-sm font-bold focus:outline-none focus:border-primary transition-all"
-                      >
-                        <option value="mcq">{t.createAssignment.questionTypeMcq}</option>
-                        <option value="true_false">{t.createAssignment.questionTypeTrueFalse}</option>
-                        <option value="fill_blank">{t.createAssignment.questionTypeFillBlank}</option>
-                        <option value="whiteboard_blank">{t.createAssignment.questionTypeWhiteboardBlank}</option>
-                        <option value="whiteboard">{t.createAssignment.questionTypeWhiteboard}</option>
-                      </select>
-                    </div>
-
-                    {(q.questionType || "mcq") === "mcq" && (
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {(["A", "B", "C", "D"] as const).map((opt) => (
-                            <div key={opt} className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => updateQuestion(idx, "correctAnswer", q.correctAnswer === opt ? "" : opt)}
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border-2 transition-all ${
-                                  q.correctAnswer === opt
-                                    ? "bg-green-500 border-green-500 text-white"
-                                    : "border-border text-muted-foreground hover:border-green-400 hover:text-green-600"
-                                }`}
-                                title={q.correctAnswer === opt ? t.assignmentDetail.unmarkCorrect : t.assignmentDetail.markCorrect}
-                              >
-                                {opt}
-                              </button>
-                              <input
-                                type="text"
-                                value={q[`option${opt}` as keyof EditQuestion] as string}
-                                onChange={(e) => updateQuestion(idx, `option${opt}` as keyof EditQuestion, e.target.value)}
-                                placeholder={`${t.assignmentDetail.optionPlaceholder} ${opt}`}
-                                className="flex-1 px-3 py-2 rounded-lg bg-background border-2 border-border text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        {q.correctAnswer && (
-                          <p className="text-xs text-green-600 dark:text-green-400 font-bold flex items-center gap-1">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            {t.assignmentDetail.correctAnswer} {q.correctAnswer}
-                          </p>
-                        )}
-                      </>
-                    )}
-
-                    {q.questionType === "true_false" && (
-                      <div className="flex gap-3">
-                        {[
-                          { val: "true", label: lang === "ar" ? "صح ✓" : "True ✓" },
-                          { val: "false", label: lang === "ar" ? "خطأ ✗" : "False ✗" },
-                        ].map((opt) => (
-                          <button
-                            key={opt.val}
-                            type="button"
-                            onClick={() => updateQuestion(idx, "correctAnswer", opt.val)}
-                            className={`flex-1 py-3 rounded-xl font-bold text-sm border-2 transition-all ${
-                              q.correctAnswer === opt.val
-                                ? "bg-green-500 border-green-500 text-white"
-                                : "border-border text-muted-foreground hover:border-green-400"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {q.questionType === "fill_blank" && (
-                      <div>
-                        <label className="block text-xs font-bold text-muted-foreground mb-1">
-                          {lang === "ar" ? "الإجابة الصحيحة" : "Correct Answer"}
-                        </label>
-                        <input
-                          type="text"
-                          value={q.correctAnswer}
-                          onChange={(e) => updateQuestion(idx, "correctAnswer", e.target.value)}
-                          placeholder={lang === "ar" ? "اكتب الإجابة الصحيحة..." : "Type the correct answer..."}
-                          className="w-full px-3 py-2.5 rounded-lg bg-background border-2 border-border font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                        />
-                      </div>
-                    )}
-
-                    {q.questionType === "whiteboard" && (
-                      <div className="bg-muted/30 rounded-xl p-4 text-center">
-                        <p className="text-sm text-muted-foreground font-bold">
-                          {q.optionA === "lined" ? `📝 ${t.createAssignment.whiteboardLined}` : `🎨 ${t.createAssignment.whiteboardBlank}`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            <div className="flex justify-center">
-              <Button onClick={addNewQuestion} variant="outline" className="gap-2">
-                <Plus className="w-4 h-4" />
-                {t.assignmentDetail.addNewQuestion}
-              </Button>
-            </div>
-
-            {/* Keep a second save action next to the end of the question editor.
-                The global Hasaad Guide is fixed to the bottom edge, so reserve
-                that area on mobile and keep the action centered on desktop. */}
-            <div className={`flex justify-center pt-2 pb-20 sm:pb-8 ${lang === "ar" ? "ps-14" : "pe-14"} sm:px-0`}>
-              <Button
-                onClick={saveAssignment}
-                disabled={updateAssignmentMutation.isPending}
-                className="w-full sm:w-auto min-w-[220px] gap-2 shadow-md"
-              >
-                <Save className="w-4 h-4" />
-                {updateAssignmentMutation.isPending ? t.assignmentDetail.savingChanges : t.assignmentDetail.saveChanges}
-              </Button>
-            </div>
-          </div>
+          <AssignmentEditor
+            assignment={assignment}
+            submissionsExist={(submissions?.length ?? 0) > 0}
+            onSave={async (data) => {
+              updateAssignmentMutation.mutate(data);
+            }}
+            onCancel={() => setIsEditingAssignment(false)}
+            isSaving={updateAssignmentMutation.isPending}
+            onDirtyChange={setEditorDirty}
+            onRestored={() => {
+              setEditorDirty(false);
+              setIsEditingAssignment(false);
+              queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+              queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+            }}
+          />
         ) : (
           <>
             <motion.div
@@ -1431,6 +1205,84 @@ export default function TeacherAssignmentDetail() {
                 </Button>
               </div>
             </motion.div>
+
+            {/* Lifecycle Summary */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`border-x-4 mb-6 rounded-xl border bg-card p-4 sm:p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between transition-all ${
+                (assignment as any).closedAt
+                  ? "border-s-slate-400 dark:border-s-slate-600 shadow-sm"
+                  : "border-s-emerald-500 dark:border-s-emerald-400 shadow-md shadow-emerald-500/5"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    {lang === "ar" ? "حالة الواجب" : "Assignment State"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full flex-shrink-0 ${(assignment as any).closedAt ? "bg-slate-400" : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"}`} />
+                    <span className={`text-lg font-black tracking-tight ${(assignment as any).closedAt ? "text-slate-600 dark:text-slate-300" : "text-emerald-700 dark:text-emerald-400"}`}>
+                      {(assignment as any).closedAt ? (lang === "ar" ? "مغلق" : "Closed") : (lang === "ar" ? "مفتوح ويستقبل الحلول" : "Open & Active")}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-full sm:w-px h-px sm:h-12 bg-border/60" />
+
+                <div className="flex items-center gap-8">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      {lang === "ar" ? "تم التسليم" : "Submitted"}
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-black text-foreground leading-none">{summaryStats.submitted}</span>
+                      <span className="text-sm font-medium text-muted-foreground">/ {summaryStats.submitted + summaryStats.pending}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mb-1">
+                      {lang === "ar" ? "قيد الانتظار" : "Pending"}
+                    </span>
+                    <span className="text-2xl font-black text-amber-600 dark:text-amber-500 leading-none">{summaryStats.pending}</span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-red-600/70 dark:text-red-500/70 uppercase tracking-wider mb-1">
+                      {lang === "ar" ? "متأخر" : "Late"}
+                    </span>
+                    <span className="text-2xl font-black text-red-600 dark:text-red-500 leading-none">{summaryStats.late}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full sm:w-auto pt-2 sm:pt-0">
+                <Button
+                  variant={(assignment as any).closedAt ? "default" : "outline"}
+                  onClick={() => toggleLifecycleMutation.mutate(!(assignment as any).closedAt)}
+                  disabled={toggleLifecycleMutation.isPending}
+                  className={`w-full sm:w-auto font-bold gap-2 ${
+                    !(assignment as any).closedAt
+                      ? "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
+                  }`}
+                >
+                  {toggleLifecycleMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (assignment as any).closedAt ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
+                  {(assignment as any).closedAt
+                    ? (lang === "ar" ? "إعادة فتح الواجب" : "Reopen Assignment")
+                    : (lang === "ar" ? "إغلاق الواجب الآن" : "Close Assignment Now")}
+                </Button>
+              </div>
+            </motion.div>
+
             <div className="flex gap-2 mb-6">
               {[
                 { id: "questions" as const, label: lang === "ar" ? "الأسئلة" : "Questions", icon: <FileText className="w-4 h-4" />, count: assignment.questions.length },

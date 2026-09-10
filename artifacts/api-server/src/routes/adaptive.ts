@@ -184,6 +184,19 @@ async function finishSession(
   completionReason: "completed" | "timeout" = "completed",
 ) {
   if (session.submissionId) return { submissionId: session.submissionId, score: null, earnedPoints: null, totalPoints: null };
+  const lifecycle = await tx.execute(sql`
+    SELECT archived_at, closed_at
+    FROM assignments
+    WHERE id = ${session.assignmentId}
+    FOR SHARE
+  `);
+  const assignmentState = lifecycle.rows[0] as { archived_at: Date | null; closed_at: Date | null } | undefined;
+  if (!assignmentState || assignmentState.archived_at || assignmentState.closed_at) {
+    throw Object.assign(new Error(assignmentState?.archived_at ? "تمت أرشفة هذا الواجب" : "أغلق المعلم هذا الواجب"), {
+      statusCode: assignmentState?.archived_at ? 410 : 403,
+      code: assignmentState?.archived_at ? "ASSIGNMENT_ARCHIVED" : "ASSIGNMENT_CLOSED",
+    });
+  }
   const byId = new Map(pool.map(q => [q.id, q]));
   const totalPoints = sequence.reduce((n, a) => n + (byId.get(a.questionId)?.points || 1), 0);
   const earnedPoints = sequence.reduce((n, a) => n + (a.isCorrect ? (byId.get(a.questionId)?.points || 1) : 0), 0);
@@ -227,6 +240,10 @@ router.post("/adaptive/start", async (req, res) => {
     if (!assignmentId || !studentName || !deviceFingerprint) return void res.status(400).json({ message: "الاسم ورقم الواجب وبصمة الجهاز مطلوبة" });
     const [assignment] = await db.select().from(assignmentsTable).where(eq(assignmentsTable.id, assignmentId)).limit(1);
     if (!assignment || !assignment.isAdaptive) return void res.status(assignment ? 400 : 404).json({ message: assignment ? "هذا الواجب ليس تكيّفياً" : "الواجب غير موجود" });
+    if (assignment.archivedAt || assignment.closedAt) return void res.status(assignment.archivedAt ? 410 : 403).json({
+      message: assignment.archivedAt ? "تمت أرشفة هذا الواجب" : "أغلق المعلم هذا الواجب",
+      code: assignment.archivedAt ? "ASSIGNMENT_ARCHIVED" : "ASSIGNMENT_CLOSED",
+    });
     if (assignment.accessMode === "private" && (!assignment.accessCode || !safeAccessCodeEqual(normalizeAccessCode(req.body.accessCode), normalizeAccessCode(assignment.accessCode)))) return void res.status(403).json({ message: "كود الدخول غير صحيح" });
     const config = parseAdaptiveConfig(assignment.adaptiveConfig);
     const pool = await db.select().from(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
@@ -234,32 +251,45 @@ router.post("/adaptive/start", async (req, res) => {
     if (!readiness.valid) return void res.status(400).json({ message: "بنك الأسئلة غير جاهز للاختبار التكيّفي", readiness });
     // Prefer the active attempt explicitly: a retry may leave older completed
     // rows for the same fingerprint, and SQL does not promise an implicit order.
-    const active = await db.select().from(adaptiveSessionsTable).where(and(
-      eq(adaptiveSessionsTable.assignmentId, assignmentId),
-      eq(adaptiveSessionsTable.deviceFingerprint, deviceFingerprint),
-      eq(adaptiveSessionsTable.completed, 0),
-    )).limit(1);
-    const completed = active.length ? [] : await db.select().from(adaptiveSessionsTable).where(and(
-      eq(adaptiveSessionsTable.assignmentId, assignmentId),
-      eq(adaptiveSessionsTable.deviceFingerprint, deviceFingerprint),
-      eq(adaptiveSessionsTable.completed, 1),
-    )).limit(1);
-    const old = active[0] || completed[0];
-    if (old && old.completed && !config.allowRetry) return void res.status(409).json({ message: "لقد أكملت هذا الاختبار ولا يسمح بإعادة المحاولة" });
-    if (!active.length && assignment.deadline && new Date(assignment.deadline) <= new Date()) {
-      return void res.status(403).json({ message: "انتهى موعد الاختبار" });
-    }
     const runtime = config.mode === "staged" ? initialStageRuntime() : undefined;
     const initialPool = stagePool(pool, config.mode === "staged" ? config.stages[0] : undefined);
     if (!initialPool.length) return void res.status(400).json({ message: "لا توجد أسئلة مطابقة للمرحلة الحالية" });
-    const session = old && !old.completed ? old : (await db.insert(adaptiveSessionsTable).values({
-      assignmentId, studentName, studentClass: studentClass || "", deviceFingerprint, currentAbility: 2, questionSequence: "[]",
-      currentQuestionId: pickNext(2, initialPool, new Set(), {})!.id,
-      currentQuestionStartedAt: new Date(),
-      answeredCount: 0,
-      totalToAnswer: config.mode === "staged" ? config.stages.reduce((total, stage) => total + stage.questionCount * (stage.failureAction === "repeat" ? stage.maxRepeats + 1 : 1) + (stage.failureAction === "support" ? stage.supportQuestionCount : 0), 0) : Math.min(config.questionsPerSession || 10, pool.length),
-      correctCount: 0, completed: 0, skillAbilities: storeAbilities({}, runtime),
-    }).returning())[0];
+    const session = await db.transaction(async (tx: any) => {
+      const [lockedAssignment] = await tx.select().from(assignmentsTable)
+        .where(eq(assignmentsTable.id, assignmentId)).for("share").limit(1);
+      if (!lockedAssignment || lockedAssignment.archivedAt || lockedAssignment.closedAt) {
+        throw Object.assign(new Error(lockedAssignment?.archivedAt ? "تمت أرشفة هذا الواجب" : "أغلق المعلم هذا الواجب"), {
+          statusCode: lockedAssignment?.archivedAt ? 410 : 403,
+          code: lockedAssignment?.archivedAt ? "ASSIGNMENT_ARCHIVED" : "ASSIGNMENT_CLOSED",
+        });
+      }
+      const active = await tx.select().from(adaptiveSessionsTable).where(and(
+        eq(adaptiveSessionsTable.assignmentId, assignmentId),
+        eq(adaptiveSessionsTable.deviceFingerprint, deviceFingerprint),
+        eq(adaptiveSessionsTable.completed, 0),
+      )).limit(1);
+      const completed = active.length ? [] : await tx.select().from(adaptiveSessionsTable).where(and(
+        eq(adaptiveSessionsTable.assignmentId, assignmentId),
+        eq(adaptiveSessionsTable.deviceFingerprint, deviceFingerprint),
+        eq(adaptiveSessionsTable.completed, 1),
+      )).limit(1);
+      const old = active[0] || completed[0];
+      if (old && old.completed && !config.allowRetry) {
+        throw Object.assign(new Error("لقد أكملت هذا الاختبار ولا يسمح بإعادة المحاولة"), { statusCode: 409 });
+      }
+      if (!active.length && assignment.deadline && new Date(assignment.deadline) <= new Date()) {
+        throw Object.assign(new Error("انتهى موعد الاختبار"), { statusCode: 403 });
+      }
+      if (old && !old.completed) return old;
+      return (await tx.insert(adaptiveSessionsTable).values({
+        assignmentId, studentName, studentClass: studentClass || "", deviceFingerprint, currentAbility: 2, questionSequence: "[]",
+        currentQuestionId: pickNext(2, initialPool, new Set(), {})!.id,
+        currentQuestionStartedAt: new Date(),
+        answeredCount: 0,
+        totalToAnswer: config.mode === "staged" ? config.stages.reduce((total, stage) => total + stage.questionCount * (stage.failureAction === "repeat" ? stage.maxRepeats + 1 : 1) + (stage.failureAction === "support" ? stage.supportQuestionCount : 0), 0) : Math.min(config.questionsPerSession || 10, pool.length),
+        correctCount: 0, completed: 0, skillAbilities: storeAbilities({}, runtime),
+      }).returning())[0];
+    });
     const resumeRuntime = parseStored(session.skillAbilities).stageRuntime;
     const overallExpiry = expiresAt(assignment, session);
     const perStageExpiry = stageExpiresAt(config, resumeRuntime);
@@ -291,7 +321,7 @@ router.post("/adaptive/start", async (req, res) => {
     const current = pool.find(q => q.id === session.currentQuestionId);
     const neutralProgress = config.mode === "staged" ? { progress: { completedQuestions: session.answeredCount } } : {};
     res.json({ sessionId: session.id, totalQuestions: session.totalToAnswer, answeredCount: session.answeredCount, question: current ? sanitizeQuestion(current) : null, showImmediateFeedback: config.showImmediateFeedback, showAnswersAfterResult: config.showAnswersAfterResult, allowRetry: config.allowRetry, examExpiresAt: exp?.toISOString() || null, ...(stageExpiresAt(config, resumeRuntime) ? { stageExpiresAt: stageExpiresAt(config, resumeRuntime)!.toISOString() } : {}), ...neutralProgress, ...(config.showStageNames && resumeRuntime ? { stageName: config.stages[resumeRuntime.stageIndex]?.name || null } : {}) });
-  } catch (e: any) { res.status(500).json({ message: e.message || "خطأ في بدء الجلسة" }); }
+  } catch (e: any) { res.status(e?.statusCode || 500).json({ message: e.message || "خطأ في بدء الجلسة", ...(e?.code ? { code: e.code } : {}) }); }
 });
 
 router.post("/adaptive/answer", async (req, res) => {
@@ -303,7 +333,16 @@ router.post("/adaptive/answer", async (req, res) => {
       const [session] = await tx.select().from(adaptiveSessionsTable).where(eq(adaptiveSessionsTable.id, sessionId)).limit(1);
       if (!session) return { status: 404, body: { message: "الجلسة غير موجودة" } };
       if (session.deviceFingerprint !== deviceFingerprint) return { status: 403, body: { message: "غير مصرح — جهاز مختلف" } };
-      const [assignment] = await tx.select().from(assignmentsTable).where(eq(assignmentsTable.id, session.assignmentId)).limit(1);
+      const [assignment] = await tx.select().from(assignmentsTable).where(eq(assignmentsTable.id, session.assignmentId)).for("share").limit(1);
+      if (!assignment || assignment.archivedAt || assignment.closedAt) {
+        return {
+          status: assignment?.archivedAt ? 410 : 403,
+          body: {
+            message: assignment?.archivedAt ? "تمت أرشفة هذا الواجب" : "أغلق المعلم هذا الواجب",
+            code: assignment?.archivedAt ? "ASSIGNMENT_ARCHIVED" : "ASSIGNMENT_CLOSED",
+          },
+        };
+      }
       const pool = await tx.select().from(questionsTable).where(eq(questionsTable.assignmentId, session.assignmentId));
       const config = parseAdaptiveConfig(assignment.adaptiveConfig);
       const sequence = parseSequence(session.questionSequence);

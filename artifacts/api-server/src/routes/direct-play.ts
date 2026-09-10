@@ -90,6 +90,7 @@ type DirectPlayAssignment = {
   isShared: boolean;
   hiddenByAdmin: boolean;
   accessMode: string | null;
+  archivedAt?: Date | null;
 };
 
 /**
@@ -128,11 +129,12 @@ async function getPlayableAssignment(
       isShared: assignmentsTable.isShared,
       hiddenByAdmin: assignmentsTable.hiddenByAdmin,
       accessMode: assignmentsTable.accessMode,
+      archivedAt: assignmentsTable.archivedAt,
     })
     .from(assignmentsTable)
     .where(eq(assignmentsTable.id, assignmentId))
     .limit(1);
-  if (!row || !canCreateDirectPlayLink(row, teacherId, gameType)) return null;
+  if (!row || row.archivedAt || !canCreateDirectPlayLink(row, teacherId, gameType)) return null;
   return row;
 }
 
@@ -467,6 +469,7 @@ router.get("/play/:token/info", async (req, res) => {
         assignmentTitle: assignmentsTable.title,
         wheelTitle: wheelTemplatesTable.title,
         wheelSegments: wheelTemplatesTable.segments,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(directPlayLinksTable)
       .leftJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
@@ -487,6 +490,9 @@ router.get("/play/:token/info", async (req, res) => {
       return res.json({ title: link.wheelTitle, questionCount, gameType: WHEEL_GAME_TYPE });
     }
     if (!link.assignmentId || !link.assignmentTitle) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    if (link.assignmentArchivedAt) {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
 
@@ -562,6 +568,7 @@ router.get("/play/:token/wameeth-class", async (req, res) => {
         assignmentId: directPlayLinksTable.assignmentId,
         gameType: directPlayLinksTable.gameType,
         title: assignmentsTable.title,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(directPlayLinksTable)
       .innerJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
@@ -569,6 +576,9 @@ router.get("/play/:token/wameeth-class", async (req, res) => {
       .limit(1);
 
     if (!link || link.gameType !== "wameeth_class" || link.assignmentId === null) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    if (link.assignmentArchivedAt) {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
 
@@ -668,6 +678,7 @@ router.post("/play/:token/start", async (req, res) => {
         assignmentId: directPlayLinksTable.assignmentId,
         gameType: directPlayLinksTable.gameType,
         title: assignmentsTable.title,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(directPlayLinksTable)
       .innerJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
@@ -675,6 +686,9 @@ router.post("/play/:token/start", async (req, res) => {
       .limit(1);
 
     if (!link || link.assignmentId === null) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    if (link.assignmentArchivedAt) {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
 

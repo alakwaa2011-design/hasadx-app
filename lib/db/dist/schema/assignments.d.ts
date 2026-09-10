@@ -556,6 +556,74 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
+            tableName: "assignments";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        version: import("drizzle-orm/pg-core").PgColumn<{
+            name: "version";
+            tableName: "assignments";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        archivedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "archived_at";
+            tableName: "assignments";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        closedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "closed_at";
+            tableName: "assignments";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         fromPresentationSlide: import("drizzle-orm/pg-core").PgColumn<{
             name: "from_presentation_slide";
             tableName: "assignments";
@@ -662,7 +730,6 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
     dialect: "pg";
 }>;
 export declare const insertAssignmentSchema: z.ZodObject<{
-    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -671,6 +738,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClasses: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    teacherId: z.ZodInt;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     showResults: z.ZodOptional<z.ZodBoolean>;
     modelImageBase64: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -691,6 +759,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     source: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isAdaptive: z.ZodOptional<z.ZodBoolean>;
     adaptiveConfig: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    closedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     fromPresentationSlide: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     activityType: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     listeningAudioText: z.ZodOptional<z.ZodNullable<z.ZodString>>;

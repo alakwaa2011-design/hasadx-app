@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable, soloChallengesTable } from "@workspace/db";
-import { eq, and, sql, desc, ne, inArray, or } from "drizzle-orm";
+import { eq, and, sql, desc, ne, inArray, or, isNull } from "drizzle-orm";
 import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getGame } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -43,6 +43,7 @@ router.get("/public/assignments", async (req, res) => {
     const clauses = [
       eq(assignmentsTable.hiddenByAdmin, false),
       ne(assignmentsTable.accessMode, "private"),
+      isNull(assignmentsTable.archivedAt),
     ];
     if (visibility !== "all") {
       clauses.push(eq(assignmentsTable.isShared, true));
@@ -140,12 +141,17 @@ router.post("/public/start-wameeth/:assignmentId", async (req, res) => {
     }
 
     const [assignment] = await db
-      .select({ id: assignmentsTable.id, title: assignmentsTable.title, isShared: assignmentsTable.isShared })
+      .select({
+        id: assignmentsTable.id,
+        title: assignmentsTable.title,
+        isShared: assignmentsTable.isShared,
+        archivedAt: assignmentsTable.archivedAt,
+      })
       .from(assignmentsTable)
       .where(eq(assignmentsTable.id, assignmentId))
       .limit(1);
 
-    if (!assignment) return res.status(404).json({ message: "الواجب غير موجود" });
+    if (!assignment || assignment.archivedAt) return res.status(404).json({ message: "الواجب غير موجود" });
     if (visibility !== "all" && !assignment.isShared) {
       return res.status(403).json({ message: "هذا الواجب غير متاح للعموم" });
     }

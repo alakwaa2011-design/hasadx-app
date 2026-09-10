@@ -475,8 +475,16 @@ function Router() {
         </Route>
         <Route path="/teacher/video-lesson/new" component={CreateVideoLesson} />
         <Route path="/teacher/create-video-lesson" component={CreateVideoLesson} />
-        <Route path="/teacher/ai-video" component={AiVideoIndex} />
-        <Route path="/teacher/ai-video/new" component={AiVideoNew} />
+        <Route path="/teacher/ai-video">
+          <AdminOnly requireDatabaseFlag>
+            <AiVideoIndex />
+          </AdminOnly>
+        </Route>
+        <Route path="/teacher/ai-video/new">
+          <AdminOnly requireDatabaseFlag>
+            <AiVideoNew />
+          </AdminOnly>
+        </Route>
         <Route path="/teacher/video-lesson/:id/live" component={VideoLive} />
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
         <Route path="/teacher/parent-messages" component={ParentMessagesPage} />

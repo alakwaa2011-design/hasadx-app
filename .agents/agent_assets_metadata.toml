@@ -1662,12 +1662,62 @@ logical_id = "c0df907d-cc72-47b8-85cb-1e9802939e9f"
 id = "C5IaLksIsrng_UhlA6rUe"
 uri = "file://attached_assets/hasaad-create-real-assignment-vertical.mp4"
 type = "video"
-title = "فيديو إنشاء واجب حقيقي في حصاد"
-description = "فيديو عمودي 9:16 يوثّق إنشاء ونشر واجب «أنواع الخبر — الصف السادس» داخل منصة حصاد الفعلية، مع تعليق صوتي عربي وعناوين مكتوبة."
+title = "فيديو إنشاء واجب حقيقي في حصاد — النسخة المصححة"
+description = "تم تصحيح نطق «وانشُرْ»، وتوضيح أن الأسئلة الخمسة مثال وأن حصاد يستطيع توليد عدد أكبر حسب اختيار المعلم."
 logical_id = "ac17c47a-b0ca-4de5-820d-e23c490d190e"
-content_hash = "sha256:53661317283e789e2d2b3adc3c1f4bf4deec622379677993bb081b6820ef12d7"
-size = 4994099
-mtime_ms = 1788989912022
-storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/ac17c47a-b0ca-4de5-820d-e23c490d190e/4e406872-1bbc-40d6-a666-9c0a586ff55d"
-storage_version_token = "1788989957615113"
+content_hash = "sha256:00e0e632d0c80eaa46e4153594437a959e7d1e05c19595dc24d3e1b667e88c20"
+size = 4986044
+mtime_ms = 1788990229697
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/ac17c47a-b0ca-4de5-820d-e23c490d190e/329e1336-473a-4655-badd-6fe6aa4e7d24"
+storage_version_token = "1788990240166060"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "VYpjmVbydbKxyUiETbP_I"
+uri = "file://attached_assets/generated_audio/hasaad-assignment-voiceover-revised.mp3"
+type = "audio"
+title = "revised hasaad assignment walkthrough gulf arabic"
+description = "Text-to-speech audio: مع حصاد، يتحول إعداد الواجب من خطوات طويلة إلى تجربة واضحة وسريعة. من لوحة المعلم نختار إنشاء نشاط جديد، ثم واجب أو اختبار. نضيف عنوان النشاط، والمادة، والصف المستهدف. بعدها نخت…"
+logical_id = "1d4988bd-d143-4a43-ab14-3843a97c61b5"
+
+[[outputs]]
+id = "Skz6PZOrL_acVNISjoEx4"
+uri = "file://attached_assets/hasaad-reel-cover-assignment.png"
+type = "image"
+title = "غلاف ريلز — إنشاء واجب في حصاد"
+description = "غلاف عمودي 1080×1920 بهوية حصاد الخضراء والذهبية، مع الشعار ولقطة حقيقية من شاشة نشر الواجب."
+logical_id = "4b7b5075-2a2e-4488-9faa-d71655636852"
+content_hash = "sha256:75d5264c0e337766817c5f5250ebbda84d71c3dc81077259ee0d40ad8e558a5f"
+size = 925590
+mtime_ms = 1789011380209
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/4b7b5075-2a2e-4488-9faa-d71655636852/6ad67eaf-b9d8-4d78-ad47-f412bc11a97e"
+storage_version_token = "1789011400502054"
+content_type = "image/png"
+
+[[outputs]]
+id = "Edpkq-9ITCzFYlkzGKPxA"
+uri = "file://attached_assets/hasaad-reel-cover-assignment-updated.png"
+type = "image"
+title = "غلاف ريلز حصاد — النسخة المعدّلة"
+description = "حُذف العنوان السفلي، وأضيف توضيح طرق إنشاء الواجب: بالذكاء الاصطناعي، يدويًا، من ملف أو نص، أو بالتقاط صورة."
+logical_id = "2537c315-ada2-4acd-9052-68855934e26d"
+content_hash = "sha256:32efa15e85ad451b8ec1d8de191e792d4b9693d409a1b23d5ea8f09c8666a9b4"
+size = 881906
+mtime_ms = 1789011907362
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/2537c315-ada2-4acd-9052-68855934e26d/72afdac2-d316-48f9-8c4f-3752fbfb346f"
+storage_version_token = "1789011920966820"
+content_type = "image/png"
+
+[[outputs]]
+id = "45nY0GbZLIzgDFcUQola4"
+uri = "file://artifacts/hasaad-meta-video/public/audio/voiceover.mp3"
+type = "audio"
+title = "hasaad reels voiceover"
+description = "Text-to-speech audio: مع حصاد، تتحول فكرة الدرس إلى تجربة تعليمية متكاملة. أنشئ الواجبات، وخطط الدروس، وأوراق العمل بالذكاء الاصطناعي خلال ثوانٍ. أشعل حماس الصف بألعاب وميض، وشد الحبل، وإكس أو، والعج…"
+
+[[outputs]]
+id = "hm9ckYLiQJ80HSoyvCBnz"
+uri = "file://artifacts/hasaad-meta-video/public/audio/voiceover_2.mp3"
+type = "audio"
+title = "hasaad reels voiceover"
+description = "Text-to-speech audio: مع حصاد، تتحول فكرة الدرس إلى تجربة تعليمية متكاملة. أنشئ الواجبات، وخطط الدروس، وأوراق العمل بالذكاء الاصطناعي خلال ثوانٍ. أشعل حماس الصف بألعاب وميض، وشد الحبل، وإكس أو، والعج…"

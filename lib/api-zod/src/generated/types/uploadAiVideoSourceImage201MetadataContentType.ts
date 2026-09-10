@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type UploadAiVideoSourceImage201MetadataContentType =
-  typeof UploadAiVideoSourceImage201MetadataContentType[keyof typeof UploadAiVideoSourceImage201MetadataContentType];
+export type UploadAiVideoSourceImage201MetadataContentType = typeof UploadAiVideoSourceImage201MetadataContentType[keyof typeof UploadAiVideoSourceImage201MetadataContentType];
+
 
 export const UploadAiVideoSourceImage201MetadataContentType = {
-  "image/jpeg": "image/jpeg",
-  "image/png": "image/png",
-  "image/webp": "image/webp",
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
 } as const;

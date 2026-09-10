@@ -922,6 +922,10 @@ export function setupGameSocket(io: Server) {
             callback?.({ error: "الواجب غير موجود" });
             return;
           }
+          if (assignment.archivedAt) {
+            callback?.({ error: "لا يمكن تشغيل واجب مؤرشف" });
+            return;
+          }
 
           // Allow if teacher owns it, OR if it's a shared+approved assignment
           // (any logged-in teacher can launch admin/shared content with their students).

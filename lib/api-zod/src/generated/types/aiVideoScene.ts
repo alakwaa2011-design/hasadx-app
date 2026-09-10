@@ -5,8 +5,8 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { AiVideoDialogueTurn } from './aiVideoDialogueTurn';
 import type { AiVideoSceneTransition } from './aiVideoSceneTransition';
-import type { AiVideoDialogueTurn } from "./aiVideoDialogueTurn";
 
 export interface AiVideoScene {
   /** @maxLength 50 */
@@ -15,7 +15,10 @@ export interface AiVideoScene {
   objective: string;
   /** @maxLength 1500 */
   narration: string;
-  /** @maxLength 60 */
+  /**
+     * Short keyword label of no more than 7 words; never a narration fallback.
+     * @maxLength 60
+     */
   onScreenText: string;
   /** @maxLength 800 */
   visualPrompt: string;
@@ -43,6 +46,19 @@ export interface AiVideoScene {
      * @pattern ^/objects/
      */
   sourceImage?: string | null;
+  /**
+     * Stable character IDs visibly present in the shot, including every dialogue speaker.
+     * @minItems 1
+     * @maxItems 4
+     * @items.minLength 1
+     * @items.maxLength 40
+     * @items.pattern ^[A-Za-z0-9_-]+$
+     */
   visibleCharacterIds?: string[];
+  /**
+     * Exact ordered native-audio character turns; production never replaces these with narration/TTS.
+     * @minItems 1
+     * @maxItems 4
+     */
   dialogue?: AiVideoDialogueTurn[];
 }

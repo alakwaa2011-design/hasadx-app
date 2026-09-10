@@ -267,12 +267,12 @@ router.post("/solo-challenges", async (req, res) => {
     if (!assignmentId) return res.status(400).json({ message: "معرّف الواجب مطلوب" });
 
     const [assignment] = await db
-      .select({ id: assignmentsTable.id, title: assignmentsTable.title, teacherId: assignmentsTable.teacherId })
+      .select({ id: assignmentsTable.id, title: assignmentsTable.title, teacherId: assignmentsTable.teacherId, archivedAt: assignmentsTable.archivedAt })
       .from(assignmentsTable)
       .where(and(eq(assignmentsTable.id, assignmentId), eq(assignmentsTable.teacherId, teacherId)))
       .limit(1);
 
-    if (!assignment) return res.status(404).json({ message: "الواجب غير موجود أو لا تملكه" });
+    if (!assignment || assignment.archivedAt) return res.status(404).json({ message: "الواجب غير موجود أو لا تملكه" });
 
     // Return existing link if already created for this assignment
     const [existing] = await db
@@ -516,8 +516,9 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
     if (!teacherId) return;
 
     const [challenge] = await db
-      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId, assignmentId: soloChallengesTable.assignmentId, assignmentArchivedAt: assignmentsTable.archivedAt })
       .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
@@ -749,12 +750,17 @@ router.get("/solo-challenges/:slug", async (req, res) => {
         levels: soloChallengesTable.levels,
         difficultyDistribution: soloChallengesTable.difficultyDistribution,
         allowedClasses: soloChallengesTable.allowedClasses,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.assignmentId !== null && challenge.assignmentArchivedAt) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
 
     const now = new Date();
     const isExpired = challenge.expiresAt ? new Date(challenge.expiresAt) < now : false;
@@ -828,12 +834,17 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
         shortSlug: soloChallengesTable.shortSlug,
         leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
         allowedClasses: soloChallengesTable.allowedClasses,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.assignmentId !== null && challenge.assignmentArchivedAt) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
 
     const now = new Date();
     if (challenge.expiresAt && new Date(challenge.expiresAt) < now) {
@@ -1001,12 +1012,16 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
     if (!playerName) return res.status(400).json({ message: "الاسم مطلوب" });
 
     const [challenge] = await db
-      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId, assignmentId: soloChallengesTable.assignmentId, assignmentArchivedAt: assignmentsTable.archivedAt })
       .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.assignmentId !== null && challenge.assignmentArchivedAt) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
 
     await db.insert(soloChallengeScoresTable).values({ slug, playerName, score, correctCount, timeTaken: timeTaken ?? undefined });
     res.json({ ok: true });
@@ -1026,12 +1041,18 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
         id: soloChallengesTable.id,
         teacherId: soloChallengesTable.teacherId,
         leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
+        assignmentId: soloChallengesTable.assignmentId,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "المسابقة غير موجودة" });
+    if (challenge.assignmentId !== null && challenge.assignmentArchivedAt) {
+      return res.status(404).json({ message: "المسابقة غير موجودة" });
+    }
 
     const display = challenge.leaderboardDisplay ?? "top20";
     const limit = display === "top3" ? 3 : display === "all" ? 1000 : 20;

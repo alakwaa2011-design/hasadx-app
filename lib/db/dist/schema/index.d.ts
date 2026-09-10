@@ -1,6 +1,7 @@
 export * from "./teachers";
 export * from "./categories";
 export * from "./assignments";
+export * from "./assignment-revisions";
 export * from "./questions";
 export * from "./submissions";
 export * from "./answers";

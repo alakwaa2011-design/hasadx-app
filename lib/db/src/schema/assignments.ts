@@ -41,6 +41,10 @@ export const assignmentsTable = pgTable("assignments", {
   isAdaptive: boolean("is_adaptive").notNull().default(false),
   adaptiveConfig: text("adaptive_config"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  version: integer("version").notNull().default(1),
+  archivedAt: timestamp("archived_at"),
+  closedAt: timestamp("closed_at"),
   /** When created from a presentation activity slide, stores "presId:slideId" so the same
    *  assignment is reused on subsequent plays instead of creating a new one each time. */
   fromPresentationSlide: text("from_presentation_slide"),
@@ -57,7 +61,7 @@ export const assignmentsTable = pgTable("assignments", {
   listeningSettings: text("listening_settings"),
 }, (t) => ({
   teacherIdx: index("assignments_teacher_idx").on(t.teacherId),
-  teacherCreatedIdx: index("assignments_teacher_created_idx").on(t.teacherId, t.createdAt),
+  teacherCreatedIdx: index("assignments_teacher_archive_created_idx").on(t.teacherId, t.archivedAt, t.createdAt),
   categoryIdx: index("assignments_category_idx").on(t.categoryId),
   // Hot path: shared-library scans filter by contentKind, isShared,
   // hiddenByAdmin, accessMode and order by createdAt DESC. A composite
@@ -67,6 +71,12 @@ export const assignmentsTable = pgTable("assignments", {
     t.isShared, t.hiddenByAdmin, t.contentKind, t.createdAt,
   ),
 }));
-export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });
+export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  version: true,
+  archivedAt: true,
+});
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;

@@ -51,6 +51,25 @@ import { setKidsReady } from "./routes/kids";
 async function runSchemaMigrations() {
   try {
     await migrateKidsSchema();
+    // Assignment history is also applied at runtime for deployments that do
+    // not run the reviewed SQL files during boot.
+    await db.execute(sql`
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP;
+      CREATE TABLE IF NOT EXISTS assignment_revisions (
+        id SERIAL PRIMARY KEY,
+        assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        source_version INTEGER NOT NULL,
+        settings JSONB NOT NULL,
+        questions JSONB NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS assignment_revisions_assignment_created_idx
+        ON assignment_revisions (assignment_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS assignment_revisions_teacher_idx
+        ON assignment_revisions (teacher_id);
+    `);
     // Classroom motivation ledger. Kept here as an idempotent runtime migration for
     // deployed databases; the matching reviewed SQL migration lives in scripts/migrations.
     await db.transaction(async (tx) => {
@@ -497,6 +516,29 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE assignments
         ADD COLUMN IF NOT EXISTS target_classes TEXT[]
+    `);
+    await db.execute(sql`
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS version INTEGER,
+        ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP
+    `);
+    await db.execute(sql`
+      UPDATE assignments
+      SET updated_at = COALESCE(updated_at, created_at, NOW()),
+          version = COALESCE(version, 1)
+      WHERE updated_at IS NULL OR version IS NULL
+    `);
+    await db.execute(sql`
+      ALTER TABLE assignments
+        ALTER COLUMN updated_at SET DEFAULT NOW(),
+        ALTER COLUMN updated_at SET NOT NULL,
+        ALTER COLUMN version SET DEFAULT 1,
+        ALTER COLUMN version SET NOT NULL
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS assignments_teacher_archive_created_idx
+        ON assignments (teacher_id, archived_at, created_at DESC)
     `);
     // Composite index for the kind-filtered shared-library hot path
     // (task #595). Covers WHERE is_shared=true AND hidden_by_admin=false

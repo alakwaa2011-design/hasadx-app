@@ -873,6 +873,7 @@ export default function TeacherDashboard() {
             setLocation={setLocation}
             setActiveTab={setActiveTab}
             queryClient={queryClient}
+            teacherId={user?.id}
             deleteAssignment={(id: number) => {
               if (
                 confirm(
@@ -883,6 +884,24 @@ export default function TeacherDashboard() {
               ) {
                 deleteAssignmentMutation.mutate({ id });
               }
+            }}
+            archiveAssignment={(id: number, archived: boolean, version: number) => {
+              const message = archived
+                ? (isAr ? "هل تريد أرشفة هذا الواجب؟ يمكنك استعادته لاحقًا." : "Archive this assignment? You can restore it later.")
+                : (isAr ? "هل تريد استعادة هذا الواجب؟" : "Restore this assignment?");
+              if (!confirm(message)) return;
+              fetch(`${BASE_URL}/api/assignments/${id}/archive`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ archived, version }),
+              }).then((res) => {
+                if (!res.ok) throw new Error("archive");
+                queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+                toast.success(archived
+                  ? (isAr ? "تمت أرشفة الواجب" : "Assignment archived")
+                  : (isAr ? "تمت استعادة الواجب" : "Assignment restored"));
+              }).catch(() => toast.error(isAr ? "تعذر تحديث حالة الواجب" : "Could not update assignment"));
             }}
           />
         )}
@@ -1902,10 +1921,30 @@ function AssignmentsTab({
   setActiveTab,
   deleteAssignment,
   queryClient,
+  teacherId,
+  archiveAssignment,
 }: any) {
   const [collections, setCollections] = useState<DashboardCollection[]>([]);
   const [creatingGroupName, setCreatingGroupName] = useState("");
   const [savingGroup, setSavingGroup] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: archivedRaw, isLoading: isArchivedLoading } = useQuery({
+    queryKey: ["/api/assignments", { teacherId, archived: true }],
+    enabled: showArchived && !!teacherId,
+    queryFn: async () => {
+      const response = await fetch(
+        `${BASE_URL}/api/assignments?teacherId=${teacherId}&archived=true`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("archived assignments");
+      return response.json();
+    },
+  });
+  const archivedAssignments: Assignment[] = Array.isArray(archivedRaw)
+    ? archivedRaw
+    : Array.isArray((archivedRaw as any)?.assignments)
+      ? (archivedRaw as any).assignments
+      : [];
 
   useEffect(() => {
     loadCollections();
@@ -2055,9 +2094,10 @@ function AssignmentsTab({
     }
   }
 
-  const filteredAssignments = !assignments ? [] : assignments;
+  const displayedAssignments = showArchived ? archivedAssignments : (assignments || []);
+  const filteredAssignments = displayedAssignments;
 
-  if (isLoading) {
+  if (isLoading || (showArchived && isArchivedLoading)) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
@@ -2082,35 +2122,9 @@ function AssignmentsTab({
     );
   }
 
-  if (!assignments || assignments.length === 0) {
-    return (
-      <Card className="py-14 text-center border-dashed border-border/60 rounded-xl bg-muted/[0.03] shadow-sm">
-        <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-primary/[0.08] flex items-center justify-center ring-1 ring-primary/12">
-          <BookText className="w-7 h-7 text-primary/75" />
-        </div>
-        <h3 className="text-base font-bold text-foreground mb-1">
-          {t.dashboard.noAssignments}
-        </h3>
-        <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto leading-relaxed">
-          {t.dashboard.noAssignmentsDesc}
-        </p>
-        <Button
-          onClick={() => setLocation("/teacher/new")}
-          className="font-bold rounded-xl shadow-md"
-          style={{
-            background: "linear-gradient(180deg, #1b5c3d 0%, #154a33 100%)",
-            boxShadow: "0 10px 24px -14px rgba(21, 74, 51, 0.5)",
-          }}
-        >
-          {t.dashboard.createAssignment}
-        </Button>
-      </Card>
-    );
-  }
-
   return (
     <AssignmentsTabRender
-      assignments={assignments}
+      assignments={displayedAssignments}
       filteredAssignments={filteredAssignments}
       collections={collections}
       creatingGameForId={creatingGameForId}
@@ -2127,6 +2141,9 @@ function AssignmentsTab({
       setCreatingGroupName={setCreatingGroupName}
       createGroupAndAdd={createGroupAndAdd}
       savingGroup={savingGroup}
+      showArchived={showArchived}
+      setShowArchived={setShowArchived}
+      archiveAssignment={archiveAssignment}
     />
   );
 }
@@ -2957,21 +2974,17 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           accent: BRAND.gold,
           href: "/teacher/video-lesson/new",
         },
-        {
+        ...(user?.isAdmin === true ? [{
           icon: <Video className="w-6 h-6" />,
           title: isAr
-            ? (user?.isAdmin ? "إنتاج فيديو بالذكاء الاصطناعي (شامل)" : "إنتاج فيديو بالذكاء الاصطناعي (شرح بالصور)")
-            : (user?.isAdmin ? "AI Video Production (Advanced)" : "AI Video Production (Narrated Images)"),
+            ? "إنتاج فيديو بالذكاء الاصطناعي"
+            : "AI Video Production",
           desc: isAr
-            ? (user?.isAdmin
-                ? "حوّل محتواك إلى فيديوهات احترافية بالحركة الواقعية أو الشرح بالصور"
-                : "حوّل محتواك التعليمي إلى فيديو مع صور توضيحية وتعليق صوتي عربي بسهولة")
-            : (user?.isAdmin
-                ? "Turn your content into professional videos with realistic motion or narrated images"
-                : "Turn your content into an educational video with images and Arabic voiceover easily"),
+            ? "حوّل محتواك إلى فيديوهات احترافية بالحركة الواقعية أو الشرح بالصور"
+            : "Turn your content into professional videos with realistic motion or narrated images",
           accent: BRAND.gold,
           href: "/teacher/ai-video",
-        },
+        }] : []),
         {
           icon: <Monitor className="w-6 h-6" />,
           title: isAr ? "العروض التفاعلية" : "Interactive Presentations",
@@ -4051,6 +4064,8 @@ export function AssignmentRow({
   savingGroup,
   isFavorite,
   onToggleFavorite,
+  archiveAssignment,
+  archived,
 }: any) {
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
@@ -4081,8 +4096,9 @@ export function AssignmentRow({
 
   const deadlineExpired =
     assignment.deadline && new Date(assignment.deadline) < new Date();
-  const statusActive = !deadlineExpired;
   const isExam = assignment.examMode === true;
+  const isArchived = Boolean(archived || assignment.archived);
+  const statusActive = !isArchived && !deadlineExpired;
 
   return (
     <div
@@ -4133,7 +4149,7 @@ export function AssignmentRow({
           />
         </button>
         <button
-          onClick={onToggle}
+           onClick={() => !isArchived && onToggle()}
           className="flex-1 min-w-0 min-h-[44px] flex items-center gap-2 text-start"
         >
           <div className="flex-1 min-w-0">
@@ -4149,6 +4165,11 @@ export function AssignmentRow({
               {deadlineExpired && (
                 <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-stone-500/[0.09] text-stone-900 dark:text-stone-400 border border-stone-500/16 leading-none">
                   {lang === "ar" ? "منتهي" : "Ended"}
+                </span>
+              )}
+              {isArchived && (
+                <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-slate-500/[0.09] text-slate-900 dark:text-slate-300 border border-slate-500/16 leading-none">
+                  {lang === "ar" ? "مؤرشف" : "Archived"}
                 </span>
               )}
               {isExam ? (
@@ -4183,7 +4204,7 @@ export function AssignmentRow({
             </p>
           </div>
         </button>
-        {assignment.questionCount > 0 && (
+        {!isArchived && assignment.questionCount > 0 && (
           <button
             type="button"
             onClick={(e) => {
@@ -4205,7 +4226,27 @@ export function AssignmentRow({
             </span>
           </button>
         )}
-        <button
+        {isArchived && (
+          <>
+            <button
+              type="button"
+              onClick={() => archiveAssignment(assignment.id, false, assignment.version)}
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl border border-primary/30 bg-primary/[0.08] text-primary px-3 text-xs font-bold"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "استعادة" : "Restore"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteAssignment(assignment.id)}
+              className="shrink-0 inline-flex items-center justify-center min-h-[44px] rounded-xl border border-red-200/70 px-2.5 text-red-500 text-xs font-medium"
+              title={lang === "ar" ? "حذف نهائي" : "Permanent delete"}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+        {!isArchived && <button
           type="button"
           onClick={onToggle}
           data-testid={`assignment-manage-${assignment.id}`}
@@ -4223,7 +4264,7 @@ export function AssignmentRow({
           <ChevronDown
             className={`w-3.5 h-3.5 opacity-65 transition-transform duration-150 ${isExpanded ? "rotate-180" : ""}`}
           />
-        </button>
+        </button>}
       </div>
       <AnimatePresence initial={false}>
         {isExpanded && (
@@ -4427,8 +4468,15 @@ export function AssignmentRow({
                   document.body,
                 )}
               <button
+                onClick={() => archiveAssignment(assignment.id, true, assignment.version)}
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-amber-700 border border-amber-200/70 dark:border-amber-900/60 rounded-lg hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                {lang === "ar" ? "أرشفة" : "Archive"}
+              </button>
+              <button
                 onClick={() => deleteAssignment(assignment.id)}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-red-500 border border-red-200/70 dark:border-red-900/60 rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-red-500 border border-red-200/70 dark:border-red-900/60 rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {lang === "ar" ? "حذف" : "Delete"}
@@ -4460,6 +4508,9 @@ function AssignmentsTabRender({
   setCreatingGroupName,
   createGroupAndAdd,
   savingGroup,
+  showArchived,
+  setShowArchived,
+  archiveAssignment,
 }: any) {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [showAllAssignments, setShowAllAssignments] = useState(false);
@@ -4684,6 +4735,28 @@ function AssignmentsTabRender({
             className="flex items-center gap-2 flex-wrap"
             dir={lang === "ar" ? "rtl" : "ltr"}
           >
+            <div className="flex items-center gap-0.5 rounded-xl border border-border/48 bg-background/75 p-0.5 ms-auto">
+              <button
+                type="button"
+                onClick={() => setShowArchived(false)}
+                className={cn(
+                  "px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-bold transition-colors",
+                  !showArchived ? "bg-[#1E4D35] text-white" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {lang === "ar" ? "النشطة" : "Active"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowArchived(true)}
+                className={cn(
+                  "px-2.5 py-1.5 min-h-[34px] rounded-lg text-[11px] font-bold transition-colors",
+                  showArchived ? "bg-[#1E4D35] text-white" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {lang === "ar" ? "المؤرشفة" : "Archived"}
+              </button>
+            </div>
             {[
               { key: "all", label: lang === "ar" ? "الكل" : "All" },
               {
@@ -4799,6 +4872,8 @@ function AssignmentsTabRender({
                       onToggleFavorite={(e: React.MouseEvent) =>
                         toggleFavorite(a.id, e)
                       }
+                       archiveAssignment={archiveAssignment}
+                       archived={showArchived}
                     />
                   ))}
                   {!showAllAssignments && hiddenCount > 0 && (

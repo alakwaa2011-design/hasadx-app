@@ -28,12 +28,14 @@ vi.mock("@workspace/db", () => {
       insert: () => mockState.makeChain(mockState.queue.shift()),
       update: () => mockState.makeChain(mockState.queue.shift()),
       delete: () => mockState.makeChain(mockState.queue.shift()),
+      execute: async () => undefined,
       transaction: async (fn: (tx: unknown) => unknown) =>
         fn({
           select: () => mockState.makeChain(mockState.queue.shift()),
           insert: () => mockState.makeChain(mockState.queue.shift()),
           update: () => mockState.makeChain(mockState.queue.shift()),
           delete: () => mockState.makeChain(mockState.queue.shift()),
+           execute: async () => undefined,
         }),
     },
     assignmentsTable: stub,
@@ -148,20 +150,16 @@ describe("assignments.ts — auth & ownership", () => {
     pushQueue([{ id: 5, teacherId: 99 }]);
     const res = await request(makeApp({ teacherId: 1 })).delete(
       "/api/assignments/5/questions/77",
-    );
+    ).send({ version: 1 });
     expect(res.status).toBe(403);
   });
 
   it("PATCH /assignments/:id/share returns 404 when another teacher owns the assignment", async () => {
-    // The update is teacher-scoped (`and(id=5, teacherId=1)`), so a row
-    // owned by teacher 99 returns no row → 404.
-    pushQueue(
-      [{ isAdmin: false }], // isAdminTeacher() lookup
-      [], // teacher-scoped update().returning() returns empty
-    );
+    // The transaction's teacher-scoped lookup cannot see another owner's row.
+    pushQueue([]);
     const res = await request(makeApp({ teacherId: 1 }))
       .patch("/api/assignments/5/share")
-      .send({ isShared: true });
+      .send({ isShared: true, version: 1 });
     expect(res.status).toBe(404);
   });
 });

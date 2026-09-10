@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable } from "@workspace/db";
-import { eq, sql, and, ne, notInArray, inArray, isNull, or } from "drizzle-orm";
+import { db, assignmentsTable, assignmentRevisionsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable } from "@workspace/db";
+import { eq, sql, and, ne, notInArray, inArray, isNull, isNotNull, or } from "drizzle-orm";
 import {
   CreateAssignmentBody,
   GetAssignmentParams,
@@ -16,9 +16,10 @@ import { trackEvent } from "../lib/analytics";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 
 const UpdateAssignmentBody = z.object({
+  version: z.number().int().positive(),
   title: z.string().min(1).optional(),
-  subject: z.string().min(1).optional(),
-  description: z.string().optional(),
+  subject: z.string().min(1).nullish(),
+  description: z.string().nullish(),
   submissionMode: z.enum(["electronic", "paper", "both"]).optional(),
   accessMode: z.enum(["public", "private"]).optional(),
   accessCode: z.string().nullish(),
@@ -28,7 +29,7 @@ const UpdateAssignmentBody = z.object({
   showResults: z.boolean().optional(),
   deadline: z.string().datetime({ offset: true }).nullish().or(z.literal("").transform(() => null)),
   examMode: z.boolean().optional(),
-  examDurationMinutes: z.number().nullish(),
+  examDurationMinutes: z.number().int().positive().nullish(),
   resultsReleaseMode: z.enum(["immediate", "after_deadline", "manual"]).optional(),
   aiGradingInstructions: z.string().nullish(),
   isShared: z.boolean().optional(),
@@ -48,13 +49,73 @@ const UpdateAssignmentBody = z.object({
       optionC: z.string().nullish(),
       optionD: z.string().nullish(),
       correctAnswer: z.string().nullish(),
-      points: z.number().min(0).default(1),
+      points: z.number().positive().default(1),
       imageUrl: z.string().nullish(),
       readAloud: z.boolean().optional(),
       allowMultipleAnswers: z.boolean().optional(),
       repeatQuestion: z.boolean().optional(),
     })
   ).min(1).optional(),
+}).superRefine((body, ctx) => {
+  if (body.examMode === true && body.examDurationMinutes != null && body.examDurationMinutes < 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["examDurationMinutes"],
+      message: "مدة الاختبار يجب أن تكون دقيقة واحدة على الأقل",
+    });
+  }
+
+  body.questions?.forEach((question, index) => {
+    const options = [question.optionA, question.optionB, question.optionC, question.optionD]
+      .map((option) => option?.trim() ?? "")
+      .filter(Boolean);
+
+    if (question.questionType === "mcq") {
+      if (options.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", index],
+          message: "سؤال الاختيار من متعدد يحتاج خيارين على الأقل",
+        });
+      }
+      const answer = question.correctAnswer?.trim().toUpperCase();
+      if (!answer || !["A", "B", "C", "D"].includes(answer)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", index, "correctAnswer"],
+          message: "يجب تحديد الإجابة الصحيحة",
+        });
+      } else {
+        const optionByLetter: Record<string, string | null | undefined> = {
+          A: question.optionA,
+          B: question.optionB,
+          C: question.optionC,
+          D: question.optionD,
+        };
+        if (!optionByLetter[answer]?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["questions", index, "correctAnswer"],
+            message: "لا يمكن اختيار خيار فارغ كإجابة صحيحة",
+          });
+        }
+      }
+    } else if (question.questionType === "true_false") {
+      if (!["true", "false"].includes(question.correctAnswer ?? "")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["questions", index, "correctAnswer"],
+          message: "يجب تحديد إجابة صح أو خطأ",
+        });
+      }
+    } else if (question.questionType === "fill_blank" && !question.correctAnswer?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["questions", index, "correctAnswer"],
+        message: "يجب كتابة إجابة سؤال الفراغ",
+      });
+    }
+  });
 });
 
 const router: IRouter = Router();
@@ -75,6 +136,15 @@ router.get("/assignments", async (req, res) => {
   try {
     const query = ListAssignmentsQueryParams.parse(req.query);
     const includeShared = (req.query.include as string | undefined) === "shared";
+    const archived = req.query.archived === "true";
+    if (!req.session?.teacherId) {
+      res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+      return;
+    }
+    if (query.teacherId && query.teacherId !== req.session.teacherId) {
+      res.status(403).json({ message: "غير مصرح لك بعرض واجبات معلم آخر" });
+      return;
+    }
 
     const selectShape = {
       id: assignmentsTable.id,
@@ -93,6 +163,9 @@ router.get("/assignments", async (req, res) => {
       totalPoints: assignmentsTable.totalPoints,
       deadline: assignmentsTable.deadline,
       createdAt: assignmentsTable.createdAt,
+      updatedAt: assignmentsTable.updatedAt,
+      version: assignmentsTable.version,
+      archivedAt: assignmentsTable.archivedAt,
       examMode: assignmentsTable.examMode,
       examDurationMinutes: assignmentsTable.examDurationMinutes,
       resultsReleaseMode: assignmentsTable.resultsReleaseMode,
@@ -127,14 +200,17 @@ router.get("/assignments", async (req, res) => {
       notFromPresentation,
       sql`${assignmentsTable.source} IS DISTINCT FROM 'worksheet'`,
     );
+    const archiveFilter = archived
+      ? isNotNull(assignmentsTable.archivedAt)
+      : isNull(assignmentsTable.archivedAt);
 
     let ownResults;
     if (query.teacherId) {
-      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, query.teacherId), notInternal));
+      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, query.teacherId), notInternal, archiveFilter));
     } else if (req.session?.teacherId) {
-      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, req.session.teacherId), notInternal));
+      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, req.session.teacherId), notInternal, archiveFilter));
     } else {
-      ownResults = await baseQuery.where(notInternal);
+      ownResults = await baseQuery.where(and(notInternal, archiveFilter));
     }
 
     let sharedResults: typeof ownResults = [];
@@ -147,13 +223,15 @@ router.get("/assignments", async (req, res) => {
           and(
             // Approval gating was removed in task #595 — every shared row
             // is publicly visible by default; admins curate via hide.
-            eq(assignmentsTable.isShared, true),
+          eq(assignmentsTable.isShared, true),
+          isNull(assignmentsTable.archivedAt),
             eq(assignmentsTable.hiddenByAdmin, false),
             // Defensive privacy filter: private-access rows must never
             // appear in the shared library even if a stale isShared flag
             // ever leaks through.
             ne(assignmentsTable.accessMode, "private"),
             ne(assignmentsTable.teacherId, requesterTeacherId),
+            isNull(assignmentsTable.archivedAt),
           ),
         )
         .orderBy(sql`${assignmentsTable.createdAt} DESC`);
@@ -194,6 +272,9 @@ router.get("/assignments", async (req, res) => {
         hasModelImage: !!r.hasModelImage,
         deadline: r.deadline ? r.deadline.toISOString() : null,
         createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        version: r.version,
+        archivedAt: r.archivedAt?.toISOString() ?? null,
         examMode: r.examMode,
         examDurationMinutes: r.examDurationMinutes,
         resultsReleaseMode: r.resultsReleaseMode,
@@ -462,6 +543,7 @@ router.get("/assignments/shared", async (req, res) => {
     const whereClause = and(
       // Approval gating dropped (task #595): rely on hide for moderation.
       eq(assignmentsTable.isShared, true),
+      isNull(assignmentsTable.archivedAt),
       // Defensive privacy filter — private-access rows are never visible
       // in the public library regardless of any stale isShared flag.
       ne(assignmentsTable.accessMode, "private"),
@@ -489,6 +571,10 @@ router.get("/assignments/shared", async (req, res) => {
         teacherId: assignmentsTable.teacherId,
         teacherName: teachersTable.name,
         createdAt: assignmentsTable.createdAt,
+        updatedAt: assignmentsTable.updatedAt,
+        version: assignmentsTable.version,
+        archivedAt: assignmentsTable.archivedAt,
+        closedAt: assignmentsTable.closedAt,
         questionCount: sql<number>`(SELECT COUNT(*) FROM questions WHERE questions.assignment_id = assignments.id)::int`,
       })
       .from(assignmentsTable)
@@ -594,9 +680,15 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         deadline: assignmentsTable.deadline,
         modelImageBase64: assignmentsTable.modelImageBase64,
         createdAt: assignmentsTable.createdAt,
+        updatedAt: assignmentsTable.updatedAt,
+        version: assignmentsTable.version,
+        archivedAt: assignmentsTable.archivedAt,
+        closedAt: assignmentsTable.closedAt,
         examMode: assignmentsTable.examMode,
         examDurationMinutes: assignmentsTable.examDurationMinutes,
         resultsReleaseMode: assignmentsTable.resultsReleaseMode,
+        displayTotalPoints: assignmentsTable.displayTotalPoints,
+        aiGradingInstructions: assignmentsTable.aiGradingInstructions,
         isShared: assignmentsTable.isShared,
         isShareApproved: assignmentsTable.isShareApproved,
         hiddenByAdmin: assignmentsTable.hiddenByAdmin,
@@ -633,6 +725,10 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
       .where(eq(questionsTable.assignmentId, id));
 
     const isTeacher = req.session.teacherId === assignment.teacherId;
+    if (assignment.archivedAt && !isTeacher) {
+      res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
     // Hidden moderation: admins (and the owner) keep full access, but a
     // hidden assignment is invisible to everyone else — even when they
     // know the ID — so the public detail endpoint cannot be used to
@@ -697,9 +793,15 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
       hasModelImage: !!assignment.modelImageBase64,
       deadline: assignment.deadline ? assignment.deadline.toISOString() : null,
       createdAt: assignment.createdAt.toISOString(),
+      updatedAt: assignment.updatedAt.toISOString(),
+      version: assignment.version,
+      archivedAt: assignment.archivedAt?.toISOString() ?? null,
+      closedAt: assignment.closedAt?.toISOString() ?? null,
       examMode: assignment.examMode,
       examDurationMinutes: assignment.examDurationMinutes,
       resultsReleaseMode: assignment.resultsReleaseMode,
+      displayTotalPoints: assignment.displayTotalPoints,
+      aiGradingInstructions: isTeacher ? assignment.aiGradingInstructions : undefined,
       isAdaptive: assignment.isAdaptive,
       adaptiveConfig: assignment.adaptiveConfig ? JSON.parse(assignment.adaptiveConfig) : null,
       activityType: assignment.activityType,
@@ -1108,24 +1210,92 @@ router.put("/assignments/:id", async (req, res) => {
     }
     const body = parsed.data;
 
-    if (body.accessMode === "private" && !body.accessCode && !assignment.accessCode) {
+    const nextAccessMode = body.accessMode ?? assignment.accessMode;
+    const nextAccessCode = body.accessCode !== undefined
+      ? body.accessCode?.trim().toUpperCase() || null
+      : assignment.accessCode;
+    if (nextAccessMode === "private" && !nextAccessCode) {
       res.status(400).json({ message: "يجب تحديد كود الدخول للواجب الخاص" });
       return;
     }
-
+    const nextDeadline = body.deadline !== undefined
+      ? (body.deadline ? new Date(body.deadline) : null)
+      : assignment.deadline;
+    const nextResultsReleaseMode = body.resultsReleaseMode ?? assignment.resultsReleaseMode;
+    if (nextResultsReleaseMode === "after_deadline" && !nextDeadline) {
+      res.status(400).json({ message: "يجب تحديد موعد نهائي لإظهار النتائج بعده" });
+      return;
+    }
+    const nextExamMode = body.examMode ?? assignment.examMode;
+    const nextExamDuration = body.examDurationMinutes !== undefined
+      ? body.examDurationMinutes
+      : assignment.examDurationMinutes;
+    if (nextExamMode && (!nextExamDuration || nextExamDuration < 1)) {
+      res.status(400).json({ message: "مدة الاختبار يجب أن تكون دقيقة واحدة على الأقل" });
+      return;
+    }
     await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM assignments WHERE id = ${id} FOR UPDATE`);
+      const [currentAssignment] = await tx
+        .select({ version: assignmentsTable.version })
+        .from(assignmentsTable)
+        .where(eq(assignmentsTable.id, id))
+        .limit(1);
+      if (body.version !== undefined && currentAssignment?.version !== body.version) {
+        const conflict = new Error("تم تعديل الواجب في جلسة أخرى. أعد تحميل أحدث نسخة قبل الحفظ.");
+        (conflict as any).statusCode = 409;
+        (conflict as any).code = "ASSIGNMENT_VERSION_CONFLICT";
+        throw conflict;
+      }
+      if (body.questions !== undefined) {
+        // Lock the parent row before checking submissions. PostgreSQL's FK
+        // key-share lock on new submissions conflicts with this lock, so a
+        // concurrent submission cannot slip between the check and question edits.
+        await tx.execute(sql`SELECT id FROM assignments WHERE id = ${id} FOR UPDATE`);
+        const [existingSubmission] = await tx
+          .select({ id: submissionsTable.id })
+          .from(submissionsTable)
+          .where(eq(submissionsTable.assignmentId, id))
+          .limit(1);
+        if (existingSubmission) {
+          const conflict = new Error("لا يمكن تعديل أسئلة واجب يحتوي على تسليمات. كرّر الواجب لإنشاء نسخة جديدة.");
+          (conflict as any).statusCode = 409;
+          (conflict as any).code = "ASSIGNMENT_QUESTIONS_LOCKED";
+          throw conflict;
+        }
+      }
+
+      // Capture the complete pre-mutation state while holding the assignment
+      // lock. This makes every successful PUT recoverable and race-free.
+      const [snapshotAssignment] = await tx.select().from(assignmentsTable)
+        .where(eq(assignmentsTable.id, id)).limit(1);
+      const snapshotQuestions = await tx.select().from(questionsTable)
+        .where(eq(questionsTable.assignmentId, id));
+      if (snapshotAssignment) {
+        await tx.insert(assignmentRevisionsTable).values({
+          assignmentId: id,
+          teacherId: snapshotAssignment.teacherId,
+          sourceVersion: snapshotAssignment.version,
+          settings: snapshotAssignment as unknown as Record<string, unknown>,
+          questions: snapshotQuestions as unknown as unknown[],
+        });
+      }
+
       const updateData: Record<string, any> = {};
+      updateData.updatedAt = new Date();
+      updateData.version = sql`${assignmentsTable.version} + 1`;
       if (body.title !== undefined) updateData.title = body.title;
       if (body.subject !== undefined) updateData.subject = body.subject;
       if (body.description !== undefined) updateData.description = body.description;
       if (body.submissionMode !== undefined) updateData.submissionMode = body.submissionMode;
+      if (nextExamMode) updateData.submissionMode = "electronic";
       if (body.accessMode !== undefined) {
         updateData.accessMode = body.accessMode;
         // Privacy invariant: switching to private access mode forces
         // the assignment out of the public library.
         if (body.accessMode === "private") updateData.isShared = false;
       }
-      if (body.accessCode !== undefined) updateData.accessCode = body.accessCode;
+      if (body.accessCode !== undefined) updateData.accessCode = nextAccessCode;
       if (body.targetClasses !== undefined) {
         const cleaned = Array.isArray(body.targetClasses)
           ? body.targetClasses.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim())
@@ -1231,12 +1401,153 @@ router.put("/assignments/:id", async (req, res) => {
     });
   } catch (error: any) {
     req.log.error({ err: error }, "Update assignment error");
+    if (error?.statusCode === 409) {
+      res.status(409).json({
+        message: error.message,
+        messageAr: error.message,
+        messageEn: error.code === "ASSIGNMENT_VERSION_CONFLICT"
+          ? "Assignment changed in another session. Reload the latest version before saving."
+          : "Questions cannot be edited because submissions exist. Duplicate the assignment instead.",
+        code: error.code,
+      });
+      return;
+    }
     if (error instanceof z.ZodError) {
       res.status(400).json({ message: "بيانات غير صالحة" });
       return;
     }
     res.status(500).json({ message: "خطأ في تحديث الواجب" });
   }
+});
+
+const revisionError = (code: string, messageAr: string, messageEn: string) =>
+  ({ code, message: { ar: messageAr, en: messageEn } });
+
+// Revision endpoints are deliberately owner-only; historical answer keys are
+// never exposed to students or other teachers.
+router.get("/assignments/:id/revisions", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json(revisionError("AUTH_REQUIRED", "يجب تسجيل الدخول أولاً", "Authentication required")); return; }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json(revisionError("INVALID_ASSIGNMENT_ID", "معرّف الواجب غير صالح", "Invalid assignment id")); return; }
+  try {
+    const [owner] = await db.select({ teacherId: assignmentsTable.teacherId }).from(assignmentsTable).where(eq(assignmentsTable.id, id)).limit(1);
+    if (!owner) { res.status(404).json(revisionError("ASSIGNMENT_NOT_FOUND", "الواجب غير موجود", "Assignment not found")); return; }
+    if (owner.teacherId !== teacherId) { res.status(403).json(revisionError("OWNER_ONLY", "غير مصرح لك", "Owner access required")); return; }
+    const rows = await db.select({
+      id: assignmentRevisionsTable.id,
+      sourceVersion: assignmentRevisionsTable.sourceVersion,
+      createdAt: assignmentRevisionsTable.createdAt,
+      questionCount: sql<number>`jsonb_array_length(${assignmentRevisionsTable.questions})`,
+      title: sql<string>`${assignmentRevisionsTable.settings}->>'title'`,
+    })
+      .from(assignmentRevisionsTable).where(eq(assignmentRevisionsTable.assignmentId, id))
+      .orderBy(sql`${assignmentRevisionsTable.createdAt} DESC`);
+    res.json(rows);
+  } catch (error) { req.log.error({ err: error }, "List assignment revisions failed"); res.status(500).json(revisionError("REVISION_LIST_FAILED", "تعذر جلب سجل الإصدارات", "Could not list revisions")); }
+});
+
+router.get("/assignments/:id/revisions/:revisionId", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json(revisionError("AUTH_REQUIRED", "يجب تسجيل الدخول أولاً", "Authentication required")); return; }
+  try {
+    const [row] = await db.select().from(assignmentRevisionsTable)
+      .innerJoin(assignmentsTable, eq(assignmentRevisionsTable.assignmentId, assignmentsTable.id))
+      .where(and(eq(assignmentRevisionsTable.id, Number(req.params.revisionId)), eq(assignmentRevisionsTable.assignmentId, Number(req.params.id)), eq(assignmentsTable.teacherId, teacherId))).limit(1);
+    if (!row) { res.status(404).json(revisionError("REVISION_NOT_FOUND", "الإصدار غير موجود", "Revision not found")); return; }
+    res.json(row.assignment_revisions);
+  } catch (error) { req.log.error({ err: error }, "Get assignment revision failed"); res.status(500).json(revisionError("REVISION_GET_FAILED", "تعذر جلب الإصدار", "Could not fetch revision")); }
+});
+
+router.post("/assignments/:id/revisions/:revisionId/restore", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json(revisionError("AUTH_REQUIRED", "يجب تسجيل الدخول أولاً", "Authentication required")); return; }
+  const mode = req.body?.mode === "settings" ? "settings" : "full";
+  const expectedVersion = Number(req.body?.version);
+  if (!Number.isInteger(expectedVersion) || expectedVersion < 1) { res.status(400).json(revisionError("VERSION_REQUIRED", "يجب إرسال رقم الإصدار الحالي", "Current version is required")); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [a] = await tx.select().from(assignmentsTable).where(eq(assignmentsTable.id, Number(req.params.id))).for("update");
+      const [r] = await tx.select().from(assignmentRevisionsTable).where(and(eq(assignmentRevisionsTable.id, Number(req.params.revisionId)), eq(assignmentRevisionsTable.assignmentId, Number(req.params.id)), eq(assignmentRevisionsTable.teacherId, teacherId))).limit(1);
+      if (!a) throw Object.assign(new Error("not found"), { statusCode: 404, code: "ASSIGNMENT_NOT_FOUND" });
+      if (a.teacherId !== teacherId) throw Object.assign(new Error("owner only"), { statusCode: 403, code: "OWNER_ONLY" });
+      if (!r) throw Object.assign(new Error("not found"), { statusCode: 404, code: "REVISION_NOT_FOUND" });
+      if (a.version !== expectedVersion) throw Object.assign(new Error("version conflict"), { statusCode: 409, code: "ASSIGNMENT_VERSION_CONFLICT" });
+      const currentQuestions = await tx.select().from(questionsTable).where(eq(questionsTable.assignmentId, a.id));
+      await tx.insert(assignmentRevisionsTable).values({
+        assignmentId: a.id,
+        teacherId,
+        sourceVersion: a.version,
+        settings: a as unknown as Record<string, unknown>,
+        questions: currentQuestions as unknown as unknown[],
+      });
+      const settings = r.settings as Record<string, any>;
+      const update: Record<string, any> = { updatedAt: new Date(), version: sql`${assignmentsTable.version} + 1` };
+      const keys = ["title","subject","description","submissionMode","accessMode","accessCode","targetClass","targetClasses","categoryId","showResults","modelImageBase64","totalPoints","displayTotalPoints","deadline","examMode","examDurationMinutes","resultsReleaseMode","aiGradingInstructions","isShared","isShareApproved","contentKind","isAdaptive","adaptiveConfig","activityType","listeningAudioText","listeningVoice","listeningSpeed","listeningSettings"];
+      for (const key of keys) {
+        if (mode === "settings" && key === "totalPoints") continue;
+        if (settings[key] !== undefined) update[key] = settings[key];
+      }
+      if (update.deadline) update.deadline = new Date(update.deadline);
+      // Restoring historical settings must never republish content implicitly.
+      update.isShared = false;
+      update.isShareApproved = false;
+      if (a.accessMode === "private") {
+        update.accessMode = "private";
+        update.accessCode = a.accessCode;
+      }
+      if (mode === "full") {
+        const [s] = await tx.select({ id: submissionsTable.id }).from(submissionsTable).where(eq(submissionsTable.assignmentId, a.id)).limit(1);
+        if (s) throw Object.assign(new Error("submissions"), { statusCode: 409, code: "REVISION_QUESTIONS_LOCKED" });
+        await tx.delete(questionsTable).where(eq(questionsTable.assignmentId, a.id));
+        const questions = (r.questions as any[]) || [];
+        if (questions.length) await tx.insert(questionsTable).values(questions.map(({ id: _id, assignmentId: _aid, ...q }) => ({ ...q, assignmentId: a.id })));
+      }
+      const [updated] = await tx.update(assignmentsTable).set(update).where(eq(assignmentsTable.id, a.id)).returning({ version: assignmentsTable.version });
+      return updated;
+    });
+    res.json({ ok: true, mode, version: result.version });
+  } catch (error: any) {
+    if (error.statusCode) { res.status(error.statusCode).json(revisionError(error.code, error.code === "REVISION_QUESTIONS_LOCKED" ? "لا يمكن استعادة الأسئلة لوجود تسليمات" : error.message, error.code === "REVISION_QUESTIONS_LOCKED" ? "Question restore is blocked because submissions exist" : error.message)); return; }
+    req.log.error({ err: error }, "Restore assignment revision failed"); res.status(500).json(revisionError("REVISION_RESTORE_FAILED", "تعذر استعادة الإصدار", "Could not restore revision"));
+  }
+});
+
+router.post("/assignments/:id/revisions/:revisionId/duplicate", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json(revisionError("AUTH_REQUIRED", "يجب تسجيل الدخول أولاً", "Authentication required")); return; }
+  try {
+    const [r] = await db.select().from(assignmentRevisionsTable).where(and(eq(assignmentRevisionsTable.id, Number(req.params.revisionId)), eq(assignmentRevisionsTable.assignmentId, Number(req.params.id)), eq(assignmentRevisionsTable.teacherId, teacherId))).limit(1);
+    if (!r) { res.status(404).json(revisionError("REVISION_NOT_FOUND", "الإصدار غير موجود", "Revision not found")); return; }
+    const s = r.settings as Record<string, any>;
+    const [copy] = await db.transaction(async (tx) => {
+      const {
+        id: _id,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        archivedAt: _archivedAt,
+        ...copyableSettings
+      } = s;
+      const [created] = await tx.insert(assignmentsTable).values({
+        ...copyableSettings,
+        deadline: copyableSettings.deadline ? new Date(copyableSettings.deadline) : null,
+        title: `${s.title} (نسخة)`,
+        teacherId,
+        version: 1,
+        archivedAt: null,
+        isShared: false,
+        isShareApproved: false,
+        hiddenByAdmin: false,
+        hiddenAt: null,
+        hiddenById: null,
+        hideReason: null,
+      }).returning();
+      const qs = (r.questions as any[]) || [];
+      if (qs.length) await tx.insert(questionsTable).values(qs.map(({ id: _id, assignmentId: _aid, ...q }) => ({ ...q, assignmentId: created.id })));
+      return [created];
+    });
+    res.status(201).json({ id: copy.id, version: copy.version, sourceRevisionId: r.id });
+  } catch (error) { req.log.error({ err: error }, "Duplicate assignment revision failed"); res.status(500).json(revisionError("REVISION_DUPLICATE_FAILED", "تعذر نسخ الإصدار", "Could not duplicate revision")); }
 });
 
 router.post("/assignments/:id/duplicate", async (req, res) => {
@@ -1346,6 +1657,148 @@ router.post("/assignments/:id/duplicate", async (req, res) => {
   }
 });
 
+router.patch("/assignments/:id/archive", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+    return;
+  }
+  try {
+    const { id } = GetAssignmentParams.parse(req.params);
+    const { archived, version } = z.object({
+      archived: z.boolean(),
+      version: z.number().int().positive(),
+    }).parse(req.body);
+    const updated = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM assignments WHERE id = ${id} FOR UPDATE`);
+      const [assignment] = await tx
+        .select({ teacherId: assignmentsTable.teacherId, version: assignmentsTable.version })
+        .from(assignmentsTable)
+        .where(eq(assignmentsTable.id, id))
+        .limit(1);
+      if (!assignment) throw Object.assign(new Error("الواجب غير موجود"), { statusCode: 404 });
+      if (assignment.teacherId !== req.session.teacherId) {
+        throw Object.assign(new Error("غير مصرح لك بتعديل هذا الواجب"), { statusCode: 403 });
+      }
+      if (assignment.version !== version) {
+        throw Object.assign(new Error("تم تعديل الواجب في جلسة أخرى. أعد تحميل القائمة وحاول مجددًا."), {
+          statusCode: 409,
+          code: "ASSIGNMENT_VERSION_CONFLICT",
+        });
+      }
+      return (await tx
+        .update(assignmentsTable)
+        .set({
+          archivedAt: archived ? new Date() : null,
+          isShared: false,
+          updatedAt: new Date(),
+          version: sql`${assignmentsTable.version} + 1`,
+        })
+        .where(and(
+          eq(assignmentsTable.id, id),
+          eq(assignmentsTable.teacherId, req.session.teacherId),
+          eq(assignmentsTable.version, version),
+        ))
+        .returning({
+          id: assignmentsTable.id,
+          archivedAt: assignmentsTable.archivedAt,
+          version: assignmentsTable.version,
+          updatedAt: assignmentsTable.updatedAt,
+        }))[0];
+    });
+    res.json({
+      id: updated.id,
+      archivedAt: updated.archivedAt?.toISOString() ?? null,
+      version: updated.version,
+      updatedAt: updated.updatedAt.toISOString(),
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: "بيانات غير صالحة" });
+      return;
+    }
+    req.log.error({ err: error }, "Archive assignment error");
+    res.status(error?.statusCode || 500).json({
+      message: error?.message || "تعذر تحديث حالة الأرشفة",
+      ...(error?.code ? { code: error.code } : {}),
+    });
+  }
+});
+
+router.patch("/assignments/:id/lifecycle", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+    return;
+  }
+  try {
+    const { id } = GetAssignmentParams.parse(req.params);
+    const { closed, version } = z.object({
+      closed: z.boolean(),
+      version: z.number().int().positive(),
+    }).parse(req.body);
+    const teacherId = req.session.teacherId;
+    const result = await db.transaction(async (tx) => {
+      const [assignment] = await tx.select().from(assignmentsTable)
+        .where(eq(assignmentsTable.id, id)).for("update").limit(1);
+      if (!assignment) throw Object.assign(new Error("not found"), { statusCode: 404 });
+      if (assignment.teacherId !== teacherId) throw Object.assign(new Error("forbidden"), { statusCode: 403 });
+      if (assignment.version !== version) throw Object.assign(new Error("conflict"), { statusCode: 409 });
+      const snapshotQuestions = await tx.select().from(questionsTable)
+        .where(eq(questionsTable.assignmentId, id));
+      await tx.insert(assignmentRevisionsTable).values({
+        assignmentId: id,
+        teacherId,
+        sourceVersion: assignment.version,
+        settings: assignment as unknown as Record<string, unknown>,
+        questions: snapshotQuestions as unknown as unknown[],
+      });
+      const [updated] = await tx.update(assignmentsTable).set({
+        closedAt: closed ? new Date() : null,
+        updatedAt: new Date(),
+        version: sql`${assignmentsTable.version} + 1`,
+      }).where(and(
+        eq(assignmentsTable.id, id),
+        eq(assignmentsTable.teacherId, teacherId),
+        eq(assignmentsTable.version, version),
+      )).returning({
+        id: assignmentsTable.id,
+        closedAt: assignmentsTable.closedAt,
+        version: assignmentsTable.version,
+        updatedAt: assignmentsTable.updatedAt,
+      });
+      if (!updated) throw Object.assign(new Error("conflict"), { statusCode: 409 });
+      return updated;
+    });
+    res.json({
+      id: result.id,
+      closedAt: result.closedAt?.toISOString() ?? null,
+      version: result.version,
+      updatedAt: result.updatedAt.toISOString(),
+    });
+  } catch (error: any) {
+    if (error?.statusCode === 404) {
+      res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+    if (error?.statusCode === 403) {
+      res.status(403).json({ message: "غير مصرح لك بتعديل هذا الواجب" });
+      return;
+    }
+    if (error?.statusCode === 409) {
+      res.status(409).json({
+        message: "تم تعديل الواجب في جلسة أخرى. أعد تحميل الصفحة وحاول مجددًا.",
+        code: "ASSIGNMENT_VERSION_CONFLICT",
+      });
+      return;
+    }
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: "بيانات حالة الواجب غير صالحة" });
+      return;
+    }
+    req.log.error({ err: error }, "Update assignment lifecycle failed");
+    res.status(500).json({ message: "تعذر تحديث حالة الواجب" });
+  }
+});
+
 router.delete("/assignments/:id/questions/:questionId", async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
@@ -1354,40 +1807,70 @@ router.delete("/assignments/:id/questions/:questionId", async (req, res) => {
   try {
     const assignmentId = parseInt(req.params.id, 10);
     const questionId = parseInt(req.params.questionId, 10);
+    const expectedVersion = Number(req.body?.version);
     if (isNaN(assignmentId) || isNaN(questionId)) {
       res.status(400).json({ message: "معرف غير صالح" });
       return;
     }
-
-    const [assignment] = await db
-      .select()
-      .from(assignmentsTable)
-      .where(eq(assignmentsTable.id, assignmentId))
-      .limit(1);
-
-    if (!assignment) {
-      res.status(404).json({ message: "الواجب غير موجود" });
-      return;
-    }
-    if (assignment.teacherId !== req.session.teacherId) {
-      res.status(403).json({ message: "غير مصرح لك بحذف هذا السؤال" });
+    if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+      res.status(400).json({ message: "يجب إرسال رقم الإصدار الحالي", code: "VERSION_REQUIRED" });
       return;
     }
 
-    const [question] = await db
-      .select()
-      .from(questionsTable)
-      .where(and(eq(questionsTable.id, questionId), eq(questionsTable.assignmentId, assignmentId)))
-      .limit(1);
-
-    if (!question) {
-      res.status(404).json({ message: "السؤال غير موجود" });
-      return;
-    }
-
-    await db.delete(questionsTable).where(eq(questionsTable.id, questionId));
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM assignments WHERE id = ${assignmentId} FOR UPDATE`);
+      const [assignment] = await tx
+        .select()
+        .from(assignmentsTable)
+        .where(eq(assignmentsTable.id, assignmentId))
+        .limit(1);
+      if (!assignment) throw Object.assign(new Error("الواجب غير موجود"), { statusCode: 404 });
+      if (assignment.teacherId !== req.session.teacherId) {
+        throw Object.assign(new Error("غير مصرح لك بحذف هذا السؤال"), { statusCode: 403 });
+      }
+      if (assignment.version !== expectedVersion) {
+        throw Object.assign(new Error("تم تعديل الواجب في جلسة أخرى"), {
+          statusCode: 409,
+          code: "ASSIGNMENT_VERSION_CONFLICT",
+        });
+      }
+      const [submission] = await tx
+        .select({ id: submissionsTable.id })
+        .from(submissionsTable)
+        .where(eq(submissionsTable.assignmentId, assignmentId))
+        .limit(1);
+      if (submission) {
+        throw Object.assign(new Error("لا يمكن حذف سؤال من واجب يحتوي على تسليمات"), {
+          statusCode: 409,
+          code: "ASSIGNMENT_QUESTIONS_LOCKED",
+        });
+      }
+      const snapshotQuestions = await tx.select().from(questionsTable)
+        .where(eq(questionsTable.assignmentId, assignmentId));
+      await tx.insert(assignmentRevisionsTable).values({
+        assignmentId,
+        teacherId: assignment.teacherId,
+        sourceVersion: assignment.version,
+        settings: assignment as unknown as Record<string, unknown>,
+        questions: snapshotQuestions as unknown as unknown[],
+      });
+      const deleted = await tx
+        .delete(questionsTable)
+        .where(and(eq(questionsTable.id, questionId), eq(questionsTable.assignmentId, assignmentId)))
+        .returning({ id: questionsTable.id });
+      if (!deleted.length) throw Object.assign(new Error("السؤال غير موجود"), { statusCode: 404 });
+      await tx.update(assignmentsTable).set({
+        totalPoints: sql`COALESCE((SELECT SUM(points) FROM questions WHERE assignment_id = ${assignmentId}), 0)`,
+        updatedAt: new Date(),
+        version: sql`${assignmentsTable.version} + 1`,
+      }).where(eq(assignmentsTable.id, assignmentId));
+    });
     res.json({ message: "تم حذف السؤال بنجاح" });
   } catch (error: any) {
+    if (error?.statusCode) {
+      res.status(error.statusCode).json({ message: error.message, code: error.code });
+      return;
+    }
     req.log.error({ err: error }, "Delete question error");
     res.status(500).json({ message: "خطأ في حذف السؤال" });
   }
@@ -1443,35 +1926,65 @@ router.patch("/assignments/:id/share", async (req, res) => {
   }
   try {
     const id = parseInt(req.params.id, 10);
-    const { isShared } = req.body;
+    const { isShared, version } = z.object({
+      isShared: z.boolean(),
+      version: z.number().int().positive(),
+    }).parse(req.body);
     const wantShared = !!isShared;
-    // Privacy invariant: a private-access assignment must never be
-    // marked shared, even if the client toggles the switch. Look up
-    // accessMode first and force isShared=false for private rows.
-    const [existing] = await db
-      .select({ accessMode: assignmentsTable.accessMode })
-      .from(assignmentsTable)
-      .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
-      .limit(1);
-    if (!existing) {
-      res.status(404).json({ message: "الواجب غير موجود" });
-      return;
-    }
-    const effectiveShared = existing.accessMode === "private" ? false : wantShared;
-    // All shares are auto-approved now (admins can hide individual rows
-    // via /admin/assignments/:id/hide). Keep isShareApproved in sync with
-    // isShared for every teacher, not just admins.
-    const [updated] = await db
-      .update(assignmentsTable)
-      .set({ isShared: effectiveShared, isShareApproved: true })
-      .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM assignments WHERE id = ${id} FOR UPDATE`);
+      const [existing] = await tx
+        .select({
+          accessMode: assignmentsTable.accessMode,
+          version: assignmentsTable.version,
+          archivedAt: assignmentsTable.archivedAt,
+        })
+        .from(assignmentsTable)
+        .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
+        .limit(1);
+      if (!existing) return null;
+      if (existing.version !== version) {
+        throw Object.assign(new Error("تم تعديل الواجب في جلسة أخرى. أعد تحميل الصفحة وحاول مجددًا."), {
+          statusCode: 409,
+          code: "ASSIGNMENT_VERSION_CONFLICT",
+        });
+      }
+      const effectiveShared = existing.accessMode === "private" || existing.archivedAt ? false : wantShared;
+      const [row] = await tx
+        .update(assignmentsTable)
+        .set({
+          isShared: effectiveShared,
+          isShareApproved: true,
+          updatedAt: new Date(),
+          version: sql`${assignmentsTable.version} + 1`,
+        })
+        .where(and(
+          eq(assignmentsTable.id, id),
+          eq(assignmentsTable.teacherId, req.session.teacherId!),
+          eq(assignmentsTable.version, version),
+        ))
+        .returning();
+      return row;
+    });
     if (!updated) {
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
-    res.json({ id: updated.id, isShared: updated.isShared });
-  } catch (err) {
+    res.json({
+      id: updated.id,
+      isShared: updated.isShared,
+      version: updated.version,
+      updatedAt: updated.updatedAt.toISOString(),
+    });
+  } catch (err: any) {
+    if (err?.statusCode) {
+      res.status(err.statusCode).json({ message: err.message, code: err.code });
+      return;
+    }
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ message: "بيانات غير صالحة" });
+      return;
+    }
     req.log.error(err, "Toggle share error");
     res.status(500).json({ message: "خطأ" });
   }

@@ -5,6 +5,8 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { AiVideoProject } from "./aiVideoProject";
+import type { AiVideoProject } from './aiVideoProject';
 
-export type ListAiVideoProjects200 = { projects: AiVideoProject[] };
+export type ListAiVideoProjects200 = {
+  projects: AiVideoProject[];
+};

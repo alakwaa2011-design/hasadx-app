@@ -10,10 +10,10 @@ import { useEffect, useRef } from 'react';
 import { Scene0, Scene1, Scene2, Scene3 } from './video_scenes';
 
 export const SCENE_DURATIONS = {
-  scene0: 3500, // Intro
-  scene1: 4500, // AI tools
-  scene2: 6500, // Live games
-  scene3: 4500, // Outro
+  scene0: 4000, // Intro & Hook
+  scene1: 5500, // AI tools
+  scene2: 7000, // Live games
+  scene3: 5547, // Rewards & Outro (totals 22.047s)
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
@@ -53,23 +53,31 @@ export default function VideoTemplate({
   const currentScene = Object.keys(SCENE_DURATIONS).indexOf(baseSceneKey);
   const SceneComponent = SCENE_COMPONENTS[baseSceneKey];
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voRef = useRef<HTMLAudioElement | null>(null);
   const lastSceneKeyRef = useRef<string | null>(null);
 
   useEffect(() => onSceneChange?.(currentSceneKey), [currentSceneKey, onSceneChange]);
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-    audio.volume = 0.45;
+    const vo = voRef.current;
+    if (!audio || !vo) return;
+
+    audio.volume = 0.15; // lower volume for background music
+    vo.volume = 1.0;     // voiceover at full volume
+
     if (paused) {
       audio.pause();
+      vo.pause();
       return;
     }
     if (lastSceneKeyRef.current !== currentSceneKey) {
       lastSceneKeyRef.current = currentSceneKey;
       const target = SCENE_START_SEC[baseSceneKey] ?? 0;
       if (Math.abs(audio.currentTime - target) > 0.18) audio.currentTime = target;
+      if (Math.abs(vo.currentTime - target) > 0.18) vo.currentTime = target;
     }
     audio.play().catch(() => {});
+    vo.play().catch(() => {});
   }, [currentSceneKey, baseSceneKey, muted, paused]);
 
   return (
@@ -93,18 +101,18 @@ export default function VideoTemplate({
         }}
         transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
       />
-      
+
       {/* Grid Pattern */}
       <div className="absolute inset-0 z-0 opacity-10"
            style={{
              backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-             backgroundSize: '40px 40px'
+             backgroundSize: '4vmin 4vmin'
            }}
       />
 
       {/* Persistent floating particles */}
       <motion.div
-        className="absolute top-[20%] left-[15%] w-32 h-32 rounded-full blur-[60px] z-0"
+        className="absolute top-[20%] left-[15%] w-[20vmin] h-[20vmin] rounded-full blur-[6vmin] z-0"
         style={{ backgroundColor: 'var(--brand-gold)' }}
         animate={{
           x: currentScene === 1 ? '-20vw' : currentScene === 2 ? '30vw' : '0vw',
@@ -113,9 +121,9 @@ export default function VideoTemplate({
         }}
         transition={{ duration: 5, ease: "easeInOut", repeat: Infinity }}
       />
-      
+
       <motion.div
-        className="absolute bottom-[20%] right-[10%] w-48 h-48 rounded-full blur-[80px] z-0"
+        className="absolute bottom-[20%] right-[10%] w-[30vmin] h-[30vmin] rounded-full blur-[8vmin] z-0"
         style={{ backgroundColor: 'var(--brand-green-light)' }}
         animate={{
           x: currentScene === 1 ? '20vw' : currentScene === 2 ? '-20vw' : '0vw',
@@ -132,6 +140,13 @@ export default function VideoTemplate({
         <audio
           ref={audioRef}
           src={`${import.meta.env.BASE_URL}audio/bg_music.mp3`}
+          preload="auto"
+          autoPlay
+          muted={muted}
+        />
+        <audio
+          ref={voRef}
+          src={`${import.meta.env.BASE_URL}audio/voiceover_2.mp3`}
           preload="auto"
           autoPlay
           muted={muted}

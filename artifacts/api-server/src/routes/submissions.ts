@@ -180,6 +180,19 @@ async function checkAccessAndDuplicate(
   return true;
 }
 
+async function assertAssignmentAcceptingStudentWork(tx: any, assignmentId: number): Promise<void> {
+  const result = await tx.execute(sql`
+    SELECT archived_at, closed_at
+    FROM assignments
+    WHERE id = ${assignmentId}
+    FOR SHARE
+  `);
+  const row = result.rows[0] as { archived_at: Date | null; closed_at: Date | null } | undefined;
+  if (!row) throw Object.assign(new Error("الواجب غير موجود"), { statusCode: 404, code: "ASSIGNMENT_NOT_FOUND" });
+  if (row.archived_at) throw Object.assign(new Error("تمت أرشفة هذا الواجب ولا يقبل تسليمات جديدة"), { statusCode: 410, code: "ASSIGNMENT_ARCHIVED" });
+  if (row.closed_at) throw Object.assign(new Error("أغلق المعلم هذا الواجب"), { statusCode: 403, code: "ASSIGNMENT_CLOSED" });
+}
+
 router.post("/assignments/:id/start-exam", async (req, res) => {
   try {
     const { id } = StartExamSessionParams.parse(req.params);
@@ -193,6 +206,14 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
 
     if (!assignment) {
       res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+    if (assignment.archivedAt) {
+      res.status(410).json({ message: "تمت أرشفة هذا الواجب ولا يقبل محاولات جديدة", code: "ASSIGNMENT_ARCHIVED" });
+      return;
+    }
+    if (assignment.closedAt) {
+      res.status(403).json({ message: "أغلق المعلم هذا الواجب", code: "ASSIGNMENT_CLOSED" });
       return;
     }
     if (!assignment.examMode || !assignment.examDurationMinutes) {
@@ -213,37 +234,27 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
       }
     }
 
-    const existing = await db
-      .select()
-      .from(examSessionsTable)
-      .where(
-        and(
+    const session = await db.transaction(async (tx) => {
+      await assertAssignmentAcceptingStudentWork(tx, id);
+      const existing = await tx
+        .select()
+        .from(examSessionsTable)
+        .where(and(
           eq(examSessionsTable.assignmentId, id),
           eq(examSessionsTable.deviceFingerprint, body.deviceFingerprint),
-        ),
-      )
-      .limit(1);
-
-    if (existing.length > 0) {
-      const session = existing[0];
-      const expiresAt = new Date(session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000);
-      res.json({
-        sessionId: session.id,
-        startedAt: session.startedAt.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-      });
-      return;
-    }
-
-    const [session] = await db
-      .insert(examSessionsTable)
-      .values({
-        assignmentId: id,
-        studentName: body.studentName,
-        studentClass: body.studentClass,
-        deviceFingerprint: body.deviceFingerprint,
-      })
-      .returning();
+        ))
+        .limit(1);
+      if (existing.length > 0) return existing[0];
+      return (await tx
+        .insert(examSessionsTable)
+        .values({
+          assignmentId: id,
+          studentName: body.studentName,
+          studentClass: body.studentClass,
+          deviceFingerprint: body.deviceFingerprint,
+        })
+        .returning())[0];
+    });
 
     const expiresAt = new Date(session.startedAt.getTime() + assignment.examDurationMinutes * 60 * 1000);
     res.json({
@@ -253,7 +264,10 @@ router.post("/assignments/:id/start-exam", async (req, res) => {
     });
   } catch (error: any) {
     req.log.error({ err: error }, "Start exam session error");
-    res.status(400).json({ message: error.message || "خطأ في بدء جلسة الاختبار" });
+    res.status(error?.statusCode || 400).json({
+      message: error.message || "خطأ في بدء جلسة الاختبار",
+      ...(error?.code ? { code: error.code } : {}),
+    });
   }
 });
 
@@ -271,6 +285,14 @@ router.post("/assignments/:id/submit", async (req, res) => {
 
     if (!assignment) {
       res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+    if (assignment.archivedAt) {
+      res.status(410).json({ message: "تمت أرشفة هذا الواجب ولا يقبل تسليمات جديدة", code: "ASSIGNMENT_ARCHIVED" });
+      return;
+    }
+    if (assignment.closedAt) {
+      res.status(403).json({ message: "أغلق المعلم هذا الواجب", code: "ASSIGNMENT_CLOSED" });
       return;
     }
     const contentLanguage = resolveAiContentLanguage({
@@ -583,6 +605,7 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
 
     const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
     const submission = await db.transaction(async (tx) => {
+      await assertAssignmentAcceptingStudentWork(tx, id);
       const [created] = await tx.insert(submissionsTable)
       .values({
         assignmentId: id,
@@ -671,7 +694,10 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
     }
   } catch (error: any) {
     req.log.error({ err: error }, "Submit assignment error");
-    res.status(400).json({ message: error.message || "خطأ في إرسال الإجابات" });
+    res.status(error?.statusCode || 400).json({
+      message: error.message || "خطأ في إرسال الإجابات",
+      ...(error?.code ? { code: error.code } : {}),
+    });
   }
 });
 
@@ -696,6 +722,13 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
     const [assignment] = await db.select().from(assignmentsTable).where(eq(assignmentsTable.id, assignmentId));
     if (!assignment) {
       res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+    if (assignment.archivedAt || assignment.closedAt) {
+      res.status(assignment.archivedAt ? 410 : 403).json({
+        message: assignment.archivedAt ? "تمت أرشفة هذا الواجب" : "أغلق المعلم هذا الواجب",
+        code: assignment.archivedAt ? "ASSIGNMENT_ARCHIVED" : "ASSIGNMENT_CLOSED",
+      });
       return;
     }
     const [submission] = await db.select().from(submissionsTable).where(
@@ -724,61 +757,73 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
       return;
     }
 
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
-    const questionMap = new Map(questions.map(q => [q.id, q]));
-
-    const existingAnswers = await db.select().from(answersTable).where(eq(answersTable.submissionId, submissionId));
-    const existingAnswerMap = new Map(existingAnswers.map(a => [a.questionId, a]));
-
-    let earnedPointsDelta = 0;
-
-    for (const answer of body.answers) {
-      const question = questionMap.get(answer.questionId);
-      if (!question || !question.repeatQuestion) continue;
-
-      const existing = existingAnswerMap.get(answer.questionId);
-      if (!existing || existing.isCorrect) continue;
-
-      const qType = question.questionType || "mcq";
-      let isCorrect = false;
-      if (qType === "true_false") {
-        isCorrect = answer.selectedAnswer === question.correctAnswer;
-      } else if (qType === "mcq" && question.allowMultipleAnswers && question.correctAnswer) {
-        const correctSet = new Set(question.correctAnswer.split(",").map((s: string) => s.trim()));
-        const studentSet = new Set(answer.selectedAnswer.split(",").map((s: string) => s.trim()).filter(Boolean));
-        isCorrect = correctSet.size === studentSet.size && [...correctSet].every(c => studentSet.has(c));
-      } else if (qType === "fill_blank") {
-        isCorrect = answer.selectedAnswer.trim().toLowerCase() === (question.correctAnswer || "").trim().toLowerCase();
-      } else {
-        isCorrect = answer.selectedAnswer === question.correctAnswer;
+    const {
+      newEarnedPoints,
+      newScore,
+      correctCount,
+      totalPoints,
+      questions,
+      questionMap,
+      allAnswers,
+    } = await db.transaction(async (tx) => {
+      await assertAssignmentAcceptingStudentWork(tx, assignmentId);
+      await tx.execute(sql`SELECT id FROM submissions WHERE id = ${submissionId} FOR UPDATE`);
+      const [lockedSubmission] = await tx.select().from(submissionsTable).where(and(
+        eq(submissionsTable.id, submissionId),
+        eq(submissionsTable.assignmentId, assignmentId),
+      )).limit(1);
+      if (!lockedSubmission) throw Object.assign(new Error("الإجابة غير موجودة"), { statusCode: 404 });
+      if (lockedSubmission.repeatAttempted) {
+        throw Object.assign(new Error("لقد استخدمت فرصة التكرار مسبقاً لهذا الواجب"), { statusCode: 409 });
       }
 
-      const qPoints = question.points || 1;
-      const prevEarned = existing.isCorrect ? qPoints : 0;
-      const newEarned = isCorrect ? qPoints : 0;
-      earnedPointsDelta += newEarned - prevEarned;
+      const questions = await tx.select().from(questionsTable).where(eq(questionsTable.assignmentId, assignmentId));
+      const questionMap = new Map(questions.map(q => [q.id, q]));
+      const existingAnswers = await tx.select().from(answersTable).where(eq(answersTable.submissionId, submissionId));
+      const existingAnswerMap = new Map(existingAnswers.map(a => [a.questionId, a]));
+      let earnedPointsDelta = 0;
 
-      await db.update(answersTable).set({
-        selectedAnswer: answer.selectedAnswer,
-        isCorrect,
-      }).where(eq(answersTable.id, existing.id));
-    }
+      for (const answer of body.answers) {
+        const question = questionMap.get(answer.questionId);
+        if (!question || !question.repeatQuestion) continue;
+        const existing = existingAnswerMap.get(answer.questionId);
+        if (!existing || existing.isCorrect) continue;
 
-    const newEarnedPoints = (submission.earnedPoints || 0) + earnedPointsDelta;
-    const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0);
-    const newScore = totalPoints > 0 ? (newEarnedPoints / totalPoints) * 100 : 0;
+        const qType = question.questionType || "mcq";
+        let isCorrect = false;
+        if (qType === "true_false") {
+          isCorrect = answer.selectedAnswer === question.correctAnswer;
+        } else if (qType === "mcq" && question.allowMultipleAnswers && question.correctAnswer) {
+          const correctSet = new Set(question.correctAnswer.split(",").map((s: string) => s.trim()));
+          const studentSet = new Set(answer.selectedAnswer.split(",").map((s: string) => s.trim()).filter(Boolean));
+          isCorrect = correctSet.size === studentSet.size && [...correctSet].every(c => studentSet.has(c));
+        } else if (qType === "fill_blank") {
+          isCorrect = answer.selectedAnswer.trim().toLowerCase() === (question.correctAnswer || "").trim().toLowerCase();
+        } else {
+          isCorrect = answer.selectedAnswer === question.correctAnswer;
+        }
 
-    await db.update(submissionsTable).set({
-      earnedPoints: newEarnedPoints,
-      score: newScore,
-      correctAnswers: 0,
-      repeatAttempted: true,
-    }).where(eq(submissionsTable.id, submissionId));
+        const qPoints = question.points || 1;
+        earnedPointsDelta += (isCorrect ? qPoints : 0) - (existing.isCorrect ? qPoints : 0);
+        await tx.update(answersTable).set({
+          selectedAnswer: answer.selectedAnswer,
+          isCorrect,
+        }).where(eq(answersTable.id, existing.id));
+      }
 
-    const allAnswers = await db.select().from(answersTable).where(eq(answersTable.submissionId, submissionId));
-    const correctCount = allAnswers.filter(a => a.isCorrect).length;
-
-    await db.update(submissionsTable).set({ correctAnswers: correctCount }).where(eq(submissionsTable.id, submissionId));
+      const newEarnedPoints = (lockedSubmission.earnedPoints || 0) + earnedPointsDelta;
+      const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0);
+      const newScore = totalPoints > 0 ? (newEarnedPoints / totalPoints) * 100 : 0;
+      const allAnswers = await tx.select().from(answersTable).where(eq(answersTable.submissionId, submissionId));
+      const correctCount = allAnswers.filter(a => a.isCorrect).length;
+      await tx.update(submissionsTable).set({
+        earnedPoints: newEarnedPoints,
+        score: newScore,
+        correctAnswers: correctCount,
+        repeatAttempted: true,
+      }).where(eq(submissionsTable.id, submissionId));
+      return { newEarnedPoints, newScore, correctCount, totalPoints, questions, questionMap, allAnswers };
+    });
 
     const releaseMode = assignment.resultsReleaseMode || "immediate";
     let canSeeResults = assignment.showResults;
@@ -864,6 +909,14 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       !!req.session.teacherId && req.session.teacherId === assignment.teacherId;
 
     if (!isOwnerTeacher) {
+      if (assignment.archivedAt) {
+        res.status(410).json({ message: "تمت أرشفة هذا الواجب ولا يقبل تسليمات جديدة", code: "ASSIGNMENT_ARCHIVED" });
+        return;
+      }
+      if (assignment.closedAt) {
+        res.status(403).json({ message: "أغلق المعلم هذا الواجب", code: "ASSIGNMENT_CLOSED" });
+        return;
+      }
       if (assignment.submissionMode === "electronic") {
         res.status(400).json({ message: "هذا الواجب يقبل فقط الإجابات الإلكترونية" });
         return;
@@ -1270,6 +1323,7 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
 
     const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
     const submission = await db.transaction(async (tx) => {
+      if (!isOwnerTeacher) await assertAssignmentAcceptingStudentWork(tx, id);
       const [created] = await tx.insert(submissionsTable)
       .values({
         assignmentId: id,
@@ -1364,7 +1418,10 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
     }
   } catch (error: any) {
     req.log.error({ err: error }, "Submit image error");
-    res.status(400).json({ message: error.message || "خطأ في إرسال الصورة" });
+    res.status(error?.statusCode || 400).json({
+      message: error.message || "خطأ في إرسال الصورة",
+      ...(error?.code ? { code: error.code } : {}),
+    });
   }
 });
 

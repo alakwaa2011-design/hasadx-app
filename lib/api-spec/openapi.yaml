@@ -550,6 +550,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExamSessionResponse"
 
+  /assignments/{id}/lifecycle:
+    patch:
+      operationId: updateAssignmentLifecycle
+      tags: [assignments]
+      summary: Close or reopen an assignment for new student work
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAssignmentLifecycleBody"
+      responses:
+        "200":
+          description: Assignment lifecycle updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateAssignmentLifecycleResponse"
+        "409":
+          description: Assignment version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /assignments/{id}/submit:
     post:
       operationId: submitAssignment
@@ -2283,6 +2314,19 @@ components:
         createdAt:
           type: string
           format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
         questions:
           type: array
           items:
@@ -2298,7 +2342,35 @@ components:
         - totalPoints
         - hasModelImage
         - createdAt
+        - updatedAt
+        - version
         - questions
+
+    UpdateAssignmentLifecycleBody:
+      type: object
+      properties:
+        closed:
+          type: boolean
+        version:
+          type: integer
+          minimum: 1
+      required: [closed, version]
+
+    UpdateAssignmentLifecycleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, closedAt, version, updatedAt]
 
     Question:
       type: object

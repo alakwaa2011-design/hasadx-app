@@ -3,8 +3,8 @@ name: OpenAPI codegen compatibility
 description: Why generated API output must be reviewed before keeping a regeneration.
 ---
 
-The current OpenAPI generator can emit Zod APIs that the installed API validation package does not support and can also recreate body-type export collisions.
+OpenAPI generation must run through the project codegen script, whose postprocessor adapts Orval’s Zod 4 shorthand to Zod 3, removes duplicate type-barrel exports, and normalizes generated-file endings.
 
-**Why:** A routine regeneration rewrote a large generated surface, introduced `zod.int()` against Zod 3, and caused hundreds of library type errors unrelated to the contract change.
+**Why:** Raw Orval output introduces `zod.int()`, `zod.email()`, `zod.uuid()`, runtime `File` references, and duplicate body-type exports against this project’s Zod 3/server setup.
 
-**How to apply:** After any OpenAPI generation, inspect the generated diff and run the library typecheck immediately. Do not retain broad generated churn when the generator and installed validation runtime are incompatible; fix the toolchain compatibility as a dedicated change first.
+**How to apply:** Use the package’s codegen command rather than invoking Orval directly. After generation, inspect the diff and typecheck both generated libraries before relying on the output.

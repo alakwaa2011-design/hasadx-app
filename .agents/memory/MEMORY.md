@@ -65,7 +65,7 @@
 - [Quran reveal questions](quran-reveal-questions.md) — verse recall supports full/partial or point-count self-assessment; keep non-MCQ items out of legacy live challenges.
 - [Annual subscription entitlements](annual-subscription-entitlements.md) — annual payments create immutable invoice entitlements; monthly releases and refunds stay bound to the paid term.
 - [Lemon Squeezy checkout layout limits](lemon-checkout-layout-limits.md) — official API can hide media/logo/description, but not the summary column, Tax ID, compact layout, or overlay dimensions.
-- [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — current generator rewrites Zod output with APIs incompatible with the installed Zod version; verify generated diffs and library typecheck.
+- [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — codegen postprocesses Orval’s Zod 4 shorthand for Zod 3; always run generated-library typechecks.
 - [Worksheet PDF pagination](worksheet-pdf-pagination.md) — hidden estimates miss theme/font/footer height; preserve the rendered A4 overflow guard or PDF pages split and repeat.
 - [Hasaad Guide human handoff](hasaad-guide-human-handoff.md) — support continues inside the original guide conversation; AI must pause and ignore human-support messages as future model context.
 - [Worksheet pedagogy metadata](worksheet-pedagogy-metadata.md) — learning intent belongs in settings JSON and travels to AI routes as a structured contract, not topic prose.
@@ -86,3 +86,5 @@
 - [Safe required columns on publish](safe-required-columns-publish.md) — required columns added to populated production tables need a per-row default or Publish may propose truncation.
 - [Reward grant undo semantics](reward-grant-undo-semantics.md) — undo a multi-student reward grant atomically by batch; weekly recognition counts only unreversed grants.
 - [Academic reward goals](academic-reward-goals.md) — student goals override class goals; progress and fairness use stable class identity and never include group competition scores.
+- [Submitted assignment question lock](submitted-assignment-question-lock.md) — once submissions exist, question edits are blocked so answer history cannot be cascaded or reinterpreted.
+- [Assignment archive and revision safety](assignment-archive-concurrency.md) — mutations use expected versions; history snapshots precede changes; restores never broaden access.
