@@ -22,6 +22,26 @@ function escapeXml(value: string): string {
   })[character] ?? character);
 }
 
+function getTextDirection(value: string): "rtl" | "ltr" {
+  const firstStrongCharacter = value.match(/[A-Za-z\u0590-\u08FF]/)?.[0];
+  return firstStrongCharacter && /[\u0590-\u08FF]/.test(firstStrongCharacter) ? "rtl" : "ltr";
+}
+
+type LabelFont = "tajawal" | "cairo" | "kufi";
+type LabelSize = "small" | "medium" | "large";
+
+const LABEL_FONTS: Record<LabelFont, string> = {
+  tajawal: "'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif",
+  cairo: "'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif",
+  kufi: "'Noto Kufi Arabic', 'Tajawal', system-ui, sans-serif",
+};
+
+const LABEL_SIZES: Record<LabelSize, { preview: number; png: number; svg: number }> = {
+  small: { preview: 16, png: 32, svg: 16 },
+  medium: { preview: 20, png: 40, svg: 20 },
+  large: { preview: 24, png: 48, svg: 24 },
+};
+
 export default function UrlQrTool() {
   const { lang, dir } = useI18n();
   const isAr = lang === "ar";
@@ -32,7 +52,11 @@ export default function UrlQrTool() {
   const [fgColor, setFgColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [level, setLevel] = useState<"L"|"M"|"Q"|"H">("M");
+  const [labelFont, setLabelFont] = useState<LabelFont>("tajawal");
+  const [labelSize, setLabelSize] = useState<LabelSize>("medium");
   const [copied, setCopied] = useState(false);
+  const labelFontFamily = LABEL_FONTS[labelFont];
+  const labelSizes = LABEL_SIZES[labelSize];
   
   const normalizedUrl = useMemo(() => {
     let u = url.trim();
@@ -81,6 +105,8 @@ export default function UrlQrTool() {
     setFgColor("#000000");
     setBgColor("#ffffff");
     setLevel("M");
+    setLabelFont("tajawal");
+    setLabelSize("medium");
   };
 
   const clearAll = () => {
@@ -97,7 +123,7 @@ export default function UrlQrTool() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadPNG = () => {
+  const downloadPNG = async () => {
     if (!isValidUrl || hasLowContrast) return;
     const svg = document.getElementById("url-qr-svg");
     if (!svg) return;
@@ -118,13 +144,14 @@ export default function UrlQrTool() {
     const serializer = new XMLSerializer();
     const svgStr = serializer.serializeToString(svg);
     const img = new Image();
+    await document.fonts.load(`700 ${labelSizes.png}px ${labelFontFamily}`).catch(() => []);
     img.onload = () => {
       ctx.drawImage(img, padding, padding, size, size);
       
       if (label) {
         ctx.fillStyle = fgColor;
-        // Use system fonts that support Arabic nicely
-        ctx.font = "bold 40px system-ui, -apple-system, sans-serif";
+        ctx.font = `700 ${labelSizes.png}px ${labelFontFamily}`;
+        ctx.direction = getTextDirection(label);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(label, canvas.width / 2, size + padding + 40);
@@ -152,6 +179,7 @@ export default function UrlQrTool() {
     const labelSpace = label ? 40 : 0;
     const totalWidth = size + (padding * 2);
     const totalHeight = size + (padding * 2) + labelSpace;
+    const labelDirection = getTextDirection(label);
     
     const innerSVG = svg.innerHTML;
     
@@ -161,7 +189,7 @@ export default function UrlQrTool() {
         <svg x="${padding}" y="${padding}" width="${size}" height="${size}" viewBox="0 0 256 256">
           ${innerSVG}
         </svg>
-        ${label ? `<text x="50%" y="${size + padding + 25}" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="20" fill="${fgColor}">${escapeXml(label)}</text>` : ''}
+        ${label ? `<text x="50%" y="${size + padding + 25}" text-anchor="middle" direction="${labelDirection}" unicode-bidi="plaintext" font-family="${escapeXml(labelFontFamily)}" font-weight="700" font-size="${labelSizes.svg}" fill="${fgColor}">${escapeXml(label)}</text>` : ''}
       </svg>
     `;
     
@@ -261,7 +289,7 @@ export default function UrlQrTool() {
                   <Settings2 className="w-5 h-5 text-muted-foreground" />
                   {isAr ? "التخصيص" : "Customization"}
                 </h3>
-                {(fgColor !== "#000000" || bgColor !== "#ffffff" || level !== "M") && (
+                {(fgColor !== "#000000" || bgColor !== "#ffffff" || level !== "M" || labelFont !== "tajawal" || labelSize !== "medium") && (
                   <button 
                     onClick={reset}
                     className="text-sm font-bold text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors"
@@ -323,6 +351,50 @@ export default function UrlQrTool() {
                   </select>
                 </div>
               </div>
+
+              <AnimatePresence initial={false}>
+                {label && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginTop: 24 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/60 pt-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="label-font" className="text-sm text-muted-foreground">
+                          {isAr ? "خط العنوان" : "Title font"}
+                        </Label>
+                        <select
+                          id="label-font"
+                          value={labelFont}
+                          onChange={event => setLabelFont(event.target.value as LabelFont)}
+                          className="w-full h-[50px] bg-muted/30 border border-border/50 rounded-xl px-3 text-sm font-bold text-foreground focus:outline-none focus:border-primary transition-colors"
+                        >
+                          <option value="tajawal">{isAr ? "حصاد الافتراضي — تجوال" : "Hasaad default — Tajawal"}</option>
+                          <option value="cairo">{isAr ? "رسمي — كايرو" : "Formal — Cairo"}</option>
+                          <option value="kufi">{isAr ? "هندسي — كوفي" : "Geometric — Kufi"}</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="label-size" className="text-sm text-muted-foreground">
+                          {isAr ? "حجم العنوان" : "Title size"}
+                        </Label>
+                        <select
+                          id="label-size"
+                          value={labelSize}
+                          onChange={event => setLabelSize(event.target.value as LabelSize)}
+                          className="w-full h-[50px] bg-muted/30 border border-border/50 rounded-xl px-3 text-sm font-bold text-foreground focus:outline-none focus:border-primary transition-colors"
+                        >
+                          <option value="small">{isAr ? "صغير" : "Small"}</option>
+                          <option value="medium">{isAr ? "متوسط" : "Medium"}</option>
+                          <option value="large">{isAr ? "كبير" : "Large"}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <AnimatePresence>
                 {hasLowContrast && (
@@ -403,7 +475,12 @@ export default function UrlQrTool() {
                 {label && url && isValidUrl && (
                   <p 
                     className="font-bold text-xl leading-tight truncate px-2" 
-                    style={{ color: fgColor === '#ffffff' && bgColor === '#ffffff' ? '#000' : 'inherit' }}
+                    style={{
+                      color: fgColor === '#ffffff' && bgColor === '#ffffff' ? '#000' : 'inherit',
+                      fontFamily: labelFontFamily,
+                      fontSize: labelSizes.preview,
+                      direction: getTextDirection(label),
+                    }}
                   >
                     {label}
                   </p>
