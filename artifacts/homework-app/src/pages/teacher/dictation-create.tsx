@@ -418,6 +418,11 @@ export default function DictationCreate() {
   };
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const editorReturnTo = (() => {
+    if (typeof window === "undefined") return null;
+    const value = new URLSearchParams(window.location.search).get("returnTo");
+    return value?.startsWith("/teacher/solo-challenges/") ? value : null;
+  })();
 
   // ?edit=<assignmentId> — when set we hydrate state from the API and PUT on save.
   const editId = (() => {
@@ -635,7 +640,7 @@ export default function DictationCreate() {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
       queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
       toast.success(isEditing ? c.updateSuccess : c.publishSuccess);
-      setLocation(`/teacher/assignment/${id}`);
+      setLocation(editorReturnTo || `/teacher/assignment/${id}`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -761,7 +766,7 @@ export default function DictationCreate() {
   ];
 
   const footerBack = () => {
-    if (step === 1) setLocation("/teacher/new");
+    if (step === 1) setLocation(editorReturnTo || "/teacher/new");
     else setStep((step - 1) as 1 | 2 | 3 | 4);
   };
 

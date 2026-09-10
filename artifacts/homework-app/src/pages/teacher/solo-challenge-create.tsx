@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Target, Sparkles, BookOpen, ChevronLeft, Plus, Trash2, Check,
+  Target, Sparkles, BookOpen, ChevronLeft, ChevronRight, Plus, Trash2, Check,
   Loader2, Search, Clock, Trophy, FileText, Calendar, ChevronDown,
   X, Settings, Layers, PenLine, Users, XCircle
 } from "lucide-react";
@@ -52,7 +52,11 @@ export default function SoloChallengeCreatePage() {
   const s = t.soloChallenges;
   const { data: user, isLoading: authLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
 
-  const [source, setSource] = useState<Source | null>(null);
+  const [source, setSource] = useState<Source | null>(() => {
+    if (typeof window === "undefined") return null;
+    const src = new URLSearchParams(window.location.search).get("source");
+    return (src === "assignment" || src === "ai" || src === "manual") ? (src as Source) : null;
+  });
   const [saving, setSaving] = useState(false);
   const [isShared, setIsShared] = useState(false);
 
@@ -236,17 +240,8 @@ export default function SoloChallengeCreatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ assignmentId: selectedAssignment.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      // Apply settings
-      await fetch(`${API}/api/solo-challenges/${encodeURIComponent(data.slug)}/settings`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
+          assignmentId: selectedAssignment.id,
           notes: notes || null,
           expiresAt: expiresAt || null,
           timePerQuestion,
@@ -258,6 +253,8 @@ export default function SoloChallengeCreatePage() {
           allowedClasses,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
       toast.success(s.created);
       setLocation(`/teacher/solo-challenges/${data.slug}`);
@@ -297,21 +294,6 @@ export default function SoloChallengeCreatePage() {
         levels: isMultiLevel ? challengeLevels : null,
         allowedClasses,
       };
-      try {
-        await saveGameActivity({
-          title: title.trim(),
-          gameType: "solo",
-          content: { questions: sendQs, topic: topic.trim(), subject: subject.trim(), source: source ?? "manual" },
-          settings,
-          source: source ?? "manual",
-          isShared,
-        });
-      } catch {
-        toast.error(lang === "ar"
-          ? "تعذّر حفظ نشاط اللعبة. لم يتم إنشاء التحدي."
-          : "Could not save the game activity. The challenge was not created.");
-        return;
-      }
       const res = await fetch(`${API}/api/solo-challenges/standalone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -324,6 +306,24 @@ export default function SoloChallengeCreatePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+      try {
+        await saveGameActivity({
+          title: title.trim(),
+          gameType: "solo",
+          content: { questions: sendQs, topic: topic.trim(), subject: subject.trim(), source: source ?? "manual" },
+          settings,
+          source: source ?? "manual",
+          isShared,
+        });
+      } catch {
+        await fetch(`${API}/api/solo-challenges/${encodeURIComponent(data.slug)}`, {
+          method: "DELETE",
+          credentials: "include",
+        }).catch(() => undefined);
+        throw new Error(lang === "ar"
+          ? "تعذّر حفظ نشاط اللعبة، لذلك تم إلغاء إنشاء المسابقة."
+          : "Could not save the game activity, so challenge creation was cancelled.");
+      }
       toast.success(s.created);
       setLocation(`/teacher/solo-challenges/${data.slug}`);
     } catch (err: any) {
@@ -341,7 +341,7 @@ export default function SoloChallengeCreatePage() {
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
           <Link href="/teacher/solo-challenges" className="p-2 lg:p-2.5 rounded-xl hover:bg-muted transition-colors text-muted-foreground group">
-            <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 group-hover:-translate-x-1 transition-transform" />
+            {dir === "rtl" ? <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6 group-hover:translate-x-1 transition-transform" /> : <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6 group-hover:-translate-x-1 transition-transform" />}
           </Link>
           <div className="flex items-center gap-3 lg:gap-3.5">
             <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">

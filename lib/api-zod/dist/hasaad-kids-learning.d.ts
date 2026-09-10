@@ -120,8 +120,8 @@ export declare const matchingActivitySchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "matching";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
@@ -143,8 +143,8 @@ export declare const matchingActivitySchema: z.ZodObject<{
 }, {
     type: "matching";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     pairs: {
@@ -202,8 +202,8 @@ export declare const tracingActivitySchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "tracing";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
@@ -218,8 +218,8 @@ export declare const tracingActivitySchema: z.ZodObject<{
 }, {
     type: "tracing";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     strokes: {
@@ -274,59 +274,59 @@ export declare const mediaChoiceActivitySchema: z.ZodObject<{
         isCorrect: z.ZodBoolean;
     }, "strict", z.ZodTypeAny, {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }, {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }>, "many">, {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[], {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[]>;
 }, "strict", z.ZodTypeAny, {
     type: "media_choice";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     choices: {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[];
     promptMedia?: {
         kind: "image" | "audio";
@@ -336,20 +336,20 @@ export declare const mediaChoiceActivitySchema: z.ZodObject<{
 }, {
     type: "media_choice";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     choices: {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[];
     weight?: number | undefined;
     promptMedia?: {
@@ -406,12 +406,13 @@ export declare const countingActivitySchema: z.ZodEffects<z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -422,15 +423,15 @@ export declare const countingActivitySchema: z.ZodEffects<z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
 }, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -441,17 +442,17 @@ export declare const countingActivitySchema: z.ZodEffects<z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
     weight?: number | undefined;
 }>, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -462,15 +463,15 @@ export declare const countingActivitySchema: z.ZodEffects<z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
 }, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -481,7 +482,6 @@ export declare const countingActivitySchema: z.ZodEffects<z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
     weight?: number | undefined;
 }>;
 export declare const orderingPuzzleActivitySchema: z.ZodEffects<z.ZodObject<{
@@ -533,12 +533,12 @@ export declare const orderingPuzzleActivitySchema: z.ZodEffects<z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -552,11 +552,11 @@ export declare const orderingPuzzleActivitySchema: z.ZodEffects<z.ZodObject<{
 }, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -571,12 +571,12 @@ export declare const orderingPuzzleActivitySchema: z.ZodEffects<z.ZodObject<{
 }>, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -590,11 +590,11 @@ export declare const orderingPuzzleActivitySchema: z.ZodEffects<z.ZodObject<{
 }, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -706,8 +706,8 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "matching";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
@@ -729,8 +729,8 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, {
     type: "matching";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     pairs: {
@@ -787,8 +787,8 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "tracing";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
@@ -803,8 +803,8 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, {
     type: "tracing";
     id: string;
-    skillId: string;
     title: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     strokes: {
@@ -858,59 +858,59 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
         isCorrect: z.ZodBoolean;
     }, "strict", z.ZodTypeAny, {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }, {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }>, "many">, {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[], {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[]>;
 }, "strict", z.ZodTypeAny, {
     type: "media_choice";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     choices: {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[];
     promptMedia?: {
         kind: "image" | "audio";
@@ -920,20 +920,20 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, {
     type: "media_choice";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     choices: {
         id: string;
+        isCorrect: boolean;
         label: string;
         media: {
             kind: "image" | "audio";
             assetKey: string;
             alt?: string | undefined;
         };
-        isCorrect: boolean;
     }[];
     weight?: number | undefined;
     promptMedia?: {
@@ -989,12 +989,13 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -1005,15 +1006,15 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
 }, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -1024,17 +1025,17 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
     weight?: number | undefined;
 }>, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -1045,15 +1046,15 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
 }, {
     type: "counting";
     id: string;
-    skillId: string;
     title: string;
+    correctCount: number;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     choices: number[];
     items: {
         id: string;
@@ -1064,7 +1065,6 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
             alt?: string | undefined;
         } | undefined;
     }[];
-    correctCount: number;
     weight?: number | undefined;
 }>, z.ZodEffects<z.ZodObject<{
     id: z.ZodString;
@@ -1115,12 +1115,12 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -1134,11 +1134,11 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -1153,12 +1153,12 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }>, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
     weight: number;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -1172,11 +1172,11 @@ export declare const kidsActivitySchema: z.ZodUnion<[z.ZodObject<{
 }, {
     type: "ordering_puzzle";
     id: string;
-    skillId: string;
     title: string;
+    prompt: string;
+    skillId: string;
     instructions: string;
     exampleId: string;
-    prompt: string;
     pieces: {
         id: string;
         label: string;
@@ -1201,41 +1201,41 @@ export declare const kidsAttemptSchema: z.ZodEffects<z.ZodObject<{
     possibleWeight: z.ZodNumber;
     errors: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
 }, "strict", z.ZodTypeAny, {
-    skillId: string;
-    exampleId: string;
-    activityId: string;
     activityType: "matching" | "tracing" | "media_choice" | "counting" | "ordering_puzzle";
     sessionId: string;
+    activityId: string;
+    skillId: string;
+    exampleId: string;
     completedAt: Date;
     correctWeight: number;
     possibleWeight: number;
     errors: string[];
 }, {
-    skillId: string;
-    exampleId: string;
-    activityId: string;
     activityType: "matching" | "tracing" | "media_choice" | "counting" | "ordering_puzzle";
     sessionId: string;
+    activityId: string;
+    skillId: string;
+    exampleId: string;
     completedAt: Date;
     correctWeight: number;
     possibleWeight: number;
     errors?: string[] | undefined;
 }>, {
-    skillId: string;
-    exampleId: string;
-    activityId: string;
     activityType: "matching" | "tracing" | "media_choice" | "counting" | "ordering_puzzle";
     sessionId: string;
+    activityId: string;
+    skillId: string;
+    exampleId: string;
     completedAt: Date;
     correctWeight: number;
     possibleWeight: number;
     errors: string[];
 }, {
-    skillId: string;
-    exampleId: string;
-    activityId: string;
     activityType: "matching" | "tracing" | "media_choice" | "counting" | "ordering_puzzle";
     sessionId: string;
+    activityId: string;
+    skillId: string;
+    exampleId: string;
     completedAt: Date;
     correctWeight: number;
     possibleWeight: number;

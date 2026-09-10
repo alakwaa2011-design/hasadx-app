@@ -110,8 +110,8 @@ describe("GameFlowBackButton", () => {
   });
 
   it.each([
-    ["ar", "الرجوع خطوة", "رجوع خطوة", "lucide-chevron-right"],
-    ["en", "Go back one step", "Back one step", "lucide-chevron-left"],
+    ["ar", "رجوع", "رجوع خطوة", "lucide-chevron-right"],
+    ["en", "Back", "Back one step", "lucide-chevron-left"],
   ] as const)(
     "renders and works in %s",
     async (lang, ariaLabel, visibleLabel, iconClass) => {
@@ -126,7 +126,7 @@ describe("GameFlowBackButton", () => {
       expect(button).not.toBeNull();
       expect(button?.getAttribute("type")).toBe("button");
       expect(button?.getAttribute("aria-label")).toBe(ariaLabel);
-      expect(button?.textContent).toContain(visibleLabel);
+      expect(button?.textContent).not.toContain(visibleLabel);
       expect(button?.querySelector(`.${iconClass}`)).not.toBeNull();
 
       await act(async () => button?.click());

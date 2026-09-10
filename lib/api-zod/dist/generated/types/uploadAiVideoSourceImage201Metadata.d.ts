@@ -5,7 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { UploadAiVideoSourceImage201MetadataContentType } from "./uploadAiVideoSourceImage201MetadataContentType";
+import type { UploadAiVideoSourceImage201MetadataContentType } from './uploadAiVideoSourceImage201MetadataContentType';
 export type UploadAiVideoSourceImage201Metadata = {
     name: string;
     size: number;

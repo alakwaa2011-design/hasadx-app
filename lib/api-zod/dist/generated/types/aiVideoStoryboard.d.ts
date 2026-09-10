@@ -5,8 +5,8 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { AiVideoCharacter } from './aiVideoCharacter';
 import type { AiVideoScene } from './aiVideoScene';
-import type { AiVideoCharacter } from "./aiVideoCharacter";
 export interface AiVideoStoryboard {
     /**
        * @minLength 1
@@ -20,6 +20,11 @@ export interface AiVideoStoryboard {
        * @maxItems 18
        */
     scenes: AiVideoScene[];
+    /**
+       * Stable visible-character appearance and voice bible. Required by native dialogue rendering.
+       * @minItems 2
+       * @maxItems 4
+       */
     characters?: AiVideoCharacter[];
 }
 //# sourceMappingURL=aiVideoStoryboard.d.ts.map

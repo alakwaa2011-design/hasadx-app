@@ -1,1 +1,1 @@
-{"version":3,"file":"aiVideoRenderApproval.d.ts","sourceRoot":"","sources":["../../../src/generated/types/aiVideoRenderApproval.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,qBAAqB;IACpC,OAAO,EAAE,MAAM,CAAC;IAChB,QAAQ,EAAE,IAAI,CAAC;IACf,kBAAkB,EAAE,MAAM,CAAC;CAC5B"}
+{"version":3,"file":"aiVideoRenderApproval.d.ts","sourceRoot":"","sources":["../../../src/generated/types/aiVideoRenderApproval.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,qBAAqB;IACpC,OAAO,EAAE,MAAM,CAAC;IAChB,QAAQ,EAAE,IAAI,CAAC;IACf,iBAAiB;IACjB,kBAAkB,EAAE,MAAM,CAAC;CAC5B"}

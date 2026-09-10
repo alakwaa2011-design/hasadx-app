@@ -31,6 +31,7 @@ interface ChallengeInfo {
 }
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
+type RosterStudent = { token: string; name: string };
 
 
 export default function SoloPlayPage() {
@@ -43,6 +44,10 @@ export default function SoloPlayPage() {
   const [loadError, setLoadError] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [playerClass, setPlayerClass] = useState("");
+  const [rosterStudents, setRosterStudents] = useState<RosterStudent[]>([]);
+  const [selectedStudentToken, setSelectedStudentToken] = useState<string | null>(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [manualName, setManualName] = useState(false);
   const [nameError, setNameError] = useState("");
   const [starting, setStarting] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -60,6 +65,29 @@ export default function SoloPlayPage() {
       })
       .catch(() => setLoadError(lang === "ar" ? "تعذّر تحميل المسابقة" : "Failed to load challenge"));
   }, [slug]);
+
+  useEffect(() => {
+    if (!slug || !playerClass || (info?.allowedClasses?.length ?? 0) === 0) {
+      setRosterStudents([]);
+      return;
+    }
+    const controller = new AbortController();
+    setRosterLoading(true);
+    fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug)}/roster?className=${encodeURIComponent(playerClass)}`, {
+      signal: controller.signal,
+      credentials: "include",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message);
+        setRosterStudents(Array.isArray(data.students) ? data.students : []);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setNameError(error.message || (lang === "ar" ? "تعذّر تحميل الأسماء" : "Failed to load names"));
+      })
+      .finally(() => setRosterLoading(false));
+    return () => controller.abort();
+  }, [slug, playerClass, info?.allowedClasses?.length, lang]);
 
   // Replay on this device → reuse the name entered on a previous attempt, and
   // show attempt progress if this challenge allows more than one attempt.
@@ -102,21 +130,35 @@ export default function SoloPlayPage() {
   }, [slug]);
 
   const handleStart = async () => {
-    const name = playerName.trim();
-    if (!name) {
-      setNameError(lang === "ar" ? "أدخل اسمك أولاً" : "Please enter your name");
-      return;
-    }
     const isRestricted = (info?.allowedClasses?.length ?? 0) > 0;
     if (isRestricted && !playerClass) {
       setNameError(lang === "ar" ? "اختر صفك أولاً" : "Please select your class");
+      return;
+    }
+    const selectedStudent = rosterStudents.find((student) => student.token === selectedStudentToken);
+    const name = isRestricted && !manualName ? (selectedStudent?.name || "") : playerName.trim();
+    if (!name) {
+      setNameError(isRestricted && !manualName
+        ? (lang === "ar" ? "اختر اسمك من القائمة" : "Select your name from the list")
+        : (lang === "ar" ? "أدخل اسمك أولاً" : "Please enter your name"));
       return;
     }
     setNameError("");
     setStarting(true);
     try {
       const body: Record<string, unknown> = {};
-      if (isRestricted && playerClass) body.playerClass = playerClass;
+      let participantKey = localStorage.getItem("hasad_solo_participant_key");
+      if (!participantKey) {
+        participantKey = crypto.randomUUID();
+        localStorage.setItem("hasad_solo_participant_key", participantKey);
+      }
+      body.participantKey = participantKey;
+      if (isRestricted && playerClass) {
+        body.playerClass = playerClass;
+        body.playerName = name;
+        if (manualName) body.manualName = true;
+        else body.studentToken = selectedStudentToken;
+      }
       const res = await fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug!)}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,10 +170,14 @@ export default function SoloPlayPage() {
 
       // Store context for solo-only tweaks in play.tsx + score reporting
       sessionStorage.setItem("solo_challenge_slug", slug!);
-      sessionStorage.setItem("solo_challenge_player", name);
+      const verifiedName = String(data.verifiedPlayerName || name);
+      sessionStorage.setItem("solo_challenge_player", verifiedName);
       sessionStorage.setItem("solo_challenge_title", info?.assignmentTitle ?? "");
       sessionStorage.setItem("solo_challenge_start_time", String(Date.now()));
       sessionStorage.setItem("solo_challenge_max_attempts", String(info?.maxAttempts ?? 1));
+      sessionStorage.setItem("solo_challenge_game_pin", String(data.pin));
+      sessionStorage.setItem("solo_challenge_score_proof", String(data.scoreProof || ""));
+      sessionStorage.setItem("solo_challenge_participant_key", participantKey);
       if (data.shortSlug) sessionStorage.setItem("solo_challenge_short_slug", data.shortSlug);
       if (data.leaderboardDisplay) sessionStorage.setItem("solo_leaderboard_display", data.leaderboardDisplay);
 
@@ -140,7 +186,7 @@ export default function SoloPlayPage() {
       // (same shape GameJoin would have produced when forwarding).
       const avatar = "🎯";
       setLocation(
-        `/game/play/${data.pin}?name=${encodeURIComponent(name)}&avatar=${encodeURIComponent(avatar)}`,
+        `/game/play/${data.pin}?name=${encodeURIComponent(verifiedName)}&avatar=${encodeURIComponent(avatar)}`,
       );
     } catch (err: any) {
       setNameError(err.message || (lang === "ar" ? "تعذّر بدء اللعبة" : "Failed to start"));
@@ -315,7 +361,13 @@ export default function SoloPlayPage() {
                   {info!.allowedClasses!.map(cls => (
                     <button
                       key={cls}
-                      onClick={() => { setPlayerClass(cls); setNameError(""); }}
+                      onClick={() => {
+                        setPlayerClass(cls);
+                        setSelectedStudentToken(null);
+                        setPlayerName("");
+                        setManualName(false);
+                        setNameError("");
+                      }}
                       className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
                       style={playerClass === cls
                         ? { background: "rgba(232,184,75,0.9)", color: "#1a1a1a", border: "2px solid rgba(232,184,75,0.9)" }
@@ -329,28 +381,83 @@ export default function SoloPlayPage() {
             )}
 
             <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: "rgba(255,255,255,0.75)" }}>
-                {lang === "ar" ? "اكتب اسمك للبدء" : "Enter your name to start"}
-              </label>
-              <input
-                type="text"
-                value={playerName}
-                onChange={e => { setPlayerName(e.target.value); setNameError(""); }}
-                onKeyDown={e => e.key === "Enter" && handleStart()}
-                placeholder={lang === "ar" ? "اسمك هنا..." : "Your name..."}
-                maxLength={40}
-                autoFocus
-                className="w-full rounded-2xl px-4 py-3.5 text-base font-bold outline-none transition-all"
-                 dir={lang === "ar" ? "rtl" : "ltr"}
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: nameError ? "2px solid rgba(239,68,68,0.7)" : "2px solid rgba(255,255,255,0.15)",
-                  color: "white",
-                   textAlign: lang === "ar" ? "right" : "left",
-                }}
-                onFocus={e => { if (!nameError) e.target.style.borderColor = "rgba(232,184,75,0.7)"; }}
-                onBlur={e => { if (!nameError) e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
-              />
+              {(info?.allowedClasses?.length ?? 0) > 0 && playerClass && !manualName ? (
+                <>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <label className="block text-sm font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
+                      {lang === "ar" ? "اختر اسمك" : "Select your name"}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => { setManualName(true); setSelectedStudentToken(null); setPlayerName(""); setNameError(""); }}
+                      className="text-xs font-bold text-amber-300 hover:text-amber-200 underline underline-offset-4"
+                    >
+                      {lang === "ar" ? "اسمي غير موجود" : "My name is missing"}
+                    </button>
+                  </div>
+                  {rosterLoading ? (
+                    <div className="h-24 flex items-center justify-center rounded-2xl border border-white/15 bg-white/5">
+                      <Loader2 className="w-5 h-5 animate-spin text-amber-300" />
+                    </div>
+                  ) : rosterStudents.length > 0 ? (
+                    <div className="max-h-48 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2 p-1">
+                      {rosterStudents.map((student) => (
+                        <button
+                          type="button"
+                          key={student.token}
+                          onClick={() => { setSelectedStudentToken(student.token); setPlayerName(student.name); setNameError(""); }}
+                          className="px-4 py-3 rounded-xl text-sm font-bold text-start transition-all"
+                          style={selectedStudentToken === student.token
+                            ? { background: "rgba(232,184,75,0.9)", color: "#1a1a1a", border: "2px solid rgba(232,184,75,0.9)" }
+                            : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", border: "2px solid rgba(255,255,255,0.15)" }}
+                        >
+                          {student.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl px-4 py-3 text-sm font-bold text-center border border-white/15 bg-white/5 text-white/65">
+                      {lang === "ar" ? "لا توجد أسماء مسجلة في هذا الصف. استخدم «اسمي غير موجود»." : "No names are registered in this class. Use “My name is missing”."}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <label className="block text-sm font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
+                      {lang === "ar" ? "اكتب اسمك للبدء" : "Enter your name to start"}
+                    </label>
+                    {(info?.allowedClasses?.length ?? 0) > 0 && playerClass && (
+                      <button
+                        type="button"
+                        onClick={() => { setManualName(false); setPlayerName(""); setNameError(""); }}
+                        className="text-xs font-bold text-amber-300 hover:text-amber-200 underline underline-offset-4"
+                      >
+                        {lang === "ar" ? "العودة إلى قائمة الأسماء" : "Back to name list"}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={e => { setPlayerName(e.target.value); setNameError(""); }}
+                    onKeyDown={e => e.key === "Enter" && handleStart()}
+                    placeholder={lang === "ar" ? "اسمك هنا..." : "Your name..."}
+                    maxLength={40}
+                    autoFocus={(info?.allowedClasses?.length ?? 0) === 0 || manualName}
+                    className="w-full rounded-2xl px-4 py-3.5 text-base font-bold outline-none transition-all"
+                    dir={lang === "ar" ? "rtl" : "ltr"}
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      border: nameError ? "2px solid rgba(239,68,68,0.7)" : "2px solid rgba(255,255,255,0.15)",
+                      color: "white",
+                      textAlign: lang === "ar" ? "right" : "left",
+                    }}
+                    onFocus={e => { if (!nameError) e.target.style.borderColor = "rgba(232,184,75,0.7)"; }}
+                    onBlur={e => { if (!nameError) e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
+                  />
+                </>
+              )}
               <AnimatePresence>
                 {nameError && (
                   <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}

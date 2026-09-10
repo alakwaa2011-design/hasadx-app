@@ -28,10 +28,10 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     height: number;
     text?: string | undefined;
     fontSize?: number | undefined;
+    align?: "center" | "left" | "right" | undefined;
     fontColor?: string | undefined;
     bold?: boolean | undefined;
     italic?: boolean | undefined;
-    align?: "left" | "center" | "right" | undefined;
     fillColor?: string | undefined;
     strokeColor?: string | undefined;
     strokeWidth?: number | undefined;
@@ -47,10 +47,10 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     height: number;
     text?: string | undefined;
     fontSize?: number | undefined;
+    align?: "center" | "left" | "right" | undefined;
     fontColor?: string | undefined;
     bold?: boolean | undefined;
     italic?: boolean | undefined;
-    align?: "left" | "center" | "right" | undefined;
     fillColor?: string | undefined;
     strokeColor?: string | undefined;
     strokeWidth?: number | undefined;
@@ -121,10 +121,10 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
-            align?: "left" | "center" | "right" | undefined;
             fillColor?: string | undefined;
             strokeColor?: string | undefined;
             strokeWidth?: number | undefined;
@@ -140,10 +140,10 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
-            align?: "left" | "center" | "right" | undefined;
             fillColor?: string | undefined;
             strokeColor?: string | undefined;
             strokeWidth?: number | undefined;
@@ -161,10 +161,10 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
-            align?: "left" | "center" | "right" | undefined;
             fillColor?: string | undefined;
             strokeColor?: string | undefined;
             strokeWidth?: number | undefined;
@@ -182,10 +182,10 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
-            align?: "left" | "center" | "right" | undefined;
             fillColor?: string | undefined;
             strokeColor?: string | undefined;
             strokeWidth?: number | undefined;
@@ -204,13 +204,13 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             align: z.ZodOptional<z.ZodEnum<["start", "center", "end"]>>;
         }, "strip", z.ZodTypeAny, {
             key: string;
+            align?: "start" | "center" | "end" | undefined;
             bold?: boolean | undefined;
-            align?: "center" | "start" | "end" | undefined;
             fontSizePt?: number | undefined;
         }, {
             key: string;
+            align?: "start" | "center" | "end" | undefined;
             bold?: boolean | undefined;
-            align?: "center" | "start" | "end" | undefined;
             fontSizePt?: number | undefined;
         }>, "many">>;
         spacing: z.ZodOptional<z.ZodEnum<["compact", "normal", "relaxed"]>>;
@@ -224,13 +224,13 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         questionId: string;
         fields?: {
             key: string;
+            align?: "start" | "center" | "end" | undefined;
             bold?: boolean | undefined;
-            align?: "center" | "start" | "end" | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "mark" | "choices" | undefined;
+        trueFalseLayout?: "choices" | "mark" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
@@ -239,46 +239,28 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         questionId: string;
         fields?: {
             key: string;
+            align?: "start" | "center" | "end" | undefined;
             bold?: boolean | undefined;
-            align?: "center" | "start" | "end" | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "mark" | "choices" | undefined;
+        trueFalseLayout?: "choices" | "mark" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
         rubric?: string | undefined;
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
+    fontFamily: "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia";
+    fontSizePt: number;
     includeName: boolean;
     includeDate: boolean;
     includeClass: boolean;
     includeAnswerKey: boolean;
     columns: 1 | 2;
-    fontFamily: "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia";
-    fontSizePt: number;
     showWatermark: boolean;
-    instructions?: string | undefined;
-    learningObjective?: string | undefined;
-    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
-    activityDuration?: number | undefined;
-    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
-    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
-    headerNote?: string | undefined;
-    footerNote?: string | undefined;
-    goodLuck?: string | undefined;
-    schoolName?: string | undefined;
-    section?: string | undefined;
     teacherName?: string | undefined;
-    customFields?: {
-        value: string;
-        label: string;
-    }[] | undefined;
-    themeColor?: string | undefined;
-    logoUrl?: string | undefined;
-    template?: "geometric" | "arabic_ink" | "modern_band" | "exam_paper" | "kids_play" | "science_lab" | "editorial" | undefined;
     layout?: {
         elements: {
             id: string;
@@ -289,10 +271,10 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
-            align?: "left" | "center" | "right" | undefined;
             fillColor?: string | undefined;
             strokeColor?: string | undefined;
             strokeWidth?: number | undefined;
@@ -301,29 +283,72 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             opacity?: number | undefined;
         }[];
     } | undefined;
+    instructions?: string | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "create" | "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "support" | "none" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    headerNote?: string | undefined;
+    footerNote?: string | undefined;
+    goodLuck?: string | undefined;
+    schoolName?: string | undefined;
+    section?: string | undefined;
+    customFields?: {
+        value: string;
+        label: string;
+    }[] | undefined;
+    themeColor?: string | undefined;
+    logoUrl?: string | undefined;
+    template?: "geometric" | "arabic_ink" | "modern_band" | "exam_paper" | "kids_play" | "science_lab" | "editorial" | undefined;
     pageBreaks?: string[] | undefined;
     questionStyles?: {
         questionId: string;
         fields?: {
             key: string;
+            align?: "start" | "center" | "end" | undefined;
             bold?: boolean | undefined;
-            align?: "center" | "start" | "end" | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "mark" | "choices" | undefined;
+        trueFalseLayout?: "choices" | "mark" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
         rubric?: string | undefined;
     }[] | undefined;
 }, {
+    teacherName?: string | undefined;
+    layout?: {
+        elements: {
+            id: string;
+            kind: "text" | "rect" | "circle" | "line";
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+            text?: string | undefined;
+            fontSize?: number | undefined;
+            align?: "center" | "left" | "right" | undefined;
+            fontColor?: string | undefined;
+            bold?: boolean | undefined;
+            italic?: boolean | undefined;
+            fillColor?: string | undefined;
+            strokeColor?: string | undefined;
+            strokeWidth?: number | undefined;
+            strokeStyle?: "solid" | "dashed" | "dotted" | undefined;
+            borderRadius?: number | undefined;
+            opacity?: number | undefined;
+        }[];
+    } | undefined;
+    fontFamily?: "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia" | undefined;
     instructions?: string | undefined;
+    fontSizePt?: number | undefined;
     learningObjective?: string | undefined;
-    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    cognitiveSkill?: "create" | "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | undefined;
     activityDuration?: number | undefined;
-    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    differentiation?: "support" | "none" | "enrichment" | "scaffolded" | undefined;
     assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
     includeName?: boolean | undefined;
     includeDate?: boolean | undefined;
@@ -335,51 +360,26 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
     goodLuck?: string | undefined;
     schoolName?: string | undefined;
     section?: string | undefined;
-    teacherName?: string | undefined;
     customFields?: {
         value: string;
         label: string;
     }[] | undefined;
-    fontFamily?: "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia" | undefined;
-    fontSizePt?: number | undefined;
     showWatermark?: boolean | undefined;
     themeColor?: string | undefined;
     logoUrl?: string | undefined;
     template?: "geometric" | "arabic_ink" | "modern_band" | "exam_paper" | "kids_play" | "science_lab" | "editorial" | undefined;
-    layout?: {
-        elements: {
-            id: string;
-            kind: "text" | "rect" | "circle" | "line";
-            x: number;
-            y: number;
-            width: number;
-            height: number;
-            text?: string | undefined;
-            fontSize?: number | undefined;
-            fontColor?: string | undefined;
-            bold?: boolean | undefined;
-            italic?: boolean | undefined;
-            align?: "left" | "center" | "right" | undefined;
-            fillColor?: string | undefined;
-            strokeColor?: string | undefined;
-            strokeWidth?: number | undefined;
-            strokeStyle?: "solid" | "dashed" | "dotted" | undefined;
-            borderRadius?: number | undefined;
-            opacity?: number | undefined;
-        }[];
-    } | undefined;
     pageBreaks?: string[] | undefined;
     questionStyles?: {
         questionId: string;
         fields?: {
             key: string;
+            align?: "start" | "center" | "end" | undefined;
             bold?: boolean | undefined;
-            align?: "center" | "start" | "end" | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "mark" | "choices" | undefined;
+        trueFalseLayout?: "choices" | "mark" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;

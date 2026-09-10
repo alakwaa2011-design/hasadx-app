@@ -175,6 +175,8 @@ export interface Game {
   pin: string;
   /** Immutable server-generated identity for this game execution. */
   readonly gameRunId: string;
+  /** Present only for games launched from a public self-challenge link. */
+  soloChallengeSlug?: string;
   /** Server-only marker for one-player sessions created from a public direct-play link. */
   independentSession: boolean;
   /** Capability generated per direct session and required for the sole player to join. */

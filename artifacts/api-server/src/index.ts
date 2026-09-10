@@ -1281,6 +1281,21 @@ async function runSchemaMigrations() {
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_slug_idx  ON solo_challenge_scores(slug)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)`);
+    await db.execute(sql`ALTER TABLE solo_challenge_scores ADD COLUMN IF NOT EXISTS participant_key TEXT`);
+    await db.execute(sql`ALTER TABLE solo_challenge_scores ADD COLUMN IF NOT EXISTS game_run_id TEXT`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS solo_challenge_scores_participant_idx ON solo_challenge_scores(slug, participant_key) WHERE participant_key IS NOT NULL`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS solo_challenge_scores_game_run_idx ON solo_challenge_scores(game_run_id) WHERE game_run_id IS NOT NULL`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS solo_challenge_attempts (
+        id SERIAL PRIMARY KEY,
+        slug TEXT NOT NULL,
+        participant_key TEXT NOT NULL,
+        game_run_id TEXT NOT NULL,
+        started_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_attempts_participant_idx ON solo_challenge_attempts(slug, participant_key)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS solo_challenge_attempts_game_run_idx ON solo_challenge_attempts(game_run_id)`);
     await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS notes TEXT`);
     await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
     logger.info("Solo challenge tables ready");

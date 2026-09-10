@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, index, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index, uniqueIndex, jsonb, boolean } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 
@@ -62,6 +62,8 @@ export const soloChallengesTable = pgTable("solo_challenges", {
 export const soloChallengeScoresTable = pgTable("solo_challenge_scores", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull(),
+  participantKey: text("participant_key"),
+  gameRunId: text("game_run_id"),
   playerName: text("player_name").notNull(),
   /** Total points earned (base 100 × question × time-speed bonus multiplier). */
   score: integer("score").notNull().default(0),
@@ -73,6 +75,19 @@ export const soloChallengeScoresTable = pgTable("solo_challenge_scores", {
 }, (t) => ({
   slugIdx: index("solo_challenge_scores_slug_idx").on(t.slug),
   scoreIdx: index("solo_challenge_scores_score_idx").on(t.slug, t.score),
+  participantIdx: uniqueIndex("solo_challenge_scores_participant_idx").on(t.slug, t.participantKey),
+  gameRunIdx: uniqueIndex("solo_challenge_scores_game_run_idx").on(t.gameRunId),
+}));
+
+export const soloChallengeAttemptsTable = pgTable("solo_challenge_attempts", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull(),
+  participantKey: text("participant_key").notNull(),
+  gameRunId: text("game_run_id").notNull(),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+}, (t) => ({
+  participantIdx: index("solo_challenge_attempts_participant_idx").on(t.slug, t.participantKey),
+  gameRunIdx: uniqueIndex("solo_challenge_attempts_game_run_idx").on(t.gameRunId),
 }));
 
 export type SoloChallenge = typeof soloChallengesTable.$inferSelect;

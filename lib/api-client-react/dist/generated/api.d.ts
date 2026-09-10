@@ -1,15 +1,15 @@
-import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from "./api.schemas";
-import { customFetch } from "../custom-fetch";
-import type { ErrorType, BodyType } from "../custom-fetch";
+import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import { customFetch } from '../custom-fetch';
+import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+export declare const getHealthCheckUrl: () => string;
 /**
  * @summary Health check
  */
-export declare const getHealthCheckUrl: () => string;
-export declare const healthCheck: (options?: RequestInit) => Promise<HealthStatus>;
+export declare const healthCheck: (options?: Parameters<typeof customFetch>[1]) => Promise<HealthStatus>;
 export declare const getHealthCheckQueryKey: () => readonly ["/api/healthz"];
 export declare const getHealthCheckQueryOptions: <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>;
@@ -28,65 +28,57 @@ export declare function useHealthCheck<TData = Awaited<ReturnType<typeof healthC
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getRegisterTeacherUrl: () => string;
 /**
  * @summary Register a new teacher
  */
-export declare const getRegisterTeacherUrl: () => string;
-export declare const registerTeacher: (registerTeacherBody: RegisterTeacherBody, options?: RequestInit) => Promise<AuthResponse>;
+export declare const registerTeacher: (registerTeacherBody: RegisterTeacherBody, options?: Parameters<typeof customFetch>[1]) => Promise<AuthResponse>;
+export declare const getRegisterTeacherMutationKey: () => readonly ["registerTeacher"];
 export declare const getRegisterTeacherMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerTeacher>>, TError, {
-        data: BodyType<RegisterTeacherBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerTeacher>>, TError, RegisterTeacherMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof registerTeacher>>, TError, {
-    data: BodyType<RegisterTeacherBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof registerTeacher>>, TError, RegisterTeacherMutationVariables, TContext>;
 export type RegisterTeacherMutationResult = NonNullable<Awaited<ReturnType<typeof registerTeacher>>>;
 export type RegisterTeacherMutationBody = BodyType<RegisterTeacherBody>;
 export type RegisterTeacherMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Register a new teacher
- */
-export declare const useRegisterTeacher: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerTeacher>>, TError, {
-        data: BodyType<RegisterTeacherBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof registerTeacher>>, TError, {
+export type RegisterTeacherMutationVariables = {
     data: BodyType<RegisterTeacherBody>;
-}, TContext>;
+};
+/**
+* @summary Register a new teacher
+*/
+export declare const useRegisterTeacher: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerTeacher>>, TError, RegisterTeacherMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof registerTeacher>>, TError, RegisterTeacherMutationVariables, TContext>;
+export declare const getLoginTeacherUrl: () => string;
 /**
  * @summary Teacher login
  */
-export declare const getLoginTeacherUrl: () => string;
-export declare const loginTeacher: (loginTeacherBody: LoginTeacherBody, options?: RequestInit) => Promise<AuthResponse>;
+export declare const loginTeacher: (loginTeacherBody: LoginTeacherBody, options?: Parameters<typeof customFetch>[1]) => Promise<AuthResponse>;
+export declare const getLoginTeacherMutationKey: () => readonly ["loginTeacher"];
 export declare const getLoginTeacherMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacher>>, TError, {
-        data: BodyType<LoginTeacherBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacher>>, TError, LoginTeacherMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof loginTeacher>>, TError, {
-    data: BodyType<LoginTeacherBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof loginTeacher>>, TError, LoginTeacherMutationVariables, TContext>;
 export type LoginTeacherMutationResult = NonNullable<Awaited<ReturnType<typeof loginTeacher>>>;
 export type LoginTeacherMutationBody = BodyType<LoginTeacherBody>;
 export type LoginTeacherMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Teacher login
- */
-export declare const useLoginTeacher: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacher>>, TError, {
-        data: BodyType<LoginTeacherBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof loginTeacher>>, TError, {
+export type LoginTeacherMutationVariables = {
     data: BodyType<LoginTeacherBody>;
-}, TContext>;
+};
+/**
+* @summary Teacher login
+*/
+export declare const useLoginTeacher: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacher>>, TError, LoginTeacherMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof loginTeacher>>, TError, LoginTeacherMutationVariables, TContext>;
+export declare const getGetCurrentTeacherUrl: () => string;
 /**
  * @summary Get current teacher info
  */
-export declare const getGetCurrentTeacherUrl: () => string;
-export declare const getCurrentTeacher: (options?: RequestInit) => Promise<TeacherProfile>;
+export declare const getCurrentTeacher: (options?: Parameters<typeof customFetch>[1]) => Promise<TeacherProfile>;
 export declare const getGetCurrentTeacherQueryKey: () => readonly ["/api/auth/me"];
 export declare const getGetCurrentTeacherQueryOptions: <TData = Awaited<ReturnType<typeof getCurrentTeacher>>, TError = ErrorType<ErrorResponse>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getCurrentTeacher>>, TError, TData>;
@@ -105,65 +97,58 @@ export declare function useGetCurrentTeacher<TData = Awaited<ReturnType<typeof g
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdateTeacherProfileUrl: () => string;
 /**
  * @summary Update teacher profile
  */
-export declare const getUpdateTeacherProfileUrl: () => string;
-export declare const updateTeacherProfile: (updateProfileBody: UpdateProfileBody, options?: RequestInit) => Promise<TeacherProfile>;
+export declare const updateTeacherProfile: (updateProfileBody: UpdateProfileBody, options?: Parameters<typeof customFetch>[1]) => Promise<TeacherProfile>;
+export declare const getUpdateTeacherProfileMutationKey: () => readonly ["updateTeacherProfile"];
 export declare const getUpdateTeacherProfileMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, {
-        data: BodyType<UpdateProfileBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, UpdateTeacherProfileMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, {
-    data: BodyType<UpdateProfileBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, UpdateTeacherProfileMutationVariables, TContext>;
 export type UpdateTeacherProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateTeacherProfile>>>;
 export type UpdateTeacherProfileMutationBody = BodyType<UpdateProfileBody>;
 export type UpdateTeacherProfileMutationError = ErrorType<void>;
-/**
- * @summary Update teacher profile
- */
-export declare const useUpdateTeacherProfile: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, {
-        data: BodyType<UpdateProfileBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, {
+export type UpdateTeacherProfileMutationVariables = {
     data: BodyType<UpdateProfileBody>;
-}, TContext>;
+};
+/**
+* @summary Update teacher profile
+*/
+export declare const useUpdateTeacherProfile: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, UpdateTeacherProfileMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateTeacherProfile>>, TError, UpdateTeacherProfileMutationVariables, TContext>;
+export declare const getUpdateTeacherRoleUrl: () => string;
 /**
  * @summary Change current user's role (teacher ↔ organizer)
  */
-export declare const getUpdateTeacherRoleUrl: () => string;
-export declare const updateTeacherRole: (updateRoleBody: UpdateRoleBody, options?: RequestInit) => Promise<TeacherProfile>;
+export declare const updateTeacherRole: (updateRoleBody: UpdateRoleBody, options?: Parameters<typeof customFetch>[1]) => Promise<TeacherProfile>;
+export declare const getUpdateTeacherRoleMutationKey: () => readonly ["updateTeacherRole"];
 export declare const getUpdateTeacherRoleMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherRole>>, TError, {
-        data: BodyType<UpdateRoleBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherRole>>, TError, UpdateTeacherRoleMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updateTeacherRole>>, TError, {
-    data: BodyType<UpdateRoleBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateTeacherRole>>, TError, UpdateTeacherRoleMutationVariables, TContext>;
 export type UpdateTeacherRoleMutationResult = NonNullable<Awaited<ReturnType<typeof updateTeacherRole>>>;
 export type UpdateTeacherRoleMutationBody = BodyType<UpdateRoleBody>;
 export type UpdateTeacherRoleMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Change current user's role (teacher ↔ organizer)
- */
-export declare const useUpdateTeacherRole: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherRole>>, TError, {
-        data: BodyType<UpdateRoleBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updateTeacherRole>>, TError, {
+export type UpdateTeacherRoleMutationVariables = {
     data: BodyType<UpdateRoleBody>;
-}, TContext>;
+};
+/**
+* @summary Change current user's role (teacher ↔ organizer)
+*/
+export declare const useUpdateTeacherRole: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherRole>>, TError, UpdateTeacherRoleMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateTeacherRole>>, TError, UpdateTeacherRoleMutationVariables, TContext>;
+export declare const getLogoutTeacherUrl: () => string;
 /**
  * @summary Logout teacher
  */
-export declare const getLogoutTeacherUrl: () => string;
-export declare const logoutTeacher: (options?: RequestInit) => Promise<SuccessResponse>;
+export declare const logoutTeacher: (options?: Parameters<typeof customFetch>[1]) => Promise<SuccessResponse>;
+export declare const getLogoutTeacherMutationKey: () => readonly ["logoutTeacher"];
 export declare const getLogoutTeacherMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof logoutTeacher>>, TError, void, TContext>;
     request?: SecondParameter<typeof customFetch>;
@@ -171,44 +156,40 @@ export declare const getLogoutTeacherMutationOptions: <TError = ErrorType<unknow
 export type LogoutTeacherMutationResult = NonNullable<Awaited<ReturnType<typeof logoutTeacher>>>;
 export type LogoutTeacherMutationError = ErrorType<unknown>;
 /**
- * @summary Logout teacher
- */
+* @summary Logout teacher
+*/
 export declare const useLogoutTeacher: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof logoutTeacher>>, TError, void, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof logoutTeacher>>, TError, void, TContext>;
+export declare const getLoginTeacherWithGoogleUrl: () => string;
 /**
  * @summary Login or register a teacher using a Google ID token
  */
-export declare const getLoginTeacherWithGoogleUrl: () => string;
-export declare const loginTeacherWithGoogle: (googleLoginBody: GoogleLoginBody, options?: RequestInit) => Promise<AuthResponse>;
+export declare const loginTeacherWithGoogle: (googleLoginBody: GoogleLoginBody, options?: Parameters<typeof customFetch>[1]) => Promise<AuthResponse>;
+export declare const getLoginTeacherWithGoogleMutationKey: () => readonly ["loginTeacherWithGoogle"];
 export declare const getLoginTeacherWithGoogleMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, {
-        data: BodyType<GoogleLoginBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, LoginTeacherWithGoogleMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, {
-    data: BodyType<GoogleLoginBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, LoginTeacherWithGoogleMutationVariables, TContext>;
 export type LoginTeacherWithGoogleMutationResult = NonNullable<Awaited<ReturnType<typeof loginTeacherWithGoogle>>>;
 export type LoginTeacherWithGoogleMutationBody = BodyType<GoogleLoginBody>;
 export type LoginTeacherWithGoogleMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Login or register a teacher using a Google ID token
- */
-export declare const useLoginTeacherWithGoogle: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, {
-        data: BodyType<GoogleLoginBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, {
+export type LoginTeacherWithGoogleMutationVariables = {
     data: BodyType<GoogleLoginBody>;
-}, TContext>;
+};
+/**
+* @summary Login or register a teacher using a Google ID token
+*/
+export declare const useLoginTeacherWithGoogle: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, LoginTeacherWithGoogleMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof loginTeacherWithGoogle>>, TError, LoginTeacherWithGoogleMutationVariables, TContext>;
+export declare const getGetBriefPreferencesUrl: () => string;
 /**
  * @summary Get the teacher's saved brief preferences
  */
-export declare const getGetBriefPreferencesUrl: () => string;
-export declare const getBriefPreferences: (options?: RequestInit) => Promise<BriefPreferences>;
+export declare const getBriefPreferences: (options?: Parameters<typeof customFetch>[1]) => Promise<BriefPreferences>;
 export declare const getGetBriefPreferencesQueryKey: () => readonly ["/api/auth/preferences"];
 export declare const getGetBriefPreferencesQueryOptions: <TData = Awaited<ReturnType<typeof getBriefPreferences>>, TError = ErrorType<ErrorResponse>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getBriefPreferences>>, TError, TData>;
@@ -227,38 +208,34 @@ export declare function useGetBriefPreferences<TData = Awaited<ReturnType<typeof
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdateBriefPreferencesUrl: () => string;
 /**
  * @summary Persist the teacher's brief preferences server-side
  */
-export declare const getUpdateBriefPreferencesUrl: () => string;
-export declare const updateBriefPreferences: (briefPreferences: BriefPreferences, options?: RequestInit) => Promise<BriefPreferences>;
+export declare const updateBriefPreferences: (briefPreferences: BriefPreferences, options?: Parameters<typeof customFetch>[1]) => Promise<BriefPreferences>;
+export declare const getUpdateBriefPreferencesMutationKey: () => readonly ["updateBriefPreferences"];
 export declare const getUpdateBriefPreferencesMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, {
-        data: BodyType<BriefPreferences>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, UpdateBriefPreferencesMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, {
-    data: BodyType<BriefPreferences>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, UpdateBriefPreferencesMutationVariables, TContext>;
 export type UpdateBriefPreferencesMutationResult = NonNullable<Awaited<ReturnType<typeof updateBriefPreferences>>>;
 export type UpdateBriefPreferencesMutationBody = BodyType<BriefPreferences>;
 export type UpdateBriefPreferencesMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Persist the teacher's brief preferences server-side
- */
-export declare const useUpdateBriefPreferences: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, {
-        data: BodyType<BriefPreferences>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, {
+export type UpdateBriefPreferencesMutationVariables = {
     data: BodyType<BriefPreferences>;
-}, TContext>;
+};
+/**
+* @summary Persist the teacher's brief preferences server-side
+*/
+export declare const useUpdateBriefPreferences: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, UpdateBriefPreferencesMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateBriefPreferences>>, TError, UpdateBriefPreferencesMutationVariables, TContext>;
+export declare const getListTeacherSessionsUrl: () => string;
 /**
  * @summary List active sessions for the current teacher
  */
-export declare const getListTeacherSessionsUrl: () => string;
-export declare const listTeacherSessions: (options?: RequestInit) => Promise<TeacherSession[]>;
+export declare const listTeacherSessions: (options?: Parameters<typeof customFetch>[1]) => Promise<TeacherSession[]>;
 export declare const getListTeacherSessionsQueryKey: () => readonly ["/api/auth/sessions"];
 export declare const getListTeacherSessionsQueryOptions: <TData = Awaited<ReturnType<typeof listTeacherSessions>>, TError = ErrorType<void>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listTeacherSessions>>, TError, TData>;
@@ -277,11 +254,12 @@ export declare function useListTeacherSessions<TData = Awaited<ReturnType<typeof
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getRevokeOtherTeacherSessionsUrl: () => string;
 /**
  * @summary Revoke all sessions for the current teacher except the current one
  */
-export declare const getRevokeOtherTeacherSessionsUrl: () => string;
-export declare const revokeOtherTeacherSessions: (options?: RequestInit) => Promise<RevokeSessionsResponse>;
+export declare const revokeOtherTeacherSessions: (options?: Parameters<typeof customFetch>[1]) => Promise<RevokeSessionsResponse>;
+export declare const getRevokeOtherTeacherSessionsMutationKey: () => readonly ["revokeOtherTeacherSessions"];
 export declare const getRevokeOtherTeacherSessionsMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof revokeOtherTeacherSessions>>, TError, void, TContext>;
     request?: SecondParameter<typeof customFetch>;
@@ -289,214 +267,177 @@ export declare const getRevokeOtherTeacherSessionsMutationOptions: <TError = Err
 export type RevokeOtherTeacherSessionsMutationResult = NonNullable<Awaited<ReturnType<typeof revokeOtherTeacherSessions>>>;
 export type RevokeOtherTeacherSessionsMutationError = ErrorType<void>;
 /**
- * @summary Revoke all sessions for the current teacher except the current one
- */
+* @summary Revoke all sessions for the current teacher except the current one
+*/
 export declare const useRevokeOtherTeacherSessions: <TError = ErrorType<void>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof revokeOtherTeacherSessions>>, TError, void, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof revokeOtherTeacherSessions>>, TError, void, TContext>;
+export declare const getRevokeTeacherSessionUrl: (sid: string) => string;
 /**
  * @summary Revoke a specific session for the current teacher
  */
-export declare const getRevokeTeacherSessionUrl: (sid: string) => string;
-export declare const revokeTeacherSession: (sid: string, options?: RequestInit) => Promise<RevokeSessionResponse>;
+export declare const revokeTeacherSession: (sid: string, options?: Parameters<typeof customFetch>[1]) => Promise<RevokeSessionResponse>;
+export declare const getRevokeTeacherSessionMutationKey: () => readonly ["revokeTeacherSession"];
 export declare const getRevokeTeacherSessionMutationOptions: <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, {
-        sid: string;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, RevokeTeacherSessionMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, {
-    sid: string;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, RevokeTeacherSessionMutationVariables, TContext>;
 export type RevokeTeacherSessionMutationResult = NonNullable<Awaited<ReturnType<typeof revokeTeacherSession>>>;
 export type RevokeTeacherSessionMutationError = ErrorType<void | ErrorResponse>;
-/**
- * @summary Revoke a specific session for the current teacher
- */
-export declare const useRevokeTeacherSession: <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, {
-        sid: string;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, {
+export type RevokeTeacherSessionMutationVariables = {
     sid: string;
-}, TContext>;
+};
 /**
- * @summary Hide a shared assignment from the public library (admin only)
- */
+* @summary Revoke a specific session for the current teacher
+*/
+export declare const useRevokeTeacherSession: <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, RevokeTeacherSessionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof revokeTeacherSession>>, TError, RevokeTeacherSessionMutationVariables, TContext>;
 export declare const getAdminHideAssignmentUrl: (id: number) => string;
-export declare const adminHideAssignment: (id: number, adminHideAssignmentBody?: AdminHideAssignmentBody, options?: RequestInit) => Promise<void>;
-export declare const getAdminHideAssignmentMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideAssignment>>, TError, {
-        id: number;
-        data: BodyType<AdminHideAssignmentBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof adminHideAssignment>>, TError, {
-    id: number;
-    data: BodyType<AdminHideAssignmentBody>;
-}, TContext>;
-export type AdminHideAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof adminHideAssignment>>>;
-export type AdminHideAssignmentMutationBody = BodyType<AdminHideAssignmentBody>;
-export type AdminHideAssignmentMutationError = ErrorType<void>;
 /**
  * @summary Hide a shared assignment from the public library (admin only)
  */
-export declare const useAdminHideAssignment: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideAssignment>>, TError, {
-        id: number;
-        data: BodyType<AdminHideAssignmentBody>;
-    }, TContext>;
+export declare const adminHideAssignment: (id: number, adminHideAssignmentBody?: AdminHideAssignmentBody, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getAdminHideAssignmentMutationKey: () => readonly ["adminHideAssignment"];
+export declare const getAdminHideAssignmentMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideAssignment>>, TError, AdminHideAssignmentMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof adminHideAssignment>>, TError, {
+}) => UseMutationOptions<Awaited<ReturnType<typeof adminHideAssignment>>, TError, AdminHideAssignmentMutationVariables, TContext>;
+export type AdminHideAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof adminHideAssignment>>>;
+export type AdminHideAssignmentMutationBody = BodyType<AdminHideAssignmentBody> | undefined;
+export type AdminHideAssignmentMutationError = ErrorType<void>;
+export type AdminHideAssignmentMutationVariables = {
     id: number;
-    data: BodyType<AdminHideAssignmentBody>;
-}, TContext>;
+    data?: BodyType<AdminHideAssignmentBody>;
+};
+/**
+* @summary Hide a shared assignment from the public library (admin only)
+*/
+export declare const useAdminHideAssignment: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideAssignment>>, TError, AdminHideAssignmentMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof adminHideAssignment>>, TError, AdminHideAssignmentMutationVariables, TContext>;
+export declare const getAdminUnhideAssignmentUrl: (id: number) => string;
 /**
  * @summary Restore a previously hidden assignment to the public library
  */
-export declare const getAdminUnhideAssignmentUrl: (id: number) => string;
-export declare const adminUnhideAssignment: (id: number, options?: RequestInit) => Promise<void>;
+export declare const adminUnhideAssignment: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getAdminUnhideAssignmentMutationKey: () => readonly ["adminUnhideAssignment"];
 export declare const getAdminUnhideAssignmentMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, AdminUnhideAssignmentMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, AdminUnhideAssignmentMutationVariables, TContext>;
 export type AdminUnhideAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof adminUnhideAssignment>>>;
 export type AdminUnhideAssignmentMutationError = ErrorType<void>;
+export type AdminUnhideAssignmentMutationVariables = {
+    id: number;
+};
 /**
- * @summary Restore a previously hidden assignment to the public library
- */
+* @summary Restore a previously hidden assignment to the public library
+*/
 export declare const useAdminUnhideAssignment: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, AdminUnhideAssignmentMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, {
-    id: number;
-}, TContext>;
-/**
- * @summary Hide a shared question-bank item from the public library
- */
+}) => UseMutationResult<Awaited<ReturnType<typeof adminUnhideAssignment>>, TError, AdminUnhideAssignmentMutationVariables, TContext>;
 export declare const getAdminHideQuestionBankItemUrl: (id: number) => string;
-export declare const adminHideQuestionBankItem: (id: number, adminHideQuestionBankItemBody?: AdminHideQuestionBankItemBody, options?: RequestInit) => Promise<void>;
-export declare const getAdminHideQuestionBankItemMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, {
-        id: number;
-        data: BodyType<AdminHideQuestionBankItemBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, {
-    id: number;
-    data: BodyType<AdminHideQuestionBankItemBody>;
-}, TContext>;
-export type AdminHideQuestionBankItemMutationResult = NonNullable<Awaited<ReturnType<typeof adminHideQuestionBankItem>>>;
-export type AdminHideQuestionBankItemMutationBody = BodyType<AdminHideQuestionBankItemBody>;
-export type AdminHideQuestionBankItemMutationError = ErrorType<void>;
 /**
  * @summary Hide a shared question-bank item from the public library
  */
-export declare const useAdminHideQuestionBankItem: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, {
-        id: number;
-        data: BodyType<AdminHideQuestionBankItemBody>;
-    }, TContext>;
+export declare const adminHideQuestionBankItem: (id: number, adminHideQuestionBankItemBody?: AdminHideQuestionBankItemBody, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getAdminHideQuestionBankItemMutationKey: () => readonly ["adminHideQuestionBankItem"];
+export declare const getAdminHideQuestionBankItemMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, AdminHideQuestionBankItemMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, {
+}) => UseMutationOptions<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, AdminHideQuestionBankItemMutationVariables, TContext>;
+export type AdminHideQuestionBankItemMutationResult = NonNullable<Awaited<ReturnType<typeof adminHideQuestionBankItem>>>;
+export type AdminHideQuestionBankItemMutationBody = BodyType<AdminHideQuestionBankItemBody> | undefined;
+export type AdminHideQuestionBankItemMutationError = ErrorType<void>;
+export type AdminHideQuestionBankItemMutationVariables = {
     id: number;
-    data: BodyType<AdminHideQuestionBankItemBody>;
-}, TContext>;
+    data?: BodyType<AdminHideQuestionBankItemBody>;
+};
+/**
+* @summary Hide a shared question-bank item from the public library
+*/
+export declare const useAdminHideQuestionBankItem: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, AdminHideQuestionBankItemMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof adminHideQuestionBankItem>>, TError, AdminHideQuestionBankItemMutationVariables, TContext>;
+export declare const getAdminUnhideQuestionBankItemUrl: (id: number) => string;
 /**
  * @summary Restore a hidden question-bank item to the public library
  */
-export declare const getAdminUnhideQuestionBankItemUrl: (id: number) => string;
-export declare const adminUnhideQuestionBankItem: (id: number, options?: RequestInit) => Promise<void>;
+export declare const adminUnhideQuestionBankItem: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getAdminUnhideQuestionBankItemMutationKey: () => readonly ["adminUnhideQuestionBankItem"];
 export declare const getAdminUnhideQuestionBankItemMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, AdminUnhideQuestionBankItemMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, AdminUnhideQuestionBankItemMutationVariables, TContext>;
 export type AdminUnhideQuestionBankItemMutationResult = NonNullable<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>>;
 export type AdminUnhideQuestionBankItemMutationError = ErrorType<void>;
+export type AdminUnhideQuestionBankItemMutationVariables = {
+    id: number;
+};
 /**
- * @summary Restore a hidden question-bank item to the public library
- */
+* @summary Restore a hidden question-bank item to the public library
+*/
 export declare const useAdminUnhideQuestionBankItem: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, AdminUnhideQuestionBankItemMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, {
-    id: number;
-}, TContext>;
-/**
- * @summary Hide a shared video lesson from the public library
- */
+}) => UseMutationResult<Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>, TError, AdminUnhideQuestionBankItemMutationVariables, TContext>;
 export declare const getAdminHideVideoLessonUrl: (id: number) => string;
-export declare const adminHideVideoLesson: (id: number, adminHideVideoLessonBody?: AdminHideVideoLessonBody, options?: RequestInit) => Promise<void>;
-export declare const getAdminHideVideoLessonMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, {
-        id: number;
-        data: BodyType<AdminHideVideoLessonBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, {
-    id: number;
-    data: BodyType<AdminHideVideoLessonBody>;
-}, TContext>;
-export type AdminHideVideoLessonMutationResult = NonNullable<Awaited<ReturnType<typeof adminHideVideoLesson>>>;
-export type AdminHideVideoLessonMutationBody = BodyType<AdminHideVideoLessonBody>;
-export type AdminHideVideoLessonMutationError = ErrorType<void>;
 /**
  * @summary Hide a shared video lesson from the public library
  */
-export declare const useAdminHideVideoLesson: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, {
-        id: number;
-        data: BodyType<AdminHideVideoLessonBody>;
-    }, TContext>;
+export declare const adminHideVideoLesson: (id: number, adminHideVideoLessonBody?: AdminHideVideoLessonBody, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getAdminHideVideoLessonMutationKey: () => readonly ["adminHideVideoLesson"];
+export declare const getAdminHideVideoLessonMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, AdminHideVideoLessonMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, {
+}) => UseMutationOptions<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, AdminHideVideoLessonMutationVariables, TContext>;
+export type AdminHideVideoLessonMutationResult = NonNullable<Awaited<ReturnType<typeof adminHideVideoLesson>>>;
+export type AdminHideVideoLessonMutationBody = BodyType<AdminHideVideoLessonBody> | undefined;
+export type AdminHideVideoLessonMutationError = ErrorType<void>;
+export type AdminHideVideoLessonMutationVariables = {
     id: number;
-    data: BodyType<AdminHideVideoLessonBody>;
-}, TContext>;
+    data?: BodyType<AdminHideVideoLessonBody>;
+};
+/**
+* @summary Hide a shared video lesson from the public library
+*/
+export declare const useAdminHideVideoLesson: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, AdminHideVideoLessonMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof adminHideVideoLesson>>, TError, AdminHideVideoLessonMutationVariables, TContext>;
+export declare const getAdminUnhideVideoLessonUrl: (id: number) => string;
 /**
  * @summary Restore a hidden video lesson to the public library
  */
-export declare const getAdminUnhideVideoLessonUrl: (id: number) => string;
-export declare const adminUnhideVideoLesson: (id: number, options?: RequestInit) => Promise<void>;
+export declare const adminUnhideVideoLesson: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getAdminUnhideVideoLessonMutationKey: () => readonly ["adminUnhideVideoLesson"];
 export declare const getAdminUnhideVideoLessonMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, AdminUnhideVideoLessonMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, AdminUnhideVideoLessonMutationVariables, TContext>;
 export type AdminUnhideVideoLessonMutationResult = NonNullable<Awaited<ReturnType<typeof adminUnhideVideoLesson>>>;
 export type AdminUnhideVideoLessonMutationError = ErrorType<void>;
-/**
- * @summary Restore a hidden video lesson to the public library
- */
-export declare const useAdminUnhideVideoLesson: <TError = ErrorType<void>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, {
-        id: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, {
+export type AdminUnhideVideoLessonMutationVariables = {
     id: number;
-}, TContext>;
+};
+/**
+* @summary Restore a hidden video lesson to the public library
+*/
+export declare const useAdminUnhideVideoLesson: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, AdminUnhideVideoLessonMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof adminUnhideVideoLesson>>, TError, AdminUnhideVideoLessonMutationVariables, TContext>;
+export declare const getListAllTeachersUrl: () => string;
 /**
  * @summary List all registered teachers with stats
  */
-export declare const getListAllTeachersUrl: () => string;
-export declare const listAllTeachers: (options?: RequestInit) => Promise<AdminTeacherSummary[]>;
+export declare const listAllTeachers: (options?: Parameters<typeof customFetch>[1]) => Promise<AdminTeacherSummary[]>;
 export declare const getListAllTeachersQueryKey: () => readonly ["/api/admin/teachers"];
 export declare const getListAllTeachersQueryOptions: <TData = Awaited<ReturnType<typeof listAllTeachers>>, TError = ErrorType<void>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listAllTeachers>>, TError, TData>;
@@ -515,11 +456,11 @@ export declare function useListAllTeachers<TData = Awaited<ReturnType<typeof lis
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getListAssignmentsUrl: (params?: ListAssignmentsParams) => string;
 /**
  * @summary List all assignments
  */
-export declare const getListAssignmentsUrl: (params?: ListAssignmentsParams) => string;
-export declare const listAssignments: (params?: ListAssignmentsParams, options?: RequestInit) => Promise<Assignment[]>;
+export declare const listAssignments: (params?: ListAssignmentsParams, options?: Parameters<typeof customFetch>[1]) => Promise<Assignment[]>;
 export declare const getListAssignmentsQueryKey: (params?: ListAssignmentsParams) => readonly ["/api/assignments", ...ListAssignmentsParams[]];
 export declare const getListAssignmentsQueryOptions: <TData = Awaited<ReturnType<typeof listAssignments>>, TError = ErrorType<unknown>>(params?: ListAssignmentsParams, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listAssignments>>, TError, TData>;
@@ -538,38 +479,34 @@ export declare function useListAssignments<TData = Awaited<ReturnType<typeof lis
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getCreateAssignmentUrl: () => string;
 /**
  * @summary Create a new assignment
  */
-export declare const getCreateAssignmentUrl: () => string;
-export declare const createAssignment: (createAssignmentBody: CreateAssignmentBody, options?: RequestInit) => Promise<Assignment>;
+export declare const createAssignment: (createAssignmentBody: CreateAssignmentBody, options?: Parameters<typeof customFetch>[1]) => Promise<Assignment>;
+export declare const getCreateAssignmentMutationKey: () => readonly ["createAssignment"];
 export declare const getCreateAssignmentMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createAssignment>>, TError, {
-        data: BodyType<CreateAssignmentBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createAssignment>>, TError, CreateAssignmentMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof createAssignment>>, TError, {
-    data: BodyType<CreateAssignmentBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof createAssignment>>, TError, CreateAssignmentMutationVariables, TContext>;
 export type CreateAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof createAssignment>>>;
 export type CreateAssignmentMutationBody = BodyType<CreateAssignmentBody>;
 export type CreateAssignmentMutationError = ErrorType<unknown>;
-/**
- * @summary Create a new assignment
- */
-export declare const useCreateAssignment: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createAssignment>>, TError, {
-        data: BodyType<CreateAssignmentBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof createAssignment>>, TError, {
+export type CreateAssignmentMutationVariables = {
     data: BodyType<CreateAssignmentBody>;
-}, TContext>;
+};
+/**
+* @summary Create a new assignment
+*/
+export declare const useCreateAssignment: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createAssignment>>, TError, CreateAssignmentMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof createAssignment>>, TError, CreateAssignmentMutationVariables, TContext>;
+export declare const getGetAssignmentUrl: (id: number) => string;
 /**
  * @summary Get assignment with questions
  */
-export declare const getGetAssignmentUrl: (id: number) => string;
-export declare const getAssignment: (id: number, options?: RequestInit) => Promise<AssignmentWithQuestions>;
+export declare const getAssignment: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<AssignmentWithQuestions>;
 export declare const getGetAssignmentQueryKey: (id: number) => readonly [`/api/assignments/${number}`];
 export declare const getGetAssignmentQueryOptions: <TData = Awaited<ReturnType<typeof getAssignment>>, TError = ErrorType<ErrorResponse>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getAssignment>>, TError, TData>;
@@ -588,130 +525,129 @@ export declare function useGetAssignment<TData = Awaited<ReturnType<typeof getAs
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getDeleteAssignmentUrl: (id: number) => string;
 /**
  * @summary Delete an assignment
  */
-export declare const getDeleteAssignmentUrl: (id: number) => string;
-export declare const deleteAssignment: (id: number, options?: RequestInit) => Promise<SuccessResponse>;
+export declare const deleteAssignment: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<SuccessResponse>;
+export declare const getDeleteAssignmentMutationKey: () => readonly ["deleteAssignment"];
 export declare const getDeleteAssignmentMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAssignment>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAssignment>>, TError, DeleteAssignmentMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof deleteAssignment>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof deleteAssignment>>, TError, DeleteAssignmentMutationVariables, TContext>;
 export type DeleteAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAssignment>>>;
 export type DeleteAssignmentMutationError = ErrorType<unknown>;
-/**
- * @summary Delete an assignment
- */
-export declare const useDeleteAssignment: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAssignment>>, TError, {
-        id: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof deleteAssignment>>, TError, {
+export type DeleteAssignmentMutationVariables = {
     id: number;
-}, TContext>;
+};
+/**
+* @summary Delete an assignment
+*/
+export declare const useDeleteAssignment: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAssignment>>, TError, DeleteAssignmentMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof deleteAssignment>>, TError, DeleteAssignmentMutationVariables, TContext>;
+export declare const getStartExamSessionUrl: (id: number) => string;
 /**
  * @summary Start an exam session (server-side timing)
  */
-export declare const getStartExamSessionUrl: (id: number) => string;
-export declare const startExamSession: (id: number, startExamBody: StartExamBody, options?: RequestInit) => Promise<ExamSessionResponse>;
+export declare const startExamSession: (id: number, startExamBody: StartExamBody, options?: Parameters<typeof customFetch>[1]) => Promise<ExamSessionResponse>;
+export declare const getStartExamSessionMutationKey: () => readonly ["startExamSession"];
 export declare const getStartExamSessionMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof startExamSession>>, TError, {
-        id: number;
-        data: BodyType<StartExamBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof startExamSession>>, TError, StartExamSessionMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof startExamSession>>, TError, {
-    id: number;
-    data: BodyType<StartExamBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof startExamSession>>, TError, StartExamSessionMutationVariables, TContext>;
 export type StartExamSessionMutationResult = NonNullable<Awaited<ReturnType<typeof startExamSession>>>;
 export type StartExamSessionMutationBody = BodyType<StartExamBody>;
 export type StartExamSessionMutationError = ErrorType<unknown>;
-/**
- * @summary Start an exam session (server-side timing)
- */
-export declare const useStartExamSession: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof startExamSession>>, TError, {
-        id: number;
-        data: BodyType<StartExamBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof startExamSession>>, TError, {
+export type StartExamSessionMutationVariables = {
     id: number;
     data: BodyType<StartExamBody>;
-}, TContext>;
+};
+/**
+* @summary Start an exam session (server-side timing)
+*/
+export declare const useStartExamSession: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof startExamSession>>, TError, StartExamSessionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof startExamSession>>, TError, StartExamSessionMutationVariables, TContext>;
+export declare const getUpdateAssignmentLifecycleUrl: (id: number) => string;
+/**
+ * @summary Close or reopen an assignment for new student work
+ */
+export declare const updateAssignmentLifecycle: (id: number, updateAssignmentLifecycleBody: UpdateAssignmentLifecycleBody, options?: Parameters<typeof customFetch>[1]) => Promise<UpdateAssignmentLifecycleResponse>;
+export declare const getUpdateAssignmentLifecycleMutationKey: () => readonly ["updateAssignmentLifecycle"];
+export declare const getUpdateAssignmentLifecycleMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAssignmentLifecycle>>, TError, UpdateAssignmentLifecycleMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateAssignmentLifecycle>>, TError, UpdateAssignmentLifecycleMutationVariables, TContext>;
+export type UpdateAssignmentLifecycleMutationResult = NonNullable<Awaited<ReturnType<typeof updateAssignmentLifecycle>>>;
+export type UpdateAssignmentLifecycleMutationBody = BodyType<UpdateAssignmentLifecycleBody>;
+export type UpdateAssignmentLifecycleMutationError = ErrorType<ErrorResponse>;
+export type UpdateAssignmentLifecycleMutationVariables = {
+    id: number;
+    data: BodyType<UpdateAssignmentLifecycleBody>;
+};
+/**
+* @summary Close or reopen an assignment for new student work
+*/
+export declare const useUpdateAssignmentLifecycle: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAssignmentLifecycle>>, TError, UpdateAssignmentLifecycleMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateAssignmentLifecycle>>, TError, UpdateAssignmentLifecycleMutationVariables, TContext>;
+export declare const getSubmitAssignmentUrl: (id: number) => string;
 /**
  * @summary Submit answers for an assignment
  */
-export declare const getSubmitAssignmentUrl: (id: number) => string;
-export declare const submitAssignment: (id: number, submitAssignmentBody: SubmitAssignmentBody, options?: RequestInit) => Promise<SubmissionResult>;
+export declare const submitAssignment: (id: number, submitAssignmentBody: SubmitAssignmentBody, options?: Parameters<typeof customFetch>[1]) => Promise<SubmissionResult>;
+export declare const getSubmitAssignmentMutationKey: () => readonly ["submitAssignment"];
 export declare const getSubmitAssignmentMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignment>>, TError, {
-        id: number;
-        data: BodyType<SubmitAssignmentBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignment>>, TError, SubmitAssignmentMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof submitAssignment>>, TError, {
-    id: number;
-    data: BodyType<SubmitAssignmentBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof submitAssignment>>, TError, SubmitAssignmentMutationVariables, TContext>;
 export type SubmitAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof submitAssignment>>>;
 export type SubmitAssignmentMutationBody = BodyType<SubmitAssignmentBody>;
 export type SubmitAssignmentMutationError = ErrorType<unknown>;
-/**
- * @summary Submit answers for an assignment
- */
-export declare const useSubmitAssignment: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignment>>, TError, {
-        id: number;
-        data: BodyType<SubmitAssignmentBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof submitAssignment>>, TError, {
+export type SubmitAssignmentMutationVariables = {
     id: number;
     data: BodyType<SubmitAssignmentBody>;
-}, TContext>;
+};
+/**
+* @summary Submit answers for an assignment
+*/
+export declare const useSubmitAssignment: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignment>>, TError, SubmitAssignmentMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof submitAssignment>>, TError, SubmitAssignmentMutationVariables, TContext>;
+export declare const getSubmitAssignmentImageUrl: (id: number) => string;
 /**
  * @summary Submit assignment via uploaded image
  */
-export declare const getSubmitAssignmentImageUrl: (id: number) => string;
-export declare const submitAssignmentImage: (id: number, submitImageBody: SubmitImageBody, options?: RequestInit) => Promise<SubmissionResult>;
+export declare const submitAssignmentImage: (id: number, submitImageBody: SubmitImageBody, options?: Parameters<typeof customFetch>[1]) => Promise<SubmissionResult>;
+export declare const getSubmitAssignmentImageMutationKey: () => readonly ["submitAssignmentImage"];
 export declare const getSubmitAssignmentImageMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, {
-        id: number;
-        data: BodyType<SubmitImageBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, SubmitAssignmentImageMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, {
-    id: number;
-    data: BodyType<SubmitImageBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, SubmitAssignmentImageMutationVariables, TContext>;
 export type SubmitAssignmentImageMutationResult = NonNullable<Awaited<ReturnType<typeof submitAssignmentImage>>>;
 export type SubmitAssignmentImageMutationBody = BodyType<SubmitImageBody>;
 export type SubmitAssignmentImageMutationError = ErrorType<unknown>;
-/**
- * @summary Submit assignment via uploaded image
- */
-export declare const useSubmitAssignmentImage: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, {
-        id: number;
-        data: BodyType<SubmitImageBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, {
+export type SubmitAssignmentImageMutationVariables = {
     id: number;
     data: BodyType<SubmitImageBody>;
-}, TContext>;
+};
+/**
+* @summary Submit assignment via uploaded image
+*/
+export declare const useSubmitAssignmentImage: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, SubmitAssignmentImageMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof submitAssignmentImage>>, TError, SubmitAssignmentImageMutationVariables, TContext>;
+export declare const getListSubmissionsUrl: (id: number) => string;
 /**
  * @summary List submissions for an assignment
  */
-export declare const getListSubmissionsUrl: (id: number) => string;
-export declare const listSubmissions: (id: number, options?: RequestInit) => Promise<Submission[]>;
+export declare const listSubmissions: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<Submission[]>;
 export declare const getListSubmissionsQueryKey: (id: number) => readonly [`/api/assignments/${number}/submissions`];
 export declare const getListSubmissionsQueryOptions: <TData = Awaited<ReturnType<typeof listSubmissions>>, TError = ErrorType<unknown>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listSubmissions>>, TError, TData>;
@@ -730,11 +666,11 @@ export declare function useListSubmissions<TData = Awaited<ReturnType<typeof lis
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getExportSubmissionsCsvUrl: (id: number) => string;
 /**
  * @summary Export submissions as CSV
  */
-export declare const getExportSubmissionsCsvUrl: (id: number) => string;
-export declare const exportSubmissionsCsv: (id: number, options?: RequestInit) => Promise<string>;
+export declare const exportSubmissionsCsv: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<string>;
 export declare const getExportSubmissionsCsvQueryKey: (id: number) => readonly [`/api/assignments/${number}/export-csv`];
 export declare const getExportSubmissionsCsvQueryOptions: <TData = Awaited<ReturnType<typeof exportSubmissionsCsv>>, TError = ErrorType<unknown>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof exportSubmissionsCsv>>, TError, TData>;
@@ -753,42 +689,35 @@ export declare function useExportSubmissionsCsv<TData = Awaited<ReturnType<typeo
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdateSubmissionUrl: (submissionId: number) => string;
 /**
  * @summary Update submission grade (teacher only)
  */
-export declare const getUpdateSubmissionUrl: (submissionId: number) => string;
-export declare const updateSubmission: (submissionId: number, updateSubmissionBody: UpdateSubmissionBody, options?: RequestInit) => Promise<Submission>;
+export declare const updateSubmission: (submissionId: number, updateSubmissionBody: UpdateSubmissionBody, options?: Parameters<typeof customFetch>[1]) => Promise<Submission>;
+export declare const getUpdateSubmissionMutationKey: () => readonly ["updateSubmission"];
 export declare const getUpdateSubmissionMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateSubmission>>, TError, {
-        submissionId: number;
-        data: BodyType<UpdateSubmissionBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateSubmission>>, TError, UpdateSubmissionMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updateSubmission>>, TError, {
-    submissionId: number;
-    data: BodyType<UpdateSubmissionBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateSubmission>>, TError, UpdateSubmissionMutationVariables, TContext>;
 export type UpdateSubmissionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSubmission>>>;
 export type UpdateSubmissionMutationBody = BodyType<UpdateSubmissionBody>;
 export type UpdateSubmissionMutationError = ErrorType<unknown>;
-/**
- * @summary Update submission grade (teacher only)
- */
-export declare const useUpdateSubmission: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateSubmission>>, TError, {
-        submissionId: number;
-        data: BodyType<UpdateSubmissionBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updateSubmission>>, TError, {
+export type UpdateSubmissionMutationVariables = {
     submissionId: number;
     data: BodyType<UpdateSubmissionBody>;
-}, TContext>;
+};
+/**
+* @summary Update submission grade (teacher only)
+*/
+export declare const useUpdateSubmission: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateSubmission>>, TError, UpdateSubmissionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateSubmission>>, TError, UpdateSubmissionMutationVariables, TContext>;
+export declare const getGetSubmissionDetailsUrl: (submissionId: number) => string;
 /**
  * @summary Get full submission with per-answer details (teacher only)
  */
-export declare const getGetSubmissionDetailsUrl: (submissionId: number) => string;
-export declare const getSubmissionDetails: (submissionId: number, options?: RequestInit) => Promise<SubmissionDetail>;
+export declare const getSubmissionDetails: (submissionId: number, options?: Parameters<typeof customFetch>[1]) => Promise<SubmissionDetail>;
 export declare const getGetSubmissionDetailsQueryKey: (submissionId: number) => readonly [`/api/submissions/${number}/details`];
 export declare const getGetSubmissionDetailsQueryOptions: <TData = Awaited<ReturnType<typeof getSubmissionDetails>>, TError = ErrorType<unknown>>(submissionId: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getSubmissionDetails>>, TError, TData>;
@@ -807,69 +736,58 @@ export declare function useGetSubmissionDetails<TData = Awaited<ReturnType<typeo
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdateAnswerGradeUrl: (answerId: number) => string;
 /**
  * @summary Manually grade a single answer (teacher only)
  */
-export declare const getUpdateAnswerGradeUrl: (answerId: number) => string;
-export declare const updateAnswerGrade: (answerId: number, updateAnswerBody: UpdateAnswerBody, options?: RequestInit) => Promise<SubmissionDetail>;
+export declare const updateAnswerGrade: (answerId: number, updateAnswerBody: UpdateAnswerBody, options?: Parameters<typeof customFetch>[1]) => Promise<SubmissionDetail>;
+export declare const getUpdateAnswerGradeMutationKey: () => readonly ["updateAnswerGrade"];
 export declare const getUpdateAnswerGradeMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, {
-        answerId: number;
-        data: BodyType<UpdateAnswerBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, UpdateAnswerGradeMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, {
-    answerId: number;
-    data: BodyType<UpdateAnswerBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, UpdateAnswerGradeMutationVariables, TContext>;
 export type UpdateAnswerGradeMutationResult = NonNullable<Awaited<ReturnType<typeof updateAnswerGrade>>>;
 export type UpdateAnswerGradeMutationBody = BodyType<UpdateAnswerBody>;
 export type UpdateAnswerGradeMutationError = ErrorType<unknown>;
-/**
- * @summary Manually grade a single answer (teacher only)
- */
-export declare const useUpdateAnswerGrade: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, {
-        answerId: number;
-        data: BodyType<UpdateAnswerBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, {
+export type UpdateAnswerGradeMutationVariables = {
     answerId: number;
     data: BodyType<UpdateAnswerBody>;
-}, TContext>;
+};
+/**
+* @summary Manually grade a single answer (teacher only)
+*/
+export declare const useUpdateAnswerGrade: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, UpdateAnswerGradeMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateAnswerGrade>>, TError, UpdateAnswerGradeMutationVariables, TContext>;
+export declare const getSubmitFeedbackUrl: () => string;
 /**
  * @summary Submit feedback or suggestion
  */
-export declare const getSubmitFeedbackUrl: () => string;
-export declare const submitFeedback: (submitFeedbackBody: SubmitFeedbackBody, options?: RequestInit) => Promise<SuccessResponse>;
+export declare const submitFeedback: (submitFeedbackBody: SubmitFeedbackBody, options?: Parameters<typeof customFetch>[1]) => Promise<SuccessResponse>;
+export declare const getSubmitFeedbackMutationKey: () => readonly ["submitFeedback"];
 export declare const getSubmitFeedbackMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitFeedback>>, TError, {
-        data: BodyType<SubmitFeedbackBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitFeedback>>, TError, SubmitFeedbackMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof submitFeedback>>, TError, {
-    data: BodyType<SubmitFeedbackBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof submitFeedback>>, TError, SubmitFeedbackMutationVariables, TContext>;
 export type SubmitFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof submitFeedback>>>;
 export type SubmitFeedbackMutationBody = BodyType<SubmitFeedbackBody>;
 export type SubmitFeedbackMutationError = ErrorType<unknown>;
-/**
- * @summary Submit feedback or suggestion
- */
-export declare const useSubmitFeedback: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitFeedback>>, TError, {
-        data: BodyType<SubmitFeedbackBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof submitFeedback>>, TError, {
+export type SubmitFeedbackMutationVariables = {
     data: BodyType<SubmitFeedbackBody>;
-}, TContext>;
+};
+/**
+* @summary Submit feedback or suggestion
+*/
+export declare const useSubmitFeedback: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitFeedback>>, TError, SubmitFeedbackMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof submitFeedback>>, TError, SubmitFeedbackMutationVariables, TContext>;
+export declare const getGetPresentationsLimitsUrl: () => string;
 /**
  * @summary Get the effective presentations tier and limits for the caller
  */
-export declare const getGetPresentationsLimitsUrl: () => string;
-export declare const getPresentationsLimits: (options?: RequestInit) => Promise<PresentationTier>;
+export declare const getPresentationsLimits: (options?: Parameters<typeof customFetch>[1]) => Promise<PresentationTier>;
 export declare const getGetPresentationsLimitsQueryKey: () => readonly ["/api/presentations/limits"];
 export declare const getGetPresentationsLimitsQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationsLimits>>, TError = ErrorType<unknown>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationsLimits>>, TError, TData>;
@@ -888,11 +806,11 @@ export declare function useGetPresentationsLimits<TData = Awaited<ReturnType<typ
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getGetPresentationUsageUrl: (id: number) => string;
 /**
  * @summary Get tier limits + per-deck usage for a single presentation
  */
-export declare const getGetPresentationUsageUrl: (id: number) => string;
-export declare const getPresentationUsage: (id: number, options?: RequestInit) => Promise<PresentationTierWithUsage>;
+export declare const getPresentationUsage: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationTierWithUsage>;
 export declare const getGetPresentationUsageQueryKey: (id: number) => readonly [`/api/presentations/${number}/usage`];
 export declare const getGetPresentationUsageQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationUsage>>, TError = ErrorType<unknown>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationUsage>>, TError, TData>;
@@ -911,11 +829,11 @@ export declare function useGetPresentationUsage<TData = Awaited<ReturnType<typeo
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getListPresentationsUrl: () => string;
 /**
  * @summary List own presentations + admin-shared
  */
-export declare const getListPresentationsUrl: () => string;
-export declare const listPresentations: (options?: RequestInit) => Promise<PresentationSummary[]>;
+export declare const listPresentations: (options?: Parameters<typeof customFetch>[1]) => Promise<PresentationSummary[]>;
 export declare const getListPresentationsQueryKey: () => readonly ["/api/presentations"];
 export declare const getListPresentationsQueryOptions: <TData = Awaited<ReturnType<typeof listPresentations>>, TError = ErrorType<void>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listPresentations>>, TError, TData>;
@@ -934,38 +852,34 @@ export declare function useListPresentations<TData = Awaited<ReturnType<typeof l
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getCreatePresentationUrl: () => string;
 /**
  * @summary Create a new presentation
  */
-export declare const getCreatePresentationUrl: () => string;
-export declare const createPresentation: (createPresentationBody: CreatePresentationBody, options?: RequestInit) => Promise<Presentation>;
+export declare const createPresentation: (createPresentationBody: CreatePresentationBody, options?: Parameters<typeof customFetch>[1]) => Promise<Presentation>;
+export declare const getCreatePresentationMutationKey: () => readonly ["createPresentation"];
 export declare const getCreatePresentationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createPresentation>>, TError, {
-        data: BodyType<CreatePresentationBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createPresentation>>, TError, CreatePresentationMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof createPresentation>>, TError, {
-    data: BodyType<CreatePresentationBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof createPresentation>>, TError, CreatePresentationMutationVariables, TContext>;
 export type CreatePresentationMutationResult = NonNullable<Awaited<ReturnType<typeof createPresentation>>>;
 export type CreatePresentationMutationBody = BodyType<CreatePresentationBody>;
 export type CreatePresentationMutationError = ErrorType<unknown>;
-/**
- * @summary Create a new presentation
- */
-export declare const useCreatePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createPresentation>>, TError, {
-        data: BodyType<CreatePresentationBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof createPresentation>>, TError, {
+export type CreatePresentationMutationVariables = {
     data: BodyType<CreatePresentationBody>;
-}, TContext>;
+};
+/**
+* @summary Create a new presentation
+*/
+export declare const useCreatePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createPresentation>>, TError, CreatePresentationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof createPresentation>>, TError, CreatePresentationMutationVariables, TContext>;
+export declare const getGetPresentationUrl: (id: number) => string;
 /**
  * @summary Get a presentation (owner or admin-shared)
  */
-export declare const getGetPresentationUrl: (id: number) => string;
-export declare const getPresentation: (id: number, options?: RequestInit) => Promise<Presentation>;
+export declare const getPresentation: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<Presentation>;
 export declare const getGetPresentationQueryKey: (id: number) => readonly [`/api/presentations/${number}`];
 export declare const getGetPresentationQueryOptions: <TData = Awaited<ReturnType<typeof getPresentation>>, TError = ErrorType<void>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentation>>, TError, TData>;
@@ -984,151 +898,125 @@ export declare function useGetPresentation<TData = Awaited<ReturnType<typeof get
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdatePresentationUrl: (id: number) => string;
 /**
  * @summary Update a presentation (owner only)
  */
-export declare const getUpdatePresentationUrl: (id: number) => string;
-export declare const updatePresentation: (id: number, updatePresentationBody: UpdatePresentationBody, options?: RequestInit) => Promise<Presentation>;
+export declare const updatePresentation: (id: number, updatePresentationBody: UpdatePresentationBody, options?: Parameters<typeof customFetch>[1]) => Promise<Presentation>;
+export declare const getUpdatePresentationMutationKey: () => readonly ["updatePresentation"];
 export declare const getUpdatePresentationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentation>>, TError, {
-        id: number;
-        data: BodyType<UpdatePresentationBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentation>>, TError, UpdatePresentationMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updatePresentation>>, TError, {
-    id: number;
-    data: BodyType<UpdatePresentationBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updatePresentation>>, TError, UpdatePresentationMutationVariables, TContext>;
 export type UpdatePresentationMutationResult = NonNullable<Awaited<ReturnType<typeof updatePresentation>>>;
 export type UpdatePresentationMutationBody = BodyType<UpdatePresentationBody>;
 export type UpdatePresentationMutationError = ErrorType<unknown>;
-/**
- * @summary Update a presentation (owner only)
- */
-export declare const useUpdatePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentation>>, TError, {
-        id: number;
-        data: BodyType<UpdatePresentationBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updatePresentation>>, TError, {
+export type UpdatePresentationMutationVariables = {
     id: number;
     data: BodyType<UpdatePresentationBody>;
-}, TContext>;
+};
+/**
+* @summary Update a presentation (owner only)
+*/
+export declare const useUpdatePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentation>>, TError, UpdatePresentationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updatePresentation>>, TError, UpdatePresentationMutationVariables, TContext>;
+export declare const getDeletePresentationUrl: (id: number) => string;
 /**
  * @summary Delete a presentation (owner only)
  */
-export declare const getDeletePresentationUrl: (id: number) => string;
-export declare const deletePresentation: (id: number, options?: RequestInit) => Promise<SuccessResponse>;
+export declare const deletePresentation: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<SuccessResponse>;
+export declare const getDeletePresentationMutationKey: () => readonly ["deletePresentation"];
 export declare const getDeletePresentationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentation>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentation>>, TError, DeletePresentationMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof deletePresentation>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof deletePresentation>>, TError, DeletePresentationMutationVariables, TContext>;
 export type DeletePresentationMutationResult = NonNullable<Awaited<ReturnType<typeof deletePresentation>>>;
 export type DeletePresentationMutationError = ErrorType<unknown>;
-/**
- * @summary Delete a presentation (owner only)
- */
-export declare const useDeletePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentation>>, TError, {
-        id: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof deletePresentation>>, TError, {
+export type DeletePresentationMutationVariables = {
     id: number;
-}, TContext>;
+};
+/**
+* @summary Delete a presentation (owner only)
+*/
+export declare const useDeletePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentation>>, TError, DeletePresentationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof deletePresentation>>, TError, DeletePresentationMutationVariables, TContext>;
+export declare const getPublishPresentationUrl: (id: number) => string;
 /**
  * @summary Publish a presentation (owner only)
  */
-export declare const getPublishPresentationUrl: (id: number) => string;
-export declare const publishPresentation: (id: number, options?: RequestInit) => Promise<Presentation>;
+export declare const publishPresentation: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<Presentation>;
+export declare const getPublishPresentationMutationKey: () => readonly ["publishPresentation"];
 export declare const getPublishPresentationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof publishPresentation>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof publishPresentation>>, TError, PublishPresentationMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof publishPresentation>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof publishPresentation>>, TError, PublishPresentationMutationVariables, TContext>;
 export type PublishPresentationMutationResult = NonNullable<Awaited<ReturnType<typeof publishPresentation>>>;
 export type PublishPresentationMutationError = ErrorType<unknown>;
-/**
- * @summary Publish a presentation (owner only)
- */
-export declare const usePublishPresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof publishPresentation>>, TError, {
-        id: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof publishPresentation>>, TError, {
+export type PublishPresentationMutationVariables = {
     id: number;
-}, TContext>;
+};
+/**
+* @summary Publish a presentation (owner only)
+*/
+export declare const usePublishPresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof publishPresentation>>, TError, PublishPresentationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof publishPresentation>>, TError, PublishPresentationMutationVariables, TContext>;
+export declare const getUnpublishPresentationUrl: (id: number) => string;
 /**
  * @summary Move a presentation back to draft (owner only)
  */
-export declare const getUnpublishPresentationUrl: (id: number) => string;
-export declare const unpublishPresentation: (id: number, options?: RequestInit) => Promise<Presentation>;
+export declare const unpublishPresentation: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<Presentation>;
+export declare const getUnpublishPresentationMutationKey: () => readonly ["unpublishPresentation"];
 export declare const getUnpublishPresentationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof unpublishPresentation>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof unpublishPresentation>>, TError, UnpublishPresentationMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof unpublishPresentation>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof unpublishPresentation>>, TError, UnpublishPresentationMutationVariables, TContext>;
 export type UnpublishPresentationMutationResult = NonNullable<Awaited<ReturnType<typeof unpublishPresentation>>>;
 export type UnpublishPresentationMutationError = ErrorType<unknown>;
-/**
- * @summary Move a presentation back to draft (owner only)
- */
-export declare const useUnpublishPresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof unpublishPresentation>>, TError, {
-        id: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof unpublishPresentation>>, TError, {
+export type UnpublishPresentationMutationVariables = {
     id: number;
-}, TContext>;
+};
+/**
+* @summary Move a presentation back to draft (owner only)
+*/
+export declare const useUnpublishPresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof unpublishPresentation>>, TError, UnpublishPresentationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof unpublishPresentation>>, TError, UnpublishPresentationMutationVariables, TContext>;
+export declare const getLinkPresentationActivityUrl: (id: number) => string;
 /**
  * @summary Link or unlink the presentation to a teacher activity (assignment)
  */
-export declare const getLinkPresentationActivityUrl: (id: number) => string;
-export declare const linkPresentationActivity: (id: number, linkPresentationActivityBody: LinkPresentationActivityBody, options?: RequestInit) => Promise<LinkPresentationActivity200>;
+export declare const linkPresentationActivity: (id: number, linkPresentationActivityBody: LinkPresentationActivityBody, options?: Parameters<typeof customFetch>[1]) => Promise<LinkPresentationActivity200>;
+export declare const getLinkPresentationActivityMutationKey: () => readonly ["linkPresentationActivity"];
 export declare const getLinkPresentationActivityMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, {
-        id: number;
-        data: BodyType<LinkPresentationActivityBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, LinkPresentationActivityMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, {
-    id: number;
-    data: BodyType<LinkPresentationActivityBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, LinkPresentationActivityMutationVariables, TContext>;
 export type LinkPresentationActivityMutationResult = NonNullable<Awaited<ReturnType<typeof linkPresentationActivity>>>;
 export type LinkPresentationActivityMutationBody = BodyType<LinkPresentationActivityBody>;
 export type LinkPresentationActivityMutationError = ErrorType<unknown>;
-/**
- * @summary Link or unlink the presentation to a teacher activity (assignment)
- */
-export declare const useLinkPresentationActivity: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, {
-        id: number;
-        data: BodyType<LinkPresentationActivityBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, {
+export type LinkPresentationActivityMutationVariables = {
     id: number;
     data: BodyType<LinkPresentationActivityBody>;
-}, TContext>;
+};
+/**
+* @summary Link or unlink the presentation to a teacher activity (assignment)
+*/
+export declare const useLinkPresentationActivity: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, LinkPresentationActivityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof linkPresentationActivity>>, TError, LinkPresentationActivityMutationVariables, TContext>;
+export declare const getGetPresentationLinkedActivityUrl: (id: number) => string;
 /**
  * @summary Resolve the linked activity (or null if none / dangling)
  */
-export declare const getGetPresentationLinkedActivityUrl: (id: number) => string;
-export declare const getPresentationLinkedActivity: (id: number, options?: RequestInit) => Promise<GetPresentationLinkedActivity200>;
+export declare const getPresentationLinkedActivity: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<GetPresentationLinkedActivity200>;
 export declare const getGetPresentationLinkedActivityQueryKey: (id: number) => readonly [`/api/presentations/${number}/linked-activity`];
 export declare const getGetPresentationLinkedActivityQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationLinkedActivity>>, TError = ErrorType<unknown>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationLinkedActivity>>, TError, TData>;
@@ -1147,37 +1035,33 @@ export declare function useGetPresentationLinkedActivity<TData = Awaited<ReturnT
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getDuplicatePresentationUrl: (id: number) => string;
 /**
  * @summary Duplicate a presentation (owner or admin-shared)
  */
-export declare const getDuplicatePresentationUrl: (id: number) => string;
-export declare const duplicatePresentation: (id: number, options?: RequestInit) => Promise<Presentation>;
+export declare const duplicatePresentation: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<Presentation>;
+export declare const getDuplicatePresentationMutationKey: () => readonly ["duplicatePresentation"];
 export declare const getDuplicatePresentationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof duplicatePresentation>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof duplicatePresentation>>, TError, DuplicatePresentationMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof duplicatePresentation>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof duplicatePresentation>>, TError, DuplicatePresentationMutationVariables, TContext>;
 export type DuplicatePresentationMutationResult = NonNullable<Awaited<ReturnType<typeof duplicatePresentation>>>;
 export type DuplicatePresentationMutationError = ErrorType<unknown>;
-/**
- * @summary Duplicate a presentation (owner or admin-shared)
- */
-export declare const useDuplicatePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof duplicatePresentation>>, TError, {
-        id: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof duplicatePresentation>>, TError, {
+export type DuplicatePresentationMutationVariables = {
     id: number;
-}, TContext>;
+};
+/**
+* @summary Duplicate a presentation (owner or admin-shared)
+*/
+export declare const useDuplicatePresentation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof duplicatePresentation>>, TError, DuplicatePresentationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof duplicatePresentation>>, TError, DuplicatePresentationMutationVariables, TContext>;
+export declare const getListPresentationAssetsUrl: (id: number) => string;
 /**
  * @summary List uploaded assets for a presentation
  */
-export declare const getListPresentationAssetsUrl: (id: number) => string;
-export declare const listPresentationAssets: (id: number, options?: RequestInit) => Promise<PresentationAsset[]>;
+export declare const listPresentationAssets: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationAsset[]>;
 export declare const getListPresentationAssetsQueryKey: (id: number) => readonly [`/api/presentations/${number}/assets`];
 export declare const getListPresentationAssetsQueryOptions: <TData = Awaited<ReturnType<typeof listPresentationAssets>>, TError = ErrorType<unknown>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listPresentationAssets>>, TError, TData>;
@@ -1196,42 +1080,35 @@ export declare function useListPresentationAssets<TData = Awaited<ReturnType<typ
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getRegisterPresentationAssetUrl: (id: number) => string;
 /**
  * @summary Register an uploaded asset URL on a presentation
  */
-export declare const getRegisterPresentationAssetUrl: (id: number) => string;
-export declare const registerPresentationAsset: (id: number, registerAssetBody: RegisterAssetBody, options?: RequestInit) => Promise<PresentationAsset>;
+export declare const registerPresentationAsset: (id: number, registerAssetBody: RegisterAssetBody, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationAsset>;
+export declare const getRegisterPresentationAssetMutationKey: () => readonly ["registerPresentationAsset"];
 export declare const getRegisterPresentationAssetMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, {
-        id: number;
-        data: BodyType<RegisterAssetBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, RegisterPresentationAssetMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, {
-    id: number;
-    data: BodyType<RegisterAssetBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, RegisterPresentationAssetMutationVariables, TContext>;
 export type RegisterPresentationAssetMutationResult = NonNullable<Awaited<ReturnType<typeof registerPresentationAsset>>>;
 export type RegisterPresentationAssetMutationBody = BodyType<RegisterAssetBody>;
 export type RegisterPresentationAssetMutationError = ErrorType<unknown>;
-/**
- * @summary Register an uploaded asset URL on a presentation
- */
-export declare const useRegisterPresentationAsset: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, {
-        id: number;
-        data: BodyType<RegisterAssetBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, {
+export type RegisterPresentationAssetMutationVariables = {
     id: number;
     data: BodyType<RegisterAssetBody>;
-}, TContext>;
+};
+/**
+* @summary Register an uploaded asset URL on a presentation
+*/
+export declare const useRegisterPresentationAsset: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, RegisterPresentationAssetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof registerPresentationAsset>>, TError, RegisterPresentationAssetMutationVariables, TContext>;
+export declare const getGetPresentationAiLimitsUrl: () => string;
 /**
  * @summary Tier-driven limits for AI outline generation
  */
-export declare const getGetPresentationAiLimitsUrl: () => string;
-export declare const getPresentationAiLimits: (options?: RequestInit) => Promise<PresentationAiLimits>;
+export declare const getPresentationAiLimits: (options?: Parameters<typeof customFetch>[1]) => Promise<PresentationAiLimits>;
 export declare const getGetPresentationAiLimitsQueryKey: () => readonly ["/api/presentations/ai/limits"];
 export declare const getGetPresentationAiLimitsQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationAiLimits>>, TError = ErrorType<unknown>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationAiLimits>>, TError, TData>;
@@ -1250,81 +1127,68 @@ export declare function useGetPresentationAiLimits<TData = Awaited<ReturnType<ty
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getGeneratePresentationOutlineUrl: () => string;
 /**
  * @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
  */
-export declare const getGeneratePresentationOutlineUrl: () => string;
-export declare const generatePresentationOutline: (presentationBrief: PresentationBrief, options?: RequestInit) => Promise<PresentationDraftWithGuardrails>;
+export declare const generatePresentationOutline: (presentationBrief: PresentationBrief, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationDraftWithGuardrails>;
+export declare const getGeneratePresentationOutlineMutationKey: () => readonly ["generatePresentationOutline"];
 export declare const getGeneratePresentationOutlineMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, {
-        data: BodyType<PresentationBrief>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, GeneratePresentationOutlineMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, {
-    data: BodyType<PresentationBrief>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, GeneratePresentationOutlineMutationVariables, TContext>;
 export type GeneratePresentationOutlineMutationResult = NonNullable<Awaited<ReturnType<typeof generatePresentationOutline>>>;
 export type GeneratePresentationOutlineMutationBody = BodyType<PresentationBrief>;
 export type GeneratePresentationOutlineMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
- */
-export declare const useGeneratePresentationOutline: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, {
-        data: BodyType<PresentationBrief>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, {
+export type GeneratePresentationOutlineMutationVariables = {
     data: BodyType<PresentationBrief>;
-}, TContext>;
+};
+/**
+* @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
+*/
+export declare const useGeneratePresentationOutline: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, GeneratePresentationOutlineMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, GeneratePresentationOutlineMutationVariables, TContext>;
+export declare const getBuildPresentationFromDraftUrl: (draftId: number) => string;
 /**
  * Per-slide materialization with skip-on-failure semantics. Failed
-slides are reported in `skipped` so the teacher can author them
-manually. Progress is persisted on the draft row after every
-slide so a parallel poll on `GET /presentations/drafts/{id}`
-can drive a real progress bar without SSE plumbing.
-
+ * slides are reported in `skipped` so the teacher can author them
+ * manually. Progress is persisted on the draft row after every
+ * slide so a parallel poll on `GET /presentations/drafts/{id}`
+ * can drive a real progress bar without SSE plumbing.
  * @summary Phase 1B — materialize an approved outline into a real deck
  */
-export declare const getBuildPresentationFromDraftUrl: (draftId: number) => string;
-export declare const buildPresentationFromDraft: (draftId: number, buildPresentationRequest?: BuildPresentationRequest, options?: RequestInit) => Promise<BuildPresentationResponse>;
+export declare const buildPresentationFromDraft: (draftId: number, buildPresentationRequest?: BuildPresentationRequest, options?: Parameters<typeof customFetch>[1]) => Promise<BuildPresentationResponse>;
+export declare const getBuildPresentationFromDraftMutationKey: () => readonly ["buildPresentationFromDraft"];
 export declare const getBuildPresentationFromDraftMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, {
-        draftId: number;
-        data: BodyType<BuildPresentationRequest>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, BuildPresentationFromDraftMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, {
-    draftId: number;
-    data: BodyType<BuildPresentationRequest>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, BuildPresentationFromDraftMutationVariables, TContext>;
 export type BuildPresentationFromDraftMutationResult = NonNullable<Awaited<ReturnType<typeof buildPresentationFromDraft>>>;
-export type BuildPresentationFromDraftMutationBody = BodyType<BuildPresentationRequest>;
+export type BuildPresentationFromDraftMutationBody = BodyType<BuildPresentationRequest> | undefined;
 export type BuildPresentationFromDraftMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Phase 1B — materialize an approved outline into a real deck
- */
-export declare const useBuildPresentationFromDraft: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, {
-        draftId: number;
-        data: BodyType<BuildPresentationRequest>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, {
+export type BuildPresentationFromDraftMutationVariables = {
     draftId: number;
-    data: BodyType<BuildPresentationRequest>;
-}, TContext>;
+    data?: BodyType<BuildPresentationRequest>;
+};
+/**
+* @summary Phase 1B — materialize an approved outline into a real deck
+*/
+export declare const useBuildPresentationFromDraft: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, BuildPresentationFromDraftMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof buildPresentationFromDraft>>, TError, BuildPresentationFromDraftMutationVariables, TContext>;
+export declare const getStreamPresentationBuildUrl: (draftId: number) => string;
 /**
  * Server-Sent Events feed: emits `progress` events on each
-polling tick and a terminal `done` event when the build
-finishes (status `built` or `failed`). Consumed via the
-browser's `EventSource`. Polling on the draft row remains
-available as a fallback driver.
-
+ * polling tick and a terminal `done` event when the build
+ * finishes (status `built` or `failed`). Consumed via the
+ * browser's `EventSource`. Polling on the draft row remains
+ * available as a fallback driver.
  * @summary Phase 1B — SSE stream of build progress
  */
-export declare const getStreamPresentationBuildUrl: (draftId: number) => string;
-export declare const streamPresentationBuild: (draftId: number, options?: RequestInit) => Promise<string>;
+export declare const streamPresentationBuild: (draftId: number, options?: Parameters<typeof customFetch>[1]) => Promise<string>;
 export declare const getStreamPresentationBuildQueryKey: (draftId: number) => readonly [`/api/presentations/ai/build/${number}/stream`];
 export declare const getStreamPresentationBuildQueryOptions: <TData = Awaited<ReturnType<typeof streamPresentationBuild>>, TError = ErrorType<ErrorResponse>>(draftId: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof streamPresentationBuild>>, TError, TData>;
@@ -1343,41 +1207,36 @@ export declare function useStreamPresentationBuild<TData = Awaited<ReturnType<ty
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getCancelPresentationBuildUrl: (draftId: number) => string;
 /**
  * Sets an in-memory cancel flag the build loop checks once per
-slide. Idempotent. Slides validated before the cancel arrived
-are still persisted into the resulting deck.
-
+ * slide. Idempotent. Slides validated before the cancel arrived
+ * are still persisted into the resulting deck.
  * @summary Phase 1B — request cancellation of an in-flight build
  */
-export declare const getCancelPresentationBuildUrl: (draftId: number) => string;
-export declare const cancelPresentationBuild: (draftId: number, options?: RequestInit) => Promise<CancelBuildResponse>;
+export declare const cancelPresentationBuild: (draftId: number, options?: Parameters<typeof customFetch>[1]) => Promise<CancelBuildResponse>;
+export declare const getCancelPresentationBuildMutationKey: () => readonly ["cancelPresentationBuild"];
 export declare const getCancelPresentationBuildMutationOptions: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, {
-        draftId: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, CancelPresentationBuildMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, {
-    draftId: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, CancelPresentationBuildMutationVariables, TContext>;
 export type CancelPresentationBuildMutationResult = NonNullable<Awaited<ReturnType<typeof cancelPresentationBuild>>>;
 export type CancelPresentationBuildMutationError = ErrorType<ErrorResponse>;
-/**
- * @summary Phase 1B — request cancellation of an in-flight build
- */
-export declare const useCancelPresentationBuild: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, {
-        draftId: number;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, {
+export type CancelPresentationBuildMutationVariables = {
     draftId: number;
-}, TContext>;
+};
+/**
+* @summary Phase 1B — request cancellation of an in-flight build
+*/
+export declare const useCancelPresentationBuild: <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, CancelPresentationBuildMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof cancelPresentationBuild>>, TError, CancelPresentationBuildMutationVariables, TContext>;
+export declare const getListPresentationDraftsUrl: () => string;
 /**
  * @summary List the current teacher's saved outline drafts
  */
-export declare const getListPresentationDraftsUrl: () => string;
-export declare const listPresentationDrafts: (options?: RequestInit) => Promise<PresentationDraft[]>;
+export declare const listPresentationDrafts: (options?: Parameters<typeof customFetch>[1]) => Promise<PresentationDraft[]>;
 export declare const getListPresentationDraftsQueryKey: () => readonly ["/api/presentations/drafts"];
 export declare const getListPresentationDraftsQueryOptions: <TData = Awaited<ReturnType<typeof listPresentationDrafts>>, TError = ErrorType<unknown>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listPresentationDrafts>>, TError, TData>;
@@ -1396,11 +1255,11 @@ export declare function useListPresentationDrafts<TData = Awaited<ReturnType<typ
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getGetPresentationDraftUrl: (id: number) => string;
 /**
  * @summary Read one draft (owner only)
  */
-export declare const getGetPresentationDraftUrl: (id: number) => string;
-export declare const getPresentationDraft: (id: number, options?: RequestInit) => Promise<PresentationDraft>;
+export declare const getPresentationDraft: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationDraft>;
 export declare const getGetPresentationDraftQueryKey: (id: number) => readonly [`/api/presentations/drafts/${number}`];
 export declare const getGetPresentationDraftQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationDraft>>, TError = ErrorType<unknown>>(id: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationDraft>>, TError, TData>;
@@ -1419,98 +1278,237 @@ export declare function useGetPresentationDraft<TData = Awaited<ReturnType<typeo
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdatePresentationDraftUrl: (id: number) => string;
 /**
  * @summary Update outline or status (owner only)
  */
-export declare const getUpdatePresentationDraftUrl: (id: number) => string;
-export declare const updatePresentationDraft: (id: number, updatePresentationDraftBody: UpdatePresentationDraftBody, options?: RequestInit) => Promise<PresentationDraft>;
+export declare const updatePresentationDraft: (id: number, updatePresentationDraftBody: UpdatePresentationDraftBody, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationDraft>;
+export declare const getUpdatePresentationDraftMutationKey: () => readonly ["updatePresentationDraft"];
 export declare const getUpdatePresentationDraftMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, {
-        id: number;
-        data: BodyType<UpdatePresentationDraftBody>;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, UpdatePresentationDraftMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, {
-    id: number;
-    data: BodyType<UpdatePresentationDraftBody>;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, UpdatePresentationDraftMutationVariables, TContext>;
 export type UpdatePresentationDraftMutationResult = NonNullable<Awaited<ReturnType<typeof updatePresentationDraft>>>;
 export type UpdatePresentationDraftMutationBody = BodyType<UpdatePresentationDraftBody>;
 export type UpdatePresentationDraftMutationError = ErrorType<unknown>;
-/**
- * @summary Update outline or status (owner only)
- */
-export declare const useUpdatePresentationDraft: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, {
-        id: number;
-        data: BodyType<UpdatePresentationDraftBody>;
-    }, TContext>;
-    request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, {
+export type UpdatePresentationDraftMutationVariables = {
     id: number;
     data: BodyType<UpdatePresentationDraftBody>;
-}, TContext>;
+};
+/**
+* @summary Update outline or status (owner only)
+*/
+export declare const useUpdatePresentationDraft: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, UpdatePresentationDraftMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updatePresentationDraft>>, TError, UpdatePresentationDraftMutationVariables, TContext>;
+export declare const getDeletePresentationDraftUrl: (id: number) => string;
 /**
  * @summary Delete a draft (owner only)
  */
-export declare const getDeletePresentationDraftUrl: (id: number) => string;
-export declare const deletePresentationDraft: (id: number, options?: RequestInit) => Promise<void>;
+export declare const deletePresentationDraft: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getDeletePresentationDraftMutationKey: () => readonly ["deletePresentationDraft"];
 export declare const getDeletePresentationDraftMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, DeletePresentationDraftMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationOptions<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, DeletePresentationDraftMutationVariables, TContext>;
 export type DeletePresentationDraftMutationResult = NonNullable<Awaited<ReturnType<typeof deletePresentationDraft>>>;
 export type DeletePresentationDraftMutationError = ErrorType<unknown>;
+export type DeletePresentationDraftMutationVariables = {
+    id: number;
+};
 /**
- * @summary Delete a draft (owner only)
- */
+* @summary Delete a draft (owner only)
+*/
 export declare const useDeletePresentationDraft: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, {
-        id: number;
-    }, TContext>;
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, DeletePresentationDraftMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
-}) => UseMutationResult<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, {
-    id: number;
-}, TContext>;
+}) => UseMutationResult<Awaited<ReturnType<typeof deletePresentationDraft>>, TError, DeletePresentationDraftMutationVariables, TContext>;
 export declare const getListAiVideoProjectsUrl: () => string;
+/**
+ * @summary List the authenticated teacher's AI video projects
+ */
 export declare const listAiVideoProjects: (options?: Parameters<typeof customFetch>[1]) => Promise<ListAiVideoProjects200>;
-export declare const getListAiVideoProjectsQueryKey: () => readonly [string];
-export declare const useListAiVideoProjects: (options?: Omit<UseQueryOptions<ListAiVideoProjects200>, "queryKey" | "queryFn">) => UseQueryResult<ListAiVideoProjects200, Error>;
+export declare const getListAiVideoProjectsQueryKey: () => readonly ["/api/ai-video/projects"];
+export declare const getListAiVideoProjectsQueryOptions: <TData = Awaited<ReturnType<typeof listAiVideoProjects>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listAiVideoProjects>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listAiVideoProjects>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListAiVideoProjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listAiVideoProjects>>>;
+export type ListAiVideoProjectsQueryError = ErrorType<void>;
+/**
+ * @summary List the authenticated teacher's AI video projects
+ */
+export declare function useListAiVideoProjects<TData = Awaited<ReturnType<typeof listAiVideoProjects>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listAiVideoProjects>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
 export declare const getUploadAiVideoSourceImageUrl: () => string;
-export declare const uploadAiVideoSourceImage: (body: UploadAiVideoSourceImageBody, options?: Parameters<typeof customFetch>[1]) => Promise<UploadAiVideoSourceImage201>;
-export declare const useUploadAiVideoSourceImage: () => UseMutationResult<UploadAiVideoSourceImage201, Error, UploadAiVideoSourceImageBody, unknown>;
+/**
+ * @summary Validate, normalize, and store a teacher-owned AI video source image
+ */
+export declare const uploadAiVideoSourceImage: (uploadAiVideoSourceImageBody: UploadAiVideoSourceImageBody, options?: Parameters<typeof customFetch>[1]) => Promise<UploadAiVideoSourceImage201>;
+export declare const getUploadAiVideoSourceImageMutationKey: () => readonly ["uploadAiVideoSourceImage"];
+export declare const getUploadAiVideoSourceImageMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof uploadAiVideoSourceImage>>, TError, UploadAiVideoSourceImageMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof uploadAiVideoSourceImage>>, TError, UploadAiVideoSourceImageMutationVariables, TContext>;
+export type UploadAiVideoSourceImageMutationResult = NonNullable<Awaited<ReturnType<typeof uploadAiVideoSourceImage>>>;
+export type UploadAiVideoSourceImageMutationBody = BodyType<UploadAiVideoSourceImageBody>;
+export type UploadAiVideoSourceImageMutationError = ErrorType<void>;
+export type UploadAiVideoSourceImageMutationVariables = {
+    data: BodyType<UploadAiVideoSourceImageBody>;
+};
+/**
+* @summary Validate, normalize, and store a teacher-owned AI video source image
+*/
+export declare const useUploadAiVideoSourceImage: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof uploadAiVideoSourceImage>>, TError, UploadAiVideoSourceImageMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof uploadAiVideoSourceImage>>, TError, UploadAiVideoSourceImageMutationVariables, TContext>;
 export declare const getCreateAiVideoStoryboardUrl: () => string;
-export declare const createAiVideoStoryboard: (body: AiVideoBrief, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
-export declare const useCreateAiVideoStoryboard: () => UseMutationResult<AiVideoProject, Error, AiVideoBrief, unknown>;
+/**
+ * @summary Generate and persist an idempotent educational storyboard
+ */
+export declare const createAiVideoStoryboard: (aiVideoBrief: AiVideoBrief, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const getCreateAiVideoStoryboardMutationKey: () => readonly ["createAiVideoStoryboard"];
+export declare const getCreateAiVideoStoryboardMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createAiVideoStoryboard>>, TError, CreateAiVideoStoryboardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof createAiVideoStoryboard>>, TError, CreateAiVideoStoryboardMutationVariables, TContext>;
+export type CreateAiVideoStoryboardMutationResult = NonNullable<Awaited<ReturnType<typeof createAiVideoStoryboard>>>;
+export type CreateAiVideoStoryboardMutationBody = BodyType<AiVideoBrief>;
+export type CreateAiVideoStoryboardMutationError = ErrorType<void>;
+export type CreateAiVideoStoryboardMutationVariables = {
+    data: BodyType<AiVideoBrief>;
+};
+/**
+* @summary Generate and persist an idempotent educational storyboard
+*/
+export declare const useCreateAiVideoStoryboard: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createAiVideoStoryboard>>, TError, CreateAiVideoStoryboardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof createAiVideoStoryboard>>, TError, CreateAiVideoStoryboardMutationVariables, TContext>;
 export declare const getGetAiVideoProjectUrl: (id: number) => string;
+/**
+ * @summary Get an owned AI video project
+ */
 export declare const getAiVideoProject: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
-export declare const getGetAiVideoProjectQueryKey: (id: number) => readonly [string];
-export declare const useGetAiVideoProject: (id: number) => UseQueryResult<AiVideoProject, Error>;
-export declare const updateAiVideoProject: (id: number, body: UpdateAiVideoProjectBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
-export declare const useUpdateAiVideoProject: () => UseMutationResult<AiVideoProject, Error, {
+export declare const getGetAiVideoProjectQueryKey: (id: number) => readonly [`/api/ai-video/projects/${number}`];
+export declare const getGetAiVideoProjectQueryOptions: <TData = Awaited<ReturnType<typeof getAiVideoProject>>, TError = ErrorType<void>>(id: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getAiVideoProject>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getAiVideoProject>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetAiVideoProjectQueryResult = NonNullable<Awaited<ReturnType<typeof getAiVideoProject>>>;
+export type GetAiVideoProjectQueryError = ErrorType<void>;
+/**
+ * @summary Get an owned AI video project
+ */
+export declare function useGetAiVideoProject<TData = Awaited<ReturnType<typeof getAiVideoProject>>, TError = ErrorType<void>>(id: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getAiVideoProject>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getUpdateAiVideoProjectUrl: (id: number) => string;
+/**
+ * @summary Edit title or storyboard while not rendering
+ */
+export declare const updateAiVideoProject: (id: number, updateAiVideoProjectBody: UpdateAiVideoProjectBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const getUpdateAiVideoProjectMutationKey: () => readonly ["updateAiVideoProject"];
+export declare const getUpdateAiVideoProjectMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAiVideoProject>>, TError, UpdateAiVideoProjectMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateAiVideoProject>>, TError, UpdateAiVideoProjectMutationVariables, TContext>;
+export type UpdateAiVideoProjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateAiVideoProject>>>;
+export type UpdateAiVideoProjectMutationBody = BodyType<UpdateAiVideoProjectBody>;
+export type UpdateAiVideoProjectMutationError = ErrorType<void>;
+export type UpdateAiVideoProjectMutationVariables = {
     id: number;
-    body: UpdateAiVideoProjectBody;
-}, unknown>;
+    data: BodyType<UpdateAiVideoProjectBody>;
+};
+/**
+* @summary Edit title or storyboard while not rendering
+*/
+export declare const useUpdateAiVideoProject: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAiVideoProject>>, TError, UpdateAiVideoProjectMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateAiVideoProject>>, TError, UpdateAiVideoProjectMutationVariables, TContext>;
 export declare const getRenderAiVideoProjectUrl: (id: number) => string;
-export declare const renderAiVideoProject: (id: number, body: AiVideoRenderBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
-export declare const useRenderAiVideoProject: () => UseMutationResult<AiVideoProject, Error, {
+/**
+ * @summary Start a persisted background MP4 render
+ */
+export declare const renderAiVideoProject: (id: number, aiVideoRenderBody: AiVideoRenderBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const getRenderAiVideoProjectMutationKey: () => readonly ["renderAiVideoProject"];
+export declare const getRenderAiVideoProjectMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof renderAiVideoProject>>, TError, RenderAiVideoProjectMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof renderAiVideoProject>>, TError, RenderAiVideoProjectMutationVariables, TContext>;
+export type RenderAiVideoProjectMutationResult = NonNullable<Awaited<ReturnType<typeof renderAiVideoProject>>>;
+export type RenderAiVideoProjectMutationBody = BodyType<AiVideoRenderBody>;
+export type RenderAiVideoProjectMutationError = ErrorType<void>;
+export type RenderAiVideoProjectMutationVariables = {
     id: number;
-    body: AiVideoRenderBody;
-}, unknown>;
+    data: BodyType<AiVideoRenderBody>;
+};
+/**
+* @summary Start a persisted background MP4 render
+*/
+export declare const useRenderAiVideoProject: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof renderAiVideoProject>>, TError, RenderAiVideoProjectMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof renderAiVideoProject>>, TError, RenderAiVideoProjectMutationVariables, TContext>;
 export declare const getQuoteAiVideoProjectRenderUrl: (id: number) => string;
+/**
+ * @summary Quote native-audio video provider cost before render approval
+ */
 export declare const quoteAiVideoProjectRender: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoRenderQuote>;
-export declare const useQuoteAiVideoProjectRender: () => UseMutationResult<AiVideoRenderQuote, Error, {
+export declare const getQuoteAiVideoProjectRenderMutationKey: () => readonly ["quoteAiVideoProjectRender"];
+export declare const getQuoteAiVideoProjectRenderMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof quoteAiVideoProjectRender>>, TError, QuoteAiVideoProjectRenderMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof quoteAiVideoProjectRender>>, TError, QuoteAiVideoProjectRenderMutationVariables, TContext>;
+export type QuoteAiVideoProjectRenderMutationResult = NonNullable<Awaited<ReturnType<typeof quoteAiVideoProjectRender>>>;
+export type QuoteAiVideoProjectRenderMutationError = ErrorType<void>;
+export type QuoteAiVideoProjectRenderMutationVariables = {
     id: number;
-}, unknown>;
+};
+/**
+* @summary Quote native-audio video provider cost before render approval
+*/
+export declare const useQuoteAiVideoProjectRender: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof quoteAiVideoProjectRender>>, TError, QuoteAiVideoProjectRenderMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof quoteAiVideoProjectRender>>, TError, QuoteAiVideoProjectRenderMutationVariables, TContext>;
 export declare const getRetryAiVideoProjectRenderUrl: (id: number) => string;
-export declare const retryAiVideoProjectRender: (id: number, body: AiVideoRenderBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
-export declare const useRetryAiVideoProjectRender: () => UseMutationResult<AiVideoProject, Error, {
+/**
+ * @summary Retry a failed background render
+ */
+export declare const retryAiVideoProjectRender: (id: number, aiVideoRenderBody: AiVideoRenderBody, options?: Parameters<typeof customFetch>[1]) => Promise<AiVideoProject>;
+export declare const getRetryAiVideoProjectRenderMutationKey: () => readonly ["retryAiVideoProjectRender"];
+export declare const getRetryAiVideoProjectRenderMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof retryAiVideoProjectRender>>, TError, RetryAiVideoProjectRenderMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof retryAiVideoProjectRender>>, TError, RetryAiVideoProjectRenderMutationVariables, TContext>;
+export type RetryAiVideoProjectRenderMutationResult = NonNullable<Awaited<ReturnType<typeof retryAiVideoProjectRender>>>;
+export type RetryAiVideoProjectRenderMutationBody = BodyType<AiVideoRenderBody>;
+export type RetryAiVideoProjectRenderMutationError = ErrorType<void>;
+export type RetryAiVideoProjectRenderMutationVariables = {
     id: number;
-    body: AiVideoRenderBody;
-}, unknown>;
+    data: BodyType<AiVideoRenderBody>;
+};
+/**
+* @summary Retry a failed background render
+*/
+export declare const useRetryAiVideoProjectRender: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof retryAiVideoProjectRender>>, TError, RetryAiVideoProjectRenderMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof retryAiVideoProjectRender>>, TError, RetryAiVideoProjectRenderMutationVariables, TContext>;
 export {};
 //# sourceMappingURL=api.d.ts.map

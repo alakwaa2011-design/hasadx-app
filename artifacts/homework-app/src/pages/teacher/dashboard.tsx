@@ -3995,8 +3995,8 @@ function Section({
 
 /* ── Self Challenge Button — per-card, stateless click ── */
 const BASE_URL_SOLO = import.meta.env.VITE_API_URL || "";
-function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: string }) {
-  const [state, setState] = useState<"idle" | "loading" | "copied">("idle");
+function SoloLinkButton({ assignmentId, lang, setLocation }: { assignmentId: number; lang: string; setLocation: (path: string) => void }) {
+  const [state, setState] = useState<"idle" | "loading">("idle");
   const handleClick = async () => {
     if (state !== "idle") return;
     setState("loading");
@@ -4009,10 +4009,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      const url = `${window.location.origin}/solo/${data.slug}`;
-      await navigator.clipboard.writeText(url);
-      setState("copied");
-      setTimeout(() => setState("idle"), 2500);
+      setLocation(`/teacher/solo-challenges/${encodeURIComponent(data.slug)}`);
     } catch (err: any) {
       import("@/components/ui/sonner").then(({ toast }) =>
         toast.error(err?.message || (lang === "ar" ? "تعذّر إنشاء الرابط" : "Failed to create link"))
@@ -4029,14 +4026,10 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
     >
       {state === "loading" ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-      ) : state === "copied" ? (
-        <Check className="w-3.5 h-3.5 text-green-500" />
       ) : (
         <SelfChallengeIcon size={18} />
       )}
-      {state === "copied"
-        ? (lang === "ar" ? "تم النسخ!" : "Copied!")
-        : (lang === "ar" ? "مسابقة ذاتية" : "Self Challenge")}
+      {lang === "ar" ? "إدارة المسابقة الذاتية" : "Manage Self Challenge"}
     </button>
   );
 }
@@ -4327,7 +4320,7 @@ export function AssignmentRow({
                 {lang === "ar" ? "نسخ الرابط" : "Copy link"}
               </button>
               {/* ── Self Challenge Button ── */}
-              <SoloLinkButton assignmentId={assignment.id} lang={lang} />
+              <SoloLinkButton assignmentId={assignment.id} lang={lang} setLocation={setLocation} />
 
               <button
                 onClick={() => onShare(assignment.id)}

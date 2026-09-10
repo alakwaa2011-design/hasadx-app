@@ -42,6 +42,9 @@ type AttemptRecord = {
   name: string;
   points?: number;
   timeTaken?: number; // seconds
+  pin?: string;
+  scoreProof?: string;
+  participantKey?: string;
 };
 
 function pickBestAttempt(attempts: AttemptRecord[]): AttemptRecord {
@@ -97,6 +100,15 @@ export function SoloChallengeResults({
     const n = Number(sessionStorage.getItem("solo_challenge_max_attempts"));
     return Number.isFinite(n) && n >= 1 ? n : 1;
   });
+  const [gamePin] = useState<string | null>(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("solo_challenge_game_pin") : null,
+  );
+  const [scoreProof] = useState<string | null>(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("solo_challenge_score_proof") : null,
+  );
+  const [participantKey] = useState<string | null>(() =>
+    typeof window !== "undefined" ? sessionStorage.getItem("solo_challenge_participant_key") : null,
+  );
 
   // Compute elapsed time from sessionStorage start timestamp for this attempt.
   const [elapsedSec] = useState<number>(() => {
@@ -125,6 +137,9 @@ export function SoloChallengeResults({
     name: soloPlayerName || myName || (isAr ? "لاعب" : "Player"),
     points: myScore,
     timeTaken: elapsedSec,
+    pin: gamePin || undefined,
+    scoreProof: scoreProof || undefined,
+    participantKey: participantKey || undefined,
   }));
 
   // One-time (per mount) resolution of what happens with this playthrough.
@@ -193,6 +208,9 @@ export function SoloChallengeResults({
         points: entry.points ?? 0,
         correctCount: entry.score,
         timeTaken: entry.timeTaken ?? 0,
+        pin: entry.pin,
+        scoreProof: entry.scoreProof,
+        participantKey: entry.participantKey,
       }),
     }).catch(() => {});
   };
@@ -232,6 +250,9 @@ export function SoloChallengeResults({
     sessionStorage.removeItem("solo_challenge_start_time");
     sessionStorage.removeItem("solo_leaderboard_display");
     sessionStorage.removeItem("solo_challenge_max_attempts");
+    sessionStorage.removeItem("solo_challenge_game_pin");
+    sessionStorage.removeItem("solo_challenge_score_proof");
+    sessionStorage.removeItem("solo_challenge_participant_key");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

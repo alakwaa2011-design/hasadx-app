@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 export type UploadAiVideoSourceImageBody = {
-    file: unknown;
+    file: Blob;
 };
 //# sourceMappingURL=uploadAiVideoSourceImageBody.d.ts.map

@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw, ChevronDown, MoreHorizontal } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -17,6 +17,14 @@ import { resolveImageUrl } from "@/lib/image-url";
 import { getWameethSetupPath } from "@/lib/wameeth-entry";
 import { SelfChallengeIcon } from "@/components/game-icons";
 import { AssignmentEditor } from "./assignment-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -41,6 +49,11 @@ export default function TeacherAssignmentDetail() {
   const [, params] = useRoute("/teacher/assignment/:id");
   const id = parseInt(params?.id || "0");
   const [location, setLocation] = useLocation();
+  const editorReturnTo = useMemo(() => {
+    const query = location.includes("?") ? location.slice(location.indexOf("?") + 1) : "";
+    const value = new URLSearchParams(query).get("returnTo");
+    return value?.startsWith("/teacher/solo-challenges/") ? value : null;
+  }, [location]);
   const queryClient = useQueryClient();
   const { t, lang, dir } = useI18n();
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
@@ -137,7 +150,7 @@ export default function TeacherAssignmentDetail() {
     setSoloDeadlineSaving(true);
     try {
       const expiresAt = soloDeadline ? new Date(soloDeadline).toISOString() : null;
-      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/deadline`, {
+      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -160,7 +173,7 @@ export default function TeacherAssignmentDetail() {
     if (!soloChallenge?.slug) return;
     setSoloNotesSaving(true);
     try {
-      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/notes`, {
+      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -254,6 +267,20 @@ export default function TeacherAssignmentDetail() {
   const editorPathRef = useRef("");
   const navigationPromptRef = useRef(false);
   const bypassHistoryGuardRef = useRef(false);
+  const deepLinkEditorOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (!assignment || deepLinkEditorOpenedRef.current) return;
+    const query = location.includes("?") ? location.slice(location.indexOf("?") + 1) : "";
+    if (new URLSearchParams(query).get("edit") !== "1") return;
+    deepLinkEditorOpenedRef.current = true;
+    if ((assignment as any).activityType === "listening") {
+      const returnQuery = editorReturnTo ? `&returnTo=${encodeURIComponent(editorReturnTo)}` : "";
+      setLocation(`/teacher/new/dictation?edit=${assignment.id}${returnQuery}`);
+      return;
+    }
+    setIsEditingAssignment(true);
+  }, [assignment, editorReturnTo, location, setLocation]);
 
   const setEditorDirty = useCallback((dirty: boolean) => {
     editorDirtyRef.current = dirty;
@@ -646,6 +673,7 @@ export default function TeacherAssignmentDetail() {
       setIsEditingAssignment(false);
       setEditorDirty(false);
       toast.success(lang === "ar" ? "تم تحديث الواجب بنجاح" : "Assignment updated successfully");
+      if (editorReturnTo) setLocation(editorReturnTo);
     },
     onError: (err: any) => {
       if (err.code === "ASSIGNMENT_VERSION_CONFLICT") {
@@ -990,7 +1018,10 @@ export default function TeacherAssignmentDetail() {
             onSave={async (data) => {
               updateAssignmentMutation.mutate(data);
             }}
-            onCancel={() => setIsEditingAssignment(false)}
+            onCancel={() => {
+              setIsEditingAssignment(false);
+              if (editorReturnTo) setLocation(editorReturnTo);
+            }}
             isSaving={updateAssignmentMutation.isPending}
             onDirtyChange={setEditorDirty}
             onRestored={() => {
@@ -998,6 +1029,7 @@ export default function TeacherAssignmentDetail() {
               setIsEditingAssignment(false);
               queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
               queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+              if (editorReturnTo) setLocation(editorReturnTo);
             }}
           />
         ) : (
@@ -1082,37 +1114,56 @@ export default function TeacherAssignmentDetail() {
                   </div>
                 </div>
               </div>
-              <div className="border-t border-border/50 bg-card px-5 sm:px-7 py-3 flex items-center gap-2 flex-wrap">
+              <div
+                className="border-t border-border/50 bg-card px-4 py-3 sm:px-7 sm:py-4 flex items-center gap-2 flex-wrap"
+                data-testid="assignment-actions"
+              >
                 {assignment.questions && assignment.questions.some((q) => q.optionA && q.optionB) && (
                   <Button
                     onClick={() => setLocation(getWameethSetupPath(id))}
-                    className="gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0 shadow-md shadow-purple-500/20"
+                    className="order-1 grow sm:grow-0 gap-2 px-4 py-2.5 text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0 shadow-md shadow-purple-500/20"
+                    data-testid="button-start-live-game"
                   >
                     <Gamepad2 className="w-4 h-4" />
                     {t.assignmentDetail.liveGame}
                   </Button>
                 )}
-                <Button onClick={startEditingAssignment} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
+                <Button
+                  onClick={startEditingAssignment}
+                  variant="outline"
+                  className="order-2 grow sm:grow-0 gap-2 px-4 py-2.5 text-sm font-bold"
+                  data-testid="button-edit-assignment"
+                >
                   <Pencil className="w-3.5 h-3.5" />
                   {t.assignmentDetail.editBtn}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/solve/${id}`); toast.success(t.assignmentDetail.linkCopied); }}
-                  className="gap-1.5 px-4 py-2 text-sm"
+                  className="order-5 sm:order-3 h-10 w-10 shrink-0 p-0 rounded-xl"
+                  title={t.assignmentDetail.copyLink}
+                  aria-label={t.assignmentDetail.copyLink}
+                  data-testid="button-copy-assignment-link"
                 >
-                  <Copy className="w-3.5 h-3.5" />
-                  {t.assignmentDetail.copyLink}
+                  <Copy className="w-4 h-4" />
+                  <span className="sr-only">{t.assignmentDetail.copyLink}</span>
                 </Button>
 
                 {/* ── مسابقة ذاتية ──────────────────────────── */}
                 {soloChallenge && soloChallenge.slug ? (
                   /* Already created — show slug + action buttons */
-                  <div className="flex flex-col gap-1">
+                  <div className="order-3 sm:order-4 basis-full sm:basis-auto flex flex-col gap-1">
                     <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
                       <SelfChallengeIcon size={18} className="shrink-0" />
                       <span className="text-xs font-bold truncate">{lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}</span>
                       <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
+                      <button
+                        onClick={() => setLocation(`/teacher/solo-challenges/${encodeURIComponent(soloChallenge.slug)}`)}
+                        className="ms-1 px-2 py-1 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors text-[11px] font-bold"
+                        data-testid="button-manage-solo-challenge"
+                      >
+                        {lang === "ar" ? "إدارة" : "Manage"}
+                      </button>
                       {/* Copy */}
                       <button onClick={copySoloLink} className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors" title={lang === "ar" ? "نسخ الرابط" : "Copy link"}>
                         {soloCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1202,46 +1253,102 @@ export default function TeacherAssignmentDetail() {
                     variant="outline"
                     onClick={handleCreateSoloChallenge}
                     disabled={soloCreating || soloChallenge === undefined}
-                    className="gap-1.5 px-4 py-2 text-sm font-bold border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                    className="order-3 sm:order-4 grow sm:grow-0 gap-2 px-4 py-2.5 text-sm font-bold border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                    data-testid="button-create-solo-challenge"
                   >
                     {soloCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
                     {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
                   </Button>
                 )}
 
-                <Button onClick={() => window.open(`${BASE}/api/assignments/${id}/export-csv`, "_blank")} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
-                  <Download className="w-3.5 h-3.5" />
-                  {t.assignmentDetail.exportCSV}
-                </Button>
-                <Button onClick={exportToPDF} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
-                  <Printer className="w-3.5 h-3.5" />
-                  {t.assignmentDetail.exportPDF}
-                </Button>
-                <Button onClick={() => duplicateMutation.mutate()} disabled={duplicateMutation.isPending} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
-                  <CopyPlus className="w-3.5 h-3.5" />
-                  {duplicateMutation.isPending ? t.assignmentDetail.duplicating : t.assignmentDetail.duplicateAssignment}
-                </Button>
-                <Button onClick={() => saveToBankMutation.mutate()} disabled={saveToBankMutation.isPending} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
-                  <Database className="w-3.5 h-3.5" />
-                  {t.assignmentDetail.saveToBankBtn}
-                </Button>
-                <Button
-                  onClick={() => toggleShareMutation.mutate()}
-                  disabled={toggleShareMutation.isPending}
-                  variant="outline"
-                  className={`gap-1.5 px-4 py-2 text-sm ${assignmentShared ? "text-cyan-600 border-cyan-300 dark:border-cyan-700" : ""}`}
-                >
-                  {assignmentShared ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                  {assignmentShared ? (lang === "ar" ? "مشترك ✓" : "Shared ✓") : (lang === "ar" ? "مشاركة عامة" : "Share")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => { if (confirm(t.assignmentDetail.confirmDelete)) deleteMutation.mutate({ id }); }}
-                  disabled={deleteMutation.isPending}
-                  className="gap-1.5 px-3 py-2 text-sm ms-auto"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="order-4 sm:order-5 grow sm:grow-0 gap-2 px-4 py-2.5 text-sm font-bold"
+                      data-testid="button-export-menu"
+                    >
+                      <Download className="w-4 h-4" />
+                      {lang === "ar" ? "تصدير" : "Export"}
+                      <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={dir === "rtl" ? "end" : "start"} className="w-48">
+                    <DropdownMenuLabel>{lang === "ar" ? "صيغة الملف" : "File format"}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => window.open(`${BASE}/api/assignments/${id}/export-csv`, "_blank")}
+                      className="gap-2.5 py-2.5 cursor-pointer"
+                      data-testid="menu-export-csv"
+                    >
+                      <Download className="w-4 h-4 text-emerald-700" />
+                      {t.assignmentDetail.exportCSV}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={exportToPDF}
+                      className="gap-2.5 py-2.5 cursor-pointer"
+                      data-testid="menu-export-pdf"
+                    >
+                      <Printer className="w-4 h-4 text-red-600" />
+                      {t.assignmentDetail.exportPDF}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="order-6 sm:order-6 h-10 gap-2 px-3 sm:px-4 rounded-xl text-sm font-bold"
+                      aria-label={lang === "ar" ? "المزيد من الإجراءات" : "More actions"}
+                      data-testid="button-more-assignment-actions"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                      <span className="hidden sm:inline">{lang === "ar" ? "المزيد" : "More"}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align={dir === "rtl" ? "end" : "start"} className="w-56">
+                    <DropdownMenuLabel>{lang === "ar" ? "إجراءات إضافية" : "More actions"}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => duplicateMutation.mutate()}
+                      disabled={duplicateMutation.isPending}
+                      className="gap-2.5 py-2.5 cursor-pointer"
+                      data-testid="menu-duplicate-assignment"
+                    >
+                      <CopyPlus className="w-4 h-4" />
+                      {duplicateMutation.isPending ? t.assignmentDetail.duplicating : t.assignmentDetail.duplicateAssignment}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => saveToBankMutation.mutate()}
+                      disabled={saveToBankMutation.isPending}
+                      className="gap-2.5 py-2.5 cursor-pointer"
+                      data-testid="menu-save-assignment-to-bank"
+                    >
+                      <Database className="w-4 h-4" />
+                      {t.assignmentDetail.saveToBankBtn}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => toggleShareMutation.mutate()}
+                      disabled={toggleShareMutation.isPending}
+                      className="gap-2.5 py-2.5 cursor-pointer"
+                      data-testid="menu-toggle-assignment-sharing"
+                    >
+                      {assignmentShared ? <Globe className="w-4 h-4 text-cyan-600" /> : <Lock className="w-4 h-4" />}
+                      {assignmentShared ? (lang === "ar" ? "إلغاء المشاركة العامة" : "Stop sharing") : (lang === "ar" ? "مشاركة عامة" : "Share publicly")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => { if (confirm(t.assignmentDetail.confirmDelete)) deleteMutation.mutate({ id }); }}
+                      disabled={deleteMutation.isPending}
+                      className="gap-2.5 py-2.5 cursor-pointer text-destructive focus:text-destructive"
+                      data-testid="menu-delete-assignment"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {lang === "ar" ? "حذف الواجب" : "Delete assignment"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </motion.div>
 

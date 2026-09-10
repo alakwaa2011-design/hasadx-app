@@ -7,8 +7,8 @@
  */
 export type UploadAiVideoSourceImage201MetadataContentType = typeof UploadAiVideoSourceImage201MetadataContentType[keyof typeof UploadAiVideoSourceImage201MetadataContentType];
 export declare const UploadAiVideoSourceImage201MetadataContentType: {
-    readonly "image/jpeg": "image/jpeg";
-    readonly "image/png": "image/png";
-    readonly "image/webp": "image/webp";
+    readonly 'image/jpeg': "image/jpeg";
+    readonly 'image/png': "image/png";
+    readonly 'image/webp': "image/webp";
 };
 //# sourceMappingURL=uploadAiVideoSourceImage201MetadataContentType.d.ts.map

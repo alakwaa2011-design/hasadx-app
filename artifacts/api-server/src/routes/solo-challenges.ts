@@ -1,15 +1,19 @@
 import { Router, type IRouter } from "express";
+import { createHmac } from "node:crypto";
 import {
   db,
   assignmentsTable,
   questionsTable,
   soloChallengesTable,
   soloChallengeScoresTable,
-  teachersTable,
+  soloChallengeAttemptsTable,
+  studentsTable,
 } from "@workspace/db";
 import { eq, and, desc, asc, sql, isNull, or } from "drizzle-orm";
 import {
   createGame,
+  deleteGame,
+  getGame,
   type GameQuestion,
 } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
@@ -17,6 +21,20 @@ import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
+
+function createRosterSelectionToken(slug: string, className: string, studentId: number): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is required for roster selection");
+  return createHmac("sha256", secret)
+    .update(`${slug}\u0000${className}\u0000${studentId}`)
+    .digest("base64url");
+}
+
+function rosterDisplayName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 2) return parts.join(" ");
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -79,18 +97,6 @@ function requireTeacher(req: any, res: any): number | null {
   const teacherId = req.session?.teacherId;
   if (!teacherId) { res.status(401).json({ message: "غير مصرح" }); return null; }
   return teacherId;
-}
-
-async function requireAdmin(req: any, res: any): Promise<boolean> {
-  const teacherId = req.session?.teacherId;
-  if (!teacherId) { res.status(401).json({ message: "غير مصرح" }); return false; }
-  const [teacher] = await db
-    .select({ isAdmin: teachersTable.isAdmin })
-    .from(teachersTable)
-    .where(eq(teachersTable.id, teacherId))
-    .limit(1);
-  if (!teacher?.isAdmin) { res.status(403).json({ message: "هذا الإجراء متاح للمسؤول فقط" }); return false; }
-  return true;
 }
 
 const ALLOWED_QUESTION_TYPES = ["mcq", "true_false", "fill_blank"] as const;
@@ -291,6 +297,49 @@ router.post("/solo-challenges", async (req, res) => {
       .limit(1);
 
     if (existing) {
+      const update: Record<string, unknown> = {};
+      if ("notes" in req.body) update.notes = req.body.notes ? String(req.body.notes).slice(0, 1000) : null;
+      if ("expiresAt" in req.body) {
+        if (req.body.expiresAt === null || req.body.expiresAt === "") {
+          update.expiresAt = null;
+        } else {
+          const expiresAt = new Date(req.body.expiresAt);
+          if (isNaN(expiresAt.getTime())) return res.status(400).json({ message: "تاريخ الانتهاء غير صالح" });
+          update.expiresAt = expiresAt;
+        }
+      }
+      if ("timePerQuestion" in req.body) {
+        update.timePerQuestion = Math.max(5, Math.min(120, Number(req.body.timePerQuestion) || 20));
+      }
+      if ("leaderboardDisplay" in req.body && ["top3", "top20", "all"].includes(req.body.leaderboardDisplay)) {
+        update.leaderboardDisplay = req.body.leaderboardDisplay;
+      }
+      if ("questionsPerParticipant" in req.body) {
+        update.questionsPerParticipant = req.body.questionsPerParticipant === null || req.body.questionsPerParticipant === ""
+          ? null
+          : Math.max(1, Number(req.body.questionsPerParticipant) || 1);
+      }
+      if ("difficultyDistribution" in req.body) {
+        const distribution = validateDifficultyDistribution(req.body.difficultyDistribution);
+        update.difficultyDistribution = distribution;
+        if (distribution) update.questionsPerParticipant = null;
+      }
+      if ("isMultiLevel" in req.body) update.isMultiLevel = Boolean(req.body.isMultiLevel);
+      if ("levels" in req.body) update.levels = req.body.levels === null ? null : validateLevels(req.body.levels);
+      if ("allowedClasses" in req.body) {
+        const allowedClasses = Array.isArray(req.body.allowedClasses)
+          ? req.body.allowedClasses.map((value: unknown) => String(value).trim()).filter(Boolean).slice(0, 50)
+          : [];
+        update.allowedClasses = allowedClasses.length ? allowedClasses : null;
+      }
+      if (Object.keys(update).length > 0) {
+        await db.update(soloChallengesTable)
+          .set(update)
+          .where(and(
+            eq(soloChallengesTable.id, existing.id),
+            eq(soloChallengesTable.teacherId, teacherId),
+          ));
+      }
       if (!existing.shortSlug) {
         const short = `${arabicToLatinSlug(existing.assignmentTitle ?? "")}-${randomSuffix()}`;
         try {
@@ -315,10 +364,16 @@ router.post("/solo-challenges", async (req, res) => {
     const maxAttempts = Math.max(1, Math.min(10, Number(req.body?.maxAttempts) || 1));
     const notes = req.body?.notes ? String(req.body.notes).slice(0, 1000) : null;
     const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
+    if (expiresAt && isNaN(expiresAt.getTime())) {
+      return res.status(400).json({ message: "تاريخ الانتهاء غير صالح" });
+    }
     const isMultiLevel = Boolean(req.body?.isMultiLevel);
     const levels = req.body?.levels != null ? (validateLevels(req.body.levels) ?? null) : null;
     const difficultyDistribution = validateDifficultyDistribution(req.body?.difficultyDistribution);
     const questionsPerParticipant = req.body?.questionsPerParticipant ? Number(req.body.questionsPerParticipant) || null : null;
+    const allowedClasses = Array.isArray(req.body?.allowedClasses)
+      ? req.body.allowedClasses.map((value: unknown) => String(value).trim()).filter(Boolean).slice(0, 50)
+      : [];
 
     const [created] = await db
       .insert(soloChallengesTable)
@@ -338,6 +393,7 @@ router.post("/solo-challenges", async (req, res) => {
         isMultiLevel,
         levels,
         difficultyDistribution,
+        allowedClasses: allowedClasses.length ? allowedClasses : null,
       } as any)
       .returning();
 
@@ -469,7 +525,10 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
         difficultyDistribution: soloChallengesTable.difficultyDistribution,
       })
       .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, req.params.slug))
+      .where(and(
+        eq(soloChallengesTable.slug, req.params.slug),
+        eq(soloChallengesTable.teacherId, teacherId),
+      ))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
@@ -479,17 +538,30 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
     const isStandalone = challenge.assignmentId === null;
 
     let questionCount = 0;
+    let resolvedQuestions = challenge.questions;
     if (isStandalone) {
       questionCount = Array.isArray(challenge.questions) ? (challenge.questions as unknown[]).length : 0;
     } else {
-      const [cnt] = await db
-        .select({ count: sql<number>`count(*)::int` })
+      const assignmentQuestions = await db
+        .select({
+          id: questionsTable.id,
+          text: questionsTable.text,
+          questionType: questionsTable.questionType,
+          optionA: questionsTable.optionA,
+          optionB: questionsTable.optionB,
+          optionC: questionsTable.optionC,
+          optionD: questionsTable.optionD,
+          correctAnswer: questionsTable.correctAnswer,
+          difficulty: questionsTable.difficulty,
+          imageUrl: questionsTable.imageUrl,
+        })
         .from(questionsTable)
         .where(and(
           eq(questionsTable.assignmentId, challenge.assignmentId!),
           sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
         ));
-      questionCount = cnt?.count ?? 0;
+      resolvedQuestions = assignmentQuestions;
+      questionCount = assignmentQuestions.length;
     }
 
     const allowedClassesList = Array.isArray((challenge as any).allowedClasses)
@@ -498,6 +570,7 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
 
     res.json({
       ...challenge,
+      questions: resolvedQuestions,
       isStandalone,
       isExpired,
       questionCount,
@@ -527,6 +600,7 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
 
     const rows = await db
       .select({
+        id: soloChallengeScoresTable.id,
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
         correctCount: soloChallengeScoresTable.correctCount,
@@ -549,13 +623,24 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
   }
 });
 
-// ── DELETE /api/solo-challenges/:slug/participants/:id  (admin only) ────────
+// ── DELETE /api/solo-challenges/:slug/participants/:id  (owner teacher) ─────
 router.delete("/solo-challenges/:slug/participants/:id", async (req, res) => {
   try {
-    if (!(await requireAdmin(req, res))) return;
+    const teacherId = requireTeacher(req, res);
+    if (!teacherId) return;
 
     const scoreId = Number(req.params.id);
     if (!Number.isInteger(scoreId)) return res.status(400).json({ message: "معرّف غير صالح" });
+
+    const [challenge] = await db
+      .select({ id: soloChallengesTable.id })
+      .from(soloChallengesTable)
+      .where(and(
+        eq(soloChallengesTable.slug, req.params.slug),
+        eq(soloChallengesTable.teacherId, teacherId),
+      ))
+      .limit(1);
+    if (!challenge) return res.status(404).json({ message: "المسابقة غير موجودة" });
 
     const [existing] = await db
       .select({ id: soloChallengeScoresTable.id })
@@ -631,7 +716,7 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       if (t.length > 0 && t.length <= 200) update.assignmentTitle = t;
     }
     if ("questions" in req.body && challenge.assignmentId === null) {
-      const qs = validateQuestions(challenge.questions);
+      const qs = validateQuestions(req.body.questions);
       if (!qs) return res.status(400).json({ message: "يجب وجود سؤال واحد صالح على الأقل" });
       if (qs.length > 100) return res.status(400).json({ message: "الحد الأقصى 100 سؤال" });
       update.questions = qs;
@@ -714,7 +799,10 @@ router.delete("/solo-challenges/:slug", async (req, res) => {
     const [challenge] = await db
       .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, req.params.slug))
+      .where(and(
+        eq(soloChallengesTable.slug, req.params.slug),
+        eq(soloChallengesTable.teacherId, teacherId),
+      ))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
@@ -814,10 +902,69 @@ router.get("/solo-challenges/:slug", async (req, res) => {
   }
 });
 
+// ── GET /api/solo-challenges/:slug/roster  (public: minimal class roster) ───
+router.get("/solo-challenges/:slug/roster", async (req, res) => {
+  try {
+    const className = String(req.query.className || "").trim();
+    if (!className) return res.status(400).json({ message: "يجب اختيار الصف" });
+
+    const [challenge] = await db
+      .select({
+        teacherId: soloChallengesTable.teacherId,
+        allowedClasses: soloChallengesTable.allowedClasses,
+        expiresAt: soloChallengesTable.expiresAt,
+        assignmentId: soloChallengesTable.assignmentId,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
+      })
+      .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
+      .where(eq(soloChallengesTable.slug, req.params.slug))
+      .limit(1);
+
+    if (!challenge || (challenge.assignmentId !== null && challenge.assignmentArchivedAt)) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    if (challenge.expiresAt && new Date(challenge.expiresAt) < new Date()) {
+      return res.status(403).json({ message: "انتهت مدة هذه المسابقة" });
+    }
+    const allowedClasses = Array.isArray(challenge.allowedClasses)
+      ? challenge.allowedClasses.filter((value): value is string => typeof value === "string")
+      : [];
+    if (!allowedClasses.includes(className)) {
+      return res.status(403).json({ message: "الصف المحدد غير مسموح به" });
+    }
+
+    const students = await db
+      .select({ id: studentsTable.id, name: studentsTable.name })
+      .from(studentsTable)
+      .where(and(
+        eq(studentsTable.teacherId, challenge.teacherId),
+        or(eq(studentsTable.studentClass, className), eq(studentsTable.gradeLevel, className)),
+      ))
+      .orderBy(asc(studentsTable.name))
+      .limit(200);
+
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({
+      students: students.map((student) => ({
+        token: createRosterSelectionToken(req.params.slug, className, student.id),
+        name: rosterDisplayName(student.name),
+      })),
+    });
+  } catch (err) {
+    req.log.error(err, "Get solo challenge roster error");
+    res.status(500).json({ message: "تعذّر تحميل أسماء الطلاب" });
+  }
+});
+
 // ── POST /api/solo-challenges/:slug/start  (public: start game) ─────────────
 router.post("/solo-challenges/:slug/start", async (req, res) => {
   try {
     const slug = req.params.slug;
+    const participantKey = String(req.body?.participantKey || "").trim();
+    if (!/^[a-zA-Z0-9-]{16,80}$/.test(participantKey)) {
+      return res.status(400).json({ message: "معرّف المشارك غير صالح" });
+    }
     const [challenge] = await db
       .select({
         id: soloChallengesTable.id,
@@ -826,6 +973,7 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
         assignmentId: soloChallengesTable.assignmentId,
         questions: soloChallengesTable.questions,
         questionsPerParticipant: soloChallengesTable.questionsPerParticipant,
+        maxAttempts: soloChallengesTable.maxAttempts,
         timePerQuestion: soloChallengesTable.timePerQuestion,
         isMultiLevel: soloChallengesTable.isMultiLevel,
         levels: soloChallengesTable.levels,
@@ -855,6 +1003,7 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
     const allowedClasses = Array.isArray((challenge as any).allowedClasses)
       ? ((challenge as any).allowedClasses as string[]).filter(c => typeof c === "string" && c.trim())
       : [];
+    let verifiedPlayerName: string | null = null;
     if (allowedClasses.length > 0) {
       const playerClass = String(req.body?.playerClass || "").trim();
       if (!playerClass || !allowedClasses.includes(playerClass)) {
@@ -863,6 +1012,26 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
             ? "الصف المحدد غير مسموح به في هذه المسابقة"
             : "يجب اختيار صفك أولاً للمشاركة في هذه المسابقة",
         });
+      }
+      const requestedName = String(req.body?.playerName || "").trim().slice(0, 60);
+      const studentToken = String(req.body?.studentToken || "").trim();
+      if (studentToken) {
+        const students = await db
+          .select({ id: studentsTable.id, name: studentsTable.name })
+          .from(studentsTable)
+          .where(and(
+            eq(studentsTable.teacherId, challenge.teacherId),
+            or(eq(studentsTable.studentClass, playerClass), eq(studentsTable.gradeLevel, playerClass)),
+          ))
+          .limit(200);
+        const student = students.find((candidate) =>
+          createRosterSelectionToken(slug, playerClass, candidate.id) === studentToken);
+        if (!student) return res.status(403).json({ message: "الطالب غير موجود في الصف المحدد" });
+        verifiedPlayerName = student.name;
+      } else if (req.body?.manualName === true && requestedName) {
+        verifiedPlayerName = requestedName;
+      } else {
+        return res.status(400).json({ message: "اختر اسمك من القائمة أو اكتب اسمك يدويًا" });
       }
     }
 
@@ -980,12 +1149,46 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
     // uninterrupted flow without accidentally disabling gifts in live
     // individual Wameeth games, which share the same `solo` gameMode.
     game.giftsEnabled = false;
-    startGameFromRest(game.pin);
-
-    await db
-      .update(soloChallengesTable)
-      .set({ playCount: sql`${soloChallengesTable.playCount} + 1` })
-      .where(eq(soloChallengesTable.slug, slug));
+    game.soloChallengeSlug = slug;
+    try {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${slug}:${participantKey}`}))`);
+        const [attempts] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(soloChallengeAttemptsTable)
+          .where(and(
+            eq(soloChallengeAttemptsTable.slug, slug),
+            eq(soloChallengeAttemptsTable.participantKey, participantKey),
+          ));
+        if ((attempts?.count ?? 0) >= (challenge.maxAttempts ?? 1)) {
+          throw new Error("MAX_ATTEMPTS_REACHED");
+        }
+        await tx.insert(soloChallengeAttemptsTable).values({
+          slug,
+          participantKey,
+          gameRunId: game.gameRunId,
+        });
+      });
+    } catch (error) {
+      deleteGame(game.pin);
+      if (error instanceof Error && error.message === "MAX_ATTEMPTS_REACHED") {
+        return res.status(409).json({ message: "تم استخدام جميع المحاولات المتاحة" });
+      }
+      throw error;
+    }
+    try {
+      startGameFromRest(game.pin);
+      await db
+        .update(soloChallengesTable)
+        .set({ playCount: sql`${soloChallengesTable.playCount} + 1` })
+        .where(eq(soloChallengesTable.slug, slug));
+    } catch (error) {
+      deleteGame(game.pin);
+      await db.delete(soloChallengeAttemptsTable)
+        .where(eq(soloChallengeAttemptsTable.gameRunId, game.gameRunId))
+        .catch(() => undefined);
+      throw error;
+    }
 
     res.json({
       pin: game.pin,
@@ -993,6 +1196,8 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
       questionCount: gameQuestions.length,
       shortSlug: challenge.shortSlug ?? null,
       leaderboardDisplay: challenge.leaderboardDisplay ?? "top20",
+      scoreProof: game.gameRunId,
+      verifiedPlayerName,
     });
   } catch (err) {
     req.log.error(err, "Solo challenge start error");
@@ -1005,11 +1210,14 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
   try {
     const slug = req.params.slug;
     const playerName = String(req.body?.playerName || "").trim().slice(0, 60);
-    const score = Number(req.body?.points ?? req.body?.score ?? 0);
-    const correctCount = Number(req.body?.correctCount ?? 0);
-    const timeTaken = req.body?.timeTaken != null ? Number(req.body.timeTaken) : null;
+    const pin = String(req.body?.pin || "").trim();
+    const scoreProof = String(req.body?.scoreProof || "").trim();
+    const participantKey = String(req.body?.participantKey || "").trim();
 
     if (!playerName) return res.status(400).json({ message: "الاسم مطلوب" });
+    if (!pin || !scoreProof || !/^[a-zA-Z0-9-]{16,80}$/.test(participantKey)) {
+      return res.status(400).json({ message: "بيانات إثبات النتيجة مطلوبة" });
+    }
 
     const [challenge] = await db
       .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId, assignmentId: soloChallengesTable.assignmentId, assignmentArchivedAt: assignmentsTable.archivedAt })
@@ -1023,7 +1231,52 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
 
-    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score, correctCount, timeTaken: timeTaken ?? undefined });
+    const game = getGame(pin);
+    if (
+      !game ||
+      game.gameRunId !== scoreProof ||
+      game.soloChallengeSlug !== slug ||
+      game.state !== "finished"
+    ) {
+      return res.status(409).json({ message: "تعذر التحقق من نتيجة هذه المحاولة" });
+    }
+
+    const player = Array.from(game.players.values()).find((candidate) => candidate.name === playerName);
+    if (!player) return res.status(409).json({ message: "تعذر التحقق من اللاعب" });
+    const [attempt] = await db
+      .select({ id: soloChallengeAttemptsTable.id })
+      .from(soloChallengeAttemptsTable)
+      .where(and(
+        eq(soloChallengeAttemptsTable.slug, slug),
+        eq(soloChallengeAttemptsTable.participantKey, participantKey),
+        eq(soloChallengeAttemptsTable.gameRunId, scoreProof),
+      ))
+      .limit(1);
+    if (!attempt) return res.status(409).json({ message: "تعذر التحقق من المحاولة" });
+
+    const [existingScore] = await db
+      .select({ gameRunId: soloChallengeScoresTable.gameRunId })
+      .from(soloChallengeScoresTable)
+      .where(and(
+        eq(soloChallengeScoresTable.slug, slug),
+        eq(soloChallengeScoresTable.participantKey, participantKey),
+      ))
+      .limit(1);
+    if (existingScore) return res.json({ ok: true, duplicate: true });
+
+    const verifiedTimeTaken = Math.max(
+      0,
+      Math.round(Array.from(player.answers.values()).reduce((sum, answer) => sum + answer.time, 0) / 1000),
+    );
+    await db.insert(soloChallengeScoresTable).values({
+      slug,
+      participantKey,
+      gameRunId: scoreProof,
+      playerName: player.name,
+      score: Math.max(0, Math.round(player.score)),
+      correctCount: Math.max(0, Math.round(player.totalCorrect)),
+      timeTaken: verifiedTimeTaken,
+    }).onConflictDoNothing();
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err, "Solo challenge score error");

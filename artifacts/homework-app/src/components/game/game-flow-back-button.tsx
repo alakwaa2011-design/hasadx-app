@@ -24,20 +24,20 @@ export function GameFlowBackButton({
   const { lang } = useI18n();
   const ar = lang === "ar";
   const BackIcon = ar ? ChevronRight : ChevronLeft;
+  const accessibleLabel = label || (ar ? "رجوع" : "Back");
 
   return (
     <button
       type="button"
       data-testid={testId}
       onClick={onBack}
-      aria-label={label || (ar ? "الرجوع خطوة" : "Go back one step")}
+      aria-label={accessibleLabel}
       className={cn(
-        "inline-flex max-w-full min-h-10 items-center gap-2 whitespace-nowrap rounded-xl border border-border/70 bg-card px-3.5 py-2 text-sm font-bold text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-primary/[0.04] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 touch-manipulation",
+        "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-card text-muted-foreground shadow-sm transition hover:border-primary/40 hover:bg-primary/[0.04] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 touch-manipulation",
         className,
       )}
     >
       <BackIcon className="h-4 w-4 shrink-0" />
-      <span>{label || (ar ? "رجوع خطوة" : "Back one step")}</span>
     </button>
   );
 }

@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AiVideoBrief } from './aiVideoBrief';
-import type { AiVideoProjectRenderApproval } from "./aiVideoProjectRenderApproval";
-import type { AiVideoProjectRenderQuote } from "./aiVideoProjectRenderQuote";
+import type { AiVideoProjectRenderApproval } from './aiVideoProjectRenderApproval';
+import type { AiVideoProjectRenderQuote } from './aiVideoProjectRenderQuote';
 import type { AiVideoProjectStatus } from './aiVideoProjectStatus';
 import type { AiVideoStoryboard } from './aiVideoStoryboard';
 export interface AiVideoProject {
@@ -24,7 +24,15 @@ export interface AiVideoProject {
     storyboardIdempotencyKey: string;
     /** @nullable */
     renderIdempotencyKey?: string | null;
+    /**
+       * Persisted render approval snapshot, when one exists.
+       * @nullable
+       */
     renderApproval?: AiVideoProjectRenderApproval;
+    /**
+       * Persisted provider quote snapshot, when one exists.
+       * @nullable
+       */
     renderQuote?: AiVideoProjectRenderQuote;
     createdAt: Date;
     updatedAt: Date;
