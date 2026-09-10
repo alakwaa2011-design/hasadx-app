@@ -35,6 +35,7 @@ import {
   canUseQualityDegradedQuickOutline,
   needsCorrectiveOutlineRetry,
   shouldAdoptCorrectiveOutline,
+  hasInvalidMcqContent,
 } from "../lib/outline-guardrails";
 import { findExplicitAiContentLanguage, resolveAiContentLanguage } from "../lib/ai-content-language";
 import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
@@ -139,13 +140,18 @@ function isOutlinePlaceholder(value: string): boolean {
     /^(todo|tbd|lorem ipsum|نص تجريبي|ضع النص هنا)$/.test(normalized);
 }
 
-const outlineSlideCardSchema = z.object({
+export const outlineSlideCardSchema = z.object({
   index: z.number().int().min(1).max(30),
   kind: outlineSlideKindSchema,
   title: z.string().min(1).max(80),
   subtitle: z.string().max(80).optional(),
   purpose: z.string().min(1).max(140),
-  talkingPoints: z.array(z.string().min(1).max(140)).min(1).max(6),
+  /* Title slides and interactive quiz slides may legitimately use their
+     title/gameQuestions as the complete visible content. sanitizeOutline
+     already marks every other empty-content slide as fatal, so requiring a
+     talking point here contradicted that guardrail and rejected valid quick
+     outlines after the corrective retry had finished. */
+  talkingPoints: z.array(z.string().min(1).max(140)).max(6),
   interactionHint: z.enum(["poll", "quiz", "discussion", "activity"]).nullable(),
   /* Phase 3 — optional Hasaad live-game suggestion. Allowed values
      mirror the discriminated `hasad-game` element in `presentations.ts`
@@ -203,6 +209,22 @@ const outlineSlideCardSchema = z.object({
   source: z.string().max(200).optional(),
   activityType: z.string().max(40).nullable().optional(),
   strategyStage: z.string().max(60).nullable().optional(),
+}).superRefine((slide, ctx) => {
+  const hasValidGameQuestion = slide.gameQuestions?.some((question) =>
+    question.correctIndex < question.options.length &&
+    !hasInvalidMcqContent(question.prompt, question.options)
+  );
+  if (slide.kind !== "title" && slide.talkingPoints.length === 0 && !hasValidGameQuestion) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.too_small,
+      minimum: 1,
+      type: "array",
+      inclusive: true,
+      exact: false,
+      path: ["talkingPoints"],
+      message: "A non-title slide needs talking points or valid game questions",
+    });
+  }
 });
 
 const outlineSchema = z.object({

@@ -271,7 +271,7 @@ function isPlaceholderText(text: string): boolean {
   );
 }
 
-function hasInvalidMcqContent(prompt: string, options: string[]): boolean {
+export function hasInvalidMcqContent(prompt: string, options: string[]): boolean {
   if (isPlaceholderText(prompt)) return true;
   if (options.some(isPlaceholderText)) return true;
   if (options.some((o) => o.trim().length < 2)) return true;

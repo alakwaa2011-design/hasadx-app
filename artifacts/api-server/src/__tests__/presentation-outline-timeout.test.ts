@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canRunCorrectiveOutlineRetry,
+  outlineSlideCardSchema,
   outlineProviderRequestOptions,
   presentationBriefSchema,
   primaryOutlineTimeoutMs,
@@ -52,5 +53,59 @@ describe("professional presentation outline request budget", () => {
       sourceText: "Photosynthesis converts light into stored chemical energy.",
     }).success).toBe(true);
     expect(presentationBriefSchema.safeParse(baseBrief).success).toBe(false);
+  });
+
+  it("accepts content-complete title and quiz slides without duplicate talking points", () => {
+    const baseSlide = {
+      index: 1,
+      title: "Quick check",
+      purpose: "Check understanding",
+      talkingPoints: [],
+      interactionHint: null,
+      visualDirection: {},
+    };
+
+    expect(outlineSlideCardSchema.safeParse({
+      ...baseSlide,
+      kind: "title",
+    }).success).toBe(true);
+
+    expect(outlineSlideCardSchema.safeParse({
+      ...baseSlide,
+      kind: "interactive",
+      interactionHint: "quiz",
+      gameQuestions: [{
+        prompt: "Which answer is correct?",
+        options: ["Alpha", "Beta"],
+        correctIndex: 0,
+      }],
+    }).success).toBe(true);
+
+    expect(outlineSlideCardSchema.safeParse({
+      ...baseSlide,
+      kind: "concept-card",
+    }).success).toBe(false);
+
+    expect(outlineSlideCardSchema.safeParse({
+      ...baseSlide,
+      kind: "interactive",
+      interactionHint: "quiz",
+      gameQuestions: [{
+        prompt: "Which answer is correct?",
+        options: ["Option 1", "Option 2"],
+        correctIndex: 0,
+      }],
+    }).success).toBe(false);
+
+    expect(outlineSlideCardSchema.safeParse({
+      ...baseSlide,
+      kind: "interactive",
+      interactionHint: "quiz",
+      gameQuestions: [{
+        prompt: "Which answer is correct?",
+        options: ["Alpha", "Beta"],
+        correctIndex: 2,
+      }],
+    }).success).toBe(false);
   });
 });
