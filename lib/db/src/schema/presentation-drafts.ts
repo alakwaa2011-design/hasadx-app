@@ -39,6 +39,7 @@ export const presentationDraftsTable = pgTable("presentation_drafts", {
   tokensUsed: integer("tokens_used").default(0).notNull(),
   costMicroUsd: bigint("cost_micro_usd", { mode: "number" }).default(0).notNull(),
   errorMessage: text("error_message"),
+  outlineJobId: integer("outline_job_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -12,7 +12,10 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import {
-  useGeneratePresentationOutline,
+  useEnqueuePresentationOutline,
+  useGetPresentationOutlineJob,
+  getGetPresentationOutlineJobQueryKey,
+  useGetCurrentTeacher,
   useUpdatePresentationDraft,
   getListPresentationDraftsQueryKey,
   type PresentationBrief,
@@ -49,6 +52,16 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
   const [guardrailFeedback, setGuardrailFeedback] = useState<string[]>([]);
   const [showBuild, setShowBuild] = useState(false);
   const [lastBrief, setLastBrief] = useState<PresentationBrief | undefined>(undefined);
+  const savedOutlineRecovery = (() => {
+    try { return JSON.parse(localStorage.getItem("hasaad:presentation-outline-recovery") ?? "null") as { key?: string; brief?: PresentationBrief; teacherId?: number } | null; } catch { return null; }
+  })();
+  const [outlineJobId, setOutlineJobId] = useState<number | null>(() => {
+    const saved = Number(localStorage.getItem("hasaad:presentation-outline-job"));
+    return Number.isInteger(saved) && saved > 0 ? saved : null;
+  });
+  const outlineIdempotencyKey = useRef(savedOutlineRecovery?.key ?? crypto.randomUUID());
+  const recoveredRef = useRef(false);
+  const { data: currentTeacher } = useGetCurrentTeacher({ query: { retry: false } as any });
 
   /* Brief form validity — lifted via onValidityChange so the sticky
      footer Generate button can be disabled/enabled without needing
@@ -64,29 +77,77 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
       setGuardrailFeedback([]);
       setShowBuild(false);
       setBriefValid(false);
+      const savedJob = Number(localStorage.getItem("hasaad:presentation-outline-job"));
+      setOutlineJobId(Number.isInteger(savedJob) && savedJob > 0 ? savedJob : null);
+      try {
+        const recovery = JSON.parse(localStorage.getItem("hasaad:presentation-outline-recovery") ?? "null") as { key?: string } | null;
+        outlineIdempotencyKey.current = recovery?.key ?? crypto.randomUUID();
+      } catch {
+        outlineIdempotencyKey.current = crypto.randomUUID();
+      }
+      recoveredRef.current = false;
     }
   }, [open, initialDraft]);
 
   /* Server charges credits for outline generation — refresh the shared balance. */
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
-  const generate = useGeneratePresentationOutline({
+  const generate = useEnqueuePresentationOutline({
     mutation: {
       onSettled: () => refreshCreditsBalance(),
-      onSuccess: (data: PresentationDraftWithGuardrails) => {
-        const { guardrails, ...rest } = data;
-        setDraft(rest as PresentationDraft);
-        setGuardrailFeedback(guardrails?.feedback ?? []);
-        setStep("outline");
-        qc.invalidateQueries({ queryKey: getListPresentationDraftsQueryKey() });
-      },
       onError: (err: unknown) => {
         const e = err as { status?: number; data?: { message?: string } };
         const msg = e?.data?.message ?? (isAr ? "تعذّر توليد المخطط." : "Could not generate outline.");
         toast.error(msg);
       },
     },
+    request: { headers: { "X-Idempotency-Key": outlineIdempotencyKey.current } },
   });
+
+  const { data: outlineJob } = useGetPresentationOutlineJob(outlineJobId ?? 0, {
+    query: {
+      queryKey: getGetPresentationOutlineJobQueryKey(outlineJobId ?? 0),
+      enabled: outlineJobId !== null,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        return status === "queued" || status === "running" ? 1500 : false;
+      },
+      refetchIntervalInBackground: true,
+      staleTime: 0,
+    },
+  });
+
+  useEffect(() => {
+    if (!outlineJob || (outlineJob.status !== "succeeded" && outlineJob.status !== "failed")) return;
+    localStorage.removeItem("hasaad:presentation-outline-job");
+    localStorage.removeItem("hasaad:presentation-outline-recovery");
+    setOutlineJobId(null);
+    outlineIdempotencyKey.current = crypto.randomUUID();
+    if (outlineJob.status === "failed") {
+      toast.error(outlineJob.errorMessage ?? (isAr ? "تعذّر توليد المخطط." : "Could not generate outline."));
+      return;
+    }
+    const data = outlineJob.result as PresentationDraftWithGuardrails | null;
+    if (!data) return;
+    const { guardrails, ...rest } = data;
+    setDraft(rest as PresentationDraft);
+    setGuardrailFeedback(guardrails?.feedback ?? []);
+    setStep("outline");
+    qc.invalidateQueries({ queryKey: getListPresentationDraftsQueryKey() });
+    refreshCreditsBalance();
+  }, [outlineJob, isAr, qc, refreshCreditsBalance]);
+
+  useEffect(() => {
+    if (!open || recoveredRef.current || outlineJobId !== null) return;
+    if (!savedOutlineRecovery?.brief || savedOutlineRecovery.teacherId !== currentTeacher?.id) return;
+    recoveredRef.current = true;
+    generate.mutate({ data: savedOutlineRecovery.brief }, {
+      onSuccess: (job) => {
+        setOutlineJobId(job.id);
+        localStorage.setItem("hasaad:presentation-outline-job", String(job.id));
+      },
+    });
+  }, [open, outlineJobId, currentTeacher?.id]);
 
   const update = useUpdatePresentationDraft({
     mutation: {
@@ -100,8 +161,22 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
 
   const submitBrief = (brief: PresentationBrief) => {
     setLastBrief(brief);
-    generate.mutate({ data: brief });
+    localStorage.setItem("hasaad:presentation-outline-recovery", JSON.stringify({
+      teacherId: currentTeacher?.id,
+      key: outlineIdempotencyKey.current,
+      brief,
+    }));
+    generate.mutate({ data: brief }, {
+      onSuccess: (job) => {
+        setOutlineJobId(job.id);
+        localStorage.setItem("hasaad:presentation-outline-job", String(job.id));
+      },
+    });
   };
+
+  const outlinePending = generate.isPending ||
+    outlineJob?.status === "queued" ||
+    outlineJob?.status === "running";
 
   const saveDraft = async (outline: PresentationOutline) => {
     if (!draft) return;
@@ -155,7 +230,11 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
               {isAr ? "مساعد بناء العرض" : "AI presentation builder"}
             </DialogTitle>
             <DialogDescription>
-              {step === "brief"
+              {outlinePending
+                ? (isAr
+                    ? "يجري إنشاء العرض في الخلفية. يمكنك إغلاق النافذة والعودة لاحقًا دون فقدان التوليد."
+                    : "Your outline is generating in the background. You can close this dialog and return later.")
+                : step === "brief"
                 ? (isAr
                     ? "املأ المُدخلات وسننتج لك مخططاً قابلاً للمراجعة قبل بناء الشرائح."
                     : "Fill the brief; we'll produce a reviewable outline before any slides are built.")
@@ -170,7 +249,7 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
             {step === "brief" ? (
               <BriefForm
                 ref={briefRef}
-                loading={generate.isPending}
+                 loading={outlinePending}
                 onSubmit={submitBrief}
                 initial={lastBrief ?? (initialDraft?.brief as PresentationBrief | undefined)}
                 onValidityChange={(valid) => setBriefValid(valid)}
@@ -196,17 +275,17 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
               <Button
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={generate.isPending}
+                 disabled={outlinePending}
               >
                 {isAr ? "إلغاء" : "Cancel"}
               </Button>
               <Button
                 onClick={() => briefRef.current?.submit()}
-                disabled={!briefValid || generate.isPending}
+                 disabled={!briefValid || outlinePending}
                 style={{ background: BRAND_GREEN, color: "white" }}
                 className="gap-2 font-bold min-w-[140px]"
               >
-                {generate.isPending ? (
+                 {outlinePending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {isAr ? "جارٍ التوليد…" : "Generating…"}

@@ -1580,6 +1580,16 @@ export interface PresentationOutline {
   slides: OutlineSlideCard[];
 }
 
+export type PresentationOutlineJobStatus = typeof PresentationOutlineJobStatus[keyof typeof PresentationOutlineJobStatus];
+
+
+export const PresentationOutlineJobStatus = {
+  queued: 'queued',
+  running: 'running',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
 export type PresentationDraftStatus = typeof PresentationDraftStatus[keyof typeof PresentationDraftStatus];
 
 
@@ -1615,6 +1625,28 @@ export interface PresentationDraft {
   updatedAt: string;
 }
 
+export type PresentationDraftWithGuardrailsGuardrails = {
+  feedback: string[];
+  usedCache: boolean;
+};
+
+export type PresentationDraftWithGuardrails = PresentationDraft & {
+  guardrails: PresentationDraftWithGuardrailsGuardrails;
+};
+
+export interface PresentationOutlineJob {
+  id: number;
+  teacherId: number;
+  idempotencyKey: string;
+  request: PresentationBrief;
+  status: PresentationOutlineJobStatus;
+  result?: PresentationDraftWithGuardrails | null;
+  errorMessage?: string | null;
+  attempts: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BuildPresentationRequest {
   /**
      * Slide theme key from SLIDE_THEMES; defaults to "harvest" if omitted or unknown.
@@ -1644,15 +1676,6 @@ export interface CancelBuildResponse {
   /** Current draft status at cancel time. */
   status?: string;
 }
-
-export type PresentationDraftWithGuardrailsGuardrails = {
-  feedback: string[];
-  usedCache: boolean;
-};
-
-export type PresentationDraftWithGuardrails = PresentationDraft & {
-  guardrails: PresentationDraftWithGuardrailsGuardrails;
-};
 
 export type UpdatePresentationDraftBodyStatus = typeof UpdatePresentationDraftBodyStatus[keyof typeof UpdatePresentationDraftBodyStatus];
 

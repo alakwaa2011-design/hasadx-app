@@ -1104,6 +1104,68 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /presentations/ai/outline/jobs:
+    post:
+      operationId: enqueuePresentationOutline
+      tags: [presentations]
+      summary: Enqueue durable outline generation
+      parameters:
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema: { type: string, maxLength: 200 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationBrief"
+      responses:
+        "202":
+          description: Queued outline job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationOutlineJob"
+
+  /presentations/ai/outline/jobs/{jobId}:
+    get:
+      operationId: getPresentationOutlineJob
+      tags: [presentations]
+      summary: Get an owned outline job
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Outline job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationOutlineJob"
+        "404": { description: Not found }
+
+  /presentations/ai/outline/jobs/by-key/{key}:
+    get:
+      operationId: getPresentationOutlineJobByKey
+      tags: [presentations]
+      summary: Get an owned outline job by idempotency key
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Outline job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationOutlineJob"
+        "404": { description: Not found }
+
   /presentations/ai/build/{draftId}:
     post:
       operationId: buildPresentationFromDraft
@@ -3415,6 +3477,26 @@ components:
         - objectives
         - teachingFlow
         - slides
+
+    PresentationOutlineJob:
+      type: object
+      properties:
+        id: { type: integer }
+        teacherId: { type: integer }
+        idempotencyKey: { type: string }
+        request: { $ref: "#/components/schemas/PresentationBrief" }
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        result:
+          allOf:
+            - $ref: "#/components/schemas/PresentationDraftWithGuardrails"
+          nullable: true
+        errorMessage: { type: string, nullable: true }
+        attempts: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, teacherId, idempotencyKey, request, status, attempts, createdAt, updatedAt]
 
     PresentationDraft:
       type: object

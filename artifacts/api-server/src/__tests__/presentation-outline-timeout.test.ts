@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   canRunCorrectiveOutlineRetry,
+  correctiveOutlineTier,
+  outlineGenerationDeadlineMs,
   outlineSchema,
   outlineSlideCardSchema,
   outlineProviderRequestOptions,
@@ -33,6 +35,17 @@ describe("professional presentation outline request budget", () => {
     expect(canRunCorrectiveOutlineRetry(22_000, false)).toBe(true);
     expect(canRunCorrectiveOutlineRetry(14_999, false)).toBe(false);
     expect(canRunCorrectiveOutlineRetry(40_000, true)).toBe(false);
+  });
+
+  it("keeps corrective retries on the standard provider after Claude times out", () => {
+    expect(correctiveOutlineTier("claude", true)).toBe("standard");
+    expect(correctiveOutlineTier("claude", false)).toBe("claude");
+    expect(correctiveOutlineTier("standard", true)).toBe("standard");
+  });
+
+  it("keeps browser requests bounded while background jobs may finish slowly", () => {
+    expect(outlineGenerationDeadlineMs(false)).toBe(100_000);
+    expect(outlineGenerationDeadlineMs(true)).toBe(480_000);
   });
 
   it("accepts pasted source text without a topic and rejects an empty educational source", () => {

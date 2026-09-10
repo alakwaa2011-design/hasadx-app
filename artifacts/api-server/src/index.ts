@@ -47,9 +47,37 @@ import { startAnnualCreditReleaseJob } from "./lib/annual-credit-release";
 import { CONFIGURED_ADMIN_EMAILS } from "./lib/admin-identity";
 import { migrateKidsSchema, seedKidsCatalogV1 } from "./kids-catalog";
 import { setKidsReady } from "./routes/kids";
+import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 
 async function runSchemaMigrations() {
   try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS presentation_outline_jobs (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        idempotency_key TEXT NOT NULL,
+        request JSONB NOT NULL,
+        status TEXT NOT NULL DEFAULT 'queued',
+        result JSONB,
+        error_message TEXT,
+        credit_request_id TEXT,
+        draft_id INTEGER,
+        claim_token UUID,
+        locked_at TIMESTAMP,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS presentation_outline_jobs_owner_key_uq
+        ON presentation_outline_jobs(teacher_id, idempotency_key);
+      ALTER TABLE presentation_outline_jobs ADD COLUMN IF NOT EXISTS draft_id INTEGER;
+      ALTER TABLE presentation_outline_jobs ADD COLUMN IF NOT EXISTS claim_token UUID;
+      ALTER TABLE presentation_drafts ADD COLUMN IF NOT EXISTS outline_job_id INTEGER;
+      CREATE UNIQUE INDEX IF NOT EXISTS presentation_drafts_outline_job_uq
+        ON presentation_drafts(outline_job_id) WHERE outline_job_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS presentation_outline_jobs_claim_idx
+        ON presentation_outline_jobs(status, created_at);
+    `);
     await migrateKidsSchema();
     // Assignment history is also applied at runtime for deployments that do
     // not run the reviewed SQL files during boot.
@@ -2074,6 +2102,7 @@ httpServer.listen(port, () => {
       startEmailOutboxWorker();
       startMissingWelcomeCreditsAlertJob();
       startAnnualCreditReleaseJob();
+      startPresentationOutlineWorker();
 
       import("./lib/ai-video-renderer").then(({
         failStaleAiVideoRenders,

@@ -97,6 +97,8 @@ export type * from "./types/presentationLanguage";
 export type * from "./types/presentationLimits";
 export type * from "./types/presentationOutline";
 export type * from "./types/presentationOutlineDensity";
+export type * from "./types/presentationOutlineJob";
+export type * from "./types/presentationOutlineJobStatus";
 export type * from "./types/presentationOutlineLanguage";
 export type * from "./types/presentationStatus";
 export type * from "./types/presentationSummary";

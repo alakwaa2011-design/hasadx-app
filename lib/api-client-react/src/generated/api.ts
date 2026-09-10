@@ -53,6 +53,7 @@ import type {
   PresentationBrief,
   PresentationDraft,
   PresentationDraftWithGuardrails,
+  PresentationOutlineJob,
   PresentationSummary,
   PresentationTier,
   PresentationTierWithUsage,
@@ -4011,6 +4012,240 @@ export const useGeneratePresentationOutline = <TError = ErrorType<ErrorResponse>
       > => {
       return useMutation(getGeneratePresentationOutlineMutationOptions(options));
     }
+
+export const getEnqueuePresentationOutlineUrl = () => {
+
+
+
+
+  return `/api/presentations/ai/outline/jobs`
+}
+
+/**
+ * @summary Enqueue durable outline generation
+ */
+export const enqueuePresentationOutline = async (presentationBrief: PresentationBrief, options?: Parameters<typeof customFetch>[1]): Promise<PresentationOutlineJob> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<PresentationOutlineJob>(getEnqueuePresentationOutlineUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(presentationBrief)
+  }
+);}
+
+
+
+
+
+export const getEnqueuePresentationOutlineMutationKey = () => ['enqueuePresentationOutline'] as const;
+
+export const getEnqueuePresentationOutlineMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError,EnqueuePresentationOutlineMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError,EnqueuePresentationOutlineMutationVariables, TContext> => {
+
+const mutationKey = getEnqueuePresentationOutlineMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enqueuePresentationOutline>>, EnqueuePresentationOutlineMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  enqueuePresentationOutline(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnqueuePresentationOutlineMutationResult = NonNullable<Awaited<ReturnType<typeof enqueuePresentationOutline>>>
+    export type EnqueuePresentationOutlineMutationBody = BodyType<PresentationBrief>
+    export type EnqueuePresentationOutlineMutationError = ErrorType<unknown>
+    export type EnqueuePresentationOutlineMutationVariables = {data: BodyType<PresentationBrief>}
+
+    /**
+ * @summary Enqueue durable outline generation
+ */
+export const useEnqueuePresentationOutline = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError,EnqueuePresentationOutlineMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enqueuePresentationOutline>>,
+        TError,
+        EnqueuePresentationOutlineMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEnqueuePresentationOutlineMutationOptions(options));
+    }
+
+export const getGetPresentationOutlineJobUrl = (jobId: number,) => {
+
+
+
+
+  return `/api/presentations/ai/outline/jobs/${jobId}`
+}
+
+/**
+ * @summary Get an owned outline job
+ */
+export const getPresentationOutlineJob = async (jobId: number, options?: Parameters<typeof customFetch>[1]): Promise<PresentationOutlineJob> => {
+
+  return customFetch<PresentationOutlineJob>(getGetPresentationOutlineJobUrl(jobId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPresentationOutlineJobQueryKey = (jobId: number,) => {
+    return [
+    `/api/presentations/ai/outline/jobs/${jobId}`
+    ] as const;
+    }
+
+
+export const getGetPresentationOutlineJobQueryOptions = <TData = Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError = ErrorType<void>>(jobId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPresentationOutlineJobQueryKey(jobId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPresentationOutlineJob>>> = ({ signal }) => getPresentationOutlineJob(jobId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jobId !== null && jobId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPresentationOutlineJobQueryResult = NonNullable<Awaited<ReturnType<typeof getPresentationOutlineJob>>>
+export type GetPresentationOutlineJobQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get an owned outline job
+ */
+
+export function useGetPresentationOutlineJob<TData = Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError = ErrorType<void>>(
+ jobId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPresentationOutlineJobQueryOptions(jobId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPresentationOutlineJobByKeyUrl = (key: string,) => {
+
+
+
+
+  return `/api/presentations/ai/outline/jobs/by-key/${key}`
+}
+
+/**
+ * @summary Get an owned outline job by idempotency key
+ */
+export const getPresentationOutlineJobByKey = async (key: string, options?: Parameters<typeof customFetch>[1]): Promise<PresentationOutlineJob> => {
+
+  return customFetch<PresentationOutlineJob>(getGetPresentationOutlineJobByKeyUrl(key),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPresentationOutlineJobByKeyQueryKey = (key: string,) => {
+    return [
+    `/api/presentations/ai/outline/jobs/by-key/${key}`
+    ] as const;
+    }
+
+
+export const getGetPresentationOutlineJobByKeyQueryOptions = <TData = Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError = ErrorType<void>>(key: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPresentationOutlineJobByKeyQueryKey(key);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>> = ({ signal }) => getPresentationOutlineJobByKey(key, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: key !== null && key !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPresentationOutlineJobByKeyQueryResult = NonNullable<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>>
+export type GetPresentationOutlineJobByKeyQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get an owned outline job by idempotency key
+ */
+
+export function useGetPresentationOutlineJobByKey<TData = Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError = ErrorType<void>>(
+ key: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPresentationOutlineJobByKeyQueryOptions(key,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getBuildPresentationFromDraftUrl = (draftId: number,) => {
 

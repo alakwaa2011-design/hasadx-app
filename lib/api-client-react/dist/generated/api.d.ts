@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1150,6 +1150,75 @@ export declare const useGeneratePresentationOutline: <TError = ErrorType<ErrorRe
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, GeneratePresentationOutlineMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof generatePresentationOutline>>, TError, GeneratePresentationOutlineMutationVariables, TContext>;
+export declare const getEnqueuePresentationOutlineUrl: () => string;
+/**
+ * @summary Enqueue durable outline generation
+ */
+export declare const enqueuePresentationOutline: (presentationBrief: PresentationBrief, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationOutlineJob>;
+export declare const getEnqueuePresentationOutlineMutationKey: () => readonly ["enqueuePresentationOutline"];
+export declare const getEnqueuePresentationOutlineMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError, EnqueuePresentationOutlineMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError, EnqueuePresentationOutlineMutationVariables, TContext>;
+export type EnqueuePresentationOutlineMutationResult = NonNullable<Awaited<ReturnType<typeof enqueuePresentationOutline>>>;
+export type EnqueuePresentationOutlineMutationBody = BodyType<PresentationBrief>;
+export type EnqueuePresentationOutlineMutationError = ErrorType<unknown>;
+export type EnqueuePresentationOutlineMutationVariables = {
+    data: BodyType<PresentationBrief>;
+};
+/**
+* @summary Enqueue durable outline generation
+*/
+export declare const useEnqueuePresentationOutline: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError, EnqueuePresentationOutlineMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof enqueuePresentationOutline>>, TError, EnqueuePresentationOutlineMutationVariables, TContext>;
+export declare const getGetPresentationOutlineJobUrl: (jobId: number) => string;
+/**
+ * @summary Get an owned outline job
+ */
+export declare const getPresentationOutlineJob: (jobId: number, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationOutlineJob>;
+export declare const getGetPresentationOutlineJobQueryKey: (jobId: number) => readonly [`/api/presentations/ai/outline/jobs/${number}`];
+export declare const getGetPresentationOutlineJobQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError = ErrorType<void>>(jobId: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetPresentationOutlineJobQueryResult = NonNullable<Awaited<ReturnType<typeof getPresentationOutlineJob>>>;
+export type GetPresentationOutlineJobQueryError = ErrorType<void>;
+/**
+ * @summary Get an owned outline job
+ */
+export declare function useGetPresentationOutlineJob<TData = Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError = ErrorType<void>>(jobId: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJob>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getGetPresentationOutlineJobByKeyUrl: (key: string) => string;
+/**
+ * @summary Get an owned outline job by idempotency key
+ */
+export declare const getPresentationOutlineJobByKey: (key: string, options?: Parameters<typeof customFetch>[1]) => Promise<PresentationOutlineJob>;
+export declare const getGetPresentationOutlineJobByKeyQueryKey: (key: string) => readonly [`/api/presentations/ai/outline/jobs/by-key/${string}`];
+export declare const getGetPresentationOutlineJobByKeyQueryOptions: <TData = Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError = ErrorType<void>>(key: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetPresentationOutlineJobByKeyQueryResult = NonNullable<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>>;
+export type GetPresentationOutlineJobByKeyQueryError = ErrorType<void>;
+/**
+ * @summary Get an owned outline job by idempotency key
+ */
+export declare function useGetPresentationOutlineJobByKey<TData = Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError = ErrorType<void>>(key: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getPresentationOutlineJobByKey>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
 export declare const getBuildPresentationFromDraftUrl: (draftId: number) => string;
 /**
  * Per-slide materialization with skip-on-failure semantics. Failed

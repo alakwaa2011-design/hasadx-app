@@ -107,6 +107,8 @@ export * from './presentationLanguage';
 export * from './presentationLimits';
 export * from './presentationOutline';
 export * from './presentationOutlineDensity';
+export * from './presentationOutlineJob';
+export * from './presentationOutlineJobStatus';
 export * from './presentationOutlineLanguage';
 export * from './presentationStatus';
 export * from './presentationSummary';

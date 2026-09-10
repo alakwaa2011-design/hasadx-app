@@ -1830,6 +1830,555 @@ export const GeneratePresentationOutlineResponse = zod.object({
 
 
 /**
+ * @summary Enqueue durable outline generation
+ */
+export const enqueuePresentationOutlineHeaderXIdempotencyKeyMax = 200;
+
+
+
+export const EnqueuePresentationOutlineHeader = zod.object({
+  "X-Idempotency-Key": zod.string().max(enqueuePresentationOutlineHeaderXIdempotencyKeyMax)
+})
+
+export const enqueuePresentationOutlineBodySubjectMax = 100;
+
+export const enqueuePresentationOutlineBodyGradeLevelMax = 50;
+
+export const enqueuePresentationOutlineBodyTopicMax = 120;
+
+export const enqueuePresentationOutlineBodySourceTextMax = 12000;
+
+export const enqueuePresentationOutlineBodySlideCountMin = 5;
+export const enqueuePresentationOutlineBodySlideCountMax = 30;
+
+export const enqueuePresentationOutlineBodyNotesMax = 200;
+
+
+
+export const EnqueuePresentationOutlineBody = zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(enqueuePresentationOutlineBodySubjectMax),
+  "gradeLevel": zod.string().min(1).max(enqueuePresentationOutlineBodyGradeLevelMax),
+  "topic": zod.string().max(enqueuePresentationOutlineBodyTopicMax),
+  "sourceText": zod.string().max(enqueuePresentationOutlineBodySourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(enqueuePresentationOutlineBodySlideCountMin).max(enqueuePresentationOutlineBodySlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(enqueuePresentationOutlineBodyNotesMax).nullish()
+})
+
+export const enqueuePresentationOutlineResponseRequestSubjectMax = 100;
+
+export const enqueuePresentationOutlineResponseRequestGradeLevelMax = 50;
+
+export const enqueuePresentationOutlineResponseRequestTopicMax = 120;
+
+export const enqueuePresentationOutlineResponseRequestSourceTextMax = 12000;
+
+export const enqueuePresentationOutlineResponseRequestSlideCountMin = 5;
+export const enqueuePresentationOutlineResponseRequestSlideCountMax = 30;
+
+export const enqueuePresentationOutlineResponseRequestNotesMax = 200;
+
+export const enqueuePresentationOutlineResponseResultOneOneBriefSubjectMax = 100;
+
+export const enqueuePresentationOutlineResponseResultOneOneBriefGradeLevelMax = 50;
+
+export const enqueuePresentationOutlineResponseResultOneOneBriefTopicMax = 120;
+
+export const enqueuePresentationOutlineResponseResultOneOneBriefSourceTextMax = 12000;
+
+export const enqueuePresentationOutlineResponseResultOneOneBriefSlideCountMin = 5;
+export const enqueuePresentationOutlineResponseResultOneOneBriefSlideCountMax = 30;
+
+export const enqueuePresentationOutlineResponseResultOneOneBriefNotesMax = 200;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineTotalEstimatedMinutesMax = 240;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineObjectivesItemMax = 140;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineObjectivesMin = 2;
+export const enqueuePresentationOutlineResponseResultOneOneOutlineObjectivesMax = 6;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowMin = 4;
+export const enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowMax = 4;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemIndexMax = 30;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTitleMax = 80;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemSubtitleMax = 80;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemPurposeMax = 140;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsMax = 6;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemSourceMax = 200;
+
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesMin = 3;
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesMax = 30;
+
+
+
+export const EnqueuePresentationOutlineResponse = zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "idempotencyKey": zod.string(),
+  "request": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(enqueuePresentationOutlineResponseRequestSubjectMax),
+  "gradeLevel": zod.string().min(1).max(enqueuePresentationOutlineResponseRequestGradeLevelMax),
+  "topic": zod.string().max(enqueuePresentationOutlineResponseRequestTopicMax),
+  "sourceText": zod.string().max(enqueuePresentationOutlineResponseRequestSourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(enqueuePresentationOutlineResponseRequestSlideCountMin).max(enqueuePresentationOutlineResponseRequestSlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(enqueuePresentationOutlineResponseRequestNotesMax).nullish()
+}),
+  "status": zod.enum(['queued', 'running', 'succeeded', 'failed']),
+  "result": zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "presentationId": zod.int().nullish(),
+  "brief": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(enqueuePresentationOutlineResponseResultOneOneBriefSubjectMax),
+  "gradeLevel": zod.string().min(1).max(enqueuePresentationOutlineResponseResultOneOneBriefGradeLevelMax),
+  "topic": zod.string().max(enqueuePresentationOutlineResponseResultOneOneBriefTopicMax),
+  "sourceText": zod.string().max(enqueuePresentationOutlineResponseResultOneOneBriefSourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(enqueuePresentationOutlineResponseResultOneOneBriefSlideCountMin).max(enqueuePresentationOutlineResponseResultOneOneBriefSlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(enqueuePresentationOutlineResponseResultOneOneBriefNotesMax).nullish()
+}),
+  "outline": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "totalEstimatedMinutes": zod.int().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineTotalEstimatedMinutesMax),
+  "objectives": zod.array(zod.string().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineObjectivesItemMax)).min(enqueuePresentationOutlineResponseResultOneOneOutlineObjectivesMin).max(enqueuePresentationOutlineResponseResultOneOneOutlineObjectivesMax),
+  "teachingFlow": zod.array(zod.object({
+  "stage": zod.enum(['opener', 'concept', 'practice', 'closure']),
+  "slideIndices": zod.array(zod.int().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowItemSlideIndicesItemMax)).min(1),
+  "estimatedMinutes": zod.int().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowItemEstimatedMinutesMax)
+})).min(enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowMin).max(enqueuePresentationOutlineResponseResultOneOneOutlineTeachingFlowMax),
+  "slides": zod.array(zod.object({
+  "index": zod.int().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemIndexMax),
+  "kind": zod.enum(['title', 'objectives', 'concept-card', 'comparison', 'visual-hero', 'steps', 'interactive', 'closure', 'timeline', 'formula', 'stat', 'quote', 'callout']),
+  "title": zod.string().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTitleMax),
+  "subtitle": zod.string().max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemSubtitleMax).optional(),
+  "purpose": zod.string().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemPurposeMax),
+  "talkingPoints": zod.array(zod.string().min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax)).min(1).max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsMax),
+  "interactionHint": zod.enum(['poll', 'quiz', 'discussion', 'activity']).nullable(),
+  "visualDirection": zod.object({
+  "icon": zod.string().max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemVisualDirectionIconMax).optional(),
+  "shape": zod.enum(['rect', 'circle', 'line', 'arrow', 'divider']).optional(),
+  "layoutHint": zod.string().max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemVisualDirectionLayoutHintMax).optional()
+}),
+  "source": zod.string().max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemSourceMax).optional()
+})).min(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesMin).max(enqueuePresentationOutlineResponseResultOneOneOutlineSlidesMax)
+}),
+  "status": zod.enum(['draft', 'outline_ready', 'building', 'built', 'failed']),
+  "modelUsed": zod.string().nullish(),
+  "tokensUsed": zod.int(),
+  "costMicroUsd": zod.int(),
+  "errorMessage": zod.string().nullish(),
+  "buildProgress": zod.object({
+  "current": zod.int().optional(),
+  "total": zod.int().optional(),
+  "warnings": zod.array(zod.string()).optional(),
+  "skipped": zod.array(zod.int()).optional().describe('Outline indexes the materializer skipped (failed validation).')
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "guardrails": zod.object({
+  "feedback": zod.array(zod.string()),
+  "usedCache": zod.boolean()
+})
+})).nullish(),
+  "errorMessage": zod.string().nullish(),
+  "attempts": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get an owned outline job
+ */
+export const GetPresentationOutlineJobParams = zod.object({
+  "jobId": zod.coerce.number().int()
+})
+
+export const getPresentationOutlineJobResponseRequestSubjectMax = 100;
+
+export const getPresentationOutlineJobResponseRequestGradeLevelMax = 50;
+
+export const getPresentationOutlineJobResponseRequestTopicMax = 120;
+
+export const getPresentationOutlineJobResponseRequestSourceTextMax = 12000;
+
+export const getPresentationOutlineJobResponseRequestSlideCountMin = 5;
+export const getPresentationOutlineJobResponseRequestSlideCountMax = 30;
+
+export const getPresentationOutlineJobResponseRequestNotesMax = 200;
+
+export const getPresentationOutlineJobResponseResultOneOneBriefSubjectMax = 100;
+
+export const getPresentationOutlineJobResponseResultOneOneBriefGradeLevelMax = 50;
+
+export const getPresentationOutlineJobResponseResultOneOneBriefTopicMax = 120;
+
+export const getPresentationOutlineJobResponseResultOneOneBriefSourceTextMax = 12000;
+
+export const getPresentationOutlineJobResponseResultOneOneBriefSlideCountMin = 5;
+export const getPresentationOutlineJobResponseResultOneOneBriefSlideCountMax = 30;
+
+export const getPresentationOutlineJobResponseResultOneOneBriefNotesMax = 200;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineTotalEstimatedMinutesMax = 240;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineObjectivesItemMax = 140;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineObjectivesMin = 2;
+export const getPresentationOutlineJobResponseResultOneOneOutlineObjectivesMax = 6;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowMin = 4;
+export const getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowMax = 4;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemIndexMax = 30;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTitleMax = 80;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemSubtitleMax = 80;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemPurposeMax = 140;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsMax = 6;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemSourceMax = 200;
+
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesMin = 3;
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesMax = 30;
+
+
+
+export const GetPresentationOutlineJobResponse = zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "idempotencyKey": zod.string(),
+  "request": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(getPresentationOutlineJobResponseRequestSubjectMax),
+  "gradeLevel": zod.string().min(1).max(getPresentationOutlineJobResponseRequestGradeLevelMax),
+  "topic": zod.string().max(getPresentationOutlineJobResponseRequestTopicMax),
+  "sourceText": zod.string().max(getPresentationOutlineJobResponseRequestSourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(getPresentationOutlineJobResponseRequestSlideCountMin).max(getPresentationOutlineJobResponseRequestSlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(getPresentationOutlineJobResponseRequestNotesMax).nullish()
+}),
+  "status": zod.enum(['queued', 'running', 'succeeded', 'failed']),
+  "result": zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "presentationId": zod.int().nullish(),
+  "brief": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(getPresentationOutlineJobResponseResultOneOneBriefSubjectMax),
+  "gradeLevel": zod.string().min(1).max(getPresentationOutlineJobResponseResultOneOneBriefGradeLevelMax),
+  "topic": zod.string().max(getPresentationOutlineJobResponseResultOneOneBriefTopicMax),
+  "sourceText": zod.string().max(getPresentationOutlineJobResponseResultOneOneBriefSourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(getPresentationOutlineJobResponseResultOneOneBriefSlideCountMin).max(getPresentationOutlineJobResponseResultOneOneBriefSlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(getPresentationOutlineJobResponseResultOneOneBriefNotesMax).nullish()
+}),
+  "outline": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "totalEstimatedMinutes": zod.int().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineTotalEstimatedMinutesMax),
+  "objectives": zod.array(zod.string().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineObjectivesItemMax)).min(getPresentationOutlineJobResponseResultOneOneOutlineObjectivesMin).max(getPresentationOutlineJobResponseResultOneOneOutlineObjectivesMax),
+  "teachingFlow": zod.array(zod.object({
+  "stage": zod.enum(['opener', 'concept', 'practice', 'closure']),
+  "slideIndices": zod.array(zod.int().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowItemSlideIndicesItemMax)).min(1),
+  "estimatedMinutes": zod.int().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowItemEstimatedMinutesMax)
+})).min(getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowMin).max(getPresentationOutlineJobResponseResultOneOneOutlineTeachingFlowMax),
+  "slides": zod.array(zod.object({
+  "index": zod.int().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemIndexMax),
+  "kind": zod.enum(['title', 'objectives', 'concept-card', 'comparison', 'visual-hero', 'steps', 'interactive', 'closure', 'timeline', 'formula', 'stat', 'quote', 'callout']),
+  "title": zod.string().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTitleMax),
+  "subtitle": zod.string().max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemSubtitleMax).optional(),
+  "purpose": zod.string().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemPurposeMax),
+  "talkingPoints": zod.array(zod.string().min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax)).min(1).max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsMax),
+  "interactionHint": zod.enum(['poll', 'quiz', 'discussion', 'activity']).nullable(),
+  "visualDirection": zod.object({
+  "icon": zod.string().max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemVisualDirectionIconMax).optional(),
+  "shape": zod.enum(['rect', 'circle', 'line', 'arrow', 'divider']).optional(),
+  "layoutHint": zod.string().max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemVisualDirectionLayoutHintMax).optional()
+}),
+  "source": zod.string().max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemSourceMax).optional()
+})).min(getPresentationOutlineJobResponseResultOneOneOutlineSlidesMin).max(getPresentationOutlineJobResponseResultOneOneOutlineSlidesMax)
+}),
+  "status": zod.enum(['draft', 'outline_ready', 'building', 'built', 'failed']),
+  "modelUsed": zod.string().nullish(),
+  "tokensUsed": zod.int(),
+  "costMicroUsd": zod.int(),
+  "errorMessage": zod.string().nullish(),
+  "buildProgress": zod.object({
+  "current": zod.int().optional(),
+  "total": zod.int().optional(),
+  "warnings": zod.array(zod.string()).optional(),
+  "skipped": zod.array(zod.int()).optional().describe('Outline indexes the materializer skipped (failed validation).')
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "guardrails": zod.object({
+  "feedback": zod.array(zod.string()),
+  "usedCache": zod.boolean()
+})
+})).nullish(),
+  "errorMessage": zod.string().nullish(),
+  "attempts": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get an owned outline job by idempotency key
+ */
+export const GetPresentationOutlineJobByKeyParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+export const getPresentationOutlineJobByKeyResponseRequestSubjectMax = 100;
+
+export const getPresentationOutlineJobByKeyResponseRequestGradeLevelMax = 50;
+
+export const getPresentationOutlineJobByKeyResponseRequestTopicMax = 120;
+
+export const getPresentationOutlineJobByKeyResponseRequestSourceTextMax = 12000;
+
+export const getPresentationOutlineJobByKeyResponseRequestSlideCountMin = 5;
+export const getPresentationOutlineJobByKeyResponseRequestSlideCountMax = 30;
+
+export const getPresentationOutlineJobByKeyResponseRequestNotesMax = 200;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefSubjectMax = 100;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefGradeLevelMax = 50;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefTopicMax = 120;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefSourceTextMax = 12000;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefSlideCountMin = 5;
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefSlideCountMax = 30;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneBriefNotesMax = 200;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineTotalEstimatedMinutesMax = 240;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineObjectivesItemMax = 140;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineObjectivesMin = 2;
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineObjectivesMax = 6;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowMin = 4;
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowMax = 4;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemIndexMax = 30;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTitleMax = 80;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemSubtitleMax = 80;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemPurposeMax = 140;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsMax = 6;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemSourceMax = 200;
+
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesMin = 3;
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesMax = 30;
+
+
+
+export const GetPresentationOutlineJobByKeyResponse = zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "idempotencyKey": zod.string(),
+  "request": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(getPresentationOutlineJobByKeyResponseRequestSubjectMax),
+  "gradeLevel": zod.string().min(1).max(getPresentationOutlineJobByKeyResponseRequestGradeLevelMax),
+  "topic": zod.string().max(getPresentationOutlineJobByKeyResponseRequestTopicMax),
+  "sourceText": zod.string().max(getPresentationOutlineJobByKeyResponseRequestSourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(getPresentationOutlineJobByKeyResponseRequestSlideCountMin).max(getPresentationOutlineJobByKeyResponseRequestSlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(getPresentationOutlineJobByKeyResponseRequestNotesMax).nullish()
+}),
+  "status": zod.enum(['queued', 'running', 'succeeded', 'failed']),
+  "result": zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "presentationId": zod.int().nullish(),
+  "brief": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "subject": zod.string().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneBriefSubjectMax),
+  "gradeLevel": zod.string().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneBriefGradeLevelMax),
+  "topic": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneBriefTopicMax),
+  "sourceText": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneBriefSourceTextMax).nullish().describe('Pasted educational source content, kept separate from teacher notes'),
+  "presentationKind": zod.enum(['explain', 'review', 'interactive', 'quick', 'contest']),
+  "slideCount": zod.int().min(getPresentationOutlineJobByKeyResponseResultOneOneBriefSlideCountMin).max(getPresentationOutlineJobByKeyResponseResultOneOneBriefSlideCountMax),
+  "durationMinutes": zod.union([zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60)]),
+  "languageLevel": zod.enum(['simple', 'medium', 'advanced']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "toggles": zod.object({
+  "activities": zod.boolean(),
+  "questions": zod.boolean(),
+  "poll": zod.boolean(),
+  "quiz": zod.boolean()
+}),
+  "notes": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneBriefNotesMax).nullish()
+}),
+  "outline": zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "density": zod.enum(['minimal', 'balanced', 'detailed']),
+  "totalEstimatedMinutes": zod.int().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineTotalEstimatedMinutesMax),
+  "objectives": zod.array(zod.string().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineObjectivesItemMax)).min(getPresentationOutlineJobByKeyResponseResultOneOneOutlineObjectivesMin).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineObjectivesMax),
+  "teachingFlow": zod.array(zod.object({
+  "stage": zod.enum(['opener', 'concept', 'practice', 'closure']),
+  "slideIndices": zod.array(zod.int().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowItemSlideIndicesItemMax)).min(1),
+  "estimatedMinutes": zod.int().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowItemEstimatedMinutesMax)
+})).min(getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowMin).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineTeachingFlowMax),
+  "slides": zod.array(zod.object({
+  "index": zod.int().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemIndexMax),
+  "kind": zod.enum(['title', 'objectives', 'concept-card', 'comparison', 'visual-hero', 'steps', 'interactive', 'closure', 'timeline', 'formula', 'stat', 'quote', 'callout']),
+  "title": zod.string().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTitleMax),
+  "subtitle": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemSubtitleMax).optional(),
+  "purpose": zod.string().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemPurposeMax),
+  "talkingPoints": zod.array(zod.string().min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax)).min(1).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsMax),
+  "interactionHint": zod.enum(['poll', 'quiz', 'discussion', 'activity']).nullable(),
+  "visualDirection": zod.object({
+  "icon": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemVisualDirectionIconMax).optional(),
+  "shape": zod.enum(['rect', 'circle', 'line', 'arrow', 'divider']).optional(),
+  "layoutHint": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemVisualDirectionLayoutHintMax).optional()
+}),
+  "source": zod.string().max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemSourceMax).optional()
+})).min(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesMin).max(getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesMax)
+}),
+  "status": zod.enum(['draft', 'outline_ready', 'building', 'built', 'failed']),
+  "modelUsed": zod.string().nullish(),
+  "tokensUsed": zod.int(),
+  "costMicroUsd": zod.int(),
+  "errorMessage": zod.string().nullish(),
+  "buildProgress": zod.object({
+  "current": zod.int().optional(),
+  "total": zod.int().optional(),
+  "warnings": zod.array(zod.string()).optional(),
+  "skipped": zod.array(zod.int()).optional().describe('Outline indexes the materializer skipped (failed validation).')
+}).nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "guardrails": zod.object({
+  "feedback": zod.array(zod.string()),
+  "usedCache": zod.boolean()
+})
+})).nullish(),
+  "errorMessage": zod.string().nullish(),
+  "attempts": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * Per-slide materialization with skip-on-failure semantics. Failed
  * slides are reported in `skipped` so the teacher can author them
  * manually. Progress is persisted on the draft row after every

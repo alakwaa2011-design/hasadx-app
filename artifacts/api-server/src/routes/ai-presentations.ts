@@ -6,7 +6,8 @@
 import crypto from "node:crypto";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
+import { checkCredits, captureCredits, captureCreditsOrThrow, refundCredits, holdCreditsForToolRequest, InsufficientCreditsError } from "../lib/check-credits";
+import { CreditService } from "../lib/credit-service";
 import { z, ZodError } from "zod";
 import {
   db,
@@ -14,6 +15,7 @@ import {
   aiCache,
   aiUsageDaily,
   presentationsTable,
+  presentationOutlineJobsTable,
 } from "@workspace/db";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch } from "../lib/web-image-search";
@@ -39,6 +41,7 @@ import {
 } from "../lib/outline-guardrails";
 import { findExplicitAiContentLanguage, resolveAiContentLanguage } from "../lib/ai-content-language";
 import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 const MAX_SOURCE_TEXT_LENGTH = 12_000;
@@ -365,6 +368,26 @@ export function canRunCorrectiveOutlineRetry(
   return !retryAlreadyAttempted && remainingMs >= 15_000;
 }
 
+export function correctiveOutlineTier(
+  originalTier: AiTier,
+  usedStandardFallback: boolean,
+): AiTier {
+  /* Once Claude has timed out, sending the quality correction back to it
+     repeats the same failure and consumes the rest of the request budget.
+     Keep subsequent repair calls on the provider that produced the usable
+     fallback outline. */
+  return usedStandardFallback && isClaudeTier(originalTier)
+    ? "standard"
+    : originalTier;
+}
+
+export function outlineGenerationDeadlineMs(backgroundJob: boolean): number {
+  /* Browser-facing requests must stay below the platform proxy deadline.
+     Durable jobs have no browser request attached, so allow enough time for
+     three bounded provider attempts (primary, fallback, correction). */
+  return backgroundJob ? 8 * 60_000 : 100_000;
+}
+
 /* Local completion runner. Same routing as lesson_plans.runTierCompletion
    but exposes token counts so we can persist usage on the draft row. */
 async function runOutlineCompletion(opts: {
@@ -507,7 +530,7 @@ router.get("/presentations/ai/limits", requireTeacher, async (req, res) => {
 
 /* ── POST /api/presentations/ai/outline — Step 1 → Step 2 generation.
    Tier-gated, density-gated, slide-count-gated, rate-limited. */
-router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter, checkCredits("presentation"), async (req, res) => {
+async function handleOutlineGeneration(req: Request, res: Response): Promise<void> {
   try {
     const teacherId = req.session.teacherId as number;
     let brief = presentationBriefSchema.parse(req.body) as OutlineBrief;
@@ -579,6 +602,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     let tokensIn = 0;
     let tokensOut = 0;
     let usedCache = false;
+    let usedStandardFallback = false;
 
     // Cache TTL bumped from 1h → 24h as part of the Autoscale cost
     // cleanup (task #616). Outline regeneration is the single most
@@ -618,7 +642,8 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     const MIN_FALLBACK_BUDGET_MS = 15_000;
     /* Total in-process deadline, kept well under the proxy's 120s so
        sanitize/DB/serialization work still fits after the last call. */
-    const DEADLINE_MS = 100_000;
+    const backgroundJob = (req as Request & { __backgroundOutlineJob?: boolean }).__backgroundOutlineJob === true;
+    const DEADLINE_MS = outlineGenerationDeadlineMs(backgroundJob);
     const remainingMs = () => Math.max(1_000, DEADLINE_MS - (Date.now() - startedAt));
 
     /* A provider fallback is not a quality retry. Keep those states
@@ -637,7 +662,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             tier,
             system,
             userMessages: [userPrompt],
-            timeoutMs: isClaudeTier(tier)
+            timeoutMs: isClaudeTier(tier) && !backgroundJob
               ? primaryOutlineTimeoutMs(brief.presentationKind, remainingMs())
               : remainingMs(),
           });
@@ -651,6 +676,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             err: primaryErr,
             fallbackBudgetMs,
           }, "Claude outline attempt failed; falling back to standard model");
+          usedStandardFallback = true;
           await reserveOutlineSlot(teacherId);
           first = await runOutlineCompletion({
             req,
@@ -676,7 +702,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
             req,
             callKey: "outline-json-retry",
             toolKey: "presentation-outline",
-            tier,
+            tier: correctiveOutlineTier(tier, usedStandardFallback),
             system,
             userMessages: [userPrompt, retryMsg],
             timeoutMs: remainingMs(),
@@ -728,7 +754,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
           req,
           callKey: "outline-corrective-retry",
           toolKey: "presentation-outline",
-          tier,
+          tier: correctiveOutlineTier(tier, usedStandardFallback),
           system,
           userMessages: [userPrompt, buildRetryMessage(report, brief.language)],
           timeoutMs: remainingMs(),
@@ -835,6 +861,18 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       notes: brief.notes ? sanitizeText(brief.notes, 200) : undefined,
     });
 
+    const outlineJobId = (req as Request & { __outlineJobId?: number }).__outlineJobId;
+    if (outlineJobId) {
+      const [existingDraft] = await db.select().from(presentationDraftsTable)
+        .where(eq(presentationDraftsTable.outlineJobId, outlineJobId)).limit(1);
+      if (existingDraft) {
+        res.status(201).json({
+          ...existingDraft,
+          guardrails: { feedback: report.feedback, usedCache },
+        });
+        return;
+      }
+    }
     const [row] = await db
       .insert(presentationDraftsTable)
       .values({
@@ -845,10 +883,13 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
         modelUsed: model,
         tokensUsed: tokensIn + tokensOut,
         costMicroUsd,
+        outlineJobId,
       })
       .returning();
 
-    await captureCredits(req);
+    if (!(req as Request & { __backgroundOutlineJob?: boolean }).__backgroundOutlineJob) {
+      await captureCredits(req);
+    }
     res.status(201).json({
       ...row,
       guardrails: { feedback: report.feedback, usedCache },
@@ -862,7 +903,222 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     req.log.error({ err }, "Generate outline failed");
     res.status(500).json({ message: "Failed to generate outline" });
   }
+}
+
+/* Keep the original request/response contract for older clients. */
+router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter, checkCredits("presentation"), handleOutlineGeneration);
+
+/* Durable outline generation. The legacy synchronous endpoint above remains
+   available during migration; new clients enqueue work and poll this owner-
+   scoped resource instead of holding an HTTP request open during provider IO. */
+router.post("/presentations/ai/outline/jobs", requireTeacher, sensitiveActionLimiter, async (req, res) => {
+  const teacherId = req.session.teacherId as number;
+  const idempotencyKey = String(req.get("x-idempotency-key") ?? "").trim();
+  if (!idempotencyKey || idempotencyKey.length > 200) {
+    res.status(400).json({ message: "A valid X-Idempotency-Key is required" });
+    return;
+  }
+  let heldRequestId: string | undefined;
+  try {
+    const [existing] = await db.select().from(presentationOutlineJobsTable)
+      .where(and(eq(presentationOutlineJobsTable.teacherId, teacherId), eq(presentationOutlineJobsTable.idempotencyKey, idempotencyKey))).limit(1);
+    if (existing) {
+      res.status(202).json(existing);
+      return;
+    }
+    const creditRequestId = `${teacherId}:presentation:${idempotencyKey}`;
+    heldRequestId = creditRequestId;
+    let hold;
+    try {
+      hold = await holdCreditsForToolRequest(teacherId, "presentation", creditRequestId);
+      if (hold.existingStatus === "refunded" || hold.existingStatus === "expired") {
+        res.status(409).json({ code: "REQUEST_EXPIRED", message: "This idempotency key has an expired credit hold; retry with a new key." });
+        return;
+      }
+    } catch (err) {
+      if (err instanceof InsufficientCreditsError) {
+        res.status(402).json({ code: "INSUFFICIENT_CREDITS", message: err.message, required: err.required, balance: err.balance });
+        return;
+      }
+      throw err;
+    }
+    const [job] = await db.insert(presentationOutlineJobsTable).values({
+      teacherId,
+      idempotencyKey,
+      request: req.body,
+      creditRequestId: hold.mode === "held" ? creditRequestId : null,
+    }).onConflictDoNothing({
+      target: [presentationOutlineJobsTable.teacherId, presentationOutlineJobsTable.idempotencyKey],
+    }).returning();
+    if (!job) {
+      /* Another request won the race after our initial lookup. The stable
+         request id makes this hold idempotent; return the winner. */
+      const [existing] = await db.select().from(presentationOutlineJobsTable)
+        .where(and(eq(presentationOutlineJobsTable.teacherId, teacherId), eq(presentationOutlineJobsTable.idempotencyKey, idempotencyKey))).limit(1);
+      res.status(202).json(existing);
+      return;
+    }
+    if (job.creditRequestId) {
+      await CreditService.heartbeatHold(job.creditRequestId, 900);
+    }
+    res.status(202).json(job);
+  } catch (err) {
+    if (heldRequestId) await refundCredits(Object.assign(req, { __creditRequestId: heldRequestId }), "failed to enqueue outline job");
+    req.log.error({ err }, "Enqueue presentation outline failed");
+    res.status(503).json({ message: "Could not enqueue outline generation" });
+  }
 });
+
+router.get("/presentations/ai/outline/jobs/:jobId", requireTeacher, async (req, res) => {
+  const teacherId = req.session.teacherId as number;
+  const jobId = Number(req.params.jobId);
+  if (!Number.isInteger(jobId)) { res.status(404).json({ message: "Not found" }); return; }
+  const [job] = await db.select().from(presentationOutlineJobsTable)
+    .where(and(eq(presentationOutlineJobsTable.id, jobId), eq(presentationOutlineJobsTable.teacherId, teacherId))).limit(1);
+  if (!job) { res.status(404).json({ message: "Not found" }); return; }
+  res.json(job);
+});
+
+router.get("/presentations/ai/outline/jobs/by-key/:key", requireTeacher, async (req, res) => {
+  const [job] = await db.select().from(presentationOutlineJobsTable).where(and(
+    eq(presentationOutlineJobsTable.teacherId, req.session.teacherId as number),
+    eq(presentationOutlineJobsTable.idempotencyKey, String(req.params.key)),
+  )).limit(1);
+  if (!job) { res.status(404).json({ message: "Not found" }); return; }
+  res.json(job);
+});
+
+/** Claim one job atomically and run the existing quality-guarded generator. */
+export async function processPresentationOutlineJob(): Promise<boolean> {
+  const claimResult = await db.execute(sql`
+    WITH candidate AS (
+      SELECT id FROM presentation_outline_jobs
+      WHERE status = 'queued'
+         OR (status = 'running' AND locked_at < NOW() - INTERVAL '10 minutes')
+      ORDER BY created_at
+      FOR UPDATE SKIP LOCKED LIMIT 1
+    )
+    UPDATE presentation_outline_jobs j
+       SET status = 'running', locked_at = NOW(), claim_token = gen_random_uuid(),
+           attempts = j.attempts + 1, updated_at = NOW()
+      FROM candidate c WHERE j.id = c.id
+      RETURNING j.*
+  `);
+  const job = (claimResult as any).rows?.[0];
+  if (!job) return false;
+  const claimToken = job.claim_token;
+  const holdStatus = job.credit_request_id
+    ? await CreditService.getHoldStatus(job.credit_request_id)
+    : "none";
+  if (holdStatus === "refunded" || holdStatus === "expired") {
+    await db.update(presentationOutlineJobsTable).set({
+      status: "failed", errorMessage: "Credit hold expired before generation", lockedAt: null, updatedAt: new Date(),
+    }).where(and(eq(presentationOutlineJobsTable.id, job.id), eq(presentationOutlineJobsTable.status, "running"), eq(presentationOutlineJobsTable.claimToken, claimToken)));
+    return true;
+  }
+  if (holdStatus === "completed") {
+    const [draft] = await db.select().from(presentationDraftsTable)
+      .where(eq(presentationDraftsTable.outlineJobId, job.id)).limit(1);
+    const finalized = await db.update(presentationOutlineJobsTable).set({
+      status: "succeeded", result: draft ? ({ ...draft, guardrails: { feedback: [], usedCache: false } } as any) : job.result,
+      draftId: draft?.id ?? job.draft_id ?? null, lockedAt: null, updatedAt: new Date(),
+    }).where(and(eq(presentationOutlineJobsTable.id, job.id), eq(presentationOutlineJobsTable.status, "running"), eq(presentationOutlineJobsTable.claimToken, claimToken)));
+    if ((finalized as any).rowCount !== 1) logger.warn({ jobId: job.id }, "Lost outline claim while recovering captured hold");
+    return true;
+  }
+  if (job.credit_request_id) await CreditService.heartbeatHold(job.credit_request_id, 900);
+  if (job.credit_request_id) {
+    await CreditService.heartbeatHold(job.credit_request_id, 900);
+  }
+  const fakeReq = {
+    body: job.request,
+    session: { teacherId: job.teacher_id },
+    log: { error: () => undefined, warn: () => undefined },
+    __creditRequestId: job.credit_request_id,
+    __backgroundOutlineJob: true,
+    __outlineJobId: job.id,
+  } as unknown as Request;
+  const heartbeat = setInterval(() => {
+      if (job.credit_request_id) CreditService.heartbeatHold(job.credit_request_id, 900).catch((err) =>
+        logger.warn({ err, jobId: job.id }, "Outline credit hold heartbeat failed"));
+      db.update(presentationOutlineJobsTable).set({ lockedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(presentationOutlineJobsTable.id, job.id), eq(presentationOutlineJobsTable.status, "running"), eq(presentationOutlineJobsTable.claimToken, claimToken)))
+        .catch((err) => logger.warn({ err, jobId: job.id }, "Outline lease heartbeat failed"));
+    }, 30_000);
+  let responseBody: unknown;
+  let responseStatus = 500;
+  const fakeRes = {
+    status(code: number) { responseStatus = code; return this; },
+    json(body: unknown) { responseBody = body; return this; },
+  } as unknown as Response;
+  try {
+    await handleOutlineGeneration(fakeReq, fakeRes);
+    if (responseStatus >= 200 && responseStatus < 300) {
+      if (job.credit_request_id) {
+        (fakeReq as any).__backgroundOutlineJob = true;
+        try {
+          await captureCreditsOrThrow(fakeReq, responseBody);
+        } catch (captureError) {
+          const status = await CreditService.getHoldStatus(job.credit_request_id);
+          if (status !== "completed") throw captureError;
+          logger.info({ jobId: job.id }, "Recovered outline after prior successful credit capture");
+        }
+      }
+      const terminal = await db.update(presentationOutlineJobsTable).set({
+        status: "succeeded", result: responseBody as any,
+        draftId: (responseBody as any)?.id ?? job.draft_id ?? null,
+        updatedAt: new Date(), lockedAt: null,
+      }).where(and(eq(presentationOutlineJobsTable.id, job.id), eq(presentationOutlineJobsTable.status, "running"), eq(presentationOutlineJobsTable.claimToken, claimToken)));
+      if ((terminal as any).rowCount !== 1) logger.warn({ jobId: job.id }, "Lost outline claim before success finalization");
+    } else {
+      await db.update(presentationOutlineJobsTable).set({
+        status: "failed", errorMessage: (responseBody as any)?.message ?? "Outline generation failed",
+        result: responseBody as any, updatedAt: new Date(), lockedAt: null,
+      }).where(and(eq(presentationOutlineJobsTable.id, job.id), eq(presentationOutlineJobsTable.status, "running"), eq(presentationOutlineJobsTable.claimToken, claimToken)));
+    }
+  } catch (err) {
+    await db.update(presentationOutlineJobsTable).set({
+      status: "failed", errorMessage: err instanceof Error ? err.message : "Outline generation failed",
+      updatedAt: new Date(), lockedAt: null,
+    }).where(and(eq(presentationOutlineJobsTable.id, job.id), eq(presentationOutlineJobsTable.status, "running"), eq(presentationOutlineJobsTable.claimToken, claimToken)));
+  } finally {
+    if (heartbeat) clearInterval(heartbeat);
+  }
+  return true;
+}
+
+let presentationOutlineWorkerBusy = false;
+
+async function renewQueuedPresentationOutlineHolds(): Promise<void> {
+  await db.execute(sql`
+    UPDATE credit_holds h
+       SET timeout_seconds = GREATEST(
+         h.timeout_seconds,
+         CEIL(EXTRACT(EPOCH FROM (NOW() - h.created_at)))::int + 900
+       )
+      FROM presentation_outline_jobs j
+     WHERE j.credit_request_id = h.request_id
+       AND j.status IN ('queued', 'running')
+       AND h.status = 'pending'
+  `);
+}
+
+export function startPresentationOutlineWorker(): void {
+  const tick = async () => {
+    if (presentationOutlineWorkerBusy) return;
+    presentationOutlineWorkerBusy = true;
+    try {
+      await renewQueuedPresentationOutlineHolds();
+      await processPresentationOutlineJob();
+    } catch (err) {
+      logger.error({ err }, "Presentation outline worker tick failed");
+    } finally {
+      presentationOutlineWorkerBusy = false;
+    }
+  };
+  void tick();
+  setInterval(() => { void tick(); }, 2_000).unref();
+}
 
 /* GET /api/presentations/drafts — list teacher's drafts. */
 router.get("/presentations/drafts", requireTeacher, async (req, res) => {

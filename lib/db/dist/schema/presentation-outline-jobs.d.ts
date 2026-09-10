@@ -1,10 +1,10 @@
-export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "presentation_drafts";
+export declare const presentationOutlineJobsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "presentation_outline_jobs";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "presentation_drafts";
+            tableName: "presentation_outline_jobs";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -21,7 +21,7 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
         }, {}, {}>;
         teacherId: import("drizzle-orm/pg-core").PgColumn<{
             name: "teacher_id";
-            tableName: "presentation_drafts";
+            tableName: "presentation_outline_jobs";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -36,43 +36,26 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        presentationId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "presentation_id";
-            tableName: "presentation_drafts";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        brief: import("drizzle-orm/pg-core").PgColumn<{
-            name: "brief";
-            tableName: "presentation_drafts";
-            dataType: "json";
-            columnType: "PgJsonb";
-            data: unknown;
-            driverParam: unknown;
+        idempotencyKey: import("drizzle-orm/pg-core").PgColumn<{
+            name: "idempotency_key";
+            tableName: "presentation_outline_jobs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
             notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: undefined;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        outline: import("drizzle-orm/pg-core").PgColumn<{
-            name: "outline";
-            tableName: "presentation_drafts";
+        request: import("drizzle-orm/pg-core").PgColumn<{
+            name: "request";
+            tableName: "presentation_outline_jobs";
             dataType: "json";
             columnType: "PgJsonb";
             data: unknown;
@@ -89,7 +72,7 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
         }, {}, {}>;
         status: import("drizzle-orm/pg-core").PgColumn<{
             name: "status";
-            tableName: "presentation_drafts";
+            tableName: "presentation_outline_jobs";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -104,9 +87,9 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        buildProgress: import("drizzle-orm/pg-core").PgColumn<{
-            name: "build_progress";
-            tableName: "presentation_drafts";
+        result: import("drizzle-orm/pg-core").PgColumn<{
+            name: "result";
+            tableName: "presentation_outline_jobs";
             dataType: "json";
             columnType: "PgJsonb";
             data: unknown;
@@ -121,60 +104,9 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        modelUsed: import("drizzle-orm/pg-core").PgColumn<{
-            name: "model_used";
-            tableName: "presentation_drafts";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        tokensUsed: import("drizzle-orm/pg-core").PgColumn<{
-            name: "tokens_used";
-            tableName: "presentation_drafts";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        costMicroUsd: import("drizzle-orm/pg-core").PgColumn<{
-            name: "cost_micro_usd";
-            tableName: "presentation_drafts";
-            dataType: "number";
-            columnType: "PgBigInt53";
-            data: number;
-            driverParam: string | number;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: undefined;
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
         errorMessage: import("drizzle-orm/pg-core").PgColumn<{
             name: "error_message";
-            tableName: "presentation_drafts";
+            tableName: "presentation_outline_jobs";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -189,15 +121,83 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        outlineJobId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "outline_job_id";
-            tableName: "presentation_drafts";
+        creditRequestId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "credit_request_id";
+            tableName: "presentation_outline_jobs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        draftId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "draft_id";
+            tableName: "presentation_outline_jobs";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
             driverParam: string | number;
             notNull: false;
             hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        claimToken: import("drizzle-orm/pg-core").PgColumn<{
+            name: "claim_token";
+            tableName: "presentation_outline_jobs";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lockedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "locked_at";
+            tableName: "presentation_outline_jobs";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        attempts: import("drizzle-orm/pg-core").PgColumn<{
+            name: "attempts";
+            tableName: "presentation_outline_jobs";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -208,7 +208,7 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "presentation_drafts";
+            tableName: "presentation_outline_jobs";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -225,7 +225,7 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
         }, {}, {}>;
         updatedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "updated_at";
-            tableName: "presentation_drafts";
+            tableName: "presentation_outline_jobs";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -243,6 +243,5 @@ export declare const presentationDraftsTable: import("drizzle-orm/pg-core").PgTa
     };
     dialect: "pg";
 }>;
-export type PresentationDraft = typeof presentationDraftsTable.$inferSelect;
-export type InsertPresentationDraft = typeof presentationDraftsTable.$inferInsert;
-//# sourceMappingURL=presentation-drafts.d.ts.map
+export type PresentationOutlineJob = typeof presentationOutlineJobsTable.$inferSelect;
+//# sourceMappingURL=presentation-outline-jobs.d.ts.map

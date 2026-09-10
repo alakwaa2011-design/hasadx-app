@@ -37,6 +37,7 @@ export * from "./presentations";
 export * from "./presentation-sessions";
 export * from "./presentation-inline-runs";
 export * from "./presentation-drafts";
+export * from "./presentation-outline-jobs";
 export * from "./student-accounts";
 export * from "./capital-scores";
 export * from "./wameeth-scores";
