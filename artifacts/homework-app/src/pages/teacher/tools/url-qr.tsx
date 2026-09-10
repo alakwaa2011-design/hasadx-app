@@ -27,6 +27,18 @@ function getTextDirection(value: string): "rtl" | "ltr" {
   return firstStrongCharacter && /[\u0590-\u08FF]/.test(firstStrongCharacter) ? "rtl" : "ltr";
 }
 
+function getDownloadBaseName(label: string): string {
+  const safeLabel = label
+    .normalize("NFC")
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/\.+$/g, "")
+    .trim()
+    .slice(0, 80);
+
+  return safeLabel || `qr-code-${Date.now()}`;
+}
+
 type LabelFont = "tajawal" | "cairo" | "kufi";
 type LabelSize = "small" | "medium" | "large";
 
@@ -150,7 +162,12 @@ export default function UrlQrTool() {
       
       if (label) {
         ctx.fillStyle = fgColor;
-        ctx.font = `700 ${labelSizes.png}px ${labelFontFamily}`;
+        let fittedFontSize = labelSizes.png;
+        ctx.font = `700 ${fittedFontSize}px ${labelFontFamily}`;
+        while (fittedFontSize > 20 && ctx.measureText(label).width > size - 24) {
+          fittedFontSize -= 2;
+          ctx.font = `700 ${fittedFontSize}px ${labelFontFamily}`;
+        }
         ctx.direction = getTextDirection(label);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -158,7 +175,7 @@ export default function UrlQrTool() {
       }
       
       const a = document.createElement("a");
-      a.download = `qrcode-${Date.now()}.png`;
+      a.download = `${getDownloadBaseName(label)}.png`;
       a.href = canvas.toDataURL("image/png");
       a.click();
       toast.success(isAr ? "تم تنزيل الصورة بنجاح" : "Image downloaded successfully");
@@ -180,6 +197,9 @@ export default function UrlQrTool() {
     const totalWidth = size + (padding * 2);
     const totalHeight = size + (padding * 2) + labelSpace;
     const labelDirection = getTextDirection(label);
+    const fittedSvgFontSize = label
+      ? Math.max(10, Math.min(labelSizes.svg, (size - 16) / (label.length * 0.58)))
+      : labelSizes.svg;
     
     const innerSVG = svg.innerHTML;
     
@@ -189,7 +209,7 @@ export default function UrlQrTool() {
         <svg x="${padding}" y="${padding}" width="${size}" height="${size}" viewBox="0 0 256 256">
           ${innerSVG}
         </svg>
-        ${label ? `<text x="50%" y="${size + padding + 25}" text-anchor="middle" direction="${labelDirection}" unicode-bidi="plaintext" font-family="${escapeXml(labelFontFamily)}" font-weight="700" font-size="${labelSizes.svg}" fill="${fgColor}">${escapeXml(label)}</text>` : ''}
+        ${label ? `<text x="50%" y="${size + padding + 25}" text-anchor="middle" direction="${labelDirection}" unicode-bidi="plaintext" font-family="${escapeXml(labelFontFamily)}" font-weight="700" font-size="${fittedSvgFontSize}" fill="${fgColor}">${escapeXml(label)}</text>` : ''}
       </svg>
     `;
     
@@ -197,7 +217,7 @@ export default function UrlQrTool() {
     const a = document.createElement("a");
     const objectUrl = URL.createObjectURL(blob);
     a.href = objectUrl;
-    a.download = `qrcode-${Date.now()}.svg`;
+    a.download = `${getDownloadBaseName(label)}.svg`;
     a.click();
     URL.revokeObjectURL(objectUrl);
     toast.success(isAr ? "تم تنزيل ملف المتجه بنجاح" : "SVG downloaded successfully");
@@ -474,7 +494,7 @@ export default function UrlQrTool() {
               <div className="mt-5 min-h-[36px] text-center w-full px-4 break-words">
                 {label && url && isValidUrl && (
                   <p 
-                    className="font-bold text-xl leading-tight truncate px-2" 
+                    className="font-bold leading-tight break-words px-2"
                     style={{
                       color: fgColor === '#ffffff' && bgColor === '#ffffff' ? '#000' : 'inherit',
                       fontFamily: labelFontFamily,
