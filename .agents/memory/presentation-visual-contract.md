@@ -7,7 +7,7 @@ Automatic web-image lookup is opt-in: only an explicit `imagePlan` for a photo o
 
 **Why:** Generic decorative images and synthetic side panels made decks inconsistent and consumed reading space. The product must not generate AI images by default or rely on an upstream image service for a usable teaching slide.
 
-**How to apply:** Preserve legacy outlines by treating an absent plan as no search and no invented visual. Only native semantic layouts (steps, comparison, timeline, formula, activity) may advertise local fallbacks; ordinary content expands text instead of drawing generic boxes, nodes, or icons. Keep fallback metadata on searched images for resilience, but do not turn it into decorative side art.
+**How to apply:** Preserve legacy outlines by treating an absent plan as no search and no invented visual. Only native semantic layouts (steps, comparison, timeline, formula, activity) may advertise local fallbacks; ordinary content expands text instead of drawing generic boxes, nodes, or icons. Keep fallback metadata on searched images for resilience, but do not turn it into decorative side art. The sanitizer must replace a missing, invalid, or `none` fallback on searchable photos/illustrations with a valid deterministic fallback before strict schema validation; otherwise an otherwise usable quick outline fails with 422.
 
 When comparing an initial outline with its one corrective retry, always choose a non-fatal retry over a fatal initial result; compare feedback counts only when both candidates are complete.
 

@@ -691,6 +691,14 @@ export function sanitizeOutline(
         feedback.push(`Slide ${i + 1}: imageQuery requires mediaType photo or illustration; search was disabled.`);
         delete candidate.imageQuery;
       }
+      if (
+        candidate.imageQuery &&
+        (candidate.mediaType === "photo" || candidate.mediaType === "illustration") &&
+        candidate.fallback === "none"
+      ) {
+        candidate.fallback = "icon";
+        feedback.push(`Slide ${i + 1}: searched image had no deterministic fallback — using icon.`);
+      }
       imagePlan = candidate;
     } else {
       imagePlan = deriveDefaultImagePlan(kind, pedagogicalRole, title, brief.language);

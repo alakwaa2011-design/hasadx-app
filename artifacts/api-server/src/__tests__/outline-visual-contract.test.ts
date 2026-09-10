@@ -108,6 +108,28 @@ describe("presentation visual contract fixtures", () => {
     expect(result.outline.slides[1].talkingPoints).toEqual([]);
   });
 
+  it("adds a deterministic fallback to searched images before strict validation", () => {
+    const raw = fixedLesson("المفعول معه", "editorial", [
+      "title", "concept", "comparison", "misconception", "summary",
+    ]);
+    raw.slides[1].imagePlan = {
+      reason: "صورة توضيحية للمفهوم",
+      imageQuery: "Arabic grammar classroom illustration",
+      mediaType: "illustration",
+      placement: "side",
+      fallback: "none",
+    };
+
+    const result = sanitizeOutline(raw, baseBrief);
+
+    expect(result.outline.slides[1].imagePlan).toMatchObject({
+      imageQuery: "Arabic grammar classroom illustration",
+      mediaType: "illustration",
+      fallback: "icon",
+    });
+    expect(result.report.feedback.join(" ")).toMatch(/deterministic fallback/i);
+  });
+
   it("accepts a quiz slide whose validated questions are its content", () => {
     const raw = fixedLesson("المفعول معه", "editorial", [
       "title", "concept", "comparison", "quiz", "summary",

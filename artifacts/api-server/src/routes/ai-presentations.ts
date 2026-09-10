@@ -227,7 +227,7 @@ export const outlineSlideCardSchema = z.object({
   }
 });
 
-const outlineSchema = z.object({
+export const outlineSchema = z.object({
   language: z.enum(["ar", "en"]),
   density: z.enum(["minimal", "balanced", "detailed"]),
   totalEstimatedMinutes: z.number().int().min(1).max(240),

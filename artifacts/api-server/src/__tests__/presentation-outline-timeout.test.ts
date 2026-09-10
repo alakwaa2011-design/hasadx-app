@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canRunCorrectiveOutlineRetry,
+  outlineSchema,
   outlineSlideCardSchema,
   outlineProviderRequestOptions,
   presentationBriefSchema,
@@ -107,5 +108,59 @@ describe("professional presentation outline request budget", () => {
         correctIndex: 2,
       }],
     }).success).toBe(false);
+  });
+
+  it("requires deterministic fallbacks when an outline requests image search", () => {
+    const baseSlide = {
+      index: 1,
+      kind: "concept-card",
+      title: "Water cycle",
+      purpose: "Explain evaporation",
+      talkingPoints: ["Water changes into vapor"],
+      interactionHint: null,
+      visualDirection: {},
+    };
+    const outline = {
+      language: "en",
+      density: "balanced",
+      totalEstimatedMinutes: 15,
+      objectives: ["Explain evaporation", "Identify condensation"],
+      teachingFlow: [
+        { stage: "opener", slideIndices: [1], estimatedMinutes: 2 },
+        { stage: "concept", slideIndices: [2], estimatedMinutes: 6 },
+        { stage: "practice", slideIndices: [2], estimatedMinutes: 4 },
+        { stage: "closure", slideIndices: [3], estimatedMinutes: 3 },
+      ],
+      slides: [
+        { ...baseSlide, index: 1, kind: "title", talkingPoints: [] },
+        {
+          ...baseSlide,
+          index: 2,
+          imagePlan: {
+            imageQuery: "water cycle illustration",
+            mediaType: "illustration",
+            placement: "side",
+            fallback: "none",
+          },
+        },
+        { ...baseSlide, index: 3, kind: "closure" },
+      ],
+    };
+
+    expect(outlineSchema.safeParse(outline).success).toBe(false);
+    expect(outlineSchema.safeParse({
+      ...outline,
+      slides: outline.slides.map((slide, index) => index === 1
+        ? {
+            ...slide,
+            imagePlan: {
+              imageQuery: "water cycle illustration",
+              mediaType: "illustration",
+              placement: "side",
+              fallback: "icon",
+            },
+          }
+        : slide),
+    }).success).toBe(true);
   });
 });
