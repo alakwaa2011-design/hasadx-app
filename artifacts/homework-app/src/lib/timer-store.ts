@@ -25,7 +25,10 @@ export interface TimerState {
   soundSelection: string;
   soundVolume: number;
   soundMuted: boolean;
-  notifyBrowser: boolean;
+  soundControlsEnabled: boolean;
+  soundMilestonesEnabled: boolean;
+  soundLapEnabled: boolean;
+  milestonesFired: Record<number, boolean>;
   completedHandled: boolean; // to trigger sound only once
 }
 
@@ -46,7 +49,10 @@ const DEFAULT_STATE: TimerState = {
   soundSelection: "bell",
   soundVolume: 0.8,
   soundMuted: false,
-  notifyBrowser: false,
+  soundControlsEnabled: false,
+  soundMilestonesEnabled: true,
+  soundLapEnabled: true,
+  milestonesFired: {},
   completedHandled: false,
 };
 
@@ -101,7 +107,9 @@ export const timerStore = {
       soundSelection: state.soundSelection,
       soundVolume: state.soundVolume,
       soundMuted: state.soundMuted,
-      notifyBrowser: state.notifyBrowser,
+      soundControlsEnabled: state.soundControlsEnabled,
+      soundMilestonesEnabled: state.soundMilestonesEnabled,
+      soundLapEnabled: state.soundLapEnabled,
     };
     emit();
     saveToStorage();

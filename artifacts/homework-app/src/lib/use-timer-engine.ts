@@ -1,5 +1,40 @@
 import { useEffect, useState, useSyncExternalStore, useCallback } from "react";
 import { timerStore, TimerState } from "./timer-store";
+import { playControlSound, playLapSound } from "./timer-sounds";
+
+export type MilestoneType = "warning" | "tick";
+
+export const MILESTONES: { sec: number; type: MilestoneType }[] = [
+  { sec: 60, type: "warning" },
+  { sec: 10, type: "warning" },
+  { sec: 5, type: "tick" },
+  { sec: 4, type: "tick" },
+  { sec: 3, type: "tick" },
+  { sec: 2, type: "tick" },
+  { sec: 1, type: "tick" },
+];
+
+export function evaluateMilestones(
+  remainingMs: number,
+  targetMs: number,
+  fired: Record<number, boolean>
+) {
+  const crossed: number[] = [];
+  let soundToPlay: { sec: number; type: MilestoneType } | null = null;
+  let minSec = Infinity;
+
+  for (const m of MILESTONES) {
+    if (targetMs >= m.sec * 1000 && remainingMs <= m.sec * 1000 && !fired[m.sec]) {
+      crossed.push(m.sec);
+      if (m.sec < minSec) {
+        minSec = m.sec;
+        soundToPlay = m;
+      }
+    }
+  }
+
+  return { crossed, soundToPlay };
+}
 
 export function useTimerState(): TimerState {
   return useSyncExternalStore(timerStore.subscribe, timerStore.getState);
@@ -86,7 +121,10 @@ export function useTimerEngine() {
       // Only clear completedHandled if we are actually starting a timer that hasn't finished yet
       ...(currentElapsed < state.targetMs ? { completedHandled: false } : {})
     });
-  }, [state.isRunning, state.targetMs, calculateElapsed]);
+    if (!state.soundMuted && state.soundControlsEnabled) {
+      playControlSound("start", state.soundVolume);
+    }
+  }, [state.isRunning, state.targetMs, calculateElapsed, state.soundMuted, state.soundControlsEnabled, state.soundVolume]);
 
   const pause = useCallback(() => {
     if (!state.isRunning) return;
@@ -96,7 +134,10 @@ export function useTimerEngine() {
       accumulatedMs: currentElapsed,
       startTimestamp: null
     });
-  }, [state.isRunning, calculateElapsed]);
+    if (!state.soundMuted && state.soundControlsEnabled) {
+      playControlSound("pause", state.soundVolume);
+    }
+  }, [state.isRunning, calculateElapsed, state.soundMuted, state.soundControlsEnabled, state.soundVolume]);
 
   const reset = useCallback(() => {
     timerStore.reset();
@@ -106,6 +147,7 @@ export function useTimerEngine() {
     timerStore.setState((prev) => ({
       targetMs: prev.targetMs + ms,
       completedHandled: false,
+      milestonesFired: {}
     }));
   }, []);
 
@@ -123,7 +165,10 @@ export function useTimerEngine() {
       };
       return { laps: [newLap, ...prev.laps] };
     });
-  }, [state.mode, calculateElapsed]);
+    if (!state.soundMuted && state.soundLapEnabled) {
+      playLapSound(state.soundVolume);
+    }
+  }, [state.mode, calculateElapsed, state.soundMuted, state.soundLapEnabled, state.soundVolume]);
 
   const updateLapName = useCallback((id: string, name: string) => {
     timerStore.setState((prev) => ({
@@ -137,7 +182,7 @@ export function useTimerEngine() {
   }, [reset]);
 
   const setTarget = useCallback((ms: number) => {
-    timerStore.setState({ targetMs: ms, accumulatedMs: 0, completedHandled: false });
+    timerStore.setState({ targetMs: ms, accumulatedMs: 0, completedHandled: false, milestonesFired: {} });
   }, []);
 
   const openTool = useCallback(() => {

@@ -91,3 +91,88 @@ export function playTimerSound(id: string, volume: number) {
     // ignore audio failure
   }
 }
+
+export function playControlSound(type: "start" | "pause", volume: number) {
+  if (volume <= 0) return;
+  const ctx = initAudioContext();
+  if (!ctx) return;
+  try {
+    const gain = ctx.createGain();
+    gain.gain.value = volume * 0.3;
+    gain.connect(ctx.destination);
+    
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    if (type === "start") {
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+    } else {
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1);
+    }
+    gain.gain.setValueAtTime(volume * 0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    
+    osc.connect(gain);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} }, 200);
+  } catch (e) {}
+}
+
+export function playMilestoneSound(type: "warning" | "tick", volume: number) {
+  if (volume <= 0) return;
+  const ctx = initAudioContext();
+  if (!ctx) return;
+  try {
+    const gain = ctx.createGain();
+    gain.gain.value = volume * 0.4;
+    gain.connect(ctx.destination);
+    
+    const osc = ctx.createOscillator();
+    osc.type = type === "warning" ? "triangle" : "sine";
+    
+    if (type === "warning") {
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(volume * 0.2, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+      setTimeout(() => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} }, 500);
+    } else {
+      osc.frequency.setValueAtTime(783.99, ctx.currentTime);
+      gain.gain.setValueAtTime(volume * 0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+      setTimeout(() => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} }, 150);
+    }
+  } catch (e) {}
+}
+
+export function playLapSound(volume: number) {
+  if (volume <= 0) return;
+  const ctx = initAudioContext();
+  if (!ctx) return;
+  try {
+    const gain = ctx.createGain();
+    gain.gain.value = volume * 0.4;
+    gain.connect(ctx.destination);
+    
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.05);
+    
+    gain.gain.setValueAtTime(volume * 0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    
+    osc.connect(gain);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+    setTimeout(() => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} }, 150);
+  } catch (e) {}
+}

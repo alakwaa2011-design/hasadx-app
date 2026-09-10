@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { timerStore, TimerState } from "./timer-store";
-import { calculateTimerStateCore } from "./use-timer-engine";
+import { calculateTimerStateCore, evaluateMilestones } from "./use-timer-engine";
 
 describe("Timer Core Calculations", () => {
   it("should calculate countdown correctly before zero", () => {
@@ -98,6 +98,17 @@ describe("Timer Store & User Init", () => {
     expect(timerStore.getState().initializedUserId).toBe(2);
     expect(timerStore.getState().targetMs).not.toBe(777); // should be default since User 2 has no data
   });
+
+  it("should initialize milestonesFired to empty and clear it on reset", () => {
+    timerStore.initForUser(1);
+    expect(timerStore.getState().milestonesFired).toEqual({});
+    
+    timerStore.setState({ milestonesFired: { 60: true, 10: true } });
+    expect(timerStore.getState().milestonesFired[60]).toBe(true);
+    
+    timerStore.reset();
+    expect(timerStore.getState().milestonesFired).toEqual({});
+  });
 });
 
 describe("Timer Action Semantics", () => {
@@ -113,7 +124,6 @@ describe("Timer Action Semantics", () => {
     vi.useRealTimers();
   });
 
-  // Test the core logic behind useTimerEngine's start without rendering hook since it requires React setup
   it("start should not reset completedHandled if timer is already in overtime", () => {
     timerStore.setState({
       targetMs: 5000,
@@ -157,3 +167,39 @@ describe("Timer Action Semantics", () => {
     expect(stateAfter.completedHandled).toBe(false); // Reset to false
   });
 });
+
+describe("Milestone Sound Logic", () => {
+  it("should handle normal single crossing", () => {
+    const { crossed, soundToPlay } = evaluateMilestones(5000, 10000, { 10: true });
+    expect(crossed).toEqual([5]);
+    expect(soundToPlay).toEqual({ sec: 5, type: "tick" });
+  });
+
+  it("should handle multi-threshold jump (e.g., tab backgrounded)", () => {
+    const { crossed, soundToPlay } = evaluateMilestones(8000, 70000, {});
+    expect(crossed).toContain(60);
+    expect(crossed).toContain(10);
+    expect(soundToPlay).toEqual({ sec: 10, type: "warning" });
+  });
+
+  it("should handle multi-threshold jump near end", () => {
+    const { crossed, soundToPlay } = evaluateMilestones(500, 10000, {});
+    expect(crossed).toEqual(expect.arrayContaining([5, 4, 3, 2, 1]));
+    expect(soundToPlay).toEqual({ sec: 1, type: "tick" });
+  });
+
+  it("should not replay already fired milestones", () => {
+    const fired = { 60: true, 10: true, 5: true };
+    const { crossed, soundToPlay } = evaluateMilestones(4000, 70000, fired);
+    expect(crossed).toEqual([4]);
+    expect(soundToPlay).toEqual({ sec: 4, type: "tick" });
+  });
+
+  it("should do nothing if no new thresholds crossed", () => {
+    const fired = { 60: true, 10: true };
+    const { crossed, soundToPlay } = evaluateMilestones(8000, 70000, fired);
+    expect(crossed).toEqual([]);
+    expect(soundToPlay).toBeNull();
+  });
+});
+

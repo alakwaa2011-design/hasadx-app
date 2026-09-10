@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTimerEngine } from "@/lib/use-timer-engine";
+import { useTimerEngine, evaluateMilestones } from "@/lib/use-timer-engine";
 import { Play, Pause, X, Maximize2, Minimize2, RotateCcw } from "lucide-react";
 import { timerStore } from "@/lib/timer-store";
-import { playTimerSound, initAudioContext } from "@/lib/timer-sounds";
-import { formatTime } from "./timer-utils";
+import { playTimerSound, playMilestoneSound, initAudioContext } from "@/lib/timer-sounds";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { shouldShowFloatingTimer, shouldAutoMinimizeTimer, handleTimerAuthTransition } from "@/lib/timer-policies";
+import { StableReadout } from "./timer-widget-core";
 
 export function GlobalTeacherTimer() {
   const [location, setLocation] = useLocation();
@@ -30,28 +30,38 @@ export function GlobalTeacherTimer() {
     );
   }, [user?.id, isLoading]);
 
-  // Handle completion sound and notification
+  // Handle completion sound
   useEffect(() => {
     if (!state.initializedUserId || state.initializedUserId !== user?.id) return;
     if (state.mode === "countdown" && hasCrossedZero && state.isActive && !state.completedHandled) {
       if (!state.soundMuted) {
         playTimerSound(state.soundSelection, state.soundVolume);
       }
-      
-      if (state.notifyBrowser) {
-        try {
-          if (Notification.permission === "granted") {
-            new Notification(isAr ? "انتهى الوقت" : "Time is up", {
-              body: state.taskName || (isAr ? "انتهى الوقت المحدد للمهمة" : "The set time for the task has finished"),
-              icon: "/favicon.ico"
-            });
-          }
-        } catch (e) {}
-      }
-
       timerStore.setState({ completedHandled: true });
     }
-  }, [hasCrossedZero, state.mode, state.isActive, state.completedHandled, state.soundMuted, state.soundSelection, state.soundVolume, state.notifyBrowser, state.taskName, isAr, state.initializedUserId, user?.id]);
+  }, [hasCrossedZero, state.mode, state.isActive, state.completedHandled, state.soundMuted, state.soundSelection, state.soundVolume, state.initializedUserId, user?.id]);
+
+  // Handle milestones
+  useEffect(() => {
+    if (!state.initializedUserId || state.initializedUserId !== user?.id) return;
+    if (state.mode !== "countdown" || !state.isRunning) return;
+    if (state.soundMuted || !state.soundMilestonesEnabled) return;
+
+    const { crossed, soundToPlay } = evaluateMilestones(remainingMs, state.targetMs, state.milestonesFired);
+
+    if (crossed.length > 0) {
+      if (soundToPlay) {
+        playMilestoneSound(soundToPlay.type, state.soundVolume);
+      }
+      
+      timerStore.setState(prev => {
+        const newFired = { ...prev.milestonesFired };
+        crossed.forEach(sec => newFired[sec] = true);
+        return { milestonesFired: newFired };
+      });
+    }
+
+  }, [remainingMs, state.mode, state.isRunning, state.soundMuted, state.soundMilestonesEnabled, state.milestonesFired, state.targetMs, state.initializedUserId, user?.id, state.soundVolume]);
 
   const pathOnly = location.split("?")[0].split("#")[0];
   const shouldShow = shouldShowFloatingTimer(pathOnly);
@@ -65,9 +75,8 @@ export function GlobalTeacherTimer() {
       const msg = isAr ? "المؤقت يعمل حالياً. هل أنت متأكد من الإغلاق؟" : "Timer is running. Are you sure you want to close?";
       if (!confirm(msg)) return;
     }
-    // "Ending discards the active run and returns to a fresh non-running state while preserving preferences"
-    reset(); // clear elapsed time etc
-    closeTool(); // hide it
+    reset(); 
+    closeTool();
   };
 
   const handleExpandToFull = () => {
@@ -79,7 +88,7 @@ export function GlobalTeacherTimer() {
   };
 
   const handlePlayPause = () => {
-    initAudioContext(); // Ensure audio context is unlocked on user gesture
+    initAudioContext(); 
     if (state.isRunning) {
       pause();
     } else {
@@ -88,7 +97,6 @@ export function GlobalTeacherTimer() {
   };
 
   const displayMs = state.mode === "countdown" ? remainingMs : elapsedMs;
-  const timeStr = formatTime(displayMs, state.mode === "stopwatch");
   
   return (
     <AnimatePresence>
@@ -107,9 +115,12 @@ export function GlobalTeacherTimer() {
           <>
             {/* Minimized Pill View */}
             <div className="flex flex-col items-start min-w-[65px] cursor-pointer" onClick={toggleMinimize} aria-label={isAr ? "توسيع البطاقة" : "Expand card"}>
-              <span className={`text-lg font-black tabular-nums leading-none tracking-tight ${isOvertime ? 'text-destructive' : 'text-foreground'}`}>
-                {isOvertime ? "+" : ""}{timeStr}
-              </span>
+              <StableReadout 
+                ms={displayMs}
+                showMs={state.mode === "stopwatch"}
+                isOvertime={isOvertime}
+                className="text-lg font-black tracking-tight"
+              />
               {state.taskName && (
                 <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[120px] mt-0.5">
                   {state.taskName}
@@ -183,9 +194,12 @@ export function GlobalTeacherTimer() {
             </div>
 
             <div className="flex flex-col items-center py-2">
-              <span className={`text-5xl font-black tabular-nums tracking-tighter ${isOvertime ? 'text-destructive' : 'text-foreground'}`} dir="ltr">
-                {isOvertime ? "+" : ""}{timeStr}
-              </span>
+              <StableReadout 
+                ms={displayMs}
+                showMs={state.mode === "stopwatch"}
+                isOvertime={isOvertime}
+                className="text-5xl font-black tracking-tighter"
+              />
               {state.taskName && (
                 <span className="text-sm font-bold text-muted-foreground truncate w-full text-center mt-2">
                   {state.taskName}

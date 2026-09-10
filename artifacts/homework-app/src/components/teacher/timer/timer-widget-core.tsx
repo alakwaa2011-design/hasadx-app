@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTimerEngine } from "@/lib/use-timer-engine";
 import { timerStore, TimerMode, TimerPresentation } from "@/lib/timer-store";
-import { Play, Pause, RotateCcw, Maximize, Volume2, VolumeX, Settings2, Flag, X, Minimize2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Maximize, Volume2, VolumeX, Settings2, Flag, X, Minimize2, ChevronDown } from "lucide-react";
 import { formatTime } from "./timer-utils";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -12,37 +12,64 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { playTimerSound, initAudioContext } from "@/lib/timer-sounds";
 
-function CircularTimer({ remainingMs, targetMs, isOvertime, timeStr, size = "md" }: { remainingMs: number, targetMs: number, isOvertime: boolean, timeStr: string, size?: "md" | "lg" }) {
-  const progress = Math.max(0, Math.min(1, remainingMs / targetMs));
-  const textClass = size === "lg" 
-    ? "text-[clamp(3.5rem,12vw,7rem)]" 
-    : "text-[clamp(2.5rem,12vw,4.5rem)]";
+export function StableReadout({ ms, showMs, isOvertime, className }: { ms: number, showMs?: boolean, isOvertime?: boolean, className?: string }) {
+  const totalS = Math.floor(ms / 1000);
+  const h = Math.floor(totalS / 3600);
+  const m = Math.floor((totalS % 3600) / 60);
+  const s = totalS % 60;
+  const hds = Math.floor((ms % 1000) / 10);
+
+  const hStr = h > 0 ? h.toString() : "";
+  const mStr = m.toString().padStart(h > 0 ? 2 : 1, "0");
+  const sStr = s.toString().padStart(2, "0");
+  const msStr = hds.toString().padStart(2, "0");
+
+  const renderDigits = (str: string) => {
+    return str.split("").map((c, i) => <span key={i} className="inline-block text-center w-[0.6em]">{c}</span>);
+  };
 
   return (
-    <div className="relative w-full aspect-square flex items-center justify-center">
+    <div className={`flex items-baseline justify-center whitespace-nowrap ${className || ''}`} dir="ltr">
+      {isOvertime && <span className="mr-[0.1em] text-destructive">+</span>}
+      {hStr && <>{renderDigits(hStr)}<span className="inline-block w-[0.3em] text-center opacity-80 -translate-y-[0.05em]">:</span></>}
+      {renderDigits(mStr)}<span className="inline-block w-[0.3em] text-center opacity-80 -translate-y-[0.05em]">:</span>{renderDigits(sStr)}
+      {showMs && <><span className="inline-block w-[0.3em] text-center opacity-80">.</span>{renderDigits(msStr)}</>}
+    </div>
+  );
+}
+
+function CircularTimer({ remainingMs, targetMs, isOvertime, size = "md" }: { remainingMs: number, targetMs: number, isOvertime: boolean, size?: "md" | "lg" }) {
+  const progress = Math.max(0, Math.min(1, remainingMs / targetMs));
+
+  return (
+    <div className="relative w-full aspect-square @container flex items-center justify-center">
       <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/50" />
+        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
         <g className="text-muted-foreground/40">
           {Array.from({ length: 60 }).map((_, i) => (
-             <line key={i} x1="50" y1="4" x2="50" y2={i % 5 === 0 ? "9" : "6"} stroke="currentColor" strokeWidth={i % 5 === 0 ? "1" : "0.5"} transform={`rotate(${i * 6} 50 50)`} />
+             <line key={i} x1="50" y1="8" x2="50" y2={i % 5 === 0 ? "14" : "11"} stroke="currentColor" strokeWidth={i % 5 === 0 ? "1.5" : "0.75"} transform={`rotate(${i * 6} 50 50)`} />
           ))}
         </g>
-        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"
+        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"
           className={`${isOvertime ? 'text-destructive' : 'text-primary'} transition-colors duration-75`}
-          strokeDasharray="289.026"
-          strokeDashoffset={289.026 - (289.026 * progress)} 
+          strokeDasharray="282.743"
+          strokeDashoffset={282.743 - (282.743 * progress)} 
         />
       </svg>
-      <div className={`z-10 flex flex-col items-center justify-center`}>
-        <div className={`font-black tabular-nums tracking-tighter leading-none ${isOvertime ? 'text-destructive' : 'text-foreground'} ${textClass}`} dir="ltr">
-          {isOvertime ? "+" : ""}{timeStr}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ padding: '15%' }}>
+        <div className="w-full flex items-center justify-center h-full">
+          <StableReadout 
+            ms={remainingMs} 
+            isOvertime={isOvertime} 
+            className={`font-black tracking-tighter leading-none w-full text-center ${isOvertime ? 'text-destructive' : 'text-foreground'} text-[18cqw]`} 
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function BarTimer({ remainingMs, targetMs, isOvertime, timeStr, isAr, size = "md" }: { remainingMs: number, targetMs: number, isOvertime: boolean, timeStr: string, isAr: boolean, size?: "md" | "lg" }) {
+function BarTimer({ remainingMs, targetMs, isOvertime, isAr, size = "md" }: { remainingMs: number, targetMs: number, isOvertime: boolean, isAr: boolean, size?: "md" | "lg" }) {
   const progress = Math.max(0, Math.min(1, remainingMs / targetMs));
   const textClass = size === "lg" 
     ? "text-[clamp(4rem,15vw,9rem)]" 
@@ -50,20 +77,22 @@ function BarTimer({ remainingMs, targetMs, isOvertime, timeStr, isAr, size = "md
   
   return (
     <div className="w-full flex flex-col gap-4 sm:gap-6">
-       <div className={`font-black tabular-nums tracking-tighter text-center ${isOvertime ? 'text-destructive' : 'text-foreground'} ${textClass} leading-none`} dir="ltr">
-         {isOvertime ? "+" : ""}{timeStr}
-       </div>
-       <div className={`relative w-full bg-muted/40 rounded-2xl overflow-hidden border border-border shadow-inner ${size === "lg" ? "h-16 sm:h-20" : "h-10 sm:h-14"}`}>
+       <StableReadout 
+         ms={remainingMs}
+         isOvertime={isOvertime}
+         className={`font-black tracking-tighter text-center ${isOvertime ? 'text-destructive' : 'text-foreground'} ${textClass} leading-none`} 
+       />
+       <div className={`relative w-full bg-muted/40 rounded-2xl overflow-hidden border border-border shadow-inner ${size === "lg" ? "h-16 sm:h-20" : "h-10 sm:h-14"}`} dir={isAr ? "rtl" : "ltr"}>
          <div 
-           className={`h-full ${isOvertime ? 'bg-destructive' : 'bg-primary'} transition-colors duration-75`}
-           style={{ width: `${progress * 100}%` }}
+            className={`absolute inset-y-0 ${isAr ? "right-0" : "left-0"} ${isOvertime ? 'bg-destructive' : 'bg-primary'} transition-[width] duration-75 ease-linear`}
+            style={{ width: `${progress * 100}%` }}
          />
          <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(0,0,0,0.1)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.1)_50%,rgba(0,0,0,0.1)_75%,transparent_75%,transparent)] bg-[length:24px_24px] pointer-events-none opacity-[0.03]" />
          
          <div className={`absolute inset-0 flex items-center justify-between px-4 sm:px-6 pointer-events-none font-black mix-blend-difference text-white/90 ${size === "lg" ? "text-xl md:text-3xl" : "text-sm sm:text-lg"}`}>
-            <span>{isAr ? "الضبط" : "Start"}</span>
+            <span>{isAr ? "الوقت المتبقي" : "Remaining time"}</span>
             <span className="opacity-50">50%</span>
-            <span>{isAr ? "النهاية" : "End"}</span>
+            <span>{isAr ? "الانتهاء" : "Finish"}</span>
          </div>
        </div>
     </div>
@@ -132,13 +161,13 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
   } = useTimerEngine();
   
   const [setupMode, setSetupMode] = useState(false);
+  const [isSoundOpen, setIsSoundOpen] = useState(false);
   const [tempHours, setTempHours] = useState(0);
   const [tempMinutes, setTempMinutes] = useState(5);
   const [tempSeconds, setTempSeconds] = useState(0);
   const [lapNameInput, setLapNameInput] = useState("");
 
   const displayMs = state.mode === "countdown" ? remainingMs : elapsedMs;
-  const timeStr = formatTime(displayMs, state.mode === "stopwatch");
   
   const handleStartSetup = () => {
     setSetupMode(true);
@@ -205,19 +234,22 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-5xl mb-32 px-4 min-h-0">
           {state.mode === "countdown" && state.presentation === "circular" && (
              <div className="w-full max-w-[280px] sm:max-w-[400px] md:max-w-[500px]">
-               <CircularTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} timeStr={timeStr} size="lg" />
+               <CircularTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} size="lg" />
              </div>
           )}
           
           {(state.mode === "stopwatch" || state.presentation === "digital") && (
-            <div className={`font-black tabular-nums tracking-tighter ${isOvertime ? 'text-destructive' : 'text-foreground'} text-[clamp(5rem,20vw,14rem)] leading-none`} dir="ltr">
-              {isOvertime ? "+" : ""}{timeStr}
-            </div>
+            <StableReadout 
+              ms={displayMs}
+              showMs={state.mode === "stopwatch"}
+              isOvertime={isOvertime}
+              className={`font-black tracking-tighter ${isOvertime ? 'text-destructive' : 'text-foreground'} text-[clamp(5rem,20vw,14rem)] leading-none`}
+            />
           )}
           
           {state.mode === "countdown" && state.presentation === "bar" && (
             <div className="w-full max-w-4xl">
-              <BarTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} timeStr={timeStr} isAr={isAr} size="lg" />
+              <BarTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} isAr={isAr} size="lg" />
             </div>
           )}
         </div>
@@ -236,31 +268,16 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
           <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-md">
             <Button 
               onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen().catch(()=>{});
-                } else {
-                  timerStore.setState({ studentDisplayActive: false });
-                }
-              }}
-              variant="secondary"
-              className="rounded-full shadow-lg h-12 px-6 font-bold text-sm sm:text-base flex-1 sm:flex-none whitespace-nowrap"
-            >
-              <Minimize2 className="w-4 h-4 ml-2 rtl:mr-2 rtl:ml-0" />
-              {isAr ? "تصغير / عودة" : "Minimize / Return"}
-            </Button>
-
-            <Button 
-              onClick={() => {
                 timerStore.setState({ studentDisplayActive: false });
                 if (document.fullscreenElement) {
                   document.exitFullscreen().catch(()=>{});
                 }
               }}
-              variant="destructive"
-              className="rounded-full shadow-lg h-12 px-6 font-bold text-sm sm:text-base flex-1 sm:flex-none whitespace-nowrap"
+              variant="secondary"
+              className="rounded-full shadow-lg h-12 px-8 font-bold text-sm sm:text-base whitespace-nowrap"
             >
-              <X className="w-4 h-4 ml-2 rtl:mr-2 rtl:ml-0" />
-              {isAr ? "إنهاء العرض" : "End Display"}
+              <Minimize2 className="w-4 h-4 ml-2 rtl:mr-2 rtl:ml-0" />
+              {isAr ? "العودة إلى المؤقت" : "Back to timer"}
             </Button>
           </div>
         </div>
@@ -279,11 +296,6 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
             <TabsTrigger value="stopwatch" className="text-base font-bold">{isAr ? "ساعة إيقاف" : "Stopwatch"}</TabsTrigger>
           </TabsList>
         </Tabs>
-        
-        <Button variant="outline" size="lg" onClick={handleStudentDisplay} className="w-full sm:w-auto gap-2 font-bold rounded-full">
-          <Maximize className="w-4 h-4" />
-          {isAr ? "شاشة الطالب" : "Student Display"}
-        </Button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 flex-1">
@@ -296,7 +308,7 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
                   <input 
                     type="number" value={tempHours}
                     onChange={(e) => setTempHours(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-12 sm:w-16 md:w-20 bg-transparent text-center border-b-4 border-transparent hover:border-primary/30 focus:border-primary focus:outline-none transition-colors"
+                    className="w-12 sm:w-16 md:w-20 bg-transparent text-center border-b-4 border-transparent hover:border-primary/30 focus:border-primary focus:outline-none transition-colors tabular-nums"
                     min="0"
                   />
                   <span className="text-xs sm:text-sm font-bold text-muted-foreground mt-2">{isAr ? "ساعة" : "h"}</span>
@@ -306,7 +318,7 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
                   <input 
                     type="number" value={tempMinutes}
                     onChange={(e) => setTempMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-12 sm:w-16 md:w-20 bg-transparent text-center border-b-4 border-transparent hover:border-primary/30 focus:border-primary focus:outline-none transition-colors"
+                    className="w-12 sm:w-16 md:w-20 bg-transparent text-center border-b-4 border-transparent hover:border-primary/30 focus:border-primary focus:outline-none transition-colors tabular-nums"
                     min="0"
                   />
                   <span className="text-xs sm:text-sm font-bold text-muted-foreground mt-2">{isAr ? "دقيقة" : "m"}</span>
@@ -316,7 +328,7 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
                   <input 
                     type="number" value={tempSeconds}
                     onChange={(e) => setTempSeconds(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-12 sm:w-16 md:w-20 bg-transparent text-center border-b-4 border-transparent hover:border-primary/30 focus:border-primary focus:outline-none transition-colors"
+                    className="w-12 sm:w-16 md:w-20 bg-transparent text-center border-b-4 border-transparent hover:border-primary/30 focus:border-primary focus:outline-none transition-colors tabular-nums"
                     min="0"
                   />
                   <span className="text-xs sm:text-sm font-bold text-muted-foreground mt-2">{isAr ? "ثانية" : "s"}</span>
@@ -340,18 +352,21 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
               <div className="w-full max-w-md flex flex-col items-center justify-center mb-8">
                 {state.mode === "countdown" && state.presentation === "circular" && (
                    <div className="w-full max-w-[280px] sm:max-w-[320px]">
-                     <CircularTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} timeStr={timeStr} size="md" />
+                     <CircularTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} size="md" />
                    </div>
                 )}
                 
                 {state.mode === "countdown" && state.presentation === "bar" && (
-                   <BarTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} timeStr={timeStr} isAr={isAr} size="md" />
+                   <BarTimer remainingMs={remainingMs} targetMs={state.targetMs} isOvertime={isOvertime} isAr={isAr} size="md" />
                 )}
 
                 {(state.mode === "stopwatch" || (state.mode === "countdown" && state.presentation === "digital")) && (
-                   <div className={`py-8 sm:py-12 text-[15vw] sm:text-7xl lg:text-8xl font-black tabular-nums tracking-tighter ${isOvertime ? 'text-destructive' : 'text-foreground'}`} dir="ltr">
-                     {isOvertime ? "+" : ""}{timeStr}
-                   </div>
+                   <StableReadout 
+                     ms={displayMs}
+                     showMs={state.mode === "stopwatch"}
+                     isOvertime={isOvertime}
+                     className={`py-8 sm:py-12 text-[15vw] sm:text-7xl lg:text-8xl font-black tracking-tighter ${isOvertime ? 'text-destructive' : 'text-foreground'}`}
+                   />
                 )}
               </div>
 
@@ -401,6 +416,13 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
                   />
                 </div>
               )}
+
+              <div className="mt-8 pt-6 border-t border-border/50 w-full max-w-sm flex justify-center">
+                <Button variant="ghost" size="sm" onClick={handleStudentDisplay} className="gap-2 font-bold rounded-full text-muted-foreground hover:text-foreground">
+                  <Maximize className="w-4 h-4" />
+                  {isAr ? "عرض بملء الشاشة" : "Full-screen display"}
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -442,50 +464,85 @@ export function TimerWidgetCore({ isFullPage = false }: { isFullPage?: boolean }
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-bold">{isAr ? "إشعار المتصفح" : "Browser Notify"}</Label>
-                  <Switch 
-                    checked={state.notifyBrowser} 
-                    onCheckedChange={(c) => {
-                      if (c && "Notification" in window && Notification.permission !== "granted") {
-                        Notification.requestPermission().then(p => {
-                          if (p === "granted") timerStore.setState({ notifyBrowser: true });
-                        });
-                      } else {
-                        timerStore.setState({ notifyBrowser: c });
-                      }
-                    }} 
-                  />
+                {/* Sound Settings Collapsible */}
+                <div className="border border-border rounded-xl bg-background overflow-hidden">
+                  <div className="flex items-center justify-between p-3 cursor-pointer select-none hover:bg-muted/50 transition-colors" onClick={() => setIsSoundOpen(!isSoundOpen)}>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); timerStore.setState({ soundMuted: !state.soundMuted }); }} 
+                        className={`p-2 rounded-full hover:bg-muted transition-colors ${state.soundMuted ? 'text-muted-foreground' : 'text-primary'}`}
+                        title={isAr ? (state.soundMuted ? "تفعيل الصوت" : "كتم الصوت") : (state.soundMuted ? "Unmute" : "Mute")}
+                      >
+                        {state.soundMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      </button>
+                      <Label className="text-sm font-bold cursor-pointer">{isAr ? "إعدادات الأصوات" : "Sound Settings"}</Label>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isSoundOpen ? "rotate-180" : ""}`} />
+                  </div>
+                  
+                  {isSoundOpen && (
+                    <div className="p-4 pt-0 border-t border-border flex flex-col gap-4 mt-2">
+                       <div className={`transition-opacity ${state.soundMuted ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                         
+                         {/* Completion Sound Selection */}
+                         <div className="flex flex-col gap-2 mb-4">
+                           <Label className="text-xs font-bold text-muted-foreground">{isAr ? "صوت الانتهاء" : "Completion Sound"}</Label>
+                           <div className="flex items-center gap-2">
+                             <select 
+                               value={state.soundSelection}
+                               onChange={(e) => timerStore.setState({ soundSelection: e.target.value })}
+                               className="flex-1 bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
+                             >
+                               <option value="bell">{isAr ? "جرس كلاسيكي" : "Classic Bell"}</option>
+                               <option value="chime">{isAr ? "رنين ناعم" : "Soft Chime"}</option>
+                               <option value="gong">{isAr ? "قرع عميق" : "Deep Gong"}</option>
+                             </select>
+                             <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); playTimerSound(state.soundSelection, state.soundVolume); }} className="shrink-0" disabled={state.soundMuted}>
+                               <Play className="w-4 h-4" />
+                             </Button>
+                           </div>
+                         </div>
+
+                         {/* Sound Toggles */}
+                         <div className="flex flex-col gap-3">
+                           <div className="flex items-center justify-between">
+                             <Label className="text-xs font-bold">{isAr ? "أصوات التحكم (بدء / إيقاف)" : "Control Cues (Start / Pause)"}</Label>
+                             <Switch 
+                               checked={state.soundControlsEnabled} 
+                               onCheckedChange={(c) => timerStore.setState({ soundControlsEnabled: c })} 
+                             />
+                           </div>
+                           <div className="flex items-center justify-between">
+                             <Label className="text-xs font-bold">{isAr ? "تنبيهات العد التنازلي" : "Countdown Milestones"}</Label>
+                             <Switch 
+                               checked={state.soundMilestonesEnabled} 
+                               onCheckedChange={(c) => timerStore.setState({ soundMilestonesEnabled: c })} 
+                             />
+                           </div>
+                           <div className="flex items-center justify-between">
+                             <Label className="text-xs font-bold">{isAr ? "تنبيه الجولات (ساعة الإيقاف)" : "Lap Markers"}</Label>
+                             <Switch 
+                               checked={state.soundLapEnabled} 
+                               onCheckedChange={(c) => timerStore.setState({ soundLapEnabled: c })} 
+                             />
+                           </div>
+                         </div>
+
+                         {/* Volume */}
+                         <div className="mt-5">
+                            <Label className="text-xs font-bold text-muted-foreground mb-3 block">{isAr ? "مستوى الصوت" : "Volume"}</Label>
+                            <Slider 
+                              value={[state.soundVolume * 100]} 
+                              min={10} max={100} step={10} 
+                              onValueChange={(v) => timerStore.setState({ soundVolume: v[0] / 100 })}
+                            />
+                         </div>
+
+                       </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <Label className="text-sm font-bold">{isAr ? "صوت الانتهاء" : "Completion Sound"}</Label>
-                    <button onClick={() => timerStore.setState({ soundMuted: !state.soundMuted })} className="text-muted-foreground hover:text-foreground">
-                      {state.soundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <select 
-                      value={state.soundSelection}
-                      onChange={(e) => timerStore.setState({ soundSelection: e.target.value })}
-                      className="flex-1 bg-background border border-border rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-primary/50"
-                    >
-                      <option value="bell">{isAr ? "جرس كلاسيكي" : "Classic Bell"}</option>
-                      <option value="chime">{isAr ? "رنين ناعم" : "Soft Chime"}</option>
-                      <option value="gong">{isAr ? "قرع عميق" : "Deep Gong"}</option>
-                    </select>
-                    <Button variant="outline" size="icon" onClick={() => playTimerSound(state.soundSelection, state.soundVolume)} className="shrink-0" disabled={state.soundMuted} title={isAr ? "تجربة الصوت" : "Test sound"} aria-label={isAr ? "تجربة الصوت" : "Test sound"}>
-                      <Play className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <Slider 
-                    value={[state.soundVolume * 100]} 
-                    min={10} max={100} step={10} 
-                    onValueChange={(v) => timerStore.setState({ soundVolume: v[0] / 100 })}
-                    disabled={state.soundMuted}
-                  />
-                </div>
              </div>
           )}
 
