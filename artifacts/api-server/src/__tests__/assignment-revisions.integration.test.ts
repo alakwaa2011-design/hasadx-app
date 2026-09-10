@@ -22,6 +22,9 @@ let oldRevisionId = 0;
 let lockedRevisionId = 0;
 let archivedSubmissionId = 0;
 let archivedQuestionId = 0;
+let concurrentRestoreId = 0;
+let concurrentRevisionAId = 0;
+let concurrentRevisionBId = 0;
 
 function app(teacherId?: number) {
   const server = express();
@@ -39,7 +42,7 @@ function app(teacherId?: number) {
 async function assignment(id: number) {
   return (await db.execute(sql`
     SELECT id, title, description, access_mode, access_code, is_shared,
-           is_share_approved, archived_at, version
+           is_share_approved, archived_at, total_points, version
     FROM assignments WHERE id = ${id}
   `)).rows[0] as any;
 }
@@ -190,6 +193,63 @@ suite("assignment revision safety with PostgreSQL", () => {
         (submission_id, question_id, selected_answer, is_correct)
       VALUES (${archivedSubmissionId}, ${archivedQuestionId}, 'B', FALSE)
     `);
+
+    concurrentRestoreId = Number((await db.execute(sql`
+      INSERT INTO assignments
+        (title, description, teacher_id, access_mode, is_shared, is_share_approved, total_points, version)
+      VALUES ('Concurrent current', 'Concurrent current description', ${ownerId}, 'public', TRUE, TRUE, 1, 1)
+      RETURNING id
+    `)).rows[0].id);
+    await db.execute(sql`
+      INSERT INTO questions
+        (assignment_id, question_type, text, option_a, option_b, correct_answer, points)
+      VALUES (${concurrentRestoreId}, 'mcq', 'Concurrent current question', 'A', 'B', 'A', 1)
+    `);
+    const concurrentRevisions = (await db.execute(sql`
+      INSERT INTO assignment_revisions
+        (assignment_id, teacher_id, source_version, settings, questions)
+      VALUES
+        (
+          ${concurrentRestoreId},
+          ${ownerId},
+          1,
+          ${JSON.stringify({
+            title: "Concurrent revision A",
+            description: "Concurrent description A",
+            accessMode: "public",
+            totalPoints: 2,
+          })}::jsonb,
+          ${JSON.stringify([{
+            questionType: "mcq",
+            text: "Concurrent question A",
+            optionA: "A",
+            optionB: "B",
+            correctAnswer: "A",
+            points: 2,
+          }])}::jsonb
+        ),
+        (
+          ${concurrentRestoreId},
+          ${ownerId},
+          1,
+          ${JSON.stringify({
+            title: "Concurrent revision B",
+            description: "Concurrent description B",
+            accessMode: "public",
+            totalPoints: 3,
+          })}::jsonb,
+          ${JSON.stringify([{
+            questionType: "mcq",
+            text: "Concurrent question B",
+            optionA: "A",
+            optionB: "B",
+            correctAnswer: "B",
+            points: 3,
+          }])}::jsonb
+        )
+      RETURNING id
+    `)).rows;
+    [concurrentRevisionAId, concurrentRevisionBId] = concurrentRevisions.map((row: any) => Number(row.id));
   });
 
   afterAll(async () => {
@@ -255,6 +315,48 @@ suite("assignment revision safety with PostgreSQL", () => {
     expect(response.status).toBe(409);
     expect(response.body.code).toBe("ASSIGNMENT_VERSION_CONFLICT");
     expect(await questionTexts(restorableId)).toEqual(["Old question", "Current question"]);
+  });
+
+  it("allows only one of two concurrent restores with the same version", async () => {
+    const revisions = [
+      {
+        id: concurrentRevisionAId,
+        title: "Concurrent revision A",
+        description: "Concurrent description A",
+        question: "Concurrent question A",
+        totalPoints: 2,
+      },
+      {
+        id: concurrentRevisionBId,
+        title: "Concurrent revision B",
+        description: "Concurrent description B",
+        question: "Concurrent question B",
+        totalPoints: 3,
+      },
+    ];
+
+    const responses = await Promise.all(revisions.map((revision) =>
+      request(app(ownerId))
+        .post(`/api/assignments/${concurrentRestoreId}/revisions/${revision.id}/restore`)
+        .send({ version: 1, mode: "full" }),
+    ));
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const winnerIndex = responses.findIndex((response) => response.status === 200);
+    const loser = responses.find((response) => response.status === 409)!;
+    expect(responses[winnerIndex].body).toMatchObject({ ok: true, mode: "full", version: 2 });
+    expect(loser.body.code).toBe("ASSIGNMENT_VERSION_CONFLICT");
+
+    const winner = revisions[winnerIndex];
+    expect(await assignment(concurrentRestoreId)).toMatchObject({
+      title: winner.title,
+      description: winner.description,
+      total_points: winner.totalPoints,
+      is_shared: false,
+      is_share_approved: false,
+      version: 2,
+    });
+    expect(await questionTexts(concurrentRestoreId)).toEqual([winner.question]);
   });
 
   it("restores settings only while preserving questions and disabling sharing", async () => {
