@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Target, Copy, Settings, Trash2, Users, Clock,
+  Target, Copy, Share2, Settings, Trash2, Users, Clock,
   CheckCircle, XCircle, Trophy, ChevronLeft, ChevronRight, ExternalLink, BookOpen, Sparkles, PenLine
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -55,6 +55,12 @@ export default function SoloChallengesPage() {
     const url = `${window.location.origin}/solo/${slug}`;
     navigator.clipboard.writeText(url).catch(() => {});
     toast.success(s.linkCopied);
+  };
+
+  const shareWhatsApp = (slug: string, title: string) => {
+    const url = `${window.location.origin}/solo/${slug}`;
+    const text = `${s.shareText?.replace("{title}", title) || title}\n${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 
   const deleteChallenge = async (slug: string, title: string) => {
@@ -265,6 +271,13 @@ export default function SoloChallengesPage() {
                           title={s.copyLink}
                         >
                           <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => shareWhatsApp(ch.slug, ch.assignmentTitle)}
+                          className="flex-1 sm:flex-none flex items-center justify-center p-2 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/15 transition-colors text-emerald-600"
+                          title={s.shareWhatsApp}
+                        >
+                          <Share2 className="w-4 h-4" />
                         </button>
                         <a
                           href={`/solo/${ch.slug}`}
