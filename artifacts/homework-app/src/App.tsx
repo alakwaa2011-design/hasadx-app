@@ -99,6 +99,7 @@ const ArenaReportsPage = lazy(() => import("@/pages/teacher/arena-reports"));
 const ArenaContentAdmin = lazy(() => import("@/pages/teacher/arena-content"));
 const TeacherIslamicAdmin = lazy(() => import("@/pages/teacher/islamic-admin"));
 const QuestionBankPage = lazy(() => import("@/pages/teacher/question-bank"));
+const UrlQrTool = lazy(() => import("@/pages/teacher/tools/url-qr"));
 const WhiteboardMonitor = lazy(() => import("@/pages/teacher/whiteboard-monitor"));
 const SharedContentPage = lazy(() => import("@/pages/teacher/shared-content"));
 const CategoriesPage = lazy(() => import("@/pages/teacher/categories"));
@@ -394,6 +395,7 @@ function Router() {
         <Route path="/teacher/arena-content" component={ArenaContentAdmin} />
         <Route path="/teacher/islamic/admin" component={TeacherIslamicAdmin} />
         <Route path="/teacher/question-bank" component={QuestionBankPage} />
+        <Route path="/teacher/tools/url-qr" component={UrlQrTool} />
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
         {/* Legacy /teacher/shared → redirect to the new activities library

@@ -96,6 +96,7 @@ import {
   School,
   Dices,
   Orbit,
+  QrCode,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
@@ -3110,6 +3111,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       groupTitle: isAr ? "أخرى" : "Other",
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
       tools: [
+        {
+          icon: <QrCode className="w-6 h-6" />,
+          title: isAr ? "تحويل الرابط إلى باركود" : "Link to QR Code",
+          desc: isAr ? "أنشئ باركود QR جاهزًا للمسح والتحميل" : "Create a scannable, downloadable QR code",
+          accent: BRAND.green,
+          href: "/teacher/tools/url-qr",
+        },
         {
           icon: <MessageSquarePlus className="w-6 h-6" />,
           title: t.dashboard.toolFeedback,
