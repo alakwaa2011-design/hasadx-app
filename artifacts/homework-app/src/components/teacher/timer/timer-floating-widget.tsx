@@ -40,7 +40,6 @@ export function GlobalTeacherTimer() {
       
       if (state.notifyBrowser) {
         try {
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
           if (Notification.permission === "granted") {
             new Notification(isAr ? "انتهى الوقت" : "Time is up", {
               body: state.taskName || (isAr ? "انتهى الوقت المحدد للمهمة" : "The set time for the task has finished"),
@@ -108,7 +107,7 @@ export function GlobalTeacherTimer() {
           <>
             {/* Minimized Pill View */}
             <div className="flex flex-col items-start min-w-[65px] cursor-pointer" onClick={toggleMinimize} aria-label={isAr ? "توسيع البطاقة" : "Expand card"}>
-              <span className={`text-lg font-black tabular-nums leading-none tracking-tight ${isOvertime ? 'text-red-500' : 'text-foreground'}`}>
+              <span className={`text-lg font-black tabular-nums leading-none tracking-tight ${isOvertime ? 'text-destructive' : 'text-foreground'}`}>
                 {isOvertime ? "+" : ""}{timeStr}
               </span>
               {state.taskName && (
@@ -184,7 +183,7 @@ export function GlobalTeacherTimer() {
             </div>
 
             <div className="flex flex-col items-center py-2">
-              <span className={`text-5xl font-black tabular-nums tracking-tighter ${isOvertime ? 'text-red-500' : 'text-foreground'}`} dir="ltr">
+              <span className={`text-5xl font-black tabular-nums tracking-tighter ${isOvertime ? 'text-destructive' : 'text-foreground'}`} dir="ltr">
                 {isOvertime ? "+" : ""}{timeStr}
               </span>
               {state.taskName && (
