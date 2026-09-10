@@ -896,6 +896,10 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       res.status(404).json({ message: "الواجب غير موجود" });
       return;
     }
+    if (assignment.archivedAt) {
+      res.status(410).json({ message: "تمت أرشفة هذا الواجب ولا يقبل تسليمات جديدة", code: "ASSIGNMENT_ARCHIVED" });
+      return;
+    }
     const contentLanguage = resolveAiContentLanguage({
       preferredLanguage: req.body?.language,
       primaryText: assignment.title,
@@ -909,10 +913,6 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       !!req.session.teacherId && req.session.teacherId === assignment.teacherId;
 
     if (!isOwnerTeacher) {
-      if (assignment.archivedAt) {
-        res.status(410).json({ message: "تمت أرشفة هذا الواجب ولا يقبل تسليمات جديدة", code: "ASSIGNMENT_ARCHIVED" });
-        return;
-      }
       if (assignment.closedAt) {
         res.status(403).json({ message: "أغلق المعلم هذا الواجب", code: "ASSIGNMENT_CLOSED" });
         return;
