@@ -10,6 +10,7 @@ import { DarkModeProvider } from "@/lib/dark-mode";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { GlobalAiAssistant } from "@/components/ai-assistant";
+import { GlobalTeacherTimer } from "@/components/teacher/timer/timer-floating-widget";
 import { InsufficientCreditsDialog } from "@/components/insufficient-credits-dialog";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { HeartbeatTracker } from "@/components/heartbeat-tracker";
@@ -100,6 +101,7 @@ const ArenaContentAdmin = lazy(() => import("@/pages/teacher/arena-content"));
 const TeacherIslamicAdmin = lazy(() => import("@/pages/teacher/islamic-admin"));
 const QuestionBankPage = lazy(() => import("@/pages/teacher/question-bank"));
 const UrlQrTool = lazy(() => import("@/pages/teacher/tools/url-qr"));
+const TimerTool = lazy(() => import("@/pages/teacher/tools/timer"));
 const WhiteboardMonitor = lazy(() => import("@/pages/teacher/whiteboard-monitor"));
 const SharedContentPage = lazy(() => import("@/pages/teacher/shared-content"));
 const CategoriesPage = lazy(() => import("@/pages/teacher/categories"));
@@ -396,6 +398,7 @@ function Router() {
         <Route path="/teacher/islamic/admin" component={TeacherIslamicAdmin} />
         <Route path="/teacher/question-bank" component={QuestionBankPage} />
         <Route path="/teacher/tools/url-qr" component={UrlQrTool} />
+        <Route path="/teacher/tools/timer" component={TimerTool} />
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
         {/* Legacy /teacher/shared → redirect to the new activities library
@@ -801,6 +804,7 @@ function App() {
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <Router />
                 <GlobalAiAssistant />
+                <GlobalTeacherTimer />
                 <InsufficientCreditsDialog />
                 <PageViewTracker />
                 <HeartbeatTracker />

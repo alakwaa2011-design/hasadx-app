@@ -3112,6 +3112,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
       tools: [
         {
+          icon: <Clock className="w-6 h-6" />,
+          title: isAr ? "المؤقت وساعة الإيقاف" : "Timer & Stopwatch",
+          desc: isAr ? "مؤقت تفاعلي للفصل مع شاشة عرض مخصصة للطلاب" : "Interactive classroom timer with a dedicated student display",
+          accent: BRAND.green,
+          href: "/teacher/tools/timer",
+        },
+        {
           icon: <QrCode className="w-6 h-6" />,
           title: isAr ? "تحويل الرابط إلى باركود" : "Link to QR Code",
           desc: isAr ? "أنشئ باركود QR جاهزًا للمسح والتحميل" : "Create a scannable, downloadable QR code",
