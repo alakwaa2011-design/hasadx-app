@@ -42,6 +42,7 @@ router.get("/teacher/classes", requireAuth, async (req: any, res) => {
         name: teacherClassesTable.name,
         groupName: teacherClassesTable.groupName,
         color: teacherClassesTable.color,
+        groupColor: teacherClassesTable.groupColor,
       })
       .from(teacherClassesTable)
       .where(eq(teacherClassesTable.teacherId, teacherId))
@@ -143,13 +144,55 @@ router.patch("/teacher/classes/group", requireAuth, async (req: any, res) => {
     const teacherId = req.session.teacherId;
     const { className, groupName } = req.body || {};
     if (!className) return res.status(400).json({ message: "اسم الصف مطلوب" });
+    let groupColor: string | null = null;
+    if (groupName) {
+      const existingGroup = await db
+        .select({ groupColor: teacherClassesTable.groupColor })
+        .from(teacherClassesTable)
+        .where(and(
+          eq(teacherClassesTable.teacherId, teacherId),
+          eq(teacherClassesTable.groupName, groupName),
+          isNotNull(teacherClassesTable.groupColor),
+        ))
+        .limit(1);
+      groupColor = existingGroup[0]?.groupColor ?? null;
+    }
     await db
       .update(teacherClassesTable)
-      .set({ groupName: groupName || null })
+      .set({ groupName: groupName || null, groupColor })
       .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.name, className)));
-    res.json({ ok: true });
+    res.json({ ok: true, groupColor });
   } catch (err) {
     req.log?.error(err, "Group class error");
+    res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/** PATCH /api/teacher/classes/group-color — set the shared accent for every class in a group */
+router.patch("/teacher/classes/group-color", requireAuth, async (req: any, res) => {
+  try {
+    const teacherId = req.session.teacherId;
+    const groupName = (req.body?.groupName || "").toString().trim();
+    const rawColor = req.body?.color;
+    const color = rawColor === null || rawColor === "" || rawColor === undefined
+      ? null
+      : rawColor.toString().trim();
+
+    if (!groupName) return res.status(400).json({ message: "اسم المجموعة مطلوب" });
+    if (color !== null && !CLASS_COLOR_KEYS.has(color)) {
+      return res.status(400).json({ message: "لون المجموعة غير صالح" });
+    }
+
+    const updated = await db
+      .update(teacherClassesTable)
+      .set({ groupColor: color })
+      .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.groupName, groupName)))
+      .returning({ id: teacherClassesTable.id });
+
+    if (!updated.length) return res.status(404).json({ message: "المجموعة غير موجودة" });
+    res.json({ ok: true, color, updatedCount: updated.length });
+  } catch (err) {
+    req.log?.error(err, "Group color update error");
     res.status(500).json({ message: "خطأ" });
   }
 });

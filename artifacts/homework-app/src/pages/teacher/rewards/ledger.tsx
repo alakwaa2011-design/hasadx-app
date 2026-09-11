@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useGetRewardLedger, useGetRewardSummary, useReverseReward } from "./api";
-import { Loader2, RotateCcw, Clock, Users, Filter, AlertTriangle } from "lucide-react";
+import { Loader2, RotateCcw, Clock, Users, Filter, AlertTriangle, ArrowRight } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
@@ -16,6 +16,9 @@ export function RewardLedgerDialog({ open, onOpenChange, className }: { open: bo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl h-[85vh] sm:h-[80vh] flex flex-col p-0 bg-background/95 backdrop-blur-xl border-border">
         <DialogHeader className="p-4 border-b border-border/50 shrink-0">
+          <button type="button" onClick={() => onOpenChange(false)} className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted">
+            <ArrowRight size={15} /> رجوع
+          </button>
           <DialogTitle className="text-lg font-bold flex items-center justify-between">
             <span>سجل التحفيز والملخص</span>
             <div className="flex bg-muted rounded-lg p-1">

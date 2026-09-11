@@ -468,6 +468,14 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             <section className="relative w-full overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/60 to-amber-50 p-6 text-center shadow-sm sm:p-10">
               <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-emerald-200/35 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-20 -left-12 h-48 w-48 rounded-full bg-amber-200/45 blur-3xl" />
+              <button
+                type="button"
+                onClick={() => setLocation("/teacher/students")}
+                className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white/85 px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 sm:right-6 sm:top-6"
+                aria-label="العودة إلى صفوفي وطلابي"
+              >
+                <ArrowRight size={16} /> رجوع
+              </button>
               <div className="relative">
                 <div className="mx-auto mb-5 flex w-fit items-end justify-center -space-x-3 space-x-reverse" aria-hidden="true">
                   {[0, 1, 2].map((index) => (
@@ -1598,6 +1606,10 @@ function BulkBalanceAdjustmentDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-h-[92dvh] overflow-hidden rounded-[2rem] border-2 border-emerald-100 p-0 sm:max-w-xl motion-reduce:animate-none">
         <DialogHeader className="border-b border-emerald-100 bg-emerald-50/70 p-6">
+          <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
+            className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50">
+            <ArrowRight size={16} /> رجوع
+          </button>
           <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
             <SlidersHorizontal size={20} className="text-emerald-700" />
             تعديل أرصدة {students.length} طلاب

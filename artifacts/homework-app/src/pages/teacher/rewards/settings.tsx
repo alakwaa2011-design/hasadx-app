@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import * as LucideIcons from "lucide-react";
 import { useGetRewardTypes, useCreateRewardType, useUpdateRewardType } from "./api";
-import { Loader2, Plus, Check, X, ArrowUp, ArrowDown, Edit2 } from "lucide-react";
+import { Loader2, Plus, Check, X, ArrowUp, ArrowDown, Edit2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatRewardPoints } from "./format";
@@ -95,6 +95,9 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 bg-background/95 backdrop-blur-xl border-border overflow-hidden">
         <DialogHeader className="p-4 border-b border-border/50 bg-muted/20">
+          <button type="button" onClick={() => onOpenChange(false)} className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted">
+            <ArrowRight size={15} /> رجوع
+          </button>
           <DialogTitle className="text-lg font-bold">إدارة أنواع التحفيز</DialogTitle>
         </DialogHeader>
 

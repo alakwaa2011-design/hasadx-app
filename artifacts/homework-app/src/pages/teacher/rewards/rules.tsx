@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Check, Loader2, Plus, RefreshCw } from "lucide-react";
+import { ArrowRight, Check, Loader2, Plus, RefreshCw } from "lucide-react";
 import {
   RewardRuleInput,
   RewardRuleSourceType,
@@ -129,6 +129,9 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto p-0 bg-background/95 backdrop-blur-xl border-border" dir="rtl">
         <DialogHeader className="p-4 border-b border-border/50 bg-muted/20">
+          <button type="button" onClick={() => onOpenChange(false)} className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted">
+            <ArrowRight size={15} /> رجوع
+          </button>
           <DialogTitle className="text-lg font-bold">قواعد التحفيز التلقائي</DialogTitle>
           <p className="text-xs text-muted-foreground pt-1">اربط الإنجاز بالنقاط دون تغيير منحك اليدوي.</p>
         </DialogHeader>

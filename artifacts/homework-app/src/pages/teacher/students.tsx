@@ -332,12 +332,6 @@ function ClassBlock({
                     <span className={`font-black ${isDense ? "text-base" : "text-lg"} leading-tight ${color.text}`}>
                       {isUngrouped ? t.teacherStudents.unassigned : folderName}
                     </span>
-                    {groupName && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
-                        <Layers size={10} />
-                        {groupName}
-                      </span>
-                    )}
                   </div>
                   <p className={`${isDense ? "text-xs" : "text-sm"} text-muted-foreground mt-0.5`}>
                     {t.teacherStudents.studentCount.replace("{count}", String(students.length))}
@@ -451,7 +445,7 @@ function ClassBlock({
                     title={t.teacherStudents.assignGroup}
                   >
                     <Layers size={13} />
-                    <span className={actionLabelsHidden ? "sr-only" : undefined}>{groupName || t.teacherStudents.group}</span>
+                    <span className={actionLabelsHidden ? "sr-only" : undefined}>{t.teacherStudents.group}</span>
                   </button>
                   {showGroupMenu && (
                     <div className="absolute start-0 top-10 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-48 py-1 text-sm max-h-64 overflow-y-auto">
@@ -671,6 +665,9 @@ export default function StudentsPage() {
 
   /* class-group mapping: className -> groupName */
   const [classGroupMap, setClassGroupMap] = useState<Record<string, string>>({});
+  /* shared group accent mapping: groupName -> palette key */
+  const [classGroupColorMap, setClassGroupColorMap] = useState<Record<string, ClassColorKey>>({});
+  const [openGroupManager, setOpenGroupManager] = useState<string | null>(null);
   /* class color mapping: className -> explicitly selected palette key */
   const [classColorMap, setClassColorMap] = useState<Record<string, ClassColorKey>>({});
   /* new-group dialog */
@@ -735,7 +732,7 @@ export default function StudentsPage() {
       if (studentsRes.status === 401) { setLocation("/login"); return; }
       const data: Student[] = await studentsRes.json();
       setStudents(data);
-      const persistedClassesData: Array<{ name: string; groupName?: string | null; color?: string | null }> = classesRes.ok
+      const persistedClassesData: Array<{ name: string; groupName?: string | null; color?: string | null; groupColor?: string | null }> = classesRes.ok
         ? await classesRes.json()
         : [];
       const persistedClasses: string[] = persistedClassesData.map(c => c.name);
@@ -743,6 +740,13 @@ export default function StudentsPage() {
       const map: Record<string, string> = {};
       persistedClassesData.forEach(c => { if (c.groupName) map[c.name] = c.groupName; });
       setClassGroupMap(map);
+      const groupColorMap: Record<string, ClassColorKey> = {};
+      persistedClassesData.forEach(c => {
+        if (c.groupName && CLASS_COLORS.some((option) => option.key === c.groupColor)) {
+          groupColorMap[c.groupName] = c.groupColor as ClassColorKey;
+        }
+      });
+      setClassGroupColorMap(groupColorMap);
       const colorMap: Record<string, ClassColorKey> = {};
       persistedClassesData.forEach(c => {
         if (CLASS_COLORS.some((option) => option.key === c.color)) {
@@ -992,12 +996,16 @@ export default function StudentsPage() {
         body: JSON.stringify({ className, groupName }),
       });
       if (res.ok) {
+        const result = await res.json().catch(() => ({}));
         setClassGroupMap(prev => {
           const next = { ...prev };
           if (groupName) next[className] = groupName;
           else delete next[className];
           return next;
         });
+        if (groupName && CLASS_COLORS.some((option) => option.key === result.groupColor)) {
+          setClassGroupColorMap(prev => ({ ...prev, [groupName]: result.groupColor as ClassColorKey }));
+        }
         if (groupName) toast.success(t.teacherStudents.classAssigned.replace("{class}", className).replace("{group}", groupName));
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -1012,6 +1020,35 @@ export default function StudentsPage() {
       await handleAssignGroup(cn, groupName);
     }
     toast.success(t.teacherStudents.classesAssigned.replace("{count}", String(classNames.length)).replace("{group}", groupName));
+  };
+
+  const handleChangeGroupColor = async (groupName: string, colorKey: ClassColorKey | null) => {
+    const previousColor = classGroupColorMap[groupName] ?? null;
+    setClassGroupColorMap((prev) => {
+      const next = { ...prev };
+      if (colorKey) next[groupName] = colorKey;
+      else delete next[groupName];
+      return next;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/classes/group-color`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ groupName, color: colorKey }),
+      });
+      if (!res.ok) throw new Error("group_color_update_failed");
+      toast.success(t.teacherStudents.groupColorSaved);
+    } catch {
+      setClassGroupColorMap((prev) => {
+        const next = { ...prev };
+        if (previousColor) next[groupName] = previousColor;
+        else delete next[groupName];
+        return next;
+      });
+      toast.error(t.teacherStudents.genericError);
+    }
   };
 
   const handleChangeClassColor = async (className: string, colorKey: ClassColorKey | null) => {
@@ -1506,22 +1543,108 @@ export default function StudentsPage() {
                     <>
                       {/* Groups with headers — each group shows classes in 2-col grid on md+ */}
                       {groupedClasses.map(group => (
-                        <div key={group.name} className="mb-6">
+                        (() => {
+                          const groupColorKey = classGroupColorMap[group.name];
+                          const groupPalette = CLASS_COLORS.find((option) => option.key === groupColorKey) ?? CLASS_COLORS[0];
+                          const groupManagerOpen = openGroupManager === group.name;
+                          const availableClasses = namedFolders.filter((folder) => !group.classes.includes(folder));
+                          return (
+                        <div key={group.name} className={`mb-6 rounded-2xl border-2 p-2 transition-colors sm:p-3 ${groupColorKey ? `${groupPalette.light} ${groupPalette.border}` : "border-border/60 bg-muted/10"}`}>
                           {/* Group header */}
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
-                              <Layers size={15} className="text-violet-600 dark:text-violet-400" />
+                          <button
+                            type="button"
+                            onClick={() => setOpenGroupManager((current) => current === group.name ? null : group.name)}
+                            className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            aria-expanded={groupManagerOpen}
+                          >
+                            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${groupPalette.bg} shrink-0 text-white shadow-sm`}>
+                              <Layers size={16} />
                             </div>
-                            <div>
-                              <span className="font-bold text-base text-foreground">{group.name}</span>
+                            <div className="min-w-0">
+                              <span className={`font-black text-base ${groupColorKey ? groupPalette.text : "text-foreground"}`}>{group.name}</span>
                               <span className="ms-2 text-xs text-muted-foreground">
                                 {t.teacherStudents.groupSummary
                                   .replace("{classes}", String(group.classes.length))
                                   .replace("{students}", String(group.classes.reduce((acc, f) => acc + studentsInFolder(f).length, 0)))}
                               </span>
                             </div>
-                            <div className="flex-1 h-px bg-border" />
-                          </div>
+                            <div className="flex-1 border-t border-current/15" />
+                            <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${groupColorKey ? `${groupPalette.light} ${groupPalette.text}` : "bg-muted text-muted-foreground"}`}>
+                              <Palette size={12} />
+                              {t.teacherStudents.manageGroup}
+                              <ChevronDown size={13} className={`transition-transform ${groupManagerOpen ? "rotate-180" : ""}`} />
+                            </span>
+                          </button>
+                          {groupManagerOpen && (
+                            <div className="mt-2 rounded-xl border border-border/70 bg-background/85 p-3 shadow-sm" onClick={(event) => event.stopPropagation()}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-black text-foreground">{t.teacherStudents.manageGroup}</p>
+                                  <p className="text-xs text-muted-foreground">{t.teacherStudents.groupManageHint}</p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="me-1 text-[11px] font-semibold text-muted-foreground">{t.teacherStudents.groupColor}</span>
+                                  {CLASS_COLORS.map((option) => (
+                                    <button
+                                      key={option.key}
+                                      type="button"
+                                      onClick={() => handleChangeGroupColor(group.name, option.key)}
+                                      className={`h-6 w-6 rounded-full ${option.bg} transition-transform hover:scale-110 ${groupColorKey === option.key ? "ring-2 ring-offset-2 ring-foreground/60" : ""}`}
+                                      title={lang === "ar" ? option.labelAr : option.labelEn}
+                                      aria-label={lang === "ar" ? option.labelAr : option.labelEn}
+                                      aria-pressed={groupColorKey === option.key}
+                                    />
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleChangeGroupColor(group.name, null)}
+                                    className={`ms-1 rounded-lg border px-2 py-1 text-[10px] font-semibold ${groupColorKey ? "border-border text-muted-foreground hover:bg-muted" : "border-primary/40 bg-primary/5 text-primary"}`}
+                                  >
+                                    {t.teacherStudents.resetGroupColor}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                                <div className="rounded-xl border border-border/70 p-2">
+                                  <p className="mb-2 text-xs font-bold text-muted-foreground">{t.teacherStudents.classesInGroup}</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {group.classes.map((folder) => (
+                                      <span key={folder} className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground">
+                                        {folder}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAssignGroup(folder, null)}
+                                          className="rounded p-0.5 text-muted-foreground hover:bg-rose-50 hover:text-rose-600"
+                                          title={t.teacherStudents.removeClassFromGroup}
+                                          aria-label={`${t.teacherStudents.removeClassFromGroup}: ${folder}`}
+                                        >
+                                          <X size={12} />
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="rounded-xl border border-border/70 p-2">
+                                  <p className="mb-2 text-xs font-bold text-muted-foreground">{t.teacherStudents.addClassesToGroup}</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {availableClasses.length > 0 ? availableClasses.map((folder) => (
+                                      <button
+                                        key={folder}
+                                        type="button"
+                                        onClick={() => handleAssignGroup(folder, group.name)}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                                      >
+                                        <Plus size={12} />
+                                        {folder}
+                                      </button>
+                                    )) : (
+                                      <span className="text-xs text-muted-foreground">{t.teacherStudents.noOtherClasses}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {/* 2-col grid on md+ */}
                           <div className={
                             classViewMode === "list"
@@ -1562,6 +1685,8 @@ export default function StudentsPage() {
                             })}
                           </div>
                         </div>
+                          );
+                        })()
                       ))}
 
                       {/* Ungrouped classes */}

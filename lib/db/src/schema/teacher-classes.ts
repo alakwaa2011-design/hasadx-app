@@ -11,6 +11,8 @@ export const teacherClassesTable = pgTable(
     groupName: text("group_name"),
     /** Optional visual accent selected by the teacher */
     color: text("color"),
+    /** Optional visual accent shared by all classes in the group */
+    groupColor: text("group_color"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
