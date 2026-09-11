@@ -63,6 +63,7 @@ export default function GameJoin() {
   const [studentTeamChoiceEnabled, setStudentTeamChoiceEnabled] = useState(false);
   const [gameMode, setGameMode] = useState<"solo" | "teams" | null>(null);
   const [requestedTeam, setRequestedTeam] = useState("");
+  const [teamChoiceError, setTeamChoiceError] = useState(false);
   const [studentAccount, setStudentAccount] = useState<StudentAccount | null>(null);
   const [typedChars, setTypedChars] = useState<string[]>([]);
 
@@ -103,6 +104,7 @@ export default function GameJoin() {
       setStudentTeamChoiceEnabled(false);
       setGameMode(null);
       setRequestedTeam("");
+      setTeamChoiceError(false);
       return;
     }
     if (trimmed.length === 6 && trimmed !== checkedPin) {
@@ -113,7 +115,7 @@ export default function GameJoin() {
           const isHack = !!data.hackMode;
           setHackMode(isHack);
           if (isHack) {
-            setAvatar("01");
+            setAvatar(DEFAULT_AVATAR);
           } else {
             setAvatar(studentAccount?.avatar || DEFAULT_AVATAR);
           }
@@ -122,6 +124,7 @@ export default function GameJoin() {
           setStudentTeamChoiceEnabled(info.studentTeamChoiceEnabled);
           setGameMode(info.gameMode);
           setRequestedTeam("");
+          setTeamChoiceError(false);
           if (info.exists && info.classes.length > 0) {
             setGameTargetClass(info.classes[0]);
             setGameTargetClasses(info.classes);
@@ -170,11 +173,20 @@ export default function GameJoin() {
       .catch(() => setGameStudents([]));
   }, [pin, selectedClass, gameTargetClasses]);
 
+  const selectTeam = (team: string) => {
+    setRequestedTeam(team);
+    setTeamChoiceError(false);
+  };
+
   const handleJoin = () => {
     const trimmedPin = pin.trim();
     const trimmedName = name.trim();
     if (!trimmedPin || !trimmedName) return;
-    const selectedAvatar = avatar || (hackMode ? ">>>" : DEFAULT_AVATAR);
+    if (needsTeamChoice && !requestedTeam) {
+      setTeamChoiceError(true);
+      return;
+    }
+    const selectedAvatar = avatar || DEFAULT_AVATAR;
     const tokenParam = rosterSelectionToken ? `&rosterSelectionToken=${encodeURIComponent(rosterSelectionToken)}` : "";
     const classParam = selectedClass ? `&selectedClass=${encodeURIComponent(selectedClass)}` : "";
     const manualParam = manualName ? "&manualName=1" : "";
@@ -183,7 +195,7 @@ export default function GameJoin() {
     setLocation(`/game/play/${trimmedPin}?name=${encodeURIComponent(trimmedName)}&avatar=${encodeURIComponent(selectedAvatar)}${classParam}${tokenParam}${manualParam}${teamParam}${accountParam}`);
   };
   const needsTeamChoice = gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1;
-  const canJoin = !!pin.trim() && !!name.trim() && (!needsTeamChoice || !!requestedTeam);
+  const canJoin = !!pin.trim() && !!name.trim();
 
   if (hackMode) {
     return (
@@ -225,13 +237,13 @@ export default function GameJoin() {
                 </div>
               )}
 
-              {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1 && (
+              {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 1 && (
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-green-600">{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => setRequestedTeam(team)} className={`rounded-lg border-2 px-3 py-2 text-sm font-bold ${requestedTeam === team ? "border-green-400 bg-green-500/20 text-green-200" : "border-green-900 text-green-700"}`}>{team}</button>)}
+                    {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => selectTeam(team)} className={`rounded-lg border-2 px-3 py-2 text-sm font-bold ${requestedTeam === team ? "border-green-400 bg-green-500/20 text-green-200" : "border-green-900 text-green-700"}`}>{team}</button>)}
                   </div>
-                  {!requestedTeam && <p className="text-xs text-green-700">{lang === "ar" ? "اختر فريقًا قبل الانضمام" : "Choose a team before joining"}</p>}
+                  {teamChoiceError && <p role="alert" className="rounded-lg border border-red-500/60 bg-red-950/70 px-3 py-2 text-sm font-bold text-red-200">{lang === "ar" ? "اختر فريقك أولًا للانضمام" : "Choose your team before joining"}</p>}
                 </div>
               )}
               <div>
@@ -309,8 +321,9 @@ export default function GameJoin() {
                   )}
                 </div>
               ) : (
-                <div>
-                  <label className="block text-xs font-bold text-green-600 mb-1.5">{">"} {lang === "ar" ? "اسمك / AGENT_ID" : "AGENT_ID"}</label>
+                <div className="space-y-3">
+                  <div>
+                  <label className="block text-xs font-bold text-green-600 mb-1.5">{">"} {lang === "ar" ? "اكتب اسمك" : "ENTER_NAME"}</label>
                   <input
                     type="text"
                     value={name}
@@ -318,6 +331,16 @@ export default function GameJoin() {
                     placeholder={lang === "ar" ? "أدخل اسمك..." : "enter_name..."}
                     className="w-full text-base font-bold py-3 px-4 rounded-lg bg-black border-2 border-green-900 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 outline-none transition-all text-center text-green-200 placeholder:text-green-900"
                   />
+                  </div>
+                  {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-green-600">{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => selectTeam(team)} className={`rounded-lg border-2 px-3 py-2 text-sm font-bold ${requestedTeam === team ? "border-green-400 bg-green-500/20 text-green-200" : "border-green-900 text-green-700"}`}>{team}</button>)}
+                      </div>
+                      {teamChoiceError && <p role="alert" className="rounded-lg border border-red-500/60 bg-red-950/70 px-3 py-2 text-sm font-bold text-red-200">{lang === "ar" ? "اختر فريقك أولًا للانضمام" : "Choose your team before joining"}</p>}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -329,13 +352,13 @@ export default function GameJoin() {
                       key={a}
                       whileTap={{ scale: 0.85 }}
                       onClick={() => setAvatar(a)}
-                      className={`text-xs py-2 rounded-lg transition-all font-mono font-black ${
+                      className={`flex items-center justify-center py-2 rounded-lg transition-all font-mono font-black ${
                         avatar === a
                           ? "bg-green-500/20 border-2 border-green-400 text-green-300 scale-110"
                           : "bg-green-950/20 border border-green-900 text-green-700 hover:border-green-700"
                       }`}
                     >
-                      {a}
+                      <AvatarDisplay avatar={a} size="sm" />
                     </motion.button>
                   ))}
                 </div>
@@ -413,13 +436,13 @@ export default function GameJoin() {
               </div>
             )}
 
-            {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1 && (
+            {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 1 && (
               <div className="space-y-2">
                 <label className="block text-xs font-bold" style={{ color: "#7A9A7C" }}>{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => setRequestedTeam(team)} className="rounded-xl px-3 py-2 text-sm font-bold" style={requestedTeam === team ? { background: "#1A3A28", color: "white" } : { background: "#F0F4F1", color: "#1A3A28", border: "2px solid #E2E8E3" }}>{team}</button>)}
+                  {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => selectTeam(team)} className="rounded-xl px-3 py-2 text-sm font-bold" style={requestedTeam === team ? { background: "#1A3A28", color: "white" } : { background: "#F0F4F1", color: "#1A3A28", border: "2px solid #E2E8E3" }}>{team}</button>)}
                 </div>
-                {!requestedTeam && <p className="text-xs" style={{ color: "#7A9A7C" }}>{lang === "ar" ? "اختر فريقًا قبل الانضمام" : "Choose a team before joining"}</p>}
+                {teamChoiceError && <p role="alert" className="rounded-xl border px-3 py-2 text-sm font-bold" style={{ borderColor: "#dc2626", background: "#fef2f2", color: "#b91c1c" }}>{lang === "ar" ? "اختر فريقك أولًا للانضمام" : "Choose your team before joining"}</p>}
               </div>
             )}
             <div>
@@ -516,9 +539,10 @@ export default function GameJoin() {
                 )}
               </div>
             ) : (
-              <div>
+              <div className="space-y-3">
+                <div>
                 <label className="block text-xs font-bold mb-1.5" style={{ color: "#7A9A7C" }}>
-                  {lang === "ar" ? "اسمك" : "Your name"}
+                  {lang === "ar" ? "اكتب اسمك" : "Enter your name"}
                 </label>
                 <input
                   type="text"
@@ -540,6 +564,16 @@ export default function GameJoin() {
                     e.currentTarget.style.boxShadow = "none";
                   }}
                 />
+                </div>
+                {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold" style={{ color: "#7A9A7C" }}>{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => selectTeam(team)} className="rounded-xl px-3 py-2 text-sm font-bold" style={requestedTeam === team ? { background: "#1A3A28", color: "white" } : { background: "#F0F4F1", color: "#1A3A28", border: "2px solid #E2E8E3" }}>{team}</button>)}
+                    </div>
+                    {teamChoiceError && <p role="alert" className="rounded-xl border px-3 py-2 text-sm font-bold" style={{ borderColor: "#dc2626", background: "#fef2f2", color: "#b91c1c" }}>{lang === "ar" ? "اختر فريقك أولًا للانضمام" : "Choose your team before joining"}</p>}
+                  </div>
+                )}
               </div>
             )}
 

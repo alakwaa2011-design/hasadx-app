@@ -29,42 +29,11 @@ export const ILLUSTRATED_AVATARS = [
 
 export const NORMAL_AVATARS: string[] = [
   ...ILLUSTRATED_AVATARS.map((avatar) => avatar.value),
-  "🧕🏽",
-  "👳🏽‍♂️",
-  "🤵🏽‍♂️",
-  "👰🏽‍♀️",
-  "👨🏽‍🎓",
-  "👩🏽‍🎓",
-  "👨🏽‍🏫",
-  "👩🏽‍🏫",
-  "👨🏽‍💼",
-  "👩🏽‍💼",
-  "👨🏽‍⚕️",
-  "👩🏽‍⚕️",
-  "👨🏽‍💻",
-  "👩🏽‍💻",
-  "🧑🏽‍🚀",
-  "🧑🏽‍🔬",
-  "🏃🏽‍♂️",
-  "🏃🏽‍♀️",
-  "⛹🏽‍♂️",
-  "🤸🏽‍♀️",
-  "👦🏽",
-  "👧🏽",
-  "🧒🏽",
-  "🧑🏽",
-  "👨🏽",
-  "👩🏽",
-  "🦁", "🐯", "🦊", "🐻", "🐼", "🐸", "🦄", "🐨", "🐺", "🦅",
 ];
 
-export const HACK_ICONS: string[] = [
-  "⬛", "░", "▒", "▓", "█", "01", "10", "//",
-  "##", ">>", "<<", "[]", "{}", "()", "$$", "&&",
-  "||", "!!", "??", "::", ";;", "**", "++", "--",
-];
+export const HACK_ICONS: string[] = [...NORMAL_AVATARS];
 
-export const DEFAULT_AVATAR = "🧒🏽";
+export const DEFAULT_AVATAR: string = ILLUSTRATED_AVATARS[0].value;
 
 export function isAvatarUrl(value?: string | null): boolean {
   if (!value) return false;
