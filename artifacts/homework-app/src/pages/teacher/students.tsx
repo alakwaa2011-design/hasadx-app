@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext, useSortable, arrayMove,
-  verticalListSortingStrategy,
+  verticalListSortingStrategy, rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
