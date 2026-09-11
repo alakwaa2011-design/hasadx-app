@@ -98,6 +98,7 @@ export interface WameethWaitingRoomUIProps {
   ttsEnabled: boolean;
   roomLocked: boolean;
   targetClass: string;
+  targetClasses: string[];
   targetClassEditing: boolean;
   botCount: number;
   isAddingBots: boolean;
@@ -128,6 +129,7 @@ export interface WameethWaitingRoomUIProps {
   onToggleRoomLock: () => void;
   onSetTargetClassEditing: (fn: (v: boolean) => boolean) => void;
   onUpdateTargetClass: (v: string) => void;
+  onUpdateTargetClasses: (v: string[]) => void;
   onSetBotCount: (fn: (c: number) => number) => void;
   onAddBots: () => void;
   onSetHackDurationMin: (m: number) => void;
@@ -974,6 +976,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     ttsEnabled,
     roomLocked,
     targetClass,
+    targetClasses,
     botCount,
     isAddingBots,
     copied,
@@ -997,6 +1000,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     onToggleTts,
     onToggleRoomLock,
     onUpdateTargetClass,
+    onUpdateTargetClasses,
     onSetBotCount,
     onAddBots,
     onSetHackDurationMin,
@@ -1426,15 +1430,29 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
 
               <div className="relative z-[60] flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center lg:justify-center">
                 <div className="w-full min-w-0 flex-1 overflow-visible sm:min-w-[200px] sm:max-w-md">
-                  <ClassSelector
-                    value={targetClass}
-                    onChange={onUpdateTargetClass}
-                    accent={P.gold}
-                    label=""
-                    portaled
-                    variant="cinematic"
-                    className="[&_label]:hidden"
-                  />
+                  {currentGameMode === "teams" ? (
+                    <ClassSelector
+                      value={targetClasses}
+                      values={targetClasses}
+                      multiple
+                      onChange={() => {}}
+                      onValuesChange={onUpdateTargetClasses}
+                      accent={P.gold}
+                      label={isAr ? "اختر صفين إلى 6 صفوف" : "Choose 2 to 6 classes"}
+                      portaled
+                      variant="cinematic"
+                    />
+                  ) : (
+                    <ClassSelector
+                      value={targetClass}
+                      onChange={onUpdateTargetClass}
+                      accent={P.gold}
+                      label=""
+                      portaled
+                      variant="cinematic"
+                      className="[&_label]:hidden"
+                    />
+                  )}
                 </div>
                 <span
                   className="w-fit shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-black"
@@ -1721,7 +1739,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 </div>
 
                 <div className="flex flex-1 flex-col justify-center">
-                {players.length === 0 ? (
+                {players.length === 0 && !(currentGameMode === "teams" && teamNames.length > 0) ? (
                   <div className="flex flex-col items-center py-4 sm:py-10">
                     <GatheredSilhouettes compact className="mb-1 opacity-90" />
                     <motion.div

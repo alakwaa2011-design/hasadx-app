@@ -99,6 +99,16 @@ export function validateExplicitTargetClasses(values: unknown): { valid: boolean
   return { valid: true, classes };
 }
 
+export function validateTeamsTargetClasses(values: unknown, ownedNames: string[], participantCount: number) {
+  const result = validateExplicitTargetClasses(values);
+  if (!result.valid) return result;
+  if (participantCount > 0) return { valid: false, classes: result.classes, error: "participants" };
+  if (result.classes.some(name => name.length > 100 || !ownedNames.includes(name))) {
+    return { valid: false, classes: result.classes, error: "ownership" };
+  }
+  return result;
+}
+
 export function normalizeRosterName(value: string): string {
   return value.normalize("NFKC").replace(/\s+/g, " ").trim().toLocaleLowerCase();
 }
@@ -2331,6 +2341,43 @@ export function setupGameSocket(io: Server) {
       game.targetClasses = trimmed ? [trimmed] : null;
       callback?.({ success: true, targetClass: game.targetClass, targetClasses: game.targetClasses });
       logger.info({ pin: data.pin, targetClass: game.targetClass }, "Teacher updated game target class");
+    });
+
+    socket.on("teacher:set-target-classes", async (data: PinData & { targetClasses?: unknown[] }, callback?: (res: any) => void) => {
+      const game = getGame(data.pin);
+      const teacherId = getTeacherIdFromSocket(socket);
+      if (!game || game.teacherSocketId !== socket.id || !teacherId || teacherId !== game.teacherId) {
+        callback?.({ error: "غير مصرح" }); return;
+      }
+      if (game.state !== "lobby" || game.gameMode !== "teams") {
+        callback?.({ error: "لا يمكن تغيير صفوف الفرق الآن" }); return;
+      }
+      const participantCount = Array.from(game.players.values()).filter(p => !p.isBot).length;
+      const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
+        .where(eq(teacherClassesTable.teacherId, teacherId));
+      const validation = validateTeamsTargetClasses(data.targetClasses ?? [], owned.map(row => row.name.trim()), participantCount);
+      if (!validation.valid) {
+        const errors: Record<string, string> = {
+          one: "اختر صفين إلى 6 صفوف",
+          many: "يمكن اختيار ستة صفوف كحد أقصى",
+          sentinel: "اختر صفوفاً محددة وليس كل الصفوف",
+          ownership: "لا يمكنك استخدام صف غير مملوك لك",
+          participants: "لا يمكن تغيير صفوف الفرق بعد انضمام الطلاب",
+        };
+        callback?.({ error: errors[validation.error || ""] || "اختيار الصفوف غير صالح" }); return;
+      }
+      if (validation.classes.length === 0 && game.targetClasses?.length && game.teamNames.every(name => game.targetClasses!.includes(name))) {
+        callback?.({ error: "لا يمكن مسح صفوف الفرق بعد تحويل الفرق إلى صفوف" }); return;
+      }
+      game.targetClasses = validation.classes.length ? validation.classes : null;
+      game.targetClass = validation.classes[0] || null;
+      if (validation.classes.length) {
+        game.teamNames = validation.classes;
+        game.teamCount = validation.classes.length;
+        game.studentTeamChoiceEnabled = false;
+      }
+      io.to(`game:${game.pin}`).emit("game:players-updated", buildPlayersUpdatedPayload(game)!);
+      callback?.({ success: true, targetClass: game.targetClass, targetClasses: game.targetClasses, teamNames: game.teamNames, teamCount: game.teamCount });
     });
 
     socket.on("teacher:toggle-room-lock", (data: PinData & { locked: boolean }, callback?: (res: any) => void) => {

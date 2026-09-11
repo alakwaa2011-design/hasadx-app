@@ -314,6 +314,7 @@ export default function TeacherGame() {
   const [roomLocked, setRoomLocked] = useState(false);
   const [lockedTeams, setLockedTeams] = useState<string[]>([]);
   const [targetClass, setTargetClass] = useState<string>("");
+  const [targetClasses, setTargetClasses] = useState<string[]>([]);
   const [targetClassEditing, setTargetClassEditing] = useState(false);
   const [teamNames, setTeamNames] = useState<string[]>([]);
   const [question, setQuestion] = useState<Question | null>(null);
@@ -368,6 +369,8 @@ export default function TeacherGame() {
           setTotalPlayers(res.players?.length || 0);
           if (res.gameMode) setCurrentGameMode(res.gameMode);
           if (Array.isArray(res.teamNames)) setTeamNames(res.teamNames);
+           if (Array.isArray(res.targetClasses)) setTargetClasses(res.targetClasses);
+           else if (typeof res.targetClass === "string" && res.targetClass) setTargetClasses([res.targetClass]);
           if (typeof res.roomLocked === "boolean") setRoomLocked(res.roomLocked);
           if (Array.isArray(res.lockedTeams)) setLockedTeams(res.lockedTeams);
           if (typeof res.targetClass === "string" || res.targetClass === null) {
@@ -758,6 +761,23 @@ export default function TeacherGame() {
     );
   };
 
+  const updateTargetClasses = (values: string[]) => {
+    const concrete = Array.from(new Set(values.filter(v => v && v !== "__all_classes__" && !v.startsWith("__excluded_class__")))).slice(0, 6);
+    if (concrete.length === 1) {
+      setTargetClasses(concrete);
+      return;
+    }
+    getSocket().emit("teacher:set-target-classes", { pin, targetClasses: concrete }, (res: any) => {
+      if (res?.success) {
+        setTargetClasses(res.targetClasses || concrete);
+        setTargetClass(res.targetClass || "");
+        if (Array.isArray(res.teamNames)) setTeamNames(res.teamNames);
+      } else if (res?.error) {
+        import("@/components/ui/sonner").then(({ toast }) => toast.error(res.error));
+      }
+    });
+  };
+
   const toggleRoomLock = () => {
     const socket = getSocket();
     const newVal = !roomLocked;
@@ -1075,6 +1095,7 @@ export default function TeacherGame() {
         ttsEnabled={ttsEnabled}
         roomLocked={roomLocked}
         targetClass={targetClass}
+        targetClasses={targetClasses}
         targetClassEditing={targetClassEditing}
         botCount={botCount}
         isAddingBots={isAddingBots}
@@ -1100,6 +1121,7 @@ export default function TeacherGame() {
         onToggleRoomLock={toggleRoomLock}
         onSetTargetClassEditing={setTargetClassEditing}
         onUpdateTargetClass={updateTargetClass}
+        onUpdateTargetClasses={updateTargetClasses}
         onSetBotCount={setBotCount}
         onAddBots={addBots}
         onSetHackDurationMin={setHackDurationMin}
