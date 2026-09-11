@@ -22,8 +22,13 @@ import {
   TeacherScheduleCard,
 } from "./DashboardOverview";
 import {
+  SCHEDULE_DAYS,
+  breakPositionLabel,
   buildTeacherScheduleBulkInput,
+  lessonNumberLabel,
   normalizeImportedDaySchedules,
+  scheduleDateLabel,
+  schedulePosition,
 } from "@/lib/schedule-labels";
 
 let container: HTMLDivElement;
@@ -43,6 +48,16 @@ async function typeInto(testId: string, value: string) {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     setter?.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+async function renderSchedule(isAr: boolean) {
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TeacherScheduleCard isAr={isAr} user={{ id: 101 }} />
+      </QueryClientProvider>,
+    );
   });
 }
 
@@ -78,6 +93,39 @@ afterEach(async () => {
 });
 
 describe("TeacherScheduleCard full schedule drafts", () => {
+  it("defines the complete Arabic and English schedule label contract", () => {
+    expect(SCHEDULE_DAYS).toEqual([
+      { value: 0, ar: "الأحد", shortAr: "أحد", en: "Sun" },
+      { value: 1, ar: "الاثنين", shortAr: "إثنين", en: "Mon" },
+      { value: 2, ar: "الثلاثاء", shortAr: "ثلاثاء", en: "Tue" },
+      { value: 3, ar: "الأربعاء", shortAr: "أربعاء", en: "Wed" },
+      { value: 4, ar: "الخميس", shortAr: "خميس", en: "Thu" },
+      { value: 5, ar: "الجمعة", shortAr: "جمعة", en: "Fri" },
+      { value: 6, ar: "السبت", shortAr: "سبت", en: "Sat" },
+    ]);
+    expect([lessonNumberLabel(1, true), lessonNumberLabel(10, true)]).toEqual([
+      "الحصة الأولى",
+      "الحصة العاشرة",
+    ]);
+    expect([lessonNumberLabel(1, false), lessonNumberLabel(10, false)]).toEqual([
+      "Lesson 1",
+      "Lesson 10",
+    ]);
+    expect([breakPositionLabel(1, true), breakPositionLabel(1, false)]).toEqual([
+      "الفترة الأولى",
+      "Period 1",
+    ]);
+    expect([
+      schedulePosition({ kind: "weekly", lessonNumber: 1 } as never),
+      schedulePosition({ kind: "break", breakAfterLesson: 1 } as never),
+      schedulePosition({ kind: "weekly", lessonNumber: 2 } as never),
+    ]).toEqual([1, 1.5, 2]);
+    expect([
+      scheduleDateLabel("2026-09-20", true),
+      scheduleDateLabel("2026-09-20", false),
+    ]).toEqual(["٢٠ سبتمبر", "Sep 20"]);
+  });
+
   it("stays compact and shows one selected day without management controls", async () => {
     scheduleRows.push({
       id: 1,
@@ -161,6 +209,78 @@ describe("TeacherScheduleCard full schedule drafts", () => {
       );
     });
     expect(document.body.textContent).toContain("تعذر تحميل الجدول");
+  });
+
+  it.each([
+    { isAr: true, dayLabels: SCHEDULE_DAYS.map((day) => day.shortAr) },
+    { isAr: false, dayLabels: SCHEDULE_DAYS.map((day) => day.en) },
+  ])("uses the shared schedule display contract when isAr=$isAr", async ({ isAr, dayLabels }) => {
+    scheduleRows = [
+      ...SCHEDULE_DAYS.map((day, index) => ({
+        id: 100 + index,
+        kind: "weekly",
+        title: `day-${day.value}`,
+        dayOfWeek: day.value,
+        lessonNumber: 1,
+        startTime: "12:00",
+        endTime: "12:30",
+      })),
+      {
+        id: 2,
+        kind: "weekly",
+        title: "second-lesson",
+        dayOfWeek: 0,
+        lessonNumber: 2,
+        startTime: "08:00",
+        endTime: "08:45",
+      },
+      {
+        id: 3,
+        kind: "break",
+        title: "first-break",
+        dayOfWeek: 0,
+        breakAfterLesson: 1,
+        startTime: "08:00",
+        endTime: "08:15",
+      },
+      {
+        id: 4,
+        kind: "weekly",
+        title: "first-lesson",
+        dayOfWeek: 0,
+        lessonNumber: 1,
+        startTime: "08:00",
+        endTime: "08:45",
+      },
+      {
+        id: 5,
+        kind: "appointment",
+        title: "appointment",
+        appointmentDate: "2026-09-20",
+        startTime: "10:00",
+        endTime: "10:30",
+      },
+    ];
+
+    await renderSchedule(isAr);
+
+    const dayButtons = SCHEDULE_DAYS.map((day) =>
+      button(`button-summary-schedule-day-${day.value}`),
+    );
+    expect(dayButtons.map((dayButton) => dayButton.firstElementChild?.textContent)).toEqual(dayLabels);
+    await click("button-summary-schedule-day-1");
+    await click("button-summary-schedule-day-0");
+
+    const orderedEntries = Array.from(
+      document.querySelectorAll('[data-testid="schedule-summary-scroll"] [data-schedule-position]'),
+    ) as HTMLElement[];
+    expect(orderedEntries.slice(0, 3).map((entry) => entry.dataset.schedulePosition)).toEqual(
+      [4, 3, 2].map((id) => String(schedulePosition(scheduleRows.find((entry) => entry.id === id) as never))),
+    );
+    expect(document.body.textContent).toContain(lessonNumberLabel(1, isAr));
+    expect(document.body.textContent).toContain(lessonNumberLabel(2, isAr));
+    expect(document.body.textContent).toContain(breakPositionLabel(1, isAr));
+    expect(document.body.textContent).toContain(scheduleDateLabel("2026-09-20", isAr));
   });
 });
 
