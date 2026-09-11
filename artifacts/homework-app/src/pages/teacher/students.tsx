@@ -207,7 +207,7 @@ function ClassBlock({
   className: folderName, students, allFolders, isExpanded, onToggle, colorIdx,
   onRename, onDeleteClass, onEditStudent, onDeleteStudent, onMoveStudent,
   onAddStudent, onBulkAdd, onResetPassword, groupName, allGroups, onAssignGroup, onAttendance,
-  viewMode,
+  onOpenClass, viewMode,
 }: {
   className: string;
   students: Student[];
@@ -227,6 +227,7 @@ function ClassBlock({
   allGroups?: string[];
   onAssignGroup?: (className: string, groupName: string | null) => void;
   onAttendance?: (className: string) => void;
+  onOpenClass: () => void;
   viewMode: ClassViewMode;
 }) {
   const { lang, t, dir } = useI18n();
@@ -274,7 +275,7 @@ function ClassBlock({
         onClick={(event) => {
           const target = event.target as HTMLElement;
           if (target.closest("button, a, input, select, textarea")) return;
-          onToggle();
+          onOpenClass();
         }}
       >
         {/* Colored accent bar at top */}
@@ -1418,6 +1419,7 @@ export default function StudentsPage() {
                                   onAssignGroup={handleAssignGroup}
                                   onAttendance={openAttendance}
                                   onToggle={() => setExpandedFolders(prev => { const next = new Set(prev); next.has(folder) ? next.delete(folder) : next.add(folder); return next; })}
+                                   onOpenClass={() => setLocation(`/teacher/class-grades/${encodeURIComponent(folder)}`)}
                                   onRename={handleRenameClass}
                                   onDeleteClass={handleDeleteClass}
                                   onEditStudent={openEditStudent}
@@ -1466,6 +1468,7 @@ export default function StudentsPage() {
                               onAssignGroup={handleAssignGroup}
                               onAttendance={openAttendance}
                               onToggle={() => setExpandedFolders(prev => { const next = new Set(prev); next.has(folder) ? next.delete(folder) : next.add(folder); return next; })}
+                              onOpenClass={() => setLocation(`/teacher/class-grades/${encodeURIComponent(folder)}`)}
                               onRename={handleRenameClass}
                               onDeleteClass={handleDeleteClass}
                               onEditStudent={openEditStudent}
@@ -1499,6 +1502,7 @@ export default function StudentsPage() {
                         return next;
                       });
                     }}
+                     onOpenClass={() => setLocation(`/teacher/class-grades/${encodeURIComponent(UNGROUPED)}`)}
                     onRename={handleRenameClass}
                     onDeleteClass={handleDeleteClass}
                     onEditStudent={openEditStudent}
