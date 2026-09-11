@@ -17,7 +17,7 @@ import {
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
-  Layers, UserCheck, TrendingUp, Mail, User, Star,
+  Layers, UserCheck, TrendingUp, Mail, User, Star, LayoutGrid, List, Grid2X2,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -39,6 +39,7 @@ interface Student {
 }
 
 const UNGROUPED = "__ungrouped__";
+type ClassViewMode = "grid" | "list" | "compact";
 
 
 const CLASS_COLORS = [
@@ -206,6 +207,7 @@ function ClassBlock({
   className: folderName, students, allFolders, isExpanded, onToggle, colorIdx,
   onRename, onDeleteClass, onEditStudent, onDeleteStudent, onMoveStudent,
   onAddStudent, onBulkAdd, onResetPassword, groupName, allGroups, onAssignGroup, onAttendance,
+  viewMode,
 }: {
   className: string;
   students: Student[];
@@ -225,6 +227,7 @@ function ClassBlock({
   allGroups?: string[];
   onAssignGroup?: (className: string, groupName: string | null) => void;
   onAttendance?: (className: string) => void;
+  viewMode: ClassViewMode;
 }) {
   const { lang, t, dir } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -238,6 +241,7 @@ function ClassBlock({
 
   const isUngrouped = folderName === UNGROUPED;
   const color = CLASS_COLORS[colorIdx % CLASS_COLORS.length];
+  const isCompact = viewMode === "compact";
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -259,7 +263,7 @@ function ClassBlock({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="mb-3">
+    <div ref={setNodeRef} style={style} className={isCompact ? "mb-2" : "mb-3"}>
       <div className={`rounded-2xl bg-card overflow-hidden transition-all duration-200
         ${isDragging
           ? "shadow-2xl ring-2 ring-primary/40 opacity-70 scale-[0.99]"
@@ -269,7 +273,7 @@ function ClassBlock({
         <div className={`h-1.5 ${color.bg}`} />
 
         {/* Card body */}
-        <div className="px-5 py-4">
+        <div className={isCompact ? "px-3 py-3" : "px-5 py-4"}>
 
           {/* Top row: drag + icon + name + toggle */}
           <div className="flex items-center gap-3">
@@ -288,8 +292,8 @@ function ClassBlock({
             )}
 
             {/* Class icon */}
-            <div className={`w-11 h-11 rounded-xl ${color.bg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
-              <BookOpen size={19} className="text-white" />
+            <div className={`${isCompact ? "w-9 h-9 rounded-lg" : "w-11 h-11 rounded-xl"} ${color.bg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+              <BookOpen size={isCompact ? 16 : 19} className="text-white" />
             </div>
 
             {/* Class name + count */}
@@ -310,7 +314,7 @@ function ClassBlock({
               ) : (
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`font-black text-lg leading-tight ${color.text}`}>
+                    <span className={`font-black ${isCompact ? "text-base" : "text-lg"} leading-tight ${color.text}`}>
                       {isUngrouped ? t.teacherStudents.unassigned : folderName}
                     </span>
                     {groupName && (
@@ -320,7 +324,7 @@ function ClassBlock({
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">
+                  <p className={`${isCompact ? "text-xs" : "text-sm"} text-muted-foreground mt-0.5`}>
                     {t.teacherStudents.studentCount.replace("{count}", String(students.length))}
                   </p>
                 </div>
@@ -330,7 +334,7 @@ function ClassBlock({
             {/* Toggle button */}
             <button
               onClick={onToggle}
-              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+              className={`${isCompact ? "w-8 h-8 rounded-lg" : "w-9 h-9 rounded-xl"} flex-shrink-0 flex items-center justify-center bg-muted hover:bg-muted/80 text-muted-foreground transition-colors`}
               title={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
               aria-label={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
             >
@@ -345,46 +349,46 @@ function ClassBlock({
               {/* Primary actions */}
               <Link
                 href={`/teacher/rewards/${encodeURIComponent(folderName)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                className={`inline-flex items-center gap-1.5 ${isCompact ? "px-2 py-1.5" : "px-3 py-1.5"} rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors`}
                 title="لوحة التحفيز"
               >
                 <Star size={13} />
-                تحفيز
+                <span className={isCompact ? "sr-only" : undefined}>تحفيز</span>
               </Link>
 
               <Link
                 href={`/teacher/class-grades/${encodeURIComponent(folderName)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                className={`inline-flex items-center gap-1.5 ${isCompact ? "px-2 py-1.5" : "px-3 py-1.5"} rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors`}
                 title={t.teacherStudents.gradebook}
               >
                 <ClipboardList size={13} />
-                {t.teacherStudents.grades}
+                <span className={isCompact ? "sr-only" : undefined}>{t.teacherStudents.grades}</span>
               </Link>
 
               {onAttendance && (
                 <button
                   onClick={() => onAttendance(folderName)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 text-xs font-semibold border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
+                    className={`inline-flex items-center gap-1.5 ${isCompact ? "px-2 py-1.5" : "px-3 py-1.5"} rounded-lg bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 text-xs font-semibold border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors`}
                   title={t.teacherStudents.takeAttendance}
                 >
                   <UserCheck size={13} />
-                  {t.teacherStudents.attendance}
+                    <span className={isCompact ? "sr-only" : undefined}>{t.teacherStudents.attendance}</span>
                 </button>
               )}
 
               {/* Group picker */}
               {onAssignGroup && (
                 <div className="relative">
-                  <button
+                    <button
                     onClick={() => setShowGroupMenu(v => !v)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
+                     className={`inline-flex items-center gap-1.5 ${isCompact ? "px-2 py-1.5" : "px-3 py-1.5"} rounded-lg text-xs font-semibold border transition-colors
                       ${groupName
                         ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/40"
                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80"}`}
                     title={t.teacherStudents.assignGroup}
                   >
                     <Layers size={13} />
-                    {groupName || t.teacherStudents.group}
+                    <span className={isCompact ? "sr-only" : undefined}>{groupName || t.teacherStudents.group}</span>
                   </button>
                   {showGroupMenu && (
                     <div className="absolute start-0 top-10 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-48 py-1 text-sm max-h-64 overflow-y-auto">
@@ -418,11 +422,11 @@ function ClassBlock({
               {/* Add student */}
               <button
                 onClick={() => onAddStudent(folderName)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${color.light} ${color.text} ${color.border} hover:opacity-80`}
+                className={`inline-flex items-center gap-1.5 ${isCompact ? "px-2 py-1.5" : "px-3 py-1.5"} rounded-lg text-xs font-semibold border transition-colors ${color.light} ${color.text} ${color.border} hover:opacity-80`}
                 title={t.teacherStudents.addStudent}
               >
                 <UserPlus size={13} />
-                {t.teacherStudents.addStudent}
+                <span className={isCompact ? "sr-only" : undefined}>{t.teacherStudents.addStudent}</span>
               </button>
 
               {/* Spacer */}
@@ -563,6 +567,11 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [classViewMode, setClassViewMode] = useState<ClassViewMode>(() => {
+    if (typeof window === "undefined") return "grid";
+    const saved = window.localStorage.getItem("teacher-classes-view");
+    return saved === "list" || saved === "compact" ? saved : "grid";
+  });
 
   const [folderOrder, setFolderOrder] = useState<string[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -607,6 +616,10 @@ export default function StudentsPage() {
   const [importLoading, setImportLoading] = useState(false);
   const [importedCount, setImportedCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem("teacher-classes-view", classViewMode);
+  }, [classViewMode]);
 
   const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
   const [resetNewPassword, setResetNewPassword] = useState("");
@@ -1282,6 +1295,38 @@ export default function StudentsPage() {
                 </button>
               )}
             </div>
+
+            <div
+              className="ms-auto flex items-center gap-0.5 p-1 rounded-xl border border-border bg-card shadow-sm"
+              role="group"
+              aria-label={lang === "ar" ? "طريقة عرض الصفوف" : "Class view"}
+            >
+              {([
+                { value: "grid", label: lang === "ar" ? "شبكة" : "Grid", icon: LayoutGrid },
+                { value: "list", label: lang === "ar" ? "قائمة" : "List", icon: List },
+                { value: "compact", label: lang === "ar" ? "مضغوط" : "Compact", icon: Grid2X2 },
+              ] as const).map(({ value, label, icon: Icon }) => {
+                const selected = classViewMode === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setClassViewMode(value)}
+                    aria-label={label}
+                    aria-pressed={selected}
+                    title={label}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors ${
+                      selected
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Icon size={15} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Loading */}
@@ -1320,7 +1365,7 @@ export default function StudentsPage() {
             >
               <SortableContext
                 items={folders.map((f) => `folder-${f}`)}
-                strategy={verticalListSortingStrategy}
+                strategy={classViewMode === "list" ? verticalListSortingStrategy : rectSortingStrategy}
               >
                 {/* Group classes by groupName */}
                 {(() => {
@@ -1352,7 +1397,13 @@ export default function StudentsPage() {
                             <div className="flex-1 h-px bg-border" />
                           </div>
                           {/* 2-col grid on md+ */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className={
+                            classViewMode === "list"
+                              ? "grid grid-cols-1 gap-3"
+                              : classViewMode === "compact"
+                                ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5"
+                                : "grid grid-cols-1 md:grid-cols-2 gap-3"
+                          }>
                             {group.classes.map(folder => {
                               const idx = namedFolders.indexOf(folder);
                               return (
@@ -1376,6 +1427,7 @@ export default function StudentsPage() {
                                   onAddStudent={openAddStudent}
                                   onBulkAdd={openBulkAdd}
                                   onResetPassword={openResetPassword}
+                                   viewMode={classViewMode}
                                 />
                               );
                             })}
@@ -1393,7 +1445,13 @@ export default function StudentsPage() {
                           <div className="flex-1 h-px bg-border" />
                         </div>
                       )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className={
+                        classViewMode === "list"
+                          ? "grid grid-cols-1 gap-3"
+                          : classViewMode === "compact"
+                            ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5"
+                            : "grid grid-cols-1 md:grid-cols-2 gap-3"
+                      }>
                         {ungroupedClasses.map((folder) => {
                           const idx = namedFolders.indexOf(folder);
                           return (
@@ -1417,6 +1475,7 @@ export default function StudentsPage() {
                               onAddStudent={openAddStudent}
                               onBulkAdd={openBulkAdd}
                               onResetPassword={openResetPassword}
+                               viewMode={classViewMode}
                             />
                           );
                         })}
@@ -1449,6 +1508,7 @@ export default function StudentsPage() {
                     onAddStudent={openAddStudent}
                     onBulkAdd={openBulkAdd}
                     onResetPassword={openResetPassword}
+                    viewMode={classViewMode}
                   />
                 )}
               </SortableContext>
