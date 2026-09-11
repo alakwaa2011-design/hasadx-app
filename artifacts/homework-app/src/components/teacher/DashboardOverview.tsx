@@ -2786,9 +2786,14 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   }
 
   function submitSchedule(values: ScheduleFormValues) {
+    const fallbackTitle = values.kind === "weekly"
+      ? lessonNumberLabel(Number(values.lessonNumber), isAr)
+      : values.kind === "break"
+        ? (isAr ? "استراحة" : "Break")
+        : (isAr ? "موعد" : "Appointment");
     const payload: TeacherScheduleEntryInput = {
       kind: values.kind,
-      title: values.title.trim(),
+      title: values.title.trim() || fallbackTitle,
       subject: values.subject.trim() || null,
       className: values.className.trim() || null,
       dayOfWeek: values.kind === "appointment" ? null : Number(values.dayOfWeek),
@@ -2828,7 +2833,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
       days: values.days,
       lessons: values.lessons.map((lesson, index) => ({
         lessonNumber: index + 1,
-        title: lesson.title.trim(),
+        title: lesson.title.trim() || lessonNumberLabel(index + 1, isAr),
         subject: lesson.subject.trim() || null,
         className: lesson.className.trim() || null,
         startTime: lesson.startTime,
@@ -3219,14 +3224,12 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                 <FormField
                   control={form.control}
                   name="title"
-                  rules={{ required: isAr ? "اكتب عنوانًا" : "Enter a title" }}
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel>{isAr ? "العنوان" : "Title"}</FormLabel>
+                      <FormLabel>{isAr ? "العنوان (اختياري)" : "Title (optional)"}</FormLabel>
                       <FormControl>
-                        <input {...field} placeholder={isAr ? "مثال: رياضيات — الصف الرابع" : "e.g. Math — Grade 4"} style={fieldStyle} data-testid="input-schedule-title" />
+                        <input {...field} placeholder={isAr ? "سيُستخدم اسم تلقائي عند تركه فارغًا" : "An automatic title will be used if left blank"} style={fieldStyle} data-testid="input-schedule-title" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -3509,12 +3512,10 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                       </div>
                     </div>
                     <div className="sm:col-span-4">
-                      <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة" : "Lesson title"}</label>
+                      <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة (اختياري)" : "Lesson title (optional)"}</label>
                       <input
-                        {...bulkForm.register(`lessons.${index}.title` as const, {
-                          required: isAr ? "اكتب اسم الحصة" : "Enter a lesson title",
-                        })}
-                        placeholder={isAr ? "مثال: الرياضيات" : "e.g. Mathematics"}
+                        {...bulkForm.register(`lessons.${index}.title` as const)}
+                        placeholder={isAr ? `الافتراضي: ${lessonNumberLabel(index + 1, true)}` : `Default: ${lessonNumberLabel(index + 1, false)}`}
                         style={fieldStyle}
                         data-testid={`input-bulk-lesson-title-${index + 1}`}
                       />
@@ -3539,11 +3540,6 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                         <input {...bulkForm.register(`lessons.${index}.className` as const)} style={fieldStyle} />
                       </div>
                     </div>
-                    {bulkForm.formState.errors.lessons?.[index]?.title && (
-                      <div className="text-xs font-medium text-destructive sm:col-span-12">
-                        {isAr ? "اكتب اسم كل حصة قبل الحفظ" : "Enter a title for every lesson before saving"}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
