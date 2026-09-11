@@ -89,7 +89,7 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-portrait",
-      testIgnore: /(escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant)\.spec\.ts/,
+      testIgnore: /(escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
@@ -136,6 +136,17 @@ export default defineConfig({
     {
       name: "desktop-class-colors",
       testMatch: /class-colors\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "desktop-teacher-schedule",
+      testMatch: /teacher-schedule-persistence\.spec\.ts/,
       use: {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,

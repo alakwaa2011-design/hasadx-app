@@ -3008,6 +3008,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   return (
     <>
       <div
+        data-testid="teacher-schedule-card"
         style={{
           background: C.card,
           border: `1px solid ${C.border}`,
@@ -3752,6 +3753,10 @@ function ScheduleEntryRow({
 }) {
   return (
     <div
+      data-testid={`schedule-entry-${entry.id}`}
+      data-schedule-kind={entry.kind}
+      data-schedule-day={entry.dayOfWeek ?? undefined}
+      data-schedule-position={schedulePosition(entry)}
       style={{
         display: "flex",
         alignItems: "center",
