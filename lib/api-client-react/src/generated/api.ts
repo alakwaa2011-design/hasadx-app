@@ -70,6 +70,7 @@ import type {
   SubmitImageBody,
   SuccessResponse,
   TeacherProfile,
+  TeacherScheduleBulkInput,
   TeacherScheduleEntry,
   TeacherScheduleEntryInput,
   TeacherScheduleEntryUpdate,
@@ -5586,6 +5587,86 @@ export const useCreateTeacherScheduleEntry = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateTeacherScheduleEntryMutationOptions(options));
+    }
+
+export const getBulkCreateTeacherScheduleUrl = () => {
+
+
+
+
+  return `/api/teacher/schedule/bulk`
+}
+
+/**
+ * @summary Add several weekly classes for one or more days atomically
+ */
+export const bulkCreateTeacherSchedule = async (teacherScheduleBulkInput: TeacherScheduleBulkInput, options?: Parameters<typeof customFetch>[1]): Promise<TeacherScheduleEntry[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<TeacherScheduleEntry[]>(getBulkCreateTeacherScheduleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(teacherScheduleBulkInput)
+  }
+);}
+
+
+
+
+
+export const getBulkCreateTeacherScheduleMutationKey = () => ['bulkCreateTeacherSchedule'] as const;
+
+export const getBulkCreateTeacherScheduleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError,BulkCreateTeacherScheduleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError,BulkCreateTeacherScheduleMutationVariables, TContext> => {
+
+const mutationKey = getBulkCreateTeacherScheduleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, BulkCreateTeacherScheduleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkCreateTeacherSchedule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkCreateTeacherScheduleMutationResult = NonNullable<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>>
+    export type BulkCreateTeacherScheduleMutationBody = BodyType<TeacherScheduleBulkInput>
+    export type BulkCreateTeacherScheduleMutationError = ErrorType<void>
+    export type BulkCreateTeacherScheduleMutationVariables = {data: BodyType<TeacherScheduleBulkInput>}
+
+    /**
+ * @summary Add several weekly classes for one or more days atomically
+ */
+export const useBulkCreateTeacherSchedule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError,BulkCreateTeacherScheduleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>,
+        TError,
+        BulkCreateTeacherScheduleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBulkCreateTeacherScheduleMutationOptions(options));
     }
 
 export const getUpdateTeacherScheduleEntryUrl = (id: number,) => {

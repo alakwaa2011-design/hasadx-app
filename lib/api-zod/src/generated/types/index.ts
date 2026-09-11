@@ -146,6 +146,8 @@ export * from './submitImageBody';
 export * from './successResponse';
 export * from './teacherProfile';
 export * from './teacherProfileRole';
+export * from './teacherScheduleBulkInput';
+export * from './teacherScheduleBulkLessonInput';
 export * from './teacherScheduleEntry';
 export * from './teacherScheduleEntryInput';
 export * from './teacherScheduleEntryInputKind';

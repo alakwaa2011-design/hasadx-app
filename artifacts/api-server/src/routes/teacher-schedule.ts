@@ -14,6 +14,7 @@ const scheduleFieldsBase = z.object({
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
   dayOfWeek: z.number().int().min(0).max(6).nullish(),
+  lessonNumber: z.number().int().min(1).max(10).nullish(),
   appointmentDate: z.string().regex(datePattern).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
@@ -27,6 +28,13 @@ const scheduleFields = scheduleFieldsBase.superRefine((value, ctx) => {
       code: z.ZodIssueCode.custom,
       path: ["dayOfWeek"],
       message: "اليوم مطلوب للحصة الأسبوعية",
+    });
+  }
+  if (value.kind === "weekly" && value.lessonNumber == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["lessonNumber"],
+      message: "رقم الحصة مطلوب للحصة الأسبوعية",
     });
   }
   if (value.kind === "appointment" && !value.appointmentDate) {
@@ -64,6 +72,7 @@ function normalizeValues(value: z.infer<typeof scheduleFields>) {
     location: value.location || null,
     notes: value.notes || null,
     dayOfWeek: value.kind === "weekly" ? value.dayOfWeek ?? null : null,
+    lessonNumber: value.kind === "weekly" ? value.lessonNumber ?? null : null,
     appointmentDate: value.kind === "appointment" ? value.appointmentDate ?? null : null,
     endTime: value.endTime || null,
   };
@@ -83,6 +92,43 @@ router.get("/teacher/schedule", requireAuth, async (req: any, res): Promise<void
   res.json(rows);
 });
 
+const bulkLessonSchema = z.object({
+  lessonNumber: z.number().int().min(1).max(10),
+  title: z.string().trim().min(1).max(160),
+  subject: z.string().trim().max(100).nullish(),
+  className: z.string().trim().max(100).nullish(),
+  startTime: z.string().regex(timePattern),
+  endTime: z.string().regex(timePattern).nullish(),
+}).superRefine((value, ctx) => {
+  if (value.endTime && value.endTime <= value.startTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endTime"],
+      message: "يجب أن يكون وقت الانتهاء بعد وقت البداية",
+    });
+  }
+});
+
+const bulkScheduleSchema = z.object({
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+  lessons: z.array(bulkLessonSchema).min(1).max(10),
+}).superRefine((value, ctx) => {
+  if (new Set(value.days).size !== value.days.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["days"],
+      message: "لا يمكن تكرار اليوم",
+    });
+  }
+  if (new Set(value.lessons.map((lesson) => lesson.lessonNumber)).size !== value.lessons.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["lessons"],
+      message: "لا يمكن تكرار رقم الحصة",
+    });
+  }
+});
+
 router.post("/teacher/schedule", requireAuth, async (req: any, res): Promise<void> => {
   const parsed = createScheduleSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -98,6 +144,35 @@ router.post("/teacher/schedule", requireAuth, async (req: any, res): Promise<voi
     })
     .returning();
   res.status(201).json(entry);
+});
+
+router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promise<void> => {
+  const parsed = bulkScheduleSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.issues[0]?.message || "بيانات الجدول غير صحيحة" });
+    return;
+  }
+
+  const created = await db.transaction(async (tx) => {
+    const values = parsed.data.days.flatMap((dayOfWeek) =>
+      parsed.data.lessons.map((lesson) => ({
+        teacherId: req.session.teacherId,
+        kind: "weekly" as const,
+        title: lesson.title,
+        subject: lesson.subject || null,
+        className: lesson.className || null,
+        dayOfWeek,
+        lessonNumber: lesson.lessonNumber,
+        appointmentDate: null,
+        startTime: lesson.startTime,
+        endTime: lesson.endTime || null,
+        location: null,
+        notes: null,
+      })),
+    );
+    return tx.insert(teacherScheduleTable).values(values).returning();
+  });
+  res.status(201).json(created);
 });
 
 router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promise<void> => {
@@ -132,6 +207,7 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
     subject: existing.subject,
     className: existing.className,
     dayOfWeek: existing.dayOfWeek,
+    lessonNumber: existing.lessonNumber,
     appointmentDate: existing.appointmentDate,
     startTime: existing.startTime,
     endTime: existing.endTime,

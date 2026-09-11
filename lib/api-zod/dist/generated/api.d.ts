@@ -13022,6 +13022,7 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
  */
 export declare const listTeacherScheduleResponseDayOfWeekMin = 0;
 export declare const listTeacherScheduleResponseDayOfWeekMax = 6;
+export declare const listTeacherScheduleResponseLessonNumberMax = 10;
 export declare const listTeacherScheduleResponseAppointmentDateRegExp: RegExp;
 export declare const listTeacherScheduleResponseStartTimeRegExp: RegExp;
 export declare const listTeacherScheduleResponseEndTimeRegExp: RegExp;
@@ -13033,6 +13034,7 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13054,6 +13056,7 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
@@ -13069,6 +13072,7 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }>;
 export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject<{
@@ -13079,6 +13083,7 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13100,6 +13105,7 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
@@ -13115,6 +13121,7 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }>, "many">;
 /**
@@ -13126,6 +13133,7 @@ export declare const createTeacherScheduleEntryBodySubjectMax = 100;
 export declare const createTeacherScheduleEntryBodyClassNameMax = 100;
 export declare const createTeacherScheduleEntryBodyDayOfWeekMin = 0;
 export declare const createTeacherScheduleEntryBodyDayOfWeekMax = 6;
+export declare const createTeacherScheduleEntryBodyLessonNumberMax = 10;
 export declare const createTeacherScheduleEntryBodyAppointmentDateRegExp: RegExp;
 export declare const createTeacherScheduleEntryBodyStartTimeRegExp: RegExp;
 export declare const createTeacherScheduleEntryBodyEndTimeRegExp: RegExp;
@@ -13137,6 +13145,7 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13152,6 +13161,7 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }, {
     title: string;
@@ -13163,10 +13173,12 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }>;
 export declare const createTeacherScheduleEntryResponseDayOfWeekMin = 0;
 export declare const createTeacherScheduleEntryResponseDayOfWeekMax = 6;
+export declare const createTeacherScheduleEntryResponseLessonNumberMax = 10;
 export declare const createTeacherScheduleEntryResponseAppointmentDateRegExp: RegExp;
 export declare const createTeacherScheduleEntryResponseStartTimeRegExp: RegExp;
 export declare const createTeacherScheduleEntryResponseEndTimeRegExp: RegExp;
@@ -13178,6 +13190,7 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13199,6 +13212,7 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
@@ -13214,8 +13228,171 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }>;
+/**
+ * @summary Add several weekly classes for one or more days atomically
+ */
+export declare const bulkCreateTeacherScheduleBodyDaysItemMin = 0;
+export declare const bulkCreateTeacherScheduleBodyDaysItemMax = 6;
+export declare const bulkCreateTeacherScheduleBodyDaysMax = 7;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemLessonNumberMax = 10;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemTitleMax = 160;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemSubjectMax = 100;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemClassNameMax = 100;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemStartTimeRegExp: RegExp;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemEndTimeRegExp: RegExp;
+export declare const bulkCreateTeacherScheduleBodyLessonsMax = 10;
+export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
+    days: zodV3.ZodArray<zodV3.ZodNumber, "many">;
+    lessons: zodV3.ZodArray<zodV3.ZodObject<{
+        lessonNumber: zodV3.ZodNumber;
+        title: zodV3.ZodString;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        startTime: zodV3.ZodString;
+        endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        title: string;
+        startTime: string;
+        lessonNumber: number;
+        subject?: string | null | undefined;
+        endTime?: string | null | undefined;
+        className?: string | null | undefined;
+    }, {
+        title: string;
+        startTime: string;
+        lessonNumber: number;
+        subject?: string | null | undefined;
+        endTime?: string | null | undefined;
+        className?: string | null | undefined;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    days: number[];
+    lessons: {
+        title: string;
+        startTime: string;
+        lessonNumber: number;
+        subject?: string | null | undefined;
+        endTime?: string | null | undefined;
+        className?: string | null | undefined;
+    }[];
+}, {
+    days: number[];
+    lessons: {
+        title: string;
+        startTime: string;
+        lessonNumber: number;
+        subject?: string | null | undefined;
+        endTime?: string | null | undefined;
+        className?: string | null | undefined;
+    }[];
+}>;
+export declare const bulkCreateTeacherScheduleResponseDayOfWeekMin = 0;
+export declare const bulkCreateTeacherScheduleResponseDayOfWeekMax = 6;
+export declare const bulkCreateTeacherScheduleResponseLessonNumberMax = 10;
+export declare const bulkCreateTeacherScheduleResponseAppointmentDateRegExp: RegExp;
+export declare const bulkCreateTeacherScheduleResponseStartTimeRegExp: RegExp;
+export declare const bulkCreateTeacherScheduleResponseEndTimeRegExp: RegExp;
+export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    teacherId: zodV3.ZodNumber;
+    kind: zodV3.ZodEnum<["weekly", "appointment"]>;
+    title: zodV3.ZodString;
+    subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    startTime: zodV3.ZodString;
+    endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
+    kind: "weekly" | "appointment";
+    startTime: string;
+    notes?: string | null | undefined;
+    location?: string | null | undefined;
+    subject?: string | null | undefined;
+    endTime?: string | null | undefined;
+    className?: string | null | undefined;
+    dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
+    appointmentDate?: string | null | undefined;
+}, {
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
+    kind: "weekly" | "appointment";
+    startTime: string;
+    notes?: string | null | undefined;
+    location?: string | null | undefined;
+    subject?: string | null | undefined;
+    endTime?: string | null | undefined;
+    className?: string | null | undefined;
+    dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
+    appointmentDate?: string | null | undefined;
+}>;
+export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    teacherId: zodV3.ZodNumber;
+    kind: zodV3.ZodEnum<["weekly", "appointment"]>;
+    title: zodV3.ZodString;
+    subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    startTime: zodV3.ZodString;
+    endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
+    kind: "weekly" | "appointment";
+    startTime: string;
+    notes?: string | null | undefined;
+    location?: string | null | undefined;
+    subject?: string | null | undefined;
+    endTime?: string | null | undefined;
+    className?: string | null | undefined;
+    dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
+    appointmentDate?: string | null | undefined;
+}, {
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
+    kind: "weekly" | "appointment";
+    startTime: string;
+    notes?: string | null | undefined;
+    location?: string | null | undefined;
+    subject?: string | null | undefined;
+    endTime?: string | null | undefined;
+    className?: string | null | undefined;
+    dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
+    appointmentDate?: string | null | undefined;
+}>, "many">;
 /**
  * @summary Update one of the current teacher's schedule entries
  */
@@ -13232,6 +13409,7 @@ export declare const updateTeacherScheduleEntryBodyOneSubjectMax = 100;
 export declare const updateTeacherScheduleEntryBodyOneClassNameMax = 100;
 export declare const updateTeacherScheduleEntryBodyOneDayOfWeekMin = 0;
 export declare const updateTeacherScheduleEntryBodyOneDayOfWeekMax = 6;
+export declare const updateTeacherScheduleEntryBodyOneLessonNumberMax = 10;
 export declare const updateTeacherScheduleEntryBodyOneAppointmentDateRegExp: RegExp;
 export declare const updateTeacherScheduleEntryBodyOneStartTimeRegExp: RegExp;
 export declare const updateTeacherScheduleEntryBodyOneEndTimeRegExp: RegExp;
@@ -13245,6 +13423,7 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13260,6 +13439,7 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }, {
     title: string;
@@ -13271,6 +13451,7 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }>, zodV3.ZodObject<{
     kind: zodV3.ZodEnum<["weekly", "appointment"]>;
@@ -13287,6 +13468,7 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
 }>>;
 export declare const updateTeacherScheduleEntryResponseDayOfWeekMin = 0;
 export declare const updateTeacherScheduleEntryResponseDayOfWeekMax = 6;
+export declare const updateTeacherScheduleEntryResponseLessonNumberMax = 10;
 export declare const updateTeacherScheduleEntryResponseAppointmentDateRegExp: RegExp;
 export declare const updateTeacherScheduleEntryResponseStartTimeRegExp: RegExp;
 export declare const updateTeacherScheduleEntryResponseEndTimeRegExp: RegExp;
@@ -13298,6 +13480,7 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13319,6 +13502,7 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
@@ -13334,6 +13518,7 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     endTime?: string | null | undefined;
     className?: string | null | undefined;
     dayOfWeek?: number | null | undefined;
+    lessonNumber?: number | null | undefined;
     appointmentDate?: string | null | undefined;
 }>;
 /**

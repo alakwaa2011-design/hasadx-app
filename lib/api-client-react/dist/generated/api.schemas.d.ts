@@ -22,6 +22,11 @@ export interface TeacherScheduleEntry {
        * @maximum 6
        */
     dayOfWeek?: number | null;
+    /**
+       * @minimum 1
+       * @maximum 10
+       */
+    lessonNumber?: number | null;
     /** @pattern ^\d{4}-\d{2}-\d{2}$ */
     appointmentDate?: string | null;
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
@@ -54,6 +59,11 @@ export interface TeacherScheduleEntryInput {
        * @maximum 6
        */
     dayOfWeek?: number | null;
+    /**
+       * @minimum 1
+       * @maximum 10
+       */
+    lessonNumber?: number | null;
     /** @pattern ^\d{4}-\d{2}-\d{2}$ */
     appointmentDate?: string | null;
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
@@ -64,6 +74,40 @@ export interface TeacherScheduleEntryInput {
     location?: string | null;
     /** @maxLength 500 */
     notes?: string | null;
+}
+export interface TeacherScheduleBulkLessonInput {
+    /**
+       * @minimum 1
+       * @maximum 10
+       */
+    lessonNumber: number;
+    /**
+       * @minLength 1
+       * @maxLength 160
+       */
+    title: string;
+    /** @maxLength 100 */
+    subject?: string | null;
+    /** @maxLength 100 */
+    className?: string | null;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    startTime: string;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    endTime?: string | null;
+}
+export interface TeacherScheduleBulkInput {
+    /**
+       * @minItems 1
+       * @maxItems 7
+       * @items.minimum 0
+       * @items.maximum 6
+       */
+    days: number[];
+    /**
+       * @minItems 1
+       * @maxItems 10
+       */
+    lessons: TeacherScheduleBulkLessonInput[];
 }
 export type TeacherScheduleEntryUpdateKind = typeof TeacherScheduleEntryUpdateKind[keyof typeof TeacherScheduleEntryUpdateKind];
 export declare const TeacherScheduleEntryUpdateKind: {

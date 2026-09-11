@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1625,6 +1625,29 @@ export declare const useCreateTeacherScheduleEntry: <TError = ErrorType<void>, T
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError, CreateTeacherScheduleEntryMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError, CreateTeacherScheduleEntryMutationVariables, TContext>;
+export declare const getBulkCreateTeacherScheduleUrl: () => string;
+/**
+ * @summary Add several weekly classes for one or more days atomically
+ */
+export declare const bulkCreateTeacherSchedule: (teacherScheduleBulkInput: TeacherScheduleBulkInput, options?: Parameters<typeof customFetch>[1]) => Promise<TeacherScheduleEntry[]>;
+export declare const getBulkCreateTeacherScheduleMutationKey: () => readonly ["bulkCreateTeacherSchedule"];
+export declare const getBulkCreateTeacherScheduleMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError, BulkCreateTeacherScheduleMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError, BulkCreateTeacherScheduleMutationVariables, TContext>;
+export type BulkCreateTeacherScheduleMutationResult = NonNullable<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>>;
+export type BulkCreateTeacherScheduleMutationBody = BodyType<TeacherScheduleBulkInput>;
+export type BulkCreateTeacherScheduleMutationError = ErrorType<void>;
+export type BulkCreateTeacherScheduleMutationVariables = {
+    data: BodyType<TeacherScheduleBulkInput>;
+};
+/**
+* @summary Add several weekly classes for one or more days atomically
+*/
+export declare const useBulkCreateTeacherSchedule: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError, BulkCreateTeacherScheduleMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof bulkCreateTeacherSchedule>>, TError, BulkCreateTeacherScheduleMutationVariables, TContext>;
 export declare const getUpdateTeacherScheduleEntryUrl: (id: number) => string;
 /**
  * @summary Update one of the current teacher's schedule entries

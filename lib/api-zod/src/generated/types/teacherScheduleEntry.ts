@@ -19,6 +19,11 @@ export interface TeacherScheduleEntry {
      * @maximum 6
      */
   dayOfWeek?: number | null;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  lessonNumber?: number | null;
   /** @pattern ^\d{4}-\d{2}-\d{2}$ */
   appointmentDate?: string | null;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
