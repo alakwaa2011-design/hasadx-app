@@ -70,6 +70,9 @@ import type {
   SubmitImageBody,
   SuccessResponse,
   TeacherProfile,
+  TeacherScheduleEntry,
+  TeacherScheduleEntryInput,
+  TeacherScheduleEntryUpdate,
   TeacherSession,
   UpdateAiVideoProjectBody,
   UpdateAnswerBody,
@@ -5426,4 +5429,316 @@ export const useRetryAiVideoProjectRender = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRetryAiVideoProjectRenderMutationOptions(options));
+    }
+
+export const getListTeacherScheduleUrl = () => {
+
+
+
+
+  return `/api/teacher/schedule`
+}
+
+/**
+ * @summary List the current teacher's weekly classes and appointments
+ */
+export const listTeacherSchedule = async ( options?: Parameters<typeof customFetch>[1]): Promise<TeacherScheduleEntry[]> => {
+
+  return customFetch<TeacherScheduleEntry[]>(getListTeacherScheduleUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTeacherScheduleQueryKey = () => {
+    return [
+    `/api/teacher/schedule`
+    ] as const;
+    }
+
+
+export const getListTeacherScheduleQueryOptions = <TData = Awaited<ReturnType<typeof listTeacherSchedule>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTeacherSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTeacherScheduleQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTeacherSchedule>>> = ({ signal }) => listTeacherSchedule({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTeacherSchedule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTeacherScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof listTeacherSchedule>>>
+export type ListTeacherScheduleQueryError = ErrorType<void>
+
+
+/**
+ * @summary List the current teacher's weekly classes and appointments
+ */
+
+export function useListTeacherSchedule<TData = Awaited<ReturnType<typeof listTeacherSchedule>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTeacherSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTeacherScheduleQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTeacherScheduleEntryUrl = () => {
+
+
+
+
+  return `/api/teacher/schedule`
+}
+
+/**
+ * @summary Add a weekly class or one-time appointment
+ */
+export const createTeacherScheduleEntry = async (teacherScheduleEntryInput: TeacherScheduleEntryInput, options?: Parameters<typeof customFetch>[1]): Promise<TeacherScheduleEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<TeacherScheduleEntry>(getCreateTeacherScheduleEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(teacherScheduleEntryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTeacherScheduleEntryMutationKey = () => ['createTeacherScheduleEntry'] as const;
+
+export const getCreateTeacherScheduleEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError,CreateTeacherScheduleEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError,CreateTeacherScheduleEntryMutationVariables, TContext> => {
+
+const mutationKey = getCreateTeacherScheduleEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, CreateTeacherScheduleEntryMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTeacherScheduleEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTeacherScheduleEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createTeacherScheduleEntry>>>
+    export type CreateTeacherScheduleEntryMutationBody = BodyType<TeacherScheduleEntryInput>
+    export type CreateTeacherScheduleEntryMutationError = ErrorType<void>
+    export type CreateTeacherScheduleEntryMutationVariables = {data: BodyType<TeacherScheduleEntryInput>}
+
+    /**
+ * @summary Add a weekly class or one-time appointment
+ */
+export const useCreateTeacherScheduleEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError,CreateTeacherScheduleEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTeacherScheduleEntry>>,
+        TError,
+        CreateTeacherScheduleEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTeacherScheduleEntryMutationOptions(options));
+    }
+
+export const getUpdateTeacherScheduleEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/teacher/schedule/${id}`
+}
+
+/**
+ * @summary Update one of the current teacher's schedule entries
+ */
+export const updateTeacherScheduleEntry = async (id: number,
+    teacherScheduleEntryUpdate: TeacherScheduleEntryUpdate, options?: Parameters<typeof customFetch>[1]): Promise<TeacherScheduleEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<TeacherScheduleEntry>(getUpdateTeacherScheduleEntryUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(teacherScheduleEntryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTeacherScheduleEntryMutationKey = () => ['updateTeacherScheduleEntry'] as const;
+
+export const getUpdateTeacherScheduleEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError,UpdateTeacherScheduleEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError,UpdateTeacherScheduleEntryMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTeacherScheduleEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, UpdateTeacherScheduleEntryMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateTeacherScheduleEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTeacherScheduleEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>>
+    export type UpdateTeacherScheduleEntryMutationBody = BodyType<TeacherScheduleEntryUpdate>
+    export type UpdateTeacherScheduleEntryMutationError = ErrorType<void>
+    export type UpdateTeacherScheduleEntryMutationVariables = {id: number;data: BodyType<TeacherScheduleEntryUpdate>}
+
+    /**
+ * @summary Update one of the current teacher's schedule entries
+ */
+export const useUpdateTeacherScheduleEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError,UpdateTeacherScheduleEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTeacherScheduleEntry>>,
+        TError,
+        UpdateTeacherScheduleEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTeacherScheduleEntryMutationOptions(options));
+    }
+
+export const getDeleteTeacherScheduleEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/teacher/schedule/${id}`
+}
+
+/**
+ * @summary Delete one of the current teacher's schedule entries
+ */
+export const deleteTeacherScheduleEntry = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTeacherScheduleEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTeacherScheduleEntryMutationKey = () => ['deleteTeacherScheduleEntry'] as const;
+
+export const getDeleteTeacherScheduleEntryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError,DeleteTeacherScheduleEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError,DeleteTeacherScheduleEntryMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTeacherScheduleEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, DeleteTeacherScheduleEntryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTeacherScheduleEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTeacherScheduleEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>>
+
+    export type DeleteTeacherScheduleEntryMutationError = ErrorType<void>
+    export type DeleteTeacherScheduleEntryMutationVariables = {id: number}
+
+    /**
+ * @summary Delete one of the current teacher's schedule entries
+ */
+export const useDeleteTeacherScheduleEntry = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError,DeleteTeacherScheduleEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>,
+        TError,
+        DeleteTeacherScheduleEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTeacherScheduleEntryMutationOptions(options));
     }

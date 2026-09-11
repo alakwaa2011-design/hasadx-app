@@ -54,6 +54,26 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE teacher_classes ADD COLUMN IF NOT EXISTS color TEXT;
       ALTER TABLE teacher_classes ADD COLUMN IF NOT EXISTS group_color TEXT;
+      CREATE TABLE IF NOT EXISTS teacher_schedule (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL DEFAULT 'weekly',
+        title TEXT NOT NULL,
+        subject TEXT,
+        class_name TEXT,
+        day_of_week INTEGER,
+        appointment_date DATE,
+        start_time TEXT NOT NULL,
+        end_time TEXT,
+        location TEXT,
+        notes TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS teacher_schedule_teacher_idx
+        ON teacher_schedule(teacher_id);
+      CREATE INDEX IF NOT EXISTS teacher_schedule_teacher_date_idx
+        ON teacher_schedule(teacher_id, appointment_date);
       CREATE TABLE IF NOT EXISTS presentation_outline_jobs (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

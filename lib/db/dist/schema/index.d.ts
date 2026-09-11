@@ -100,4 +100,5 @@ export * from "./kids";
 export * from "./ai-video-projects";
 export * from "./ai-video-provider-requests";
 export * from "./classroom-rewards";
+export * from "./teacher-schedule";
 //# sourceMappingURL=index.d.ts.map

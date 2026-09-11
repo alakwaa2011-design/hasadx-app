@@ -4067,3 +4067,176 @@ export const RetryAiVideoProjectRenderResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary List the current teacher's weekly classes and appointments
+ */
+export const listTeacherScheduleResponseDayOfWeekMin = 0;
+export const listTeacherScheduleResponseDayOfWeekMax = 6;
+
+export const listTeacherScheduleResponseAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listTeacherScheduleResponseStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const listTeacherScheduleResponseEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+
+
+export const ListTeacherScheduleResponseItem = zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "kind": zod.enum(['weekly', 'appointment']),
+  "title": zod.string(),
+  "subject": zod.string().nullish(),
+  "className": zod.string().nullish(),
+  "dayOfWeek": zod.int().min(listTeacherScheduleResponseDayOfWeekMin).max(listTeacherScheduleResponseDayOfWeekMax).nullish(),
+  "appointmentDate": zod.string().regex(listTeacherScheduleResponseAppointmentDateRegExp).nullish(),
+  "startTime": zod.string().regex(listTeacherScheduleResponseStartTimeRegExp),
+  "endTime": zod.string().regex(listTeacherScheduleResponseEndTimeRegExp).nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListTeacherScheduleResponse = zod.array(ListTeacherScheduleResponseItem)
+
+
+/**
+ * @summary Add a weekly class or one-time appointment
+ */
+export const createTeacherScheduleEntryBodyKindDefault = `weekly`;
+export const createTeacherScheduleEntryBodyTitleMax = 160;
+
+export const createTeacherScheduleEntryBodySubjectMax = 100;
+
+export const createTeacherScheduleEntryBodyClassNameMax = 100;
+
+export const createTeacherScheduleEntryBodyDayOfWeekMin = 0;
+export const createTeacherScheduleEntryBodyDayOfWeekMax = 6;
+
+export const createTeacherScheduleEntryBodyAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createTeacherScheduleEntryBodyStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const createTeacherScheduleEntryBodyEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const createTeacherScheduleEntryBodyLocationMax = 160;
+
+export const createTeacherScheduleEntryBodyNotesMax = 500;
+
+
+
+export const CreateTeacherScheduleEntryBody = zod.object({
+  "kind": zod.enum(['weekly', 'appointment']).default(createTeacherScheduleEntryBodyKindDefault),
+  "title": zod.string().min(1).max(createTeacherScheduleEntryBodyTitleMax),
+  "subject": zod.string().max(createTeacherScheduleEntryBodySubjectMax).nullish(),
+  "className": zod.string().max(createTeacherScheduleEntryBodyClassNameMax).nullish(),
+  "dayOfWeek": zod.int().min(createTeacherScheduleEntryBodyDayOfWeekMin).max(createTeacherScheduleEntryBodyDayOfWeekMax).nullish(),
+  "appointmentDate": zod.string().regex(createTeacherScheduleEntryBodyAppointmentDateRegExp).nullish(),
+  "startTime": zod.string().regex(createTeacherScheduleEntryBodyStartTimeRegExp),
+  "endTime": zod.string().regex(createTeacherScheduleEntryBodyEndTimeRegExp).nullish(),
+  "location": zod.string().max(createTeacherScheduleEntryBodyLocationMax).nullish(),
+  "notes": zod.string().max(createTeacherScheduleEntryBodyNotesMax).nullish()
+})
+
+export const createTeacherScheduleEntryResponseDayOfWeekMin = 0;
+export const createTeacherScheduleEntryResponseDayOfWeekMax = 6;
+
+export const createTeacherScheduleEntryResponseAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createTeacherScheduleEntryResponseStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const createTeacherScheduleEntryResponseEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+
+
+export const CreateTeacherScheduleEntryResponse = zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "kind": zod.enum(['weekly', 'appointment']),
+  "title": zod.string(),
+  "subject": zod.string().nullish(),
+  "className": zod.string().nullish(),
+  "dayOfWeek": zod.int().min(createTeacherScheduleEntryResponseDayOfWeekMin).max(createTeacherScheduleEntryResponseDayOfWeekMax).nullish(),
+  "appointmentDate": zod.string().regex(createTeacherScheduleEntryResponseAppointmentDateRegExp).nullish(),
+  "startTime": zod.string().regex(createTeacherScheduleEntryResponseStartTimeRegExp),
+  "endTime": zod.string().regex(createTeacherScheduleEntryResponseEndTimeRegExp).nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update one of the current teacher's schedule entries
+ */
+export const UpdateTeacherScheduleEntryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateTeacherScheduleEntryBodyOneKindDefault = `weekly`;
+export const updateTeacherScheduleEntryBodyOneTitleMax = 160;
+
+export const updateTeacherScheduleEntryBodyOneSubjectMax = 100;
+
+export const updateTeacherScheduleEntryBodyOneClassNameMax = 100;
+
+export const updateTeacherScheduleEntryBodyOneDayOfWeekMin = 0;
+export const updateTeacherScheduleEntryBodyOneDayOfWeekMax = 6;
+
+export const updateTeacherScheduleEntryBodyOneAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateTeacherScheduleEntryBodyOneStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const updateTeacherScheduleEntryBodyOneEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const updateTeacherScheduleEntryBodyOneLocationMax = 160;
+
+export const updateTeacherScheduleEntryBodyOneNotesMax = 500;
+
+export const updateTeacherScheduleEntryBodyTwoTitleMax = 160;
+
+export const updateTeacherScheduleEntryBodyTwoStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+
+
+export const UpdateTeacherScheduleEntryBody = zod.object({
+  "kind": zod.enum(['weekly', 'appointment']).default(updateTeacherScheduleEntryBodyOneKindDefault),
+  "title": zod.string().min(1).max(updateTeacherScheduleEntryBodyOneTitleMax),
+  "subject": zod.string().max(updateTeacherScheduleEntryBodyOneSubjectMax).nullish(),
+  "className": zod.string().max(updateTeacherScheduleEntryBodyOneClassNameMax).nullish(),
+  "dayOfWeek": zod.int().min(updateTeacherScheduleEntryBodyOneDayOfWeekMin).max(updateTeacherScheduleEntryBodyOneDayOfWeekMax).nullish(),
+  "appointmentDate": zod.string().regex(updateTeacherScheduleEntryBodyOneAppointmentDateRegExp).nullish(),
+  "startTime": zod.string().regex(updateTeacherScheduleEntryBodyOneStartTimeRegExp),
+  "endTime": zod.string().regex(updateTeacherScheduleEntryBodyOneEndTimeRegExp).nullish(),
+  "location": zod.string().max(updateTeacherScheduleEntryBodyOneLocationMax).nullish(),
+  "notes": zod.string().max(updateTeacherScheduleEntryBodyOneNotesMax).nullish()
+}).and(zod.object({
+  "kind": zod.enum(['weekly', 'appointment']),
+  "title": zod.string().min(1).max(updateTeacherScheduleEntryBodyTwoTitleMax),
+  "startTime": zod.string().regex(updateTeacherScheduleEntryBodyTwoStartTimeRegExp)
+}))
+
+export const updateTeacherScheduleEntryResponseDayOfWeekMin = 0;
+export const updateTeacherScheduleEntryResponseDayOfWeekMax = 6;
+
+export const updateTeacherScheduleEntryResponseAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateTeacherScheduleEntryResponseStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const updateTeacherScheduleEntryResponseEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+
+
+export const UpdateTeacherScheduleEntryResponse = zod.object({
+  "id": zod.int(),
+  "teacherId": zod.int(),
+  "kind": zod.enum(['weekly', 'appointment']),
+  "title": zod.string(),
+  "subject": zod.string().nullish(),
+  "className": zod.string().nullish(),
+  "dayOfWeek": zod.int().min(updateTeacherScheduleEntryResponseDayOfWeekMin).max(updateTeacherScheduleEntryResponseDayOfWeekMax).nullish(),
+  "appointmentDate": zod.string().regex(updateTeacherScheduleEntryResponseAppointmentDateRegExp).nullish(),
+  "startTime": zod.string().regex(updateTeacherScheduleEntryResponseStartTimeRegExp),
+  "endTime": zod.string().regex(updateTeacherScheduleEntryResponseEndTimeRegExp).nullish(),
+  "location": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete one of the current teacher's schedule entries
+ */
+export const DeleteTeacherScheduleEntryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteTeacherScheduleEntryResponse = zod.void()

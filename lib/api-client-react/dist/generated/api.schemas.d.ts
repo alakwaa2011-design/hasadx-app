@@ -5,6 +5,81 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export type TeacherScheduleEntryKind = typeof TeacherScheduleEntryKind[keyof typeof TeacherScheduleEntryKind];
+export declare const TeacherScheduleEntryKind: {
+    readonly weekly: "weekly";
+    readonly appointment: "appointment";
+};
+export interface TeacherScheduleEntry {
+    id: number;
+    teacherId: number;
+    kind: TeacherScheduleEntryKind;
+    title: string;
+    subject?: string | null;
+    className?: string | null;
+    /**
+       * @minimum 0
+       * @maximum 6
+       */
+    dayOfWeek?: number | null;
+    /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+    appointmentDate?: string | null;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    startTime: string;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    endTime?: string | null;
+    location?: string | null;
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+export type TeacherScheduleEntryInputKind = typeof TeacherScheduleEntryInputKind[keyof typeof TeacherScheduleEntryInputKind];
+export declare const TeacherScheduleEntryInputKind: {
+    readonly weekly: "weekly";
+    readonly appointment: "appointment";
+};
+export interface TeacherScheduleEntryInput {
+    kind: TeacherScheduleEntryInputKind;
+    /**
+       * @minLength 1
+       * @maxLength 160
+       */
+    title: string;
+    /** @maxLength 100 */
+    subject?: string | null;
+    /** @maxLength 100 */
+    className?: string | null;
+    /**
+       * @minimum 0
+       * @maximum 6
+       */
+    dayOfWeek?: number | null;
+    /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+    appointmentDate?: string | null;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    startTime: string;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    endTime?: string | null;
+    /** @maxLength 160 */
+    location?: string | null;
+    /** @maxLength 500 */
+    notes?: string | null;
+}
+export type TeacherScheduleEntryUpdateKind = typeof TeacherScheduleEntryUpdateKind[keyof typeof TeacherScheduleEntryUpdateKind];
+export declare const TeacherScheduleEntryUpdateKind: {
+    readonly weekly: "weekly";
+    readonly appointment: "appointment";
+};
+export type TeacherScheduleEntryUpdate = TeacherScheduleEntryInput & {
+    kind?: TeacherScheduleEntryUpdateKind;
+    /**
+       * @minLength 1
+       * @maxLength 160
+       */
+    title?: string;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    startTime?: string;
+};
 export type AiVideoCharacterRole = typeof AiVideoCharacterRole[keyof typeof AiVideoCharacterRole];
 export declare const AiVideoCharacterRole: {
     readonly teacher: "teacher";

@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1579,5 +1579,97 @@ export declare const useRetryAiVideoProjectRender: <TError = ErrorType<void>, TC
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof retryAiVideoProjectRender>>, TError, RetryAiVideoProjectRenderMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof retryAiVideoProjectRender>>, TError, RetryAiVideoProjectRenderMutationVariables, TContext>;
+export declare const getListTeacherScheduleUrl: () => string;
+/**
+ * @summary List the current teacher's weekly classes and appointments
+ */
+export declare const listTeacherSchedule: (options?: Parameters<typeof customFetch>[1]) => Promise<TeacherScheduleEntry[]>;
+export declare const getListTeacherScheduleQueryKey: () => readonly ["/api/teacher/schedule"];
+export declare const getListTeacherScheduleQueryOptions: <TData = Awaited<ReturnType<typeof listTeacherSchedule>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listTeacherSchedule>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listTeacherSchedule>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListTeacherScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof listTeacherSchedule>>>;
+export type ListTeacherScheduleQueryError = ErrorType<void>;
+/**
+ * @summary List the current teacher's weekly classes and appointments
+ */
+export declare function useListTeacherSchedule<TData = Awaited<ReturnType<typeof listTeacherSchedule>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listTeacherSchedule>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getCreateTeacherScheduleEntryUrl: () => string;
+/**
+ * @summary Add a weekly class or one-time appointment
+ */
+export declare const createTeacherScheduleEntry: (teacherScheduleEntryInput: TeacherScheduleEntryInput, options?: Parameters<typeof customFetch>[1]) => Promise<TeacherScheduleEntry>;
+export declare const getCreateTeacherScheduleEntryMutationKey: () => readonly ["createTeacherScheduleEntry"];
+export declare const getCreateTeacherScheduleEntryMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError, CreateTeacherScheduleEntryMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError, CreateTeacherScheduleEntryMutationVariables, TContext>;
+export type CreateTeacherScheduleEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createTeacherScheduleEntry>>>;
+export type CreateTeacherScheduleEntryMutationBody = BodyType<TeacherScheduleEntryInput>;
+export type CreateTeacherScheduleEntryMutationError = ErrorType<void>;
+export type CreateTeacherScheduleEntryMutationVariables = {
+    data: BodyType<TeacherScheduleEntryInput>;
+};
+/**
+* @summary Add a weekly class or one-time appointment
+*/
+export declare const useCreateTeacherScheduleEntry: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError, CreateTeacherScheduleEntryMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof createTeacherScheduleEntry>>, TError, CreateTeacherScheduleEntryMutationVariables, TContext>;
+export declare const getUpdateTeacherScheduleEntryUrl: (id: number) => string;
+/**
+ * @summary Update one of the current teacher's schedule entries
+ */
+export declare const updateTeacherScheduleEntry: (id: number, teacherScheduleEntryUpdate: TeacherScheduleEntryUpdate, options?: Parameters<typeof customFetch>[1]) => Promise<TeacherScheduleEntry>;
+export declare const getUpdateTeacherScheduleEntryMutationKey: () => readonly ["updateTeacherScheduleEntry"];
+export declare const getUpdateTeacherScheduleEntryMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError, UpdateTeacherScheduleEntryMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError, UpdateTeacherScheduleEntryMutationVariables, TContext>;
+export type UpdateTeacherScheduleEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>>;
+export type UpdateTeacherScheduleEntryMutationBody = BodyType<TeacherScheduleEntryUpdate>;
+export type UpdateTeacherScheduleEntryMutationError = ErrorType<void>;
+export type UpdateTeacherScheduleEntryMutationVariables = {
+    id: number;
+    data: BodyType<TeacherScheduleEntryUpdate>;
+};
+/**
+* @summary Update one of the current teacher's schedule entries
+*/
+export declare const useUpdateTeacherScheduleEntry: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError, UpdateTeacherScheduleEntryMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateTeacherScheduleEntry>>, TError, UpdateTeacherScheduleEntryMutationVariables, TContext>;
+export declare const getDeleteTeacherScheduleEntryUrl: (id: number) => string;
+/**
+ * @summary Delete one of the current teacher's schedule entries
+ */
+export declare const deleteTeacherScheduleEntry: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getDeleteTeacherScheduleEntryMutationKey: () => readonly ["deleteTeacherScheduleEntry"];
+export declare const getDeleteTeacherScheduleEntryMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError, DeleteTeacherScheduleEntryMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError, DeleteTeacherScheduleEntryMutationVariables, TContext>;
+export type DeleteTeacherScheduleEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>>;
+export type DeleteTeacherScheduleEntryMutationError = ErrorType<void>;
+export type DeleteTeacherScheduleEntryMutationVariables = {
+    id: number;
+};
+/**
+* @summary Delete one of the current teacher's schedule entries
+*/
+export declare const useDeleteTeacherScheduleEntry: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError, DeleteTeacherScheduleEntryMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof deleteTeacherScheduleEntry>>, TError, DeleteTeacherScheduleEntryMutationVariables, TContext>;
 export {};
 //# sourceMappingURL=api.d.ts.map

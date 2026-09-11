@@ -11,7 +11,7 @@ import {
 } from "@/components/game-icons";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Play,
@@ -28,6 +28,7 @@ import {
   Loader2,
   Activity,
   Calendar,
+  Clock3,
   Pencil,
   CheckCircle2,
   GraduationCap,
@@ -55,9 +56,22 @@ import {
   ChevronDown,
   ExternalLink,
   ScanLine,
+  Trash2,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
+import {
+  getListTeacherScheduleQueryKey,
+  useCreateTeacherScheduleEntry,
+  useDeleteTeacherScheduleEntry,
+  useListTeacherSchedule,
+  useUpdateTeacherScheduleEntry,
+  type TeacherScheduleEntry,
+  type TeacherScheduleEntryInput,
+} from "@workspace/api-client-react";
+import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type TabId =
   | "overview"
@@ -373,17 +387,6 @@ export default function DashboardOverview({
         .slice(0, 5),
     [assignments],
   );
-
-  const upcomingAssignments = useMemo(() => {
-    const now = Date.now();
-    return [...(assignments || [])]
-      .filter((a) => a.deadline && new Date(a.deadline).getTime() >= now)
-      .sort(
-        (a, b) =>
-          new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime(),
-      )
-      .slice(0, 4);
-  }, [assignments]);
 
   /* Assignments that need the teacher's attention:
      active but with zero submissions, or deadline within 3 days */
@@ -819,65 +822,13 @@ export default function DashboardOverview({
               </motion.section>
             )}
 
-            {/* Upcoming deadlines */}
+            {/* Teacher schedule */}
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.18 }}
             >
-              <SectionHead
-                icon={
-                  <Calendar
-                    style={{ width: 15, height: 15, color: C.green }}
-                  />
-                }
-                title={isAr ? "المواعيد القادمة" : "Upcoming deadlines"}
-                badge={
-                  upcomingAssignments.length > 0
-                    ? `${upcomingAssignments.length}`
-                    : undefined
-                }
-                linkLabel={
-                  upcomingAssignments.length > 0
-                    ? isAr
-                      ? "عرض الكل"
-                      : "View all"
-                    : undefined
-                }
-                onLink={
-                  upcomingAssignments.length > 0
-                    ? () => setActiveTab("assignments")
-                    : undefined
-                }
-                isAr={isAr}
-              />
-              <div
-                style={{
-                  background: C.card,
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  boxShadow: SHADOW.card,
-                }}
-              >
-                {upcomingAssignments.length === 0 ? (
-                  <RailEmpty
-                    icon={<Calendar style={{ width: 26, height: 26 }} />}
-                    text={
-                      isAr ? "لا توجد مواعيد قادمة" : "No upcoming deadlines"
-                    }
-                  />
-                ) : (
-                  upcomingAssignments.map((a, idx) => (
-                    <UpcomingRow
-                      key={a.id}
-                      assignment={a}
-                      isAr={isAr}
-                      isLast={idx === upcomingAssignments.length - 1}
-                    />
-                  ))
-                )}
-              </div>
+              <TeacherScheduleCard isAr={isAr} user={user} />
             </motion.section>
 
             {/* Highlights — top students + activity in one tabbed card */}
@@ -2566,6 +2517,769 @@ function TopStudentRow({
     </div>
   );
 }
+
+type ScheduleFormValues = {
+  kind: "weekly" | "appointment";
+  title: string;
+  subject: string;
+  className: string;
+  dayOfWeek: string;
+  appointmentDate: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  notes: string;
+};
+
+const SCHEDULE_DAYS = [
+  { value: 0, ar: "الأحد", en: "Sun" },
+  { value: 1, ar: "الاثنين", en: "Mon" },
+  { value: 2, ar: "الثلاثاء", en: "Tue" },
+  { value: 3, ar: "الأربعاء", en: "Wed" },
+  { value: 4, ar: "الخميس", en: "Thu" },
+  { value: 5, ar: "الجمعة", en: "Fri" },
+  { value: 6, ar: "السبت", en: "Sat" },
+];
+
+function getLocalDateInput() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
+}
+
+const emptyScheduleForm = (): ScheduleFormValues => ({
+  kind: "weekly",
+  title: "",
+  subject: "",
+  className: "",
+  dayOfWeek: String(new Date().getDay()),
+  appointmentDate: getLocalDateInput(),
+  startTime: "08:00",
+  endTime: "09:00",
+  location: "",
+  notes: "",
+});
+
+function scheduleDateLabel(date: string, isAr: boolean) {
+  const parsed = new Date(`${date}T12:00:00`);
+  return new Intl.DateTimeFormat(isAr ? "ar-KW" : "en-US", {
+    day: "numeric",
+    month: "short",
+  }).format(parsed);
+}
+
+function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
+  const queryClient = useQueryClient();
+  const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
+  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const form = useForm<ScheduleFormValues>({
+    defaultValues: emptyScheduleForm(),
+  });
+  const selectedKind = form.watch("kind");
+  const scheduleQuery = useListTeacherSchedule({
+    query: {
+      enabled: Boolean(user),
+      queryKey: getListTeacherScheduleQueryKey(),
+    },
+  });
+  const createMutation = useCreateTeacherScheduleEntry();
+  const updateMutation = useUpdateTeacherScheduleEntry();
+  const deleteMutation = useDeleteTeacherScheduleEntry();
+  const entries = scheduleQuery.data || [];
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const weeklyEntries = useMemo(
+    () =>
+      entries
+        .filter((entry) => entry.kind === "weekly" && entry.dayOfWeek === selectedDay)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [entries, selectedDay],
+  );
+  const weeklyGroups = useMemo(
+    () =>
+      SCHEDULE_DAYS.map((day) => ({
+        day,
+        entries: entries
+          .filter((entry) => entry.kind === "weekly" && entry.dayOfWeek === day.value)
+          .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+      })).filter((group) => group.entries.length > 0),
+    [entries],
+  );
+
+  const today = getLocalDateInput();
+  const upcomingAppointments = useMemo(
+    () =>
+      entries
+        .filter(
+          (entry) =>
+            entry.kind === "appointment" &&
+            Boolean(entry.appointmentDate) &&
+            entry.appointmentDate! >= today,
+        )
+        .sort((a, b) => {
+          const dateOrder = (a.appointmentDate || "").localeCompare(b.appointmentDate || "");
+          return dateOrder || a.startTime.localeCompare(b.startTime);
+        })
+        .slice(0, 3),
+    [entries, today],
+  );
+
+  const refreshSchedule = () =>
+    queryClient.invalidateQueries({ queryKey: getListTeacherScheduleQueryKey() });
+
+  function openCreate(kind: ScheduleFormValues["kind"] = "weekly") {
+    const defaults = emptyScheduleForm();
+    form.reset({ ...defaults, kind });
+    setEditingId(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(entry: TeacherScheduleEntry) {
+    form.reset({
+      kind: entry.kind,
+      title: entry.title,
+      subject: entry.subject || "",
+      className: entry.className || "",
+      dayOfWeek: entry.dayOfWeek == null ? String(new Date().getDay()) : String(entry.dayOfWeek),
+      appointmentDate: entry.appointmentDate || getLocalDateInput(),
+      startTime: entry.startTime,
+      endTime: entry.endTime || "",
+      location: entry.location || "",
+      notes: entry.notes || "",
+    });
+    setEditingId(entry.id);
+    setDialogOpen(true);
+  }
+
+  function submitSchedule(values: ScheduleFormValues) {
+    const payload: TeacherScheduleEntryInput = {
+      kind: values.kind,
+      title: values.title.trim(),
+      subject: values.subject.trim() || null,
+      className: values.className.trim() || null,
+      dayOfWeek: values.kind === "weekly" ? Number(values.dayOfWeek) : null,
+      appointmentDate: values.kind === "appointment" ? values.appointmentDate : null,
+      startTime: values.startTime,
+      endTime: values.endTime || null,
+      location: values.location.trim() || null,
+      notes: values.notes.trim() || null,
+    };
+
+    const onSuccess = () => {
+      setDialogOpen(false);
+      setEditingId(null);
+      form.reset(emptyScheduleForm());
+      refreshSchedule();
+      toast.success(isAr ? "تم حفظ الجدول" : "Schedule saved");
+    };
+    const onError = () => toast.error(isAr ? "تعذر حفظ الجدول" : "Could not save the schedule");
+
+    if (editingId != null) {
+      updateMutation.mutate({ id: editingId, data: payload }, { onSuccess, onError });
+    } else {
+      createMutation.mutate({ data: payload }, { onSuccess, onError });
+    }
+  }
+
+  function removeEntry(entry: TeacherScheduleEntry) {
+    const confirmed = window.confirm(
+      isAr
+        ? `حذف "${entry.title}" من الجدول؟`
+        : `Remove "${entry.title}" from the schedule?`,
+    );
+    if (!confirmed) return;
+    deleteMutation.mutate(
+      { id: entry.id },
+      {
+        onSuccess: () => {
+          refreshSchedule();
+          toast.success(isAr ? "تم حذف الإدخال" : "Schedule entry deleted");
+        },
+        onError: () => toast.error(isAr ? "تعذر حذف الإدخال" : "Could not delete the entry"),
+      },
+    );
+  }
+
+  const fieldStyle: React.CSSProperties = {
+    width: "100%",
+    height: 38,
+    borderRadius: 10,
+    border: `1px solid ${C.border}`,
+    background: C.surface,
+    color: C.text,
+    padding: "0 11px",
+    outline: "none",
+    fontSize: 13,
+  };
+
+  return (
+    <>
+      <div
+        style={{
+          background: C.card,
+          border: `1px solid ${C.border}`,
+          borderRadius: 16,
+          overflow: "hidden",
+          boxShadow: SHADOW.card,
+        }}
+        dir={isAr ? "rtl" : "ltr"}
+      >
+        <div
+          style={{
+            padding: "13px 14px 11px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            borderBottom: `1px solid ${C.border}`,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+            <span
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 10,
+                background: C.greenPale,
+                display: "grid",
+                placeItems: "center",
+                color: C.green,
+                flexShrink: 0,
+              }}
+            >
+              <Calendar style={{ width: 16, height: 16 }} />
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: C.text }}>
+                {isAr ? "جدول المعلم" : "Teacher schedule"}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.subtle, marginTop: 2 }}>
+                {isAr ? "حصص أسبوعية ومواعيد منفردة" : "Weekly classes and appointments"}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => openCreate()}
+            data-testid="button-add-schedule-entry"
+            style={{
+              border: 0,
+              borderRadius: 10,
+              padding: "8px 10px",
+              background: C.green,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 800,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <Plus style={{ width: 14, height: 14 }} />
+            {isAr ? "إضافة" : "Add"}
+          </button>
+        </div>
+
+        {scheduleQuery.isLoading ? (
+          <div style={{ padding: 24, display: "grid", placeItems: "center", color: C.subtle }}>
+            <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />
+          </div>
+        ) : scheduleQuery.isError ? (
+          <div style={{ padding: "22px 16px", textAlign: "center", color: C.subtle, fontSize: 12 }}>
+            {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
+          </div>
+        ) : entries.length === 0 ? (
+          <div style={{ padding: "24px 16px", textAlign: "center" }}>
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 14,
+                display: "grid",
+                placeItems: "center",
+                margin: "0 auto 10px",
+                background: C.greenPale,
+                color: C.green,
+              }}
+            >
+              <Calendar style={{ width: 21, height: 21 }} />
+            </div>
+            <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>
+              {isAr ? "ابدأ بإضافة جدولك" : "Start building your schedule"}
+            </div>
+            <div style={{ color: C.subtle, fontSize: 11, marginTop: 4 }}>
+              {isAr ? "أضف حصة أسبوعية أو موعدًا منفردًا" : "Add a weekly class or one-time appointment"}
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => openCreate("weekly")}
+                style={{ ...scheduleSecondaryButton, color: C.green }}
+              >
+                {isAr ? "حصة أسبوعية" : "Weekly class"}
+              </button>
+              <button
+                type="button"
+                onClick={() => openCreate("appointment")}
+                style={{ ...scheduleSecondaryButton, color: C.text }}
+              >
+                {isAr ? "موعد منفرد" : "Appointment"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div
+              style={{
+                padding: "9px 12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                borderBottom: `1px solid ${C.border}`,
+              }}
+            >
+              <span style={{ color: C.subtle, fontSize: 10.5, fontWeight: 800 }}>
+                {isAr ? "طريقة العرض" : "View"}
+              </span>
+              <div style={{ display: "flex", gap: 4 }}>
+                {(["day", "week"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setViewMode(mode)}
+                    style={{
+                      border: 0,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      background: viewMode === mode ? C.greenPale : "transparent",
+                      color: viewMode === mode ? C.green : C.subtle,
+                      fontSize: 10.5,
+                      fontWeight: 850,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {mode === "day" ? (isAr ? "اليوم" : "Day") : (isAr ? "الأسبوع" : "Week")}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {viewMode === "day" ? (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                    gap: 5,
+                    padding: "11px 12px 10px",
+                    borderBottom: `1px solid ${C.border}`,
+                  }}
+                >
+                  {SCHEDULE_DAYS.map((day) => {
+                    const count = entries.filter(
+                      (entry) => entry.kind === "weekly" && entry.dayOfWeek === day.value,
+                    ).length;
+                    const active = selectedDay === day.value;
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => setSelectedDay(day.value)}
+                        style={{
+                          border: active ? `1px solid ${C.green}` : `1px solid ${C.border}`,
+                          background: active ? C.green : C.surface,
+                          color: active ? "#fff" : C.subtle,
+                          borderRadius: 9,
+                          padding: "6px 2px",
+                          cursor: "pointer",
+                          minWidth: 0,
+                        }}
+                      >
+                        <div style={{ fontSize: 10, fontWeight: 800 }}>
+                          {isAr ? day.ar.slice(0, 2) : day.en}
+                        </div>
+                        <div style={{ fontSize: 9, marginTop: 2, opacity: active ? 0.8 : 0.65 }}>
+                          {count}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ padding: "11px 14px 3px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: C.text, marginBottom: 5 }}>
+                    {isAr ? SCHEDULE_DAYS[selectedDay].ar : SCHEDULE_DAYS[selectedDay].en}
+                  </div>
+                  {weeklyEntries.length === 0 ? (
+                    <div style={{ padding: "12px 0 10px", color: C.subtle, fontSize: 11 }}>
+                      {isAr ? "لا توجد حصة أسبوعية في هذا اليوم" : "No weekly class on this day"}
+                    </div>
+                  ) : (
+                    weeklyEntries.map((entry, index) => (
+                      <ScheduleEntryRow
+                        key={entry.id}
+                        entry={entry}
+                        isAr={isAr}
+                        isLast={index === weeklyEntries.length - 1 && upcomingAppointments.length === 0}
+                        onEdit={() => openEdit(entry)}
+                        onDelete={() => removeEntry(entry)}
+                      />
+                    ))
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: "10px 14px 4px" }}>
+                {weeklyGroups.length === 0 ? (
+                  <div style={{ padding: "12px 0", color: C.subtle, fontSize: 11 }}>
+                    {isAr ? "لا توجد حصص أسبوعية بعد" : "No weekly classes yet"}
+                  </div>
+                ) : (
+                  weeklyGroups.map(({ day, entries: dayEntries }) => (
+                    <div key={day.value} style={{ marginBottom: 10 }}>
+                      <div style={{ color: C.green, fontSize: 10.5, fontWeight: 900, marginBottom: 2 }}>
+                        {isAr ? day.ar : day.en}
+                      </div>
+                      {dayEntries.map((entry, index) => (
+                        <ScheduleEntryRow
+                          key={entry.id}
+                          entry={entry}
+                          isAr={isAr}
+                          isLast={index === dayEntries.length - 1}
+                          onEdit={() => openEdit(entry)}
+                          onDelete={() => removeEntry(entry)}
+                        />
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {upcomingAppointments.length > 0 && (
+              <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 14px 5px" }}>
+                <div style={{ fontSize: 10.5, fontWeight: 900, color: C.text, marginBottom: 3 }}>
+                  {isAr ? "المواعيد القادمة" : "Upcoming appointments"}
+                </div>
+                {upcomingAppointments.map((entry, index) => (
+                  <ScheduleEntryRow
+                    key={entry.id}
+                    entry={entry}
+                    isAr={isAr}
+                    isLast={index === upcomingAppointments.length - 1}
+                    onEdit={() => openEdit(entry)}
+                    onDelete={() => removeEntry(entry)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingId(null);
+        }}
+      >
+        <DialogContent className="max-w-xl rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{editingId ? (isAr ? "تعديل الإدخال" : "Edit schedule entry") : (isAr ? "إضافة إلى الجدول" : "Add to schedule")}</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(submitSchedule)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="kind"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{isAr ? "نوع الإدخال" : "Entry type"}</FormLabel>
+                    <FormControl>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["weekly", "appointment"] as const).map((kind) => (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => field.onChange(kind)}
+                            className="rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors"
+                            style={{
+                              borderColor: field.value === kind ? C.green : C.border,
+                              background: field.value === kind ? C.greenPale : C.surface,
+                              color: field.value === kind ? C.green : C.text,
+                            }}
+                          >
+                            {kind === "weekly"
+                              ? isAr ? "حصة أسبوعية" : "Weekly class"
+                              : isAr ? "موعد منفرد" : "Appointment"}
+                          </button>
+                        ))}
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  rules={{ required: isAr ? "اكتب عنوانًا" : "Enter a title" }}
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{isAr ? "العنوان" : "Title"}</FormLabel>
+                      <FormControl>
+                        <input {...field} placeholder={isAr ? "مثال: رياضيات — الصف الرابع" : "e.g. Math — Grade 4"} style={fieldStyle} data-testid="input-schedule-title" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {selectedKind === "weekly" ? (
+                  <FormField
+                    control={form.control}
+                    name="dayOfWeek"
+                    rules={{ required: isAr ? "اختر اليوم" : "Choose a day" }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isAr ? "اليوم" : "Day"}</FormLabel>
+                        <FormControl>
+                          <select {...field} style={fieldStyle}>
+                            {SCHEDULE_DAYS.map((day) => (
+                              <option key={day.value} value={day.value}>{isAr ? day.ar : day.en}</option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="appointmentDate"
+                    rules={{ required: isAr ? "اختر التاريخ" : "Choose a date" }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isAr ? "التاريخ" : "Date"}</FormLabel>
+                        <FormControl>
+                          <input {...field} type="date" style={fieldStyle} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={form.control}
+                    name="startTime"
+                    rules={{ required: isAr ? "مطلوب" : "Required" }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isAr ? "من" : "From"}</FormLabel>
+                        <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isAr ? "إلى" : "To"}</FormLabel>
+                        <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{isAr ? "المادة (اختياري)" : "Subject (optional)"}</FormLabel>
+                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="className"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{isAr ? "الصف (اختياري)" : "Class (optional)"}</FormLabel>
+                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{isAr ? "المكان (اختياري)" : "Location (optional)"}</FormLabel>
+                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{isAr ? "ملاحظات (اختياري)" : "Notes (optional)"}</FormLabel>
+                      <FormControl><textarea {...field} rows={2} style={{ ...fieldStyle, height: "auto", paddingTop: 9, paddingBottom: 9, resize: "vertical" }} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <button
+                  type="button"
+                  onClick={() => setDialogOpen(false)}
+                  style={{ ...scheduleSecondaryButton, color: C.text }}
+                >
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  data-testid="button-save-schedule-entry"
+                  style={{
+                    ...schedulePrimaryButton,
+                    opacity: isSaving ? 0.7 : 1,
+                  }}
+                >
+                  {isSaving && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
+                  {editingId ? (isAr ? "حفظ التعديل" : "Save changes") : (isAr ? "إضافة" : "Add entry")}
+                </button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+const schedulePrimaryButton: React.CSSProperties = {
+  border: 0,
+  borderRadius: 10,
+  padding: "9px 14px",
+  background: C.green,
+  color: "#fff",
+  fontSize: 12,
+  fontWeight: 800,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  cursor: "pointer",
+};
+
+const scheduleSecondaryButton: React.CSSProperties = {
+  border: `1px solid ${C.border}`,
+  borderRadius: 10,
+  padding: "8px 12px",
+  background: C.surface,
+  fontSize: 11,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+function ScheduleEntryRow({
+  entry,
+  isAr,
+  isLast,
+  onEdit,
+  onDelete,
+}: {
+  entry: TeacherScheduleEntry;
+  isAr: boolean;
+  isLast: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        padding: "8px 0",
+        borderBottom: isLast ? "none" : `1px solid ${C.border}`,
+      }}
+    >
+      <div
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 11,
+          background: entry.kind === "appointment" ? C.goldPale : C.greenPale,
+          color: entry.kind === "appointment" ? C.gold : C.green,
+          display: "grid",
+          placeItems: "center",
+          flexShrink: 0,
+        }}
+      >
+        {entry.kind === "appointment" ? <Calendar style={{ width: 17, height: 17 }} /> : <Clock3 style={{ width: 17, height: 17 }} />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 850, color: C.text }}>{entry.title}</span>
+          {entry.kind === "appointment" && entry.appointmentDate && (
+            <span style={{ fontSize: 10, color: C.gold, fontWeight: 800 }}>
+              {scheduleDateLabel(entry.appointmentDate, isAr)}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 10.5, color: C.subtle, marginTop: 3, display: "flex", gap: 7, flexWrap: "wrap" }}>
+          <span>{entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}</span>
+          {entry.className && <span>• {entry.className}</span>}
+          {entry.location && <span>• {entry.location}</span>}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={isAr ? "تعديل" : "Edit"}
+          style={scheduleIconButton}
+        >
+          <Pencil style={{ width: 13, height: 13 }} />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={isAr ? "حذف" : "Delete"}
+          style={{ ...scheduleIconButton, color: "#B42318" }}
+        >
+          <Trash2 style={{ width: 13, height: 13 }} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const scheduleIconButton: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  border: 0,
+  borderRadius: 8,
+  background: "transparent",
+  color: C.subtle,
+  display: "grid",
+  placeItems: "center",
+  cursor: "pointer",
+};
 
 /* ════════════════════════════════════════════════════════════
    UPCOMING DEADLINE ROW

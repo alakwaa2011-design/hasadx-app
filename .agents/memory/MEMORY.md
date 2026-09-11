@@ -69,6 +69,7 @@
 - [Annual subscription entitlements](annual-subscription-entitlements.md) — annual payments create immutable invoice entitlements; monthly releases and refunds stay bound to the paid term.
 - [Lemon Squeezy checkout layout limits](lemon-checkout-layout-limits.md) — official API can hide media/logo/description, but not the summary column, Tax ID, compact layout, or overlay dimensions.
 - [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — codegen postprocesses Orval’s Zod 4 shorthand for Zod 3; always run generated-library typechecks.
+- [Date-only OpenAPI fields](openapi-date-only-fields.md) — local calendar dates should stay strings with a YYYY-MM-DD contract, not generated JavaScript Date values.
 - [Worksheet PDF pagination](worksheet-pdf-pagination.md) — hidden estimates miss theme/font/footer height; preserve the rendered A4 overflow guard or PDF pages split and repeat.
 - [Hasaad Guide human handoff](hasaad-guide-human-handoff.md) — support continues inside the original guide conversation; AI must pause and ignore human-support messages as future model context.
 - [Worksheet pedagogy metadata](worksheet-pedagogy-metadata.md) — learning intent belongs in settings JSON and travels to AI routes as a structured contract, not topic prose.

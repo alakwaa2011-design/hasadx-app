@@ -17,6 +17,8 @@ tags:
     description: Student submissions
   - name: ai-video
     description: Persisted AI educational video projects
+  - name: teacher-schedule
+    description: Teacher weekly classes and one-time appointments
 paths:
   /healthz:
     get:
@@ -1549,8 +1551,194 @@ paths:
         "404": { description: Project not found }
         "409": { description: Project has not failed }
 
+  /teacher/schedule:
+    get:
+      operationId: listTeacherSchedule
+      tags: [teacher-schedule]
+      summary: List the current teacher's weekly classes and appointments
+      responses:
+        "200":
+          description: Teacher schedule entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeacherScheduleEntry"
+        "401": { description: Not authenticated }
+    post:
+      operationId: createTeacherScheduleEntry
+      tags: [teacher-schedule]
+      summary: Add a weekly class or one-time appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeacherScheduleEntryInput"
+      responses:
+        "201":
+          description: Schedule entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherScheduleEntry"
+        "400": { description: Invalid schedule entry }
+        "401": { description: Not authenticated }
+
+  /teacher/schedule/{id}:
+    patch:
+      operationId: updateTeacherScheduleEntry
+      tags: [teacher-schedule]
+      summary: Update one of the current teacher's schedule entries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeacherScheduleEntryUpdate"
+      responses:
+        "200":
+          description: Schedule entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherScheduleEntry"
+        "400": { description: Invalid schedule entry }
+        "401": { description: Not authenticated }
+        "404": { description: Schedule entry not found }
+    delete:
+      operationId: deleteTeacherScheduleEntry
+      tags: [teacher-schedule]
+      summary: Delete one of the current teacher's schedule entries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204": { description: Schedule entry deleted }
+        "401": { description: Not authenticated }
+        "404": { description: Schedule entry not found }
+
 components:
   schemas:
+    TeacherScheduleEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        teacherId:
+          type: integer
+        kind:
+          type: string
+          enum: [weekly, appointment]
+        title:
+          type: string
+        subject:
+          type: string
+          nullable: true
+        className:
+          type: string
+          nullable: true
+        dayOfWeek:
+          type: integer
+          minimum: 0
+          maximum: 6
+          nullable: true
+        appointmentDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          nullable: true
+        startTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        endTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, teacherId, kind, title, startTime, createdAt, updatedAt]
+
+    TeacherScheduleEntryInput:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [weekly, appointment]
+          default: weekly
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        subject:
+          type: string
+          maxLength: 100
+          nullable: true
+        className:
+          type: string
+          maxLength: 100
+          nullable: true
+        dayOfWeek:
+          type: integer
+          minimum: 0
+          maximum: 6
+          nullable: true
+        appointmentDate:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          nullable: true
+        startTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        endTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          nullable: true
+        location:
+          type: string
+          maxLength: 160
+          nullable: true
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+      required: [kind, title, startTime]
+
+    TeacherScheduleEntryUpdate:
+      allOf:
+        - $ref: "#/components/schemas/TeacherScheduleEntryInput"
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum: [weekly, appointment]
+            title:
+              type: string
+              minLength: 1
+              maxLength: 160
+            startTime:
+              type: string
+              pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+
     AiVideoCharacter:
       type: object
       additionalProperties: false
