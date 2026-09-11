@@ -99,14 +99,87 @@ export function validateExplicitTargetClasses(values: unknown): { valid: boolean
   return { valid: true, classes };
 }
 
-export function validateTeamsTargetClasses(values: unknown, ownedNames: string[], participantCount: number) {
-  const result = validateExplicitTargetClasses(values);
-  if (!result.valid) return result;
+export function validateTeamsTargetClasses(
+  values: unknown,
+  ownedNames: string[],
+  participantCount: number,
+): { valid: boolean; classes: string[]; error?: string } {
+  if (!Array.isArray(values)) return { valid: true, classes: [] };
+  if (values.some(value => value === ALL_CLASSES_VALUE || (typeof value === "string" && value.startsWith(EXCLUDED_CLASS_PREFIX)))) {
+    return { valid: false, classes: [], error: "sentinel" };
+  }
+  const classes = normalizeTargetClasses(values);
+  const result = { valid: true, classes };
+  if (classes.length > 6) return { valid: false, classes, error: "many" };
   if (participantCount > 0) return { valid: false, classes: result.classes, error: "participants" };
   if (result.classes.some(name => name.length > 100 || !ownedNames.includes(name))) {
     return { valid: false, classes: result.classes, error: "ownership" };
   }
   return result;
+}
+
+const ALL_CLASSES_VALUE = "__all_classes__";
+const EXCLUDED_CLASS_PREFIX = "__excluded_class__:";
+const SOLO_CLASS_CAP = 100;
+
+/**
+ * Resolve the class-selector directives used by live solo games.  The client
+ * may send concrete names, ALL_CLASSES_VALUE, and exclusions; the returned
+ * value is always a deduplicated list of teacher-owned concrete names.
+ */
+export function resolveSoloTargetClasses(
+  values: unknown,
+  ownedNames: string[],
+): { valid: boolean; classes: string[]; error?: string } {
+  if (values == null) return { valid: true, classes: [] };
+  if (!Array.isArray(values)) return { valid: false, classes: [], error: "malformed" };
+  const owned = Array.from(new Set(ownedNames.map(name => name.trim()).filter(Boolean)));
+  const ownedSet = new Set(owned);
+  const normalized = values.map(value => typeof value === "string" ? value.trim() : value);
+  if (normalized.some(value => typeof value !== "string" || !value)) {
+    return { valid: false, classes: [], error: "malformed" };
+  }
+  const all = normalized.includes(ALL_CLASSES_VALUE);
+  const exclusions = normalized
+    .filter((value): value is string => value.startsWith(EXCLUDED_CLASS_PREFIX))
+    .map(value => value.slice(EXCLUDED_CLASS_PREFIX.length).trim());
+  const concrete = normalized.filter((value): value is string =>
+    value !== ALL_CLASSES_VALUE && !value.startsWith(EXCLUDED_CLASS_PREFIX));
+  if (exclusions.some(name => !name || !ownedSet.has(name)) ||
+      (exclusions.length > 0 && !all) ||
+      (all && concrete.length > 0)) {
+    return { valid: false, classes: [], error: "malformed" };
+  }
+  if (concrete.some(name => !ownedSet.has(name))) {
+    return { valid: false, classes: [], error: "ownership" };
+  }
+  const classes = all
+    ? owned.filter(name => !exclusions.includes(name))
+    : Array.from(new Set(concrete));
+  if (classes.length > SOLO_CLASS_CAP) {
+    return { valid: false, classes: [], error: "cap" };
+  }
+  return { valid: true, classes };
+}
+
+export function deriveWameethTeams(
+  gameMode: GameMode | undefined,
+  targetClasses: string[] | null,
+  teamCount: number | undefined,
+  customTeamNames: string[] | undefined,
+) {
+  const classTeams = gameMode === "teams" && targetClasses && targetClasses.length >= 2
+    ? targetClasses
+    : null;
+  return {
+    classTeams,
+    effectiveTeamCount: classTeams ? classTeams.length : (teamCount || 2),
+    effectiveTeamNames: classTeams ?? customTeamNames,
+  };
+}
+
+export function requiresRosterBinding(targetClasses: string[], configuredTargetClasses: boolean): boolean {
+  return targetClasses.length > 0 && (configuredTargetClasses || targetClasses.length > 1);
 }
 
 export function normalizeRosterName(value: string): string {
@@ -921,35 +994,39 @@ export function setupGameSocket(io: Server) {
 
         const { assignmentId, questionDuration, autoAdvance, gameMode, teamCount, customTeamNames, hackMode, bankSubject, bankLevel, bankQuestionCount, targetClass: clientTargetClass, targetClasses: clientTargetClasses, studentTeamChoiceEnabled } = data;
         const trimmedClientClass = typeof clientTargetClass === "string" ? clientTargetClass.trim() : "";
-        if (Array.isArray(clientTargetClasses) && clientTargetClasses.some(item => item === "__all_classes__" || (typeof item === "string" && item.startsWith("__excluded_class__")))) {
-          callback?.({ error: "يجب اختيار صفوف محددة، وليس كل الصفوف" });
-          return;
-        }
-        const requestedClasses = normalizeTargetClasses(clientTargetClasses);
-        if (requestedClasses.length > 6) {
-          callback?.({ error: "يمكن اختيار صفّين إلى ستة صفوف فقط" });
-          return;
-        }
-        if (requestedClasses.length === 1) {
-          callback?.({ error: "اختر صفين على الأقل أو استخدم الصف المفرد القديم" });
-          return;
-        }
-        if (requestedClasses.length > 0) {
-          const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
-            .where(eq(teacherClassesTable.teacherId, teacherId));
-          const ownedNames = new Set(owned.map(row => row.name.trim()));
-          if (requestedClasses.some(name => !ownedNames.has(name))) {
-            callback?.({ error: "لا يمكنك استخدام صف غير مملوك لك" });
+        const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
+          .where(eq(teacherClassesTable.teacherId, teacherId));
+        const ownedNames = owned.map(row => row.name.trim());
+        const requestedInput = Array.isArray(clientTargetClasses)
+          ? clientTargetClasses
+          : (trimmedClientClass ? [trimmedClientClass] : []);
+        let requestedClasses: string[];
+        if (gameMode === "solo") {
+          const result = resolveSoloTargetClasses(requestedInput, ownedNames);
+          if (!result.valid) {
+            const error = result.error === "cap"
+              ? "لا يمكن تقييد اللعبة بأكثر من 100 صف"
+              : result.error === "ownership"
+                ? "لا يمكنك استخدام صف غير مملوك لك"
+                : "اختيار الصفوف غير صالح";
+            callback?.({ error });
             return;
           }
-        }
-        if (trimmedClientClass && requestedClasses.length === 0) {
-          const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
-            .where(eq(teacherClassesTable.teacherId, teacherId));
-          if (!owned.some(row => row.name.trim() === trimmedClientClass)) {
-            callback?.({ error: "لا يمكنك استخدام صف غير مملوك لك" });
+          requestedClasses = result.classes;
+        } else {
+          const result = validateTeamsTargetClasses(requestedInput, ownedNames, 0);
+          if (!result.valid) {
+            const error = result.error === "many"
+              ? "يمكن اختيار صفّين إلى ستة صفوف فقط"
+              : result.error === "sentinel"
+                  ? "يجب اختيار صفوف محددة، وليس كل الصفوف"
+                  : result.error === "ownership"
+                    ? "لا يمكنك استخدام صف غير مملوك لك"
+                    : "اختيار الصفوف غير صالح";
+            callback?.({ error });
             return;
           }
+          requestedClasses = result.classes;
         }
 
         let questions: GameQuestion[];
@@ -1081,9 +1158,8 @@ export function setupGameSocket(io: Server) {
           resolvedTargetClasses = requestedClasses;
           resolvedTargetClass = requestedClasses[0];
         }
-        const classTeams = resolvedTargetClasses && resolvedTargetClasses.length >= 2 ? resolvedTargetClasses : null;
-        const effectiveTeamCount = classTeams ? classTeams.length : (teamCount || 2);
-        const effectiveTeamNames = classTeams ?? customTeamNames;
+        const teamConfig = deriveWameethTeams(gameMode, resolvedTargetClasses, teamCount, customTeamNames);
+        const { classTeams, effectiveTeamCount, effectiveTeamNames } = teamConfig;
 
         const game = createGame(
           resolvedAssignmentId,
@@ -1167,7 +1243,8 @@ export function setupGameSocket(io: Server) {
       const targetClasses = game.targetClasses?.length ? game.targetClasses : (game.targetClass ? [game.targetClass] : []);
       const selectedClass = typeof data.selectedClass === "string" ? data.selectedClass.trim() : "";
       let tokenStudentId: number | null = null;
-      if (targetClasses.length > 1) {
+      const configuredTargetClasses = Array.isArray(game.targetClasses) && game.targetClasses.length > 0;
+      if (requiresRosterBinding(targetClasses, configuredTargetClasses)) {
         if (!selectedClass || !targetClasses.includes(selectedClass)) {
           callback?.({ error: "اختر صفاً مسموحاً به في هذه اللعبة" });
           return;
@@ -2349,13 +2426,16 @@ export function setupGameSocket(io: Server) {
       if (!game || game.teacherSocketId !== socket.id || !teacherId || teacherId !== game.teacherId) {
         callback?.({ error: "غير مصرح" }); return;
       }
-      if (game.state !== "lobby" || game.gameMode !== "teams") {
-        callback?.({ error: "لا يمكن تغيير صفوف الفرق الآن" }); return;
+      if (game.state !== "lobby") {
+        callback?.({ error: "لا يمكن تغيير الصفوف بعد بدء اللعبة" }); return;
       }
       const participantCount = Array.from(game.players.values()).filter(p => !p.isBot).length;
       const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
         .where(eq(teacherClassesTable.teacherId, teacherId));
-      const validation = validateTeamsTargetClasses(data.targetClasses ?? [], owned.map(row => row.name.trim()), participantCount);
+      const ownedNames = owned.map(row => row.name.trim());
+      const validation = game.gameMode === "solo"
+        ? resolveSoloTargetClasses(data.targetClasses ?? [], ownedNames)
+        : validateTeamsTargetClasses(data.targetClasses ?? [], ownedNames, participantCount);
       if (!validation.valid) {
         const errors: Record<string, string> = {
           one: "اختر صفين إلى 6 صفوف",
@@ -2363,8 +2443,24 @@ export function setupGameSocket(io: Server) {
           sentinel: "اختر صفوفاً محددة وليس كل الصفوف",
           ownership: "لا يمكنك استخدام صف غير مملوك لك",
           participants: "لا يمكن تغيير صفوف الفرق بعد انضمام الطلاب",
+          cap: "لا يمكن تقييد اللعبة بأكثر من 100 صف",
         };
         callback?.({ error: errors[validation.error || ""] || "اختيار الصفوف غير صالح" }); return;
+      }
+      if (game.gameMode === "solo" && participantCount > 0) {
+        callback?.({ error: "لا يمكن تغيير الصفوف بعد انضمام الطلاب" }); return;
+      }
+      if (game.gameMode === "solo") {
+        game.targetClasses = validation.classes.length ? validation.classes : null;
+        game.targetClass = validation.classes[0] || null;
+        io.to(`game:${game.pin}`).emit("game:players-updated", buildPlayersUpdatedPayload(game)!);
+        callback?.({ success: true, targetClass: game.targetClass, targetClasses: game.targetClasses });
+        return;
+      }
+      if (validation.classes.length < 2 && (game.targetClasses?.length ?? 0) >= 2 &&
+          game.teamNames.every(name => game.targetClasses!.includes(name))) {
+        callback?.({ error: "لا يمكن الانتقال من فرق الصفوف إلى صف واحد أو بدون صف؛ أعد إنشاء اللعبة للحفاظ على أسماء الفرق" });
+        return;
       }
       if (validation.classes.length === 0 && game.targetClasses?.length && game.teamNames.every(name => game.targetClasses!.includes(name))) {
         callback?.({ error: "لا يمكن مسح صفوف الفرق بعد تحويل الفرق إلى صفوف" }); return;

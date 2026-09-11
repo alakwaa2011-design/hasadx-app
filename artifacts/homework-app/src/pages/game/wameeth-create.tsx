@@ -73,6 +73,21 @@ type QuestionSource = "assignment" | "ai" | "manual";
 type Difficulty = "easy" | "medium" | "hard";
 type PlayMode = "solo" | "teams" | "classroom" | "independent";
 
+export function buildWameethClassPayload(
+  mode: "solo" | "teams",
+  values: string[],
+  legacyTargetClass = "",
+) {
+  const targetClasses = Array.from(new Set(values.filter(value => typeof value === "string" && value.trim()).map(value => value.trim())));
+  const concrete = targetClasses.filter(name => name !== "__all_classes__" && !name.startsWith("__excluded_class__:"));
+  return {
+    targetClass: mode === "solo" && targetClasses.length === 0 ? (legacyTargetClass || undefined) : undefined,
+    targetClasses: targetClasses.length ? targetClasses : undefined,
+    concreteTargetClasses: concrete,
+    teamsValid: mode !== "teams" || concrete.length === 0 || (concrete.length >= 2 && concrete.length <= 6),
+  };
+}
+
 // Wameedh entry point: prepare a set of questions (from an assignment, AI, or
 // written manually), review it, then pick how to play — solo / teams / class
 // mode — all three consuming the exact same prepared question list.
@@ -353,6 +368,9 @@ export default function WameethCreate() {
           ]);
         }
         if (typeof savedSettings.targetClass === "string") setTargetClass(savedSettings.targetClass);
+        if (Array.isArray(savedSettings.targetClasses)) {
+          setTargetClasses(savedSettings.targetClasses.filter((name): name is string => typeof name === "string"));
+        }
         toast.success(ar ? "تم تحميل نشاط اللعبة المحفوظ" : "Saved game activity loaded");
       } catch {
         toast.error(ar ? "تعذّر تحميل نشاط اللعبة المحفوظ" : "Could not load the saved game activity");
@@ -454,13 +472,10 @@ export default function WameethCreate() {
       toast.error(ar ? "أضف سؤالين صالحين على الأقل" : "Add at least 2 valid questions");
       return;
     }
-    const concreteTargetClasses = mode === "teams"
-      ? Array.from(new Set(targetClasses.filter(name => name && name !== "__all_classes__" && !name.startsWith("__excluded_class__"))))
-      : [];
-    if (mode === "teams" && concreteTargetClasses.length === 1) {
-      toast.error(ar ? "اختر صفين على الأقل أو امسح اختيار الصفوف" : "Select at least two classes or clear the selection");
-      return;
-    }
+    const classPayload = mode === "solo" || mode === "teams"
+      ? buildWameethClassPayload(mode, targetClasses, targetClass)
+      : { targetClasses: undefined, targetClass: undefined, concreteTargetClasses: [], teamsValid: true };
+    const { targetClasses: selectedTargetClasses, concreteTargetClasses } = classPayload;
     if (mode === "teams" && concreteTargetClasses.length > 6) {
       toast.error(ar ? "يمكن اختيار ستة صفوف كحد أقصى" : "Choose no more than six classes");
       return;
@@ -490,8 +505,8 @@ export default function WameethCreate() {
           customTeamNames: mode === "teams"
             ? customTeamNames.slice(0, teamCount).map(name => name.trim())
             : null,
-           targetClass: targetClass || null,
-           targetClasses: concreteTargetClasses.length ? concreteTargetClasses : null,
+           targetClass: mode === "solo" && concreteTargetClasses.length === 1 ? concreteTargetClasses[0] : null,
+           targetClasses: selectedTargetClasses || null,
            studentTeamChoiceEnabled,
         },
         source: sourceAssignmentId != null ? "assignment" : "game-launch",
@@ -545,8 +560,8 @@ export default function WameethCreate() {
           gameMode: mode,
           teamCount: mode === "teams" ? teamCount : undefined,
           customTeamNames: hasCustomNames ? validCustomNames : undefined,
-           targetClass: concreteTargetClasses.length ? undefined : (targetClass || undefined),
-           targetClasses: concreteTargetClasses.length ? concreteTargetClasses : undefined,
+           targetClass: classPayload.targetClass,
+           targetClasses: selectedTargetClasses,
            studentTeamChoiceEnabled,
         },
         (res: { pin?: string; error?: string }) => {
@@ -621,7 +636,8 @@ export default function WameethCreate() {
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
         <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
           <GameFlowBackButton
-            onBack={() => step === "mode" ? setStep("prepare") : setLocation("/")}
+            onBack={() => step === "mode" ? setStep("prepare") : setLocation("/teacher")}
+            label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
           />
           <div className="flex items-center gap-3 lg:gap-3.5">
             <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner">
@@ -1075,7 +1091,7 @@ export default function WameethCreate() {
 
              {mode === "teams" && (
               <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-4 lg:space-y-5">
-                 {targetClasses.length === 0 && <div>
+                 {targetClasses.length <= 1 && <div>
                   <label className="block text-xs lg:text-sm font-bold text-foreground mb-2 lg:mb-3 text-center">{ar ? "عدد الفرق" : "Number of teams"}</label>
                   <div className="flex justify-center gap-2 lg:gap-3">
                     {[2, 3, 4, 5, 6].map(n => (
@@ -1093,7 +1109,7 @@ export default function WameethCreate() {
                     ))}
                   </div>
                  </div>}
-                 {targetClasses.length === 0 && <div>
+                 {targetClasses.length <= 1 && <div>
                   <label className="block text-xs lg:text-sm font-bold text-foreground mb-2 lg:mb-3 text-center">{ar ? "أسماء الفرق (اختياري)" : "Team names (optional)"}</label>
                   <div className="space-y-2 lg:space-y-2.5">
                     {Array.from({ length: teamCount }).map((_, i) => (
@@ -1113,7 +1129,7 @@ export default function WameethCreate() {
                     ))}
                   </div>
                  </div>}
-                 {targetClasses.length === 0 && <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+                 {targetClasses.length <= 1 && <label className="flex items-center gap-3 text-sm font-bold text-foreground">
                    <input type="checkbox" checked={studentTeamChoiceEnabled} onChange={e => setStudentTeamChoiceEnabled(e.target.checked)} data-testid="wameeth-student-team-choice" />
                    {ar ? "السماح للطلاب باختيار فرقهم" : "Allow students to choose their teams"}
                  </label>}
@@ -1121,11 +1137,17 @@ export default function WameethCreate() {
             )}
 
             {(mode === "solo" || mode === "teams") && (
-              mode === "teams" ? (
-                <ClassSelector value={targetClasses} values={targetClasses} multiple onChange={() => {}} onValuesChange={setTargetClasses} accent="#a855f7" />
-              ) : (
-                <ClassSelector value={targetClass} onChange={setTargetClass} accent="#a855f7" />
-              )
+              <ClassSelector
+                value={targetClasses}
+                values={targetClasses}
+                multiple
+                onChange={() => {}}
+                onValuesChange={setTargetClasses}
+                accent={mode === "teams" ? "#a855f7" : "#3b82f6"}
+                label={mode === "solo"
+                  ? (ar ? "الصفوف المستهدفة (اختياري — صف واحد أو أكثر، مجموعة أو الكل)" : "Target classes (optional — one or more, a group, or all)")
+                  : undefined}
+              />
             )}
 
             <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />

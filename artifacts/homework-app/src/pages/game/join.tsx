@@ -21,6 +21,7 @@ export function mapJoinGameInfo(data: any): {
   classes: string[];
   teamNames: string[];
   studentTeamChoiceEnabled: boolean;
+  gameMode: "solo" | "teams" | null;
 } {
   const classes = Array.isArray(data?.targetClasses) && data.targetClasses.length > 0
     ? data.targetClasses
@@ -30,6 +31,7 @@ export function mapJoinGameInfo(data: any): {
     classes,
     teamNames: data?.exists === true && Array.isArray(data?.teamNames) ? data.teamNames : [],
     studentTeamChoiceEnabled: data?.exists === true && !!data?.studentTeamChoiceEnabled,
+    gameMode: data?.exists === true && (data?.gameMode === "solo" || data?.gameMode === "teams") ? data.gameMode : null,
   };
 }
 
@@ -59,6 +61,7 @@ export default function GameJoin() {
   const [manualName, setManualName] = useState(false);
   const [gameTeamNames, setGameTeamNames] = useState<string[]>([]);
   const [studentTeamChoiceEnabled, setStudentTeamChoiceEnabled] = useState(false);
+  const [gameMode, setGameMode] = useState<"solo" | "teams" | null>(null);
   const [requestedTeam, setRequestedTeam] = useState("");
   const [studentAccount, setStudentAccount] = useState<StudentAccount | null>(null);
   const [typedChars, setTypedChars] = useState<string[]>([]);
@@ -98,6 +101,7 @@ export default function GameJoin() {
       setSelectedClass("");
       setGameTeamNames([]);
       setStudentTeamChoiceEnabled(false);
+      setGameMode(null);
       setRequestedTeam("");
       return;
     }
@@ -116,6 +120,7 @@ export default function GameJoin() {
           const info = mapJoinGameInfo(data);
           setGameTeamNames(info.exists ? info.teamNames : []);
           setStudentTeamChoiceEnabled(info.studentTeamChoiceEnabled);
+          setGameMode(info.gameMode);
           setRequestedTeam("");
           if (info.exists && info.classes.length > 0) {
             setGameTargetClass(info.classes[0]);
@@ -128,6 +133,7 @@ export default function GameJoin() {
             setGameTargetClasses([]);
             setGameStudents([]);
             setSelectedClass("");
+            setGameMode(info.gameMode);
           } else {
             setGameTargetClass(null);
             setGameTargetClasses([]);
@@ -135,6 +141,7 @@ export default function GameJoin() {
             setSelectedClass("");
             setGameTeamNames([]);
             setStudentTeamChoiceEnabled(false);
+            setGameMode(null);
           }
         })
         .catch(() => {
@@ -146,6 +153,7 @@ export default function GameJoin() {
           setSelectedClass("");
           setGameTeamNames([]);
           setStudentTeamChoiceEnabled(false);
+          setGameMode(null);
           setRequestedTeam("");
         });
     }
@@ -174,7 +182,7 @@ export default function GameJoin() {
     const accountParam = studentAccount ? `&studentAccountId=${studentAccount.id}` : "";
     setLocation(`/game/play/${trimmedPin}?name=${encodeURIComponent(trimmedName)}&avatar=${encodeURIComponent(selectedAvatar)}${classParam}${tokenParam}${manualParam}${teamParam}${accountParam}`);
   };
-  const needsTeamChoice = studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 0;
+  const needsTeamChoice = gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1;
   const canJoin = !!pin.trim() && !!name.trim() && (!needsTeamChoice || !!requestedTeam);
 
   if (hackMode) {
@@ -217,7 +225,7 @@ export default function GameJoin() {
                 </div>
               )}
 
-              {studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 0 && (
+              {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1 && (
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-green-600">{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -405,7 +413,7 @@ export default function GameJoin() {
               </div>
             )}
 
-            {studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 0 && (
+            {gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1 && (
               <div className="space-y-2">
                 <label className="block text-xs font-bold" style={{ color: "#7A9A7C" }}>{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
                 <div className="grid grid-cols-2 gap-2">

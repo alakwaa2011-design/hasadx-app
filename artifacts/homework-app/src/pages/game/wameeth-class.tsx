@@ -28,6 +28,7 @@ import {
   type WameethClassState,
 } from "@/lib/wameeth-class-engine";
 import { QuestionImage } from "@/components/game/question-image";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 // ─── Session-storage key ──────────────────────────────────────────────────────
 export const WAMEETH_CLASS_SETUP_KEY = "wameeth-class-setup";
@@ -181,6 +182,13 @@ function FinishedScreen({ state, blueName, redName, ar, onRematch, onExit }: {
     <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-8"
       style={{ background: "linear-gradient(160deg,#0D2118 0%,#1A3A28 50%,#0F2A1C 100%)" }}
       dir={ar ? "rtl" : "ltr"}>
+      <div className="fixed top-4 start-4 z-[60]">
+        <GameFlowBackButton
+          onBack={onExit}
+          label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+          className="border-white/20 bg-black/30 text-white hover:bg-white/10 hover:text-white"
+        />
+      </div>
       <Fireworks />
       <div className="max-w-2xl mx-auto relative z-20">
         <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8 mt-4">
@@ -1286,6 +1294,11 @@ function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch,
           {setup.title || (ar?"وميض الصف":"Wameeth Class")}
         </span>
         <div className="flex items-center gap-1.5">
+          <GameFlowBackButton
+            onBack={onExit}
+            label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+            className="h-8 w-8 rounded-full border-white/15 bg-black/40 p-1.5 text-white/70 hover:text-white"
+          />
           {shareToken && (
             <button
               type="button"
@@ -1437,7 +1450,8 @@ export default function WameethClass() {
   if (loadingSetup) {
     return (
       <Layout>
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center" dir={ar ? "rtl" : "ltr"}>
+        <div className="relative flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center" dir={ar ? "rtl" : "ltr"}>
+          <div className="absolute top-4 start-4"><GameFlowBackButton onBack={() => setLocation("/teacher")} label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"} /></div>
           <Loader2 className="w-12 h-12 text-amber-400 animate-spin" />
           <p className="font-black text-lg" data-testid="status-wameeth-class-loading">
             {ar ? "جارٍ تجهيز وميض الصف..." : "Preparing Wameeth Class..."}
@@ -1450,7 +1464,8 @@ export default function WameethClass() {
   if (setupError) {
     return (
       <Layout>
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center" dir={ar ? "rtl" : "ltr"}>
+        <div className="relative flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center" dir={ar ? "rtl" : "ltr"}>
+          <div className="absolute top-4 start-4"><GameFlowBackButton onBack={() => setLocation("/teacher")} label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"} /></div>
           <AlertCircle className="w-14 h-14 text-red-500" />
           <h2 className="text-2xl font-black">{ar ? "تعذّر فتح الرابط" : "Could not open link"}</h2>
           <p className="max-w-sm text-muted-foreground" data-testid="status-wameeth-class-error">{setupError}</p>
@@ -1462,13 +1477,14 @@ export default function WameethClass() {
   if (!setup) {
     return (
       <Layout>
-        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
+        <div className="relative flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
+          <div className="absolute top-4 start-4"><GameFlowBackButton onBack={() => setLocation("/teacher")} label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"} /></div>
           <School className="w-14 h-14 text-yellow-400"/>
           <h2 className="text-2xl font-black">{ar?"وميض الصف":"Wameeth Class"}</h2>
           <p className="max-w-sm text-muted-foreground">
             {ar?"افتح صفحة إنشاء وميض، اختر واجباً ثم اضغط «وميض الصف».":"Open the Wameeth create page, pick a quiz, then tap «Wameeth Class»."}
           </p>
-          <button onClick={() => setLocation("/game/wameeth/create")}
+           <button onClick={() => setLocation("/game/wameeth/create")}
             className="rounded-xl px-6 py-3 font-bold"
             style={{ background:"linear-gradient(135deg,#f7c948,#d97706)", color:"#1a1008" }}>
             {ar?"اختر مسابقة":"Pick a quiz"}
@@ -1488,7 +1504,7 @@ export default function WameethClass() {
         settings={settings}
         onSettings={setSettings}
         onRematch={(swap) => { if (swap) setSwapped((s) => !s); setRound((r) => r + 1); }}
-        onExit={() => setLocation("/game/wameeth/create")}/>
+         onExit={() => setLocation("/teacher")}/>
     </Layout>
   );
 }

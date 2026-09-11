@@ -5,6 +5,10 @@ import {
   normalizeTargetClasses,
   rosterSelectionToken,
   validateExplicitTargetClasses,
+  validateTeamsTargetClasses,
+  resolveSoloTargetClasses,
+  deriveWameethTeams,
+  requiresRosterBinding,
 } from "../game/socket-handlers";
 import {
   assignTeamsAlphabetically,
@@ -26,6 +30,52 @@ describe("Wameeth teams pure validation", () => {
     expect(validateExplicitTargetClasses(["A", "B", "C", "D", "E", "F", "G"])).toMatchObject({ valid: false, error: "many" });
     expect(validateExplicitTargetClasses(["__all_classes__"])).toMatchObject({ valid: false, error: "sentinel" });
     expect(normalizeTargetClasses([" A ", "A", "B"])).toEqual(["A", "B"]);
+  });
+
+  it("resolves solo unrestricted, concrete, expanded groups, and directives", () => {
+    const owned = Array.from({ length: 10 }, (_, i) => `Class ${i + 1}`);
+    expect(resolveSoloTargetClasses([], owned)).toMatchObject({ valid: true, classes: [] });
+    expect(resolveSoloTargetClasses([" Class 1 "], owned).classes).toEqual(["Class 1"]);
+    expect(resolveSoloTargetClasses(["Class 1", "Class 2"], owned).classes).toEqual(["Class 1", "Class 2"]);
+    expect(resolveSoloTargetClasses(owned, owned).classes).toHaveLength(10);
+    expect(resolveSoloTargetClasses(["__all_classes__"], owned).classes).toEqual(owned);
+    expect(resolveSoloTargetClasses(["__all_classes__", "__excluded_class__:Class 2", "__excluded_class__:Class 4"], owned).classes)
+      .toEqual(owned.filter(name => !["Class 2", "Class 4"].includes(name)));
+    expect(resolveSoloTargetClasses(["Class 1", "Class 2", "Class 2", " Class 1 "], owned).classes)
+      .toEqual(["Class 1", "Class 2"]);
+  });
+
+  it("rejects unknown, malformed, and over-cap solo selections", () => {
+    const owned = ["A", "B"];
+    expect(resolveSoloTargetClasses(["Unknown"], owned)).toMatchObject({ valid: false, error: "ownership" });
+    expect(resolveSoloTargetClasses(["__all_classes__", "A"], owned)).toMatchObject({ valid: false, error: "malformed" });
+    expect(resolveSoloTargetClasses(["__excluded_class__:A"], owned)).toMatchObject({ valid: false, error: "malformed" });
+    const many = Array.from({ length: 101 }, (_, i) => `C${i}`);
+    expect(resolveSoloTargetClasses(["__all_classes__"], many)).toMatchObject({ valid: false, error: "cap" });
+  });
+
+  it("keeps teams at zero or two-to-six concrete classes", () => {
+    expect(validateTeamsTargetClasses([], ["A", "B"], 0)).toMatchObject({ valid: true, classes: [] });
+    expect(validateTeamsTargetClasses(["A"], ["A", "B"], 0)).toMatchObject({ valid: true, classes: ["A"] });
+    expect(validateTeamsTargetClasses(Array.from({ length: 7 }, (_, i) => `C${i}`), Array.from({ length: 7 }, (_, i) => `C${i}`), 0))
+      .toMatchObject({ valid: false, error: "many" });
+    expect(validateTeamsTargetClasses(["__all_classes__", "A", "B"], ["A", "B"], 0)).toMatchObject({ valid: false, error: "sentinel" });
+  });
+
+  it("never turns solo class restrictions into teams", () => {
+    expect(deriveWameethTeams("solo", ["A", "B", "C"], 2, ["Custom A", "Custom B"]))
+      .toEqual({ classTeams: null, effectiveTeamCount: 2, effectiveTeamNames: ["Custom A", "Custom B"] });
+    expect(deriveWameethTeams("teams", ["A", "B"], 2, undefined))
+      .toEqual({ classTeams: ["A", "B"], effectiveTeamCount: 2, effectiveTeamNames: ["A", "B"] });
+    expect(deriveWameethTeams("teams", ["A"], 3, ["Red", "Blue", "Green"]))
+      .toEqual({ classTeams: null, effectiveTeamCount: 3, effectiveTeamNames: ["Red", "Blue", "Green"] });
+  });
+
+  it("requires roster-bound class and name selection for configured one-class games", () => {
+    expect(requiresRosterBinding(["A"], true)).toBe(true);
+    expect(requiresRosterBinding(["A", "B"], false)).toBe(true);
+    expect(requiresRosterBinding(["A"], false)).toBe(false);
+    expect(requiresRosterBinding([], false)).toBe(false);
   });
 
   it("binds roster tokens to pin, class and student", () => {

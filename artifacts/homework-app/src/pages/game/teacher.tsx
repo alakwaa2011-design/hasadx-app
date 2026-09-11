@@ -18,6 +18,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Button } from "@/components/ui/button";
 import { Music2, Settings2, Power, Volume2, VolumeX, MoreVertical, QrCode, RotateCcw, Sparkles } from "lucide-react";
 import { QuestionImage } from "@/components/game/question-image";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 
 interface GiftEvent {
@@ -119,12 +120,17 @@ const RankBadge = ({ rank, size = 64 }: { rank: 1 | 2 | 3; size?: number }) => {
 
 const TeacherControlHeader = ({
   phase, pin, totalPlayers, answeredCount, isPaused, autoAdvance, musicMuted, hackMode, hackMusicMuted,
-  onPauseResume, onEndGame, onSkip, onAdvance, onCopyLink, onToggleMusic, onToggleHackMusic, t, lang, question
+  onPauseResume, onEndGame, onBack, onSkip, onAdvance, onCopyLink, onToggleMusic, onToggleHackMusic, t, lang, question
 }: any) => {
   const isQuestion = phase === "question";
   return (
     <header className="sticky top-2 sm:top-4 z-40 bg-[#0A120E]/90 backdrop-blur-xl border border-emerald-900/50 shadow-2xl rounded-2xl mb-6 mx-auto max-w-5xl flex items-center justify-between p-2 sm:px-4" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="flex items-center gap-2 sm:gap-3">
+        <GameFlowBackButton
+          onBack={onBack}
+          label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+          className="h-9 w-9 border-emerald-800/60 bg-transparent text-emerald-300 hover:bg-emerald-900/40 hover:text-emerald-200"
+        />
         <div className="flex flex-col items-center justify-center bg-emerald-950/40 border border-emerald-900/40 rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 min-w-[4.5rem]">
           <span className="text-[9px] sm:text-[10px] text-emerald-500/80 uppercase font-black tracking-wider leading-none mb-0.5">{t.teacherGame.code}</span>
           <span className="font-mono font-black text-base sm:text-lg text-emerald-50 leading-none">{pin}</span>
@@ -358,6 +364,7 @@ export default function TeacherGame() {
   const sentMsgIdRef = useRef(0);
   const giftIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const exitRequestedRef = useRef(false);
 
   useEffect(() => {
     const socket = getSocket();
@@ -716,9 +723,16 @@ export default function TeacherGame() {
   };
 
   const endGame = () => {
+    if (exitRequestedRef.current) return;
+    exitRequestedRef.current = true;
     stopHackMarathonLoop();
     const socket = getSocket();
     socket.emit("teacher:end-game", { pin });
+  };
+
+  const backToTeacher = () => {
+    if (phase !== "finished") endGame();
+    setLocation("/teacher");
   };
 
   const copyPin = () => {
@@ -762,12 +776,9 @@ export default function TeacherGame() {
   };
 
   const updateTargetClasses = (values: string[]) => {
-    const concrete = Array.from(new Set(values.filter(v => v && v !== "__all_classes__" && !v.startsWith("__excluded_class__")))).slice(0, 6);
-    if (concrete.length === 1) {
-      setTargetClasses(concrete);
-      return;
-    }
-    getSocket().emit("teacher:set-target-classes", { pin, targetClasses: concrete }, (res: any) => {
+    const selected = Array.from(new Set(values.filter(v => v && typeof v === "string")));
+    const concrete = selected.filter(v => v !== "__all_classes__" && !v.startsWith("__excluded_class__"));
+    getSocket().emit("teacher:set-target-classes", { pin, targetClasses: selected }, (res: any) => {
       if (res?.success) {
         setTargetClasses(res.targetClasses || concrete);
         setTargetClass(res.targetClass || "");
@@ -1107,9 +1118,10 @@ export default function TeacherGame() {
         broadcastSent={broadcastSent}
         sentMessages={sentMessages}
         t={t}
-        onHome={() => { endGame(); setLocation("/teacher/games"); }}
+        onHome={backToTeacher}
+        onBackToTeacher={backToTeacher}
         onToggleLang={() => setLang(isAr ? "en" : "ar")}
-        onEndGame={() => { endGame(); setLocation("/teacher/games"); }}
+        onEndGame={backToTeacher}
         onStartGame={startGame}
         onCopyPin={copyPin}
         onCopyLink={copyLink}
@@ -1148,7 +1160,7 @@ export default function TeacherGame() {
         <TeacherControlHeader
           phase={phase} pin={pin} totalPlayers={totalPlayers} answeredCount={answeredCount}
           isPaused={isPaused} autoAdvance={autoAdvance} musicMuted={musicMuted} hackMode={hackMode} hackMusicMuted={hackMusicMuted}
-          onPauseResume={isPaused ? resumeGame : pauseGame} onEndGame={endGame} onSkip={skipQuestion} onAdvance={nextQ}
+           onPauseResume={isPaused ? resumeGame : pauseGame} onEndGame={endGame} onBack={backToTeacher} onSkip={skipQuestion} onAdvance={nextQ}
           onCopyLink={copyLink} onToggleMusic={handleToggleMusic} onToggleHackMusic={handleToggleHackMusic} t={t} lang={lang} question={question}
         />
         
@@ -1239,6 +1251,7 @@ export default function TeacherGame() {
   if (phase === "gift-round") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
+        <div className="fixed top-4 start-4 z-50"><GameFlowBackButton onBack={backToTeacher} label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"} /></div>
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
           <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-8xl mb-4">🎁</motion.div>
           <h2 className="text-4xl font-black text-white mb-3">{t.teacherGame.giftRoundTitle}</h2>
@@ -1272,7 +1285,7 @@ export default function TeacherGame() {
         <TeacherControlHeader
           phase={phase} pin={pin} totalPlayers={totalPlayers} answeredCount={answeredCount}
           isPaused={isPaused} autoAdvance={autoAdvance} musicMuted={musicMuted} hackMode={hackMode} hackMusicMuted={hackMusicMuted}
-          onPauseResume={isPaused ? resumeGame : pauseGame} onEndGame={endGame} onSkip={skipQuestion} onAdvance={nextQ}
+           onPauseResume={isPaused ? resumeGame : pauseGame} onEndGame={endGame} onBack={backToTeacher} onSkip={skipQuestion} onAdvance={nextQ}
           onCopyLink={copyLink} onToggleMusic={handleToggleMusic} onToggleHackMusic={handleToggleHackMusic} t={t} lang={lang} question={question}
         />
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-5xl">
@@ -1648,6 +1661,7 @@ export default function TeacherGame() {
 
     return (
       <div className="min-h-screen p-4 sm:p-8" style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }} dir={dir}>
+        <div className="fixed top-4 start-4 z-50"><GameFlowBackButton onBack={backToTeacher} label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"} /></div>
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           {Array.from({ length: 30 }).map((_, i) => (
             <motion.div key={`confetti-${i}`}

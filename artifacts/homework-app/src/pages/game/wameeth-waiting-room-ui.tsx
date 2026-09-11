@@ -34,6 +34,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 
 /* ── Palette (cinematic reference) ── */
 const P = {
@@ -116,6 +117,7 @@ export interface WameethWaitingRoomUIProps {
     };
   };
   onHome: () => void;
+  onBackToTeacher: () => void;
   onToggleLang: () => void;
   onEndGame: () => void;
   onStartGame: () => void;
@@ -988,6 +990,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     sentMessages,
     t,
     onHome,
+    onBackToTeacher,
     onToggleLang,
     onEndGame,
     onStartGame,
@@ -1081,7 +1084,12 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           className="sticky top-0 z-50 border-b backdrop-blur-xl lg:hidden"
           style={{ borderColor: P.border, background: "rgba(3,27,17,0.92)" }}
         >
-          <motion.div className="relative flex h-[52px] items-center justify-between px-4">
+            <motion.div className="relative flex h-[52px] items-center justify-between px-4">
+             <GameFlowBackButton
+               onBack={onBackToTeacher}
+               label={isAr ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+               className="h-9 w-9 border-[rgba(212,166,58,0.35)] bg-[rgba(8,43,24,0.65)] text-[#f4c95d]"
+             />
             <button
               type="button"
               onClick={onHome}
@@ -1129,7 +1137,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           className="sticky top-0 z-50 hidden border-b backdrop-blur-xl lg:block"
           style={{ borderColor: P.border, background: "rgba(1,12,8,0.92)" }}
         >
-          <div className="mx-auto grid h-[72px] max-w-[1500px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 lg:px-10">
+            <div className="mx-auto grid h-[72px] max-w-[1500px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 lg:px-10">
             <BrandLogoBlock isAr={isAr} onHome={onHome} />
 
             <div className="justify-self-center text-center">
@@ -1142,7 +1150,12 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center justify-self-end gap-2.5 sm:gap-3">
+             <div className="flex shrink-0 items-center justify-self-end gap-2.5 sm:gap-3">
+               <GameFlowBackButton
+                 onBack={onBackToTeacher}
+                 label={isAr ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+                 className="border-[rgba(212,166,58,0.35)] bg-[rgba(8,43,24,0.6)] text-[#f4c95d]"
+               />
               <button
                 type="button"
                 onClick={onHome}
@@ -1438,19 +1451,21 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                       onChange={() => {}}
                       onValuesChange={onUpdateTargetClasses}
                       accent={P.gold}
-                      label={isAr ? "اختر صفين إلى 6 صفوف" : "Choose 2 to 6 classes"}
+                      label={isAr ? "اختياري: اختر صفاً واحداً أو صفين إلى 6 صفوف" : "Optional: choose 1 or 2 to 6 classes"}
                       portaled
                       variant="cinematic"
                     />
                   ) : (
                     <ClassSelector
-                      value={targetClass}
-                      onChange={onUpdateTargetClass}
+                      value={targetClasses}
+                      values={targetClasses}
+                      multiple
+                      onChange={() => {}}
+                      onValuesChange={onUpdateTargetClasses}
                       accent={P.gold}
-                      label=""
+                      label={isAr ? "اختر صفاً أو أكثر (اختياري، أو الكل)" : "Choose one or more classes (optional, or all)"}
                       portaled
                       variant="cinematic"
-                      className="[&_label]:hidden"
                     />
                   )}
                 </div>

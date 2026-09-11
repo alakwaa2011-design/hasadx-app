@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { buildWameethClassPayload } from "./wameeth-create";
 
 const source = readFileSync(resolve(import.meta.dirname, "./wameeth-create.tsx"), "utf8");
 
@@ -22,5 +23,21 @@ describe("Wameedh play mode ordering", () => {
     expect(source.indexOf('data-testid="playmode-independent"', boardStart)).toBeGreaterThan(boardStart);
     expect(source.indexOf('data-testid="playmode-solo"', devicesStart)).toBeGreaterThan(devicesStart);
     expect(source.indexOf('data-testid="playmode-teams"', devicesStart)).toBeGreaterThan(devicesStart);
+  });
+});
+
+describe("Wameeth class-selection payload", () => {
+  it("preserves solo multi-selection directives and legacy unrestricted mode", () => {
+    expect(buildWameethClassPayload("solo", ["A", "B", "__all_classes__"]).targetClasses)
+      .toEqual(["A", "B", "__all_classes__"]);
+    expect(buildWameethClassPayload("solo", [], "Legacy").targetClass).toBe("Legacy");
+    expect(buildWameethClassPayload("solo", [], "").targetClass).toBeUndefined();
+  });
+
+  it("retains the teams two-to-six constraint while solo accepts many", () => {
+    expect(buildWameethClassPayload("teams", ["A"]).teamsValid).toBe(false);
+    expect(buildWameethClassPayload("teams", ["A", "B", "C", "D", "E", "F"]).teamsValid).toBe(true);
+    expect(buildWameethClassPayload("teams", ["A", "B", "C", "D", "E", "F", "G"]).teamsValid).toBe(false);
+    expect(buildWameethClassPayload("solo", Array.from({ length: 10 }, (_, i) => `C${i}`)).teamsValid).toBe(true);
   });
 });
