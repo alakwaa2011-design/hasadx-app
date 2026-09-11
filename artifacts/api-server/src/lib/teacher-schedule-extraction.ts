@@ -67,6 +67,28 @@ const extractedScheduleSchema = z.object({
 
 export type ExtractedTeacherSchedule = z.infer<typeof extractedScheduleSchema>;
 
+function isClearlyNonLessonLabel(value: string): boolean {
+  const normalized = value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const exactEnglishLabels = new Set([
+    "advise",
+    "advisory",
+    "snack",
+    "recess",
+    "break",
+    "prayer",
+    "prayer break",
+    "duty",
+    "meeting",
+    "assembly",
+    "morning assembly",
+    "professional development",
+    "pd",
+  ]);
+  if (exactEnglishLabels.has(normalized)) return true;
+  if (/^(?:meeting|duty|recess|snack|advisory)\s*[-–—:]\s*.+$/i.test(normalized)) return true;
+  return /^(?:اجتماع(?:\s+.+)?|فرصة(?:\s+.+)?|فسحة(?:\s+.+)?|صلاة(?:\s+(?:الظهر|العصر|المغرب|العشاء|الفجر))?|مناوبة(?:\s+.+)?|تطوير مهني(?:\s+.+)?|استراحة(?:\s+.+)?|سناك(?:\s+.+)?|طابور(?:\s+.+)?)$/u.test(normalized);
+}
+
 const arabicDigitMap: Record<string, string> = {
   "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
   "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
@@ -191,20 +213,25 @@ Return ONLY valid JSON with this exact shape:
 
 Rules:
 - dayOfWeek MUST use: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6.
-- Include only days and lessons visibly present in the image.
-- lessonNumber is the lesson number written in the image, from 1 through 30, and must remain unique within each day.
+- Include every visible schedule cell, whether it is a class, ADVISE/ADVISORY, SNACK, prayer, duty, meeting, development, assembly, recess, or another local school label.
+- A numbered row or column header is only a timetable position. It does NOT make the cell a lesson and must never replace the cell text.
+- Put a cell in lessons only when the cell itself clearly represents a taught class/course. Put every other cell in breaks, even when it appears under a numbered period header.
+- lessonNumber is allowed only for a clearly taught class. Treat standalone schedule labels such as ADVISE, ADVISORY, SNACK, RECESS, PD, prayer, duty, meeting, or morning assembly as non-lesson periods.
+- Use the full cell meaning, not keyword matching. Real course names such as "Assembly Language", "Software Development", and "Prayer Studies" remain lessons.
 - Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes a shared period time; otherwise omit that lesson and add a warning.
-- For every numbered lesson, copy the primary cell text into title EXACTLY as written in the image; do not replace it with a generic lesson label.
+- For every entry, copy the primary cell text into title EXACTLY as written in the image; title must not be empty when visible text exists.
 - Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
 - If one cell contains multiple classes, preserve its visible text in className rather than inventing separate lessons.
 - confidence must be high, medium, or low for each lesson. Use low when text is blurry, partially hidden, or inferred.
 - Extract every visible non-lesson period into breaks, including prayer, duty, assembly, meeting, professional development, recess, or snack.
 - Preserve each period title EXACTLY as written in the image. Never replace it with a generic label such as Break or Snack.
-- breakAfterLesson identifies the closest numbered lesson before the period; use 0 when it appears before the first numbered lesson.
-- Multiple non-lesson periods may share the same breakAfterLesson. Keep all of them and preserve their chronological order through startTime.
+- For a non-lesson entry, breakAfterLesson stores the visible timetable period/slot number itself (for example RECESS in slot 7 uses 7). Use 0 only when no period number is visible.
+- A visible period number never changes the entry type: RECESS in slot 7 remains a non-lesson entry titled RECESS, not lesson 7.
+- Multiple non-lesson periods may have the same visible period number. Keep all of them and preserve their chronological order through startTime.
 - Do not force lesson numbers or non-lesson periods into a standard school order. Follow the source image exactly.
 - Never invent missing days, lessons, subjects, classes, or times.
-- Write extracted text and warnings in ${outputLanguage}.
+- Preserve every visible schedule title, subject, class, and label in its original source language without translation.
+- Write only generated warnings in ${outputLanguage}.
 - No markdown fences and no prose outside the JSON.`;
 }
 
@@ -217,25 +244,39 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
 
   return {
     daySchedules: validated.daySchedules
-      .map((day) => ({
-        dayOfWeek: day.dayOfWeek,
-        lessons: day.lessons
+      .map((day) => {
+        const normalizedLessons = day.lessons
           .map((lesson) => ({
             ...lesson,
-            title: lesson.title.trim(),
+            title: lesson.title.trim() || lesson.subject?.trim() || lesson.className?.trim() || "",
             subject: lesson.subject?.trim() || null,
             className: lesson.className?.trim() || null,
             endTime: lesson.endTime || null,
-          }))
-          .sort((left, right) => left.startTime.localeCompare(right.startTime)),
-        breaks: day.breaks
+          }));
+        const correctedPeriods = normalizedLessons
+          .filter((lesson) => isClearlyNonLessonLabel(lesson.title))
+          .map((lesson) => ({
+            title: lesson.title,
+            breakAfterLesson: lesson.lessonNumber,
+            startTime: lesson.startTime,
+            endTime: lesson.endTime,
+            confidence: lesson.confidence,
+          }));
+
+        return {
+          dayOfWeek: day.dayOfWeek,
+          lessons: normalizedLessons
+            .filter((lesson) => !isClearlyNonLessonLabel(lesson.title))
+            .sort((left, right) => left.startTime.localeCompare(right.startTime)),
+          breaks: [...day.breaks
           .map((entry) => ({
             ...entry,
             title: entry.title.trim(),
             endTime: entry.endTime || null,
-          }))
-          .sort((left, right) => left.startTime.localeCompare(right.startTime)),
-      }))
+          })), ...correctedPeriods]
+            .sort((left, right) => left.startTime.localeCompare(right.startTime)),
+        };
+      })
       .sort((left, right) => left.dayOfWeek - right.dayOfWeek),
     warnings: validated.warnings,
   };

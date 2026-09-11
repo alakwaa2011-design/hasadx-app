@@ -20,15 +20,15 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     borderRadius: z.ZodOptional<z.ZodNumber>;
     opacity: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    id: string;
     kind: "text" | "rect" | "circle" | "line";
+    id: string;
     x: number;
     y: number;
     width: number;
     height: number;
     text?: string | undefined;
     fontSize?: number | undefined;
-    align?: "center" | "left" | "right" | undefined;
+    align?: "left" | "right" | "center" | undefined;
     fontColor?: string | undefined;
     bold?: boolean | undefined;
     italic?: boolean | undefined;
@@ -39,15 +39,15 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     borderRadius?: number | undefined;
     opacity?: number | undefined;
 }, {
-    id: string;
     kind: "text" | "rect" | "circle" | "line";
+    id: string;
     x: number;
     y: number;
     width: number;
     height: number;
     text?: string | undefined;
     fontSize?: number | undefined;
-    align?: "center" | "left" | "right" | undefined;
+    align?: "left" | "right" | "center" | undefined;
     fontColor?: string | undefined;
     bold?: boolean | undefined;
     italic?: boolean | undefined;
@@ -113,15 +113,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             borderRadius: z.ZodOptional<z.ZodNumber>;
             opacity: z.ZodOptional<z.ZodNumber>;
         }, "strip", z.ZodTypeAny, {
-            id: string;
             kind: "text" | "rect" | "circle" | "line";
+            id: string;
             x: number;
             y: number;
             width: number;
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "center" | "left" | "right" | undefined;
+            align?: "left" | "right" | "center" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -132,15 +132,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             borderRadius?: number | undefined;
             opacity?: number | undefined;
         }, {
-            id: string;
             kind: "text" | "rect" | "circle" | "line";
+            id: string;
             x: number;
             y: number;
             width: number;
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "center" | "left" | "right" | undefined;
+            align?: "left" | "right" | "center" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -153,15 +153,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
         elements: {
-            id: string;
             kind: "text" | "rect" | "circle" | "line";
+            id: string;
             x: number;
             y: number;
             width: number;
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "center" | "left" | "right" | undefined;
+            align?: "left" | "right" | "center" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -174,15 +174,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     }, {
         elements: {
-            id: string;
             kind: "text" | "rect" | "circle" | "line";
+            id: string;
             x: number;
             y: number;
             width: number;
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "center" | "left" | "right" | undefined;
+            align?: "left" | "right" | "center" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -260,18 +260,19 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
     includeAnswerKey: boolean;
     columns: 1 | 2;
     showWatermark: boolean;
+    instructions?: string | undefined;
     teacherName?: string | undefined;
     layout?: {
         elements: {
-            id: string;
             kind: "text" | "rect" | "circle" | "line";
+            id: string;
             x: number;
             y: number;
             width: number;
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "center" | "left" | "right" | undefined;
+            align?: "left" | "right" | "center" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -283,7 +284,6 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             opacity?: number | undefined;
         }[];
     } | undefined;
-    instructions?: string | undefined;
     learningObjective?: string | undefined;
     cognitiveSkill?: "create" | "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | undefined;
     activityDuration?: number | undefined;
@@ -319,18 +319,19 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         rubric?: string | undefined;
     }[] | undefined;
 }, {
+    instructions?: string | undefined;
     teacherName?: string | undefined;
     layout?: {
         elements: {
-            id: string;
             kind: "text" | "rect" | "circle" | "line";
+            id: string;
             x: number;
             y: number;
             width: number;
             height: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "center" | "left" | "right" | undefined;
+            align?: "left" | "right" | "center" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -343,7 +344,6 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     } | undefined;
     fontFamily?: "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia" | undefined;
-    instructions?: string | undefined;
     fontSizePt?: number | undefined;
     learningObjective?: string | undefined;
     cognitiveSkill?: "create" | "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | undefined;

@@ -1566,6 +1566,18 @@ paths:
                 items:
                   $ref: "#/components/schemas/TeacherScheduleEntry"
         "401": { description: Not authenticated }
+    delete:
+      operationId: deleteTeacherSchedule
+      tags: [teacher-schedule]
+      summary: Delete every schedule entry owned by the current teacher
+      responses:
+        "200":
+          description: Schedule cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherScheduleDeleteResult"
+        "401": { description: Not authenticated }
     post:
       operationId: createTeacherScheduleEntry
       tags: [teacher-schedule]
@@ -1653,6 +1665,14 @@ paths:
 
 components:
   schemas:
+    TeacherScheduleDeleteResult:
+      type: object
+      required: [deletedCount]
+      properties:
+        deletedCount:
+          type: integer
+          minimum: 0
+
     TeacherScheduleEntry:
       type: object
       properties:

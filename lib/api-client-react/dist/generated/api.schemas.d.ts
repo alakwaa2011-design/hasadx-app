@@ -5,6 +5,10 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface TeacherScheduleDeleteResult {
+    /** @minimum 0 */
+    deletedCount: number;
+}
 export type TeacherScheduleEntryKind = typeof TeacherScheduleEntryKind[keyof typeof TeacherScheduleEntryKind];
 export declare const TeacherScheduleEntryKind: {
     readonly weekly: "weekly";
@@ -25,12 +29,12 @@ export interface TeacherScheduleEntry {
     dayOfWeek?: number | null;
     /**
        * @minimum 1
-       * @maximum 10
+       * @maximum 30
        */
     lessonNumber?: number | null;
     /**
-       * @minimum 1
-       * @maximum 9
+       * @minimum 0
+       * @maximum 30
        */
     breakAfterLesson?: number | null;
     /** @pattern ^\d{4}-\d{2}-\d{2}$ */
@@ -68,12 +72,12 @@ export interface TeacherScheduleEntryInput {
     dayOfWeek?: number | null;
     /**
        * @minimum 1
-       * @maximum 10
+       * @maximum 30
        */
     lessonNumber?: number | null;
     /**
-       * @minimum 1
-       * @maximum 9
+       * @minimum 0
+       * @maximum 30
        */
     breakAfterLesson?: number | null;
     /** @pattern ^\d{4}-\d{2}-\d{2}$ */
@@ -90,7 +94,7 @@ export interface TeacherScheduleEntryInput {
 export interface TeacherScheduleBulkLessonInput {
     /**
        * @minimum 1
-       * @maximum 10
+       * @maximum 30
        */
     lessonNumber: number;
     /**
@@ -107,17 +111,32 @@ export interface TeacherScheduleBulkLessonInput {
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
     endTime?: string | null;
 }
+export interface TeacherScheduleBulkBreakInput {
+    /**
+       * @minLength 1
+       * @maxLength 160
+       */
+    title: string;
+    /**
+       * @minimum 1
+       * @maximum 9
+       */
+    breakAfterLesson: number;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    startTime: string;
+    /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+    endTime?: string | null;
+}
 export type TeacherScheduleBulkInputDaySchedulesItem = {
     /**
        * @minimum 0
        * @maximum 6
        */
     dayOfWeek: number;
-    /**
-       * @minItems 1
-       * @maxItems 10
-       */
+    /** @maxItems 30 */
     lessons: TeacherScheduleBulkLessonInput[];
+    /** @maxItems 50 */
+    breaks?: TeacherScheduleBulkBreakInput[];
 };
 export interface TeacherScheduleBulkInput {
     /**
@@ -129,7 +148,7 @@ export interface TeacherScheduleBulkInput {
     days?: number[];
     /**
        * @minItems 1
-       * @maxItems 10
+       * @maxItems 30
        */
     lessons?: TeacherScheduleBulkLessonInput[];
     /**

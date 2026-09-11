@@ -184,6 +184,15 @@ router.get("/teacher/schedule", requireAuth, async (req: any, res): Promise<void
   res.json(rows);
 });
 
+router.delete("/teacher/schedule", requireAuth, async (req: any, res): Promise<void> => {
+  const deleted = await db
+    .delete(teacherScheduleTable)
+    .where(eq(teacherScheduleTable.teacherId, req.session.teacherId))
+    .returning({ id: teacherScheduleTable.id });
+
+  res.json({ deletedCount: deleted.length });
+});
+
 router.post(
   "/teacher/schedule/ai/extract",
   requireAuth,

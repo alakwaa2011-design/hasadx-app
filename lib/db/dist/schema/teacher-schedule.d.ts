@@ -280,9 +280,10 @@ export declare const teacherScheduleTable: import("drizzle-orm/pg-core").PgTable
 }>;
 export declare const insertTeacherScheduleSchema: z.ZodObject<{
     teacherId: z.ZodInt;
-    kind: z.ZodOptional<z.ZodString>;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    kind: z.ZodOptional<z.ZodString>;
     className: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     dayOfWeek: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     lessonNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
@@ -291,7 +292,6 @@ export declare const insertTeacherScheduleSchema: z.ZodObject<{
     startTime: z.ZodString;
     endTime: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     location: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

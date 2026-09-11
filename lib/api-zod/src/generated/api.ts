@@ -4107,6 +4107,18 @@ export const ListTeacherScheduleResponse = zod.array(ListTeacherScheduleResponse
 
 
 /**
+ * @summary Delete every schedule entry owned by the current teacher
+ */
+export const deleteTeacherScheduleResponseDeletedCountMin = 0;
+
+
+
+export const DeleteTeacherScheduleResponse = zod.object({
+  "deletedCount": zod.int().min(deleteTeacherScheduleResponseDeletedCountMin)
+})
+
+
+/**
  * @summary Add a weekly class or one-time appointment
  */
 export const createTeacherScheduleEntryBodyKindDefault = `weekly`;

@@ -4,13 +4,16 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bulkMutate = vi.fn();
+const deleteAllMutate = vi.fn();
+const scheduleRows: Array<Record<string, unknown>> = [];
 
 vi.mock("@workspace/api-client-react", () => ({
   getListTeacherScheduleQueryKey: () => ["teacher-schedule"],
-  useListTeacherSchedule: () => ({ data: [], isLoading: false }),
+  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false }),
   useBulkCreateTeacherSchedule: () => ({ mutate: bulkMutate, isPending: false }),
   useCreateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteTeacherSchedule: () => ({ mutate: deleteAllMutate, isPending: false }),
   useDeleteTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
@@ -45,6 +48,8 @@ beforeEach(async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-13T09:00:00Z"));
   bulkMutate.mockReset();
+  deleteAllMutate.mockReset();
+  scheduleRows.length = 0;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -69,6 +74,36 @@ afterEach(async () => {
 });
 
 describe("TeacherScheduleCard full schedule drafts", () => {
+  it("requires confirmation before deleting the whole saved schedule", async () => {
+    scheduleRows.push({
+      id: 1,
+      kind: "weekly",
+      title: "رياضيات",
+      subject: null,
+      className: null,
+      dayOfWeek: 0,
+      lessonNumber: 1,
+      breakAfterLesson: null,
+      appointmentDate: null,
+      startTime: "08:00",
+      endTime: "09:00",
+      location: null,
+      notes: null,
+    });
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={new QueryClient()}>
+          <TeacherScheduleCard isAr user={{ id: 101 }} />
+        </QueryClientProvider>,
+      );
+    });
+
+    await click("button-delete-whole-schedule");
+    expect(deleteAllMutate).not.toHaveBeenCalled();
+    await click("button-confirm-delete-whole-schedule");
+    expect(deleteAllMutate).toHaveBeenCalledWith(undefined, expect.any(Object));
+  });
+
   it("keeps the save action visible while the schedule rows scroll", async () => {
     await click("button-add-bulk-schedule");
 
@@ -157,6 +192,7 @@ describe("teacher schedule image draft normalization", () => {
 
     expect(hasNumberingGaps).toBe(true);
     expect(schedules[0].map((lesson) => lesson.lessonNumber)).toEqual([1, 3]);
+    expect(schedules[0][0].title).toBe("رياضيات");
     expect(schedules[0][1].subject).toBe("علوم");
 
     const payload = buildTeacherScheduleBulkInput(schedules, true, {

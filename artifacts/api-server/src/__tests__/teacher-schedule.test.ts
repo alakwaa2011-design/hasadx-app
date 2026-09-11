@@ -252,6 +252,28 @@ describe("teacher schedule breaks", () => {
     expect(response.status).toBe(401);
   });
 
+  it("deletes the current teacher's whole schedule without touching another teacher", async () => {
+    const teacherOne = makeApp({ teacherId: 101 });
+    const teacherTwo = makeApp({ teacherId: 202 });
+
+    await request(teacherOne).post("/api/teacher/schedule").send(lesson("رياضيات", 1, "08:00")).expect(201);
+    await request(teacherOne).post("/api/teacher/schedule").send({
+      ...lesson("موعد", 1, "12:00"),
+      kind: "appointment",
+      dayOfWeek: null,
+      lessonNumber: null,
+      appointmentDate: "2026-09-12",
+      subject: null,
+      className: null,
+    }).expect(201);
+    await request(teacherTwo).post("/api/teacher/schedule").send(lesson("علوم", 1, "08:00")).expect(201);
+
+    const response = await request(teacherOne).delete("/api/teacher/schedule").expect(200);
+    expect(response.body).toEqual({ deletedCount: 2 });
+    expect((await request(teacherOne).get("/api/teacher/schedule").expect(200)).body).toEqual([]);
+    expect((await request(teacherTwo).get("/api/teacher/schedule").expect(200)).body).toHaveLength(1);
+  });
+
   it("creates, orders, reads, updates, and deletes a break for its owner", async () => {
     const app = makeApp({ teacherId: 101 });
 

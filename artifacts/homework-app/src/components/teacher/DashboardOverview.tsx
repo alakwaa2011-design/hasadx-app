@@ -68,6 +68,7 @@ import {
   getListTeacherScheduleQueryKey,
   useBulkCreateTeacherSchedule,
   useCreateTeacherScheduleEntry,
+  useDeleteTeacherSchedule,
   useDeleteTeacherScheduleEntry,
   useListTeacherSchedule,
   useUpdateTeacherScheduleEntry,
@@ -2608,7 +2609,7 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
       .sort((left, right) => left.startTime.localeCompare(right.startTime))
       .map((extracted) => ({
       lessonNumber: extracted.lessonNumber,
-      title: extracted.title || "",
+      title: extracted.title || extracted.subject || extracted.className || "",
       subject: extracted.subject || "",
       className: extracted.className || "",
       startTime: extracted.startTime,
@@ -2642,14 +2643,17 @@ export function buildTeacherScheduleBulkInput(
         dayOfWeek: Number(day),
         lessons: lessons.map((lesson) => ({
           lessonNumber: lesson.lessonNumber,
-          title: lesson.title.trim() || lessonNumberLabel(lesson.lessonNumber, isAr),
+          title: lesson.title.trim()
+            || lesson.subject.trim()
+            || lesson.className.trim()
+            || (lesson.confidence ? "" : lessonNumberLabel(lesson.lessonNumber, isAr)),
           subject: lesson.subject.trim() || null,
           className: lesson.className.trim() || null,
           startTime: lesson.startTime,
           endTime: lesson.endTime || null,
         })),
         breaks: (breaks[Number(day)] || []).map((entry) => ({
-          title: entry.title.trim() || (isAr ? "فترة" : "Period"),
+          title: entry.title.trim(),
           breakAfterLesson: entry.breakAfterLesson,
           startTime: entry.startTime,
           endTime: entry.endTime || null,
@@ -2721,12 +2725,11 @@ function lessonNumberLabel(number: number | null | undefined, isAr: boolean) {
 }
 
 function breakPositionLabel(number: number | null | undefined, isAr: boolean) {
-  if (number === 0) return isAr ? "قبل الحصة الأولى" : "Before lesson 1";
+  if (number === 0) return "";
   if (number == null) return isAr ? "الموقع في الجدول" : "Schedule position";
-  const next = number + 1;
   return isAr
-    ? `بين ${ARABIC_LESSON_NUMBERS[number - 1] || number} و${ARABIC_LESSON_NUMBERS[next - 1] || next}`
-    : `Between lessons ${number} and ${next}`;
+    ? `الفترة ${ARABIC_LESSON_NUMBERS[number - 1] || number}`
+    : `Period ${number}`;
 }
 
 function schedulePosition(entry: TeacherScheduleEntry) {
@@ -2748,6 +2751,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -2883,6 +2887,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
   const createMutation = useCreateTeacherScheduleEntry();
   const bulkMutation = useBulkCreateTeacherSchedule();
   const updateMutation = useUpdateTeacherScheduleEntry();
+  const deleteAllMutation = useDeleteTeacherSchedule();
   const deleteMutation = useDeleteTeacherScheduleEntry();
   const entries = scheduleQuery.data || [];
   const isSaving = createMutation.isPending || updateMutation.isPending;
@@ -2938,7 +2943,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     form.reset({
       ...defaults,
       kind,
-      title: kind === "break" ? (isAr ? "فترة" : "Period") : "",
+      title: "",
     });
     setEditingId(null);
     setDialogOpen(true);
@@ -3044,7 +3049,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
       [activeBulkDay]: [
         ...(current[activeBulkDay] || []),
         {
-          title: isAr ? "فترة" : "Period",
+          title: "",
           breakAfterLesson: Math.min(afterLesson, 30),
           startTime: "",
           endTime: null,
@@ -3135,14 +3140,24 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     };
     for (const [day, lessons] of Object.entries(schedules)) {
       const invalidIndex = lessons.findIndex((lesson) =>
-        !lesson.startTime || (Boolean(lesson.endTime) && lesson.endTime <= lesson.startTime),
+        (!(lesson.title.trim() || lesson.subject.trim() || lesson.className.trim()) && Boolean(lesson.confidence))
+        || !lesson.startTime
+        || (Boolean(lesson.endTime) && lesson.endTime <= lesson.startTime),
       );
       if (invalidIndex >= 0) {
         const targetDay = Number(day);
         const targetLessons = schedules[targetDay];
         const invalidLesson = targetLessons[invalidIndex];
-        const fieldName = !invalidLesson.startTime ? "startTime" : "endTime";
-        const fieldMessage = !invalidLesson.startTime
+        const hasVisibleName = Boolean(
+          invalidLesson.title.trim()
+          || invalidLesson.subject.trim()
+          || invalidLesson.className.trim()
+          || !invalidLesson.confidence,
+        );
+        const fieldName = !hasVisibleName ? "title" : !invalidLesson.startTime ? "startTime" : "endTime";
+        const fieldMessage = !hasVisibleName
+          ? (isAr ? "اكتب الاسم الموجود في الجدول" : "Enter the name shown in the schedule")
+          : !invalidLesson.startTime
           ? (isAr ? "حدد وقت بداية هذه الحصة" : "Enter this lesson's start time")
           : (isAr ? "وقت النهاية يجب أن يكون بعد وقت البداية" : "End time must be after start time");
         setBulkDaySchedules(schedules);
@@ -3160,11 +3175,17 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     }
     for (const [day, breaks] of Object.entries(bulkDayBreaks)) {
       const invalidBreak = breaks.find((entry) =>
-        !entry.startTime || (Boolean(entry.endTime) && entry.endTime! <= entry.startTime),
+        !entry.title.trim()
+        || !entry.startTime
+        || (Boolean(entry.endTime) && entry.endTime! <= entry.startTime),
       );
       if (invalidBreak) {
         setActiveBulkDay(Number(day));
-        toast.error(isAr ? "راجع وقت الفترة غير الصفية" : "Check the non-lesson period time");
+        toast.error(
+          isAr
+            ? "راجع اسم الفترة ووقتها كما يظهران في الجدول"
+            : "Check the period name and time as shown in the schedule",
+        );
         return;
       }
     }
@@ -3236,6 +3257,21 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     );
   }
 
+  function removeWholeSchedule() {
+    deleteAllMutation.mutate(undefined, {
+      onSuccess: ({ deletedCount }) => {
+        setDeleteAllDialogOpen(false);
+        refreshSchedule();
+        toast.success(
+          isAr
+            ? `تم حذف الجدول كاملًا (${deletedCount} إدخال)`
+            : `Full schedule deleted (${deletedCount} entries)`,
+        );
+      },
+      onError: () => toast.error(isAr ? "تعذر حذف الجدول" : "Could not delete the schedule"),
+    });
+  }
+
   const fieldStyle: React.CSSProperties = {
     width: "100%",
     height: 38,
@@ -3303,6 +3339,23 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
               style={{ display: "none" }}
               onChange={handleImageSelect}
             />
+            {entries.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDeleteAllDialogOpen(true)}
+                data-testid="button-delete-whole-schedule"
+                style={{
+                  ...scheduleSecondaryButton,
+                  color: "#B42318",
+                  borderColor: "#F3B7B2",
+                  padding: "7px 9px",
+                  fontSize: 10.5,
+                }}
+              >
+                <Trash2 style={{ width: 14, height: 14, marginRight: isAr ? 0 : 4, marginLeft: isAr ? 4 : 0 }} />
+                {isAr ? "حذف الجدول" : "Delete schedule"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -3544,6 +3597,43 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
         )}
       </div>
 
+      <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
+        <DialogContent className="max-w-md rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{isAr ? "حذف الجدول كاملًا؟" : "Delete the full schedule?"}</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm leading-6" style={{ color: C.subtle }}>
+            {isAr
+              ? "سيتم حذف جميع الحصص والفترات غير الصفية والمواعيد المحفوظة. لا يمكن التراجع عن هذه العملية."
+              : "All saved classes, non-lesson periods, and appointments will be deleted. This cannot be undone."}
+          </div>
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteAllDialogOpen(false)}
+              disabled={deleteAllMutation.isPending}
+              style={scheduleSecondaryButton}
+            >
+              {isAr ? "إلغاء" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={removeWholeSchedule}
+              disabled={deleteAllMutation.isPending}
+              data-testid="button-confirm-delete-whole-schedule"
+              style={{
+                ...schedulePrimaryButton,
+                background: "#B42318",
+                opacity: deleteAllMutation.isPending ? 0.65 : 1,
+              }}
+            >
+              {deleteAllMutation.isPending && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
+              {isAr ? "نعم، احذف الجدول" : "Yes, delete schedule"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
@@ -3672,7 +3762,9 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                           <select {...field} style={fieldStyle}>
                             {Array.from({ length: 31 }, (_, index) => index).map((number) => (
                               <option key={number} value={number}>
-                                {breakPositionLabel(number, isAr)}
+                                {number === 0
+                                  ? (isAr ? "بدون رقم ظاهر" : "No visible number")
+                                  : breakPositionLabel(number, isAr)}
                               </option>
                             ))}
                           </select>
@@ -4048,14 +4140,18 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                         />
                       </div>
                       <div className="sm:col-span-3">
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "بعد الحصة" : "After lesson"}</label>
+                        <label className="mb-1 block text-xs font-bold">{isAr ? "رقم الفترة الظاهر" : "Visible period number"}</label>
                         <select
                           value={entry.breakAfterLesson}
                           onChange={(event) => updateBulkBreak(index, { breakAfterLesson: Number(event.target.value) })}
                           style={{ ...fieldStyle, background: "#fff" }}
                         >
                           {Array.from({ length: 31 }, (_, lessonIndex) => lessonIndex).map((number) => (
-                            <option key={number} value={number}>{lessonNumberLabel(number, isAr)}</option>
+                            <option key={number} value={number}>
+                              {number === 0
+                                ? (isAr ? "بدون رقم ظاهر" : "No visible number")
+                                : breakPositionLabel(number, isAr)}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -4288,7 +4384,7 @@ function ScheduleEntryRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 850, color: C.text }}>{entry.title}</span>
-          {entry.kind === "break" && (
+          {entry.kind === "break" && Boolean(entry.breakAfterLesson) && (
             <span style={{ fontSize: 10, color: C.gold, fontWeight: 850 }}>
               {breakPositionLabel(entry.breakAfterLesson, isAr)}
             </span>

@@ -136,6 +136,7 @@ export type * from "./types/teacherScheduleBulkBreakInput";
 export type * from "./types/teacherScheduleBulkInput";
 export type * from "./types/teacherScheduleBulkInputDaySchedulesItem";
 export type * from "./types/teacherScheduleBulkLessonInput";
+export type * from "./types/teacherScheduleDeleteResult";
 export type * from "./types/teacherScheduleEntry";
 export type * from "./types/teacherScheduleEntryInput";
 export type * from "./types/teacherScheduleEntryInputKind";

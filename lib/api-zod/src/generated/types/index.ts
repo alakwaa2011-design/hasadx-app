@@ -150,6 +150,7 @@ export * from './teacherScheduleBulkBreakInput';
 export * from './teacherScheduleBulkInput';
 export * from './teacherScheduleBulkInputDaySchedulesItem';
 export * from './teacherScheduleBulkLessonInput';
+export * from './teacherScheduleDeleteResult';
 export * from './teacherScheduleEntry';
 export * from './teacherScheduleEntryInput';
 export * from './teacherScheduleEntryInputKind';

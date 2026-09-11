@@ -287,9 +287,9 @@ export declare const insertSavedGameActivitySchema: z.ZodObject<{
     title: z.ZodString;
     isShared: z.ZodOptional<z.ZodBoolean>;
     source: z.ZodOptional<z.ZodString>;
+    settings: z.ZodOptional<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>;
     questionCount: z.ZodOptional<z.ZodInt>;
     gameType: z.ZodString;
-    settings: z.ZodOptional<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>;
     content: z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>;
 }, {
     out: {};

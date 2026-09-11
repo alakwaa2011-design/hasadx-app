@@ -5,6 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { TeacherScheduleBulkInputDaySchedulesItem } from './teacherScheduleBulkInputDaySchedulesItem';
 import type { TeacherScheduleBulkLessonInput } from './teacherScheduleBulkLessonInput';
 export interface TeacherScheduleBulkInput {
     /**
@@ -13,11 +14,16 @@ export interface TeacherScheduleBulkInput {
        * @items.minimum 0
        * @items.maximum 6
        */
-    days: number[];
+    days?: number[];
     /**
        * @minItems 1
-       * @maxItems 10
+       * @maxItems 30
        */
-    lessons: TeacherScheduleBulkLessonInput[];
+    lessons?: TeacherScheduleBulkLessonInput[];
+    /**
+       * @minItems 1
+       * @maxItems 7
+       */
+    daySchedules?: TeacherScheduleBulkInputDaySchedulesItem[];
 }
 //# sourceMappingURL=teacherScheduleBulkInput.d.ts.map

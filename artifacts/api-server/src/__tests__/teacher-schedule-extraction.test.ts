@@ -183,5 +183,75 @@ describe("teacher schedule image extraction", () => {
     expect(prompt).toContain("Never invent");
     expect(prompt).toContain("Extract every visible non-lesson period");
     expect(prompt).toContain("Preserve each period title EXACTLY as written");
+    expect(prompt).toContain("A numbered row or column header is only a timetable position");
+    expect(prompt).toContain("RECESS in slot 7 remains a non-lesson entry titled RECESS");
+    expect(prompt).toContain('"Assembly Language", "Software Development", and "Prayer Studies" remain lessons');
+  });
+
+  it("corrects ADVISE from a numbered lesson into its visible non-lesson period", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [{
+          lessonNumber: 1,
+          title: "",
+          subject: "ADVISE",
+          startTime: "07:30",
+          endTime: "08:00",
+          confidence: "high",
+        }],
+        breaks: [],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons).toEqual([]);
+    expect(result.daySchedules[0].breaks[0]).toMatchObject({
+      title: "ADVISE",
+      breakAfterLesson: 1,
+      startTime: "07:30",
+      endTime: "08:00",
+    });
+  });
+
+  it("keeps the visible slot number when RECESS or PD was misclassified as a lesson", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [
+          { lessonNumber: 7, title: "RECESS", startTime: "11:00", endTime: "11:20", confidence: "high" },
+          { lessonNumber: 8, title: "PD", startTime: "11:20", endTime: "12:00", confidence: "high" },
+        ],
+        breaks: [],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].breaks).toEqual([
+      expect.objectContaining({ title: "RECESS", breakAfterLesson: 7 }),
+      expect.objectContaining({ title: "PD", breakAfterLesson: 8 }),
+    ]);
+  });
+
+  it("does not reclassify taught courses containing non-lesson keywords", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [
+          { lessonNumber: 1, title: "Assembly Language", startTime: "08:00", endTime: "09:00", confidence: "high" },
+          { lessonNumber: 2, title: "Software Development", startTime: "09:00", endTime: "10:00", confidence: "high" },
+          { lessonNumber: 3, title: "Prayer Studies", startTime: "10:00", endTime: "11:00", confidence: "high" },
+        ],
+        breaks: [],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons.map((entry) => entry.title)).toEqual([
+      "Assembly Language",
+      "Software Development",
+      "Prayer Studies",
+    ]);
+    expect(result.daySchedules[0].breaks).toEqual([]);
   });
 });

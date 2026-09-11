@@ -5,6 +5,11 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface TeacherScheduleDeleteResult {
+  /** @minimum 0 */
+  deletedCount: number;
+}
+
 export type TeacherScheduleEntryKind = typeof TeacherScheduleEntryKind[keyof typeof TeacherScheduleEntryKind];
 
 

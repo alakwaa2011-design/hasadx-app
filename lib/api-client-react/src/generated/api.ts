@@ -71,6 +71,7 @@ import type {
   SuccessResponse,
   TeacherProfile,
   TeacherScheduleBulkInput,
+  TeacherScheduleDeleteResult,
   TeacherScheduleEntry,
   TeacherScheduleEntryInput,
   TeacherScheduleEntryUpdate,
@@ -5508,6 +5509,80 @@ export function useListTeacherSchedule<TData = Awaited<ReturnType<typeof listTea
 
 
 
+
+export const getDeleteTeacherScheduleUrl = () => {
+
+
+
+
+  return `/api/teacher/schedule`
+}
+
+/**
+ * @summary Delete every schedule entry owned by the current teacher
+ */
+export const deleteTeacherSchedule = async ( options?: Parameters<typeof customFetch>[1]): Promise<TeacherScheduleDeleteResult> => {
+
+  return customFetch<TeacherScheduleDeleteResult>(getDeleteTeacherScheduleUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTeacherScheduleMutationKey = () => ['deleteTeacherSchedule'] as const;
+
+export const getDeleteTeacherScheduleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherSchedule>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherSchedule>>, TError,void, TContext> => {
+
+const mutationKey = getDeleteTeacherScheduleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTeacherSchedule>>, void> = () => {
+
+
+          return  deleteTeacherSchedule(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTeacherScheduleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTeacherSchedule>>>
+
+    export type DeleteTeacherScheduleMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Delete every schedule entry owned by the current teacher
+ */
+export const useDeleteTeacherSchedule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTeacherSchedule>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTeacherSchedule>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteTeacherScheduleMutationOptions(options));
+    }
 
 export const getCreateTeacherScheduleEntryUrl = () => {
 
