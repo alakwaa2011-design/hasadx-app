@@ -278,7 +278,13 @@ function ClassBlock({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={isDense ? "mb-2" : "mb-3"}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDense ? "mb-2" : "mb-3"}
+      data-testid="class-card"
+      data-class-name={folderName}
+    >
       <div className={`relative rounded-2xl bg-card overflow-hidden transition-all duration-200
         ${isDragging
           ? "shadow-2xl ring-2 ring-primary/40 opacity-70 scale-[0.99]"
@@ -292,7 +298,7 @@ function ClassBlock({
         }}
       >
         {/* Colored accent bar at top */}
-        <div className={`h-1.5 rounded-t-2xl ${color.bg}`} />
+        <div data-testid="class-color-accent" className={`h-1.5 rounded-t-2xl ${color.bg}`} />
 
         {/* Card body */}
         <div className={cardPadding}>
