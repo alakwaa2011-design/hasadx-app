@@ -3105,8 +3105,8 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         },
         {
           icon: <QrCode className="w-6 h-6" />,
-          title: isAr ? "تحويل الرابط إلى باركود" : "Link to QR Code",
-          desc: isAr ? "أنشئ باركود QR جاهزًا للمسح والتحميل" : "Create a scannable, downloadable QR code",
+          title: isAr ? "إنشاء QR" : "Create QR Code",
+          desc: isAr ? "أنشئ رمز QR لأي نص أو رابط، جاهزًا للمسح والتحميل" : "Create a scannable, downloadable QR code for any text or link",
           accent: BRAND.green,
           href: "/teacher/tools/url-qr",
         },

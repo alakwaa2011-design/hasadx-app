@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import QRCode from "react-qr-code";
 import { Link } from "wouter";
 import { 
-  ArrowRight, ArrowLeft, QrCode, Download, Link as LinkIcon, 
+  ArrowRight, ArrowLeft, QrCode, Download, Type, 
   Settings2, RotateCcw, AlertTriangle, Image as ImageIcon,
   Copy, Check
 } from "lucide-react";
@@ -59,7 +59,7 @@ export default function UrlQrTool() {
   const isAr = lang === "ar";
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
   
-  const [url, setUrl] = useState("");
+  const [content, setContent] = useState("");
   const [label, setLabel] = useState("");
   const [fgColor, setFgColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
@@ -70,24 +70,7 @@ export default function UrlQrTool() {
   const labelFontFamily = LABEL_FONTS[labelFont];
   const labelSizes = LABEL_SIZES[labelSize];
   
-  const normalizedUrl = useMemo(() => {
-    let u = url.trim();
-    if (!u) return "";
-    if (!u.startsWith("http://") && !u.startsWith("https://")) {
-      u = "https://" + u;
-    }
-    return u;
-  }, [url]);
-
-  const isValidUrl = useMemo(() => {
-    if (!normalizedUrl) return false;
-    try {
-      new URL(normalizedUrl);
-      return true;
-    } catch {
-      return false;
-    }
-  }, [normalizedUrl]);
+  const qrValue = useMemo(() => content.trim(), [content]);
 
   const hasLowContrast = useMemo(() => {
     const getLuminance = (hex: string) => {
@@ -122,22 +105,22 @@ export default function UrlQrTool() {
   };
 
   const clearAll = () => {
-    setUrl("");
+    setContent("");
     setLabel("");
     reset();
   };
 
-  const copyLink = () => {
-    if (!normalizedUrl) return;
-    navigator.clipboard.writeText(normalizedUrl);
+  const copyContent = () => {
+    if (!qrValue) return;
+    navigator.clipboard.writeText(qrValue);
     setCopied(true);
-    toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
+    toast.success(isAr ? "تم نسخ المحتوى" : "Content copied");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadPNG = async () => {
-    if (!isValidUrl || hasLowContrast) return;
-    const svg = document.getElementById("url-qr-svg");
+    if (!qrValue || hasLowContrast) return;
+    const svg = document.getElementById("qr-code-svg");
     if (!svg) return;
     
     const size = 600; // Generate high-res image
@@ -187,8 +170,8 @@ export default function UrlQrTool() {
   };
 
   const downloadSVG = () => {
-    if (!isValidUrl || hasLowContrast) return;
-    const svg = document.getElementById("url-qr-svg");
+    if (!qrValue || hasLowContrast) return;
+    const svg = document.getElementById("qr-code-svg");
     if (!svg) return;
     
     const size = 300;
@@ -235,12 +218,12 @@ export default function UrlQrTool() {
           <div>
             <h1 className="text-2xl font-black text-foreground flex items-center gap-2">
               <QrCode className="w-6 h-6 text-primary" />
-              {isAr ? "تحويل الرابط إلى باركود QR" : "Link to QR Code"}
+              {isAr ? "إنشاء QR" : "Create QR Code"}
             </h1>
             <p className="text-sm font-medium text-muted-foreground mt-1">
               {isAr 
-                ? "حوّل أي رابط إلى رمز QR جاهز للطباعة والاستخدام الصفي."
-                : "Turn any link into a classroom-ready printable QR code."}
+                ? "أنشئ رمز QR لأي نص أو رابط، جاهز للطباعة والاستخدام الصفي."
+                : "Create a QR code for any text or link, ready to print and use in class."}
             </p>
           </div>
         </div>
@@ -250,42 +233,32 @@ export default function UrlQrTool() {
             <Card className="p-6">
               <div className="space-y-6">
                 <div>
-                  <Label htmlFor="url-input" className="text-base">
-                    {isAr ? "الرابط (URL)" : "Link (URL)"}
+                  <Label htmlFor="qr-content-input" className="text-base">
+                    {isAr ? "النص أو الرابط" : "Text or link"}
                   </Label>
                   <div className="relative mt-2">
                     <div className="absolute top-0 bottom-0 start-0 flex items-center justify-center w-12 text-muted-foreground">
-                      <LinkIcon className="w-5 h-5" />
+                      <Type className="w-5 h-5" />
                     </div>
                     <Input
-                      id="url-input"
-                      type="url"
-                      placeholder="example.com"
-                      value={url}
-                      onChange={e => setUrl(e.target.value)}
+                      id="qr-content-input"
+                      type="text"
+                      placeholder={isAr ? "اكتب نصًا أو الصق رابطًا" : "Type text or paste a link"}
+                      value={content}
+                      onChange={e => setContent(e.target.value)}
                       maxLength={2048}
                       className="ps-12 py-3.5 text-lg shadow-sm"
-                      dir="ltr"
+                      dir="auto"
                     />
                   </div>
-                  <AnimatePresence>
-                    {url && !isValidUrl && (
-                      <motion.p 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-destructive text-sm font-bold mt-2 flex items-center gap-1.5"
-                      >
-                        <AlertTriangle className="w-4 h-4" />
-                        {isAr ? "صيغة الرابط غير صحيحة" : "Invalid link format"}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {isAr ? "يمكنك إدخال رابط أو نص أو رقم أو أي محتوى قصير." : "Enter a link, text, number, or any short content."}
+                  </p>
                 </div>
 
                 <div>
                   <Label htmlFor="label-input" className="text-base">
-                    {isAr ? "عنوان الرمز (اختياري)" : "Code Title (Optional)"}
+                    {isAr ? "عنوان QR (اختياري)" : "QR title (optional)"}
                   </Label>
                   <Input
                     id="label-input"
@@ -297,7 +270,7 @@ export default function UrlQrTool() {
                     className="mt-2 shadow-sm"
                   />
                   <p className="text-sm text-muted-foreground mt-2">
-                    {isAr ? "سيظهر هذا النص أسفل رمز QR عند تصديره." : "This text will appear below the QR code when exported."}
+                    {isAr ? "سيظهر هذا النص أسفل QR عند تصديره." : "This text will appear below the QR code when exported."}
                   </p>
                 </div>
               </div>
@@ -448,7 +421,7 @@ export default function UrlQrTool() {
                   <ImageIcon className="w-5 h-5 text-muted-foreground" />
                   {isAr ? "معاينة الرمز" : "Preview"}
                 </h3>
-                {url && (
+                {content && (
                   <button 
                     onClick={clearAll}
                     className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -462,11 +435,11 @@ export default function UrlQrTool() {
                 className="w-full max-w-[320px] aspect-square rounded-[2rem] flex items-center justify-center shadow-inner relative transition-colors duration-300 border border-border/50 overflow-hidden"
                 style={{ backgroundColor: bgColor }}
               >
-                {!url || !isValidUrl ? (
+                {!qrValue ? (
                   <div className="text-center p-6 text-muted-foreground/40">
                     <QrCode className="w-20 h-20 mx-auto mb-4 opacity-20" />
                     <p className="text-sm font-bold opacity-80 px-4">
-                      {isAr ? "أدخل رابطاً صالحاً لتوليد الرمز" : "Enter a valid link to generate"}
+                       {isAr ? "أدخل نصًا أو رابطًا لإنشاء QR" : "Enter text or a link to create a QR code"}
                     </p>
                   </div>
                 ) : (
@@ -477,8 +450,8 @@ export default function UrlQrTool() {
                   >
                     <div className="w-full h-full" style={{ color: fgColor }}>
                       <QRCode
-                        id="url-qr-svg"
-                        value={normalizedUrl}
+                         id="qr-code-svg"
+                         value={qrValue}
                         size={256}
                         level={level}
                         bgColor={bgColor}
@@ -492,7 +465,7 @@ export default function UrlQrTool() {
               </div>
 
               <div className="mt-5 min-h-[36px] text-center w-full px-4 break-words">
-                {label && url && isValidUrl && (
+                {label && qrValue && (
                   <p 
                     className="font-bold leading-tight break-words px-2"
                     style={{
@@ -510,7 +483,7 @@ export default function UrlQrTool() {
               <div className="w-full mt-8 space-y-3">
                 <Button 
                   className="w-full py-4 text-base" 
-                  disabled={!url || !isValidUrl || hasLowContrast}
+                   disabled={!qrValue || hasLowContrast}
                   onClick={downloadPNG}
                 >
                   <Download className="w-5 h-5 me-2" />
@@ -521,7 +494,7 @@ export default function UrlQrTool() {
                   <Button 
                     variant="outline" 
                     className="py-3.5"
-                    disabled={!url || !isValidUrl || hasLowContrast}
+                     disabled={!qrValue || hasLowContrast}
                     onClick={downloadSVG}
                   >
                     <Download className="w-4 h-4 me-2" />
@@ -531,11 +504,11 @@ export default function UrlQrTool() {
                   <Button 
                     variant="outline" 
                     className="py-3.5"
-                    disabled={!url || !isValidUrl}
-                    onClick={copyLink}
+                     disabled={!qrValue}
+                     onClick={copyContent}
                   >
                     {copied ? <Check className="w-4 h-4 me-2 text-green-500" /> : <Copy className="w-4 h-4 me-2" />}
-                    {copied ? (isAr ? "تم النسخ" : "Copied") : (isAr ? "نسخ الرابط" : "Copy Link")}
+                     {copied ? (isAr ? "تم النسخ" : "Copied") : (isAr ? "نسخ المحتوى" : "Copy content")}
                   </Button>
                 </div>
               </div>
