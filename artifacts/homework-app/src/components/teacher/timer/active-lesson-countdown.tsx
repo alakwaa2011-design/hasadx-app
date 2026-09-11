@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Bell, BellOff, ChevronDown, ChevronUp, Coffee, Pause, Play, Settings2, Timer, X } from "lucide-react";
+import { Bell, BellOff, CalendarClock, ChevronDown, ChevronUp, Coffee, Pause, Play, Settings2, Timer, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListTeacherSchedule, getListTeacherScheduleQueryKey, type TeacherScheduleEntry } from "@workspace/api-client-react";
 import { lessonNumberLabel } from "@/lib/schedule-labels";
@@ -21,7 +21,7 @@ function formatRemaining(ms: number) {
 }
 
 function dateKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function entryStart(entry: TeacherScheduleEntry) {
@@ -30,6 +30,42 @@ function entryStart(entry: TeacherScheduleEntry) {
 
 function entryEnd(entry: TeacherScheduleEntry) {
   return entry.endTime ? parseClockTime(entry.endTime) : null;
+}
+
+export function selectVisibleScheduleEntry(
+  entries: TeacherScheduleEntry[],
+  now: Date,
+  alertMinutes: number,
+) {
+  const currentTimeMs =
+    (now.getHours() * 60 + now.getMinutes()) * 60_000
+    + now.getSeconds() * 1_000
+    + now.getMilliseconds();
+  const todayKey = dateKey(now);
+  const todayEntries = entries
+    .filter((entry) => {
+      if (entry.kind === "appointment") {
+        return entry.appointmentDate === todayKey;
+      }
+      return (entry.kind === "weekly" || entry.kind === "break")
+        && entry.dayOfWeek === now.getDay();
+    })
+    .sort((a, b) => entryStart(a) - entryStart(b));
+
+  const activeCandidates = todayEntries.filter((entry) => {
+    const start = entryStart(entry);
+    const end = entryEnd(entry);
+    return end != null && end > start && currentTimeMs >= start && currentTimeMs < end;
+  });
+  const active = activeCandidates[activeCandidates.length - 1] || null;
+  if (active) return { visibleEntry: active, isBeforeStart: false, currentTimeMs };
+
+  const alertWindowMs = Math.max(1, alertMinutes) * 60_000;
+  const upcoming = todayEntries.find((entry) => {
+    const untilStart = entryStart(entry) - currentTimeMs;
+    return untilStart > 0 && untilStart <= alertWindowMs;
+  }) || null;
+  return { visibleEntry: upcoming, isBeforeStart: Boolean(upcoming), currentTimeMs };
 }
 
 type CountdownPreferences = {
@@ -77,17 +113,26 @@ function ActiveLessonPanel({
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isBreak = entry.kind === "break";
+  const isAppointment = entry.kind === "appointment";
   const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
   const urgent = !isBeforeStart && remainingMs <= 5 * 60_000;
-  const title = entry.title || (isBreak ? (isAr ? "استراحة / مناوبة" : "Break / Duty") : (isAr ? "الحصة الحالية" : "Current lesson"));
+  const title = entry.title || (
+    isBreak
+      ? (isAr ? "استراحة / مناوبة" : "Break / Duty")
+      : isAppointment
+        ? (isAr ? "الموعد الحالي" : "Current appointment")
+        : (isAr ? "الحصة الحالية" : "Current lesson")
+  );
   const context = isBreak
     ? (isAr ? "مناوبة أو استراحة مجدولة" : "Scheduled break or duty")
+    : isAppointment
+      ? (isAr ? "موعد مجدول" : "Scheduled appointment")
     : entry.lessonNumber
       ? lessonNumberLabel(entry.lessonNumber, isAr)
       : (isAr ? "حصة مجدولة" : "Scheduled lesson");
 
-  const brandColor = isBreak ? "#B27A00" : "#1E4D35";
-  const brandBg = isBreak ? "#FFF4D6" : "#E7F1EA";
+  const brandColor = isBreak ? "#B27A00" : isAppointment ? "#8A5A12" : "#1E4D35";
+  const brandBg = isBreak ? "#FFF4D6" : isAppointment ? "#FFF7E8" : "#E7F1EA";
   const urgentColor = "#C44332";
 
   if (!isExpanded) {
@@ -125,7 +170,7 @@ function ActiveLessonPanel({
             color: brandColor,
           }}
         >
-          {isBreak ? <Coffee size={18} /> : <Timer size={18} />}
+          {isBreak ? <Coffee size={18} /> : isAppointment ? <CalendarClock size={18} /> : <Timer size={18} />}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", minWidth: 64 }}>
@@ -234,7 +279,7 @@ function ActiveLessonPanel({
             color: brandColor,
           }}
         >
-          {isBreak ? <Coffee size={22} /> : <Timer size={22} />}
+            {isBreak ? <Coffee size={22} /> : isAppointment ? <CalendarClock size={22} /> : <Timer size={22} />}
         </div>
         <div style={{ minWidth: 0, textAlign: "center" }}>
           <div style={{ fontWeight: 900, fontSize: 18, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#11261E" }}>
@@ -268,7 +313,11 @@ function ActiveLessonPanel({
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginTop: 24, marginBottom: 28 }}>
         <div style={{ color: "#688075", fontSize: 13, fontWeight: 800, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
           {isBeforeStart
-            ? (isAr ? "تبدأ الحصة بعد" : "Lesson starts in")
+            ? isAppointment
+              ? (isAr ? "يبدأ الموعد بعد" : "Appointment starts in")
+              : isBreak
+                ? (isAr ? "تبدأ الفترة بعد" : "Period starts in")
+                : (isAr ? "تبدأ الحصة بعد" : "Lesson starts in")
             : isPaused
               ? (isAr ? "متوقف مؤقتًا" : "Paused")
               : (isAr ? "المتبقي على النهاية" : "Time until end")}
@@ -345,7 +394,13 @@ function ActiveLessonPanel({
             }}
           >
             <label style={{ display: "grid", gap: 6, color: "#425E52", fontSize: 12, fontWeight: 800 }}>
-              <span>{isAr ? "إظهار العداد قبل الحصة بـ" : "Show before lesson"}</span>
+              <span>
+                {isAppointment
+                  ? (isAr ? "إظهار العداد قبل الموعد بـ" : "Show before appointment")
+                  : isBreak
+                    ? (isAr ? "إظهار العداد قبل الفترة بـ" : "Show before period")
+                    : (isAr ? "إظهار العداد قبل الحصة بـ" : "Show before lesson")}
+              </span>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                 <input
                   type="number"
@@ -382,8 +437,12 @@ function ActiveLessonPanel({
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", color: "#789087", fontSize: 11, marginTop: 8, fontWeight: 600 }}>
-          <span>{isBeforeStart ? (isAr ? `تبدأ ${entry.startTime}` : `Starts ${entry.startTime}`) : (isAr ? `بدأت ${entry.startTime}` : `Started ${entry.startTime}`)}</span>
-          <span>{isAr ? `تنتهي ${entry.endTime}` : `Ends ${entry.endTime}`}</span>
+          <span>
+            {isBeforeStart
+              ? isAr ? `يبدأ ${entry.startTime}` : `Starts ${entry.startTime}`
+              : isAr ? `بدأ ${entry.startTime}` : `Started ${entry.startTime}`}
+          </span>
+          {entry.endTime && <span>{isAr ? `ينتهي ${entry.endTime}` : `Ends ${entry.endTime}`}</span>}
         </div>
       </div>
     </div>
@@ -447,25 +506,10 @@ export function GlobalActiveLessonCountdown() {
   }
 
   const today = useMemo(() => new Date(now), [now]);
-  const currentMinutesMs = (today.getHours() * 60 + today.getMinutes()) * 60_000 + today.getSeconds() * 1_000 + today.getMilliseconds();
-  const { visibleEntry, isBeforeStart } = useMemo(() => {
-    const todayEntries = (scheduleQuery.data || [])
-      .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === today.getDay() && entry.endTime)
-      .sort((a, b) => entryStart(a) - entryStart(b));
-    const activeCandidates = todayEntries.filter((entry) => {
-        const start = entryStart(entry);
-        const end = entryEnd(entry);
-        return end != null && end > start && currentMinutesMs >= start && currentMinutesMs < end;
-      });
-    const active = activeCandidates[activeCandidates.length - 1] || null;
-    if (active) return { visibleEntry: active, isBeforeStart: false };
-    const alertWindowMs = preferences.alertMinutes * 60_000;
-    const upcoming = todayEntries.find((entry) => {
-      const untilStart = entryStart(entry) - currentMinutesMs;
-      return untilStart > 0 && untilStart <= alertWindowMs;
-    }) || null;
-    return { visibleEntry: upcoming, isBeforeStart: Boolean(upcoming) };
-  }, [currentMinutesMs, preferences.alertMinutes, scheduleQuery.data, today]);
+  const { visibleEntry, isBeforeStart, currentTimeMs } = useMemo(
+    () => selectVisibleScheduleEntry(scheduleQuery.data || [], today, preferences.alertMinutes),
+    [preferences.alertMinutes, scheduleQuery.data, today],
+  );
 
   const activeKey = visibleEntry ? `${dateKey(today)}:${visibleEntry.id}:${isBeforeStart ? "before" : "active"}` : null;
   const durationMs = visibleEntry
@@ -474,7 +518,7 @@ export function GlobalActiveLessonCountdown() {
       : Math.max(1, (entryEnd(visibleEntry) || 0) - entryStart(visibleEntry))
     : 1;
   const liveRemainingMs = visibleEntry
-    ? Math.max(0, (isBeforeStart ? entryStart(visibleEntry) : (entryEnd(visibleEntry) || 0)) - currentMinutesMs)
+    ? Math.max(0, (isBeforeStart ? entryStart(visibleEntry) : (entryEnd(visibleEntry) || 0)) - currentTimeMs)
     : 0;
   const isPaused = activeKey != null && pausedKey === activeKey;
   const remainingMs = isPaused ? pausedRemainingMs : liveRemainingMs;
