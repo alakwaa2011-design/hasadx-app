@@ -1120,6 +1120,7 @@ export default function ScheduleManagementPage() {
                             key={day.value}
                             type="button"
                             onClick={() => setSelectedDay(day.value)}
+                            data-testid={`button-management-schedule-day-${day.value}`}
                             className={`shrink-0 snap-start flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all border ${
                               selectedDay === day.value
                                 ? 'bg-emerald-700 border-emerald-700 text-white shadow-md shadow-emerald-900/10 font-black'
@@ -1358,6 +1359,7 @@ export default function ScheduleManagementPage() {
                             key={kind}
                             type="button"
                             onClick={() => field.onChange(kind)}
+                            data-testid={`button-schedule-kind-${kind}`}
                             className="rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors"
                             style={{
                               borderColor: field.value === kind ? C.green : C.border,
@@ -1419,7 +1421,7 @@ export default function ScheduleManagementPage() {
                       <FormItem>
                         <FormLabel>{isAr ? "التاريخ" : "Date"}</FormLabel>
                         <FormControl>
-                          <input {...field} type="date" style={fieldStyle} />
+                          <input {...field} type="date" style={fieldStyle} data-testid="input-schedule-appointment-date" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1480,7 +1482,7 @@ export default function ScheduleManagementPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{isAr ? "من" : "From"}</FormLabel>
-                        <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
+                        <FormControl><input {...field} type="time" style={fieldStyle} data-testid="input-schedule-start-time" /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1491,7 +1493,7 @@ export default function ScheduleManagementPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{isAr ? "إلى" : "To"}</FormLabel>
-                        <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
+                        <FormControl><input {...field} type="time" style={fieldStyle} data-testid="input-schedule-end-time" /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1717,6 +1719,7 @@ export default function ScheduleManagementPage() {
                               bulkLessonFields.remove(index);
                               setBulkLessonCount((count) => Math.max(0, count - 1));
                             }}
+                            data-testid={`button-remove-bulk-lesson-${lesson.lessonNumber}`}
                             className="text-[10px] font-bold text-destructive disabled:opacity-40"
                           >
                             {isAr ? "حذف" : "Delete"}
@@ -1832,6 +1835,7 @@ export default function ScheduleManagementPage() {
                             value={entry.breakAfterLesson}
                             onChange={(event) => updateBulkBreak(index, { breakAfterLesson: Number(event.target.value) })}
                             style={{ ...fieldStyle, background: "#fff" }}
+                            data-testid={`select-bulk-period-position-${activeBulkDay}-${index}`}
                           >
                             {Array.from({ length: 31 }, (_, lessonIndex) => lessonIndex).map((number) => (
                               <option key={number} value={number}>
@@ -1850,6 +1854,7 @@ export default function ScheduleManagementPage() {
                               value={entry.startTime}
                               onChange={(event) => updateBulkBreak(index, { startTime: event.target.value })}
                               style={{ ...fieldStyle, background: "#fff" }}
+                              data-testid={`input-bulk-period-start-${activeBulkDay}-${index}`}
                             />
                           </div>
                           <div>
@@ -1859,6 +1864,7 @@ export default function ScheduleManagementPage() {
                               value={entry.endTime || ""}
                               onChange={(event) => updateBulkBreak(index, { endTime: event.target.value || null })}
                               style={{ ...fieldStyle, background: "#fff" }}
+                              data-testid={`input-bulk-period-end-${activeBulkDay}-${index}`}
                             />
                           </div>
                         </div>

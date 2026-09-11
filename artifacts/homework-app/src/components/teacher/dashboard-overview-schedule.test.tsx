@@ -5,11 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bulkMutate = vi.fn();
 const deleteAllMutate = vi.fn();
-const scheduleRows: Array<Record<string, unknown>> = [];
+let scheduleRows: Array<Record<string, unknown>> = [];
+let scheduleIsError = false;
 
 vi.mock("@workspace/api-client-react", () => ({
   getListTeacherScheduleQueryKey: () => ["teacher-schedule"],
-  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false }),
+  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false, isError: scheduleIsError }),
   useBulkCreateTeacherSchedule: () => ({ mutate: bulkMutate, isPending: false }),
   useCreateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
@@ -51,7 +52,8 @@ beforeEach(async () => {
   vi.setSystemTime(new Date("2026-09-13T09:00:00Z"));
   bulkMutate.mockReset();
   deleteAllMutate.mockReset();
-  scheduleRows.length = 0;
+  scheduleRows = [];
+  scheduleIsError = false;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -125,6 +127,40 @@ describe("TeacherScheduleCard full schedule drafts", () => {
     await click("button-summary-schedule-day-1");
     expect(document.body.textContent).toContain("علوم");
     expect(document.body.textContent).not.toContain("رياضيات");
+  });
+
+  it("shows sparse lessons, a non-lesson period, and the saved appointment after reopening", async () => {
+    scheduleRows = [
+      { id: 1, kind: "weekly", title: "رياضيات", dayOfWeek: 0, lessonNumber: 1, startTime: "08:00", endTime: "09:00" },
+      { id: 2, kind: "break", title: "نشاط صباحي", dayOfWeek: 0, breakAfterLesson: 1, startTime: "09:00", endTime: "09:30" },
+      { id: 3, kind: "weekly", title: "علوم", dayOfWeek: 0, lessonNumber: 3, startTime: "10:00", endTime: "11:00" },
+      { id: 4, kind: "appointment", title: "اجتماع ولي الأمر", appointmentDate: "2030-01-15", startTime: "12:00", endTime: "12:30" },
+    ];
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={new QueryClient()}>
+          <TeacherScheduleCard isAr user={{ id: 101 }} />
+        </QueryClientProvider>,
+      );
+    });
+
+    await click("button-summary-schedule-day-0");
+    expect(document.body.textContent).toContain("الحصة الأولى");
+    expect(document.body.textContent).toContain("الحصة الثالثة");
+    expect(document.body.textContent).toContain("نشاط صباحي");
+    expect(document.body.textContent).toContain("اجتماع ولي الأمر");
+  });
+
+  it("shows a clear message when reopening the schedule fails", async () => {
+    scheduleIsError = true;
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={new QueryClient()}>
+          <TeacherScheduleCard isAr user={{ id: 101 }} />
+        </QueryClientProvider>,
+      );
+    });
+    expect(document.body.textContent).toContain("تعذر تحميل الجدول");
   });
 });
 

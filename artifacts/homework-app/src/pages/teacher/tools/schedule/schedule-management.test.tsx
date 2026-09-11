@@ -4,9 +4,12 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bulkMutate = vi.fn();
+const createMutate = vi.fn();
 const deleteAllMutate = vi.fn();
 const heicConvert = vi.fn();
 let scheduleRows: Array<Record<string, unknown>> = [];
+let scheduleIsError = false;
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
 
 vi.mock("heic2any", () => ({
   default: heicConvert,
@@ -24,11 +27,15 @@ vi.mock("@/components/credits-chip", () => ({
   useRefreshCreditsBalance: () => vi.fn(),
 }));
 
+vi.mock("@/components/ui/sonner", () => ({
+  toast: { success: vi.fn(), error: toastError },
+}));
+
 vi.mock("@workspace/api-client-react", () => ({
   getListTeacherScheduleQueryKey: () => ["teacher-schedule"],
-  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false, isError: false }),
+  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false, isError: scheduleIsError }),
   useBulkCreateTeacherSchedule: () => ({ mutate: bulkMutate, isPending: false }),
-  useCreateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateTeacherScheduleEntry: () => ({ mutate: createMutate, isPending: false }),
   useUpdateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteTeacherSchedule: () => ({ mutate: deleteAllMutate, isPending: false }),
   useDeleteTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
@@ -58,9 +65,20 @@ async function typeInto(testId: string, value: string) {
   });
 }
 
+async function renderPage() {
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ScheduleManagementPage />
+      </QueryClientProvider>,
+    );
+  });
+}
+
 beforeEach(async () => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   bulkMutate.mockReset();
+  createMutate.mockReset();
   deleteAllMutate.mockReset();
   heicConvert.mockReset();
   localStorage.clear();
@@ -70,17 +88,13 @@ beforeEach(async () => {
     createObjectURL: vi.fn(() => "blob:converted-image"),
     revokeObjectURL: vi.fn(),
   });
+  toastError.mockReset();
   scheduleRows = [];
+  scheduleIsError = false;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
-  await act(async () => {
-    root.render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ScheduleManagementPage />
-      </QueryClientProvider>,
-    );
-  });
+  await renderPage();
 });
 
 afterEach(async () => {
@@ -188,6 +202,85 @@ describe("schedule management tool", () => {
     expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
       .toBe("مسودة الأحد");
     expect(bulkMutate).not.toHaveBeenCalled();
+  });
+
+  it("preserves sparse lessons, a non-lesson period, and an appointment after reopening", async () => {
+    bulkMutate.mockImplementation(({ data }, { onSuccess }) => {
+      expect(data.daySchedules).toEqual([{
+        dayOfWeek: 5,
+        lessons: [
+          expect.objectContaining({ lessonNumber: 1, title: "رياضيات" }),
+          expect.objectContaining({ lessonNumber: 3, title: "علوم" }),
+        ],
+        breaks: [{
+          title: "نشاط صباحي",
+          breakAfterLesson: 1,
+          startTime: "09:00",
+          endTime: "09:30",
+        }],
+      }]);
+      scheduleRows = [
+        { id: 1, kind: "weekly", title: "رياضيات", dayOfWeek: 5, lessonNumber: 1, startTime: "08:00", endTime: "09:00" },
+        { id: 2, kind: "break", title: "نشاط صباحي", dayOfWeek: 5, breakAfterLesson: 1, startTime: "09:00", endTime: "09:30" },
+        { id: 3, kind: "weekly", title: "علوم", dayOfWeek: 5, lessonNumber: 3, startTime: "10:00", endTime: "11:00" },
+      ];
+      onSuccess(scheduleRows);
+    });
+    createMutate.mockImplementation(({ data }, { onSuccess }) => {
+      expect(data).toEqual(expect.objectContaining({
+        kind: "appointment",
+        title: "اجتماع ولي الأمر",
+        appointmentDate: "2030-01-15",
+        startTime: "12:00",
+        endTime: "12:30",
+      }));
+      scheduleRows = [...scheduleRows, { id: 4, ...data }];
+      onSuccess();
+    });
+
+    await click("button-add-bulk-schedule");
+    await click("button-bulk-day-5");
+    await click("button-remove-bulk-lesson-5");
+    await click("button-remove-bulk-lesson-4");
+    await click("button-remove-bulk-lesson-2");
+    await typeInto("input-bulk-lesson-title-1", "رياضيات");
+    await typeInto("input-bulk-lesson-title-2", "علوم");
+    await click("button-add-bulk-period");
+    await typeInto("input-bulk-period-title-5-0", "نشاط صباحي");
+    await typeInto("input-bulk-period-start-5-0", "09:00");
+    await typeInto("input-bulk-period-end-5-0", "09:30");
+    await click("button-save-bulk-schedule");
+
+    await click("button-add-schedule-entry");
+    await click("button-schedule-kind-appointment");
+    await typeInto("input-schedule-title", "اجتماع ولي الأمر");
+    await typeInto("input-schedule-appointment-date", "2030-01-15");
+    await typeInto("input-schedule-start-time", "12:00");
+    await typeInto("input-schedule-end-time", "12:30");
+    await click("button-save-schedule-entry");
+
+    await renderPage();
+    await click("button-management-schedule-day-5");
+    expect(document.body.textContent).toContain("رياضيات");
+    expect(document.body.textContent).toContain("الحصة الأولى");
+    expect(document.body.textContent).toContain("علوم");
+    expect(document.body.textContent).toContain("الحصة الثالثة");
+    expect(document.body.textContent).toContain("نشاط صباحي");
+    expect(document.body.textContent).toContain("اجتماع ولي الأمر");
+  });
+
+  it("keeps the draft visible on save failure and explains reload failure", async () => {
+    bulkMutate.mockImplementation((_variables, { onError }) => onError(new Error("تعذر الاتصال بالخادم")));
+    await click("button-add-bulk-schedule");
+    await typeInto("input-bulk-lesson-title-1", "مسودة محفوظة محليًا");
+    await click("button-save-bulk-schedule");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
+      .toBe("مسودة محفوظة محليًا");
+    expect(toastError).toHaveBeenCalledWith("تعذر حفظ الجدول الكامل. صحح الأوقات وحاول مجددًا");
+
+    scheduleIsError = true;
+    await renderPage();
+    expect(document.body.textContent).toContain("تعذر تحميل الجدول");
   });
 
   it("requires confirmation before deleting the whole schedule", async () => {
