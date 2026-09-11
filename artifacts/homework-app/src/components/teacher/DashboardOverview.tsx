@@ -86,6 +86,13 @@ type TabId =
   | "stats"
   | "students";
 
+function getApiErrorMessage(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("data" in error)) return null;
+  const data = error.data;
+  if (!data || typeof data !== "object" || !("message" in data)) return null;
+  return typeof data.message === "string" ? data.message : null;
+}
+
 interface Assignment {
   id: number;
   title: string;
@@ -2801,7 +2808,13 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
       refreshSchedule();
       toast.success(isAr ? "تم حفظ الجدول" : "Schedule saved");
     };
-    const onError = () => toast.error(isAr ? "تعذر حفظ الجدول" : "Could not save the schedule");
+    const onError = (error: Error) => {
+      const message = getApiErrorMessage(error);
+      toast.error(
+        message
+        || (isAr ? "تعذر حفظ الجدول. صحح البيانات وحاول مجددًا" : "Could not save the schedule. Correct the details and try again"),
+      );
+    };
 
     if (editingId != null) {
       updateMutation.mutate({ id: editingId, data: payload }, { onSuccess, onError });
@@ -2835,8 +2848,13 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
               : `${created.length} classes added to the schedule`,
           );
         },
-        onError: () =>
-          toast.error(isAr ? "تعذر حفظ الجدول الكامل" : "Could not save the full schedule"),
+        onError: (error) => {
+          const message = getApiErrorMessage(error);
+          toast.error(
+            message
+            || (isAr ? "تعذر حفظ الجدول الكامل. صحح الأوقات وحاول مجددًا" : "Could not save the full schedule. Correct the times and try again"),
+          );
+        },
       },
     );
   }

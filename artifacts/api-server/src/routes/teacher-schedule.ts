@@ -94,6 +94,47 @@ function normalizeValues(value: z.infer<typeof scheduleFields>) {
   };
 }
 
+type ComparableScheduleEntry = {
+  kind: string;
+  dayOfWeek: number | null;
+  appointmentDate: string | null;
+  startTime: string;
+  endTime: string | null;
+};
+
+function entriesOverlap(left: ComparableScheduleEntry, right: ComparableScheduleEntry): boolean {
+  if (!left.endTime || !right.endTime) return false;
+  return left.startTime < right.endTime && right.startTime < left.endTime;
+}
+
+function sharesScheduleDay(left: ComparableScheduleEntry, right: ComparableScheduleEntry): boolean {
+  if (left.kind === "appointment" || right.kind === "appointment") {
+    return left.kind === "appointment"
+      && right.kind === "appointment"
+      && left.appointmentDate === right.appointmentDate;
+  }
+  return left.dayOfWeek === right.dayOfWeek;
+}
+
+async function hasTimeConflict(
+  teacherId: number,
+  candidate: ComparableScheduleEntry,
+  excludedId?: number,
+): Promise<boolean> {
+  const entries = await db
+    .select()
+    .from(teacherScheduleTable)
+    .where(eq(teacherScheduleTable.teacherId, teacherId));
+
+  return entries.some((entry) =>
+    entry.id !== excludedId
+    && sharesScheduleDay(candidate, entry)
+    && entriesOverlap(candidate, entry),
+  );
+}
+
+const conflictMessage = "يتعارض هذا الوقت مع حصة أو استراحة أخرى في اليوم نفسه";
+
 router.get("/teacher/schedule", requireAuth, async (req: any, res): Promise<void> => {
   const rows = await db
     .select()
@@ -152,11 +193,17 @@ router.post("/teacher/schedule", requireAuth, async (req: any, res): Promise<voi
     return;
   }
 
+  const values = normalizeValues(parsed.data);
+  if (await hasTimeConflict(req.session.teacherId, values)) {
+    res.status(409).json({ message: conflictMessage });
+    return;
+  }
+
   const [entry] = await db
     .insert(teacherScheduleTable)
     .values({
       teacherId: req.session.teacherId,
-      ...normalizeValues(parsed.data),
+      ...values,
     })
     .returning();
   res.status(201).json(entry);
@@ -169,8 +216,7 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
     return;
   }
 
-  const created = await db.transaction(async (tx) => {
-    const values = parsed.data.days.flatMap((dayOfWeek) =>
+  const values = parsed.data.days.flatMap((dayOfWeek) =>
       parsed.data.lessons.map((lesson) => ({
         teacherId: req.session.teacherId,
         kind: "weekly" as const,
@@ -187,6 +233,24 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         notes: null,
       })),
     );
+  const existing = await db
+    .select()
+    .from(teacherScheduleTable)
+    .where(eq(teacherScheduleTable.teacherId, req.session.teacherId));
+  const hasExistingConflict = values.some((candidate) =>
+    existing.some((entry) => sharesScheduleDay(candidate, entry) && entriesOverlap(candidate, entry)),
+  );
+  const hasInternalConflict = values.some((candidate, index) =>
+    values.slice(index + 1).some((other) =>
+      sharesScheduleDay(candidate, other) && entriesOverlap(candidate, other),
+    ),
+  );
+  if (hasExistingConflict || hasInternalConflict) {
+    res.status(409).json({ message: conflictMessage });
+    return;
+  }
+
+  const created = await db.transaction(async (tx) => {
     return tx.insert(teacherScheduleTable).values(values).returning();
   });
   res.status(201).json(created);
@@ -238,10 +302,16 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
     return;
   }
 
+  const values = normalizeValues(merged.data);
+  if (await hasTimeConflict(req.session.teacherId, values, id)) {
+    res.status(409).json({ message: conflictMessage });
+    return;
+  }
+
   const [entry] = await db
     .update(teacherScheduleTable)
     .set({
-      ...normalizeValues(merged.data),
+      ...values,
       updatedAt: new Date(),
     })
     .where(and(

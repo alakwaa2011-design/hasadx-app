@@ -169,6 +169,7 @@ const mockState = vi.hoisted(() => {
       );
       return query;
     },
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(db),
   };
 
   return {
@@ -260,7 +261,7 @@ describe("teacher schedule breaks", () => {
       .expect(201);
     await request(app)
       .post("/api/teacher/schedule")
-      .send(lesson("الحصة الثانية", 2, "09:00"))
+      .send({ ...lesson("الحصة الثانية", 2, "09:00"), endTime: "09:30" })
       .expect(201);
     const createdBreak = await request(app)
       .post("/api/teacher/schedule")
@@ -357,5 +358,97 @@ describe("teacher schedule breaks", () => {
         title: "استراحة المعلم الأول",
       }),
     ]);
+  });
+
+  it("rejects overlapping classes and breaks without changing existing entries", async () => {
+    const app = makeApp({ teacherId: 101 });
+    const existing = await request(app)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("الحصة الأولى", 1, "08:00"), endTime: "09:00" })
+      .expect(201);
+    await request(app)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("الحصة الثانية", 2, "10:00"), endTime: "11:00" })
+      .expect(201);
+
+    const conflictingBreak = await request(app)
+      .post("/api/teacher/schedule")
+      .send({ ...breakEntry(), startTime: "08:30", endTime: "08:45" })
+      .expect(409);
+    expect(conflictingBreak.body.message).toContain("يتعارض");
+
+    const conflictingUpdate = await request(app)
+      .patch(`/api/teacher/schedule/${existing.body.id}`)
+      .send({ startTime: "10:30", endTime: "11:30" })
+      .expect(409);
+    expect(conflictingUpdate.body.message).toContain("يتعارض");
+
+    const rows = (await request(app).get("/api/teacher/schedule").expect(200)).body;
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row: ScheduleRow) => row.id === existing.body.id)).toMatchObject({
+      id: existing.body.id,
+      startTime: "08:00",
+      endTime: "09:00",
+    });
+  });
+
+  it("rejects a conflicting bulk schedule without inserting any lessons", async () => {
+    const app = makeApp({ teacherId: 101 });
+    await request(app)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("حصة موجودة", 1, "08:00"), endTime: "09:00" })
+      .expect(201);
+
+    const response = await request(app)
+      .post("/api/teacher/schedule/bulk")
+      .send({
+        days: [1],
+        lessons: [
+          {
+            lessonNumber: 2,
+            title: "حصة متعارضة",
+            subject: null,
+            className: null,
+            startTime: "08:30",
+            endTime: "09:30",
+          },
+          {
+            lessonNumber: 3,
+            title: "حصة لاحقة",
+            subject: null,
+            className: null,
+            startTime: "10:00",
+            endTime: "11:00",
+          },
+        ],
+      })
+      .expect(409);
+    expect(response.body.message).toContain("يتعارض");
+
+    const rows = (await request(app).get("/api/teacher/schedule").expect(200)).body;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title).toBe("حصة موجودة");
+  });
+
+  it("allows adjacent entries and the same time on another day or teacher", async () => {
+    const teacherOne = makeApp({ teacherId: 101 });
+    const teacherTwo = makeApp({ teacherId: 202 });
+    await request(teacherOne)
+      .post("/api/teacher/schedule")
+      .send(lesson("الحصة الأولى", 1, "08:00"))
+      .expect(201);
+
+    await request(teacherOne)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("الحصة الثانية", 2, "09:00"), startTime: "09:00", endTime: "10:00" })
+      .expect(201);
+    await request(teacherOne)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("يوم آخر", 1, "08:00"), dayOfWeek: 2 })
+      .expect(201);
+    await request(teacherTwo)
+      .post("/api/teacher/schedule")
+      .send(lesson("معلم آخر", 1, "08:00"))
+      .expect(201);
   });
 });
