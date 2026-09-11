@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw, ChevronDown, MoreHorizontal, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -79,6 +80,7 @@ export default function TeacherAssignmentDetail() {
   const [resultsSearch, setResultsSearch] = useState("");
   const [resultsScoreFilter, setResultsScoreFilter] = useState<"all" | "below50" | "50to69" | "70to84" | "85to100">("all");
   const [assignmentShared, setAssignmentShared] = useState(false);
+  const [showLifecycleDialog, setShowLifecycleDialog] = useState(false);
   const [adaptiveReport, setAdaptiveReport] = useState<Record<string, unknown> | null>(null);
   const [adaptiveLoading, setAdaptiveLoading] = useState(false);
   const [questionStats, setQuestionStats] = useState<{ totalSubmissions: number; questions: Array<{ id: number; text: string; questionType: string; totalAnswers: number; correctCount: number; correctRate: number }> } | null>(null);
@@ -1310,6 +1312,14 @@ export default function TeacherAssignmentDetail() {
                   <DropdownMenuContent align={dir === "rtl" ? "end" : "start"} className="w-56">
                     <DropdownMenuLabel>{lang === "ar" ? "إجراءات إضافية" : "More actions"}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                     <DropdownMenuItem
+                       onSelect={() => setShowLifecycleDialog(true)}
+                       className="gap-2.5 py-2.5 cursor-pointer"
+                       data-testid="menu-assignment-status"
+                     >
+                       <Activity className="w-4 h-4" />
+                       {lang === "ar" ? "حالة الواجب" : "Assignment status"}
+                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => duplicateMutation.mutate()}
                       disabled={duplicateMutation.isPending}
@@ -1352,118 +1362,126 @@ export default function TeacherAssignmentDetail() {
               </div>
             </motion.div>
 
-            {/* Lifecycle Summary */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`border-x-4 mb-6 rounded-xl border bg-card p-4 sm:p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between transition-all ${
-                (assignment as any).closedAt
-                  ? "border-s-slate-400 dark:border-s-slate-600 shadow-sm"
-                  : "border-s-emerald-500 dark:border-s-emerald-400 shadow-md shadow-emerald-500/5"
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                    {lang === "ar" ? "حالة الواجب" : "Assignment State"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3 h-3 rounded-full flex-shrink-0 ${(assignment as any).closedAt ? "bg-slate-400" : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"}`} />
-                    <span className={`text-lg font-black tracking-tight ${(assignment as any).closedAt ? "text-slate-600 dark:text-slate-300" : "text-emerald-700 dark:text-emerald-400"}`}>
-                      {(assignment as any).closedAt ? (lang === "ar" ? "مغلق" : "Closed") : (lang === "ar" ? "مفتوح ويستقبل الحلول" : "Open & Active")}
-                    </span>
-                  </div>
-                </div>
+            <Dialog open={showLifecycleDialog} onOpenChange={setShowLifecycleDialog}>
+              <DialogContent dir={dir} className="max-w-4xl rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-lg font-black">
+                    <Activity className="w-5 h-5 text-primary" />
+                    {lang === "ar" ? "حالة الواجب" : "Assignment status"}
+                  </DialogTitle>
+                </DialogHeader>
 
-                <div className="w-full sm:w-px h-px sm:h-12 bg-border/60" />
+                <div
+                  className={`border-x-4 rounded-xl border bg-card p-4 sm:p-5 flex flex-col gap-5 transition-all ${
+                    (assignment as any).closedAt
+                      ? "border-s-slate-400 dark:border-s-slate-600 shadow-sm"
+                      : "border-s-emerald-500 dark:border-s-emerald-400 shadow-md shadow-emerald-500/5"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row gap-6 w-full">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                        {lang === "ar" ? "حالة الواجب" : "Assignment State"}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${(assignment as any).closedAt ? "bg-slate-400" : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"}`} />
+                        <span className={`text-lg font-black tracking-tight ${(assignment as any).closedAt ? "text-slate-600 dark:text-slate-300" : "text-emerald-700 dark:text-emerald-400"}`}>
+                          {(assignment as any).closedAt ? (lang === "ar" ? "مغلق" : "Closed") : (lang === "ar" ? "مفتوح ويستقبل الحلول" : "Open & Active")}
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="flex items-center gap-8">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                      {lang === "ar" ? "تم التسليم" : "Submitted"}
-                    </span>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-foreground leading-none">{summaryStats.submitted}</span>
-                      <span className="text-sm font-medium text-muted-foreground">/ {summaryStats.submitted + summaryStats.pending}</span>
+                    <div className="w-full sm:w-px h-px sm:h-12 bg-border/60" />
+
+                    <div className="flex items-center gap-8">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                          {lang === "ar" ? "تم التسليم" : "Submitted"}
+                        </span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-foreground leading-none">{summaryStats.submitted}</span>
+                          <span className="text-sm font-medium text-muted-foreground">/ {summaryStats.submitted + summaryStats.pending}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mb-1">
+                          {lang === "ar" ? "قيد الانتظار" : "Pending"}
+                        </span>
+                        <span className="text-2xl font-black text-amber-600 dark:text-amber-500 leading-none">{summaryStats.pending}</span>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-red-600/70 dark:text-red-500/70 uppercase tracking-wider mb-1">
+                          {lang === "ar" ? "متأخر" : "Late"}
+                        </span>
+                        <span className="text-2xl font-black text-red-600 dark:text-red-500 leading-none">{summaryStats.late}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-wider mb-1">
-                      {lang === "ar" ? "قيد الانتظار" : "Pending"}
-                    </span>
-                    <span className="text-2xl font-black text-amber-600 dark:text-amber-500 leading-none">{summaryStats.pending}</span>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-red-600/70 dark:text-red-500/70 uppercase tracking-wider mb-1">
-                      {lang === "ar" ? "متأخر" : "Late"}
-                    </span>
-                    <span className="text-2xl font-black text-red-600 dark:text-red-500 leading-none">{summaryStats.late}</span>
+                  <div className="w-full flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => updateLifecycleSettingsMutation.mutate({ extendDays: 1 })}
+                      disabled={updateLifecycleSettingsMutation.isPending}
+                      className="flex-1 sm:flex-none font-bold"
+                    >
+                      <Calendar className="w-4 h-4 me-1.5" />
+                      {lang === "ar" ? "تمديد يوم" : "+1 day"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => updateLifecycleSettingsMutation.mutate({ extendDays: 7 })}
+                      disabled={updateLifecycleSettingsMutation.isPending}
+                      className="flex-1 sm:flex-none font-bold"
+                    >
+                      <Calendar className="w-4 h-4 me-1.5" />
+                      {lang === "ar" ? "تمديد أسبوع" : "+7 days"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => updateLifecycleSettingsMutation.mutate({
+                        extraAttempts: (assignment as any).extraAttempts ? 0 : 1,
+                      })}
+                      disabled={updateLifecycleSettingsMutation.isPending}
+                      className="flex-1 sm:flex-none font-bold"
+                    >
+                      <RotateCcw className="w-4 h-4 me-1.5" />
+                      {(assignment as any).extraAttempts
+                        ? (lang === "ar" ? "إلغاء المحاولة الإضافية" : "Remove extra attempt")
+                        : (lang === "ar" ? "محاولة إضافية للجميع" : "Extra attempt for all")}
+                    </Button>
+                    <p className="basis-full text-[11px] leading-5 text-muted-foreground">
+                      {lang === "ar"
+                        ? "المحاولة الإضافية تُحسب لكل جهاز حاليًا، لأن حسابات الطلبة غير مفعّلة."
+                        : "The extra attempt is currently counted per device because student accounts are not enabled."}
+                    </p>
+                    <Button
+                      variant={(assignment as any).closedAt ? "default" : "outline"}
+                      onClick={() => toggleLifecycleMutation.mutate(!(assignment as any).closedAt)}
+                      disabled={toggleLifecycleMutation.isPending}
+                      className={`w-full sm:w-auto font-bold gap-2 ${
+                        !(assignment as any).closedAt
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
+                      }`}
+                    >
+                      {toggleLifecycleMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (assignment as any).closedAt ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : (
+                        <Lock className="w-4 h-4" />
+                      )}
+                      {(assignment as any).closedAt
+                        ? (lang === "ar" ? "إعادة فتح الواجب" : "Reopen Assignment")
+                        : (lang === "ar" ? "إغلاق الواجب الآن" : "Close Assignment Now")}
+                    </Button>
                   </div>
                 </div>
-              </div>
-
-              <div className="w-full sm:w-auto pt-2 sm:pt-0 flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => updateLifecycleSettingsMutation.mutate({ extendDays: 1 })}
-                  disabled={updateLifecycleSettingsMutation.isPending}
-                  className="flex-1 sm:flex-none font-bold"
-                >
-                  <Calendar className="w-4 h-4 me-1.5" />
-                  {lang === "ar" ? "تمديد يوم" : "+1 day"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => updateLifecycleSettingsMutation.mutate({ extendDays: 7 })}
-                  disabled={updateLifecycleSettingsMutation.isPending}
-                  className="flex-1 sm:flex-none font-bold"
-                >
-                  <Calendar className="w-4 h-4 me-1.5" />
-                  {lang === "ar" ? "تمديد أسبوع" : "+7 days"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => updateLifecycleSettingsMutation.mutate({
-                    extraAttempts: (assignment as any).extraAttempts ? 0 : 1,
-                  })}
-                  disabled={updateLifecycleSettingsMutation.isPending}
-                  className="flex-1 sm:flex-none font-bold"
-                >
-                  <RotateCcw className="w-4 h-4 me-1.5" />
-                  {(assignment as any).extraAttempts
-                    ? (lang === "ar" ? "إلغاء المحاولة الإضافية" : "Remove extra attempt")
-                    : (lang === "ar" ? "محاولة إضافية للجميع" : "Extra attempt for all")}
-                </Button>
-                <p className="basis-full text-[11px] leading-5 text-muted-foreground">
-                  {lang === "ar"
-                    ? "المحاولة الإضافية تُحسب لكل جهاز حاليًا، لأن حسابات الطلبة غير مفعّلة."
-                    : "The extra attempt is currently counted per device because student accounts are not enabled."}
-                </p>
-                <Button
-                  variant={(assignment as any).closedAt ? "default" : "outline"}
-                  onClick={() => toggleLifecycleMutation.mutate(!(assignment as any).closedAt)}
-                  disabled={toggleLifecycleMutation.isPending}
-                  className={`w-full sm:w-auto font-bold gap-2 ${
-                    !(assignment as any).closedAt
-                      ? "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
-                  }`}
-                >
-                  {toggleLifecycleMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (assignment as any).closedAt ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <Lock className="w-4 h-4" />
-                  )}
-                  {(assignment as any).closedAt
-                    ? (lang === "ar" ? "إعادة فتح الواجب" : "Reopen Assignment")
-                    : (lang === "ar" ? "إغلاق الواجب الآن" : "Close Assignment Now")}
-                </Button>
-              </div>
-            </motion.div>
+              </DialogContent>
+            </Dialog>
 
             <div className="flex gap-2 mb-6">
               {[
