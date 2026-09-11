@@ -132,6 +132,7 @@ export type * from "./types/submitImageBody";
 export type * from "./types/successResponse";
 export type * from "./types/teacherProfile";
 export type * from "./types/teacherProfileRole";
+export type * from "./types/teacherScheduleBulkBreakInput";
 export type * from "./types/teacherScheduleBulkInput";
 export type * from "./types/teacherScheduleBulkInputDaySchedulesItem";
 export type * from "./types/teacherScheduleBulkLessonInput";

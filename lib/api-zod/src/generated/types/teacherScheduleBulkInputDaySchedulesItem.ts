@@ -5,6 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { TeacherScheduleBulkBreakInput } from './teacherScheduleBulkBreakInput';
 import type { TeacherScheduleBulkLessonInput } from './teacherScheduleBulkLessonInput';
 
 export type TeacherScheduleBulkInputDaySchedulesItem = {
@@ -13,9 +14,8 @@ export type TeacherScheduleBulkInputDaySchedulesItem = {
      * @maximum 6
      */
   dayOfWeek: number;
-  /**
-     * @minItems 1
-     * @maxItems 10
-     */
+  /** @maxItems 30 */
   lessons: TeacherScheduleBulkLessonInput[];
+  /** @maxItems 50 */
+  breaks?: TeacherScheduleBulkBreakInput[];
 };

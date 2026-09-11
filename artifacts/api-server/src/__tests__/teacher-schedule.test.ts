@@ -455,6 +455,12 @@ describe("teacher schedule breaks", () => {
                 endTime: "09:00",
               },
             ],
+            breaks: Array.from({ length: 4 }, (_, index) => ({
+              title: index === 0 ? "سناك" : `استراحة ${index + 1}`,
+              breakAfterLesson: index + 1,
+              startTime: `09:${String(index * 10).padStart(2, "0")}`,
+              endTime: `09:${String((index + 1) * 10).padStart(2, "0")}`,
+            })),
           },
           {
             dayOfWeek: 1,
@@ -477,12 +483,50 @@ describe("teacher schedule breaks", () => {
       })
       .expect(201);
 
-    expect(response.body).toHaveLength(3);
+    expect(response.body).toHaveLength(7);
+    expect(response.body.filter((entry: { kind: string }) => entry.kind === "break")).toHaveLength(4);
+    expect(response.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "break",
+        title: "سناك",
+        dayOfWeek: 0,
+        breakAfterLesson: 1,
+        startTime: "09:00",
+        endTime: "09:10",
+      }),
+    ]));
     expect(response.body).toEqual(expect.arrayContaining([
       expect.objectContaining({ dayOfWeek: 0, title: "رياضيات الأحد" }),
       expect.objectContaining({ dayOfWeek: 1, title: "علوم الاثنين" }),
       expect.objectContaining({ dayOfWeek: 1, title: "لغة عربية الاثنين" }),
     ]));
+  });
+
+  it("saves a day containing only non-lesson periods", async () => {
+    const app = makeApp({ teacherId: 101 });
+    const response = await request(app)
+      .post("/api/teacher/schedule/bulk")
+      .send({
+        daySchedules: [{
+          dayOfWeek: 4,
+          lessons: [],
+          breaks: [{
+            title: "اجتماع الهيئة التعليمية",
+            breakAfterLesson: 0,
+            startTime: "08:00",
+            endTime: "09:00",
+          }],
+        }],
+      })
+      .expect(201);
+
+    expect(response.body).toEqual([
+      expect.objectContaining({
+        kind: "break",
+        title: "اجتماع الهيئة التعليمية",
+        breakAfterLesson: 0,
+      }),
+    ]);
   });
 
   it("allows adjacent entries and the same time on another day or teacher", async () => {

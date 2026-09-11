@@ -18,7 +18,7 @@ export interface TeacherScheduleBulkInput {
   days?: number[];
   /**
      * @minItems 1
-     * @maxItems 10
+     * @maxItems 30
      */
   lessons?: TeacherScheduleBulkLessonInput[];
   /**

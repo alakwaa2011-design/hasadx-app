@@ -69,6 +69,18 @@ afterEach(async () => {
 });
 
 describe("TeacherScheduleCard full schedule drafts", () => {
+  it("keeps the save action visible while the schedule rows scroll", async () => {
+    await click("button-add-bulk-schedule");
+
+    const scrollRegion = document.querySelector('[data-testid="bulk-schedule-scroll-region"]');
+    const actions = document.querySelector('[data-testid="bulk-schedule-fixed-actions"]');
+
+    expect(scrollRegion?.className).toContain("overflow-y-auto");
+    expect(actions?.className).toContain("shrink-0");
+    expect(actions?.contains(button("button-save-bulk-schedule"))).toBe(true);
+    expect(scrollRegion?.contains(button("button-save-bulk-schedule"))).toBe(false);
+  });
+
   it("keeps each day independent, removes an accidental day, and saves every remaining day once", async () => {
     await click("button-add-bulk-schedule");
 
@@ -147,7 +159,45 @@ describe("teacher schedule image draft normalization", () => {
     expect(schedules[0].map((lesson) => lesson.lessonNumber)).toEqual([1, 3]);
     expect(schedules[0][1].subject).toBe("علوم");
 
-    const payload = buildTeacherScheduleBulkInput(schedules, true);
+    const payload = buildTeacherScheduleBulkInput(schedules, true, {
+      0: Array.from({ length: 4 }, (_, index) => ({
+        title: index === 0 ? "سناك" : `استراحة ${index + 1}`,
+        breakAfterLesson: index + 1,
+        startTime: `09:${String(index * 10).padStart(2, "0")}`,
+        endTime: `09:${String((index + 1) * 10).padStart(2, "0")}`,
+        confidence: "high" as const,
+      })),
+    });
     expect(payload.daySchedules?.[0].lessons.map((lesson) => lesson.lessonNumber)).toEqual([1, 3]);
+    expect(payload.daySchedules?.[0].breaks).toHaveLength(4);
+    expect(payload.daySchedules?.[0].breaks?.[0]).toEqual({
+      title: "سناك",
+      breakAfterLesson: 1,
+      startTime: "09:00",
+      endTime: "09:10",
+    });
+  });
+
+  it("builds a day containing only named non-lesson periods", () => {
+    const payload = buildTeacherScheduleBulkInput({ 4: [] }, true, {
+      4: [{
+        title: "تطوير مهني",
+        breakAfterLesson: 0,
+        startTime: "08:00",
+        endTime: "10:00",
+        confidence: "high",
+      }],
+    });
+
+    expect(payload.daySchedules?.[0]).toEqual({
+      dayOfWeek: 4,
+      lessons: [],
+      breaks: [{
+        title: "تطوير مهني",
+        breakAfterLesson: 0,
+        startTime: "08:00",
+        endTime: "10:00",
+      }],
+    });
   });
 });

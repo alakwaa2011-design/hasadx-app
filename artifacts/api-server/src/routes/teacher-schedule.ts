@@ -29,8 +29,8 @@ const scheduleFieldsBase = z.object({
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
   dayOfWeek: z.number().int().min(0).max(6).nullish(),
-  lessonNumber: z.number().int().min(1).max(10).nullish(),
-  breakAfterLesson: z.number().int().min(1).max(9).nullish(),
+  lessonNumber: z.number().int().min(1).max(30).nullish(),
+  breakAfterLesson: z.number().int().min(0).max(30).nullish(),
   appointmentDate: z.string().regex(datePattern).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
@@ -264,7 +264,7 @@ router.post(
 );
 
 const bulkLessonSchema = z.object({
-  lessonNumber: z.number().int().min(1).max(10),
+  lessonNumber: z.number().int().min(1).max(30),
   title: z.string().trim().min(1).max(160),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
@@ -280,12 +280,28 @@ const bulkLessonSchema = z.object({
   }
 });
 
+const bulkBreakSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  breakAfterLesson: z.number().int().min(0).max(30),
+  startTime: z.string().regex(timePattern),
+  endTime: z.string().regex(timePattern).nullish(),
+}).superRefine((value, ctx) => {
+  if (value.endTime && value.endTime <= value.startTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endTime"],
+      message: "يجب أن يكون وقت انتهاء الفترة بعد بدايتها",
+    });
+  }
+});
+
 const bulkScheduleSchema = z.object({
   days: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
-  lessons: z.array(bulkLessonSchema).min(1).max(10).optional(),
+  lessons: z.array(bulkLessonSchema).min(1).max(30).optional(),
   daySchedules: z.array(z.object({
     dayOfWeek: z.number().int().min(0).max(6),
-    lessons: z.array(bulkLessonSchema).min(1).max(10),
+    lessons: z.array(bulkLessonSchema).max(30).default([]),
+    breaks: z.array(bulkBreakSchema).max(50).default([]),
   })).min(1).max(7).optional(),
 }).superRefine((value, ctx) => {
   const usesSharedLessons = Boolean(value.days && value.lessons);
@@ -320,6 +336,13 @@ const bulkScheduleSchema = z.object({
       });
     }
     value.daySchedules.forEach((schedule, index) => {
+      if (schedule.lessons.length === 0 && schedule.breaks.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["daySchedules", index],
+          message: "يجب أن يحتوي اليوم على فترة واحدة على الأقل",
+        });
+      }
       if (new Set(schedule.lessons.map((lesson) => lesson.lessonNumber)).size !== schedule.lessons.length) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -366,9 +389,10 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
     ?? parsed.data.days!.map((dayOfWeek) => ({
       dayOfWeek,
       lessons: parsed.data.lessons!,
+      breaks: [],
     }));
-  const values = daySchedules.flatMap(({ dayOfWeek, lessons }) =>
-      lessons.map((lesson) => ({
+  const values = daySchedules.flatMap(({ dayOfWeek, lessons, breaks = [] }) => [
+      ...lessons.map((lesson) => ({
         teacherId: req.session.teacherId,
         kind: "weekly" as const,
         title: lesson.title,
@@ -376,14 +400,29 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         className: lesson.className || null,
         dayOfWeek,
         lessonNumber: lesson.lessonNumber,
-         breakAfterLesson: null,
+        breakAfterLesson: null,
         appointmentDate: null,
         startTime: lesson.startTime,
         endTime: lesson.endTime || null,
         location: null,
         notes: null,
       })),
-    );
+      ...breaks.map((entry) => ({
+        teacherId: req.session.teacherId,
+        kind: "break" as const,
+        title: entry.title,
+        subject: null,
+        className: null,
+        dayOfWeek,
+        lessonNumber: null,
+        breakAfterLesson: entry.breakAfterLesson,
+        appointmentDate: null,
+        startTime: entry.startTime,
+        endTime: entry.endTime || null,
+        location: null,
+        notes: null,
+      })),
+    ]);
   const existing = await db
     .select()
     .from(teacherScheduleTable)

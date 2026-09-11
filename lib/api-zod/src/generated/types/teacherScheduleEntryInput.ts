@@ -25,12 +25,12 @@ export interface TeacherScheduleEntryInput {
   dayOfWeek?: number | null;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 30
      */
   lessonNumber?: number | null;
   /**
-     * @minimum 1
-     * @maximum 9
+     * @minimum 0
+     * @maximum 30
      */
   breakAfterLesson?: number | null;
   /** @pattern ^\d{4}-\d{2}-\d{2}$ */

@@ -2591,18 +2591,22 @@ type ExtractedScheduleDay = {
     endTime: string | null;
     confidence: "high" | "medium" | "low";
   }>;
+  breaks?: BulkBreakDraft[];
 };
 
 export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay[]) {
   const schedules: Record<number, BulkScheduleFormValues["lessons"]> = {};
+  const breaks: Record<number, BulkBreakDraft[]> = {};
   let hasNumberingGaps = false;
 
   daySchedules.forEach((daySchedule) => {
-    const sortedLessons = [...daySchedule.lessons].sort((left, right) => left.lessonNumber - right.lessonNumber);
-    if (sortedLessons.some((lesson, index) => lesson.lessonNumber !== index + 1)) {
+    const lessonsByNumber = [...daySchedule.lessons].sort((left, right) => left.lessonNumber - right.lessonNumber);
+    if (lessonsByNumber.some((lesson, index) => lesson.lessonNumber !== index + 1)) {
       hasNumberingGaps = true;
     }
-    schedules[daySchedule.dayOfWeek] = sortedLessons.map((extracted) => ({
+    schedules[daySchedule.dayOfWeek] = [...daySchedule.lessons]
+      .sort((left, right) => left.startTime.localeCompare(right.startTime))
+      .map((extracted) => ({
       lessonNumber: extracted.lessonNumber,
       title: extracted.title || "",
       subject: extracted.subject || "",
@@ -2611,14 +2615,25 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
       endTime: extracted.endTime || "",
       confidence: extracted.confidence,
     }));
+    breaks[daySchedule.dayOfWeek] = [...(daySchedule.breaks || [])]
+      .sort((left, right) => left.startTime.localeCompare(right.startTime));
   });
 
-  return { schedules, hasNumberingGaps };
+  return { schedules, breaks, hasNumberingGaps };
 }
+
+type BulkBreakDraft = {
+  title: string;
+  breakAfterLesson: number;
+  startTime: string;
+  endTime: string | null;
+  confidence: "high" | "medium" | "low";
+};
 
 export function buildTeacherScheduleBulkInput(
   schedules: Record<number, BulkScheduleFormValues["lessons"]>,
   isAr: boolean,
+  breaks: Record<number, BulkBreakDraft[]> = {},
 ): TeacherScheduleBulkInput {
   return {
     daySchedules: Object.entries(schedules)
@@ -2632,6 +2647,12 @@ export function buildTeacherScheduleBulkInput(
           className: lesson.className.trim() || null,
           startTime: lesson.startTime,
           endTime: lesson.endTime || null,
+        })),
+        breaks: (breaks[Number(day)] || []).map((entry) => ({
+          title: entry.title.trim() || (isAr ? "فترة" : "Period"),
+          breakAfterLesson: entry.breakAfterLesson,
+          startTime: entry.startTime,
+          endTime: entry.endTime || null,
         })),
       })),
   };
@@ -2700,7 +2721,8 @@ function lessonNumberLabel(number: number | null | undefined, isAr: boolean) {
 }
 
 function breakPositionLabel(number: number | null | undefined, isAr: boolean) {
-  if (!number) return isAr ? "فترة بين الحصص" : "Between lessons";
+  if (number === 0) return isAr ? "قبل الحصة الأولى" : "Before lesson 1";
+  if (number == null) return isAr ? "الموقع في الجدول" : "Schedule position";
   const next = number + 1;
   return isAr
     ? `بين ${ARABIC_LESSON_NUMBERS[number - 1] || number} و${ARABIC_LESSON_NUMBERS[next - 1] || next}`
@@ -2796,9 +2818,14 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
       }
 
       const firstDay = data.daySchedules?.[0]?.dayOfWeek ?? new Date().getDay();
-      const { schedules: newSchedules, hasNumberingGaps } = normalizeImportedDaySchedules(data.daySchedules);
+      const {
+        schedules: newSchedules,
+        breaks: newBreaks,
+        hasNumberingGaps,
+      } = normalizeImportedDaySchedules(data.daySchedules);
 
       setBulkDaySchedules(newSchedules);
+      setBulkDayBreaks(newBreaks);
       setActiveBulkDay(firstDay);
       const lessons = newSchedules[firstDay] || emptyBulkLessons(5);
       setBulkLessonCount(lessons.length);
@@ -2831,6 +2858,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
 
   const [activeBulkDay, setActiveBulkDay] = useState(() => new Date().getDay());
   const [bulkDaySchedules, setBulkDaySchedules] = useState<Record<number, BulkScheduleFormValues["lessons"]>>({});
+  const [bulkDayBreaks, setBulkDayBreaks] = useState<Record<number, BulkBreakDraft[]>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const form = useForm<ScheduleFormValues>({
     defaultValues: emptyScheduleForm(),
@@ -2865,8 +2893,8 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
       entries
         .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === selectedDay)
         .sort((a, b) =>
-          schedulePosition(a) - schedulePosition(b) ||
-          a.startTime.localeCompare(b.startTime),
+          a.startTime.localeCompare(b.startTime) ||
+          schedulePosition(a) - schedulePosition(b),
         ),
     [entries, selectedDay],
   );
@@ -2877,8 +2905,8 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
         entries: entries
           .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === day.value)
           .sort((a, b) =>
-            schedulePosition(a) - schedulePosition(b) ||
-            a.startTime.localeCompare(b.startTime),
+            a.startTime.localeCompare(b.startTime) ||
+            schedulePosition(a) - schedulePosition(b),
           ),
       })).filter((group) => group.entries.length > 0),
     [entries],
@@ -2910,7 +2938,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     form.reset({
       ...defaults,
       kind,
-      title: kind === "break" ? (isAr ? "سناك" : "Break") : "",
+      title: kind === "break" ? (isAr ? "فترة" : "Period") : "",
     });
     setEditingId(null);
     setDialogOpen(true);
@@ -2922,6 +2950,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     setBulkLessonCount(5);
     setActiveBulkDay(currentDay);
     setBulkDaySchedules({ [currentDay]: lessons });
+    setBulkDayBreaks({});
     setImportWarnings([]);
     bulkForm.reset({
       lessons,
@@ -2934,7 +2963,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     const currentCount = currentLessons.length;
     if (nextCount > currentCount) {
       const usedNumbers = new Set(currentLessons.map((lesson) => lesson.lessonNumber));
-      const availableNumbers = Array.from({ length: 10 }, (_, index) => index + 1)
+      const availableNumbers = Array.from({ length: 30 }, (_, index) => index + 1)
         .filter((number) => !usedNumbers.has(number))
         .slice(0, nextCount - currentCount);
       const addedLessons = availableNumbers.map((lessonNumber) => ({
@@ -2985,11 +3014,51 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     const nextDay = configuredDays.find((day) => day !== activeBulkDay)!;
     const nextSchedules = { ...bulkDaySchedules };
     delete nextSchedules[activeBulkDay];
+    setBulkDayBreaks((current) => {
+      const next = { ...current };
+      delete next[activeBulkDay];
+      return next;
+    });
     const nextLessons = nextSchedules[nextDay];
     setBulkDaySchedules(nextSchedules);
     setActiveBulkDay(nextDay);
     setBulkLessonCount(nextLessons.length);
     bulkForm.reset({ lessons: nextLessons });
+  }
+
+  function updateBulkBreak(index: number, patch: Partial<BulkBreakDraft>) {
+    setBulkDayBreaks((current) => ({
+      ...current,
+      [activeBulkDay]: (current[activeBulkDay] || []).map((entry, entryIndex) =>
+        entryIndex === index ? { ...entry, ...patch } : entry,
+      ),
+    }));
+  }
+
+  function addBulkBreak() {
+    if ((bulkDayBreaks[activeBulkDay] || []).length >= 50) return;
+    const lessons = bulkForm.getValues("lessons");
+    const afterLesson = lessons[Math.max(0, Math.floor(lessons.length / 2) - 1)]?.lessonNumber || 1;
+    setBulkDayBreaks((current) => ({
+      ...current,
+      [activeBulkDay]: [
+        ...(current[activeBulkDay] || []),
+        {
+          title: isAr ? "فترة" : "Period",
+          breakAfterLesson: Math.min(afterLesson, 30),
+          startTime: "",
+          endTime: null,
+          confidence: "high",
+        },
+      ],
+    }));
+  }
+
+  function removeBulkBreak(index: number) {
+    setBulkDayBreaks((current) => ({
+      ...current,
+      [activeBulkDay]: (current[activeBulkDay] || []).filter((_, entryIndex) => entryIndex !== index),
+    }));
   }
 
   function openEdit(entry: TeacherScheduleEntry) {
@@ -3015,7 +3084,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     const fallbackTitle = values.kind === "weekly"
       ? lessonNumberLabel(Number(values.lessonNumber), isAr)
       : values.kind === "break"
-        ? (isAr ? "استراحة" : "Break")
+        ? (isAr ? "فترة" : "Period")
         : (isAr ? "موعد" : "Appointment");
     const payload: TeacherScheduleEntryInput = {
       kind: values.kind,
@@ -3089,7 +3158,17 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
         return;
       }
     }
-    const payload = buildTeacherScheduleBulkInput(schedules, isAr);
+    for (const [day, breaks] of Object.entries(bulkDayBreaks)) {
+      const invalidBreak = breaks.find((entry) =>
+        !entry.startTime || (Boolean(entry.endTime) && entry.endTime! <= entry.startTime),
+      );
+      if (invalidBreak) {
+        setActiveBulkDay(Number(day));
+        toast.error(isAr ? "راجع وقت الفترة غير الصفية" : "Check the non-lesson period time");
+        return;
+      }
+    }
+    const payload = buildTeacherScheduleBulkInput(schedules, isAr, bulkDayBreaks);
 
     bulkMutation.mutate(
       { data: payload },
@@ -3099,8 +3178,8 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
           refreshSchedule();
           toast.success(
             isAr
-              ? `تمت إضافة ${created.length} حصة في الجدول`
-              : `${created.length} classes added to the schedule`,
+              ? `تمت إضافة ${created.length} فترة في الجدول`
+              : `${created.length} periods added to the schedule`,
           );
         },
         onError: (error) => {
@@ -3212,7 +3291,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                 {isAr ? "جدول المعلم" : "Teacher schedule"}
               </div>
               <div style={{ fontSize: 10.5, color: C.subtle, marginTop: 2 }}>
-                {isAr ? "حصص واستراحات ومواعيد منفردة" : "Classes, breaks, and appointments"}
+                {isAr ? "حصص وفترات غير صفية ومواعيد منفردة" : "Classes, non-lesson periods, and appointments"}
               </div>
             </div>
           </div>
@@ -3286,7 +3365,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
               {isAr ? "ابدأ بإضافة جدولك" : "Start building your schedule"}
             </div>
             <div style={{ color: C.subtle, fontSize: 11, marginTop: 4 }}>
-              {isAr ? "أضف حصة أو استراحة أو موعدًا منفردًا" : "Add a class, break, or one-time appointment"}
+              {isAr ? "أضف حصة أو فترة غير صفية أو موعدًا منفردًا" : "Add a class, non-lesson period, or one-time appointment"}
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <button
@@ -3400,7 +3479,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                   </div>
                   {weeklyEntries.length === 0 ? (
                     <div style={{ padding: "12px 0 10px", color: C.subtle, fontSize: 11 }}>
-                      {isAr ? "لا توجد حصة أو استراحة في هذا اليوم" : "No class or break on this day"}
+                      {isAr ? "لا توجد حصة أو فترة في هذا اليوم" : "No class or period on this day"}
                     </div>
                   ) : (
                     weeklyEntries.map((entry, index) => (
@@ -3501,7 +3580,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                             {kind === "weekly"
                               ? isAr ? "حصة أسبوعية" : "Weekly class"
                               : kind === "break"
-                                ? isAr ? "استراحة / سناك" : "Break / Snack"
+                                ? isAr ? "فترة غير صفية" : "Non-lesson period"
                                 : isAr ? "موعد منفرد" : "Appointment"}
                           </button>
                         ))}
@@ -3569,7 +3648,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                         <FormLabel>{isAr ? "رقم الحصة" : "Lesson number"}</FormLabel>
                         <FormControl>
                           <select {...field} style={fieldStyle}>
-                            {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
+                            {Array.from({ length: 30 }, (_, index) => index + 1).map((number) => (
                               <option key={number} value={number}>
                                 {lessonNumberLabel(number, isAr)}
                               </option>
@@ -3588,10 +3667,10 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                     rules={{ required: isAr ? "اختر الحصة السابقة للاستراحة" : "Choose the preceding lesson" }}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{isAr ? "مكان الاستراحة" : "Break position"}</FormLabel>
+                        <FormLabel>{isAr ? "موقع الفترة في الجدول" : "Period position"}</FormLabel>
                         <FormControl>
                           <select {...field} style={fieldStyle}>
-                            {Array.from({ length: 9 }, (_, index) => index + 1).map((number) => (
+                            {Array.from({ length: 31 }, (_, index) => index).map((number) => (
                               <option key={number} value={number}>
                                 {breakPositionLabel(number, isAr)}
                               </option>
@@ -3698,13 +3777,16 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
         open={bulkDialogOpen}
         onOpenChange={setBulkDialogOpen}
       >
-        <DialogContent className="max-w-5xl rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
-          <DialogHeader>
+        <DialogContent
+          className="flex max-h-[92dvh] max-w-5xl flex-col overflow-hidden rounded-3xl"
+          dir={isAr ? "rtl" : "ltr"}
+        >
+          <DialogHeader className="shrink-0">
             <DialogTitle>{isAr ? "إدخال جدول كامل" : "Enter a full schedule"}</DialogTitle>
           </DialogHeader>
           {importWarnings.length > 0 && (
             <div
-              className="flex items-start gap-3 rounded-2xl border p-3 text-xs leading-relaxed"
+              className="max-h-[20dvh] shrink-0 overflow-y-auto flex items-start gap-3 rounded-2xl border p-3 text-xs leading-relaxed"
               style={{ borderColor: "rgba(217,119,6,0.3)", background: "#FFFBEB", color: "#92400E" }}
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -3717,7 +3799,14 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
             </div>
           )}
           <Form {...bulkForm}>
-            <form onSubmit={bulkForm.handleSubmit(submitBulkSchedule)} className="space-y-4">
+            <form
+              onSubmit={bulkForm.handleSubmit(submitBulkSchedule)}
+              className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden"
+            >
+              <div
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-2 pe-1"
+                data-testid="bulk-schedule-scroll-region"
+              >
               <div className="rounded-2xl border p-3" style={{ borderColor: C.border, background: C.surface }}>
                 <div style={{ color: C.text, fontSize: 12, fontWeight: 900, marginBottom: 4 }}>
                   {isAr ? "الأيام" : "Days"}
@@ -3784,7 +3873,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                     {isAr ? "عدد الحصص" : "Number of lessons"}
                   </div>
                   <div style={{ color: C.subtle, fontSize: 10.5, marginTop: 3 }}>
-                    {isAr ? "يمكنك إدخال حصة واحدة حتى ١٠ حصص" : "Enter from 1 to 10 lessons"}
+                    {isAr ? "يمكنك إضافة العدد الموجود في جدولك حتى ٣٠ حصة مرقمة" : "Add the numbered lessons in your schedule, up to 30"}
                   </div>
                 </div>
                 <select
@@ -3793,16 +3882,20 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                   style={{ ...fieldStyle, width: 170 }}
                   data-testid="select-bulk-lesson-count"
                 >
-                  {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
+                  {Array.from({ length: 31 }, (_, index) => index).map((number) => (
                     <option key={number} value={number}>
-                      {isAr ? `${number} ${number === 1 ? "حصة" : "حصص"}` : `${number} ${number === 1 ? "lesson" : "lessons"}`}
+                      {number === 0
+                        ? (isAr ? "لا توجد حصص مرقمة" : "No numbered lessons")
+                        : isAr
+                          ? `${number} ${number === 1 ? "حصة" : "حصص"}`
+                          : `${number} ${number === 1 ? "lesson" : "lessons"}`}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div
-                className="max-h-[52vh] space-y-3 overflow-y-auto rounded-2xl border p-3"
+                className="space-y-3 rounded-2xl border p-3"
                 style={{ borderColor: C.border, background: C.card }}
               >
                 {bulkLessonFields.fields.map((lesson, index) => {
@@ -3841,6 +3934,16 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                         <div style={{ color: C.text, fontSize: 11, fontWeight: 900 }}>
                           {lessonNumberLabel(lesson.lessonNumber, isAr)}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            bulkLessonFields.remove(index);
+                            setBulkLessonCount((count) => Math.max(0, count - 1));
+                          }}
+                          className="text-[10px] font-bold text-destructive disabled:opacity-40"
+                        >
+                          {isAr ? "حذف" : "Delete"}
+                        </button>
                       </div>
                       <div className="sm:col-span-4">
                         <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة (اختياري)" : "Lesson title (optional)"}</label>
@@ -3905,9 +4008,97 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                     </div>
                   );
                 })}
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-2 text-xs font-black" style={{ color: C.text }}>
+                    <Coffee className="h-4 w-4" style={{ color: C.gold }} />
+                    {isAr ? "الفترات غير الصفية" : "Non-lesson periods"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addBulkBreak}
+                    disabled={(bulkDayBreaks[activeBulkDay] || []).length >= 50}
+                    className="rounded-xl border px-3 py-2 text-xs font-bold"
+                    style={{
+                      borderColor: C.border,
+                      color: C.green,
+                      background: C.surface,
+                      opacity: (bulkDayBreaks[activeBulkDay] || []).length >= 50 ? 0.5 : 1,
+                    }}
+                  >
+                    {isAr ? "إضافة فترة" : "Add period"}
+                  </button>
+                </div>
+                {(bulkDayBreaks[activeBulkDay] || []).map((entry, index) => {
+                  const lowConfidence = entry.confidence === "low";
+                  return (
+                    <div
+                      key={`${activeBulkDay}-${index}`}
+                      className="grid grid-cols-1 gap-3 rounded-2xl border p-3 sm:grid-cols-12"
+                      style={{
+                        borderColor: lowConfidence ? "#F59E0B" : "rgba(190,140,30,0.35)",
+                        background: lowConfidence ? "#FEF3C7" : "#FFFBEB",
+                      }}
+                    >
+                      <div className="sm:col-span-3">
+                        <label className="mb-1 block text-xs font-bold">{isAr ? "الاسم" : "Name"}</label>
+                        <input
+                          value={entry.title}
+                          onChange={(event) => updateBulkBreak(index, { title: event.target.value })}
+                          style={{ ...fieldStyle, background: "#fff" }}
+                        />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="mb-1 block text-xs font-bold">{isAr ? "بعد الحصة" : "After lesson"}</label>
+                        <select
+                          value={entry.breakAfterLesson}
+                          onChange={(event) => updateBulkBreak(index, { breakAfterLesson: Number(event.target.value) })}
+                          style={{ ...fieldStyle, background: "#fff" }}
+                        >
+                          {Array.from({ length: 31 }, (_, lessonIndex) => lessonIndex).map((number) => (
+                            <option key={number} value={number}>{lessonNumberLabel(number, isAr)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:col-span-4">
+                        <div>
+                          <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
+                          <input
+                            type="time"
+                            value={entry.startTime}
+                            onChange={(event) => updateBulkBreak(index, { startTime: event.target.value })}
+                            style={{ ...fieldStyle, background: "#fff" }}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
+                          <input
+                            type="time"
+                            value={entry.endTime || ""}
+                            onChange={(event) => updateBulkBreak(index, { endTime: event.target.value || null })}
+                            style={{ ...fieldStyle, background: "#fff" }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-end sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={() => removeBulkBreak(index)}
+                          className="rounded-xl px-3 py-2 text-xs font-bold text-destructive"
+                        >
+                          {isAr ? "إزالة" : "Remove"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
               </div>
 
-              <DialogFooter>
+              <DialogFooter
+                className="shrink-0 border-t pt-3"
+                style={{ borderColor: C.border, background: C.card }}
+                data-testid="bulk-schedule-fixed-actions"
+              >
                 <button
                   type="button"
                   onClick={() => setBulkDialogOpen(false)}

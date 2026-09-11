@@ -6,21 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface TeacherScheduleBulkLessonInput {
-  /**
-     * @minimum 1
-     * @maximum 30
-     */
-  lessonNumber: number;
+export interface TeacherScheduleBulkBreakInput {
   /**
      * @minLength 1
      * @maxLength 160
      */
   title: string;
-  /** @maxLength 100 */
-  subject?: string | null;
-  /** @maxLength 100 */
-  className?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 9
+     */
+  breakAfterLesson: number;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
   startTime: string;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */

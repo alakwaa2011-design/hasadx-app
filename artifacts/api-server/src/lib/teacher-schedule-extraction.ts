@@ -3,7 +3,7 @@ import { z } from "zod";
 const timePattern = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 
 const extractedLessonSchema = z.object({
-  lessonNumber: z.number().int().min(1).max(10),
+  lessonNumber: z.number().int().min(1).max(30),
   title: z.string().trim().max(160).default(""),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
@@ -20,10 +20,27 @@ const extractedLessonSchema = z.object({
   }
 });
 
+const extractedBreakSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  breakAfterLesson: z.number().int().min(0).max(30),
+  startTime: z.string().regex(timePattern),
+  endTime: z.string().regex(timePattern).nullish(),
+  confidence: z.enum(["high", "medium", "low"]).default("medium"),
+}).superRefine((entry, ctx) => {
+  if (entry.endTime && entry.endTime <= entry.startTime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endTime"],
+      message: "وقت نهاية الفترة يجب أن يكون بعد وقت البداية",
+    });
+  }
+});
+
 const extractedScheduleSchema = z.object({
   daySchedules: z.array(z.object({
     dayOfWeek: z.number().int().min(0).max(6),
-    lessons: z.array(extractedLessonSchema).min(1).max(10),
+    lessons: z.array(extractedLessonSchema).max(30).default([]),
+    breaks: z.array(extractedBreakSchema).max(50).default([]),
   })).min(1).max(7),
   warnings: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
 }).superRefine((value, ctx) => {
@@ -31,6 +48,13 @@ const extractedScheduleSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["daySchedules"], message: "تكرر اليوم في نتيجة الاستخراج" });
   }
   value.daySchedules.forEach((day, dayIndex) => {
+    if (day.lessons.length === 0 && day.breaks.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["daySchedules", dayIndex],
+        message: "يجب أن يحتوي اليوم على فترة واحدة على الأقل",
+      });
+    }
     if (new Set(day.lessons.map((lesson) => lesson.lessonNumber)).size !== day.lessons.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -80,14 +104,7 @@ function normalizeSchoolDayTimes(parsed: unknown): unknown {
     const day = dayValue as { lessons?: unknown[] };
     if (!Array.isArray(day.lessons)) return;
 
-    const ordered = [...day.lessons].sort((left, right) => {
-      const leftNumber = Number((left as { lessonNumber?: unknown })?.lessonNumber);
-      const rightNumber = Number((right as { lessonNumber?: unknown })?.lessonNumber);
-      return leftNumber - rightNumber;
-    });
-    let previousStart: number | null = null;
-
-    ordered.forEach((lessonValue) => {
+    day.lessons.forEach((lessonValue) => {
       if (!lessonValue || typeof lessonValue !== "object") return;
       const lesson = lessonValue as {
         startTime?: unknown;
@@ -98,16 +115,8 @@ function normalizeSchoolDayTimes(parsed: unknown): unknown {
       let end = parseLooseTime(lesson.endTime);
       let adjusted = false;
 
-      if (start !== null && previousStart !== null && start < previousStart) {
-        const afternoonStart = start + 12 * 60;
-        if (afternoonStart <= 23 * 60 + 59 && afternoonStart > previousStart) {
-          start = afternoonStart;
-          adjusted = true;
-        }
-      }
       if (start !== null) {
         lesson.startTime = formatTime(start);
-        previousStart = start;
       }
       if (end !== null && start !== null && end <= start) {
         const afternoonEnd = end + 12 * 60;
@@ -122,6 +131,25 @@ function normalizeSchoolDayTimes(parsed: unknown): unknown {
       if (end !== null) lesson.endTime = formatTime(end);
       if (adjusted) lesson.confidence = "low";
     });
+
+    const breaks = (dayValue as { breaks?: unknown[] }).breaks;
+    if (Array.isArray(breaks)) {
+      breaks.forEach((breakValue) => {
+        if (!breakValue || typeof breakValue !== "object") return;
+        const entry = breakValue as { startTime?: unknown; endTime?: unknown; confidence?: unknown };
+        const start = parseLooseTime(entry.startTime);
+        let end = parseLooseTime(entry.endTime);
+        let adjusted = false;
+        if (start !== null) entry.startTime = formatTime(start);
+        if (end !== null && start !== null && end <= start) {
+          const afternoonEnd = end + 12 * 60;
+          end = afternoonEnd <= 23 * 60 + 59 && afternoonEnd > start ? afternoonEnd : null;
+          adjusted = true;
+        }
+        entry.endTime = end === null ? null : formatTime(end);
+        if (adjusted) entry.confidence = "low";
+      });
+    }
   });
 
   return parsed;
@@ -139,11 +167,20 @@ Return ONLY valid JSON with this exact shape:
       "lessons": [
         {
           "lessonNumber": 1,
-          "title": "",
+          "title": "Grade 5 A - Mathematics",
           "subject": "Mathematics",
           "className": "Grade 5 A",
           "startTime": "08:00",
           "endTime": "08:45",
+          "confidence": "high"
+        }
+      ],
+      "breaks": [
+        {
+          "title": "Morning assembly",
+          "breakAfterLesson": 4,
+          "startTime": "10:45",
+          "endTime": "11:05",
           "confidence": "high"
         }
       ]
@@ -155,12 +192,17 @@ Return ONLY valid JSON with this exact shape:
 Rules:
 - dayOfWeek MUST use: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6.
 - Include only days and lessons visibly present in the image.
-- lessonNumber must be 1 through 10 and unique within each day.
+- lessonNumber is the lesson number written in the image, from 1 through 30, and must remain unique within each day.
 - Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes a shared period time; otherwise omit that lesson and add a warning.
-- Put the subject name in subject. Put grade/section in className. Use title only for a distinct lesson label not already represented by subject.
+- For every numbered lesson, copy the primary cell text into title EXACTLY as written in the image; do not replace it with a generic lesson label.
+- Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
 - If one cell contains multiple classes, preserve its visible text in className rather than inventing separate lessons.
 - confidence must be high, medium, or low for each lesson. Use low when text is blurry, partially hidden, or inferred.
-- Do not include breaks as lessons. Mention any visible breaks in warnings so the teacher can add them during review.
+- Extract every visible non-lesson period into breaks, including prayer, duty, assembly, meeting, professional development, recess, or snack.
+- Preserve each period title EXACTLY as written in the image. Never replace it with a generic label such as Break or Snack.
+- breakAfterLesson identifies the closest numbered lesson before the period; use 0 when it appears before the first numbered lesson.
+- Multiple non-lesson periods may share the same breakAfterLesson. Keep all of them and preserve their chronological order through startTime.
+- Do not force lesson numbers or non-lesson periods into a standard school order. Follow the source image exactly.
 - Never invent missing days, lessons, subjects, classes, or times.
 - Write extracted text and warnings in ${outputLanguage}.
 - No markdown fences and no prose outside the JSON.`;
@@ -185,7 +227,14 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
             className: lesson.className?.trim() || null,
             endTime: lesson.endTime || null,
           }))
-          .sort((left, right) => left.lessonNumber - right.lessonNumber),
+          .sort((left, right) => left.startTime.localeCompare(right.startTime)),
+        breaks: day.breaks
+          .map((entry) => ({
+            ...entry,
+            title: entry.title.trim(),
+            endTime: entry.endTime || null,
+          }))
+          .sort((left, right) => left.startTime.localeCompare(right.startTime)),
       }))
       .sort((left, right) => left.dayOfWeek - right.dayOfWeek),
     warnings: validated.warnings,
