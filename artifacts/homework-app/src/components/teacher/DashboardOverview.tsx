@@ -786,11 +786,20 @@ export default function DashboardOverview({
               minWidth: 0,
             }}
           >
-            {/* Classroom pulse — smart insights */}
+            {/* Teacher schedule */}
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.14 }}
+            >
+              <TeacherScheduleCard isAr={isAr} user={user} />
+            </motion.section>
+
+            {/* Classroom pulse — smart insights */}
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.16 }}
             >
               <SectionHead
                 icon={
@@ -816,7 +825,7 @@ export default function DashboardOverview({
               <motion.section
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.16 }}
+                transition={{ duration: 0.3, delay: 0.18 }}
               >
                 <SectionHead
                   icon={
@@ -851,15 +860,6 @@ export default function DashboardOverview({
                 </div>
               </motion.section>
             )}
-
-            {/* Teacher schedule */}
-            <motion.section
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.18 }}
-            >
-              <TeacherScheduleCard isAr={isAr} user={user} />
-            </motion.section>
 
             {/* Highlights — top students + activity in one tabbed card */}
             <motion.section

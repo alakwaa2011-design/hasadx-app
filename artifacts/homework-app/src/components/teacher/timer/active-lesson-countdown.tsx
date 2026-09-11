@@ -1,17 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { ChevronDown, ChevronUp, Coffee, ExternalLink, Pause, Play, Timer, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Bell, BellOff, ChevronDown, ChevronUp, Coffee, Pause, Play, Settings2, Timer, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListTeacherSchedule, getListTeacherScheduleQueryKey, type TeacherScheduleEntry } from "@workspace/api-client-react";
 import { lessonNumberLabel } from "@/lib/schedule-labels";
-
-type PictureInPictureManager = {
-  requestWindow: (options: { width: number; height: number }) => Promise<Window>;
-};
-
-function getPictureInPictureManager() {
-  return (window as Window & { documentPictureInPicture?: PictureInPictureManager }).documentPictureInPicture;
-}
+import { initAudioContext, playTimerSound } from "@/lib/timer-sounds";
 
 function parseClockTime(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
@@ -40,34 +32,53 @@ function entryEnd(entry: TeacherScheduleEntry) {
   return entry.endTime ? parseClockTime(entry.endTime) : null;
 }
 
+type CountdownPreferences = {
+  alertMinutes: number;
+  soundEnabled: boolean;
+  position: { x: number; y: number } | null;
+};
+
+const DEFAULT_PREFERENCES: CountdownPreferences = {
+  alertMinutes: 5,
+  soundEnabled: false,
+  position: null,
+};
+
 function ActiveLessonPanel({
   entry,
   remainingMs,
   durationMs,
   isPaused,
+  isBeforeStart,
   isAr,
-  inPictureInPicture,
+  alertMinutes,
+  soundEnabled,
   onTogglePause,
   onHide,
-  onOpenPictureInPicture,
-  onClosePictureInPicture,
+  onAlertMinutesChange,
+  onSoundEnabledChange,
+  onDragStart,
 }: {
   entry: TeacherScheduleEntry;
   remainingMs: number;
   durationMs: number;
   isPaused: boolean;
+  isBeforeStart: boolean;
   isAr: boolean;
-  inPictureInPicture: boolean;
+  alertMinutes: number;
+  soundEnabled: boolean;
   onTogglePause: () => void;
   onHide: () => void;
-  onOpenPictureInPicture: () => void;
-  onClosePictureInPicture: () => void;
+  onAlertMinutesChange: (minutes: number) => void;
+  onSoundEnabledChange: (enabled: boolean) => void;
+  onDragStart: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isBreak = entry.kind === "break";
   const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
-  const urgent = remainingMs <= 5 * 60_000;
+  const urgent = !isBeforeStart && remainingMs <= 5 * 60_000;
   const title = entry.title || (isBreak ? (isAr ? "استراحة / مناوبة" : "Break / Duty") : (isAr ? "الحصة الحالية" : "Current lesson"));
   const context = isBreak
     ? (isAr ? "مناوبة أو استراحة مجدولة" : "Scheduled break or duty")
@@ -83,6 +94,7 @@ function ActiveLessonPanel({
     return (
       <div
         dir={isAr ? "rtl" : "ltr"}
+        onPointerDown={onDragStart}
         style={{
           display: "flex",
           alignItems: "center",
@@ -97,6 +109,8 @@ function ActiveLessonPanel({
           backdropFilter: "blur(12px)",
           transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
           width: "max-content",
+          cursor: "grab",
+          touchAction: "none",
         }}
       >
         <div
@@ -143,7 +157,7 @@ function ActiveLessonPanel({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: isAr ? 0 : 8, marginRight: isAr ? 8 : 0 }}>
-          <button
+          {!isBeforeStart && <button
             type="button"
             onClick={onTogglePause}
             title={isPaused ? (isAr ? "متابعة العد" : "Resume") : (isAr ? "إيقاف العد" : "Pause")}
@@ -162,7 +176,7 @@ function ActiveLessonPanel({
             }}
           >
             {isPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} fill="currentColor" />}
-          </button>
+          </button>}
 
           <button
             type="button"
@@ -190,6 +204,7 @@ function ActiveLessonPanel({
   return (
     <div
       dir={isAr ? "rtl" : "ltr"}
+      onPointerDown={onDragStart}
       style={{
         width: "min(380px, calc(100vw - 24px))",
         border: `1px solid ${isBreak ? "rgba(201,146,10,.32)" : "rgba(30,77,53,.24)"}`,
@@ -201,6 +216,8 @@ function ActiveLessonPanel({
         fontFamily: "'Tajawal', sans-serif",
         backdropFilter: "blur(12px)",
         transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        cursor: "grab",
+        touchAction: "none",
       }}
     >
       {/* Top Bar */}
@@ -250,7 +267,11 @@ function ActiveLessonPanel({
       {/* Main Timer Display */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginTop: 24, marginBottom: 28 }}>
         <div style={{ color: "#688075", fontSize: 13, fontWeight: 800, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          {isPaused ? (isAr ? "متوقف مؤقتًا" : "Paused") : (isAr ? "المتبقي على النهاية" : "Time until end")}
+          {isBeforeStart
+            ? (isAr ? "تبدأ الحصة بعد" : "Lesson starts in")
+            : isPaused
+              ? (isAr ? "متوقف مؤقتًا" : "Paused")
+              : (isAr ? "المتبقي على النهاية" : "Time until end")}
         </div>
         <div
           style={{
@@ -271,32 +292,18 @@ function ActiveLessonPanel({
       {/* Bottom Controls & Progress */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {!inPictureInPicture && getPictureInPictureManager() && (
-              <button
-                type="button"
-                onClick={onOpenPictureInPicture}
-                title={isAr ? "فتح خارج التبويب" : "Open outside this tab"}
-                aria-label={isAr ? "فتح المؤقت في نافذة عائمة" : "Open timer in a floating window"}
-                style={{ width: 44, height: 44, borderRadius: 14, border: "1px solid #D8E4DC", background: "#fff", color: "#1E4D35", display: "grid", placeItems: "center", cursor: "pointer", transition: "all 0.2s" }}
-              >
-                <ExternalLink size={20} />
-              </button>
-            )}
-            {inPictureInPicture && (
-              <button
-                type="button"
-                onClick={onClosePictureInPicture}
-                title={isAr ? "إغلاق النافذة العائمة" : "Close floating window"}
-                aria-label={isAr ? "إغلاق النافذة العائمة" : "Close floating window"}
-                style={{ width: 44, height: 44, borderRadius: 14, border: "1px solid #D8E4DC", background: "#fff", color: "#688075", display: "grid", placeItems: "center", cursor: "pointer", transition: "all 0.2s" }}
-              >
-                <X size={20} />
-              </button>
-            )}
-          </div>
-
           <button
+            type="button"
+            onClick={() => setSettingsOpen((open) => !open)}
+            title={isAr ? "إعدادات التنبيه" : "Alert settings"}
+            aria-label={isAr ? "فتح إعدادات التنبيه" : "Open alert settings"}
+            style={{ height: 44, padding: "0 13px", borderRadius: 14, border: "1px solid #D8E4DC", background: settingsOpen ? brandBg : "#fff", color: brandColor, display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}
+          >
+            <Settings2 size={18} />
+            <span>{isAr ? `تنبيه ${alertMinutes} د` : `${alertMinutes} min alert`}</span>
+          </button>
+
+          {!isBeforeStart && <button
             type="button"
             onClick={onTogglePause}
             title={isPaused ? (isAr ? "متابعة العد" : "Resume countdown") : (isAr ? "إيقاف العد" : "Pause countdown")}
@@ -319,8 +326,49 @@ function ActiveLessonPanel({
           >
             {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}
             <span>{isPaused ? (isAr ? "متابعة" : "Resume") : (isAr ? "إيقاف" : "Pause")}</span>
-          </button>
+          </button>}
         </div>
+
+        {settingsOpen && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) auto",
+              gap: 10,
+              alignItems: "end",
+              padding: 12,
+              marginBottom: 14,
+              borderRadius: 16,
+              border: "1px solid #DDE8E1",
+              background: "#F7FAF8",
+              cursor: "default",
+            }}
+          >
+            <label style={{ display: "grid", gap: 6, color: "#425E52", fontSize: 12, fontWeight: 800 }}>
+              <span>{isAr ? "إظهار العداد قبل الحصة بـ" : "Show before lesson"}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={alertMinutes}
+                  onChange={(event) => onAlertMinutesChange(Math.max(1, Math.min(120, Number(event.target.value) || 1)))}
+                  style={{ width: 76, height: 36, borderRadius: 10, border: "1px solid #CAD9D0", padding: "0 10px", font: "inherit", color: "#19352A", background: "#fff" }}
+                />
+                <span>{isAr ? "دقيقة" : "minutes"}</span>
+              </div>
+            </label>
+            <button
+              type="button"
+              onClick={() => onSoundEnabledChange(!soundEnabled)}
+              aria-pressed={soundEnabled}
+              style={{ height: 36, borderRadius: 10, border: 0, padding: "0 11px", background: soundEnabled ? brandColor : "#E7EEE9", color: soundEnabled ? "#fff" : "#526A5F", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}
+            >
+              {soundEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+              {soundEnabled ? (isAr ? "الصوت يعمل" : "Sound on") : (isAr ? "بدون صوت" : "Sound off")}
+            </button>
+          </div>
+        )}
 
         <div style={{ height: 8, borderRadius: 99, background: "#E7EEE9", overflow: "hidden" }}>
           <div
@@ -334,7 +382,7 @@ function ActiveLessonPanel({
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", color: "#789087", fontSize: 11, marginTop: 8, fontWeight: 600 }}>
-          <span>{isAr ? `بدأت ${entry.startTime}` : `Started ${entry.startTime}`}</span>
+          <span>{isBeforeStart ? (isAr ? `تبدأ ${entry.startTime}` : `Starts ${entry.startTime}`) : (isAr ? `بدأت ${entry.startTime}` : `Started ${entry.startTime}`)}</span>
           <span>{isAr ? `تنتهي ${entry.endTime}` : `Ends ${entry.endTime}`}</span>
         </div>
       </div>
@@ -357,30 +405,77 @@ export function GlobalActiveLessonCountdown() {
   const [hiddenKey, setHiddenKey] = useState<string | null>(null);
   const [pausedKey, setPausedKey] = useState<string | null>(null);
   const [pausedRemainingMs, setPausedRemainingMs] = useState(0);
-  const [pictureInPictureWindow, setPictureInPictureWindow] = useState<Window | null>(null);
+  const [preferences, setPreferences] = useState<CountdownPreferences>(DEFAULT_PREFERENCES);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const soundedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(interval);
   }, []);
 
+  const storageKey = user?.id ? `hasaad_schedule_countdown_v1_${user.id}` : null;
+
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "{}") as Partial<CountdownPreferences>;
+      setPreferences({
+        alertMinutes: Math.max(1, Math.min(120, Number(saved.alertMinutes) || DEFAULT_PREFERENCES.alertMinutes)),
+        soundEnabled: Boolean(saved.soundEnabled),
+        position: saved.position && Number.isFinite(saved.position.x) && Number.isFinite(saved.position.y)
+          ? saved.position
+          : null,
+      });
+    } catch {
+      setPreferences(DEFAULT_PREFERENCES);
+    }
+  }, [storageKey]);
+
+  function updatePreferences(patch: Partial<CountdownPreferences>) {
+    setPreferences((current) => {
+      const next = { ...current, ...patch };
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(next));
+        } catch {
+          // Keep the setting for this session when browser storage is unavailable.
+        }
+      }
+      return next;
+    });
+  }
+
   const today = useMemo(() => new Date(now), [now]);
   const currentMinutesMs = (today.getHours() * 60 + today.getMinutes()) * 60_000 + today.getSeconds() * 1_000 + today.getMilliseconds();
-  const activeEntry = useMemo(() => {
-    const candidates = (scheduleQuery.data || [])
+  const { visibleEntry, isBeforeStart } = useMemo(() => {
+    const todayEntries = (scheduleQuery.data || [])
       .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === today.getDay() && entry.endTime)
-      .filter((entry) => {
+      .sort((a, b) => entryStart(a) - entryStart(b));
+    const activeCandidates = todayEntries.filter((entry) => {
         const start = entryStart(entry);
         const end = entryEnd(entry);
         return end != null && end > start && currentMinutesMs >= start && currentMinutesMs < end;
-      })
-      .sort((a, b) => entryStart(a) - entryStart(b));
-    return candidates[candidates.length - 1] || null;
-  }, [currentMinutesMs, scheduleQuery.data, today]);
+      });
+    const active = activeCandidates[activeCandidates.length - 1] || null;
+    if (active) return { visibleEntry: active, isBeforeStart: false };
+    const alertWindowMs = preferences.alertMinutes * 60_000;
+    const upcoming = todayEntries.find((entry) => {
+      const untilStart = entryStart(entry) - currentMinutesMs;
+      return untilStart > 0 && untilStart <= alertWindowMs;
+    }) || null;
+    return { visibleEntry: upcoming, isBeforeStart: Boolean(upcoming) };
+  }, [currentMinutesMs, preferences.alertMinutes, scheduleQuery.data, today]);
 
-  const activeKey = activeEntry ? `${dateKey(today)}:${activeEntry.id}` : null;
-  const durationMs = activeEntry ? Math.max(1, (entryEnd(activeEntry) || 0) - entryStart(activeEntry)) : 1;
-  const liveRemainingMs = activeEntry ? Math.max(0, (entryEnd(activeEntry) || 0) - currentMinutesMs) : 0;
+  const activeKey = visibleEntry ? `${dateKey(today)}:${visibleEntry.id}:${isBeforeStart ? "before" : "active"}` : null;
+  const durationMs = visibleEntry
+    ? isBeforeStart
+      ? preferences.alertMinutes * 60_000
+      : Math.max(1, (entryEnd(visibleEntry) || 0) - entryStart(visibleEntry))
+    : 1;
+  const liveRemainingMs = visibleEntry
+    ? Math.max(0, (isBeforeStart ? entryStart(visibleEntry) : (entryEnd(visibleEntry) || 0)) - currentMinutesMs)
+    : 0;
   const isPaused = activeKey != null && pausedKey === activeKey;
   const remainingMs = isPaused ? pausedRemainingMs : liveRemainingMs;
 
@@ -396,28 +491,54 @@ export function GlobalActiveLessonCountdown() {
   }, [activeKey]);
 
   useEffect(() => {
-    if (!pictureInPictureWindow) return;
-    const onPageHide = () => setPictureInPictureWindow(null);
-    pictureInPictureWindow.addEventListener("pagehide", onPageHide);
-    return () => pictureInPictureWindow.removeEventListener("pagehide", onPageHide);
-  }, [pictureInPictureWindow]);
+    if (!activeKey || !isBeforeStart || !preferences.soundEnabled || soundedKeyRef.current === activeKey) return;
+    soundedKeyRef.current = activeKey;
+    playTimerSound("chime", 0.55);
+  }, [activeKey, isBeforeStart, preferences.soundEnabled]);
 
-  async function openPictureInPicture() {
-    const manager = getPictureInPictureManager();
-    if (!manager || !activeEntry) return;
-    try {
-      const pip = await manager.requestWindow({ width: 360, height: 230 });
-      pip.document.title = isAr ? "عداد الحصة" : "Lesson countdown";
-      pip.document.body.style.margin = "0";
-      pip.document.body.style.padding = "12px";
-      pip.document.body.style.background = "#F2F0EB";
-      pip.document.body.style.display = "flex";
-      pip.document.body.style.alignItems = "flex-start";
-      pip.document.body.style.justifyContent = "center";
-      setPictureInPictureWindow(pip);
-    } catch {
-      // Browser denied the user-initiated floating window; the in-page card remains available.
+  useEffect(() => {
+    function keepInsideViewport() {
+      if (!preferences.position || !wrapperRef.current) return;
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const next = {
+        x: Math.max(8, Math.min(preferences.position.x, window.innerWidth - rect.width - 8)),
+        y: Math.max(8, Math.min(preferences.position.y, window.innerHeight - rect.height - 8)),
+      };
+      if (next.x !== preferences.position.x || next.y !== preferences.position.y) {
+        updatePreferences({ position: next });
+      }
     }
+    window.addEventListener("resize", keepInsideViewport);
+    keepInsideViewport();
+    return () => window.removeEventListener("resize", keepInsideViewport);
+  }, [preferences.position]);
+
+  function startDragging(event: ReactPointerEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    if (target.closest("button, input, select, textarea, label")) return;
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    event.preventDefault();
+    const rect = wrapper.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+    let latest = { x: rect.left, y: rect.top };
+
+    const move = (moveEvent: PointerEvent) => {
+      const currentRect = wrapper.getBoundingClientRect();
+      latest = {
+        x: Math.max(8, Math.min(moveEvent.clientX - offsetX, window.innerWidth - currentRect.width - 8)),
+        y: Math.max(8, Math.min(moveEvent.clientY - offsetY, window.innerHeight - currentRect.height - 8)),
+      };
+      setPreferences((current) => ({ ...current, position: latest }));
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      updatePreferences({ position: latest });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish, { once: true });
   }
 
   function togglePause() {
@@ -431,34 +552,46 @@ export function GlobalActiveLessonCountdown() {
     }
   }
 
-  if (userLoading || !user || !activeEntry || !activeKey || hiddenKey === activeKey) return null;
+  if (userLoading || !user || !visibleEntry || !activeKey || hiddenKey === activeKey) return null;
 
   const panel = (
     <ActiveLessonPanel
-      entry={activeEntry}
+      entry={visibleEntry}
       remainingMs={remainingMs}
       durationMs={durationMs}
       isPaused={isPaused}
+      isBeforeStart={isBeforeStart}
       isAr={isAr}
-      inPictureInPicture={Boolean(pictureInPictureWindow)}
+      alertMinutes={preferences.alertMinutes}
+      soundEnabled={preferences.soundEnabled}
       onTogglePause={togglePause}
       onHide={() => {
         setHiddenKey(activeKey);
-        setPictureInPictureWindow(null);
       }}
-      onOpenPictureInPicture={openPictureInPicture}
-      onClosePictureInPicture={() => pictureInPictureWindow?.close()}
+      onAlertMinutesChange={(alertMinutes) => updatePreferences({ alertMinutes })}
+      onSoundEnabledChange={(soundEnabled) => {
+        if (soundEnabled) {
+          initAudioContext();
+          playTimerSound("chime", 0.45);
+        }
+        updatePreferences({ soundEnabled });
+      }}
+      onDragStart={startDragging}
     />
   );
 
   return (
-    <>
-      {!pictureInPictureWindow && (
-        <div style={{ position: "fixed", zIndex: 60, bottom: "max(1rem, env(safe-area-inset-bottom, 1rem))", left: "max(1rem, env(safe-area-inset-left, 1rem))" }}>
-          {panel}
-        </div>
-      )}
-      {pictureInPictureWindow && createPortal(panel, pictureInPictureWindow.document.body)}
-    </>
+    <div
+      ref={wrapperRef}
+      style={{
+        position: "fixed",
+        zIndex: 60,
+        left: preferences.position ? preferences.position.x : "max(1rem, env(safe-area-inset-left, 1rem))",
+        top: preferences.position ? preferences.position.y : undefined,
+        bottom: preferences.position ? undefined : "max(1rem, env(safe-area-inset-bottom, 1rem))",
+      }}
+    >
+      {panel}
+    </div>
   );
 }
