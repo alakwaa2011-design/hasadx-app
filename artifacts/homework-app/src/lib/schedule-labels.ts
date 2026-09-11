@@ -64,8 +64,8 @@ export function breakPositionLabel(number: number | null | undefined, isAr: bool
   if (number === 0) return "";
   if (number == null) return isAr ? "الموقع في الجدول" : "Schedule position";
   return isAr
-    ? `الفترة ${ARABIC_LESSON_NUMBERS[number - 1] || number}`
-    : `Period ${number}`;
+    ? `بعد الحصة ${ARABIC_LESSON_NUMBERS[number - 1] || number}`
+    : `After lesson ${number}`;
 }
 
 export function schedulePosition(entry: TeacherScheduleEntry) {

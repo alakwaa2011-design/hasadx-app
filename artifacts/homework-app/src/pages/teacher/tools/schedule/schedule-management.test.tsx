@@ -310,6 +310,19 @@ describe("schedule management tool", () => {
     expect(localStorage.getItem("hasaad_schedule_table_direction_v1_7")).toBe("ltr");
   });
 
+  it("shows a break after its lesson in a separate grid column", async () => {
+    scheduleRows = [
+      { id: 30, kind: "weekly", title: "5A", dayOfWeek: 0, lessonNumber: 3, startTime: "09:20", endTime: "10:05" },
+      { id: 31, kind: "break", title: "SNACK", dayOfWeek: 0, breakAfterLesson: 2, startTime: "09:00", endTime: "09:15" },
+    ];
+    await renderPage();
+
+    const breakColumn = document.querySelector('[data-testid="schedule-break-column-2"]') as HTMLElement;
+    expect(breakColumn.textContent).toContain("بعد الثانية");
+    const sundayRow = document.querySelector('[data-testid="schedule-paper-day-0"]') as HTMLElement;
+    expect(sundayRow.textContent).toContain("SNACK");
+  });
+
   it("shows three calm sound choices in the timer settings", () => {
     const soundSelect = document.querySelector('[data-testid="select-schedule-alert-sound"]') as HTMLSelectElement;
     expect(soundSelect.options).toHaveLength(3);
