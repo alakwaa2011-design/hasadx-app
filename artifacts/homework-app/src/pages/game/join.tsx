@@ -4,7 +4,7 @@ import { StudentLoginLayout } from "@/components/layout";
 import { motion } from "framer-motion";
 import { Terminal, ShieldAlert, CheckCircle, Users, GraduationCap, ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { WameethPortal } from "@/components/wameeth-portal";
+import { WameethLaunch } from "@/components/wameeth-launch";
 import { useSeo } from "@/lib/seo";
 import { NORMAL_AVATARS, HACK_ICONS, DEFAULT_AVATAR } from "@/lib/avatars";
 import { AvatarDisplay } from "@/components/avatar-display";
@@ -411,7 +411,7 @@ export default function GameJoin() {
           className="w-full max-w-md"
         >
           <div className="text-center mb-5">
-            <WameethPortal pinLength={pin.trim().length} status={portalStatus} />
+            <WameethLaunch status={portalStatus} variant="compact" />
             <h1 className="text-3xl font-black text-white mb-1">
               {lang === "ar" ? "انضم للعبة" : "Join Game"}
             </h1>

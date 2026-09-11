@@ -83,6 +83,7 @@ import { useI18n } from "@/lib/i18n";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { SoloChallengeResults } from "@/components/game/solo-challenge-results";
 import AudioPlayer from "@/components/AudioPlayer";
+import { WameethLaunch } from "@/components/wameeth-launch";
 import { resolveImageUrl } from "@/lib/image-url";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -2711,18 +2712,18 @@ export default function GamePlay() {
           style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
           dir={dir}
         >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          >
-            {hackMode ? (
+          {hackMode ? (
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            >
               <span className="text-5xl font-black text-green-400 font-mono">
                 [..]
               </span>
-            ) : (
-              <Gamepad2 className="w-16 h-16 text-amber-300" />
-            )}
-          </motion.div>
+            </motion.div>
+          ) : (
+            <WameethLaunch status="checking" variant="large" />
+          )}
         </div>
       </>
     );
@@ -2801,18 +2802,14 @@ export default function GamePlay() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center max-w-md w-full"
         >
-          <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="mb-6"
-          >
-            <Gamepad2 className="w-16 h-16 text-amber-300 mx-auto" />
-          </motion.div>
+          <div className="mb-6 flex justify-center">
+            <WameethLaunch status="found" variant="large" />
+          </div>
           <h1 className="text-3xl font-black text-white mb-2">
-            {gameTitle}
+            {lang === "ar" ? "استعد… التحدي على وشك البدء" : "Get ready... The challenge is about to begin"}
           </h1>
           <p className="text-amber-200 text-lg mb-4">
-            {t.gamePlay.waitingForTeacher}
+            {gameTitle}
           </p>
           {gameMode === "teams" && myTeam && (
             <motion.div
