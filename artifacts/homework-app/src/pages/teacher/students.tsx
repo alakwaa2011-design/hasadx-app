@@ -269,7 +269,7 @@ function ClassBlock({
 
   return (
     <div ref={setNodeRef} style={style} className={isDense ? "mb-2" : "mb-3"}>
-      <div className={`relative rounded-2xl bg-card overflow-visible transition-all duration-200
+      <div className={`relative rounded-2xl bg-card overflow-hidden transition-all duration-200
         ${isDragging
           ? "shadow-2xl ring-2 ring-primary/40 opacity-70 scale-[0.99]"
           : "shadow-sm hover:shadow-md border border-border hover:border-border/80 cursor-pointer"}`}
@@ -432,46 +432,18 @@ function ClassBlock({
                 </div>
               )}
 
-              {/* Add students menu */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowAddMenu(v => !v)}
-                  className={`inline-flex items-center gap-1.5 ${isDense ? "px-2 py-1" : "px-3 py-1.5"} rounded-lg text-xs font-semibold border transition-colors ${color.light} ${color.text} ${color.border} hover:opacity-80`}
-                  title={lang === "ar" ? "إضافة طلاب" : "Add students"}
-                  aria-label={lang === "ar" ? "إضافة طلاب" : "Add students"}
-                  aria-haspopup="menu"
-                  aria-expanded={showAddMenu}
-                >
-                  <UserPlus size={13} />
-                  <span className={actionLabelsHidden ? "sr-only" : undefined}>{lang === "ar" ? "إضافة طلاب" : "Add students"}</span>
-                  <ChevronDown size={12} className={`transition-transform ${showAddMenu ? "rotate-180" : ""}`} />
-                </button>
-                {showAddMenu && (
-                  <div
-                    className="absolute end-0 top-full mt-1.5 z-[220] min-w-44 rounded-xl border border-border bg-card p-1 shadow-xl"
-                    role="menu"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => { setShowAddMenu(false); onAddStudent(folderName); }}
-                      className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-start text-xs font-semibold text-foreground hover:bg-muted transition-colors"
-                      role="menuitem"
-                    >
-                      <UserPlus size={14} className={color.text} />
-                      {t.teacherStudents.addStudent}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowAddMenu(false); onBulkAdd(folderName); }}
-                      className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-start text-xs font-semibold text-foreground hover:bg-muted transition-colors"
-                      role="menuitem"
-                    >
-                      <ListPlus size={14} className="text-muted-foreground" />
-                      {t.teacherStudents.bulkAdd}
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Add students trigger */}
+              <button
+                onClick={() => setShowAddMenu(v => !v)}
+                className={`inline-flex items-center gap-1.5 ${isDense ? "px-2 py-1" : "px-3 py-1.5"} rounded-lg text-xs font-semibold border transition-colors ${color.light} ${color.text} ${color.border} hover:opacity-80`}
+                title={lang === "ar" ? "إضافة طلاب" : "Add students"}
+                aria-label={lang === "ar" ? "إضافة طلاب" : "Add students"}
+                aria-expanded={showAddMenu}
+              >
+                <UserPlus size={13} />
+                <span className={actionLabelsHidden ? "sr-only" : undefined}>{lang === "ar" ? "إضافة طلاب" : "Add students"}</span>
+                <ChevronDown size={12} className={`transition-transform ${showAddMenu ? "rotate-180" : ""}`} />
+              </button>
 
               {/* Spacer */}
               <div className={isCompact ? "hidden" : "flex-1"} />
@@ -516,6 +488,28 @@ function ClassBlock({
                   </div>
                 )}
               </div>
+
+              {/* In-card add choices */}
+              {showAddMenu && (
+                <div className="basis-full grid grid-cols-2 gap-2 rounded-xl border border-border/70 bg-muted/20 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddMenu(false); onAddStudent(folderName); }}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed ${color.border} bg-card px-3 py-2 text-xs font-semibold ${color.text} hover:bg-muted transition-colors`}
+                  >
+                    <UserPlus size={14} />
+                    {t.teacherStudents.addStudent}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddMenu(false); onBulkAdd(folderName); }}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                  >
+                    <ListPlus size={14} />
+                    {t.teacherStudents.bulkAdd}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
