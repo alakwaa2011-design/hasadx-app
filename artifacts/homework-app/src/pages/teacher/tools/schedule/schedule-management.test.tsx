@@ -158,6 +158,7 @@ describe("schedule management tool", () => {
     expect(document.body.textContent).toContain("المواعيد");
     expect(document.body.textContent).toContain("موعد 1");
     expect(document.body.textContent).toContain("موعد 5");
+    await click("button-schedule-view-day");
     const daySelector = document.querySelector('[data-testid="schedule-management-day-selector"]') as HTMLElement;
 
     const visibleDayLabels = Array.from(daySelector.querySelectorAll("button")).map(
@@ -186,10 +187,17 @@ describe("schedule management tool", () => {
 
     expect(document.body.textContent).toContain("المؤقت والتنبيهات");
     expect(button("button-schedule-view-day")).toBeTruthy();
+    expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
     expect(button("button-schedule-view-week-list")).toBeTruthy();
     await click("button-schedule-view-week-grid");
     expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
-    expect(document.querySelectorAll('[data-testid="schedule-week-grid"] [class*="w-64"]')).toHaveLength(7);
+    expect(document.querySelectorAll('[data-testid^="schedule-paper-day-"]')).toHaveLength(5);
+    expect(document.body.textContent).toContain("الحصة الأولى");
+
+    await click("button-schedule-view-week-list");
+    const weeklyScroller = document.querySelector('[data-testid="schedule-week-list-scroll"]') as HTMLElement;
+    expect(weeklyScroller.className).toContain("overflow-y-auto");
+    expect(weeklyScroller.className).toContain("snap-y");
   });
 
   it("stores timer settings using the same preference contract as the floating countdown", async () => {
@@ -204,6 +212,18 @@ describe("schedule management tool", () => {
 
     expect(JSON.parse(localStorage.getItem("hasaad_schedule_countdown_v1_7") || "{}"))
       .toMatchObject({ alertMinutes: 10, soundEnabled: true });
+  });
+
+  it("lets the teacher disable all schedule timers and alerts", async () => {
+    const toggle = button("button-schedule-alerts-enabled");
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+
+    await click("button-schedule-alerts-enabled");
+
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(document.querySelector('[data-testid="select-schedule-alert-minutes"]')).toBeNull();
+    expect(JSON.parse(localStorage.getItem("hasaad_schedule_countdown_v1_7") || "{}"))
+      .toMatchObject({ enabled: false });
   });
 
   it("loads the failing day's draft without overwriting it during period validation", async () => {
@@ -276,6 +296,7 @@ describe("schedule management tool", () => {
     await click("button-save-schedule-entry");
 
     await renderPage();
+    await click("button-schedule-view-day");
     await click("button-management-schedule-day-5");
     expect(document.body.textContent).toContain("رياضيات");
     expect(document.body.textContent).toContain("الحصة الأولى");
@@ -326,15 +347,20 @@ describe("schedule management tool", () => {
   it("accepts an iPhone HEIC file and converts it before extraction", async () => {
     const input = document.querySelector('[data-testid="input-import-schedule-image"]') as HTMLInputElement;
     const file = new File(["heic-image"], "IMG_3847.heic", { type: "image/heic" });
-    expect(document.body.textContent).toContain(lessonNumberLabel(1, isAr));
-    expect(document.body.textContent).toContain(lessonNumberLabel(2, isAr));
-    expect(document.body.textContent).toContain(breakPositionLabel(1, isAr));
-    expect(document.body.textContent).toContain(scheduleDateLabel("2026-09-20", isAr));
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+
+    await act(async () => {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    await vi.waitFor(() => {
+      expect(heicConvert).toHaveBeenCalledWith(expect.objectContaining({
+        blob: file,
+        toType: "image/jpeg",
+      }));
+      expect(document.querySelector('img[alt="معاينة صورة الجدول"]')?.getAttribute("src"))
+        .toBe("blob:converted-image");
+    });
+    expect(button("button-confirm-extract-schedule").disabled).toBe(false);
   });
 });
-
-    const isAr = lang === "ar";
-
-    const orderedEntries = Array.from(
-      document.querySelectorAll('[data-schedule-position]'),
-    ).filter((entry) => (entry as HTMLElement).dataset.scheduleDay === "0") as HTMLElement[];

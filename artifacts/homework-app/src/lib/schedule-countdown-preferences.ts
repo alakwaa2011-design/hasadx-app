@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type ScheduleCountdownPreferences = {
+  enabled: boolean;
   alertMinutes: number;
   soundEnabled: boolean;
   position: { x: number; y: number } | null;
 };
 
 export const DEFAULT_SCHEDULE_COUNTDOWN_PREFERENCES: ScheduleCountdownPreferences = {
+  enabled: true,
   alertMinutes: 5,
   soundEnabled: false,
   position: null,
@@ -23,6 +25,7 @@ export function useScheduleCountdownPreferences(userId?: number) {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || "{}") as Partial<ScheduleCountdownPreferences>;
       setPreferences({
+        enabled: saved.enabled !== false,
         alertMinutes: Math.max(
           1,
           Math.min(120, Number(saved.alertMinutes) || DEFAULT_SCHEDULE_COUNTDOWN_PREFERENCES.alertMinutes),

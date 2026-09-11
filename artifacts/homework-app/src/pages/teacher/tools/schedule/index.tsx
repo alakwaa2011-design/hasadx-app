@@ -180,13 +180,33 @@ function TimerAndAlertsSection({
             {isAr ? "المؤقت والتنبيهات" : "Timer & alerts"}
           </h2>
           <p className="text-sm font-medium text-muted-foreground">
-            {isAr
+            {!preferences.enabled
+              ? (isAr
+                ? "متوقف حاليًا — لن تظهر تنبيهات الحصص أو المواعيد"
+                : "Currently off — lesson and appointment alerts will not appear")
+              : isAr
               ? "يدير العد التنازلي للحصص والفترات والمواعيد الفردية تلقائيًا"
               : "Automatically manages countdowns for lessons, breaks, and single appointments"}
           </p>
         </div>
 
         <div className="flex w-full shrink-0 flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm md:w-auto">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={preferences.enabled}
+            onClick={() => updatePreferences({ enabled: !preferences.enabled })}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-black transition-colors ${preferences.enabled ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground"}`}
+            data-testid="button-schedule-alerts-enabled"
+          >
+            <span>{preferences.enabled ? (isAr ? "مفعّل" : "On") : (isAr ? "متوقف" : "Off")}</span>
+            <span className={`relative h-6 w-11 rounded-full transition-colors ${preferences.enabled ? "bg-emerald-700" : "bg-muted-foreground/35"}`} aria-hidden="true">
+              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${preferences.enabled ? "start-6" : "start-1"}`} />
+            </span>
+          </button>
+
+          {preferences.enabled && (
+            <>
           <div className="flex items-center gap-2 border-e border-border pe-3">
             <div className={`h-2.5 w-2.5 rounded-full ${visibleEntry ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />
             <span className="text-xs font-bold text-foreground">
@@ -242,10 +262,12 @@ function TimerAndAlertsSection({
               ? <Volume2 className="h-4 w-4" />
               : <VolumeX className="h-4 w-4" />}
           </button>
+            </>
+          )}
         </div>
       </div>
 
-      {visibleEntry && (
+      {preferences.enabled && visibleEntry && (
         <div className="mt-5 border-t border-emerald-900/10 pt-5 dark:border-emerald-500/20">
           <ActiveTimerDisplay
             visibleEntry={visibleEntry}
@@ -408,7 +430,7 @@ export default function ScheduleManagementPage() {
 
   const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
-  const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("week-grid");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -616,6 +638,26 @@ export default function ScheduleManagementPage() {
       })).filter((group) => group.entries.length > 0),
     [entries],
   );
+  const paperScheduleDays = useMemo(
+    () =>
+      SCHEDULE_DAYS.slice(0, 5).map((day) => ({
+        day,
+        entries: entries
+          .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === day.value)
+          .sort((a, b) => a.startTime.localeCompare(b.startTime) || schedulePosition(a) - schedulePosition(b)),
+      })),
+    [entries],
+  );
+  const paperLessonNumbers = useMemo(() => {
+    const highestLesson = entries.reduce(
+      (highest, entry) =>
+        entry.kind === "weekly" && entry.lessonNumber
+          ? Math.max(highest, entry.lessonNumber)
+          : highest,
+      0,
+    );
+    return Array.from({ length: highestLesson }, (_, index) => index + 1);
+  }, [entries]);
 
   const appointments = useMemo(
     () =>
@@ -993,7 +1035,7 @@ export default function ScheduleManagementPage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto p-4 md:p-8 font-sans animate-in fade-in duration-500" dir={isAr ? "rtl" : "ltr"}>
+      <div className="mx-auto max-w-[1500px] p-4 font-sans animate-in fade-in duration-500 md:p-8" dir={isAr ? "rtl" : "ltr"}>
         <div className="flex flex-col gap-8">
           {/* Header Area */}
            <div className="flex flex-col items-start justify-between gap-6 xl:flex-row xl:items-center">
@@ -1039,7 +1081,17 @@ export default function ScheduleManagementPage() {
 
           {/* Main Content Area */}
           <div className="bg-card rounded-[2rem] border border-border/60 shadow-sm p-4 sm:p-6 md:p-8 relative min-h-[400px]">
-            {scheduleQuery.isLoading ? (
+            {scheduleQuery.isError ? (
+              <div className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center">
+                <Calendar className="mb-4 h-10 w-10 text-destructive/70" />
+                <h3 className="mb-2 text-lg font-black text-foreground">
+                  {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
+                </h3>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {isAr ? "تحقق من اتصالك ثم حاول مرة أخرى." : "Check your connection and try again."}
+                </p>
+              </div>
+            ) : scheduleQuery.isLoading ? (
               <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-sm z-10 rounded-[2rem]">
                 <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
               </div>
@@ -1168,15 +1220,18 @@ export default function ScheduleManagementPage() {
                   )}
 
                 {viewMode === "week-list" && (
-                  <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div
+                    className="h-[min(68vh,560px)] overflow-y-auto snap-y snap-mandatory rounded-3xl border border-border/60 bg-muted/5 px-4 sm:px-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                    data-testid="schedule-week-list-scroll"
+                  >
                     {weeklyGroups.length > 0 ? (
                       weeklyGroups.map(group => (
-                        <div key={group.day.value} className="relative">
-                          <h3 className="font-bold text-base text-foreground mb-4 flex items-center gap-3">
+                        <section key={group.day.value} className="relative min-h-full snap-start snap-always py-6">
+                          <h3 className="sticky top-0 z-10 mb-4 flex items-center gap-3 bg-card/95 py-3 text-base font-bold text-foreground backdrop-blur-sm">
                             <span className="w-2.5 h-6 bg-emerald-500 rounded-full" />
                             {isAr ? group.day.ar : group.day.en}
                           </h3>
-                          <div className="flex flex-col bg-muted/5 border border-border/50 rounded-3xl px-4 sm:px-6 py-2">
+                          <div className="flex flex-col rounded-3xl border border-border/50 bg-card px-4 py-2 sm:px-6">
                             {group.entries.map((entry, idx) => (
                               <ScheduleEntryRow
                                 key={entry.id}
@@ -1188,7 +1243,7 @@ export default function ScheduleManagementPage() {
                               />
                             ))}
                           </div>
-                        </div>
+                        </section>
                       ))
                     ) : (
                       <div className="text-center py-16 bg-muted/10 border border-dashed border-border/60 rounded-3xl">
@@ -1202,66 +1257,81 @@ export default function ScheduleManagementPage() {
                 {viewMode === "week-grid" && (
                   <div data-testid="schedule-week-grid" className="w-full overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {weeklyGroups.length > 0 ? (
-                      <div className="flex gap-4 min-w-max">
-                        {SCHEDULE_DAYS.map(day => {
-                          const dayEntries = entries
-                            .filter(e => (e.kind === "weekly" || e.kind === "break") && e.dayOfWeek === day.value)
-                            .sort((a, b) => a.startTime.localeCompare(b.startTime) || schedulePosition(a) - schedulePosition(b));
-
-                          return (
-                            <div key={day.value} className="flex flex-col w-64 shrink-0">
-                              <div className="font-bold text-base text-foreground mb-3 flex items-center justify-between bg-muted/30 p-3 rounded-xl border border-border/60">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-2 h-5 bg-emerald-500 rounded-full" />
+                      <table
+                        className="w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-2xl border border-border/70 bg-card text-center"
+                        style={{ minWidth: `${Math.max(760, (paperLessonNumbers.length + 2) * 112)}px` }}
+                      >
+                        <thead>
+                          <tr className="bg-emerald-800 text-white">
+                            <th className="sticky start-0 z-20 w-24 border-b border-e border-white/15 px-2 py-3 text-sm font-black">
+                              {isAr ? "اليوم" : "Day"}
+                            </th>
+                            {paperLessonNumbers.map((lessonNumber) => (
+                              <th key={lessonNumber} className="border-b border-e border-white/15 px-2 py-3 text-xs font-black last:border-e-0 sm:text-sm">
+                                {lessonNumberLabel(lessonNumber, isAr)}
+                              </th>
+                            ))}
+                            <th className="border-b border-white/15 px-2 py-3 text-xs font-black sm:text-sm">
+                              {isAr ? "فترات أخرى" : "Other periods"}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paperScheduleDays.map(({ day, entries: dayEntries }) => {
+                            const unplacedBreaks = dayEntries.filter(
+                              (entry) => entry.kind === "break" && !entry.breakAfterLesson,
+                            );
+                            return (
+                              <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top even:bg-muted/20">
+                                <th className="sticky start-0 z-10 border-b border-e border-border/60 bg-emerald-50 px-4 py-4 text-sm font-black text-emerald-900 last:border-b-0">
                                   {isAr ? day.ar : day.en}
-                                </div>
-                                <span className="text-xs font-black text-muted-foreground px-2 py-0.5 bg-background rounded-md shadow-sm border border-border/50">
-                                  {dayEntries.length}
-                                </span>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                {dayEntries.length > 0 ? (
-                                  dayEntries.map((entry) => (
-                                    <div
-                                      key={entry.id}
-                                      className={`p-3 rounded-xl border border-border/60 shadow-sm relative group cursor-pointer hover:border-emerald-500/50 hover:shadow-md transition-all ${entry.kind === 'break' ? 'bg-amber-50/30' : 'bg-card'}`}
-                                      onClick={() => openEdit(entry)}
-                                    >
-                                      <div className="flex items-start justify-between mb-2">
-                                        <span className="text-sm font-bold text-foreground line-clamp-2 pr-2 leading-snug">{entry.title}</span>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); removeEntry(entry); }}
-                                          className="opacity-0 group-hover:opacity-100 p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-all shrink-0 -mt-1 -mr-1"
-                                          title={isAr ? "حذف" : "Delete"}
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
+                                </th>
+                                {paperLessonNumbers.map((lessonNumber) => {
+                                  const cellEntries = dayEntries.filter(
+                                    (entry) =>
+                                      (entry.kind === "weekly" && entry.lessonNumber === lessonNumber) ||
+                                      (entry.kind === "break" && entry.breakAfterLesson === lessonNumber),
+                                  );
+                                  return (
+                                    <td key={lessonNumber} className="border-b border-e border-border/60 p-2 last:border-e-0">
+                                      <div className="flex min-h-20 flex-col gap-2">
+                                        {cellEntries.map((entry) => (
+                                          <button
+                                            key={entry.id}
+                                            type="button"
+                                            onClick={() => openEdit(entry)}
+                                            className={`w-full rounded-xl border px-3 py-2 text-start transition-colors hover:border-emerald-500 ${entry.kind === "break" ? "border-amber-200 bg-amber-50" : "border-border/60 bg-background"}`}
+                                          >
+                                            <span className="block text-xs font-black text-foreground">{entry.title}</span>
+                                            <span className="mt-1 block text-[10px] font-bold text-muted-foreground" dir="ltr">
+                                              {entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}
+                                            </span>
+                                          </button>
+                                        ))}
                                       </div>
-                                      <div className="flex flex-col gap-2 mt-auto">
-                                        <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-muted-foreground/90">
-                                          <Clock3 className="w-3.5 h-3.5" />
-                                          <span>{entry.startTime}{entry.endTime ? ` - ${entry.endTime}` : ""}</span>
-                                        </div>
-                                        {(entry.className || entry.location) && (
-                                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold text-muted-foreground">
-                                            {entry.className && <span className="bg-muted/60 px-1.5 py-0.5 rounded-md">{entry.className}</span>}
-                                            {entry.location && <span className="bg-muted/60 px-1.5 py-0.5 rounded-md">{entry.location}</span>}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 p-5 text-center text-xs font-bold text-muted-foreground">
-                                    {isAr ? "لا توجد فترات" : "No entries"}
+                                    </td>
+                                  );
+                                })}
+                                <td className="border-b border-border/60 p-2">
+                                  <div className="flex min-h-20 flex-col gap-2">
+                                    {unplacedBreaks.map((entry) => (
+                                      <button
+                                        key={entry.id}
+                                        type="button"
+                                        onClick={() => openEdit(entry)}
+                                        className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-start transition-colors hover:border-amber-400"
+                                      >
+                                        <span className="block text-xs font-black text-foreground">{entry.title}</span>
+                                        <span className="mt-1 block text-[10px] font-bold text-muted-foreground" dir="ltr">{entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}</span>
+                                      </button>
+                                    ))}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     ) : (
                       <div className="text-center py-16 bg-muted/10 border border-dashed border-border/60 rounded-3xl">
                         <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />

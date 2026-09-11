@@ -499,10 +499,10 @@ export function GlobalActiveLessonCountdown() {
   }, [activeKey]);
 
   useEffect(() => {
-    if (!activeKey || !isBeforeStart || !preferences.soundEnabled || soundedKeyRef.current === activeKey) return;
+    if (!preferences.enabled || !activeKey || !isBeforeStart || !preferences.soundEnabled || soundedKeyRef.current === activeKey) return;
     soundedKeyRef.current = activeKey;
     playTimerSound("chime", 0.55);
-  }, [activeKey, isBeforeStart, preferences.soundEnabled]);
+  }, [activeKey, isBeforeStart, preferences.enabled, preferences.soundEnabled]);
 
   useEffect(() => {
     function keepInsideViewport() {
@@ -560,7 +560,7 @@ export function GlobalActiveLessonCountdown() {
     }
   }
 
-  if (userLoading || !user || !visibleEntry || !activeKey || hiddenKey === activeKey || isSchedulePage) return null;
+  if (!preferences.enabled || userLoading || !user || !visibleEntry || !activeKey || hiddenKey === activeKey || isSchedulePage) return null;
 
   const panel = (
     <ActiveLessonPanel
