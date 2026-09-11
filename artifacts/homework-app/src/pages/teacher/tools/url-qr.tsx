@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import QRCode from "react-qr-code";
+import { useState, useMemo, useEffect } from "react";
+import QRCodeGenerator from "qrcode";
 import { Link } from "wouter";
 import { 
   ArrowRight, ArrowLeft, QrCode, Download, Type, 
@@ -9,6 +9,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { Layout } from "@/components/layout";
 import { Card, Input, Button, Label } from "@/components/ui-elements";
+import { prepareQrValue } from "@/lib/qr-input";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
 
@@ -70,7 +71,44 @@ export default function UrlQrTool() {
   const labelFontFamily = LABEL_FONTS[labelFont];
   const labelSizes = LABEL_SIZES[labelSize];
   
-  const qrValue = useMemo(() => content.trim(), [content]);
+  const qrValue = useMemo(() => prepareQrValue(content), [content]);
+  const [qrSvgMarkup, setQrSvgMarkup] = useState("");
+  const canExportQr = Boolean(qrValue && qrSvgMarkup);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!qrValue) {
+      setQrSvgMarkup("");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // qrcode receives the original Unicode string. It performs the QR
+    // standard's UTF-8 byte conversion internally; do not encode the value
+    // with encodeURIComponent or turn it into a URL-encoded payload.
+    QRCodeGenerator.toString(qrValue, {
+      type: "svg",
+      errorCorrectionLevel: level,
+      margin: 0,
+      width: 256,
+      color: {
+        dark: fgColor,
+        light: bgColor,
+      },
+    })
+      .then(markup => {
+        if (!cancelled) setQrSvgMarkup(markup);
+      })
+      .catch(() => {
+        if (!cancelled) setQrSvgMarkup("");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bgColor, fgColor, level, qrValue]);
 
   const hasLowContrast = useMemo(() => {
     const getLuminance = (hex: string) => {
@@ -120,7 +158,7 @@ export default function UrlQrTool() {
 
   const downloadPNG = async () => {
     if (!qrValue || hasLowContrast) return;
-    const svg = document.getElementById("qr-code-svg");
+    const svg = document.querySelector("#qr-code-svg svg");
     if (!svg) return;
     
     const size = 600; // Generate high-res image
@@ -171,7 +209,7 @@ export default function UrlQrTool() {
 
   const downloadSVG = () => {
     if (!qrValue || hasLowContrast) return;
-    const svg = document.getElementById("qr-code-svg");
+    const svg = document.querySelector("#qr-code-svg svg");
     if (!svg) return;
     
     const size = 300;
@@ -185,11 +223,12 @@ export default function UrlQrTool() {
       : labelSizes.svg;
     
     const innerSVG = svg.innerHTML;
+    const qrViewBox = svg.getAttribute("viewBox") || "0 0 256 256";
     
     const combinedSVG = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}" dir="${dir}">
         <rect width="${totalWidth}" height="${totalHeight}" fill="${bgColor}" />
-        <svg x="${padding}" y="${padding}" width="${size}" height="${size}" viewBox="0 0 256 256">
+        <svg x="${padding}" y="${padding}" width="${size}" height="${size}" viewBox="${escapeXml(qrViewBox)}">
           ${innerSVG}
         </svg>
         ${label ? `<text x="50%" y="${size + padding + 25}" text-anchor="middle" direction="${labelDirection}" unicode-bidi="plaintext" font-family="${escapeXml(labelFontFamily)}" font-weight="700" font-size="${fittedSvgFontSize}" fill="${fgColor}">${escapeXml(label)}</text>` : ''}
@@ -449,15 +488,11 @@ export default function UrlQrTool() {
                     className="p-8 w-full h-full flex items-center justify-center"
                   >
                     <div className="w-full h-full" style={{ color: fgColor }}>
-                      <QRCode
-                         id="qr-code-svg"
-                         value={qrValue}
-                        size={256}
-                        level={level}
-                        bgColor={bgColor}
-                        fgColor={fgColor}
-                        style={{ width: "100%", height: "100%" }}
-                        viewBox={`0 0 256 256`}
+                      <div
+                        id="qr-code-svg"
+                        className="h-full w-full"
+                        dangerouslySetInnerHTML={{ __html: qrSvgMarkup }}
+                        aria-label={isAr ? "رمز QR للمحتوى" : "QR code for content"}
                       />
                     </div>
                   </motion.div>
@@ -483,7 +518,7 @@ export default function UrlQrTool() {
               <div className="w-full mt-8 space-y-3">
                 <Button 
                   className="w-full py-4 text-base" 
-                   disabled={!qrValue || hasLowContrast}
+                   disabled={!canExportQr || hasLowContrast}
                   onClick={downloadPNG}
                 >
                   <Download className="w-5 h-5 me-2" />
@@ -494,7 +529,7 @@ export default function UrlQrTool() {
                   <Button 
                     variant="outline" 
                     className="py-3.5"
-                     disabled={!qrValue || hasLowContrast}
+                     disabled={!canExportQr || hasLowContrast}
                     onClick={downloadSVG}
                   >
                     <Download className="w-4 h-4 me-2" />

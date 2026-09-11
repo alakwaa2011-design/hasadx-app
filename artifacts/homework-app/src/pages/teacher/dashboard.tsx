@@ -3004,7 +3004,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
     },
     {
       groupId: "students",
-      groupTitle: isAr ? "إدارة الطلاب" : "Student Management",
+      groupTitle: isAr ? "أدوات الصف والطلاب" : "Classroom & Students Tools",
       groupIcon: <Users className="w-4 h-4" />,
       tools: [
         {
@@ -3032,6 +3032,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
             : "A quick, fair way to pick a random student from your list",
           accent: BRAND.gold,
           href: "/teacher/student-wheel",
+        },
+        {
+          icon: <Clock className="w-6 h-6" />,
+          title: isAr ? "المؤقت وساعة الإيقاف" : "Timer & Stopwatch",
+          desc: isAr ? "مؤقت تفاعلي للفصل مع شاشة عرض مخصصة للطلاب" : "Interactive classroom timer with a dedicated student display",
+          accent: BRAND.green,
+          href: "/teacher/tools/timer",
         },
         ...((Boolean(user?.isAdmin) || user?.role === "admin") ? [{
           icon: <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>,
@@ -3089,20 +3096,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           accent: BRAND.green,
           href: "/teacher/library",
         },
-      ],
-    },
-    {
-      groupId: "other",
-      groupTitle: isAr ? "أخرى" : "Other",
-      groupIcon: <MessageSquarePlus className="w-4 h-4" />,
-      tools: [
-        {
-          icon: <Clock className="w-6 h-6" />,
-          title: isAr ? "المؤقت وساعة الإيقاف" : "Timer & Stopwatch",
-          desc: isAr ? "مؤقت تفاعلي للفصل مع شاشة عرض مخصصة للطلاب" : "Interactive classroom timer with a dedicated student display",
-          accent: BRAND.green,
-          href: "/teacher/tools/timer",
-        },
         {
           icon: <QrCode className="w-6 h-6" />,
           title: isAr ? "إنشاء QR" : "Create QR Code",
@@ -3110,6 +3103,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           accent: BRAND.green,
           href: "/teacher/tools/url-qr",
         },
+      ],
+    },
+    {
+      groupId: "other",
+      groupTitle: isAr ? "أخرى" : "Other",
+      groupIcon: <MessageSquarePlus className="w-4 h-4" />,
+      tools: [
         {
           icon: <MessageSquarePlus className="w-6 h-6" />,
           title: t.dashboard.toolFeedback,
