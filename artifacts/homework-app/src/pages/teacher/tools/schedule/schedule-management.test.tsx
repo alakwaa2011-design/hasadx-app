@@ -227,6 +227,10 @@ describe("schedule management tool", () => {
     });
 
     expect(document.body.textContent).toContain("المؤقت والتنبيهات");
+    expect(document.querySelectorAll('[data-testid="button-schedule-alerts-enabled"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-testid="select-schedule-alert-minutes"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-testid="select-schedule-end-alert-minutes"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-testid="select-schedule-alert-sound"]')).toHaveLength(1);
     expect(button("button-schedule-view-day")).toBeTruthy();
     expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
     expect(button("button-schedule-view-week-list")).toBeTruthy();

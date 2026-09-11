@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import {
   Calendar, Coffee, Clock3, Trash2, Pencil, Image as ImageIcon, Plus, 
   UploadCloud, AlertTriangle, FileWarning, Loader2, ArrowRight, ArrowLeft,
-  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw
+  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -316,123 +316,6 @@ function TimerAndAlertsSection({
         </div>
         )}
 
-        {/* Keep the advanced controls in one visual group; the previous layout made every option compete for attention. */}
-        {/* legacy control markup intentionally removed */}
-        {false && (
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm md:w-auto">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={preferences.enabled}
-            onClick={() => updatePreferences({ enabled: !preferences.enabled })}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-black transition-colors ${preferences.enabled ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground"}`}
-            data-testid="button-schedule-alerts-enabled"
-          >
-            <span>{preferences.enabled ? (isAr ? "مفعّل" : "On") : (isAr ? "متوقف" : "Off")}</span>
-            <span className={`relative h-6 w-11 rounded-full transition-colors ${preferences.enabled ? "bg-emerald-700" : "bg-muted-foreground/35"}`} aria-hidden="true">
-              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${preferences.enabled ? "start-6" : "start-1"}`} />
-            </span>
-          </button>
-
-          {preferences.enabled && (
-            <>
-          <div className="flex items-center gap-2 border-e border-border pe-3">
-            <div className={`h-2.5 w-2.5 rounded-full ${visibleEntry ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />
-            <span className="text-xs font-bold text-foreground">
-              {visibleEntry
-                ? (isBeforeStart
-                  ? (isAr ? "تنبيه نشط" : "Alert active")
-                  : (isAr ? "عد تنازلي نشط" : "Countdown active"))
-                : (isAr ? "جاهز" : "Ready")}
-            </span>
-          </div>
-
-          <label className="flex items-center gap-2 rounded-xl bg-background/70 px-2 py-1">
-            <Bell className="h-4 w-4 text-emerald-600" />
-            <span className="whitespace-nowrap text-xs font-bold text-muted-foreground">
-              {isAr ? "تنبيه قبل" : "Alert before"}
-            </span>
-            <select
-              value={preferences.alertMinutes}
-              onChange={(event) => updatePreferences({ alertMinutes: Number(event.target.value) })}
-              className="min-w-[30px] cursor-pointer appearance-none border-none bg-transparent p-0 text-center text-sm font-bold text-foreground focus:ring-0"
-              dir="ltr"
-              aria-label={isAr ? "مدة ظهور التنبيه بالدقائق" : "Alert lead time in minutes"}
-              data-testid="select-schedule-alert-minutes"
-            >
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={15}>15</option>
-            </select>
-            <span className="text-xs font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>
-          </label>
-
-          <label className="flex items-center gap-2 rounded-xl bg-background/70 px-2 py-1">
-            <Timer className="h-4 w-4 text-amber-600" />
-            <span className="whitespace-nowrap text-xs font-bold text-muted-foreground">
-              {isAr ? "تنبيه قبل الانتهاء" : "Alert before end"}
-            </span>
-            <select
-              value={preferences.endAlertMinutes}
-              onChange={(event) => updatePreferences({ endAlertMinutes: Number(event.target.value) })}
-              className="min-w-[42px] cursor-pointer appearance-none border-none bg-transparent p-0 text-center text-sm font-bold text-foreground focus:ring-0"
-              dir="ltr"
-              aria-label={isAr ? "مدة التنبيه قبل انتهاء الحصة أو الموعد" : "Alert lead time before lesson or appointment ends"}
-              data-testid="select-schedule-end-alert-minutes"
-            >
-              <option value={0}>{isAr ? "لا" : "Off"}</option>
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={15}>15</option>
-            </select>
-            {preferences.endAlertMinutes > 0 && (
-              <span className="text-xs font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>
-            )}
-          </label>
-
-          <div className="hidden h-5 w-px bg-border sm:block" />
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => updatePreferences({ soundEnabled: !preferences.soundEnabled })}
-              className={`rounded-lg p-1.5 transition-colors ${preferences.soundEnabled ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:bg-muted"}`}
-              title={isAr ? "تنبيه صوتي" : "Sound alert"}
-              aria-label={isAr ? "تشغيل أو إيقاف صوت التنبيه" : "Toggle alert sound"}
-              aria-pressed={preferences.soundEnabled}
-              data-testid="button-schedule-alert-sound"
-            >
-              {preferences.soundEnabled
-                ? <Volume2 className="h-4 w-4" />
-                : <VolumeX className="h-4 w-4" />}
-            </button>
-            <select
-              value={preferences.soundId}
-              onChange={(event) => {
-                const soundId = event.target.value as ScheduleCountdownPreferences["soundId"];
-                updatePreferences({ soundId, soundEnabled: true });
-                initAudioContext();
-                playTimerSound(soundId, 0.38);
-              }}
-              className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold text-foreground"
-              aria-label={isAr ? "اختيار صوت التنبيه ومعاينته" : "Choose and preview alert sound"}
-              data-testid="select-schedule-alert-sound"
-            >
-              {TIMER_SOUNDS.map((sound) => (
-                <option key={sound.id} value={sound.id}>
-                  {isAr ? sound.labelAr : sound.labelEn}
-                </option>
-              ))}
-            </select>
-          </div>
-            </>
-          )}
-        </div>
-        )}
       </div>
 
       {preferences.enabled && visibleEntry && (
@@ -1274,15 +1157,6 @@ export default function ScheduleManagementPage() {
                  {isAr ? "استيراد صورة" : "Import"}
                </button>
 
-               {entries.length > 0 && (
-                 <button type="button" onClick={() => setDeleteAllDialogOpen(true)} data-testid="button-delete-whole-schedule" className="flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-destructive/20 bg-destructive/5 px-4 text-sm font-bold text-destructive shadow-sm transition-colors hover:bg-destructive/10">
-                   <Trash2 className="h-4 w-4" />
-                   {isAr ? "حذف الجدول" : "Delete All"}
-                 </button>
-               )}
-
-               <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
-
                <details className="group relative">
                  <summary className="flex h-11 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-700 px-6 text-sm font-bold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-800 list-none [&::-webkit-details-marker]:hidden">
                    <Plus className="h-4 w-4" />
@@ -1299,6 +1173,29 @@ export default function ScheduleManagementPage() {
                    </button>
                  </div>
                </details>
+
+               {entries.length > 0 && (
+                 <details className="group relative">
+                   <summary
+                     data-testid="button-schedule-management-menu"
+                     className="flex h-11 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-card px-3 text-sm font-bold text-muted-foreground shadow-sm transition-colors hover:bg-muted/50 hover:text-foreground list-none [&::-webkit-details-marker]:hidden"
+                   >
+                     <MoreHorizontal className="h-4 w-4" />
+                     <span className="hidden sm:inline">{isAr ? "إدارة" : "Manage"}</span>
+                   </summary>
+                   <div className="absolute end-0 top-[calc(100%+0.5rem)] z-50 w-52 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg animate-in fade-in zoom-in-95">
+                     <button
+                       type="button"
+                       onClick={() => { document.body.click(); setDeleteAllDialogOpen(true); }}
+                       data-testid="button-delete-whole-schedule"
+                       className="flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-destructive transition-colors hover:bg-destructive/10"
+                     >
+                       <Trash2 className="h-4 w-4" />
+                       {isAr ? "حذف الجدول كاملًا" : "Delete full schedule"}
+                     </button>
+                   </div>
+                 </details>
+               )}
              </div>
            </div>
 
@@ -1505,10 +1402,20 @@ export default function ScheduleManagementPage() {
                           : ""
                     }`}
                   >
-                    <div className="sticky start-0 mb-3 flex min-w-max flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card/90 p-2 shadow-sm backdrop-blur" data-testid="schedule-table-theme-picker">
-                      <span className="me-1 text-xs font-black text-muted-foreground">
-                        {isAr ? "مظهر الجدول" : "Table style"}
-                      </span>
+                    <details className="sticky start-0 mb-3 w-fit min-w-[min(100%,22rem)] rounded-2xl border border-border/60 bg-card/95 shadow-sm backdrop-blur" data-testid="schedule-table-theme-picker">
+                      <summary className="flex cursor-pointer select-none items-center justify-between gap-4 px-4 py-3 text-sm font-black text-foreground list-none [&::-webkit-details-marker]:hidden">
+                        <span className="flex items-center gap-2">
+                          <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
+                          {isAr ? "تخصيص الجدول" : "Customize table"}
+                        </span>
+                        <span className="text-xs font-bold text-muted-foreground">
+                          {isAr ? SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.ar : SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.en}
+                        </span>
+                      </summary>
+                      <div className="flex min-w-max flex-wrap items-center gap-2 border-t border-border/60 p-3">
+                        <span className="me-1 text-xs font-black text-muted-foreground">
+                          {isAr ? "مظهر الجدول" : "Table style"}
+                        </span>
                       {SCHEDULE_TABLE_THEMES.map((theme) => (
                         <button
                           key={theme.id}
@@ -1558,7 +1465,8 @@ export default function ScheduleManagementPage() {
                           {isAr ? "الأحد من اليسار" : "Sunday on left"}
                         </button>
                       </div>
-                    </div>
+                      </div>
+                    </details>
                     {weeklyGroups.length > 0 ? (
                       <table
                         dir={tableDirection}
