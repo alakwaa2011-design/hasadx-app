@@ -167,21 +167,52 @@ const bulkLessonSchema = z.object({
 });
 
 const bulkScheduleSchema = z.object({
-  days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
-  lessons: z.array(bulkLessonSchema).min(1).max(10),
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
+  lessons: z.array(bulkLessonSchema).min(1).max(10).optional(),
+  daySchedules: z.array(z.object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    lessons: z.array(bulkLessonSchema).min(1).max(10),
+  })).min(1).max(7).optional(),
 }).superRefine((value, ctx) => {
-  if (new Set(value.days).size !== value.days.length) {
+  const usesSharedLessons = Boolean(value.days && value.lessons);
+  const usesDaySchedules = Boolean(value.daySchedules);
+  if (usesSharedLessons === usesDaySchedules) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "أرسل الأيام والحصص المشتركة أو جدولًا مستقلًا لكل يوم",
+    });
+    return;
+  }
+  if (value.days && new Set(value.days).size !== value.days.length) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["days"],
       message: "لا يمكن تكرار اليوم",
     });
   }
-  if (new Set(value.lessons.map((lesson) => lesson.lessonNumber)).size !== value.lessons.length) {
+  if (value.lessons && new Set(value.lessons.map((lesson) => lesson.lessonNumber)).size !== value.lessons.length) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["lessons"],
       message: "لا يمكن تكرار رقم الحصة",
+    });
+  }
+  if (value.daySchedules) {
+    if (new Set(value.daySchedules.map((schedule) => schedule.dayOfWeek)).size !== value.daySchedules.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["daySchedules"],
+        message: "لا يمكن تكرار اليوم",
+      });
+    }
+    value.daySchedules.forEach((schedule, index) => {
+      if (new Set(schedule.lessons.map((lesson) => lesson.lessonNumber)).size !== schedule.lessons.length) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["daySchedules", index, "lessons"],
+          message: "لا يمكن تكرار رقم الحصة في اليوم نفسه",
+        });
+      }
     });
   }
 });
@@ -216,8 +247,13 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
     return;
   }
 
-  const values = parsed.data.days.flatMap((dayOfWeek) =>
-      parsed.data.lessons.map((lesson) => ({
+  const daySchedules = parsed.data.daySchedules
+    ?? parsed.data.days!.map((dayOfWeek) => ({
+      dayOfWeek,
+      lessons: parsed.data.lessons!,
+    }));
+  const values = daySchedules.flatMap(({ dayOfWeek, lessons }) =>
+      lessons.map((lesson) => ({
         teacherId: req.session.teacherId,
         kind: "weekly" as const,
         title: lesson.title,

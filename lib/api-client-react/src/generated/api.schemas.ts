@@ -116,6 +116,19 @@ export interface TeacherScheduleBulkLessonInput {
   endTime?: string | null;
 }
 
+export type TeacherScheduleBulkInputDaySchedulesItem = {
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  dayOfWeek: number;
+  /**
+     * @minItems 1
+     * @maxItems 10
+     */
+  lessons: TeacherScheduleBulkLessonInput[];
+};
+
 export interface TeacherScheduleBulkInput {
   /**
      * @minItems 1
@@ -123,12 +136,17 @@ export interface TeacherScheduleBulkInput {
      * @items.minimum 0
      * @items.maximum 6
      */
-  days: number[];
+  days?: number[];
   /**
      * @minItems 1
      * @maxItems 10
      */
-  lessons: TeacherScheduleBulkLessonInput[];
+  lessons?: TeacherScheduleBulkLessonInput[];
+  /**
+     * @minItems 1
+     * @maxItems 7
+     */
+  daySchedules?: TeacherScheduleBulkInputDaySchedulesItem[];
 }
 
 export type TeacherScheduleEntryUpdateKind = typeof TeacherScheduleEntryUpdateKind[keyof typeof TeacherScheduleEntryUpdateKind];

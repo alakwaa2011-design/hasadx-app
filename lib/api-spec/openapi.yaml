@@ -1812,7 +1812,24 @@ components:
           maxItems: 10
           items:
             $ref: "#/components/schemas/TeacherScheduleBulkLessonInput"
-      required: [days, lessons]
+        daySchedules:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items:
+            type: object
+            properties:
+              dayOfWeek:
+                type: integer
+                minimum: 0
+                maximum: 6
+              lessons:
+                type: array
+                minItems: 1
+                maxItems: 10
+                items:
+                  $ref: "#/components/schemas/TeacherScheduleBulkLessonInput"
+            required: [dayOfWeek, lessons]
 
     TeacherScheduleEntryUpdate:
       allOf:

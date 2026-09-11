@@ -133,6 +133,7 @@ export type * from "./types/successResponse";
 export type * from "./types/teacherProfile";
 export type * from "./types/teacherProfileRole";
 export type * from "./types/teacherScheduleBulkInput";
+export type * from "./types/teacherScheduleBulkInputDaySchedulesItem";
 export type * from "./types/teacherScheduleBulkLessonInput";
 export type * from "./types/teacherScheduleEntry";
 export type * from "./types/teacherScheduleEntryInput";

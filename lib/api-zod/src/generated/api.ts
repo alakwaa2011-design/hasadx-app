@@ -4198,10 +4198,27 @@ export const bulkCreateTeacherScheduleBodyLessonsItemStartTimeRegExp = new RegEx
 export const bulkCreateTeacherScheduleBodyLessonsItemEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const bulkCreateTeacherScheduleBodyLessonsMax = 10;
 
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemDayOfWeekMin = 0;
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemDayOfWeekMax = 6;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemLessonNumberMax = 10;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemTitleMax = 160;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemSubjectMax = 100;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemClassNameMax = 100;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsMax = 10;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesMax = 7;
+
 
 
 export const BulkCreateTeacherScheduleBody = zod.object({
-  "days": zod.array(zod.int().min(bulkCreateTeacherScheduleBodyDaysItemMin).max(bulkCreateTeacherScheduleBodyDaysItemMax)).min(1).max(bulkCreateTeacherScheduleBodyDaysMax),
+  "days": zod.array(zod.int().min(bulkCreateTeacherScheduleBodyDaysItemMin).max(bulkCreateTeacherScheduleBodyDaysItemMax)).min(1).max(bulkCreateTeacherScheduleBodyDaysMax).optional(),
   "lessons": zod.array(zod.object({
   "lessonNumber": zod.int().min(1).max(bulkCreateTeacherScheduleBodyLessonsItemLessonNumberMax),
   "title": zod.string().min(1).max(bulkCreateTeacherScheduleBodyLessonsItemTitleMax),
@@ -4209,7 +4226,18 @@ export const BulkCreateTeacherScheduleBody = zod.object({
   "className": zod.string().max(bulkCreateTeacherScheduleBodyLessonsItemClassNameMax).nullish(),
   "startTime": zod.string().regex(bulkCreateTeacherScheduleBodyLessonsItemStartTimeRegExp),
   "endTime": zod.string().regex(bulkCreateTeacherScheduleBodyLessonsItemEndTimeRegExp).nullish()
-})).min(1).max(bulkCreateTeacherScheduleBodyLessonsMax)
+})).min(1).max(bulkCreateTeacherScheduleBodyLessonsMax).optional(),
+  "daySchedules": zod.array(zod.object({
+  "dayOfWeek": zod.int().min(bulkCreateTeacherScheduleBodyDaySchedulesItemDayOfWeekMin).max(bulkCreateTeacherScheduleBodyDaySchedulesItemDayOfWeekMax),
+  "lessons": zod.array(zod.object({
+  "lessonNumber": zod.int().min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemLessonNumberMax),
+  "title": zod.string().min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemTitleMax),
+  "subject": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemSubjectMax).nullish(),
+  "className": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemClassNameMax).nullish(),
+  "startTime": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemStartTimeRegExp),
+  "endTime": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemEndTimeRegExp).nullish()
+})).min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsMax)
+})).min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesMax).optional()
 })
 
 export const bulkCreateTeacherScheduleResponseDayOfWeekMin = 0;

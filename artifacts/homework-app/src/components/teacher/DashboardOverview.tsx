@@ -2544,7 +2544,6 @@ type ScheduleFormValues = {
 };
 
 type BulkScheduleFormValues = {
-  days: number[];
   lessons: Array<{
     lessonNumber: number;
     title: string;
@@ -2646,13 +2645,14 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkLessonCount, setBulkLessonCount] = useState(5);
+  const [activeBulkDay, setActiveBulkDay] = useState(() => new Date().getDay());
+  const [bulkDaySchedules, setBulkDaySchedules] = useState<Record<number, BulkScheduleFormValues["lessons"]>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const form = useForm<ScheduleFormValues>({
     defaultValues: emptyScheduleForm(),
   });
   const bulkForm = useForm<BulkScheduleFormValues>({
     defaultValues: {
-      days: [new Date().getDay()],
       lessons: emptyBulkLessons(),
     },
   });
@@ -2661,7 +2661,6 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
     name: "lessons",
   });
   const selectedKind = form.watch("kind");
-  const selectedBulkDays = bulkForm.watch("days");
   const scheduleQuery = useListTeacherSchedule({
     query: {
       enabled: Boolean(user),
@@ -2734,10 +2733,12 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
 
   function openBulkCreate() {
     const currentDay = new Date().getDay();
+    const lessons = emptyBulkLessons(5);
     setBulkLessonCount(5);
+    setActiveBulkDay(currentDay);
+    setBulkDaySchedules({ [currentDay]: lessons });
     bulkForm.reset({
-      days: [currentDay],
-      lessons: emptyBulkLessons(5),
+      lessons,
     });
     setBulkDialogOpen(true);
   }
@@ -2755,15 +2756,42 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
     setBulkLessonCount(nextCount);
   }
 
-  function toggleBulkDay(day: number) {
-    const currentDays = bulkForm.getValues("days") || [];
-    bulkForm.setValue(
-      "days",
-      currentDays.includes(day)
-        ? currentDays.filter((currentDay) => currentDay !== day)
-        : [...currentDays, day].sort((a, b) => a - b),
-      { shouldValidate: true },
-    );
+  function selectBulkDay(day: number) {
+    if (day === activeBulkDay) return;
+    const currentLessons = bulkForm.getValues("lessons");
+    const nextLessons = bulkDaySchedules[day] || emptyBulkLessons(5);
+    setBulkDaySchedules((current) => ({
+      ...current,
+      [activeBulkDay]: currentLessons,
+      [day]: current[day] || nextLessons,
+    }));
+    setActiveBulkDay(day);
+    setBulkLessonCount(nextLessons.length);
+    bulkForm.reset({ lessons: nextLessons });
+  }
+
+  function selectAllBulkDays() {
+    const currentLessons = bulkForm.getValues("lessons");
+    setBulkDaySchedules((current) => {
+      const next = { ...current, [activeBulkDay]: currentLessons };
+      SCHEDULE_DAYS.forEach(({ value }) => {
+        next[value] ||= emptyBulkLessons(5);
+      });
+      return next;
+    });
+  }
+
+  function removeActiveBulkDay() {
+    const configuredDays = Object.keys(bulkDaySchedules).map(Number);
+    if (configuredDays.length <= 1) return;
+    const nextDay = configuredDays.find((day) => day !== activeBulkDay)!;
+    const nextSchedules = { ...bulkDaySchedules };
+    delete nextSchedules[activeBulkDay];
+    const nextLessons = nextSchedules[nextDay];
+    setBulkDaySchedules(nextSchedules);
+    setActiveBulkDay(nextDay);
+    setBulkLessonCount(nextLessons.length);
+    bulkForm.reset({ lessons: nextLessons });
   }
 
   function openEdit(entry: TeacherScheduleEntry) {
@@ -2829,16 +2857,24 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   }
 
   function submitBulkSchedule(values: BulkScheduleFormValues) {
+    const schedules = {
+      ...bulkDaySchedules,
+      [activeBulkDay]: values.lessons,
+    };
     const payload: TeacherScheduleBulkInput = {
-      days: values.days,
-      lessons: values.lessons.map((lesson, index) => ({
-        lessonNumber: index + 1,
-        title: lesson.title.trim() || lessonNumberLabel(index + 1, isAr),
-        subject: lesson.subject.trim() || null,
-        className: lesson.className.trim() || null,
-        startTime: lesson.startTime,
-        endTime: lesson.endTime || null,
-      })),
+      daySchedules: Object.entries(schedules)
+        .sort(([left], [right]) => Number(left) - Number(right))
+        .map(([day, lessons]) => ({
+          dayOfWeek: Number(day),
+          lessons: lessons.map((lesson, index) => ({
+            lessonNumber: index + 1,
+            title: lesson.title.trim() || lessonNumberLabel(index + 1, isAr),
+            subject: lesson.subject.trim() || null,
+            className: lesson.className.trim() || null,
+            startTime: lesson.startTime,
+            endTime: lesson.endTime || null,
+          })),
+        })),
     };
 
     bulkMutation.mutate(
@@ -3417,33 +3453,34 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                   {isAr ? "الأيام" : "Days"}
                 </div>
                 <div style={{ color: C.subtle, fontSize: 10.5, marginBottom: 10 }}>
-                  {isAr ? "اختر يومًا واحدًا أو عدة أيام، وسيتم إنشاء نفس الحصص فيها." : "Choose one or more days and the same lessons will be created on each day."}
+                  {isAr ? "اضغط على كل يوم وأدخل حصصه بشكل مستقل. العلامة الخضراء تعني أن اليوم سيُحفظ." : "Open each day and enter its lessons independently. A green mark means the day will be saved."}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => bulkForm.setValue("days", SCHEDULE_DAYS.map((day) => day.value))}
+                    onClick={selectAllBulkDays}
                     className="rounded-xl border px-3 py-2 text-xs font-bold"
                     style={{
-                      borderColor: selectedBulkDays?.length === 7 ? C.green : C.border,
-                      background: selectedBulkDays?.length === 7 ? C.greenPale : C.card,
-                      color: selectedBulkDays?.length === 7 ? C.green : C.text,
+                      borderColor: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.border,
+                      background: Object.keys(bulkDaySchedules).length === 7 ? C.greenPale : C.card,
+                      color: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.text,
                     }}
                   >
                     {isAr ? "كل الأيام" : "Every day"}
                   </button>
                   {SCHEDULE_DAYS.map((day) => {
-                    const selected = selectedBulkDays?.includes(day.value);
+                    const configured = day.value in bulkDaySchedules;
+                    const active = day.value === activeBulkDay;
                     return (
                       <button
                         key={day.value}
                         type="button"
-                        onClick={() => toggleBulkDay(day.value)}
+                        onClick={() => selectBulkDay(day.value)}
                         className="rounded-xl border px-3 py-2 text-xs font-bold"
                         style={{
-                          borderColor: selected ? C.green : C.border,
-                          background: selected ? C.green : C.card,
-                          color: selected ? "#fff" : C.text,
+                          borderColor: active || configured ? C.green : C.border,
+                          background: active ? C.green : configured ? C.greenPale : C.card,
+                          color: active ? "#fff" : configured ? C.green : C.text,
                         }}
                       >
                         {isAr ? day.ar : day.en}
@@ -3451,11 +3488,18 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                     );
                   })}
                 </div>
-                {(!selectedBulkDays || selectedBulkDays.length === 0) && (
-                  <div style={{ color: "#B42318", fontSize: 11, marginTop: 8 }}>
-                    {isAr ? "اختر يومًا واحدًا على الأقل" : "Choose at least one day"}
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div style={{ color: C.green, fontSize: 11, fontWeight: 850 }}>
+                    {isAr
+                      ? `تعدّل الآن: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.ar}`
+                      : `Editing: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en}`}
                   </div>
-                )}
+                  {Object.keys(bulkDaySchedules).length > 1 && (
+                    <button type="button" onClick={removeActiveBulkDay} className="text-xs font-bold text-destructive">
+                      {isAr ? "إزالة هذا اليوم" : "Remove this day"}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -3554,9 +3598,9 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                 </button>
                 <button
                   type="submit"
-                  disabled={isBulkSaving || !selectedBulkDays?.length}
+                  disabled={isBulkSaving}
                   data-testid="button-save-bulk-schedule"
-                  style={{ ...schedulePrimaryButton, opacity: isBulkSaving || !selectedBulkDays?.length ? 0.65 : 1 }}
+                  style={{ ...schedulePrimaryButton, opacity: isBulkSaving ? 0.65 : 1 }}
                 >
                   {isBulkSaving && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
                   {isAr ? "حفظ الجدول كاملًا" : "Save full schedule"}

@@ -430,6 +430,52 @@ describe("teacher schedule breaks", () => {
     expect(rows[0].title).toBe("حصة موجودة");
   });
 
+  it("creates independent lesson sets for each selected day in one bulk save", async () => {
+    const app = makeApp({ teacherId: 101 });
+    const response = await request(app)
+      .post("/api/teacher/schedule/bulk")
+      .send({
+        daySchedules: [
+          {
+            dayOfWeek: 0,
+            lessons: [
+              {
+                lessonNumber: 1,
+                title: "رياضيات الأحد",
+                startTime: "08:00",
+                endTime: "09:00",
+              },
+            ],
+          },
+          {
+            dayOfWeek: 1,
+            lessons: [
+              {
+                lessonNumber: 1,
+                title: "علوم الاثنين",
+                startTime: "10:00",
+                endTime: "11:00",
+              },
+              {
+                lessonNumber: 2,
+                title: "لغة عربية الاثنين",
+                startTime: "11:00",
+                endTime: "12:00",
+              },
+            ],
+          },
+        ],
+      })
+      .expect(201);
+
+    expect(response.body).toHaveLength(3);
+    expect(response.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dayOfWeek: 0, title: "رياضيات الأحد" }),
+      expect.objectContaining({ dayOfWeek: 1, title: "علوم الاثنين" }),
+      expect.objectContaining({ dayOfWeek: 1, title: "لغة عربية الاثنين" }),
+    ]));
+  });
+
   it("allows adjacent entries and the same time on another day or teacher", async () => {
     const teacherOne = makeApp({ teacherId: 101 });
     const teacherTwo = makeApp({ teacherId: 202 });

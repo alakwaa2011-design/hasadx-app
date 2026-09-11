@@ -147,6 +147,7 @@ export * from './successResponse';
 export * from './teacherProfile';
 export * from './teacherProfileRole';
 export * from './teacherScheduleBulkInput';
+export * from './teacherScheduleBulkInputDaySchedulesItem';
 export * from './teacherScheduleBulkLessonInput';
 export * from './teacherScheduleEntry';
 export * from './teacherScheduleEntryInput';
