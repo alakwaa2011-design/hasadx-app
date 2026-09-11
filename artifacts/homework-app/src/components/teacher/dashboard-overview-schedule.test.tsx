@@ -18,10 +18,12 @@ vi.mock("@workspace/api-client-react", () => ({
 }));
 
 import {
-  buildTeacherScheduleBulkInput,
-  normalizeImportedDaySchedules,
   TeacherScheduleCard,
 } from "./DashboardOverview";
+import {
+  buildTeacherScheduleBulkInput,
+  normalizeImportedDaySchedules,
+} from "@/lib/schedule-labels";
 
 let container: HTMLDivElement;
 let root: Root;

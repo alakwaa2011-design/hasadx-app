@@ -66,23 +66,19 @@ import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
 import {
   getListTeacherScheduleQueryKey,
-  useBulkCreateTeacherSchedule,
-  useCreateTeacherScheduleEntry,
-  useDeleteTeacherSchedule,
-  useDeleteTeacherScheduleEntry,
   useListTeacherSchedule,
-  useUpdateTeacherScheduleEntry,
   type TeacherScheduleEntry,
-  type TeacherScheduleEntryInput,
-  type TeacherScheduleBulkInput,
 } from "@workspace/api-client-react";
-import { useFieldArray, useForm } from "react-hook-form";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { useLocation } from "wouter";
-
+import {
+  SCHEDULE_DAYS,
+  breakPositionLabel,
+  getLocalDateInput,
+  scheduleDateLabel,
+  schedulePosition,
+  lessonNumberLabel,
+} from "@/lib/schedule-labels";
 type TabId =
   | "overview"
   | "assignments"
@@ -92,34 +88,6 @@ type TabId =
   | "videos"
   | "stats"
   | "students";
-
-function getApiErrorMessage(error: unknown): string | null {
-  if (!error || typeof error !== "object" || !("data" in error)) return null;
-  const data = error.data;
-  if (!data || typeof data !== "object" || !("message" in data)) return null;
-  return typeof data.message === "string" ? data.message : null;
-}
-
-type ScheduleConflictDetails = {
-  dayOfWeek?: number | null;
-  lessonNumber?: number | null;
-  startTime?: string | null;
-  endTime?: string | null;
-  conflictingTitle?: string | null;
-  conflictingStartTime?: string | null;
-  conflictingEndTime?: string | null;
-};
-
-function getScheduleConflict(error: unknown): ScheduleConflictDetails | null {
-  if (!error || typeof error !== "object" || !("data" in error)) return null;
-  const data = error.data;
-  if (!data || typeof data !== "object" || !("conflict" in data)) return null;
-  const conflict = data.conflict;
-  return conflict && typeof conflict === "object"
-    ? conflict as ScheduleConflictDetails
-    : null;
-}
-
 interface Assignment {
   id: number;
   title: string;
@@ -2554,199 +2522,6 @@ function TopStudentRow({
     </div>
   );
 }
-
-type ScheduleFormValues = {
-  kind: "weekly" | "appointment" | "break";
-  title: string;
-  subject: string;
-  className: string;
-  dayOfWeek: string;
-  lessonNumber: string;
-  breakAfterLesson: string;
-  appointmentDate: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  notes: string;
-};
-
-type BulkScheduleFormValues = {
-  lessons: Array<{
-    lessonNumber: number;
-    title: string;
-    subject: string;
-    className: string;
-    startTime: string;
-    endTime: string;
-    confidence?: "high" | "medium" | "low";
-  }>;
-};
-
-type ExtractedScheduleDay = {
-  dayOfWeek: number;
-  lessons: Array<{
-    lessonNumber: number;
-    title: string;
-    subject: string | null;
-    className: string | null;
-    startTime: string;
-    endTime: string | null;
-    confidence: "high" | "medium" | "low";
-  }>;
-  breaks?: BulkBreakDraft[];
-};
-
-export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay[]) {
-  const schedules: Record<number, BulkScheduleFormValues["lessons"]> = {};
-  const breaks: Record<number, BulkBreakDraft[]> = {};
-  let hasNumberingGaps = false;
-
-  daySchedules.forEach((daySchedule) => {
-    const lessonsByNumber = [...daySchedule.lessons].sort((left, right) => left.lessonNumber - right.lessonNumber);
-    if (lessonsByNumber.some((lesson, index) => lesson.lessonNumber !== index + 1)) {
-      hasNumberingGaps = true;
-    }
-    schedules[daySchedule.dayOfWeek] = [...daySchedule.lessons]
-      .sort((left, right) => left.startTime.localeCompare(right.startTime))
-      .map((extracted) => ({
-      lessonNumber: extracted.lessonNumber,
-      title: extracted.title || extracted.subject || extracted.className || "",
-      subject: extracted.subject || "",
-      className: extracted.className || "",
-      startTime: extracted.startTime,
-      endTime: extracted.endTime || "",
-      confidence: extracted.confidence,
-    }));
-    breaks[daySchedule.dayOfWeek] = [...(daySchedule.breaks || [])]
-      .sort((left, right) => left.startTime.localeCompare(right.startTime));
-  });
-
-  return { schedules, breaks, hasNumberingGaps };
-}
-
-type BulkBreakDraft = {
-  title: string;
-  breakAfterLesson: number;
-  startTime: string;
-  endTime: string | null;
-  confidence: "high" | "medium" | "low";
-};
-
-export function buildTeacherScheduleBulkInput(
-  schedules: Record<number, BulkScheduleFormValues["lessons"]>,
-  isAr: boolean,
-  breaks: Record<number, BulkBreakDraft[]> = {},
-): TeacherScheduleBulkInput {
-  return {
-    daySchedules: Object.entries(schedules)
-      .sort(([left], [right]) => Number(left) - Number(right))
-      .map(([day, lessons]) => ({
-        dayOfWeek: Number(day),
-        lessons: lessons.map((lesson) => ({
-          lessonNumber: lesson.lessonNumber,
-          title: lesson.title.trim()
-            || lesson.subject.trim()
-            || lesson.className.trim()
-            || (lesson.confidence ? "" : lessonNumberLabel(lesson.lessonNumber, isAr)),
-          subject: lesson.subject.trim() || null,
-          className: lesson.className.trim() || null,
-          startTime: lesson.startTime,
-          endTime: lesson.endTime || null,
-        })),
-        breaks: (breaks[Number(day)] || []).map((entry) => ({
-          title: entry.title.trim(),
-          breakAfterLesson: entry.breakAfterLesson,
-          startTime: entry.startTime,
-          endTime: entry.endTime || null,
-        })),
-      })),
-  };
-}
-
-const SCHEDULE_DAYS = [
-  { value: 0, ar: "الأحد", en: "Sun" },
-  { value: 1, ar: "الاثنين", en: "Mon" },
-  { value: 2, ar: "الثلاثاء", en: "Tue" },
-  { value: 3, ar: "الأربعاء", en: "Wed" },
-  { value: 4, ar: "الخميس", en: "Thu" },
-  { value: 5, ar: "الجمعة", en: "Fri" },
-  { value: 6, ar: "السبت", en: "Sat" },
-];
-
-function getLocalDateInput() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-  return new Date(now.getTime() - offset * 60_000).toISOString().slice(0, 10);
-}
-
-const emptyScheduleForm = (): ScheduleFormValues => ({
-  kind: "weekly",
-  title: "",
-  subject: "",
-  className: "",
-  dayOfWeek: String(new Date().getDay()),
-  lessonNumber: "1",
-  breakAfterLesson: "1",
-  appointmentDate: getLocalDateInput(),
-  startTime: "08:00",
-  endTime: "09:00",
-  location: "",
-  notes: "",
-});
-
-function emptyBulkLessons(count = 5): BulkScheduleFormValues["lessons"] {
-  return Array.from({ length: count }, (_, index) => ({
-    lessonNumber: index + 1,
-    title: "",
-    subject: "",
-    className: "",
-    startTime: `${String(8 + index).padStart(2, "0")}:00`,
-    endTime: `${String(9 + index).padStart(2, "0")}:00`,
-  }));
-}
-
-const ARABIC_LESSON_NUMBERS = [
-  "الأولى",
-  "الثانية",
-  "الثالثة",
-  "الرابعة",
-  "الخامسة",
-  "السادسة",
-  "السابعة",
-  "الثامنة",
-  "التاسعة",
-  "العاشرة",
-];
-
-function lessonNumberLabel(number: number | null | undefined, isAr: boolean) {
-  if (!number) return isAr ? "حصة" : "Lesson";
-  return isAr
-    ? `الحصة ${ARABIC_LESSON_NUMBERS[number - 1] || number}`
-    : `Lesson ${number}`;
-}
-
-function breakPositionLabel(number: number | null | undefined, isAr: boolean) {
-  if (number === 0) return "";
-  if (number == null) return isAr ? "الموقع في الجدول" : "Schedule position";
-  return isAr
-    ? `الفترة ${ARABIC_LESSON_NUMBERS[number - 1] || number}`
-    : `Period ${number}`;
-}
-
-function schedulePosition(entry: TeacherScheduleEntry) {
-  return entry.kind === "break"
-    ? (entry.breakAfterLesson ?? 0) + 0.5
-    : (entry.lessonNumber ?? 99);
-}
-
-function scheduleDateLabel(date: string, isAr: boolean) {
-  const parsed = new Date(`${date}T12:00:00`);
-  return new Intl.DateTimeFormat(isAr ? "ar-KW" : "en-US", {
-    day: "numeric",
-    month: "short",
-  }).format(parsed);
-}
-
 export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
 
