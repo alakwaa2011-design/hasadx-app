@@ -71,6 +71,7 @@ export const ar = {
     studentLabel: "طالب",
     searchPlaceholder: "بحث عن طالب...",
     newClass: "صف جديد",
+    justCreated: "تمت الإضافة",
     deleteAllTitle: "حذف جميع الطلاب",
     loading: "جارٍ التحميل...",
     noClasses: "لا توجد صفوف بعد",

@@ -73,6 +73,7 @@ export const en: typeof ar = {
     studentLabel: "Student",
     searchPlaceholder: "Search for a student...",
     newClass: "New class",
+    justCreated: "Just added",
     deleteAllTitle: "Delete all students",
     loading: "Loading...",
     noClasses: "No classes yet",

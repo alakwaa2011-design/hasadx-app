@@ -209,7 +209,7 @@ function ClassBlock({
   className: folderName, students, allFolders, isExpanded, onToggle, colorIdx,
   onRename, onDeleteClass, onEditStudent, onDeleteStudent, onMoveStudent,
   onAddStudent, onBulkAdd, onResetPassword, groupName, allGroups, onAssignGroup, onAttendance,
-  onOpenClass, viewMode, colorKey, onColorChange,
+  onOpenClass, viewMode, colorKey, onColorChange, newlyCreated,
 }: {
   className: string;
   students: Student[];
@@ -233,6 +233,7 @@ function ClassBlock({
   viewMode: ClassViewMode;
   colorKey?: string | null;
   onColorChange: (className: string, colorKey: ClassColorKey | null) => void;
+  newlyCreated?: boolean;
 }) {
   const { lang, t, dir } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -245,6 +246,10 @@ function ClassBlock({
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState(false);
+
+  useEffect(() => {
+    if (newlyCreated) setShowAddMenu(true);
+  }, [newlyCreated]);
 
   const isUngrouped = folderName === UNGROUPED;
   const color = CLASS_COLORS.find((item) => item.key === colorKey) ?? CLASS_COLORS[colorIdx % CLASS_COLORS.length];
@@ -277,7 +282,9 @@ function ClassBlock({
       <div className={`relative rounded-2xl bg-card overflow-hidden transition-all duration-200
         ${isDragging
           ? "shadow-2xl ring-2 ring-primary/40 opacity-70 scale-[0.99]"
-          : "shadow-sm hover:shadow-md border border-border hover:border-border/80 cursor-pointer"}`}
+          : newlyCreated
+            ? "shadow-md ring-2 ring-amber-300/70 border-amber-200 cursor-pointer"
+            : "shadow-sm hover:shadow-md border border-border hover:border-border/80 cursor-pointer"}`}
         onClick={(event) => {
           const target = event.target as HTMLElement;
           if (target.closest("button, a, input, select, textarea")) return;
@@ -332,6 +339,11 @@ function ClassBlock({
                     <span className={`font-black ${isDense ? "text-base" : "text-lg"} leading-tight ${color.text}`}>
                       {isUngrouped ? t.teacherStudents.unassigned : folderName}
                     </span>
+                    {newlyCreated && (
+                      <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-800">
+                        {t.teacherStudents.justCreated}
+                      </span>
+                    )}
                   </div>
                   <p className={`${isDense ? "text-xs" : "text-sm"} text-muted-foreground mt-0.5`}>
                     {t.teacherStudents.studentCount.replace("{count}", String(students.length))}
@@ -547,7 +559,11 @@ function ClassBlock({
                   <button
                     type="button"
                     onClick={() => { setShowAddMenu(false); onBulkAdd(folderName); }}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border-2 px-3 py-2 text-xs font-black transition-colors ${
+                      newlyCreated
+                        ? "border-amber-300 bg-amber-50 text-amber-900 shadow-sm hover:bg-amber-100"
+                        : "border-dashed border-border bg-card font-semibold text-muted-foreground hover:bg-muted"
+                    }`}
                   >
                     <ListPlus size={14} />
                     {t.teacherStudents.bulkAdd}
@@ -662,6 +678,7 @@ export default function StudentsPage() {
 
   const [folderOrder, setFolderOrder] = useState<string[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [newlyCreatedClass, setNewlyCreatedClass] = useState<string | null>(null);
 
   /* class-group mapping: className -> groupName */
   const [classGroupMap, setClassGroupMap] = useState<Record<string, string>>({});
@@ -974,10 +991,14 @@ export default function StudentsPage() {
       setFolderOrder((prev) => {
         const named = prev.filter((f) => f !== UNGROUPED);
         const hasUngrouped = prev.includes(UNGROUPED);
-        const next = [...named, name].sort((a, b) => a.localeCompare(b, lang));
+        const next = [name, ...named.filter((folder) => folder !== name)];
         return hasUngrouped ? [...next, UNGROUPED] : next;
       });
       setExpandedFolders((prev) => new Set([...prev, name]));
+      setNewlyCreatedClass(name);
+      window.setTimeout(() => {
+        setNewlyCreatedClass((current) => current === name ? null : current);
+      }, 10000);
       setShowAddClass(false);
       setNewClassName("");
       toast.success(t.teacherStudents.classCreated.replace("{name}", name));
@@ -1679,6 +1700,7 @@ export default function StudentsPage() {
                                   onBulkAdd={openBulkAdd}
                                   onResetPassword={openResetPassword}
                                   onColorChange={handleChangeClassColor}
+                                   newlyCreated={newlyCreatedClass === folder}
                                    viewMode={classViewMode}
                                 />
                               );
@@ -1732,6 +1754,7 @@ export default function StudentsPage() {
                               onBulkAdd={openBulkAdd}
                               onResetPassword={openResetPassword}
                               onColorChange={handleChangeClassColor}
+                               newlyCreated={newlyCreatedClass === folder}
                                viewMode={classViewMode}
                             />
                           );
