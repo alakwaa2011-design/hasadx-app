@@ -1264,10 +1264,10 @@ export default function ScheduleManagementPage() {
               </div>
             ) : (
               <div className="flex flex-col animate-in fade-in duration-300">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 border-b border-border/60 pb-6">
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">{isAr ? "طريقة العرض:" : "View Mode:"}</span>
-                    <div className="flex bg-muted/40 p-1 rounded-xl shrink-0 overflow-x-auto">
+                <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
+                    <span className="shrink-0 ps-2 text-xs font-black text-muted-foreground">{isAr ? "العرض" : "View"}</span>
+                    <div className="flex shrink-0 overflow-x-auto rounded-xl bg-muted/50 p-1">
                       <button
                         type="button"
                         onClick={() => setViewMode('day')}
@@ -1295,9 +1295,77 @@ export default function ScheduleManagementPage() {
                     </div>
                   </div>
 
+                  {viewMode === "week-grid" && (
+                    <details className="group relative shrink-0" data-testid="schedule-table-theme-picker">
+                      <summary className="flex h-10 cursor-pointer select-none items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
+                        <span className="flex items-center gap-2">
+                          <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
+                          {isAr ? "تخصيص الجدول" : "Customize table"}
+                        </span>
+                        <span className="text-xs font-bold text-muted-foreground">
+                          {isAr ? SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.ar : SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.en}
+                        </span>
+                      </summary>
+                      <div className="absolute end-0 top-[calc(100%+0.5rem)] z-40 flex w-[min(34rem,calc(100vw-3rem))] flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xl">
+                        <span className="me-1 text-xs font-black text-muted-foreground">
+                          {isAr ? "مظهر الجدول" : "Table style"}
+                        </span>
+                        {SCHEDULE_TABLE_THEMES.map((theme) => (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            onClick={() => chooseTableTheme(theme.id)}
+                            aria-pressed={tableTheme === theme.id}
+                            data-testid={`button-schedule-theme-${theme.id}`}
+                            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                              tableTheme === theme.id
+                                ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
+                                : "border-border bg-card text-muted-foreground hover:border-emerald-300"
+                            }`}
+                          >
+                            <span className="flex -space-x-1 rtl:space-x-reverse" aria-hidden="true">
+                              {theme.swatches.map((swatch) => (
+                                <span key={swatch} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: swatch }} />
+                              ))}
+                            </span>
+                            {isAr ? theme.ar : theme.en}
+                          </button>
+                        ))}
+                        <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+                        <span className="text-xs font-black text-muted-foreground">
+                          {isAr ? "بداية الجدول" : "Table direction"}
+                        </span>
+                        <div className="flex rounded-xl bg-muted/50 p-1">
+                          <button
+                            type="button"
+                            onClick={() => chooseTableDirection("rtl")}
+                            aria-pressed={tableDirection === "rtl"}
+                            data-testid="button-schedule-direction-rtl"
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                              tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
+                            }`}
+                          >
+                            {isAr ? "الأحد من اليمين" : "Sunday on right"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => chooseTableDirection("ltr")}
+                            aria-pressed={tableDirection === "ltr"}
+                            data-testid="button-schedule-direction-ltr"
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                              tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
+                            }`}
+                          >
+                            {isAr ? "الأحد من اليسار" : "Sunday on left"}
+                          </button>
+                        </div>
+                      </div>
+                    </details>
+                  )}
+
                   {/* Horizontal day selector for Day mode */}
                   {viewMode === "day" && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x w-full sm:w-auto mt-2 sm:mt-0" data-testid="schedule-management-day-selector">
+                    <div className="flex w-full gap-2 overflow-x-auto scrollbar-none snap-x sm:w-auto" data-testid="schedule-management-day-selector">
                       {SCHEDULE_DAYS.map(day => {
                         const count = entries.filter(e => (e.kind === "weekly" || e.kind === "break") && e.dayOfWeek === day.value).length;
                         return (
@@ -1399,71 +1467,6 @@ export default function ScheduleManagementPage() {
                           : ""
                     }`}
                   >
-                    <details className="sticky start-0 mb-3 w-fit min-w-[min(100%,22rem)] rounded-2xl border border-border/60 bg-card/95 shadow-sm backdrop-blur" data-testid="schedule-table-theme-picker">
-                      <summary className="flex cursor-pointer select-none items-center justify-between gap-4 px-4 py-3 text-sm font-black text-foreground list-none [&::-webkit-details-marker]:hidden">
-                        <span className="flex items-center gap-2">
-                          <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
-                          {isAr ? "تخصيص الجدول" : "Customize table"}
-                        </span>
-                        <span className="text-xs font-bold text-muted-foreground">
-                          {isAr ? SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.ar : SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.en}
-                        </span>
-                      </summary>
-                      <div className="flex min-w-max flex-wrap items-center gap-2 border-t border-border/60 p-3">
-                        <span className="me-1 text-xs font-black text-muted-foreground">
-                          {isAr ? "مظهر الجدول" : "Table style"}
-                        </span>
-                      {SCHEDULE_TABLE_THEMES.map((theme) => (
-                        <button
-                          key={theme.id}
-                          type="button"
-                          onClick={() => chooseTableTheme(theme.id)}
-                          aria-pressed={tableTheme === theme.id}
-                          data-testid={`button-schedule-theme-${theme.id}`}
-                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
-                            tableTheme === theme.id
-                              ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
-                              : "border-border bg-card text-muted-foreground hover:border-emerald-300"
-                          }`}
-                        >
-                          <span className="flex -space-x-1 rtl:space-x-reverse" aria-hidden="true">
-                            {theme.swatches.map((swatch) => (
-                              <span key={swatch} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: swatch }} />
-                            ))}
-                          </span>
-                          {isAr ? theme.ar : theme.en}
-                        </button>
-                      ))}
-                      <span className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
-                      <span className="text-xs font-black text-muted-foreground">
-                        {isAr ? "بداية الجدول" : "Table direction"}
-                      </span>
-                      <div className="flex rounded-xl bg-muted/50 p-1">
-                        <button
-                          type="button"
-                          onClick={() => chooseTableDirection("rtl")}
-                          aria-pressed={tableDirection === "rtl"}
-                          data-testid="button-schedule-direction-rtl"
-                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                            tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
-                          }`}
-                        >
-                          {isAr ? "الأحد من اليمين" : "Sunday on right"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => chooseTableDirection("ltr")}
-                          aria-pressed={tableDirection === "ltr"}
-                          data-testid="button-schedule-direction-ltr"
-                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                            tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
-                          }`}
-                        >
-                          {isAr ? "الأحد من اليسار" : "Sunday on left"}
-                        </button>
-                      </div>
-                      </div>
-                    </details>
                     {weeklyGroups.length > 0 ? (
                       <table
                         dir={tableDirection}
