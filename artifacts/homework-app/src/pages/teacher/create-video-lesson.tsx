@@ -45,6 +45,7 @@ import {
   MoreHorizontal,
   Users,
   Sparkles,
+  FolderOpen,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -120,6 +121,17 @@ interface APILesson {
   isShared: boolean;
   skipSegments: SkipSegment[] | null;
   questions: APILessonQuestion[];
+}
+
+interface VideoLessonSummary {
+  id: number;
+  title: string;
+  subject: string | null;
+  videoType: string;
+  targetClass: string | null;
+  createdAt: string;
+  questionCount: number;
+  submissionCount: number;
 }
 
 interface TeacherClassOption {
@@ -557,6 +569,9 @@ export default function CreateVideoLesson() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [myVideosOpen, setMyVideosOpen] = useState(false);
+  const [myVideos, setMyVideos] = useState<VideoLessonSummary[]>([]);
+  const [myVideosLoading, setMyVideosLoading] = useState(true);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -584,6 +599,23 @@ export default function CreateVideoLesson() {
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const html5VideoRef = useRef<HTMLVideoElement>(null);
+
+  const loadMyVideos = useCallback(async () => {
+    setMyVideosLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/video-lessons`, { credentials: "include" });
+      const data = response.ok ? await response.json() : [];
+      setMyVideos(Array.isArray(data) ? data : []);
+    } catch {
+      setMyVideos([]);
+    } finally {
+      setMyVideosLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMyVideos();
+  }, [loadMyVideos]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1056,6 +1088,115 @@ export default function CreateVideoLesson() {
                   : "Add questions so the video pauses automatically at each cue."}
               </p>
             </div>
+          </div>
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              aria-expanded={myVideosOpen}
+              aria-haspopup="dialog"
+              onClick={() => setMyVideosOpen((open) => !open)}
+              className="flex min-h-[42px] items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60 sm:px-3.5"
+            >
+              <FolderOpen className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">{isAr ? "فيديوهاتي" : "My videos"}</span>
+            </button>
+
+            <AnimatePresence>
+              {myVideosOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  role="dialog"
+                  aria-label={isAr ? "فيديوهاتي" : "My videos"}
+                  className="absolute end-0 top-[calc(100%+0.6rem)] z-50 w-[min(92vw,24rem)] overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-xl shadow-emerald-950/10 dark:border-emerald-900/60 dark:bg-[#15201B]"
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                        <FolderOpen className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-slate-800 dark:text-slate-100">
+                          {isAr ? "فيديوهاتي" : "My videos"}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          {myVideosLoading
+                            ? isAr ? "جاري التحميل…" : "Loading…"
+                            : isAr ? `${myVideos.length} فيديو` : `${myVideos.length} videos`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMyVideosOpen(false)}
+                      aria-label={isAr ? "إغلاق" : "Close"}
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="max-h-[min(60vh,22rem)] overflow-y-auto p-2">
+                    {myVideosLoading ? (
+                      <div className="space-y-2 p-1">
+                        {[1, 2, 3].map((item) => (
+                          <div key={item} className="h-16 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800/70" />
+                        ))}
+                      </div>
+                    ) : myVideos.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <Video className="mx-auto mb-2 h-8 w-8 text-emerald-300 dark:text-emerald-700" />
+                        <p className="text-sm font-black text-slate-700 dark:text-slate-200">
+                          {isAr ? "لا توجد فيديوهات محفوظة بعد" : "No saved videos yet"}
+                        </p>
+                        <p className="mt-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          {isAr ? "أنشئ أول فيديو تفاعلي لك من هذه الصفحة." : "Create your first interactive video from this page."}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {myVideos.map((video) => (
+                          <button
+                            key={video.id}
+                            type="button"
+                            onClick={() => {
+                              setMyVideosOpen(false);
+                              setLocation(`/teacher/video-lesson/${video.id}`);
+                            }}
+                            className="group flex w-full items-center gap-3 rounded-xl p-2.5 text-start transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 text-emerald-700 dark:text-emerald-300">
+                              <Video className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 text-xs font-black leading-tight text-slate-800 dark:text-slate-100">
+                                {video.title}
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                {video.subject && (
+                                  <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{video.subject}</span>
+                                )}
+                                {video.targetClass && (
+                                  <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{video.targetClass}</span>
+                                )}
+                                <span>{video.questionCount} {isAr ? "سؤال" : "Q"}</span>
+                              </div>
+                            </div>
+                            {isAr ? (
+                              <ArrowLeft className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:-translate-x-0.5 group-hover:text-emerald-600 dark:text-slate-600" />
+                            ) : (
+                              <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600 dark:text-slate-600" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 
