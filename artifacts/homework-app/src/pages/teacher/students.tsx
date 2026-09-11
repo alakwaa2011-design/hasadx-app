@@ -1554,7 +1554,11 @@ export default function StudentsPage() {
                 {/* Group classes by groupName */}
                 {(() => {
                   const ungroupedClasses = namedFolders.filter(f => !classGroupMap[f]);
-                  const groupedClasses = allGroups.map(grp => ({
+                   const newlyCreatedGroup = newlyCreatedClass ? classGroupMap[newlyCreatedClass] : null;
+                   const orderedGroupNames = newlyCreatedGroup
+                     ? [newlyCreatedGroup, ...allGroups.filter((groupName) => groupName !== newlyCreatedGroup)]
+                     : allGroups;
+                   const groupedClasses = orderedGroupNames.map(grp => ({
                     name: grp,
                     classes: namedFolders.filter(f => classGroupMap[f] === grp),
                   })).filter(g => g.classes.length > 0);
