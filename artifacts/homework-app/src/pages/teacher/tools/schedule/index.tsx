@@ -500,8 +500,12 @@ export default function ScheduleManagementPage() {
   const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
   const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("week-grid");
+  const [timerSettingsOpen, setTimerSettingsOpen] = useState(false);
   const [tableTheme, setTableTheme] = useState<ScheduleTableTheme>("classic");
   const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
+  const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
+  const [editingColumnLabel, setEditingColumnLabel] = useState<{ key: string; defaultLabel: string } | null>(null);
+  const [columnLabelDraft, setColumnLabelDraft] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -518,6 +522,41 @@ export default function ScheduleManagementPage() {
       setTableDirection(savedDirection);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`hasaad_schedule_column_labels_v1_${user.id}`) || "{}");
+      if (saved && typeof saved === "object" && !Array.isArray(saved)) {
+        setColumnLabels(
+          Object.fromEntries(
+            Object.entries(saved).filter(([, value]) => typeof value === "string" && value.trim()),
+          ) as Record<string, string>,
+        );
+      }
+    } catch {
+      setColumnLabels({});
+    }
+  }, [user?.id]);
+
+  function openColumnLabelEditor(key: string, defaultLabel: string) {
+    setEditingColumnLabel({ key, defaultLabel });
+    setColumnLabelDraft(columnLabels[key] || defaultLabel);
+  }
+
+  function saveColumnLabel() {
+    if (!editingColumnLabel || !user?.id) return;
+    const value = columnLabelDraft.trim().slice(0, 40);
+    const next = { ...columnLabels };
+    if (!value || value === editingColumnLabel.defaultLabel) {
+      delete next[editingColumnLabel.key];
+    } else {
+      next[editingColumnLabel.key] = value;
+    }
+    setColumnLabels(next);
+    localStorage.setItem(`hasaad_schedule_column_labels_v1_${user.id}`, JSON.stringify(next));
+    setEditingColumnLabel(null);
+  }
 
   function chooseTableTheme(theme: ScheduleTableTheme) {
     setTableTheme(theme);
@@ -1273,46 +1312,46 @@ export default function ScheduleManagementPage() {
               </div>
             ) : (
               <div className="flex flex-col animate-in fade-in duration-300">
-                <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-muted/20 p-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3 overflow-x-auto">
-                    <span className="shrink-0 ps-2 text-xs font-black text-muted-foreground">{isAr ? "العرض" : "View"}</span>
-                    <div className="flex shrink-0 overflow-x-auto rounded-xl bg-muted/50 p-1">
+                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-muted/20 p-2">
+                  <details className="group relative">
+                    <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
+                      <Calendar className="h-4 w-4 text-emerald-700" />
+                      {isAr ? "العرض" : "View"}
+                    </summary>
+                    <div className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex w-52 flex-col rounded-2xl border border-border bg-card p-1.5 shadow-xl">
                       <button
                         type="button"
-                        onClick={() => setViewMode('day')}
+                        onClick={() => { setViewMode("day"); document.body.click(); }}
                         data-testid="button-schedule-view-day"
-                        className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'day' ? 'bg-white text-emerald-800 shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors ${viewMode === "day" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"}`}
                       >
                         {isAr ? "يومي" : "Daily"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setViewMode('week-list')}
+                        onClick={() => { setViewMode("week-list"); document.body.click(); }}
                         data-testid="button-schedule-view-week-list"
-                        className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'week-list' ? 'bg-white text-emerald-800 shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors ${viewMode === "week-list" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"}`}
                       >
                         {isAr ? "قائمة أسبوعية" : "Weekly list"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setViewMode('week-grid')}
+                        onClick={() => { setViewMode("week-grid"); document.body.click(); }}
                         data-testid="button-schedule-view-week-grid"
-                        className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'week-grid' ? 'bg-white text-emerald-800 shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors ${viewMode === "week-grid" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"}`}
                       >
                         {isAr ? "شبكة أسبوعية" : "Weekly grid"}
                       </button>
                     </div>
-                  </div>
+                  </details>
 
                   {viewMode === "week-grid" && (
                     <details className="group relative shrink-0" data-testid="schedule-table-theme-picker">
-                      <summary className="flex h-10 cursor-pointer select-none items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
+                      <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
                         <span className="flex items-center gap-2">
                           <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
-                          {isAr ? "تخصيص الجدول" : "Customize table"}
-                        </span>
-                        <span className="text-xs font-bold text-muted-foreground">
-                          {isAr ? SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.ar : SCHEDULE_TABLE_THEMES.find((theme) => theme.id === tableTheme)?.en}
+                          {isAr ? "مظهر الجدول" : "Table appearance"}
                         </span>
                       </summary>
                       <div className="absolute end-0 top-[calc(100%+0.5rem)] z-40 flex w-[min(34rem,calc(100vw-3rem))] flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xl">
@@ -1372,9 +1411,24 @@ export default function ScheduleManagementPage() {
                     </details>
                   )}
 
+                  <button
+                    type="button"
+                    onClick={() => setTimerSettingsOpen((open) => !open)}
+                    aria-expanded={timerSettingsOpen}
+                    data-testid="button-toggle-schedule-timer-settings"
+                    className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm transition-colors ${
+                      timerSettingsOpen
+                        ? "border-emerald-700 bg-emerald-50 text-emerald-800"
+                        : "border-border/70 bg-card text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    <Timer className="h-4 w-4 text-emerald-700" />
+                    {isAr ? "المؤقت والتنبيهات" : "Timer & alerts"}
+                  </button>
+
                   {/* Horizontal day selector for Day mode */}
                   {viewMode === "day" && (
-                    <div className="flex w-full gap-2 overflow-x-auto scrollbar-none snap-x sm:w-auto" data-testid="schedule-management-day-selector">
+                    <div className="flex w-full gap-2 overflow-x-auto border-t border-border/50 pt-2 scrollbar-none snap-x" data-testid="schedule-management-day-selector">
                       {SCHEDULE_DAYS.map(day => {
                         const count = entries.filter(e => (e.kind === "weekly" || e.kind === "break") && e.dayOfWeek === day.value).length;
                         return (
@@ -1402,6 +1456,10 @@ export default function ScheduleManagementPage() {
                     </div>
                   )}
                 </div>
+
+                {timerSettingsOpen && (
+                  <TimerAndAlertsSection entries={entries} isAr={isAr} preferences={preferences} updatePreferences={updatePreferences} />
+                )}
 
                 {/* Schedule List */}
                 {viewMode === "day" && (
@@ -1499,7 +1557,15 @@ export default function ScheduleManagementPage() {
                                     ? "border border-border bg-emerald-800 text-white"
                                     : "text-emerald-900/60 dark:text-emerald-100/60"
                                 }`}>
-                                  {lessonNumberLabel(lessonNumber, isAr)}
+                                  <button
+                                    type="button"
+                                    onClick={() => openColumnLabelEditor(`lesson-${lessonNumber}`, lessonNumberLabel(lessonNumber, isAr))}
+                                    className="w-full rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                    title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                    data-testid={`button-rename-lesson-column-${lessonNumber}`}
+                                  >
+                                    {columnLabels[`lesson-${lessonNumber}`] || lessonNumberLabel(lessonNumber, isAr)}
+                                  </button>
                                 </th>
                                 {paperBreakPositions.has(lessonNumber) && (
                                   <th
@@ -1510,7 +1576,22 @@ export default function ScheduleManagementPage() {
                                     }`}
                                     data-testid={`schedule-break-column-${lessonNumber}`}
                                   >
-                                    {isAr ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}` : `After lesson ${lessonNumber}`}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const defaultLabel = isAr
+                                          ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
+                                          : `After lesson ${lessonNumber}`;
+                                        openColumnLabelEditor(`break-${lessonNumber}`, defaultLabel);
+                                      }}
+                                      className="w-full rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                      title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                      data-testid={`button-rename-break-column-${lessonNumber}`}
+                                    >
+                                      {columnLabels[`break-${lessonNumber}`] || (isAr
+                                        ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
+                                        : `After lesson ${lessonNumber}`)}
+                                    </button>
                                   </th>
                                 )}
                               </Fragment>
@@ -1520,7 +1601,15 @@ export default function ScheduleManagementPage() {
                                 ? "border border-border bg-amber-700 text-white"
                                 : "text-amber-900/60 dark:text-amber-100/60"
                             }`}>
-                              {isAr ? "فترات أخرى" : "Other periods"}
+                              <button
+                                type="button"
+                                onClick={() => openColumnLabelEditor("other-periods", isAr ? "فترات أخرى" : "Other periods")}
+                                className="w-full rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                data-testid="button-rename-other-periods-column"
+                              >
+                                {columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods")}
+                              </button>
                             </th>
                           </tr>
                         </thead>
@@ -1703,12 +1792,52 @@ export default function ScheduleManagementPage() {
             )}
           </div>
 
-          {/* Timer & Alerts Section */}
-          <TimerAndAlertsSection entries={entries} isAr={isAr} preferences={preferences} updatePreferences={updatePreferences} />
         </div>
       </div>
 
       {/* --- ALL DIALOGS (kept exactly same, just rendered here) --- */}
+      <Dialog open={Boolean(editingColumnLabel)} onOpenChange={(open) => { if (!open) setEditingColumnLabel(null); }}>
+        <DialogContent className="max-w-sm rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{isAr ? "تغيير اسم العمود" : "Rename column"}</DialogTitle>
+            <DialogDescription>
+              {isAr
+                ? "اكتب الاسم الذي تريد ظهوره في رأس الجدول. لن يتغير ترتيب الحصص."
+                : "Enter the label shown in the table header. Lesson order will not change."}
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            value={columnLabelDraft}
+            onChange={(event) => setColumnLabelDraft(event.target.value)}
+            maxLength={40}
+            autoFocus
+            style={fieldStyle}
+            data-testid="input-schedule-column-label"
+          />
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!editingColumnLabel) return;
+                setColumnLabelDraft(editingColumnLabel.defaultLabel);
+              }}
+              style={scheduleSecondaryButton}
+              data-testid="button-reset-schedule-column-label"
+            >
+              {isAr ? "الاسم الافتراضي" : "Default name"}
+            </button>
+            <button
+              type="button"
+              onClick={saveColumnLabel}
+              style={schedulePrimaryButton}
+              data-testid="button-save-schedule-column-label"
+            >
+              {isAr ? "حفظ الاسم" : "Save name"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
         <DialogContent className="max-w-md rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader>

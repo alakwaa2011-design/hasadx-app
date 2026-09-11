@@ -226,6 +226,9 @@ describe("schedule management tool", () => {
       );
     });
 
+    expect(button("button-toggle-schedule-timer-settings")).toBeTruthy();
+    expect(document.querySelector('[data-testid="schedule-timer-alerts"]')).toBeNull();
+    await click("button-toggle-schedule-timer-settings");
     expect(document.body.textContent).toContain("المؤقت والتنبيهات");
     expect(document.querySelectorAll('[data-testid="button-schedule-alerts-enabled"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-testid="select-schedule-alert-minutes"]')).toHaveLength(1);
@@ -233,7 +236,7 @@ describe("schedule management tool", () => {
     expect(document.querySelectorAll('[data-testid="select-schedule-alert-sound"]')).toHaveLength(1);
     const scheduleGrid = document.querySelector('[data-testid="schedule-week-grid"]') as HTMLElement;
     const timerSettings = document.querySelector('[data-testid="schedule-timer-alerts"]') as HTMLElement;
-    expect(scheduleGrid.compareDocumentPosition(timerSettings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timerSettings.compareDocumentPosition(scheduleGrid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(button("button-schedule-view-day")).toBeTruthy();
     expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
     expect(button("button-schedule-view-week-list")).toBeTruthy();
@@ -249,6 +252,9 @@ describe("schedule management tool", () => {
   });
 
   it("stores timer settings using the same preference contract as the floating countdown", async () => {
+    scheduleRows = [{ id: 10, kind: "weekly", title: "رياضيات", dayOfWeek: 0, lessonNumber: 1, startTime: "08:00", endTime: "09:00" }];
+    await renderPage();
+    await click("button-toggle-schedule-timer-settings");
     const alertSelect = document.querySelector('[data-testid="select-schedule-alert-minutes"]') as HTMLSelectElement;
     const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
 
@@ -263,6 +269,9 @@ describe("schedule management tool", () => {
   });
 
   it("lets the teacher disable all schedule timers and alerts", async () => {
+    scheduleRows = [{ id: 11, kind: "weekly", title: "علوم", dayOfWeek: 0, lessonNumber: 1, startTime: "08:00", endTime: "09:00" }];
+    await renderPage();
+    await click("button-toggle-schedule-timer-settings");
     const toggle = button("button-schedule-alerts-enabled");
     expect(toggle.getAttribute("aria-checked")).toBe("true");
 
@@ -323,7 +332,27 @@ describe("schedule management tool", () => {
     expect(sundayRow.textContent).toContain("SNACK");
   });
 
-  it("shows three calm sound choices in the timer settings", () => {
+  it("lets each teacher rename schedule columns without changing their positions", async () => {
+    scheduleRows = [
+      { id: 32, kind: "weekly", title: "5A", dayOfWeek: 0, lessonNumber: 2, startTime: "08:10", endTime: "08:55" },
+      { id: 33, kind: "break", title: "SNACK", dayOfWeek: 0, breakAfterLesson: 2, startTime: "09:00", endTime: "09:15" },
+    ];
+    await renderPage();
+
+    await click("button-rename-break-column-2");
+    await typeInto("input-schedule-column-label", "استراحة خفيفة");
+    await click("button-save-schedule-column-label");
+
+    expect(button("button-rename-break-column-2").textContent).toContain("استراحة خفيفة");
+    expect(JSON.parse(localStorage.getItem("hasaad_schedule_column_labels_v1_7") || "{}"))
+      .toMatchObject({ "break-2": "استراحة خفيفة" });
+    expect(document.querySelector('[data-testid="schedule-paper-day-0"]')?.textContent).toContain("SNACK");
+  });
+
+  it("shows three calm sound choices in the timer settings", async () => {
+    scheduleRows = [{ id: 12, kind: "weekly", title: "لغة عربية", dayOfWeek: 0, lessonNumber: 1, startTime: "08:00", endTime: "09:00" }];
+    await renderPage();
+    await click("button-toggle-schedule-timer-settings");
     const soundSelect = document.querySelector('[data-testid="select-schedule-alert-sound"]') as HTMLSelectElement;
     expect(soundSelect.options).toHaveLength(3);
     expect(Array.from(soundSelect.options).map((option) => option.textContent)).toEqual([
