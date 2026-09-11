@@ -10,6 +10,7 @@ export const teacherScheduleTable = pgTable("teacher_schedule", {
   title: text("title").notNull(),
   subject: text("subject"),
   className: text("class_name"),
+  color: text("color"),
   dayOfWeek: integer("day_of_week"),
   lessonNumber: integer("lesson_number"),
   breakAfterLesson: integer("break_after_lesson"),

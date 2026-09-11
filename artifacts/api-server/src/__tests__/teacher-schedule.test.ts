@@ -7,6 +7,7 @@ type ScheduleRow = {
   title: string;
   subject: string | null;
   className: string | null;
+  color: string | null;
   dayOfWeek: number | null;
   lessonNumber: number | null;
   breakAfterLesson: number | null;
@@ -216,6 +217,7 @@ const lesson = (title: string, lessonNumber: number, startTime: string) => ({
   title,
   subject: "رياضيات",
   className: "الرابع",
+  color: null,
   dayOfWeek: 1,
   lessonNumber,
   breakAfterLesson: null,
@@ -231,6 +233,7 @@ const breakEntry = (title = "استراحة") => ({
   title,
   subject: null,
   className: null,
+  color: null,
   dayOfWeek: 1,
   lessonNumber: null,
   breakAfterLesson: 2,
@@ -250,6 +253,30 @@ describe("teacher schedule breaks", () => {
     const response = await request(makeApp(null)).get("/api/teacher/schedule");
 
     expect(response.status).toBe(401);
+  });
+
+  it("persists a valid lesson color through create, update, and reload", async () => {
+    const app = makeApp({ teacherId: 101 });
+
+    const created = await request(app)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("رياضيات", 1, "08:00"), color: "#2563EB" })
+      .expect(201);
+    expect(created.body.color).toBe("#2563EB");
+
+    const updated = await request(app)
+      .patch(`/api/teacher/schedule/${created.body.id}`)
+      .send({ color: "#E11D48" })
+      .expect(200);
+    expect(updated.body.color).toBe("#E11D48");
+
+    const reread = await request(app).get("/api/teacher/schedule").expect(200);
+    expect(reread.body[0].color).toBe("#E11D48");
+
+    await request(app)
+      .post("/api/teacher/schedule")
+      .send({ ...lesson("لون غير صالح", 2, "10:00"), color: "red" })
+      .expect(400);
   });
 
   it("deletes the current teacher's whole schedule without touching another teacher", async () => {

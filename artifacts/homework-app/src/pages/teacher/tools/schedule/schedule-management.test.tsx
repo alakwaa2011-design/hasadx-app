@@ -111,6 +111,8 @@ describe("schedule management tool", () => {
   it("keeps full-table controls and the fixed save action inside the tool", async () => {
     expect(button("button-import-schedule-image")).toBeTruthy();
     expect(button("button-add-schedule-entry")).toBeTruthy();
+    expect(button("button-add-bulk-schedule").closest("details")).toBeTruthy();
+    expect(button("button-add-bulk-schedule").textContent).toContain("إضافة جدول كامل يدويًا");
 
     await click("button-add-schedule-entry");
     const entryScroll = document.querySelector('[data-testid="schedule-entry-scroll-region"]');
@@ -126,6 +128,10 @@ describe("schedule management tool", () => {
     await act(async () => cancelButton.click());
 
     await click("button-add-bulk-schedule");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-start-1"]') as HTMLInputElement)?.value)
+      .toBe("00:00");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-end-1"]') as HTMLInputElement)?.value)
+      .toBe("00:00");
 
     const scrollRegion = document.querySelector('[data-testid="bulk-schedule-scroll-region"]');
     const actions = document.querySelector('[data-testid="bulk-schedule-fixed-actions"]');
@@ -301,11 +307,19 @@ describe("schedule management tool", () => {
 
     await click("button-add-bulk-schedule");
     await click("button-bulk-day-5");
+    for (const day of [0, 1, 2, 3, 4]) {
+      await click(`button-bulk-day-${day}`);
+      await click("button-remove-active-bulk-day");
+    }
     await click("button-remove-bulk-lesson-5");
     await click("button-remove-bulk-lesson-4");
     await click("button-remove-bulk-lesson-2");
     await typeInto("input-bulk-lesson-title-1", "رياضيات");
     await typeInto("input-bulk-lesson-title-2", "علوم");
+    await typeInto("input-bulk-lesson-start-1", "08:00");
+    await typeInto("input-bulk-lesson-end-1", "09:00");
+    await typeInto("input-bulk-lesson-start-2", "10:00");
+    await typeInto("input-bulk-lesson-end-2", "11:00");
     await click("button-add-bulk-period");
     await typeInto("input-bulk-period-title-5-0", "نشاط صباحي");
     await typeInto("input-bulk-period-start-5-0", "09:00");
@@ -334,7 +348,17 @@ describe("schedule management tool", () => {
   it("keeps the draft visible on save failure and explains reload failure", async () => {
     bulkMutate.mockImplementation((_variables, { onError }) => onError(new Error("تعذر الاتصال بالخادم")));
     await click("button-add-bulk-schedule");
+    for (const day of [1, 2, 3, 4]) {
+      await click(`button-bulk-day-${day}`);
+      await click("button-remove-active-bulk-day");
+    }
+    await click("button-remove-bulk-lesson-5");
+    await click("button-remove-bulk-lesson-4");
+    await click("button-remove-bulk-lesson-3");
+    await click("button-remove-bulk-lesson-2");
     await typeInto("input-bulk-lesson-title-1", "مسودة محفوظة محليًا");
+    await typeInto("input-bulk-lesson-start-1", "08:00");
+    await typeInto("input-bulk-lesson-end-1", "09:00");
     await click("button-save-bulk-schedule");
     expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
       .toBe("مسودة محفوظة محليًا");

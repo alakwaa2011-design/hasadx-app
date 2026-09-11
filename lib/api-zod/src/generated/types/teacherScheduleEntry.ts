@@ -14,6 +14,8 @@ export interface TeacherScheduleEntry {
   title: string;
   subject?: string | null;
   className?: string | null;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  color?: string | null;
   /**
      * @minimum 0
      * @maximum 6

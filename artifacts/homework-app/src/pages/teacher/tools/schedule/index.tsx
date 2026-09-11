@@ -282,6 +282,16 @@ function TimerAndAlertsSection({
   );
 }
 
+const SCHEDULE_COLORS = [
+  { value: "emerald", label: "أخضر", class: "bg-emerald-500", textClass: "text-emerald-900", borderClass: "border-emerald-600" },
+  { value: "amber", label: "أصفر", class: "bg-amber-400", textClass: "text-amber-900", borderClass: "border-amber-500" },
+  { value: "peach", label: "خوخي", class: "bg-orange-300", textClass: "text-orange-900", borderClass: "border-orange-400" },
+  { value: "blue", label: "أزرق", class: "bg-blue-400", textClass: "text-blue-900", borderClass: "border-blue-500" },
+  { value: "purple", label: "بنفسجي", class: "bg-purple-400", textClass: "text-purple-900", borderClass: "border-purple-500" },
+  { value: "pink", label: "وردي", class: "bg-pink-400", textClass: "text-pink-900", borderClass: "border-pink-500" },
+  { value: "gray", label: "رمادي", class: "bg-slate-300", textClass: "text-slate-800", borderClass: "border-slate-400" },
+];
+
 const C = {
   green: "#1E4D35",
   greenPale: "rgba(30,77,53,0.07)",
@@ -689,15 +699,17 @@ export default function ScheduleManagementPage() {
   }
 
   function openBulkCreate() {
-    const currentDay = new Date().getDay();
-    const lessons = emptyBulkLessons(5);
+    const defaultDays = [0, 1, 2, 3, 4];
+    const initialDaySchedules = Object.fromEntries(
+      defaultDays.map((day) => [day, emptyBulkLessons(5)]),
+    );
     setBulkLessonCount(5);
-    setActiveBulkDay(currentDay);
-    setBulkDaySchedules({ [currentDay]: lessons });
+    setActiveBulkDay(defaultDays[0]);
+    setBulkDaySchedules(initialDaySchedules);
     setBulkDayBreaks({});
     setImportWarnings([]);
     bulkForm.reset({
-      lessons,
+      lessons: initialDaySchedules[defaultDays[0]],
     });
     setBulkDialogOpen(true);
   }
@@ -1065,14 +1077,22 @@ export default function ScheduleManagementPage() {
 
                <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
 
-               <button type="button" onClick={openBulkCreate} data-testid="button-add-bulk-schedule" className="flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-card px-5 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted/50 sm:flex-none">
-                 {isAr ? "جدول كامل" : "Full Schedule"}
-               </button>
-
-               <button type="button" onClick={() => openCreate("weekly")} data-testid="button-add-schedule-entry" className="flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-700 px-6 text-sm font-bold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-800 sm:flex-none">
-                 <Plus className="h-4 w-4" />
-                 {isAr ? "إضافة" : "Add"}
-               </button>
+               <details className="group relative">
+                 <summary className="flex h-11 cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-700 px-6 text-sm font-bold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-800 list-none [&::-webkit-details-marker]:hidden">
+                   <Plus className="h-4 w-4" />
+                   {isAr ? "إضافة" : "Add"}
+                 </summary>
+                 <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex w-56 flex-col overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg animate-in fade-in zoom-in-95">
+                   <button type="button" onClick={() => { document.body.click(); openCreate("weekly"); }} data-testid="button-add-schedule-entry" className="flex items-center justify-start gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-muted">
+                     <Clock3 className="h-4 w-4 text-emerald-600" />
+                     {isAr ? "حصة أو موعد جديد" : "New lesson or appointment"}
+                   </button>
+                   <button type="button" onClick={() => { document.body.click(); openBulkCreate(); }} data-testid="button-add-bulk-schedule" className="flex items-center justify-start gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-muted">
+                     <Calendar className="h-4 w-4 text-emerald-600" />
+                     {isAr ? "إضافة جدول كامل يدويًا" : "Add full schedule manually"}
+                   </button>
+                 </div>
+               </details>
              </div>
            </div>
 
@@ -1258,20 +1278,18 @@ export default function ScheduleManagementPage() {
                   <div data-testid="schedule-week-grid" className="w-full overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {weeklyGroups.length > 0 ? (
                       <table
-                        className="w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-2xl border border-border/70 bg-card text-center"
+                        className="w-full table-fixed border-separate border-spacing-2 overflow-hidden bg-transparent text-center"
                         style={{ minWidth: `${Math.max(760, (paperLessonNumbers.length + 2) * 112)}px` }}
                       >
                         <thead>
-                          <tr className="bg-emerald-800 text-white">
-                            <th className="sticky start-0 z-20 w-24 border-b border-e border-white/15 px-2 py-3 text-sm font-black">
-                              {isAr ? "اليوم" : "Day"}
-                            </th>
+                          <tr>
+                            <th className="sticky start-0 z-20 w-28 px-2 py-3"></th>
                             {paperLessonNumbers.map((lessonNumber) => (
-                              <th key={lessonNumber} className="border-b border-e border-white/15 px-2 py-3 text-xs font-black last:border-e-0 sm:text-sm">
+                              <th key={lessonNumber} className="px-2 py-3 text-sm font-black text-emerald-900/60 dark:text-emerald-100/60 uppercase tracking-wider">
                                 {lessonNumberLabel(lessonNumber, isAr)}
                               </th>
                             ))}
-                            <th className="border-b border-white/15 px-2 py-3 text-xs font-black sm:text-sm">
+                            <th className="px-2 py-3 text-sm font-black text-amber-900/60 dark:text-amber-100/60 uppercase tracking-wider">
                               {isAr ? "فترات أخرى" : "Other periods"}
                             </th>
                           </tr>
@@ -1282,9 +1300,11 @@ export default function ScheduleManagementPage() {
                               (entry) => entry.kind === "break" && !entry.breakAfterLesson,
                             );
                             return (
-                              <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top even:bg-muted/20">
-                                <th className="sticky start-0 z-10 border-b border-e border-border/60 bg-emerald-50 px-4 py-4 text-sm font-black text-emerald-900 last:border-b-0">
-                                  {isAr ? day.ar : day.en}
+                              <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top group">
+                                <th className="sticky start-0 z-10 p-2">
+                                  <div className="h-full min-h-[5rem] w-full bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-sm font-black text-emerald-900 dark:text-emerald-300 border border-emerald-100/50 dark:border-emerald-500/10 shadow-sm shadow-emerald-900/5 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors">
+                                    {isAr ? day.ar : day.en}
+                                  </div>
                                 </th>
                                 {paperLessonNumbers.map((lessonNumber) => {
                                   const cellEntries = dayEntries.filter(
@@ -1293,38 +1313,79 @@ export default function ScheduleManagementPage() {
                                       (entry.kind === "break" && entry.breakAfterLesson === lessonNumber),
                                   );
                                   return (
-                                    <td key={lessonNumber} className="border-b border-e border-border/60 p-2 last:border-e-0">
-                                      <div className="flex min-h-20 flex-col gap-2">
-                                        {cellEntries.map((entry) => (
-                                          <button
-                                            key={entry.id}
-                                            type="button"
-                                            onClick={() => openEdit(entry)}
-                                            className={`w-full rounded-xl border px-3 py-2 text-start transition-colors hover:border-emerald-500 ${entry.kind === "break" ? "border-amber-200 bg-amber-50" : "border-border/60 bg-background"}`}
-                                          >
-                                            <span className="block text-xs font-black text-foreground">{entry.title}</span>
-                                            <span className="mt-1 block text-[10px] font-bold text-muted-foreground" dir="ltr">
-                                              {entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}
-                                            </span>
-                                          </button>
-                                        ))}
+                                    <td key={lessonNumber} className="p-2 relative">
+                                      <div className="flex min-h-[5rem] flex-col gap-2 h-full bg-white dark:bg-black/20 rounded-2xl border border-border/60 p-1.5 shadow-sm">
+                                        {cellEntries.length === 0 && (
+                                          <div className="absolute inset-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                              type="button"
+                                              onClick={() => { document.body.click(); openCreate("weekly"); }}
+                                              className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center hover:scale-110 hover:bg-emerald-100 transition-all border border-emerald-200/50"
+                                            >
+                                              <Plus className="w-5 h-5" />
+                                            </button>
+                                          </div>
+                                        )}
+                                        {cellEntries.map((entry) => {
+                                          const colorConfig = SCHEDULE_COLORS.find(c => c.value === entry.color);
+                                          const isBreak = entry.kind === "break";
+                                          const baseClasses = colorConfig 
+                                            ? `${colorConfig.class} ${colorConfig.textClass} ${colorConfig.borderClass} border shadow-sm` 
+                                            : isBreak
+                                              ? "bg-amber-100 text-amber-900 border border-amber-200 shadow-sm"
+                                              : "bg-muted/10 border border-border/50 text-foreground hover:border-emerald-300";
+                                          return (
+                                            <button
+                                              key={entry.id}
+                                              type="button"
+                                              onClick={() => openEdit(entry)}
+                                              className={`w-full rounded-xl px-2 py-2.5 text-center transition-all hover:-translate-y-0.5 z-10 ${baseClasses}`}
+                                            >
+                                              <span className={`block text-xs sm:text-sm font-black leading-tight ${colorConfig ? 'opacity-90' : ''}`}>{entry.title}</span>
+                                              {(entry.startTime || entry.endTime) && (
+                                                <span className={`mt-1 block text-[10px] sm:text-xs font-bold ${colorConfig ? 'opacity-70' : 'text-muted-foreground'}`} dir="ltr">
+                                                  {entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}
+                                                </span>
+                                              )}
+                                            </button>
+                                          );
+                                        })}
                                       </div>
                                     </td>
                                   );
                                 })}
-                                <td className="border-b border-border/60 p-2">
-                                  <div className="flex min-h-20 flex-col gap-2">
-                                    {unplacedBreaks.map((entry) => (
-                                      <button
-                                        key={entry.id}
-                                        type="button"
-                                        onClick={() => openEdit(entry)}
-                                        className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-start transition-colors hover:border-amber-400"
-                                      >
-                                        <span className="block text-xs font-black text-foreground">{entry.title}</span>
-                                        <span className="mt-1 block text-[10px] font-bold text-muted-foreground" dir="ltr">{entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}</span>
-                                      </button>
-                                    ))}
+                                <td className="p-2 relative">
+                                  <div className="flex min-h-[5rem] flex-col gap-2 h-full bg-amber-50/30 dark:bg-amber-900/10 rounded-2xl border border-amber-100/50 dark:border-amber-900/20 p-1.5 shadow-sm">
+                                    {unplacedBreaks.length === 0 && (
+                                      <div className="absolute inset-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={() => { document.body.click(); openCreate("break"); }}
+                                          className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center hover:scale-110 hover:bg-amber-100 transition-all border border-amber-200/50"
+                                        >
+                                          <Plus className="w-5 h-5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    {unplacedBreaks.map((entry) => {
+                                      const colorConfig = SCHEDULE_COLORS.find(c => c.value === entry.color);
+                                      const baseClasses = colorConfig
+                                        ? `${colorConfig.class} ${colorConfig.textClass} ${colorConfig.borderClass} border shadow-sm`
+                                        : "bg-amber-100 text-amber-900 border border-amber-200 shadow-sm";
+                                      return (
+                                        <button
+                                          key={entry.id}
+                                          type="button"
+                                          onClick={() => openEdit(entry)}
+                                          className={`w-full rounded-xl px-2 py-2.5 text-center transition-all hover:-translate-y-0.5 z-10 ${baseClasses}`}
+                                        >
+                                          <span className="block text-xs sm:text-sm font-black leading-tight opacity-90">{entry.title}</span>
+                                          {(entry.startTime || entry.endTime) && (
+                                            <span className={`mt-1 block text-[10px] sm:text-xs font-bold ${colorConfig ? 'opacity-70' : 'text-amber-900/70'}`} dir="ltr">{entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}</span>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 </td>
                               </tr>
@@ -1612,6 +1673,38 @@ export default function ScheduleManagementPage() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{isAr ? "لون البطاقة (اختياري)" : "Card color (optional)"}</FormLabel>
+                      <FormControl>
+                        <div className="flex flex-wrap gap-3 p-1">
+                          <button
+                            type="button"
+                            onClick={() => field.onChange("")}
+                            className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center bg-muted/20 ${!field.value ? 'border-foreground shadow-md scale-110' : 'border-transparent hover:scale-105'}`}
+                            title={isAr ? "الافتراضي" : "Default"}
+                          >
+                            {!field.value && <div className="w-2 h-2 rounded-full bg-foreground" />}
+                          </button>
+                          {SCHEDULE_COLORS.map(color => (
+                            <button
+                              key={color.value}
+                              type="button"
+                              onClick={() => field.onChange(color.value)}
+                              className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${color.class} ${field.value === color.value ? 'border-foreground shadow-md scale-110' : 'border-transparent hover:scale-105'}`}
+                              title={color.label}
+                            >
+                              {field.value === color.value && <div className={`w-2 h-2 rounded-full ${color.textClass}`} />}
+                            </button>
+                          ))}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
               </div>
               <DialogFooter className="shrink-0 border-t pt-3" style={{ borderColor: C.border, background: C.card }} data-testid="schedule-entry-fixed-actions">
@@ -1667,7 +1760,7 @@ export default function ScheduleManagementPage() {
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-2 pe-1" data-testid="bulk-schedule-scroll-region">
                 <div className="rounded-2xl border p-3" style={{ borderColor: C.border, background: C.surface }}>
                   <div style={{ color: C.text, fontSize: 12, fontWeight: 900, marginBottom: 4 }}>
-                    {isAr ? "الأيام" : "Days"}
+                    {isAr ? "الأيام المفعّلة" : "Active days"}
                   </div>
                   <div style={{ color: C.subtle, fontSize: 10.5, marginBottom: 10 }}>
                     {isAr ? "اضغط على كل يوم وأدخل حصصه بشكل مستقل. العلامة الخضراء تعني أن اليوم سيُحفظ." : "Open each day and enter its lessons independently. A green mark means the day will be saved."}
@@ -1676,7 +1769,7 @@ export default function ScheduleManagementPage() {
                     <button
                       type="button"
                       onClick={selectAllBulkDays}
-                      className="rounded-xl border px-3 py-2 text-xs font-bold"
+                      className="rounded-xl border px-3 py-2 text-xs font-bold transition-all relative overflow-hidden group"
                       style={{
                         borderColor: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.border,
                         background: Object.keys(bulkDaySchedules).length === 7 ? C.greenPale : C.card,
@@ -1694,32 +1787,43 @@ export default function ScheduleManagementPage() {
                           type="button"
                           onClick={() => selectBulkDay(day.value)}
                           data-testid={`button-bulk-day-${day.value}`}
-                          className="rounded-xl border px-3 py-2 text-xs font-bold"
+                          className={`rounded-xl border px-4 py-2 text-xs font-bold transition-all relative shadow-sm ${active ? 'scale-105 z-10' : 'hover:-translate-y-0.5'}`}
                           style={{
-                            borderColor: active || configured ? C.green : C.border,
+                            borderColor: active ? C.green : configured ? C.green : C.border,
                             background: active ? C.green : configured ? C.greenPale : C.card,
                             color: active ? "#fff" : configured ? C.green : C.text,
+                            boxShadow: active ? '0 8px 20px -8px rgba(30,77,53,0.5)' : 'none'
                           }}
                         >
-                          {isAr ? day.ar : day.en}
+                          {active && (
+                            <motion.div
+                              layoutId="activeBulkDayPill"
+                              className="absolute inset-0 rounded-xl bg-emerald-700 -z-10"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                          <span className="relative z-10">{isAr ? day.ar : day.en}</span>
                         </button>
                       );
                     })}
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div style={{ color: C.green, fontSize: 11, fontWeight: 850 }}>
-                      {isAr
-                        ? `تعدّل الآن: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.ar}`
-                        : `Editing: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en}`}
+                  <div className="mt-4 flex items-center justify-between gap-3 bg-white dark:bg-black/20 p-3 rounded-xl border border-border/50">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
+                      <div className="text-sm font-black text-emerald-900 dark:text-emerald-400">
+                        {isAr
+                          ? `تعدّل الآن: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.ar}`
+                          : `Editing: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en}`}
+                      </div>
                     </div>
                     {Object.keys(bulkDaySchedules).length > 1 && (
                       <button
                         type="button"
                         onClick={removeActiveBulkDay}
                         data-testid="button-remove-active-bulk-day"
-                        className="text-xs font-bold text-destructive"
+                        className="text-xs font-bold text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        {isAr ? "إزالة هذا اليوم" : "Remove this day"}
+                        {isAr ? "إيقاف هذا اليوم" : "Disable this day"}
                       </button>
                     )}
                   </div>
@@ -1752,9 +1856,18 @@ export default function ScheduleManagementPage() {
                   </select>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border p-3" style={{ borderColor: C.border, background: C.card }}>
-                  {bulkLessonFields.fields.map((lesson, index) => {
-                    const isLowConfidence = lesson.confidence === "low";
+                <div className="space-y-3 rounded-2xl border p-3 overflow-hidden" style={{ borderColor: C.border, background: C.card }}>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeBulkDay}
+                      initial={{ opacity: 0, x: isAr ? 20 : -20, filter: "blur(4px)" }}
+                      animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                      exit={{ opacity: 0, x: isAr ? -20 : 20, filter: "blur(4px)" }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-3"
+                    >
+                      {bulkLessonFields.fields.map((lesson, index) => {
+                        const isLowConfidence = lesson.confidence === "low";
 
                     return (
                       <div
@@ -1818,6 +1931,7 @@ export default function ScheduleManagementPage() {
                                 required: isAr ? "حدد وقت البداية" : "Enter a start time",
                               })}
                               type="time"
+                              data-testid={`input-bulk-lesson-start-${index + 1}`}
                               style={{
                                 ...fieldStyle,
                                 background: isLowConfidence ? "#FFFBEB" : C.surface,
@@ -1830,6 +1944,7 @@ export default function ScheduleManagementPage() {
                             <input
                               {...bulkForm.register(`lessons.${index}.endTime` as const)}
                               type="time"
+                              data-testid={`input-bulk-lesson-end-${index + 1}`}
                               style={{
                                 ...fieldStyle,
                                 background: isLowConfidence ? "#FFFBEB" : C.surface,
@@ -1859,6 +1974,33 @@ export default function ScheduleManagementPage() {
                               {...bulkForm.register(`lessons.${index}.className` as const)}
                               style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
                             />
+                          </div>
+                        </div>
+                        <div className="sm:col-span-12 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                          <span className="text-[10px] font-bold text-muted-foreground mr-2 ml-2 whitespace-nowrap">{isAr ? "لون البطاقة:" : "Color:"}</span>
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => bulkForm.setValue(`lessons.${index}.color`, "")}
+                              className={`w-6 h-6 rounded-full border flex items-center justify-center bg-muted/20 ${!bulkForm.watch(`lessons.${index}.color`) ? 'border-foreground shadow-sm scale-110' : 'border-transparent hover:scale-110'}`}
+                              title={isAr ? "الافتراضي" : "Default"}
+                            >
+                              {!bulkForm.watch(`lessons.${index}.color`) && <div className="w-1.5 h-1.5 rounded-full bg-foreground" />}
+                            </button>
+                            {SCHEDULE_COLORS.map(color => {
+                              const selectedColor = bulkForm.watch(`lessons.${index}.color`);
+                              return (
+                                <button
+                                  key={color.value}
+                                  type="button"
+                                  onClick={() => bulkForm.setValue(`lessons.${index}.color`, color.value)}
+                                  className={`w-6 h-6 rounded-full border flex items-center justify-center ${color.class} ${selectedColor === color.value ? 'border-foreground shadow-sm scale-110' : 'border-transparent hover:scale-110'}`}
+                                  title={color.label}
+                                >
+                                  {selectedColor === color.value && <div className={`w-1.5 h-1.5 rounded-full ${color.textClass}`} />}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -1956,6 +2098,8 @@ export default function ScheduleManagementPage() {
                       </div>
                     );
                   })}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
 

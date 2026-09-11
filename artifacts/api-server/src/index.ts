@@ -61,6 +61,7 @@ async function runSchemaMigrations() {
         title TEXT NOT NULL,
         subject TEXT,
         class_name TEXT,
+        color TEXT,
         day_of_week INTEGER,
         lesson_number INTEGER,
         appointment_date DATE,
@@ -77,6 +78,7 @@ async function runSchemaMigrations() {
         ON teacher_schedule(teacher_id, appointment_date);
       ALTER TABLE teacher_schedule ADD COLUMN IF NOT EXISTS lesson_number INTEGER;
       ALTER TABLE teacher_schedule ADD COLUMN IF NOT EXISTS break_after_lesson INTEGER;
+      ALTER TABLE teacher_schedule ADD COLUMN IF NOT EXISTS color TEXT;
       CREATE TABLE IF NOT EXISTS presentation_outline_jobs (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

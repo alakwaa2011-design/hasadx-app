@@ -105,6 +105,23 @@ export declare const teacherScheduleTable: import("drizzle-orm/pg-core").PgTable
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        color: import("drizzle-orm/pg-core").PgColumn<{
+            name: "color";
+            tableName: "teacher_schedule";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         dayOfWeek: import("drizzle-orm/pg-core").PgColumn<{
             name: "day_of_week";
             tableName: "teacher_schedule";
@@ -280,11 +297,11 @@ export declare const teacherScheduleTable: import("drizzle-orm/pg-core").PgTable
 }>;
 export declare const insertTeacherScheduleSchema: z.ZodObject<{
     teacherId: z.ZodInt;
+    kind: z.ZodOptional<z.ZodString>;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    kind: z.ZodOptional<z.ZodString>;
     className: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     dayOfWeek: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     lessonNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     breakAfterLesson: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
@@ -292,6 +309,7 @@ export declare const insertTeacherScheduleSchema: z.ZodObject<{
     startTime: z.ZodString;
     endTime: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     location: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

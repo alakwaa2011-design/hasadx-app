@@ -1691,6 +1691,10 @@ components:
         className:
           type: string
           nullable: true
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          nullable: true
         dayOfWeek:
           type: integer
           minimum: 0
@@ -1750,6 +1754,10 @@ components:
           type: string
           maxLength: 100
           nullable: true
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          nullable: true
         dayOfWeek:
           type: integer
           minimum: 0
@@ -1804,6 +1812,10 @@ components:
         className:
           type: string
           maxLength: 100
+          nullable: true
+        color:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
           nullable: true
         startTime:
           type: string

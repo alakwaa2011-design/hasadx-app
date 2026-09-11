@@ -22,12 +22,14 @@ const uploadFiles = createUploadFilesMiddleware({
 
 const timePattern = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const colorPattern = /^#[0-9A-Fa-f]{6}$/;
 
 const scheduleFieldsBase = z.object({
   kind: z.enum(["weekly", "appointment", "break"]),
   title: z.string().trim().min(1).max(160),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
+  color: z.string().regex(colorPattern).nullish(),
   dayOfWeek: z.number().int().min(0).max(6).nullish(),
   lessonNumber: z.number().int().min(1).max(30).nullish(),
   breakAfterLesson: z.number().int().min(0).max(30).nullish(),
@@ -99,6 +101,7 @@ function normalizeValues(value: z.infer<typeof scheduleFields>) {
     ...value,
     subject: value.subject || null,
     className: value.className || null,
+    color: value.kind === "weekly" ? value.color || null : null,
     location: value.location || null,
     notes: value.notes || null,
     dayOfWeek: value.kind === "appointment" ? null : value.dayOfWeek ?? null,
@@ -277,6 +280,7 @@ const bulkLessonSchema = z.object({
   title: z.string().trim().min(1).max(160),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
+  color: z.string().regex(colorPattern).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
 }).superRefine((value, ctx) => {
@@ -407,6 +411,7 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         title: lesson.title,
         subject: lesson.subject || null,
         className: lesson.className || null,
+        color: lesson.color || null,
         dayOfWeek,
         lessonNumber: lesson.lessonNumber,
         breakAfterLesson: null,
@@ -422,6 +427,7 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         title: entry.title,
         subject: null,
         className: null,
+        color: null,
         dayOfWeek,
         lessonNumber: null,
         breakAfterLesson: entry.breakAfterLesson,
@@ -496,6 +502,7 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
     title: existing.title,
     subject: existing.subject,
     className: existing.className,
+    color: existing.color,
     dayOfWeek: existing.dayOfWeek,
     lessonNumber: existing.lessonNumber,
     breakAfterLesson: existing.breakAfterLesson,

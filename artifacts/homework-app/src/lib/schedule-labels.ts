@@ -89,6 +89,7 @@ export type ScheduleFormValues = {
   title: string;
   subject: string;
   className: string;
+  color: string;
   dayOfWeek: string;
   lessonNumber: string;
   breakAfterLesson: string;
@@ -105,6 +106,7 @@ export type BulkScheduleFormValues = {
     title: string;
     subject: string;
     className: string;
+    color: string;
     startTime: string;
     endTime: string;
     confidence?: "high" | "medium" | "low";
@@ -145,6 +147,7 @@ export function emptyScheduleForm(): ScheduleFormValues {
     title: "",
     subject: "",
     className: "",
+    color: "",
     dayOfWeek: String(new Date().getDay()),
     lessonNumber: "1",
     breakAfterLesson: "1",
@@ -162,8 +165,9 @@ export function emptyBulkLessons(count = 5): BulkScheduleFormValues["lessons"] {
     title: "",
     subject: "",
     className: "",
-    startTime: `${String(8 + index).padStart(2, "0")}:00`,
-    endTime: `${String(9 + index).padStart(2, "0")}:00`,
+    color: "",
+    startTime: "00:00",
+    endTime: "00:00",
   }));
 }
 
@@ -184,6 +188,7 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
         title: extracted.title || extracted.subject || extracted.className || "",
         subject: extracted.subject || "",
         className: extracted.className || "",
+        color: "",
         startTime: extracted.startTime,
         endTime: extracted.endTime || "",
         confidence: extracted.confidence,
@@ -213,6 +218,7 @@ export function buildTeacherScheduleBulkInput(
             || (lesson.confidence ? "" : lessonNumberLabel(lesson.lessonNumber, isAr)),
           subject: lesson.subject.trim() || null,
           className: lesson.className.trim() || null,
+          color: lesson.color || null,
           startTime: lesson.startTime,
           endTime: lesson.endTime || null,
         })),
