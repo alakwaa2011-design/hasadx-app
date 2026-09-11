@@ -93,6 +93,26 @@ function getApiErrorMessage(error: unknown): string | null {
   return typeof data.message === "string" ? data.message : null;
 }
 
+type ScheduleConflictDetails = {
+  dayOfWeek?: number | null;
+  lessonNumber?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  conflictingTitle?: string | null;
+  conflictingStartTime?: string | null;
+  conflictingEndTime?: string | null;
+};
+
+function getScheduleConflict(error: unknown): ScheduleConflictDetails | null {
+  if (!error || typeof error !== "object" || !("data" in error)) return null;
+  const data = error.data;
+  if (!data || typeof data !== "object" || !("conflict" in data)) return null;
+  const conflict = data.conflict;
+  return conflict && typeof conflict === "object"
+    ? conflict as ScheduleConflictDetails
+    : null;
+}
+
 interface Assignment {
   id: number;
   title: string;
@@ -2843,6 +2863,11 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
     };
     const onError = (error: Error) => {
       const message = getApiErrorMessage(error);
+      if (getScheduleConflict(error)) {
+        const fieldMessage = message || (isAr ? "هذا الوقت متعارض مع إدخال آخر" : "This time overlaps another entry");
+        form.setError("startTime", { type: "server", message: fieldMessage });
+        form.setError("endTime", { type: "server", message: fieldMessage });
+      }
       toast.error(
         message
         || (isAr ? "تعذر حفظ الجدول. صحح البيانات وحاول مجددًا" : "Could not save the schedule. Correct the details and try again"),
@@ -2861,6 +2886,31 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
       ...bulkDaySchedules,
       [activeBulkDay]: values.lessons,
     };
+    for (const [day, lessons] of Object.entries(schedules)) {
+      const invalidIndex = lessons.findIndex((lesson) =>
+        !lesson.startTime || (Boolean(lesson.endTime) && lesson.endTime <= lesson.startTime),
+      );
+      if (invalidIndex >= 0) {
+        const targetDay = Number(day);
+        const targetLessons = schedules[targetDay];
+        const invalidLesson = targetLessons[invalidIndex];
+        const fieldName = !invalidLesson.startTime ? "startTime" : "endTime";
+        const fieldMessage = !invalidLesson.startTime
+          ? (isAr ? "حدد وقت بداية هذه الحصة" : "Enter this lesson's start time")
+          : (isAr ? "وقت النهاية يجب أن يكون بعد وقت البداية" : "End time must be after start time");
+        setBulkDaySchedules(schedules);
+        setActiveBulkDay(targetDay);
+        setBulkLessonCount(targetLessons.length);
+        bulkForm.reset({ lessons: targetLessons });
+        bulkForm.setError(`lessons.${invalidIndex}.${fieldName}`, { type: "validate", message: fieldMessage });
+        toast.error(
+          isAr
+            ? `راجع ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.ar} — ${lessonNumberLabel(invalidIndex + 1, true)}`
+            : `Check ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.en} — ${lessonNumberLabel(invalidIndex + 1, false)}`,
+        );
+        return;
+      }
+    }
     const payload: TeacherScheduleBulkInput = {
       daySchedules: Object.entries(schedules)
         .sort(([left], [right]) => Number(left) - Number(right))
@@ -2891,6 +2941,30 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
         },
         onError: (error) => {
           const message = getApiErrorMessage(error);
+          const conflict = getScheduleConflict(error);
+          if (conflict?.dayOfWeek != null && conflict.lessonNumber != null) {
+            const currentLessons = bulkForm.getValues("lessons");
+            const schedules = {
+              ...bulkDaySchedules,
+              [activeBulkDay]: currentLessons,
+            };
+            const targetLessons = schedules[conflict.dayOfWeek];
+            const targetIndex = conflict.lessonNumber - 1;
+            if (targetLessons?.[targetIndex]) {
+              const conflictingTime = [conflict.conflictingStartTime, conflict.conflictingEndTime]
+                .filter(Boolean)
+                .join("–");
+              const fieldMessage = isAr
+                ? `يتعارض مع ${conflict.conflictingTitle || "إدخال آخر"}${conflictingTime ? ` (${conflictingTime})` : ""}`
+                : `Overlaps ${conflict.conflictingTitle || "another entry"}${conflictingTime ? ` (${conflictingTime})` : ""}`;
+              setBulkDaySchedules(schedules);
+              setActiveBulkDay(conflict.dayOfWeek);
+              setBulkLessonCount(targetLessons.length);
+              bulkForm.reset({ lessons: targetLessons });
+              bulkForm.setError(`lessons.${targetIndex}.startTime`, { type: "server", message: fieldMessage });
+              bulkForm.setError(`lessons.${targetIndex}.endTime`, { type: "server", message: fieldMessage });
+            }
+          }
           toast.error(
             message
             || (isAr ? "تعذر حفظ الجدول الكامل. صحح الأوقات وحاول مجددًا" : "Could not save the full schedule. Correct the times and try again"),
@@ -3368,6 +3442,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                       <FormItem>
                         <FormLabel>{isAr ? "إلى" : "To"}</FormLabel>
                         <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -3567,12 +3642,35 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                     <div className="grid grid-cols-2 gap-2 sm:col-span-3">
                       <div>
                         <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
-                        <input {...bulkForm.register(`lessons.${index}.startTime` as const, { required: true })} type="time" style={fieldStyle} />
+                        <input
+                          {...bulkForm.register(`lessons.${index}.startTime` as const, {
+                            required: isAr ? "حدد وقت البداية" : "Enter a start time",
+                          })}
+                          type="time"
+                          style={{
+                            ...fieldStyle,
+                            borderColor: bulkForm.formState.errors.lessons?.[index]?.startTime ? "#B42318" : C.border,
+                          }}
+                        />
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
-                        <input {...bulkForm.register(`lessons.${index}.endTime` as const)} type="time" style={fieldStyle} />
+                        <input
+                          {...bulkForm.register(`lessons.${index}.endTime` as const)}
+                          type="time"
+                          style={{
+                            ...fieldStyle,
+                            borderColor: bulkForm.formState.errors.lessons?.[index]?.endTime ? "#B42318" : C.border,
+                          }}
+                        />
                       </div>
+                      {(bulkForm.formState.errors.lessons?.[index]?.startTime?.message
+                        || bulkForm.formState.errors.lessons?.[index]?.endTime?.message) && (
+                        <div className="col-span-2 text-xs font-bold text-destructive">
+                          {bulkForm.formState.errors.lessons?.[index]?.startTime?.message
+                            || bulkForm.formState.errors.lessons?.[index]?.endTime?.message}
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-2 sm:col-span-3">
                       <div>

@@ -116,17 +116,17 @@ function sharesScheduleDay(left: ComparableScheduleEntry, right: ComparableSched
   return left.dayOfWeek === right.dayOfWeek;
 }
 
-async function hasTimeConflict(
+async function findTimeConflict(
   teacherId: number,
   candidate: ComparableScheduleEntry,
   excludedId?: number,
-): Promise<boolean> {
+): Promise<typeof teacherScheduleTable.$inferSelect | undefined> {
   const entries = await db
     .select()
     .from(teacherScheduleTable)
     .where(eq(teacherScheduleTable.teacherId, teacherId));
 
-  return entries.some((entry) =>
+  return entries.find((entry) =>
     entry.id !== excludedId
     && sharesScheduleDay(candidate, entry)
     && entriesOverlap(candidate, entry),
@@ -134,6 +134,26 @@ async function hasTimeConflict(
 }
 
 const conflictMessage = "يتعارض هذا الوقت مع حصة أو استراحة أخرى في اليوم نفسه";
+
+function conflictResponse(
+  candidate: ComparableScheduleEntry & { lessonNumber?: number | null },
+  conflicting: ComparableScheduleEntry & { title?: string; lessonNumber?: number | null },
+) {
+  return {
+    message: conflictMessage,
+    conflict: {
+      dayOfWeek: candidate.dayOfWeek,
+      appointmentDate: candidate.appointmentDate,
+      lessonNumber: candidate.lessonNumber ?? null,
+      startTime: candidate.startTime,
+      endTime: candidate.endTime,
+      conflictingTitle: conflicting.title || null,
+      conflictingLessonNumber: conflicting.lessonNumber ?? null,
+      conflictingStartTime: conflicting.startTime,
+      conflictingEndTime: conflicting.endTime,
+    },
+  };
+}
 
 router.get("/teacher/schedule", requireAuth, async (req: any, res): Promise<void> => {
   const rows = await db
@@ -225,8 +245,9 @@ router.post("/teacher/schedule", requireAuth, async (req: any, res): Promise<voi
   }
 
   const values = normalizeValues(parsed.data);
-  if (await hasTimeConflict(req.session.teacherId, values)) {
-    res.status(409).json({ message: conflictMessage });
+  const conflictingEntry = await findTimeConflict(req.session.teacherId, values);
+  if (conflictingEntry) {
+    res.status(409).json(conflictResponse(values, conflictingEntry));
     return;
   }
 
@@ -273,16 +294,26 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
     .select()
     .from(teacherScheduleTable)
     .where(eq(teacherScheduleTable.teacherId, req.session.teacherId));
-  const hasExistingConflict = values.some((candidate) =>
-    existing.some((entry) => sharesScheduleDay(candidate, entry) && entriesOverlap(candidate, entry)),
-  );
-  const hasInternalConflict = values.some((candidate, index) =>
-    values.slice(index + 1).some((other) =>
-      sharesScheduleDay(candidate, other) && entriesOverlap(candidate, other),
-    ),
-  );
-  if (hasExistingConflict || hasInternalConflict) {
-    res.status(409).json({ message: conflictMessage });
+  const existingConflict = values
+    .map((candidate) => ({
+      candidate,
+      conflicting: existing.find((entry) =>
+        sharesScheduleDay(candidate, entry) && entriesOverlap(candidate, entry),
+      ),
+    }))
+    .find(({ conflicting }) => Boolean(conflicting));
+  let internalConflict: { candidate: typeof values[number]; conflicting: typeof values[number] } | undefined;
+  for (let index = 0; index < values.length && !internalConflict; index += 1) {
+    const conflicting = values.slice(index + 1).find((other) =>
+      sharesScheduleDay(values[index], other) && entriesOverlap(values[index], other),
+    );
+    if (conflicting) internalConflict = { candidate: values[index], conflicting };
+  }
+  const conflict = existingConflict?.conflicting
+    ? { candidate: existingConflict.candidate, conflicting: existingConflict.conflicting }
+    : internalConflict;
+  if (conflict) {
+    res.status(409).json(conflictResponse(conflict.candidate, conflict.conflicting));
     return;
   }
 
@@ -339,8 +370,9 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
   }
 
   const values = normalizeValues(merged.data);
-  if (await hasTimeConflict(req.session.teacherId, values, id)) {
-    res.status(409).json({ message: conflictMessage });
+  const conflictingEntry = await findTimeConflict(req.session.teacherId, values, id);
+  if (conflictingEntry) {
+    res.status(409).json(conflictResponse(values, conflictingEntry));
     return;
   }
 

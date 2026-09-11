@@ -424,6 +424,15 @@ describe("teacher schedule breaks", () => {
       })
       .expect(409);
     expect(response.body.message).toContain("يتعارض");
+    expect(response.body.conflict).toMatchObject({
+      dayOfWeek: 1,
+      lessonNumber: 2,
+      startTime: "08:30",
+      endTime: "09:30",
+      conflictingTitle: "حصة موجودة",
+      conflictingStartTime: "08:00",
+      conflictingEndTime: "09:00",
+    });
 
     const rows = (await request(app).get("/api/teacher/schedule").expect(200)).body;
     expect(rows).toHaveLength(1);
