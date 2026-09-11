@@ -74,7 +74,7 @@ afterEach(async () => {
 });
 
 describe("TeacherScheduleCard full schedule drafts", () => {
-  it("requires confirmation before deleting the whole saved schedule", async () => {
+  it("stays compact and shows one selected day without management controls", async () => {
     scheduleRows.push({
       id: 1,
       kind: "weekly",
@@ -90,6 +90,21 @@ describe("TeacherScheduleCard full schedule drafts", () => {
       location: null,
       notes: null,
     });
+    scheduleRows.push({
+      id: 2,
+      kind: "weekly",
+      title: "علوم",
+      subject: null,
+      className: null,
+      dayOfWeek: 1,
+      lessonNumber: 1,
+      breakAfterLesson: null,
+      appointmentDate: null,
+      startTime: "09:00",
+      endTime: "10:00",
+      location: null,
+      notes: null,
+    });
     await act(async () => {
       root.render(
         <QueryClientProvider client={new QueryClient()}>
@@ -98,69 +113,16 @@ describe("TeacherScheduleCard full schedule drafts", () => {
       );
     });
 
-    await click("button-delete-whole-schedule");
-    expect(deleteAllMutate).not.toHaveBeenCalled();
-    await click("button-confirm-delete-whole-schedule");
-    expect(deleteAllMutate).toHaveBeenCalledWith(undefined, expect.any(Object));
-  });
+    const scrollRegion = document.querySelector('[data-testid="schedule-summary-scroll"]') as HTMLElement;
+    expect(scrollRegion.style.maxHeight).toBe("300px");
+    expect(scrollRegion.style.overflowY).toBe("auto");
+    expect(document.querySelector('[data-testid="button-delete-whole-schedule"]')).toBeNull();
+    expect(document.querySelector('[data-testid="button-add-schedule-entry"]')).toBeNull();
+    expect(document.querySelector('[data-testid="button-import-schedule-image"]')).toBeNull();
 
-  it("keeps the save action visible while the schedule rows scroll", async () => {
-    await click("button-add-bulk-schedule");
-
-    const scrollRegion = document.querySelector('[data-testid="bulk-schedule-scroll-region"]');
-    const actions = document.querySelector('[data-testid="bulk-schedule-fixed-actions"]');
-
-    expect(scrollRegion?.className).toContain("overflow-y-auto");
-    expect(actions?.className).toContain("shrink-0");
-    expect(actions?.contains(button("button-save-bulk-schedule"))).toBe(true);
-    expect(scrollRegion?.contains(button("button-save-bulk-schedule"))).toBe(false);
-  });
-
-  it("keeps each day independent, removes an accidental day, and saves every remaining day once", async () => {
-    await click("button-add-bulk-schedule");
-
-    await typeInto("input-bulk-lesson-title-1", "رياضيات الأحد");
-    await click("button-bulk-day-1");
-    await typeInto("input-bulk-lesson-title-1", "علوم الاثنين");
-
-    await click("button-bulk-day-0");
-    expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
-      .toBe("رياضيات الأحد");
-
-    await click("button-bulk-day-1");
-    expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
-      .toBe("علوم الاثنين");
-
-    await click("button-bulk-day-2");
-    await typeInto("input-bulk-lesson-title-1", "يوم أضيف بالخطأ");
-    await click("button-remove-active-bulk-day");
-
-    expect(button("button-bulk-day-2").style.background).not.toBe("rgb(30, 77, 53)");
-
-    await click("button-save-bulk-schedule");
-
-    expect(bulkMutate).toHaveBeenCalledTimes(1);
-    expect(bulkMutate).toHaveBeenCalledWith(
-      {
-        data: {
-          daySchedules: [
-            expect.objectContaining({
-              dayOfWeek: 0,
-              lessons: expect.arrayContaining([
-                expect.objectContaining({ lessonNumber: 1, title: "رياضيات الأحد" }),
-              ]),
-            }),
-            expect.objectContaining({
-              dayOfWeek: 1,
-              lessons: expect.arrayContaining([
-                expect.objectContaining({ lessonNumber: 1, title: "علوم الاثنين" }),
-              ]),
-            }),
-          ],
-        },
-      },
-      expect.any(Object),
-    );
+    await click("button-summary-schedule-day-1");
+    expect(document.body.textContent).toContain("علوم");
+    expect(document.body.textContent).not.toContain("رياضيات");
   });
 });
 

@@ -81,6 +81,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { useLocation } from "wouter";
 
 type TabId =
   | "overview"
@@ -2747,151 +2748,15 @@ function scheduleDateLabel(date: string, isAr: boolean) {
 }
 
 export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
-  const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importPreview, setImportPreview] = useState<string | null>(null);
-  const [importWarnings, setImportWarnings] = useState<string[]>([]);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [bulkLessonCount, setBulkLessonCount] = useState(5);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    return () => {
-      if (importPreview) URL.revokeObjectURL(importPreview);
-    };
-  }, [importPreview]);
-
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error(isAr ? "استخدم صورة JPG أو PNG أو WebP" : "Use a JPG, PNG, or WebP image");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error(isAr ? "حجم الصورة يجب أن لا يتجاوز 10 ميجابايت" : "Image size must not exceed 10MB");
-      e.target.value = "";
-      return;
-    }
-    setImportFile(file);
-    const url = URL.createObjectURL(file);
-    setImportPreview(url);
-    setImportDialogOpen(true);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }
-
-  async function handleExtract() {
-    if (!importFile) return;
-    setIsExtracting(true);
-    const formData = new FormData();
-    formData.append("files", importFile);
-    formData.append("language", isAr ? "ar" : "en");
-
-    try {
-      const res = await creditAwareFetch(`${BASE}/api/teacher/schedule/ai/extract`, {
-        method: "POST",
-        headers: {
-          "X-Idempotency-Key": crypto.randomUUID(),
-        },
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        if (isInsufficientCreditsResponse(res)) {
-          return;
-        }
-        const body = await res.json().catch(() => null);
-        throw new Error(
-          typeof body?.message === "string"
-            ? body.message
-            : isAr ? "تعذر استخراج الجدول" : "Could not extract schedule",
-        );
-      }
-
-      const data = await res.json() as { daySchedules?: ExtractedScheduleDay[]; warnings?: unknown[] };
-      if (!Array.isArray(data.daySchedules) || data.daySchedules.length === 0) {
-        throw new Error(isAr ? "لم يتم العثور على حصص واضحة في الصورة" : "No clear lessons were found in the image");
-      }
-
-      const firstDay = data.daySchedules?.[0]?.dayOfWeek ?? new Date().getDay();
-      const {
-        schedules: newSchedules,
-        breaks: newBreaks,
-        hasNumberingGaps,
-      } = normalizeImportedDaySchedules(data.daySchedules);
-
-      setBulkDaySchedules(newSchedules);
-      setBulkDayBreaks(newBreaks);
-      setActiveBulkDay(firstDay);
-      const lessons = newSchedules[firstDay] || emptyBulkLessons(5);
-      setBulkLessonCount(lessons.length);
-      bulkForm.reset({ lessons });
-      setImportWarnings([
-        ...(Array.isArray(data.warnings) ? data.warnings.filter((warning: unknown) => typeof warning === "string") : []),
-        ...(hasNumberingGaps
-          ? [isAr
-              ? "حُفظت أرقام الحصص كما ظهرت في الصورة، بما فيها الفترات الفارغة بين الحصص."
-              : "Lesson numbers were preserved as shown, including free periods between lessons."]
-          : []),
-      ]);
-      setImportDialogOpen(false);
-      setImportFile(null);
-      setImportPreview(null);
-      setBulkDialogOpen(true);
-
-      toast.success(isAr ? "تم الاستخراج — راجع الجدول قبل الحفظ" : "Extracted — review the schedule before saving");
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : isAr ? "تعذر استخراج الجدول" : "Could not extract schedule",
-      );
-    } finally {
-      refreshCreditsBalance();
-      setIsExtracting(false);
-    }
-  }
-
-  const [activeBulkDay, setActiveBulkDay] = useState(() => new Date().getDay());
-  const [bulkDaySchedules, setBulkDaySchedules] = useState<Record<number, BulkScheduleFormValues["lessons"]>>({});
-  const [bulkDayBreaks, setBulkDayBreaks] = useState<Record<number, BulkBreakDraft[]>>({});
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const form = useForm<ScheduleFormValues>({
-    defaultValues: emptyScheduleForm(),
-  });
-  const bulkForm = useForm<BulkScheduleFormValues>({
-    defaultValues: {
-      lessons: emptyBulkLessons(),
-    },
-  });
-  const bulkLessonFields = useFieldArray({
-    control: bulkForm.control,
-    name: "lessons",
-  });
-  const selectedKind = form.watch("kind");
   const scheduleQuery = useListTeacherSchedule({
     query: {
       enabled: Boolean(user),
       queryKey: getListTeacherScheduleQueryKey(),
     },
   });
-  const refreshCreditsBalance = useRefreshCreditsBalance();
-  const createMutation = useCreateTeacherScheduleEntry();
-  const bulkMutation = useBulkCreateTeacherSchedule();
-  const updateMutation = useUpdateTeacherScheduleEntry();
-  const deleteAllMutation = useDeleteTeacherSchedule();
-  const deleteMutation = useDeleteTeacherScheduleEntry();
   const entries = scheduleQuery.data || [];
-  const isSaving = createMutation.isPending || updateMutation.isPending;
-  const isBulkSaving = bulkMutation.isPending;
 
   const weeklyEntries = useMemo(
     () =>
@@ -2902,19 +2767,6 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
           schedulePosition(a) - schedulePosition(b),
         ),
     [entries, selectedDay],
-  );
-  const weeklyGroups = useMemo(
-    () =>
-      SCHEDULE_DAYS.map((day) => ({
-        day,
-        entries: entries
-          .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === day.value)
-          .sort((a, b) =>
-            a.startTime.localeCompare(b.startTime) ||
-            schedulePosition(a) - schedulePosition(b),
-          ),
-      })).filter((group) => group.entries.length > 0),
-    [entries],
   );
 
   const today = getLocalDateInput();
@@ -2935,1381 +2787,178 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     [entries, today],
   );
 
-  const refreshSchedule = () =>
-    queryClient.invalidateQueries({ queryKey: getListTeacherScheduleQueryKey() });
-
-  function openCreate(kind: ScheduleFormValues["kind"] = "weekly") {
-    const defaults = emptyScheduleForm();
-    form.reset({
-      ...defaults,
-      kind,
-      title: "",
-    });
-    setEditingId(null);
-    setDialogOpen(true);
-  }
-
-  function openBulkCreate() {
-    const currentDay = new Date().getDay();
-    const lessons = emptyBulkLessons(5);
-    setBulkLessonCount(5);
-    setActiveBulkDay(currentDay);
-    setBulkDaySchedules({ [currentDay]: lessons });
-    setBulkDayBreaks({});
-    setImportWarnings([]);
-    bulkForm.reset({
-      lessons,
-    });
-    setBulkDialogOpen(true);
-  }
-
-  function changeBulkLessonCount(nextCount: number) {
-    const currentLessons = bulkForm.getValues("lessons");
-    const currentCount = currentLessons.length;
-    if (nextCount > currentCount) {
-      const usedNumbers = new Set(currentLessons.map((lesson) => lesson.lessonNumber));
-      const availableNumbers = Array.from({ length: 30 }, (_, index) => index + 1)
-        .filter((number) => !usedNumbers.has(number))
-        .slice(0, nextCount - currentCount);
-      const addedLessons = availableNumbers.map((lessonNumber) => ({
-        ...emptyBulkLessons(lessonNumber)[lessonNumber - 1],
-        lessonNumber,
-      }));
-      bulkLessonFields.replace(
-        [...currentLessons, ...addedLessons].sort((left, right) => left.lessonNumber - right.lessonNumber),
-      );
-    } else if (nextCount < currentCount) {
-      bulkLessonFields.replace(
-        [...currentLessons]
-          .sort((left, right) => left.lessonNumber - right.lessonNumber)
-          .slice(0, nextCount),
-      );
-    }
-    setBulkLessonCount(nextCount);
-  }
-
-  function selectBulkDay(day: number) {
-    if (day === activeBulkDay) return;
-    const currentLessons = bulkForm.getValues("lessons");
-    const nextLessons = bulkDaySchedules[day] || emptyBulkLessons(5);
-    setBulkDaySchedules((current) => ({
-      ...current,
-      [activeBulkDay]: currentLessons,
-      [day]: current[day] || nextLessons,
-    }));
-    setActiveBulkDay(day);
-    setBulkLessonCount(nextLessons.length);
-    bulkForm.reset({ lessons: nextLessons });
-  }
-
-  function selectAllBulkDays() {
-    const currentLessons = bulkForm.getValues("lessons");
-    setBulkDaySchedules((current) => {
-      const next = { ...current, [activeBulkDay]: currentLessons };
-      SCHEDULE_DAYS.forEach(({ value }) => {
-        next[value] ||= emptyBulkLessons(5);
-      });
-      return next;
-    });
-  }
-
-  function removeActiveBulkDay() {
-    const configuredDays = Object.keys(bulkDaySchedules).map(Number);
-    if (configuredDays.length <= 1) return;
-    const nextDay = configuredDays.find((day) => day !== activeBulkDay)!;
-    const nextSchedules = { ...bulkDaySchedules };
-    delete nextSchedules[activeBulkDay];
-    setBulkDayBreaks((current) => {
-      const next = { ...current };
-      delete next[activeBulkDay];
-      return next;
-    });
-    const nextLessons = nextSchedules[nextDay];
-    setBulkDaySchedules(nextSchedules);
-    setActiveBulkDay(nextDay);
-    setBulkLessonCount(nextLessons.length);
-    bulkForm.reset({ lessons: nextLessons });
-  }
-
-  function updateBulkBreak(index: number, patch: Partial<BulkBreakDraft>) {
-    setBulkDayBreaks((current) => ({
-      ...current,
-      [activeBulkDay]: (current[activeBulkDay] || []).map((entry, entryIndex) =>
-        entryIndex === index ? { ...entry, ...patch } : entry,
-      ),
-    }));
-  }
-
-  function addBulkBreak() {
-    if ((bulkDayBreaks[activeBulkDay] || []).length >= 50) return;
-    const lessons = bulkForm.getValues("lessons");
-    const afterLesson = lessons[Math.max(0, Math.floor(lessons.length / 2) - 1)]?.lessonNumber || 1;
-    setBulkDayBreaks((current) => ({
-      ...current,
-      [activeBulkDay]: [
-        ...(current[activeBulkDay] || []),
-        {
-          title: "",
-          breakAfterLesson: Math.min(afterLesson, 30),
-          startTime: "",
-          endTime: null,
-          confidence: "high",
-        },
-      ],
-    }));
-  }
-
-  function removeBulkBreak(index: number) {
-    setBulkDayBreaks((current) => ({
-      ...current,
-      [activeBulkDay]: (current[activeBulkDay] || []).filter((_, entryIndex) => entryIndex !== index),
-    }));
-  }
-
-  function openEdit(entry: TeacherScheduleEntry) {
-    form.reset({
-      kind: entry.kind,
-      title: entry.title,
-      subject: entry.subject || "",
-      className: entry.className || "",
-      dayOfWeek: entry.dayOfWeek == null ? String(new Date().getDay()) : String(entry.dayOfWeek),
-      lessonNumber: entry.lessonNumber == null ? "1" : String(entry.lessonNumber),
-      breakAfterLesson: entry.breakAfterLesson == null ? "1" : String(entry.breakAfterLesson),
-      appointmentDate: entry.appointmentDate || getLocalDateInput(),
-      startTime: entry.startTime,
-      endTime: entry.endTime || "",
-      location: entry.location || "",
-      notes: entry.notes || "",
-    });
-    setEditingId(entry.id);
-    setDialogOpen(true);
-  }
-
-  function submitSchedule(values: ScheduleFormValues) {
-    const fallbackTitle = values.kind === "weekly"
-      ? lessonNumberLabel(Number(values.lessonNumber), isAr)
-      : values.kind === "break"
-        ? (isAr ? "فترة" : "Period")
-        : (isAr ? "موعد" : "Appointment");
-    const payload: TeacherScheduleEntryInput = {
-      kind: values.kind,
-      title: values.title.trim() || fallbackTitle,
-      subject: values.subject.trim() || null,
-      className: values.className.trim() || null,
-      dayOfWeek: values.kind === "appointment" ? null : Number(values.dayOfWeek),
-      lessonNumber: values.kind === "weekly" ? Number(values.lessonNumber) : null,
-      breakAfterLesson: values.kind === "break" ? Number(values.breakAfterLesson) : null,
-      appointmentDate: values.kind === "appointment" ? values.appointmentDate : null,
-      startTime: values.startTime,
-      endTime: values.endTime || null,
-      location: values.location.trim() || null,
-      notes: values.notes.trim() || null,
-    };
-
-    const onSuccess = () => {
-      setDialogOpen(false);
-      setEditingId(null);
-      form.reset(emptyScheduleForm());
-      refreshSchedule();
-      toast.success(isAr ? "تم حفظ الجدول" : "Schedule saved");
-    };
-    const onError = (error: Error) => {
-      const message = getApiErrorMessage(error);
-      if (getScheduleConflict(error)) {
-        const fieldMessage = message || (isAr ? "هذا الوقت متعارض مع إدخال آخر" : "This time overlaps another entry");
-        form.setError("startTime", { type: "server", message: fieldMessage });
-        form.setError("endTime", { type: "server", message: fieldMessage });
-      }
-      toast.error(
-        message
-        || (isAr ? "تعذر حفظ الجدول. صحح البيانات وحاول مجددًا" : "Could not save the schedule. Correct the details and try again"),
-      );
-    };
-
-    if (editingId != null) {
-      updateMutation.mutate({ id: editingId, data: payload }, { onSuccess, onError });
-    } else {
-      createMutation.mutate({ data: payload }, { onSuccess, onError });
-    }
-  }
-
-  function submitBulkSchedule(values: BulkScheduleFormValues) {
-    const schedules = {
-      ...bulkDaySchedules,
-      [activeBulkDay]: values.lessons,
-    };
-    for (const [day, lessons] of Object.entries(schedules)) {
-      const invalidIndex = lessons.findIndex((lesson) =>
-        (!(lesson.title.trim() || lesson.subject.trim() || lesson.className.trim()) && Boolean(lesson.confidence))
-        || !lesson.startTime
-        || (Boolean(lesson.endTime) && lesson.endTime <= lesson.startTime),
-      );
-      if (invalidIndex >= 0) {
-        const targetDay = Number(day);
-        const targetLessons = schedules[targetDay];
-        const invalidLesson = targetLessons[invalidIndex];
-        const hasVisibleName = Boolean(
-          invalidLesson.title.trim()
-          || invalidLesson.subject.trim()
-          || invalidLesson.className.trim()
-          || !invalidLesson.confidence,
-        );
-        const fieldName = !hasVisibleName ? "title" : !invalidLesson.startTime ? "startTime" : "endTime";
-        const fieldMessage = !hasVisibleName
-          ? (isAr ? "اكتب الاسم الموجود في الجدول" : "Enter the name shown in the schedule")
-          : !invalidLesson.startTime
-          ? (isAr ? "حدد وقت بداية هذه الحصة" : "Enter this lesson's start time")
-          : (isAr ? "وقت النهاية يجب أن يكون بعد وقت البداية" : "End time must be after start time");
-        setBulkDaySchedules(schedules);
-        setActiveBulkDay(targetDay);
-        setBulkLessonCount(targetLessons.length);
-        bulkForm.reset({ lessons: targetLessons });
-        bulkForm.setError(`lessons.${invalidIndex}.${fieldName}`, { type: "validate", message: fieldMessage });
-        toast.error(
-          isAr
-            ? `راجع ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.ar} — ${lessonNumberLabel(invalidLesson.lessonNumber, true)}`
-            : `Check ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.en} — ${lessonNumberLabel(invalidLesson.lessonNumber, false)}`,
-        );
-        return;
-      }
-    }
-    for (const [day, breaks] of Object.entries(bulkDayBreaks)) {
-      const invalidBreak = breaks.find((entry) =>
-        !entry.title.trim()
-        || !entry.startTime
-        || (Boolean(entry.endTime) && entry.endTime! <= entry.startTime),
-      );
-      if (invalidBreak) {
-        setActiveBulkDay(Number(day));
-        toast.error(
-          isAr
-            ? "راجع اسم الفترة ووقتها كما يظهران في الجدول"
-            : "Check the period name and time as shown in the schedule",
-        );
-        return;
-      }
-    }
-    const payload = buildTeacherScheduleBulkInput(schedules, isAr, bulkDayBreaks);
-
-    bulkMutation.mutate(
-      { data: payload },
-      {
-        onSuccess: (created) => {
-          setBulkDialogOpen(false);
-          refreshSchedule();
-          toast.success(
-            isAr
-              ? `تمت إضافة ${created.length} فترة في الجدول`
-              : `${created.length} periods added to the schedule`,
-          );
-        },
-        onError: (error) => {
-          const message = getApiErrorMessage(error);
-          const conflict = getScheduleConflict(error);
-          if (conflict?.dayOfWeek != null && conflict.lessonNumber != null) {
-            const currentLessons = bulkForm.getValues("lessons");
-            const schedules = {
-              ...bulkDaySchedules,
-              [activeBulkDay]: currentLessons,
-            };
-            const targetLessons = schedules[conflict.dayOfWeek];
-            const targetIndex = targetLessons?.findIndex((lesson) => lesson.lessonNumber === conflict.lessonNumber) ?? -1;
-            if (targetLessons?.[targetIndex]) {
-              const conflictingTime = [conflict.conflictingStartTime, conflict.conflictingEndTime]
-                .filter(Boolean)
-                .join("–");
-              const fieldMessage = isAr
-                ? `يتعارض مع ${conflict.conflictingTitle || "إدخال آخر"}${conflictingTime ? ` (${conflictingTime})` : ""}`
-                : `Overlaps ${conflict.conflictingTitle || "another entry"}${conflictingTime ? ` (${conflictingTime})` : ""}`;
-              setBulkDaySchedules(schedules);
-              setActiveBulkDay(conflict.dayOfWeek);
-              setBulkLessonCount(targetLessons.length);
-              bulkForm.reset({ lessons: targetLessons });
-              bulkForm.setError(`lessons.${targetIndex}.startTime`, { type: "server", message: fieldMessage });
-              bulkForm.setError(`lessons.${targetIndex}.endTime`, { type: "server", message: fieldMessage });
-            }
-          }
-          toast.error(
-            message
-            || (isAr ? "تعذر حفظ الجدول الكامل. صحح الأوقات وحاول مجددًا" : "Could not save the full schedule. Correct the times and try again"),
-          );
-        },
-      },
-    );
-  }
-
-  function removeEntry(entry: TeacherScheduleEntry) {
-    const confirmed = window.confirm(
-      isAr
-        ? `حذف "${entry.title}" من الجدول؟`
-        : `Remove "${entry.title}" from the schedule?`,
-    );
-    if (!confirmed) return;
-    deleteMutation.mutate(
-      { id: entry.id },
-      {
-        onSuccess: () => {
-          refreshSchedule();
-          toast.success(isAr ? "تم حذف الإدخال" : "Schedule entry deleted");
-        },
-        onError: () => toast.error(isAr ? "تعذر حذف الإدخال" : "Could not delete the entry"),
-      },
-    );
-  }
-
-  function removeWholeSchedule() {
-    deleteAllMutation.mutate(undefined, {
-      onSuccess: ({ deletedCount }) => {
-        setDeleteAllDialogOpen(false);
-        refreshSchedule();
-        toast.success(
-          isAr
-            ? `تم حذف الجدول كاملًا (${deletedCount} إدخال)`
-            : `Full schedule deleted (${deletedCount} entries)`,
-        );
-      },
-      onError: () => toast.error(isAr ? "تعذر حذف الجدول" : "Could not delete the schedule"),
-    });
-  }
-
-  const fieldStyle: React.CSSProperties = {
-    width: "100%",
-    height: 38,
-    borderRadius: 10,
-    border: `1px solid ${C.border}`,
-    background: C.surface,
-    color: C.text,
-    padding: "0 11px",
-    outline: "none",
-    fontSize: 13,
-  };
-
   return (
-    <>
+    <div
+      data-testid="teacher-schedule-card"
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: SHADOW.card,
+      }}
+      dir={isAr ? "rtl" : "ltr"}
+    >
       <div
-        data-testid="teacher-schedule-card"
         style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 16,
-          overflow: "hidden",
-          boxShadow: SHADOW.card,
+          padding: "13px 14px 11px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          borderBottom: `1px solid ${C.border}`,
         }}
-        dir={isAr ? "rtl" : "ltr"}
       >
-        <div
-          style={{
-            padding: "13px 14px 11px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            borderBottom: `1px solid ${C.border}`,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-            <span
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 10,
-                background: C.greenPale,
-                display: "grid",
-                placeItems: "center",
-                color: C.green,
-                flexShrink: 0,
-              }}
-            >
-              <Calendar style={{ width: 16, height: 16 }} />
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 900, color: C.text }}>
-                {isAr ? "جدول المعلم" : "Teacher schedule"}
-              </div>
-              <div style={{ fontSize: 10.5, color: C.subtle, marginTop: 2 }}>
-                {isAr ? "حصص وفترات غير صفية ومواعيد منفردة" : "Classes, non-lesson periods, and appointments"}
-              </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+          <span
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 10,
+              background: C.greenPale,
+              display: "grid",
+              placeItems: "center",
+              color: C.green,
+              flexShrink: 0,
+            }}
+          >
+            <Calendar style={{ width: 16, height: 16 }} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 900, color: C.text }}>
+              {isAr ? "جدول المعلم" : "Teacher schedule"}
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              onChange={handleImageSelect}
-            />
-            {entries.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setDeleteAllDialogOpen(true)}
-                data-testid="button-delete-whole-schedule"
-                style={{
-                  ...scheduleSecondaryButton,
-                  color: "#B42318",
-                  borderColor: "#F3B7B2",
-                  padding: "7px 9px",
-                  fontSize: 10.5,
-                }}
-              >
-                <Trash2 style={{ width: 14, height: 14, marginRight: isAr ? 0 : 4, marginLeft: isAr ? 4 : 0 }} />
-                {isAr ? "حذف الجدول" : "Delete schedule"}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              data-testid="button-import-schedule-image"
-              style={{ ...scheduleSecondaryButton, color: C.green, padding: "7px 9px", fontSize: 10.5 }}
-            >
-              <ImageIcon style={{ width: 14, height: 14, marginRight: isAr ? 0 : 4, marginLeft: isAr ? 4 : 0 }} />
-              {isAr ? "استيراد صورة" : "Import image"}
-            </button>
-            <button
-              type="button"
-              onClick={openBulkCreate}
-              data-testid="button-add-bulk-schedule"
-              style={{ ...scheduleSecondaryButton, color: C.green, padding: "7px 9px", fontSize: 10.5 }}
-            >
-              {isAr ? "جدول كامل" : "Full table"}
-            </button>
-            <button
-              type="button"
-              onClick={() => openCreate()}
-              data-testid="button-add-schedule-entry"
-              style={{
-                ...schedulePrimaryButton,
-                padding: "8px 10px",
-                fontSize: 11,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <Plus style={{ width: 14, height: 14 }} />
-              {isAr ? "إضافة" : "Add"}
-            </button>
+            <div style={{ fontSize: 10.5, color: C.subtle, marginTop: 2 }}>
+              {isAr ? "نظرة سريعة على جدولك اليومي" : "A quick look at your daily schedule"}
+            </div>
           </div>
         </div>
-
-        {scheduleQuery.isLoading ? (
-          <div style={{ padding: 24, display: "grid", placeItems: "center", color: C.subtle }}>
-            <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />
-          </div>
-        ) : scheduleQuery.isError ? (
-          <div style={{ padding: "22px 16px", textAlign: "center", color: C.subtle, fontSize: 12 }}>
-            {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
-          </div>
-        ) : entries.length === 0 ? (
-          <div style={{ padding: "24px 16px", textAlign: "center" }}>
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 14,
-                display: "grid",
-                placeItems: "center",
-                margin: "0 auto 10px",
-                background: C.greenPale,
-                color: C.green,
-              }}
-            >
-              <Calendar style={{ width: 21, height: 21 }} />
-            </div>
-            <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>
-              {isAr ? "ابدأ بإضافة جدولك" : "Start building your schedule"}
-            </div>
-            <div style={{ color: C.subtle, fontSize: 11, marginTop: 4 }}>
-              {isAr ? "أضف حصة أو فترة غير صفية أو موعدًا منفردًا" : "Add a class, non-lesson period, or one-time appointment"}
-            </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => openCreate("weekly")}
-                style={{ ...scheduleSecondaryButton, color: C.green }}
-              >
-                {isAr ? "حصة أسبوعية" : "Weekly class"}
-              </button>
-              <button
-                type="button"
-                onClick={() => openCreate("appointment")}
-                style={{ ...scheduleSecondaryButton, color: C.text }}
-              >
-                {isAr ? "موعد منفرد" : "Appointment"}
-              </button>
-              <button
-                type="button"
-                onClick={openBulkCreate}
-                style={{ ...scheduleSecondaryButton, color: C.green }}
-              >
-                {isAr ? "إدخال جدول كامل" : "Enter full table"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div
-              style={{
-                padding: "9px 12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-                borderBottom: `1px solid ${C.border}`,
-              }}
-            >
-              <span style={{ color: C.subtle, fontSize: 10.5, fontWeight: 800 }}>
-                {isAr ? "طريقة العرض" : "View"}
-              </span>
-              <div style={{ display: "flex", gap: 4 }}>
-                {(["day", "week"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setViewMode(mode)}
-                    style={{
-                      border: 0,
-                      borderRadius: 8,
-                      padding: "6px 10px",
-                      background: viewMode === mode ? C.greenPale : "transparent",
-                      color: viewMode === mode ? C.green : C.subtle,
-                      fontSize: 10.5,
-                      fontWeight: 850,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {mode === "day" ? (isAr ? "اليوم" : "Day") : (isAr ? "الأسبوع" : "Week")}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {viewMode === "day" ? (
-              <>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-                    gap: 5,
-                    padding: "11px 12px 10px",
-                    borderBottom: `1px solid ${C.border}`,
-                  }}
-                >
-                  {SCHEDULE_DAYS.map((day) => {
-                    const count = entries.filter(
-                      (entry) =>
-                        (entry.kind === "weekly" || entry.kind === "break") &&
-                        entry.dayOfWeek === day.value,
-                    ).length;
-                    const active = selectedDay === day.value;
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => setSelectedDay(day.value)}
-                        style={{
-                          border: active ? `1px solid ${C.green}` : `1px solid ${C.border}`,
-                          background: active ? C.green : C.surface,
-                          color: active ? "#fff" : C.subtle,
-                          borderRadius: 9,
-                          padding: "6px 2px",
-                          cursor: "pointer",
-                          minWidth: 0,
-                        }}
-                      >
-                        <div style={{ fontSize: 10, fontWeight: 800 }}>
-                          {isAr ? day.ar.slice(0, 2) : day.en}
-                        </div>
-                        <div style={{ fontSize: 9, marginTop: 2, opacity: active ? 0.8 : 0.65 }}>
-                          {count}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={{ padding: "11px 14px 3px" }}>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: C.text, marginBottom: 5 }}>
-                    {isAr ? SCHEDULE_DAYS[selectedDay].ar : SCHEDULE_DAYS[selectedDay].en}
-                  </div>
-                  {weeklyEntries.length === 0 ? (
-                    <div style={{ padding: "12px 0 10px", color: C.subtle, fontSize: 11 }}>
-                      {isAr ? "لا توجد حصة أو فترة في هذا اليوم" : "No class or period on this day"}
-                    </div>
-                  ) : (
-                    weeklyEntries.map((entry, index) => (
-                      <ScheduleEntryRow
-                        key={entry.id}
-                        entry={entry}
-                        isAr={isAr}
-                        isLast={index === weeklyEntries.length - 1 && upcomingAppointments.length === 0}
-                        onEdit={() => openEdit(entry)}
-                        onDelete={() => removeEntry(entry)}
-                      />
-                    ))
-                  )}
-                </div>
-              </>
-            ) : (
-              <div style={{ padding: "10px 14px 4px" }}>
-                {weeklyGroups.length === 0 ? (
-                  <div style={{ padding: "12px 0", color: C.subtle, fontSize: 11 }}>
-                    {isAr ? "لا توجد حصص أسبوعية بعد" : "No weekly classes yet"}
-                  </div>
-                ) : (
-                  weeklyGroups.map(({ day, entries: dayEntries }) => (
-                    <div key={day.value} style={{ marginBottom: 10 }}>
-                      <div style={{ color: C.green, fontSize: 10.5, fontWeight: 900, marginBottom: 2 }}>
-                        {isAr ? day.ar : day.en}
-                      </div>
-                      {dayEntries.map((entry, index) => (
-                        <ScheduleEntryRow
-                          key={entry.id}
-                          entry={entry}
-                          isAr={isAr}
-                          isLast={index === dayEntries.length - 1}
-                          onEdit={() => openEdit(entry)}
-                          onDelete={() => removeEntry(entry)}
-                        />
-                      ))}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {upcomingAppointments.length > 0 && (
-              <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 14px 5px" }}>
-                <div style={{ fontSize: 10.5, fontWeight: 900, color: C.text, marginBottom: 3 }}>
-                  {isAr ? "المواعيد القادمة" : "Upcoming appointments"}
-                </div>
-                {upcomingAppointments.map((entry, index) => (
-                  <ScheduleEntryRow
-                    key={entry.id}
-                    entry={entry}
-                    isAr={isAr}
-                    isLast={index === upcomingAppointments.length - 1}
-                    onEdit={() => openEdit(entry)}
-                    onDelete={() => removeEntry(entry)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      <Dialog open={deleteAllDialogOpen} onOpenChange={setDeleteAllDialogOpen}>
-        <DialogContent className="max-w-md rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>{isAr ? "حذف الجدول كاملًا؟" : "Delete the full schedule?"}</DialogTitle>
-          </DialogHeader>
-          <div className="text-sm leading-6" style={{ color: C.subtle }}>
-            {isAr
-              ? "سيتم حذف جميع الحصص والفترات غير الصفية والمواعيد المحفوظة. لا يمكن التراجع عن هذه العملية."
-              : "All saved classes, non-lesson periods, and appointments will be deleted. This cannot be undone."}
+      {scheduleQuery.isLoading ? (
+        <div style={{ padding: 24, display: "grid", placeItems: "center", color: C.subtle }}>
+          <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />
+        </div>
+      ) : scheduleQuery.isError ? (
+        <div style={{ padding: "22px 16px", textAlign: "center", color: C.subtle, fontSize: 12 }}>
+          {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
+        </div>
+      ) : entries.length === 0 ? (
+        <div style={{ padding: "24px 16px", textAlign: "center" }}>
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              display: "grid",
+              placeItems: "center",
+              margin: "0 auto 10px",
+              background: C.greenPale,
+              color: C.green,
+            }}
+          >
+            <Calendar style={{ width: 21, height: 21 }} />
           </div>
-          <DialogFooter className="gap-2">
-            <button
-              type="button"
-              onClick={() => setDeleteAllDialogOpen(false)}
-              disabled={deleteAllMutation.isPending}
-              style={scheduleSecondaryButton}
-            >
-              {isAr ? "إلغاء" : "Cancel"}
-            </button>
-            <button
-              type="button"
-              onClick={removeWholeSchedule}
-              disabled={deleteAllMutation.isPending}
-              data-testid="button-confirm-delete-whole-schedule"
-              style={{
-                ...schedulePrimaryButton,
-                background: "#B42318",
-                opacity: deleteAllMutation.isPending ? 0.65 : 1,
-              }}
-            >
-              {deleteAllMutation.isPending && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
-              {isAr ? "نعم، احذف الجدول" : "Yes, delete schedule"}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setEditingId(null);
-        }}
-      >
-        <DialogContent className="max-w-xl rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>{editingId ? (isAr ? "تعديل الإدخال" : "Edit schedule entry") : (isAr ? "إضافة إلى الجدول" : "Add to schedule")}</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(submitSchedule)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="kind"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{isAr ? "نوع الإدخال" : "Entry type"}</FormLabel>
-                    <FormControl>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(["weekly", "break", "appointment"] as const).map((kind) => (
-                          <button
-                            key={kind}
-                            type="button"
-                            onClick={() => field.onChange(kind)}
-                            className="rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors"
-                            style={{
-                              borderColor: field.value === kind ? C.green : C.border,
-                              background: field.value === kind ? C.greenPale : C.surface,
-                              color: field.value === kind ? C.green : C.text,
-                            }}
-                          >
-                            {kind === "weekly"
-                              ? isAr ? "حصة أسبوعية" : "Weekly class"
-                              : kind === "break"
-                                ? isAr ? "فترة غير صفية" : "Non-lesson period"
-                                : isAr ? "موعد منفرد" : "Appointment"}
-                          </button>
-                        ))}
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel>{isAr ? "العنوان (اختياري)" : "Title (optional)"}</FormLabel>
-                      <FormControl>
-                        <input {...field} placeholder={isAr ? "سيُستخدم اسم تلقائي عند تركه فارغًا" : "An automatic title will be used if left blank"} style={fieldStyle} data-testid="input-schedule-title" />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                {selectedKind !== "appointment" ? (
-                  <FormField
-                    control={form.control}
-                    name="dayOfWeek"
-                    rules={{ required: isAr ? "اختر اليوم" : "Choose a day" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{isAr ? "اليوم" : "Day"}</FormLabel>
-                        <FormControl>
-                          <select {...field} style={fieldStyle}>
-                            {SCHEDULE_DAYS.map((day) => (
-                              <option key={day.value} value={day.value}>{isAr ? day.ar : day.en}</option>
-                            ))}
-                          </select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="appointmentDate"
-                    rules={{ required: isAr ? "اختر التاريخ" : "Choose a date" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{isAr ? "التاريخ" : "Date"}</FormLabel>
-                        <FormControl>
-                          <input {...field} type="date" style={fieldStyle} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                {selectedKind === "weekly" && (
-                  <FormField
-                    control={form.control}
-                    name="lessonNumber"
-                    rules={{ required: isAr ? "اختر رقم الحصة" : "Choose the lesson number" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{isAr ? "رقم الحصة" : "Lesson number"}</FormLabel>
-                        <FormControl>
-                          <select {...field} style={fieldStyle}>
-                            {Array.from({ length: 30 }, (_, index) => index + 1).map((number) => (
-                              <option key={number} value={number}>
-                                {lessonNumberLabel(number, isAr)}
-                              </option>
-                            ))}
-                          </select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                {selectedKind === "break" && (
-                  <FormField
-                    control={form.control}
-                    name="breakAfterLesson"
-                    rules={{ required: isAr ? "اختر الحصة السابقة للاستراحة" : "Choose the preceding lesson" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{isAr ? "موقع الفترة في الجدول" : "Period position"}</FormLabel>
-                        <FormControl>
-                          <select {...field} style={fieldStyle}>
-                            {Array.from({ length: 31 }, (_, index) => index).map((number) => (
-                              <option key={number} value={number}>
-                                {number === 0
-                                  ? (isAr ? "بدون رقم ظاهر" : "No visible number")
-                                  : breakPositionLabel(number, isAr)}
-                              </option>
-                            ))}
-                          </select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField
-                    control={form.control}
-                    name="startTime"
-                    rules={{ required: isAr ? "مطلوب" : "Required" }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{isAr ? "من" : "From"}</FormLabel>
-                        <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="endTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{isAr ? "إلى" : "To"}</FormLabel>
-                        <FormControl><input {...field} type="time" style={fieldStyle} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{isAr ? "المادة (اختياري)" : "Subject (optional)"}</FormLabel>
-                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="className"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{isAr ? "الصف (اختياري)" : "Class (optional)"}</FormLabel>
-                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{isAr ? "المكان (اختياري)" : "Location (optional)"}</FormLabel>
-                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel>{isAr ? "ملاحظات (اختياري)" : "Notes (optional)"}</FormLabel>
-                      <FormControl><textarea {...field} rows={2} style={{ ...fieldStyle, height: "auto", paddingTop: 9, paddingBottom: 9, resize: "vertical" }} /></FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <DialogFooter>
+          <div style={{ color: C.text, fontSize: 13, fontWeight: 800 }}>
+            {isAr ? "لم تقم بإعداد جدولك بعد" : "You haven't set up your schedule yet"}
+          </div>
+          <div style={{ color: C.subtle, fontSize: 10.5, marginTop: 5 }}>
+            {isAr ? "يمكن إعداد الجدول من أدوات المعلم" : "Set up your schedule from Teacher tools"}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+              gap: 5,
+              padding: "11px 12px 10px",
+              borderBottom: `1px solid ${C.border}`,
+            }}
+          >
+            {SCHEDULE_DAYS.map((day) => {
+              const count = entries.filter(
+                (entry) =>
+                  (entry.kind === "weekly" || entry.kind === "break") &&
+                  entry.dayOfWeek === day.value,
+              ).length;
+              const active = selectedDay === day.value;
+              return (
                 <button
+                  key={day.value}
                   type="button"
-                  onClick={() => setDialogOpen(false)}
-                  style={{ ...scheduleSecondaryButton, color: C.text }}
-                >
-                  {isAr ? "إلغاء" : "Cancel"}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  data-testid="button-save-schedule-entry"
+                  onClick={() => setSelectedDay(day.value)}
+                  data-testid={`button-summary-schedule-day-${day.value}`}
                   style={{
-                    ...schedulePrimaryButton,
-                    opacity: isSaving ? 0.7 : 1,
+                    border: active ? `1px solid ${C.green}` : `1px solid ${C.border}`,
+                    background: active ? C.green : C.surface,
+                    color: active ? "#fff" : C.subtle,
+                    borderRadius: 9,
+                    padding: "6px 2px",
+                    cursor: "pointer",
+                    minWidth: 0,
                   }}
                 >
-                  {isSaving && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
-                  {editingId ? (isAr ? "حفظ التعديل" : "Save changes") : (isAr ? "إضافة" : "Add entry")}
+                  <div style={{ fontSize: 10, fontWeight: 800 }}>
+                    {isAr ? day.ar.slice(0, 2) : day.en}
+                  </div>
+                  <div style={{ fontSize: 9, marginTop: 2, opacity: active ? 0.8 : 0.65 }}>
+                    {count}
+                  </div>
                 </button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={bulkDialogOpen}
-        onOpenChange={setBulkDialogOpen}
-      >
-        <DialogContent
-          className="flex max-h-[92dvh] max-w-5xl flex-col overflow-hidden rounded-3xl"
-          dir={isAr ? "rtl" : "ltr"}
-        >
-          <DialogHeader className="shrink-0">
-            <DialogTitle>{isAr ? "إدخال جدول كامل" : "Enter a full schedule"}</DialogTitle>
-          </DialogHeader>
-          {importWarnings.length > 0 && (
-            <div
-              className="max-h-[20dvh] shrink-0 overflow-y-auto flex items-start gap-3 rounded-2xl border p-3 text-xs leading-relaxed"
-              style={{ borderColor: "rgba(217,119,6,0.3)", background: "#FFFBEB", color: "#92400E" }}
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <div className="font-black">{isAr ? "ملاحظات من قراءة الصورة" : "Image-reading notes"}</div>
-                <ul className="mt-1 list-inside list-disc space-y-1 font-semibold">
-                  {importWarnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}
-                </ul>
-              </div>
-            </div>
-          )}
-          <Form {...bulkForm}>
-            <form
-              onSubmit={bulkForm.handleSubmit(submitBulkSchedule)}
-              className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden"
-            >
-              <div
-                className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-2 pe-1"
-                data-testid="bulk-schedule-scroll-region"
-              >
-              <div className="rounded-2xl border p-3" style={{ borderColor: C.border, background: C.surface }}>
-                <div style={{ color: C.text, fontSize: 12, fontWeight: 900, marginBottom: 4 }}>
-                  {isAr ? "الأيام" : "Days"}
-                </div>
-                <div style={{ color: C.subtle, fontSize: 10.5, marginBottom: 10 }}>
-                  {isAr ? "اضغط على كل يوم وأدخل حصصه بشكل مستقل. العلامة الخضراء تعني أن اليوم سيُحفظ." : "Open each day and enter its lessons independently. A green mark means the day will be saved."}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={selectAllBulkDays}
-                    className="rounded-xl border px-3 py-2 text-xs font-bold"
-                    style={{
-                      borderColor: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.border,
-                      background: Object.keys(bulkDaySchedules).length === 7 ? C.greenPale : C.card,
-                      color: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.text,
-                    }}
-                  >
-                    {isAr ? "كل الأيام" : "Every day"}
-                  </button>
-                  {SCHEDULE_DAYS.map((day) => {
-                    const configured = day.value in bulkDaySchedules;
-                    const active = day.value === activeBulkDay;
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() => selectBulkDay(day.value)}
-                        data-testid={`button-bulk-day-${day.value}`}
-                        className="rounded-xl border px-3 py-2 text-xs font-bold"
-                        style={{
-                          borderColor: active || configured ? C.green : C.border,
-                          background: active ? C.green : configured ? C.greenPale : C.card,
-                          color: active ? "#fff" : configured ? C.green : C.text,
-                        }}
-                      >
-                        {isAr ? day.ar : day.en}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <div style={{ color: C.green, fontSize: 11, fontWeight: 850 }}>
-                    {isAr
-                      ? `تعدّل الآن: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.ar}`
-                      : `Editing: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en}`}
-                  </div>
-                  {Object.keys(bulkDaySchedules).length > 1 && (
-                    <button
-                      type="button"
-                      onClick={removeActiveBulkDay}
-                      data-testid="button-remove-active-bulk-day"
-                      className="text-xs font-bold text-destructive"
-                    >
-                      {isAr ? "إزالة هذا اليوم" : "Remove this day"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div style={{ color: C.text, fontSize: 12, fontWeight: 900 }}>
-                    {isAr ? "عدد الحصص" : "Number of lessons"}
-                  </div>
-                  <div style={{ color: C.subtle, fontSize: 10.5, marginTop: 3 }}>
-                    {isAr ? "يمكنك إضافة العدد الموجود في جدولك حتى ٣٠ حصة مرقمة" : "Add the numbered lessons in your schedule, up to 30"}
-                  </div>
-                </div>
-                <select
-                  value={bulkLessonCount}
-                  onChange={(event) => changeBulkLessonCount(Number(event.target.value))}
-                  style={{ ...fieldStyle, width: 170 }}
-                  data-testid="select-bulk-lesson-count"
-                >
-                  {Array.from({ length: 31 }, (_, index) => index).map((number) => (
-                    <option key={number} value={number}>
-                      {number === 0
-                        ? (isAr ? "لا توجد حصص مرقمة" : "No numbered lessons")
-                        : isAr
-                          ? `${number} ${number === 1 ? "حصة" : "حصص"}`
-                          : `${number} ${number === 1 ? "lesson" : "lessons"}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div
-                className="space-y-3 rounded-2xl border p-3"
-                style={{ borderColor: C.border, background: C.card }}
-              >
-                {bulkLessonFields.fields.map((lesson, index) => {
-                  const isLowConfidence = lesson.confidence === "low";
-
-                  return (
-                    <div
-                      key={lesson.id}
-                      className="grid grid-cols-1 gap-3 rounded-2xl border p-3 sm:grid-cols-12"
-                      style={{
-                        borderColor: isLowConfidence ? "#F59E0B" : C.border,
-                        background: isLowConfidence ? "#FEF3C7" : C.surface
-                      }}
-                    >
-                      <div className="flex items-center gap-2 sm:col-span-2 sm:flex-col sm:items-start sm:justify-center relative">
-                        {isLowConfidence && (
-                          <div className="absolute -top-1 -right-1 text-amber-600" title={isAr ? "يرجى التحقق من هذه البيانات" : "Please verify these details"}>
-                            <AlertTriangle className="h-4 w-4" />
-                          </div>
-                        )}
-                        <div
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            display: "grid",
-                            placeItems: "center",
-                            background: isLowConfidence ? "#FDE68A" : C.greenPale,
-                            color: isLowConfidence ? "#D97706" : C.green,
-                            fontWeight: 900,
-                            fontSize: 14,
-                          }}
-                        >
-                        {lesson.lessonNumber}
-                        </div>
-                        <div style={{ color: C.text, fontSize: 11, fontWeight: 900 }}>
-                          {lessonNumberLabel(lesson.lessonNumber, isAr)}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            bulkLessonFields.remove(index);
-                            setBulkLessonCount((count) => Math.max(0, count - 1));
-                          }}
-                          className="text-[10px] font-bold text-destructive disabled:opacity-40"
-                        >
-                          {isAr ? "حذف" : "Delete"}
-                        </button>
-                      </div>
-                      <div className="sm:col-span-4">
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة (اختياري)" : "Lesson title (optional)"}</label>
-                        <input
-                          {...bulkForm.register(`lessons.${index}.title` as const)}
-                          placeholder={isAr ? `الافتراضي: ${lessonNumberLabel(lesson.lessonNumber, true)}` : `Default: ${lessonNumberLabel(lesson.lessonNumber, false)}`}
-                          style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                          data-testid={`input-bulk-lesson-title-${index + 1}`}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 sm:col-span-3">
-                        <div>
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
-                          <input
-                            {...bulkForm.register(`lessons.${index}.startTime` as const, {
-                              required: isAr ? "حدد وقت البداية" : "Enter a start time",
-                            })}
-                            type="time"
-                            style={{
-                              ...fieldStyle,
-                              background: isLowConfidence ? "#FFFBEB" : C.surface,
-                              borderColor: bulkForm.formState.errors.lessons?.[index]?.startTime ? "#B42318" : C.border,
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
-                          <input
-                            {...bulkForm.register(`lessons.${index}.endTime` as const)}
-                            type="time"
-                            style={{
-                              ...fieldStyle,
-                              background: isLowConfidence ? "#FFFBEB" : C.surface,
-                              borderColor: bulkForm.formState.errors.lessons?.[index]?.endTime ? "#B42318" : C.border,
-                            }}
-                          />
-                        </div>
-                        {(bulkForm.formState.errors.lessons?.[index]?.startTime?.message
-                          || bulkForm.formState.errors.lessons?.[index]?.endTime?.message) && (
-                          <div className="col-span-2 text-xs font-bold text-destructive">
-                            {bulkForm.formState.errors.lessons?.[index]?.startTime?.message
-                              || bulkForm.formState.errors.lessons?.[index]?.endTime?.message}
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 sm:col-span-3">
-                        <div>
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "المادة" : "Subject"}</label>
-                          <input
-                            {...bulkForm.register(`lessons.${index}.subject` as const)}
-                            style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "الصف" : "Class"}</label>
-                          <input
-                            {...bulkForm.register(`lessons.${index}.className` as const)}
-                            style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <div className="flex items-center gap-2 text-xs font-black" style={{ color: C.text }}>
-                    <Coffee className="h-4 w-4" style={{ color: C.gold }} />
-                    {isAr ? "الفترات غير الصفية" : "Non-lesson periods"}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addBulkBreak}
-                    disabled={(bulkDayBreaks[activeBulkDay] || []).length >= 50}
-                    className="rounded-xl border px-3 py-2 text-xs font-bold"
-                    style={{
-                      borderColor: C.border,
-                      color: C.green,
-                      background: C.surface,
-                      opacity: (bulkDayBreaks[activeBulkDay] || []).length >= 50 ? 0.5 : 1,
-                    }}
-                  >
-                    {isAr ? "إضافة فترة" : "Add period"}
-                  </button>
-                </div>
-                {(bulkDayBreaks[activeBulkDay] || []).map((entry, index) => {
-                  const lowConfidence = entry.confidence === "low";
-                  return (
-                    <div
-                      key={`${activeBulkDay}-${index}`}
-                      className="grid grid-cols-1 gap-3 rounded-2xl border p-3 sm:grid-cols-12"
-                      style={{
-                        borderColor: lowConfidence ? "#F59E0B" : "rgba(190,140,30,0.35)",
-                        background: lowConfidence ? "#FEF3C7" : "#FFFBEB",
-                      }}
-                    >
-                      <div className="sm:col-span-3">
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "الاسم" : "Name"}</label>
-                        <input
-                          value={entry.title}
-                          onChange={(event) => updateBulkBreak(index, { title: event.target.value })}
-                          style={{ ...fieldStyle, background: "#fff" }}
-                        />
-                      </div>
-                      <div className="sm:col-span-3">
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "رقم الفترة الظاهر" : "Visible period number"}</label>
-                        <select
-                          value={entry.breakAfterLesson}
-                          onChange={(event) => updateBulkBreak(index, { breakAfterLesson: Number(event.target.value) })}
-                          style={{ ...fieldStyle, background: "#fff" }}
-                        >
-                          {Array.from({ length: 31 }, (_, lessonIndex) => lessonIndex).map((number) => (
-                            <option key={number} value={number}>
-                              {number === 0
-                                ? (isAr ? "بدون رقم ظاهر" : "No visible number")
-                                : breakPositionLabel(number, isAr)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 sm:col-span-4">
-                        <div>
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
-                          <input
-                            type="time"
-                            value={entry.startTime}
-                            onChange={(event) => updateBulkBreak(index, { startTime: event.target.value })}
-                            style={{ ...fieldStyle, background: "#fff" }}
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
-                          <input
-                            type="time"
-                            value={entry.endTime || ""}
-                            onChange={(event) => updateBulkBreak(index, { endTime: event.target.value || null })}
-                            style={{ ...fieldStyle, background: "#fff" }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-end justify-end sm:col-span-2">
-                        <button
-                          type="button"
-                          onClick={() => removeBulkBreak(index)}
-                          className="rounded-xl px-3 py-2 text-xs font-bold text-destructive"
-                        >
-                          {isAr ? "إزالة" : "Remove"}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              </div>
-
-              <DialogFooter
-                className="shrink-0 border-t pt-3"
-                style={{ borderColor: C.border, background: C.card }}
-                data-testid="bulk-schedule-fixed-actions"
-              >
-                <button
-                  type="button"
-                  onClick={() => setBulkDialogOpen(false)}
-                  style={{ ...scheduleSecondaryButton, color: C.text }}
-                >
-                  {isAr ? "إلغاء" : "Cancel"}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isBulkSaving}
-                  data-testid="button-save-bulk-schedule"
-                  style={{ ...schedulePrimaryButton, opacity: isBulkSaving ? 0.65 : 1 }}
-                >
-                  {isBulkSaving && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
-                  {isAr ? "حفظ الجدول كاملًا" : "Save full schedule"}
-                </button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={importDialogOpen}
-        onOpenChange={(open) => {
-          if (!isExtracting) {
-            setImportDialogOpen(open);
-            if (!open) {
-              setImportFile(null);
-              setImportPreview(null);
-            }
-          }
-        }}
-      >
-        <DialogContent className="max-w-md rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>{isAr ? "استيراد جدول معلم" : "Import Teacher Schedule"}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="rounded-2xl border p-4 text-center" style={{ borderColor: C.border, background: C.surface }}>
-              {importPreview ? (
-                <div className="relative mb-3 flex justify-center">
-                  <img src={importPreview} alt={isAr ? "معاينة صورة الجدول" : "Schedule image preview"} className="max-h-60 rounded-xl object-contain border shadow-sm" />
-                  {!isExtracting && (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      aria-label={isAr ? "اختيار صورة أخرى" : "Choose another image"}
-                      className="absolute bottom-2 right-2 rounded-lg bg-black/60 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:bg-black/5"
-                  style={{ borderColor: C.border }}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <UploadCloud className="mb-2 h-8 w-8" style={{ color: C.green }} />
-                  <p className="text-sm font-bold" style={{ color: C.text }}>
-                    {isAr ? "انقر لاختيار صورة من جهازك أو الكاميرا" : "Click to select an image from your device or camera"}
-                  </p>
-                  <p className="mt-1 text-xs" style={{ color: C.subtle }}>
-                    {isAr ? "JPG أو PNG أو WebP — حتى ١٠ ميجابايت" : "JPG, PNG, or WebP — up to 10MB"}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-start gap-3 rounded-2xl p-3 text-xs leading-relaxed" style={{ background: C.goldPale, color: C.goldBright }}>
-              <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
-              <p className="font-semibold">
-                {isAr
-                  ? "ملاحظة: الذكاء الاصطناعي سيقوم بتحليل الجدول واستخراجه فقط، لن يتم حفظه تلقائياً. ستتمكن من مراجعة النتائج وتعديلها قبل الحفظ النهائي."
-                  : "Note: The AI will only analyze and extract the schedule. It will not be saved automatically. You will be able to review and edit the results before final saving."}
-              </p>
-            </div>
+              );
+            })}
           </div>
 
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => setImportDialogOpen(false)}
-              disabled={isExtracting}
-              style={{ ...scheduleSecondaryButton, color: C.text }}
-            >
-              {isAr ? "إلغاء" : "Cancel"}
-            </button>
-            <button
-              type="button"
-              onClick={handleExtract}
-              disabled={isExtracting || !importFile}
-              data-testid="button-extract-schedule-image"
-              style={{ ...schedulePrimaryButton, opacity: isExtracting || !importFile ? 0.65 : 1 }}
-            >
-              {isExtracting ? (
-                <>
-                  <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
-                  {isAr ? "جاري الاستخراج..." : "Extracting..."}
-                </>
-              ) : (
-                <>
-                  <Sparkles style={{ width: 14, height: 14 }} />
-                  {isAr ? "استخراج الجدول" : "Extract Schedule"}
-                </>
-              )}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div
+            className="dashScroll"
+            data-testid="schedule-summary-scroll"
+            style={{
+              padding: "11px 14px 3px",
+              maxHeight: 300,
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 900, color: C.text, marginBottom: 5 }}>
+              {isAr ? SCHEDULE_DAYS[selectedDay].ar : SCHEDULE_DAYS[selectedDay].en}
+            </div>
+            {weeklyEntries.length === 0 ? (
+              <div style={{ padding: "12px 0 10px", color: C.subtle, fontSize: 11 }}>
+                {isAr ? "لا توجد حصة أو فترة في هذا اليوم" : "No class or period on this day"}
+              </div>
+            ) : (
+              weeklyEntries.map((entry, index) => (
+                <ScheduleEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  isAr={isAr}
+                  isLast={index === weeklyEntries.length - 1 && upcomingAppointments.length === 0}
+                />
+              ))
+            )}
+            {upcomingAppointments.length > 0 && (
+              <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 0 5px", marginTop: 4 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 900, color: C.text, marginBottom: 3 }}>
+                {isAr ? "المواعيد القادمة" : "Upcoming appointments"}
+              </div>
+              {upcomingAppointments.map((entry, index) => (
+                <ScheduleEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  isAr={isAr}
+                  isLast={index === upcomingAppointments.length - 1}
+                />
+              ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
 
 const schedulePrimaryButton: React.CSSProperties = {
   border: 0,
@@ -4340,14 +2989,10 @@ function ScheduleEntryRow({
   entry,
   isAr,
   isLast,
-  onEdit,
-  onDelete,
 }: {
   entry: TeacherScheduleEntry;
   isAr: boolean;
   isLast: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
 }) {
   return (
     <div
@@ -4406,39 +3051,9 @@ function ScheduleEntryRow({
           {entry.location && <span>• {entry.location}</span>}
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={isAr ? "تعديل" : "Edit"}
-          style={scheduleIconButton}
-        >
-          <Pencil style={{ width: 13, height: 13 }} />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={isAr ? "حذف" : "Delete"}
-          style={{ ...scheduleIconButton, color: "#B42318" }}
-        >
-          <Trash2 style={{ width: 13, height: 13 }} />
-        </button>
-      </div>
     </div>
   );
 }
-
-const scheduleIconButton: React.CSSProperties = {
-  width: 28,
-  height: 28,
-  border: 0,
-  borderRadius: 8,
-  background: "transparent",
-  color: C.subtle,
-  display: "grid",
-  placeItems: "center",
-  cursor: "pointer",
-};
 
 /* ════════════════════════════════════════════════════════════
    UPCOMING DEADLINE ROW

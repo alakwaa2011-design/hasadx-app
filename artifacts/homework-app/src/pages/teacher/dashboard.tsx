@@ -3082,6 +3082,15 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       groupIcon: <Database className="w-4 h-4" />,
       tools: [
         {
+          icon: <Calendar className="w-6 h-6" />,
+          title: isAr ? "إدارة الجدول" : "Schedule Management",
+          desc: isAr
+            ? "أضف حصصك الأسبوعية ومواعيدك بسهولة"
+            : "Add your weekly classes and appointments easily",
+          accent: BRAND.green,
+          href: "/teacher/tools/schedule",
+        },
+        {
           icon: <Database className="w-6 h-6" />,
           title: t.dashboard.toolQuestionBank,
           desc: t.dashboard.toolQuestionBankDesc,
