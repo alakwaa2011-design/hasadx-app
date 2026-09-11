@@ -528,15 +528,13 @@ export default function RocketCreate() {
                      <option value="host_sync">{ar ? "يدوي — سؤال واحد للجميع" : "Teacher sync — one question for all"}</option>
                    </select>
                  </div>
-                 {gradeLevels.length > 0 && (
-                   <div>
+                  <div>
                      <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5" style={{ color: BRAND_PRIMARY }} />{ar ? "الصف المستهدف" : "Target class"}</label>
                      <select value={targetClass} onChange={e => setTargetClass(e.target.value)} className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary">
-                       <option value="">{ar ? "جميع الصفوف" : "All classes"}</option>
+                        <option value="">{ar ? "بدون صف — دخول عام بالرابط" : "No class — anyone with the link"}</option>
                        {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})</option>)}
                      </select>
-                   </div>
-                 )}
+                  </div>
                </div>
              </div>
            </Card>

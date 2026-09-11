@@ -73,11 +73,15 @@ export default function HackSetup() {
   const [targetClass, setTargetClass] = useState<string>(() =>
     getRememberedTargetClass(),
   );
+  const preselectedAssignmentId = Number(
+    typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("assignmentId"),
+  ) || null;
 
-  const filtered = (assignments || []).filter((a: Assignment) => {
-    if (!search) return true;
-    return a.title.toLowerCase().includes(search.toLowerCase());
-  });
+  const filtered = (assignments || [])
+    .filter((a: Assignment) => !search || a.title.toLowerCase().includes(search.toLowerCase()))
+    .sort((a: Assignment, b: Assignment) =>
+      a.id === preselectedAssignmentId ? -1 : b.id === preselectedAssignmentId ? 1 : 0,
+    );
 
   const startFromAssignment = (assignmentId: number) => {
     if (creating) return;
@@ -85,7 +89,7 @@ export default function HackSetup() {
     const socket = getSocket();
     socket.emit(
       "teacher:create-game",
-      { assignmentId, hackMode: true, gameMode: "solo", targetClass: targetClass || undefined },
+      { assignmentId, hackMode: true, gameMode: "solo", targetClasses: targetClass ? [targetClass] : [] },
       (res: { pin?: string; error?: string }) => {
         setCreating(false);
         if (res.error) {
@@ -111,7 +115,7 @@ export default function HackSetup() {
         bankSubject,
         bankLevel,
         bankQuestionCount: bankCount,
-        targetClass: targetClass || undefined,
+        targetClasses: targetClass ? [targetClass] : [],
       },
       (res: { pin?: string; error?: string }) => {
         setCreating(false);
@@ -233,6 +237,7 @@ export default function HackSetup() {
                     onChange={setTargetClass}
                     accent="#4ade80"
                     mono
+                    allowNoClass
                     label={lang === "ar" ? "الصف المستهدف" : "TARGET_CLASS"}
                   />
                 </div>

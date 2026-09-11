@@ -54,6 +54,8 @@ export interface ClassSelectorProps {
   variant?: "default" | "cinematic";
   /** Whether this selector may create classes inline. Default true. */
   allowCreate?: boolean;
+  /** Show an explicit unrestricted/public game option, distinct from all classes. */
+  allowNoClass?: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export function ClassSelector({
   portaled = false,
   variant = "default",
   allowCreate = true,
+  allowNoClass = false,
 }: ClassSelectorProps) {
   const cinematic = variant === "cinematic";
   const { lang } = useI18n();
@@ -92,6 +95,7 @@ export function ClassSelector({
     ? values
     : (typeof value === "string" && value ? [value] : []);
   const allClassesSelected = selectedValues.includes(ALL_CLASSES_VALUE);
+  const noClassSelected = allowNoClass && selectedValues.length === 0;
   const excludedClassNames = selectedValues
     .filter((value) => value.startsWith(EXCLUDED_CLASS_PREFIX))
     .map((value) => value.slice(EXCLUDED_CLASS_PREFIX.length));
@@ -191,7 +195,7 @@ export function ClassSelector({
       ? selectedValues.includes(exclusionValue)
         ? selectedValues.filter((item) => item !== exclusionValue)
         : [...selectedValues, exclusionValue]
-      : selectedValues.includes(name)
+       : selectedValues.includes(name)
           ? selectedValues.filter((item) => item !== name)
           : [...selectedValues, name];
     setMultipleValues(next);
@@ -225,6 +229,16 @@ export function ClassSelector({
       return;
     }
     setMultipleValues(allClassesSelected ? [] : [ALL_CLASSES_VALUE]);
+  }
+
+  function selectNoClass() {
+    if (multiple) {
+      setMultipleValues([]);
+      setOpen(false);
+      setAdding(false);
+      return;
+    }
+    pick("");
   }
 
   async function createClass() {
@@ -261,9 +275,12 @@ export function ClassSelector({
   const fontClass = mono ? "font-mono" : "";
   const labelText = label ?? (ar ? "اختر الصف" : "Choose class");
   const allLabel = ar ? "كل الصفوف" : "All classes";
+  const noClassLabel = ar ? "بدون صف — دخول عام بالرابط" : "No class — anyone with the link";
   const chooseLabel = ar ? "اختر صفوفًا" : "Choose classes";
   const display = multiple
-    ? allClassesSelected
+    ? noClassSelected
+      ? noClassLabel
+      : allClassesSelected
       ? excludedClassNames.length > 0
         ? (ar ? `كل الصفوف باستثناء ${excludedClassNames.length}` : `All except ${excludedClassNames.length}`)
         : allLabel
@@ -272,7 +289,7 @@ export function ClassSelector({
         : selectedValues.length === 1
           ? selectedValues[0]
           : (ar ? `${selectedValues.length} صفوف محددة` : `${selectedValues.length} classes selected`)
-    : (typeof value === "string" ? value : "") || allLabel;
+    : (typeof value === "string" ? value : "") || (allowNoClass ? noClassLabel : allLabel);
 
   const grouped = (() => {
     const map = new Map<string, TeacherClass[]>();
@@ -308,7 +325,22 @@ export function ClassSelector({
       }}
     >
       <div className="overflow-y-auto" style={{ maxHeight: 260 }}>
-        <button
+        {allowNoClass && (
+          <button
+            type="button"
+            onClick={selectNoClass}
+            data-testid="button-select-no-class"
+            aria-pressed={noClassSelected}
+            className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
+              cinematic ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/16 hover:text-white" : "px-3 py-2 text-white/85 hover:bg-white/5"
+            } ${cinematic && noClassSelected ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
+          >
+            {noClassSelected && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
+            <span className={noClassSelected ? "font-extrabold" : ""}>{noClassLabel}</span>
+          </button>
+        )}
+
+        {(!allowNoClass || multiple) && <button
           type="button"
           onClick={selectAllClasses}
           data-testid={multiple ? "button-select-all-classes" : undefined}
@@ -318,8 +350,8 @@ export function ClassSelector({
           } ${cinematic && (multiple ? allClassesSelected : value === "") ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
         >
           {((multiple && allClassesSelected) || (!multiple && value === "")) && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
-          <span className={value === "" ? "font-extrabold" : ""}>{allLabel}</span>
-        </button>
+          <span className={allClassesSelected ? "font-extrabold" : ""}>{allLabel}</span>
+        </button>}
 
         {loading ? (
           <div className="flex items-center justify-center py-4 text-white/50">

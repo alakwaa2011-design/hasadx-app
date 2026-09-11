@@ -7,33 +7,37 @@ interface WameethLaunchProps {
 }
 
 export function WameethLaunch({ status = "idle", variant = "compact" }: WameethLaunchProps) {
-  const isLarge = variant === "large";
-  
   return (
-    <div className={`${styles.launchContainer} ${styles[`variant-${variant}`]} ${styles[`status-${status}`]}`} aria-hidden="true">
+    <div
+      className={`${styles.launchContainer} ${styles[`variant-${variant}`]} ${styles[`status-${status}`]}`}
+      aria-hidden="true"
+    >
       <div className={styles.scene}>
-        {/* Layer 1: Ambient deep glow */}
         <div className={styles.glowBackdrop} />
 
-        {/* Layer 2: Fast horizontal light streaks (race/action) */}
-        <div className={styles.streaksContainer}>
-          <div className={styles.streakTop} />
-          <div className={styles.streakMiddle} />
-          <div className={styles.streakBottom} />
+        <div className={`${styles.speedWing} ${styles.speedWingStart}`}>
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className={`${styles.speedWing} ${styles.speedWingEnd}`}>
+          <span />
+          <span />
+          <span />
         </div>
 
-        {/* Layer 3: Main typographic centerpiece */}
-        <motion.div 
+        <motion.div
           className={styles.typographyContainer}
-          initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+          initial={{ opacity: 0, scale: 0.88, filter: "blur(8px)" }}
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* Animated Gold/Sheen Text */}
-          <h2 className={styles.titleText}>
-            وميض الانطلاق
-          </h2>
+          <span className={styles.lightWash} />
+          <h2 className={styles.titleText}>وميض</h2>
         </motion.div>
+
+        <div className={styles.speedCutsStart}><span /><span /></div>
+        <div className={styles.speedCutsEnd}><span /><span /></div>
       </div>
     </div>
   );

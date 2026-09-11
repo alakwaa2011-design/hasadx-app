@@ -560,6 +560,7 @@ export default function MillionSetup() {
                       value={targetClass}
                       onChange={setTargetClass}
                       accent="#fbbf24"
+                      allowNoClass
                     />
                   </div>
                 )}

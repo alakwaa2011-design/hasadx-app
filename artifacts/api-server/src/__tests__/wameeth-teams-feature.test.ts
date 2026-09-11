@@ -9,6 +9,7 @@ import {
   resolveSoloTargetClasses,
   deriveWameethTeams,
   requiresRosterBinding,
+  resolveLiveGameClassOverride,
 } from "../game/socket-handlers";
 import {
   assignTeamsAlphabetically,
@@ -43,6 +44,15 @@ describe("Wameeth teams pure validation", () => {
       .toEqual(owned.filter(name => !["Class 2", "Class 4"].includes(name)));
     expect(resolveSoloTargetClasses(["Class 1", "Class 2", "Class 2", " Class 1 "], owned).classes)
       .toEqual(["Class 1", "Class 2"]);
+  });
+
+  it("lets an explicit empty game selection clear classes inherited from an assignment", () => {
+    expect(resolveLiveGameClassOverride("Class A", ["Class A"], [], true))
+      .toEqual({ targetClass: null, targetClasses: null });
+    expect(resolveLiveGameClassOverride("Class A", ["Class A"], [], false))
+      .toEqual({ targetClass: "Class A", targetClasses: ["Class A"] });
+    expect(resolveLiveGameClassOverride("Class A", ["Class A"], ["Class B"], true))
+      .toEqual({ targetClass: "Class B", targetClasses: ["Class B"] });
   });
 
   it("rejects unknown, malformed, and over-cap solo selections", () => {

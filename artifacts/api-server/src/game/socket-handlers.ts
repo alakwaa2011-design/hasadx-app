@@ -88,6 +88,24 @@ export function normalizeTargetClasses(values: unknown): string[] {
     .map(value => value.trim()).filter(value => value && value !== "__all_classes__" && !value.startsWith("__excluded_class__"))));
 }
 
+export function resolveLiveGameClassOverride(
+  inheritedTargetClass: string | null,
+  inheritedTargetClasses: string[] | null,
+  requestedClasses: string[],
+  hasExplicitSelection: boolean,
+): { targetClass: string | null; targetClasses: string[] | null } {
+  if (!hasExplicitSelection) {
+    return {
+      targetClass: inheritedTargetClass,
+      targetClasses: inheritedTargetClasses,
+    };
+  }
+  return {
+    targetClass: requestedClasses[0] ?? null,
+    targetClasses: requestedClasses.length > 0 ? requestedClasses : null,
+  };
+}
+
 export function validateExplicitTargetClasses(values: unknown): { valid: boolean; classes: string[]; error?: string } {
   if (!Array.isArray(values)) return { valid: true, classes: [] };
   if (values.some(value => value === "__all_classes__" || (typeof value === "string" && value.startsWith("__excluded_class__")))) {
@@ -1000,6 +1018,9 @@ export function setupGameSocket(io: Server) {
         const requestedInput = Array.isArray(clientTargetClasses)
           ? clientTargetClasses
           : (trimmedClientClass ? [trimmedClientClass] : []);
+        const hasExplicitClientClassSelection =
+          Array.isArray(clientTargetClasses) ||
+          Object.prototype.hasOwnProperty.call(data, "targetClass");
         let requestedClasses: string[];
         if (gameMode === "solo") {
           const result = resolveSoloTargetClasses(requestedInput, ownedNames);
@@ -1150,14 +1171,14 @@ export function setupGameSocket(io: Server) {
         // Teacher-supplied class on the live-game setup page wins over whatever
         // the assignment carried (they may be launching the same assignment for
         // a different class today).
-        if (trimmedClientClass) {
-          resolvedTargetClass = trimmedClientClass;
-          resolvedTargetClasses = [trimmedClientClass];
-        }
-        if (requestedClasses.length > 0) {
-          resolvedTargetClasses = requestedClasses;
-          resolvedTargetClass = requestedClasses[0];
-        }
+        const resolvedClassOverride = resolveLiveGameClassOverride(
+          resolvedTargetClass,
+          resolvedTargetClasses,
+          requestedClasses,
+          hasExplicitClientClassSelection,
+        );
+        resolvedTargetClass = resolvedClassOverride.targetClass;
+        resolvedTargetClasses = resolvedClassOverride.targetClasses;
         const teamConfig = deriveWameethTeams(gameMode, resolvedTargetClasses, teamCount, customTeamNames);
         const { classTeams, effectiveTeamCount, effectiveTeamNames } = teamConfig;
 

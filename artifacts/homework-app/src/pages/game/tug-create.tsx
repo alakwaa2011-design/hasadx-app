@@ -555,9 +555,8 @@ export default function TugCreate() {
                 </div>
               </div>
 
-              {/* Target class — only when grades exist */}
-              {gradeLevels.length > 0 && (
-                <div className="flex items-center justify-between">
+              {/* Target class */}
+              <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-gray-400" />
                     <span className="text-sm font-bold text-gray-700">{ar ? "الصف المستهدف" : "Target class"}</span>
@@ -565,15 +564,14 @@ export default function TugCreate() {
                   <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
                     className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 outline-none ms-3"
                     style={{ minWidth: 130 }}>
-                    <option value="">{ar ? "— جميع الصفوف —" : "— All —"}</option>
+                    <option value="">{ar ? "بدون صف — دخول عام بالرابط" : "No class — anyone with the link"}</option>
                     {gradeLevels.map(g => (
                       <option key={g.gradeLevel} value={g.gradeLevel}>
                         {g.gradeLevel} ({g.count})
                       </option>
                     ))}
                   </select>
-                </div>
-              )}
+              </div>
             </motion.div>
 
             <motion.div

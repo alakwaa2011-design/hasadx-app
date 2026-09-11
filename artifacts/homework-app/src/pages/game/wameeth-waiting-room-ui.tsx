@@ -1453,6 +1453,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                       accent={P.gold}
                       label={isAr ? "اختياري: اختر صفاً واحداً أو صفين إلى 6 صفوف" : "Optional: choose 1 or 2 to 6 classes"}
                       allowCreate={false}
+                      allowNoClass
                       portaled
                       variant="cinematic"
                     />
@@ -1466,6 +1467,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                       accent={P.gold}
                       label={isAr ? "اختر صفاً أو أكثر (اختياري، أو الكل)" : "Choose one or more classes (optional, or all)"}
                       allowCreate={false}
+                      allowNoClass
                       portaled
                       variant="cinematic"
                     />

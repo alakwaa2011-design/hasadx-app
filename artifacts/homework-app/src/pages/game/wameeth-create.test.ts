@@ -27,11 +27,11 @@ describe("Wameedh play mode ordering", () => {
 });
 
 describe("Wameeth class-selection payload", () => {
-  it("preserves solo multi-selection directives and legacy unrestricted mode", () => {
+  it("preserves solo multi-selection directives and sends an explicit unrestricted selection", () => {
     expect(buildWameethClassPayload("solo", ["A", "B", "__all_classes__"]).targetClasses)
       .toEqual(["A", "B", "__all_classes__"]);
-    expect(buildWameethClassPayload("solo", [], "Legacy").targetClass).toBe("Legacy");
-    expect(buildWameethClassPayload("solo", [], "").targetClass).toBeUndefined();
+    expect(buildWameethClassPayload("solo", []).targetClasses).toEqual([]);
+    expect(buildWameethClassPayload("solo", []).targetClass).toBeUndefined();
   });
 
   it("retains the teams two-to-six constraint while solo accepts many", () => {

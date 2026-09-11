@@ -653,22 +653,7 @@ export default function TeacherDashboard() {
       return;
     }
     if (choice === "hack") {
-      setCreatingGameForId(id);
-      const socket = getSocket();
-      const remembered = getRememberedTargetClass();
-      socket.emit(
-        "teacher:create-game",
-        { assignmentId: id, hackMode: true, gameMode: "solo", targetClass: remembered || undefined },
-        (res: { pin?: string; error?: string }) => {
-          setCreatingGameForId(null);
-          if (res.error) {
-            toast.error(res.error);
-            disconnectSocket();
-            return;
-          }
-          setLocation(`/teacher/game/${res.pin}`);
-        },
-      );
+      setLocation(`/game/hack?assignmentId=${id}`);
       return;
     }
     if (choice === "hotseat") {

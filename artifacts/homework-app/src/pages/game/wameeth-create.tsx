@@ -76,13 +76,13 @@ type PlayMode = "solo" | "teams" | "classroom" | "independent";
 export function buildWameethClassPayload(
   mode: "solo" | "teams",
   values: string[],
-  legacyTargetClass = "",
 ) {
+  const noClassSelected = values.length === 0;
   const targetClasses = Array.from(new Set(values.filter(value => typeof value === "string" && value.trim()).map(value => value.trim())));
   const concrete = targetClasses.filter(name => name !== "__all_classes__" && !name.startsWith("__excluded_class__:"));
   return {
-    targetClass: mode === "solo" && targetClasses.length === 0 ? (legacyTargetClass || undefined) : undefined,
-    targetClasses: targetClasses.length ? targetClasses : undefined,
+    targetClass: undefined,
+    targetClasses: noClassSelected ? [] : (targetClasses.length ? targetClasses : undefined),
     concreteTargetClasses: concrete,
     teamsValid: mode !== "teams" || concrete.length === 0 || (concrete.length >= 2 && concrete.length <= 6),
   };
@@ -137,8 +137,10 @@ export default function WameethCreate() {
   const [mode, setMode] = useState<PlayMode | null>("classroom");
   const [teamCount, setTeamCount] = useState(2);
   const [customTeamNames, setCustomTeamNames] = useState<string[]>(["", "", "", "", "", ""]);
-  const [targetClass, setTargetClass] = useState<string>(() => getRememberedTargetClass());
-  const [targetClasses, setTargetClasses] = useState<string[]>([]);
+  const [targetClasses, setTargetClasses] = useState<string[]>(() => {
+    const remembered = getRememberedTargetClass();
+    return remembered ? [remembered] : [];
+  });
   const [studentTeamChoiceEnabled, setStudentTeamChoiceEnabled] = useState(false);
   const [starting, setStarting] = useState(false);
 
@@ -191,6 +193,10 @@ export default function WameethCreate() {
       const res = await fetch(`${API}/api/assignments/${a.id}`, { credentials: "include" });
       if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
       const data = await res.json();
+      const assignmentTargetClasses = Array.isArray(data.targetClasses)
+        ? data.targetClasses.filter((name: unknown): name is string => typeof name === "string" && !!name.trim())
+        : (typeof data.targetClass === "string" && data.targetClass.trim() ? [data.targetClass.trim()] : []);
+      setTargetClasses(assignmentTargetClasses);
       const loaded = ((data.questions || []) as any[])
         .map(mapBackendQuestionToWameethQuestion)
         .filter((q): q is Question => q !== null);
@@ -367,9 +373,19 @@ export default function WameethCreate() {
             ...Array<string>(6 - savedCustomTeamNames.length).fill(""),
           ]);
         }
-        if (typeof savedSettings.targetClass === "string") setTargetClass(savedSettings.targetClass);
         if (Array.isArray(savedSettings.targetClasses)) {
-          setTargetClasses(savedSettings.targetClasses.filter((name): name is string => typeof name === "string"));
+          const restoredClasses = savedSettings.targetClasses.filter((name): name is string => typeof name === "string" && !!name.trim());
+          if (restoredClasses.length > 0) {
+            setTargetClasses(restoredClasses);
+          } else if (typeof savedSettings.targetClass === "string" && savedSettings.targetClass.trim()) {
+            setTargetClasses([savedSettings.targetClass.trim()]);
+          } else {
+            setTargetClasses([]);
+          }
+        } else if (typeof savedSettings.targetClass === "string" && savedSettings.targetClass.trim()) {
+          setTargetClasses([savedSettings.targetClass.trim()]);
+        } else {
+          setTargetClasses([]);
         }
         toast.success(ar ? "تم تحميل نشاط اللعبة المحفوظ" : "Saved game activity loaded");
       } catch {
@@ -473,7 +489,7 @@ export default function WameethCreate() {
       return;
     }
     const classPayload = mode === "solo" || mode === "teams"
-      ? buildWameethClassPayload(mode, targetClasses, targetClass)
+      ? buildWameethClassPayload(mode, targetClasses)
       : { targetClasses: undefined, targetClass: undefined, concreteTargetClasses: [], teamsValid: true };
     const { targetClasses: selectedTargetClasses, concreteTargetClasses } = classPayload;
     if (mode === "teams" && concreteTargetClasses.length > 6) {
@@ -1145,6 +1161,7 @@ export default function WameethCreate() {
                 onValuesChange={setTargetClasses}
                 accent={mode === "teams" ? "#a855f7" : "#3b82f6"}
                 allowCreate={false}
+                allowNoClass
                 label={mode === "solo"
                   ? (ar ? "الصفوف المستهدفة (اختياري — صف واحد أو أكثر، مجموعة أو الكل)" : "Target classes (optional — one or more, a group, or all)")
                   : undefined}
