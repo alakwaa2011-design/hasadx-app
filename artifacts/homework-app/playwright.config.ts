@@ -134,6 +134,17 @@ export default defineConfig({
       },
     },
     {
+      name: "desktop-class-colors",
+      testMatch: /class-colors\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
       name: "desktop-worksheet-pdf",
       testMatch: /(worksheet-pdf|lesson-plan-word)\.spec\.ts/,
       use: {
