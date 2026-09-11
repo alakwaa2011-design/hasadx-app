@@ -1199,9 +1199,6 @@ export default function ScheduleManagementPage() {
              </div>
            </div>
 
-          {/* Timer & Alerts Section */}
-          <TimerAndAlertsSection entries={entries} isAr={isAr} preferences={preferences} updatePreferences={updatePreferences} />
-
           {/* Main Content Area */}
           <div className="bg-card rounded-[2rem] border border-border/60 shadow-sm p-4 sm:p-6 md:p-8 relative min-h-[400px]">
             {scheduleQuery.isLoading || (scheduleQuery.isError && scheduleQuery.isFetching) ? (
@@ -1651,6 +1648,9 @@ export default function ScheduleManagementPage() {
               </div>
             )}
           </div>
+
+          {/* Timer & Alerts Section */}
+          <TimerAndAlertsSection entries={entries} isAr={isAr} preferences={preferences} updatePreferences={updatePreferences} />
         </div>
       </div>
 
