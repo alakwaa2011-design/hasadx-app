@@ -95,3 +95,4 @@
 - [Anonymous assignment attempts](anonymous-assignment-attempts.md) — without student accounts, extra attempts are assignment-wide but enforced per device with atomic server locks.
 - [Sparse teacher schedules](sparse-teacher-schedules.md) — missing lesson numbers represent valid free periods; preserve them during image import instead of renumbering or inventing rows.
 - [HEIC schedule imports](heic-schedule-imports.md) — server Sharp recognizes HEIF containers but lacks HEVC decoding; convert HEIC lazily in the browser before upload.
+- [Teacher schedule appearance](teacher-schedule-appearance.md) — keep the original weekly grid as default; alternate table designs are teacher-selectable options, not replacements.

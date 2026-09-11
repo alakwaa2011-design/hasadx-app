@@ -1,1 +1,0 @@
-import{aY as o}from"./index-R84-C6FD.js";const t=[["path",{d:"m9 18 6-6-6-6",key:"mthhwq"}]],c=o("chevron-right",t);export{c as C};

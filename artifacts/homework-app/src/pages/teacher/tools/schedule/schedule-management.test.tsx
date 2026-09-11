@@ -281,12 +281,74 @@ describe("schedule management tool", () => {
     expect(bulkMutate).not.toHaveBeenCalled();
   });
 
+  it("keeps the original grid style by default and saves another teacher choice", async () => {
+    scheduleRows = [
+      { id: 20, kind: "weekly", title: "رياضيات", dayOfWeek: 0, lessonNumber: 1, startTime: "08:00", endTime: "09:00" },
+    ];
+    await renderPage();
+
+    expect(document.querySelector('[data-testid="schedule-week-grid"]')?.getAttribute("data-table-theme"))
+      .toBe("classic");
+    expect(document.querySelector('[data-testid="schedule-week-grid"] table')?.getAttribute("data-table-direction"))
+      .toBe("rtl");
+
+    await click("button-schedule-theme-soft");
+    await click("button-schedule-direction-ltr");
+
+    expect(document.querySelector('[data-testid="schedule-week-grid"]')?.getAttribute("data-table-theme"))
+      .toBe("soft");
+    expect(localStorage.getItem("hasaad_schedule_table_theme_v1_7")).toBe("soft");
+    expect(document.querySelector('[data-testid="schedule-week-grid"] table')?.getAttribute("data-table-direction"))
+      .toBe("ltr");
+    expect(localStorage.getItem("hasaad_schedule_table_direction_v1_7")).toBe("ltr");
+  });
+
+  it("shows three calm sound choices in the timer settings", () => {
+    const soundSelect = document.querySelector('[data-testid="select-schedule-alert-sound"]') as HTMLSelectElement;
+    expect(soundSelect.options).toHaveLength(3);
+    expect(Array.from(soundSelect.options).map((option) => option.textContent)).toEqual([
+      "نسمة هادئة",
+      "نقرة خشبية",
+      "رنين دافئ",
+    ]);
+    const endAlertSelect = document.querySelector('[data-testid="select-schedule-end-alert-minutes"]') as HTMLSelectElement;
+    expect(endAlertSelect.value).toBe("5");
+    expect(Array.from(endAlertSelect.options).map((option) => option.value)).toEqual(["0", "1", "2", "5", "10", "15"]);
+  });
+
+  it("shows the active manual-schedule day clearly and sends a selected lesson color", async () => {
+    createMutate.mockImplementation(({ data }, { onSuccess }) => {
+      expect(data).toEqual(expect.objectContaining({
+        kind: "weekly",
+        color: "#D1FAE5",
+        startTime: "08:00",
+      }));
+      onSuccess();
+    });
+
+    await click("button-add-bulk-schedule");
+    await click("button-bulk-day-1");
+    expect(document.body.textContent).toContain("تعدّل الآن: الاثنين");
+    await act(async () => {
+      button("button-add-bulk-schedule").closest('[role="dialog"]')
+        ?.querySelector<HTMLButtonElement>('[aria-label="Close"]')
+        ?.click();
+    });
+
+    await click("button-add-schedule-entry");
+    await typeInto("input-schedule-start-time", "08:00");
+    await click("button-schedule-color-0");
+    await click("button-save-schedule-entry");
+
+    expect(createMutate).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves sparse lessons, a non-lesson period, and an appointment after reopening", async () => {
     bulkMutate.mockImplementation(({ data }, { onSuccess }) => {
       expect(data.daySchedules).toEqual([{
         dayOfWeek: 5,
         lessons: [
-          expect.objectContaining({ lessonNumber: 1, title: "رياضيات" }),
+          expect.objectContaining({ lessonNumber: 1, title: "رياضيات", color: "#D1FAE5" }),
           expect.objectContaining({ lessonNumber: 3, title: "علوم" }),
         ],
         breaks: [{
@@ -326,6 +388,7 @@ describe("schedule management tool", () => {
     await click("button-remove-bulk-lesson-2");
     await typeInto("input-bulk-lesson-title-1", "رياضيات");
     await typeInto("input-bulk-lesson-title-2", "علوم");
+    await click("button-bulk-lesson-color-1-0");
     await typeInto("input-bulk-lesson-start-1", "08:00");
     await typeInto("input-bulk-lesson-end-1", "09:00");
     await typeInto("input-bulk-lesson-start-2", "10:00");

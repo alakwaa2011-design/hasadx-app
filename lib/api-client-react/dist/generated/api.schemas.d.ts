@@ -22,6 +22,8 @@ export interface TeacherScheduleEntry {
     title: string;
     subject?: string | null;
     className?: string | null;
+    /** @pattern ^#[0-9A-Fa-f]{6}$ */
+    color?: string | null;
     /**
        * @minimum 0
        * @maximum 6
@@ -65,6 +67,8 @@ export interface TeacherScheduleEntryInput {
     subject?: string | null;
     /** @maxLength 100 */
     className?: string | null;
+    /** @pattern ^#[0-9A-Fa-f]{6}$ */
+    color?: string | null;
     /**
        * @minimum 0
        * @maximum 6
@@ -106,6 +110,8 @@ export interface TeacherScheduleBulkLessonInput {
     subject?: string | null;
     /** @maxLength 100 */
     className?: string | null;
+    /** @pattern ^#[0-9A-Fa-f]{6}$ */
+    color?: string | null;
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
     startTime: string;
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */

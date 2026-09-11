@@ -3,14 +3,18 @@ import { useCallback, useEffect, useState } from "react";
 export type ScheduleCountdownPreferences = {
   enabled: boolean;
   alertMinutes: number;
+  endAlertMinutes: number;
   soundEnabled: boolean;
+  soundId: "chime" | "wood" | "breeze";
   position: { x: number; y: number } | null;
 };
 
 export const DEFAULT_SCHEDULE_COUNTDOWN_PREFERENCES: ScheduleCountdownPreferences = {
   enabled: true,
   alertMinutes: 5,
+  endAlertMinutes: 5,
   soundEnabled: false,
+  soundId: "chime",
   position: null,
 };
 
@@ -30,7 +34,12 @@ export function useScheduleCountdownPreferences(userId?: number) {
           1,
           Math.min(120, Number(saved.alertMinutes) || DEFAULT_SCHEDULE_COUNTDOWN_PREFERENCES.alertMinutes),
         ),
+        endAlertMinutes: Math.max(
+          0,
+          Math.min(120, Number(saved.endAlertMinutes ?? DEFAULT_SCHEDULE_COUNTDOWN_PREFERENCES.endAlertMinutes)),
+        ),
         soundEnabled: Boolean(saved.soundEnabled),
+        soundId: saved.soundId === "wood" || saved.soundId === "breeze" ? saved.soundId : "chime",
         position: saved.position && Number.isFinite(saved.position.x) && Number.isFinite(saved.position.y)
           ? saved.position
           : null,

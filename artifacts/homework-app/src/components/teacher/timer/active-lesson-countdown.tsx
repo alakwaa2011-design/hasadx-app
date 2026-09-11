@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
-import { Bell, BellOff, CalendarClock, ChevronDown, ChevronUp, Coffee, Pause, Play, Settings2, Timer, X } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronUp, Coffee, Pause, Play, Timer, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListTeacherSchedule, getListTeacherScheduleQueryKey, type TeacherScheduleEntry } from "@workspace/api-client-react";
 import { lessonNumberLabel } from "@/lib/schedule-labels";
 import {
   useScheduleCountdownPreferences,
 } from "@/lib/schedule-countdown-preferences";
-import { initAudioContext, playTimerSound } from "@/lib/timer-sounds";
+import { playTimerSound } from "@/lib/timer-sounds";
 
 function parseClockTime(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
@@ -79,12 +79,8 @@ function ActiveLessonPanel({
   isPaused,
   isBeforeStart,
   isAr,
-  alertMinutes,
-  soundEnabled,
   onTogglePause,
   onHide,
-  onAlertMinutesChange,
-  onSoundEnabledChange,
   onDragStart,
 }: {
   entry: TeacherScheduleEntry;
@@ -93,16 +89,11 @@ function ActiveLessonPanel({
   isPaused: boolean;
   isBeforeStart: boolean;
   isAr: boolean;
-  alertMinutes: number;
-  soundEnabled: boolean;
   onTogglePause: () => void;
   onHide: () => void;
-  onAlertMinutesChange: (minutes: number) => void;
-  onSoundEnabledChange: (enabled: boolean) => void;
   onDragStart: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isBreak = entry.kind === "break";
   const isAppointment = entry.kind === "appointment";
@@ -332,18 +323,7 @@ function ActiveLessonPanel({
 
       {/* Bottom Controls & Progress */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen((open) => !open)}
-            title={isAr ? "إعدادات التنبيه" : "Alert settings"}
-            aria-label={isAr ? "فتح إعدادات التنبيه" : "Open alert settings"}
-            style={{ height: 44, padding: "0 13px", borderRadius: 14, border: "1px solid #D8E4DC", background: settingsOpen ? brandBg : "#fff", color: brandColor, display: "flex", alignItems: "center", gap: 7, cursor: "pointer", fontWeight: 800, fontFamily: "inherit" }}
-          >
-            <Settings2 size={18} />
-            <span>{isAr ? `تنبيه ${alertMinutes} د` : `${alertMinutes} min alert`}</span>
-          </button>
-
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16 }}>
           {!isBeforeStart && <button
             type="button"
             onClick={onTogglePause}
@@ -369,53 +349,6 @@ function ActiveLessonPanel({
             <span>{isPaused ? (isAr ? "متابعة" : "Resume") : (isAr ? "إيقاف" : "Pause")}</span>
           </button>}
         </div>
-
-        {settingsOpen && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0, 1fr) auto",
-              gap: 10,
-              alignItems: "end",
-              padding: 12,
-              marginBottom: 14,
-              borderRadius: 16,
-              border: "1px solid #DDE8E1",
-              background: "#F7FAF8",
-              cursor: "default",
-            }}
-          >
-            <label style={{ display: "grid", gap: 6, color: "#425E52", fontSize: 12, fontWeight: 800 }}>
-              <span>
-                {isAppointment
-                  ? (isAr ? "إظهار العداد قبل الموعد بـ" : "Show before appointment")
-                  : isBreak
-                    ? (isAr ? "إظهار العداد قبل الفترة بـ" : "Show before period")
-                    : (isAr ? "إظهار العداد قبل الحصة بـ" : "Show before lesson")}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  value={alertMinutes}
-                  onChange={(event) => onAlertMinutesChange(Math.max(1, Math.min(120, Number(event.target.value) || 1)))}
-                  style={{ width: 76, height: 36, borderRadius: 10, border: "1px solid #CAD9D0", padding: "0 10px", font: "inherit", color: "#19352A", background: "#fff" }}
-                />
-                <span>{isAr ? "دقيقة" : "minutes"}</span>
-              </div>
-            </label>
-            <button
-              type="button"
-              onClick={() => onSoundEnabledChange(!soundEnabled)}
-              aria-pressed={soundEnabled}
-              style={{ height: 36, borderRadius: 10, border: 0, padding: "0 11px", background: soundEnabled ? brandColor : "#E7EEE9", color: soundEnabled ? "#fff" : "#526A5F", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}
-            >
-              {soundEnabled ? <Bell size={16} /> : <BellOff size={16} />}
-              {soundEnabled ? (isAr ? "الصوت يعمل" : "Sound on") : (isAr ? "بدون صوت" : "Sound off")}
-            </button>
-          </div>
-        )}
 
         <div style={{ height: 8, borderRadius: 99, background: "#E7EEE9", overflow: "hidden" }}>
           <div
@@ -459,6 +392,7 @@ export function GlobalActiveLessonCountdown() {
   const { preferences, setPreferences, updatePreferences } = useScheduleCountdownPreferences(user?.id);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const soundedKeyRef = useRef<string | null>(null);
+  const endSoundedKeyRef = useRef<string | null>(null);
 
   // Hide floating countdown on the schedule page because it's integrated inline there
   const [location] = useLocation();
@@ -501,8 +435,31 @@ export function GlobalActiveLessonCountdown() {
   useEffect(() => {
     if (!preferences.enabled || !activeKey || !isBeforeStart || !preferences.soundEnabled || soundedKeyRef.current === activeKey) return;
     soundedKeyRef.current = activeKey;
-    playTimerSound("chime", 0.55);
-  }, [activeKey, isBeforeStart, preferences.enabled, preferences.soundEnabled]);
+    playTimerSound(preferences.soundId, 0.55);
+  }, [activeKey, isBeforeStart, preferences.enabled, preferences.soundEnabled, preferences.soundId]);
+
+  useEffect(() => {
+    if (
+      !preferences.enabled
+      || !activeKey
+      || isBeforeStart
+      || !preferences.soundEnabled
+      || preferences.endAlertMinutes <= 0
+      || remainingMs <= 0
+      || remainingMs > preferences.endAlertMinutes * 60_000
+      || endSoundedKeyRef.current === activeKey
+    ) return;
+    endSoundedKeyRef.current = activeKey;
+    playTimerSound(preferences.soundId, 0.48);
+  }, [
+    activeKey,
+    isBeforeStart,
+    preferences.enabled,
+    preferences.endAlertMinutes,
+    preferences.soundEnabled,
+    preferences.soundId,
+    remainingMs,
+  ]);
 
   useEffect(() => {
     function keepInsideViewport() {
@@ -570,19 +527,9 @@ export function GlobalActiveLessonCountdown() {
       isPaused={isPaused}
       isBeforeStart={isBeforeStart}
       isAr={isAr}
-      alertMinutes={preferences.alertMinutes}
-      soundEnabled={preferences.soundEnabled}
       onTogglePause={togglePause}
       onHide={() => {
         setHiddenKey(activeKey);
-      }}
-      onAlertMinutesChange={(alertMinutes) => updatePreferences({ alertMinutes })}
-      onSoundEnabledChange={(soundEnabled) => {
-        if (soundEnabled) {
-          initAudioContext();
-          playTimerSound("chime", 0.45);
-        }
-        updatePreferences({ soundEnabled });
       }}
       onDragStart={startDragging}
     />

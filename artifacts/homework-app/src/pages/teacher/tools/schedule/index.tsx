@@ -45,7 +45,7 @@ import {
   type ExtractedScheduleDay,
   type ScheduleFormValues,
 } from "@/lib/schedule-labels";
-import { playTimerSound, initAudioContext } from "@/lib/timer-sounds";
+import { TIMER_SOUNDS, playTimerSound, initAudioContext } from "@/lib/timer-sounds";
 import {
   useScheduleCountdownPreferences,
   type ScheduleCountdownPreferences,
@@ -218,7 +218,7 @@ function TimerAndAlertsSection({
             </span>
           </div>
 
-          <label className="flex items-center gap-2 px-2">
+          <label className="flex items-center gap-2 rounded-xl bg-background/70 px-2 py-1">
             <Bell className="h-4 w-4 text-emerald-600" />
             <span className="whitespace-nowrap text-xs font-bold text-muted-foreground">
               {isAr ? "تنبيه قبل" : "Alert before"}
@@ -240,28 +240,66 @@ function TimerAndAlertsSection({
             <span className="text-xs font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>
           </label>
 
+          <label className="flex items-center gap-2 rounded-xl bg-background/70 px-2 py-1">
+            <Timer className="h-4 w-4 text-amber-600" />
+            <span className="whitespace-nowrap text-xs font-bold text-muted-foreground">
+              {isAr ? "تنبيه قبل الانتهاء" : "Alert before end"}
+            </span>
+            <select
+              value={preferences.endAlertMinutes}
+              onChange={(event) => updatePreferences({ endAlertMinutes: Number(event.target.value) })}
+              className="min-w-[42px] cursor-pointer appearance-none border-none bg-transparent p-0 text-center text-sm font-bold text-foreground focus:ring-0"
+              dir="ltr"
+              aria-label={isAr ? "مدة التنبيه قبل انتهاء الحصة أو الموعد" : "Alert lead time before lesson or appointment ends"}
+              data-testid="select-schedule-end-alert-minutes"
+            >
+              <option value={0}>{isAr ? "لا" : "Off"}</option>
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+            </select>
+            {preferences.endAlertMinutes > 0 && (
+              <span className="text-xs font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>
+            )}
+          </label>
+
           <div className="hidden h-5 w-px bg-border sm:block" />
 
-          <button
-            type="button"
-            onClick={() => {
-              const next = !preferences.soundEnabled;
-              updatePreferences({ soundEnabled: next });
-              if (next) {
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => updatePreferences({ soundEnabled: !preferences.soundEnabled })}
+              className={`rounded-lg p-1.5 transition-colors ${preferences.soundEnabled ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:bg-muted"}`}
+              title={isAr ? "تنبيه صوتي" : "Sound alert"}
+              aria-label={isAr ? "تشغيل أو إيقاف صوت التنبيه" : "Toggle alert sound"}
+              aria-pressed={preferences.soundEnabled}
+              data-testid="button-schedule-alert-sound"
+            >
+              {preferences.soundEnabled
+                ? <Volume2 className="h-4 w-4" />
+                : <VolumeX className="h-4 w-4" />}
+            </button>
+            <select
+              value={preferences.soundId}
+              onChange={(event) => {
+                const soundId = event.target.value as ScheduleCountdownPreferences["soundId"];
+                updatePreferences({ soundId, soundEnabled: true });
                 initAudioContext();
-                playTimerSound("chime", 0.45);
-              }
-            }}
-            className={`rounded-lg p-1.5 transition-colors ${preferences.soundEnabled ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:bg-muted"}`}
-            title={isAr ? "تنبيه صوتي" : "Sound alert"}
-            aria-label={isAr ? "تشغيل أو إيقاف صوت التنبيه" : "Toggle alert sound"}
-            aria-pressed={preferences.soundEnabled}
-            data-testid="button-schedule-alert-sound"
-          >
-            {preferences.soundEnabled
-              ? <Volume2 className="h-4 w-4" />
-              : <VolumeX className="h-4 w-4" />}
-          </button>
+                playTimerSound(soundId, 0.38);
+              }}
+              className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-bold text-foreground"
+              aria-label={isAr ? "اختيار صوت التنبيه ومعاينته" : "Choose and preview alert sound"}
+              data-testid="select-schedule-alert-sound"
+            >
+              {TIMER_SOUNDS.map((sound) => (
+                <option key={sound.id} value={sound.id}>
+                  {isAr ? sound.labelAr : sound.labelEn}
+                </option>
+              ))}
+            </select>
+          </div>
             </>
           )}
         </div>
@@ -283,13 +321,21 @@ function TimerAndAlertsSection({
 }
 
 const SCHEDULE_COLORS = [
-  { value: "emerald", label: "أخضر", class: "bg-emerald-500", textClass: "text-emerald-900", borderClass: "border-emerald-600" },
-  { value: "amber", label: "أصفر", class: "bg-amber-400", textClass: "text-amber-900", borderClass: "border-amber-500" },
-  { value: "peach", label: "خوخي", class: "bg-orange-300", textClass: "text-orange-900", borderClass: "border-orange-400" },
-  { value: "blue", label: "أزرق", class: "bg-blue-400", textClass: "text-blue-900", borderClass: "border-blue-500" },
-  { value: "purple", label: "بنفسجي", class: "bg-purple-400", textClass: "text-purple-900", borderClass: "border-purple-500" },
-  { value: "pink", label: "وردي", class: "bg-pink-400", textClass: "text-pink-900", borderClass: "border-pink-500" },
-  { value: "gray", label: "رمادي", class: "bg-slate-300", textClass: "text-slate-800", borderClass: "border-slate-400" },
+  { value: "#D1FAE5", label: "أخضر", class: "bg-emerald-100", textClass: "text-emerald-950", borderClass: "border-emerald-300" },
+  { value: "#FEF3C7", label: "أصفر", class: "bg-amber-100", textClass: "text-amber-950", borderClass: "border-amber-300" },
+  { value: "#FFEDD5", label: "خوخي", class: "bg-orange-100", textClass: "text-orange-950", borderClass: "border-orange-300" },
+  { value: "#DBEAFE", label: "أزرق", class: "bg-blue-100", textClass: "text-blue-950", borderClass: "border-blue-300" },
+  { value: "#F3E8FF", label: "بنفسجي", class: "bg-purple-100", textClass: "text-purple-950", borderClass: "border-purple-300" },
+  { value: "#FCE7F3", label: "وردي", class: "bg-pink-100", textClass: "text-pink-950", borderClass: "border-pink-300" },
+  { value: "#F1F5F9", label: "رمادي", class: "bg-slate-100", textClass: "text-slate-900", borderClass: "border-slate-300" },
+];
+
+type ScheduleTableTheme = "classic" | "soft" | "notebook";
+
+const SCHEDULE_TABLE_THEMES = [
+  { id: "classic" as const, ar: "الجدول المترابط", en: "Connected table", swatches: ["#FFFFFF", "#D1FAE5", "#FEF3C7"] },
+  { id: "soft" as const, ar: "بطاقات هادئة", en: "Soft cards", swatches: ["#F8FAFC", "#DBEAFE", "#F3E8FF"] },
+  { id: "notebook" as const, ar: "دفتر", en: "Notebook", swatches: ["#FFFBEB", "#FFEDD5", "#E7E5E4"] },
 ];
 
 const C = {
@@ -441,10 +487,38 @@ export default function ScheduleManagementPage() {
   const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
   const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("week-grid");
+  const [tableTheme, setTableTheme] = useState<ScheduleTableTheme>("classic");
+  const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const saved = localStorage.getItem(`hasaad_schedule_table_theme_v1_${user.id}`);
+    if (saved === "classic" || saved === "soft" || saved === "notebook") {
+      setTableTheme(saved);
+    }
+    const savedDirection = localStorage.getItem(`hasaad_schedule_table_direction_v1_${user.id}`);
+    if (savedDirection === "rtl" || savedDirection === "ltr") {
+      setTableDirection(savedDirection);
+    }
+  }, [user?.id]);
+
+  function chooseTableTheme(theme: ScheduleTableTheme) {
+    setTableTheme(theme);
+    if (user?.id) {
+      localStorage.setItem(`hasaad_schedule_table_theme_v1_${user.id}`, theme);
+    }
+  }
+
+  function chooseTableDirection(direction: "rtl" | "ltr") {
+    setTableDirection(direction);
+    if (user?.id) {
+      localStorage.setItem(`hasaad_schedule_table_direction_v1_${user.id}`, direction);
+    }
+  }
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
@@ -823,6 +897,7 @@ export default function ScheduleManagementPage() {
       title: entry.title,
       subject: entry.subject || "",
       className: entry.className || "",
+      color: entry.color || "",
       dayOfWeek: entry.dayOfWeek == null ? String(new Date().getDay()) : String(entry.dayOfWeek),
       lessonNumber: entry.lessonNumber == null ? "1" : String(entry.lessonNumber),
       breakAfterLesson: entry.breakAfterLesson == null ? "1" : String(entry.breakAfterLesson),
@@ -847,6 +922,7 @@ export default function ScheduleManagementPage() {
       title: values.title.trim() || fallbackTitle,
       subject: values.subject.trim() || null,
       className: values.className.trim() || null,
+      color: values.kind === "weekly" ? values.color || null : null,
       dayOfWeek: values.kind === "appointment" ? null : Number(values.dayOfWeek),
       lessonNumber: values.kind === "weekly" ? Number(values.lessonNumber) : null,
       breakAfterLesson: values.kind === "break" ? Number(values.breakAfterLesson) : null,
@@ -1288,21 +1364,101 @@ export default function ScheduleManagementPage() {
                 )}
 
                 {viewMode === "week-grid" && (
-                  <div data-testid="schedule-week-grid" className="w-full overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div
+                    data-testid="schedule-week-grid"
+                    data-table-theme={tableTheme}
+                    className={`w-full overflow-x-auto rounded-3xl pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                      tableTheme === "soft"
+                        ? "bg-slate-50/80 p-3 dark:bg-slate-900/30"
+                        : tableTheme === "notebook"
+                          ? "bg-amber-50/70 p-3 dark:bg-stone-900/30"
+                          : ""
+                    }`}
+                  >
+                    <div className="sticky start-0 mb-3 flex min-w-max flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-card/90 p-2 shadow-sm backdrop-blur" data-testid="schedule-table-theme-picker">
+                      <span className="me-1 text-xs font-black text-muted-foreground">
+                        {isAr ? "مظهر الجدول" : "Table style"}
+                      </span>
+                      {SCHEDULE_TABLE_THEMES.map((theme) => (
+                        <button
+                          key={theme.id}
+                          type="button"
+                          onClick={() => chooseTableTheme(theme.id)}
+                          aria-pressed={tableTheme === theme.id}
+                          data-testid={`button-schedule-theme-${theme.id}`}
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                            tableTheme === theme.id
+                              ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
+                              : "border-border bg-card text-muted-foreground hover:border-emerald-300"
+                          }`}
+                        >
+                          <span className="flex -space-x-1 rtl:space-x-reverse" aria-hidden="true">
+                            {theme.swatches.map((swatch) => (
+                              <span key={swatch} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: swatch }} />
+                            ))}
+                          </span>
+                          {isAr ? theme.ar : theme.en}
+                        </button>
+                      ))}
+                      <span className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
+                      <span className="text-xs font-black text-muted-foreground">
+                        {isAr ? "بداية الجدول" : "Table direction"}
+                      </span>
+                      <div className="flex rounded-xl bg-muted/50 p-1">
+                        <button
+                          type="button"
+                          onClick={() => chooseTableDirection("rtl")}
+                          aria-pressed={tableDirection === "rtl"}
+                          data-testid="button-schedule-direction-rtl"
+                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                            tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
+                          }`}
+                        >
+                          {isAr ? "الأحد من اليمين" : "Sunday on right"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => chooseTableDirection("ltr")}
+                          aria-pressed={tableDirection === "ltr"}
+                          data-testid="button-schedule-direction-ltr"
+                          className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                            tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
+                          }`}
+                        >
+                          {isAr ? "الأحد من اليسار" : "Sunday on left"}
+                        </button>
+                      </div>
+                    </div>
                     {weeklyGroups.length > 0 ? (
                       <table
-                        className="w-full table-fixed border-separate border-spacing-2 overflow-hidden bg-transparent text-center"
+                        dir={tableDirection}
+                        data-table-direction={tableDirection}
+                        className={`w-full table-fixed overflow-hidden text-center ${
+                          tableTheme === "classic"
+                            ? "border-collapse rounded-xl border border-border"
+                            : tableTheme === "notebook"
+                              ? "border-separate border-spacing-1"
+                              : "border-separate border-spacing-2"
+                        }`}
                         style={{ minWidth: `${Math.max(760, (paperLessonNumbers.length + 2) * 112)}px` }}
                       >
                         <thead>
                           <tr>
-                            <th className="sticky start-0 z-20 w-28 px-2 py-3"></th>
+                            <th className={`sticky start-0 z-20 w-28 px-2 py-3 ${tableTheme === "classic" ? "border border-border bg-emerald-800" : ""}`}></th>
                             {paperLessonNumbers.map((lessonNumber) => (
-                              <th key={lessonNumber} className="px-2 py-3 text-sm font-black text-emerald-900/60 dark:text-emerald-100/60 uppercase tracking-wider">
+                              <th key={lessonNumber} className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                                tableTheme === "classic"
+                                  ? "border border-border bg-emerald-800 text-white"
+                                  : "text-emerald-900/60 dark:text-emerald-100/60"
+                              }`}>
                                 {lessonNumberLabel(lessonNumber, isAr)}
                               </th>
                             ))}
-                            <th className="px-2 py-3 text-sm font-black text-amber-900/60 dark:text-amber-100/60 uppercase tracking-wider">
+                            <th className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                              tableTheme === "classic"
+                                ? "border border-border bg-amber-700 text-white"
+                                : "text-amber-900/60 dark:text-amber-100/60"
+                            }`}>
                               {isAr ? "فترات أخرى" : "Other periods"}
                             </th>
                           </tr>
@@ -1314,8 +1470,14 @@ export default function ScheduleManagementPage() {
                             );
                             return (
                               <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top group">
-                                <th className="sticky start-0 z-10 p-2">
-                                  <div className="h-full min-h-[5rem] w-full bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-sm font-black text-emerald-900 dark:text-emerald-300 border border-emerald-100/50 dark:border-emerald-500/10 shadow-sm shadow-emerald-900/5 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 transition-colors">
+                                <th className={`sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}>
+                                   <div className={`h-full min-h-[5rem] w-full flex items-center justify-center text-sm font-black transition-colors ${
+                                     tableTheme === "soft"
+                                       ? "rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                       : tableTheme === "notebook"
+                                         ? "rounded-lg border border-amber-200 bg-amber-100/80 text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+                                         : "rounded-none border-0 bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-300"
+                                   }`}>
                                     {isAr ? day.ar : day.en}
                                   </div>
                                 </th>
@@ -1326,8 +1488,14 @@ export default function ScheduleManagementPage() {
                                       (entry.kind === "break" && entry.breakAfterLesson === lessonNumber),
                                   );
                                   return (
-                                    <td key={lessonNumber} className="p-2 relative">
-                                      <div className="flex min-h-[5rem] flex-col gap-2 h-full bg-white dark:bg-black/20 rounded-2xl border border-border/60 p-1.5 shadow-sm">
+                                    <td key={lessonNumber} className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}>
+                                       <div className={`flex min-h-[5rem] h-full flex-col gap-2 border p-1.5 ${
+                                         tableTheme === "soft"
+                                           ? "rounded-2xl border-slate-200 bg-slate-100/80 dark:border-slate-700 dark:bg-slate-800/70"
+                                           : tableTheme === "notebook"
+                                             ? "rounded-lg border-amber-200 bg-white/75 shadow-[inset_0_-1px_0_rgba(120,113,108,.12)] dark:border-stone-700 dark:bg-stone-900/60"
+                                             : "rounded-none border-0 bg-white dark:bg-black/20"
+                                       }`}>
                                         {cellEntries.length === 0 && (
                                           <div className="absolute inset-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
@@ -1367,8 +1535,12 @@ export default function ScheduleManagementPage() {
                                     </td>
                                   );
                                 })}
-                                <td className="p-2 relative">
-                                  <div className="flex min-h-[5rem] flex-col gap-2 h-full bg-amber-50/30 dark:bg-amber-900/10 rounded-2xl border border-amber-100/50 dark:border-amber-900/20 p-1.5 shadow-sm">
+                                <td className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}>
+                                  <div className={`flex min-h-[5rem] h-full flex-col gap-2 p-1.5 ${
+                                    tableTheme === "classic"
+                                      ? "rounded-none border-0 bg-amber-50/60 dark:bg-amber-900/10"
+                                      : "rounded-2xl border border-amber-100/50 bg-amber-50/30 shadow-sm dark:border-amber-900/20 dark:bg-amber-900/10"
+                                  }`}>
                                     {unplacedBreaks.length === 0 && (
                                       <div className="absolute inset-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
@@ -1686,7 +1858,7 @@ export default function ScheduleManagementPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
+                {selectedKind === "weekly" && <FormField
                   control={form.control}
                   name="color"
                   render={({ field }) => (
@@ -1702,11 +1874,12 @@ export default function ScheduleManagementPage() {
                           >
                             {!field.value && <div className="w-2 h-2 rounded-full bg-foreground" />}
                           </button>
-                          {SCHEDULE_COLORS.map(color => (
+                          {SCHEDULE_COLORS.map((color, colorIndex) => (
                             <button
                               key={color.value}
                               type="button"
                               onClick={() => field.onChange(color.value)}
+                              data-testid={`button-schedule-color-${colorIndex}`}
                               className={`w-10 h-10 rounded-full border-2 transition-all flex items-center justify-center ${color.class} ${field.value === color.value ? 'border-foreground shadow-md scale-110' : 'border-transparent hover:scale-105'}`}
                               title={color.label}
                             >
@@ -1717,7 +1890,7 @@ export default function ScheduleManagementPage() {
                       </FormControl>
                     </FormItem>
                   )}
-                />
+                />}
               </div>
               </div>
               <DialogFooter className="shrink-0 border-t pt-3" style={{ borderColor: C.border, background: C.card }} data-testid="schedule-entry-fixed-actions">
@@ -1869,16 +2042,12 @@ export default function ScheduleManagementPage() {
                   </select>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border p-3 overflow-hidden" style={{ borderColor: C.border, background: C.card }}>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeBulkDay}
-                      initial={{ opacity: 0, x: isAr ? 20 : -20, filter: "blur(4px)" }}
-                      animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, x: isAr ? -20 : 20, filter: "blur(4px)" }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-3"
-                    >
+                <motion.div
+                  className="space-y-3 rounded-2xl border p-3"
+                  style={{ borderColor: C.border, background: C.card }}
+                  animate={{ opacity: [0.82, 1], y: [3, 0] }}
+                  transition={{ duration: 0.16 }}
+                >
                       {bulkLessonFields.fields.map((lesson, index) => {
                         const isLowConfidence = lesson.confidence === "low";
 
@@ -2000,13 +2169,14 @@ export default function ScheduleManagementPage() {
                             >
                               {!bulkForm.watch(`lessons.${index}.color`) && <div className="w-1.5 h-1.5 rounded-full bg-foreground" />}
                             </button>
-                            {SCHEDULE_COLORS.map(color => {
+                            {SCHEDULE_COLORS.map((color, colorIndex) => {
                               const selectedColor = bulkForm.watch(`lessons.${index}.color`);
                               return (
                                 <button
                                   key={color.value}
                                   type="button"
                                   onClick={() => bulkForm.setValue(`lessons.${index}.color`, color.value)}
+                                  data-testid={`button-bulk-lesson-color-${index + 1}-${colorIndex}`}
                                   className={`w-6 h-6 rounded-full border flex items-center justify-center ${color.class} ${selectedColor === color.value ? 'border-foreground shadow-sm scale-110' : 'border-transparent hover:scale-110'}`}
                                   title={color.label}
                                 >
@@ -2111,9 +2281,7 @@ export default function ScheduleManagementPage() {
                       </div>
                     );
                   })}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
+                </motion.div>
               </div>
 
               <DialogFooter className="shrink-0 border-t pt-3" style={{ borderColor: C.border, background: C.card }} data-testid="bulk-schedule-fixed-actions">
