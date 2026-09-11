@@ -9,5 +9,6 @@ export type TeacherScheduleEntryInputKind = typeof TeacherScheduleEntryInputKind
 export declare const TeacherScheduleEntryInputKind: {
     readonly weekly: "weekly";
     readonly appointment: "appointment";
+    readonly break: "break";
 };
 //# sourceMappingURL=teacherScheduleEntryInputKind.d.ts.map

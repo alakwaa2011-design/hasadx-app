@@ -76,6 +76,7 @@ async function runSchemaMigrations() {
       CREATE INDEX IF NOT EXISTS teacher_schedule_teacher_date_idx
         ON teacher_schedule(teacher_id, appointment_date);
       ALTER TABLE teacher_schedule ADD COLUMN IF NOT EXISTS lesson_number INTEGER;
+      ALTER TABLE teacher_schedule ADD COLUMN IF NOT EXISTS break_after_lesson INTEGER;
       CREATE TABLE IF NOT EXISTS presentation_outline_jobs (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

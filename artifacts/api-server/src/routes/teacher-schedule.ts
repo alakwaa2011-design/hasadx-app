@@ -9,12 +9,13 @@ const timePattern = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 const scheduleFieldsBase = z.object({
-  kind: z.enum(["weekly", "appointment"]),
+  kind: z.enum(["weekly", "appointment", "break"]),
   title: z.string().trim().min(1).max(160),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
   dayOfWeek: z.number().int().min(0).max(6).nullish(),
   lessonNumber: z.number().int().min(1).max(10).nullish(),
+  breakAfterLesson: z.number().int().min(1).max(9).nullish(),
   appointmentDate: z.string().regex(datePattern).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
@@ -35,6 +36,20 @@ const scheduleFields = scheduleFieldsBase.superRefine((value, ctx) => {
       code: z.ZodIssueCode.custom,
       path: ["lessonNumber"],
       message: "رقم الحصة مطلوب للحصة الأسبوعية",
+    });
+  }
+  if (value.kind === "break" && value.dayOfWeek == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["dayOfWeek"],
+      message: "اليوم مطلوب لفترة الاستراحة",
+    });
+  }
+  if (value.kind === "break" && value.breakAfterLesson == null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["breakAfterLesson"],
+      message: "حدد الحصة التي تسبق فترة الاستراحة",
     });
   }
   if (value.kind === "appointment" && !value.appointmentDate) {
@@ -71,8 +86,9 @@ function normalizeValues(value: z.infer<typeof scheduleFields>) {
     className: value.className || null,
     location: value.location || null,
     notes: value.notes || null,
-    dayOfWeek: value.kind === "weekly" ? value.dayOfWeek ?? null : null,
+    dayOfWeek: value.kind === "appointment" ? null : value.dayOfWeek ?? null,
     lessonNumber: value.kind === "weekly" ? value.lessonNumber ?? null : null,
+    breakAfterLesson: value.kind === "break" ? value.breakAfterLesson ?? null : null,
     appointmentDate: value.kind === "appointment" ? value.appointmentDate ?? null : null,
     endTime: value.endTime || null,
   };
@@ -163,6 +179,7 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         className: lesson.className || null,
         dayOfWeek,
         lessonNumber: lesson.lessonNumber,
+         breakAfterLesson: null,
         appointmentDate: null,
         startTime: lesson.startTime,
         endTime: lesson.endTime || null,
@@ -208,6 +225,7 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
     className: existing.className,
     dayOfWeek: existing.dayOfWeek,
     lessonNumber: existing.lessonNumber,
+    breakAfterLesson: existing.breakAfterLesson,
     appointmentDate: existing.appointmentDate,
     startTime: existing.startTime,
     endTime: existing.endTime,

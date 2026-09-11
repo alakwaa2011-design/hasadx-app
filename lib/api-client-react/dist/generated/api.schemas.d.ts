@@ -9,6 +9,7 @@ export type TeacherScheduleEntryKind = typeof TeacherScheduleEntryKind[keyof typ
 export declare const TeacherScheduleEntryKind: {
     readonly weekly: "weekly";
     readonly appointment: "appointment";
+    readonly break: "break";
 };
 export interface TeacherScheduleEntry {
     id: number;
@@ -27,6 +28,11 @@ export interface TeacherScheduleEntry {
        * @maximum 10
        */
     lessonNumber?: number | null;
+    /**
+       * @minimum 1
+       * @maximum 9
+       */
+    breakAfterLesson?: number | null;
     /** @pattern ^\d{4}-\d{2}-\d{2}$ */
     appointmentDate?: string | null;
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
@@ -42,6 +48,7 @@ export type TeacherScheduleEntryInputKind = typeof TeacherScheduleEntryInputKind
 export declare const TeacherScheduleEntryInputKind: {
     readonly weekly: "weekly";
     readonly appointment: "appointment";
+    readonly break: "break";
 };
 export interface TeacherScheduleEntryInput {
     kind: TeacherScheduleEntryInputKind;
@@ -64,6 +71,11 @@ export interface TeacherScheduleEntryInput {
        * @maximum 10
        */
     lessonNumber?: number | null;
+    /**
+       * @minimum 1
+       * @maximum 9
+       */
+    breakAfterLesson?: number | null;
     /** @pattern ^\d{4}-\d{2}-\d{2}$ */
     appointmentDate?: string | null;
     /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
@@ -113,6 +125,7 @@ export type TeacherScheduleEntryUpdateKind = typeof TeacherScheduleEntryUpdateKi
 export declare const TeacherScheduleEntryUpdateKind: {
     readonly weekly: "weekly";
     readonly appointment: "appointment";
+    readonly break: "break";
 };
 export type TeacherScheduleEntryUpdate = TeacherScheduleEntryInput & {
     kind?: TeacherScheduleEntryUpdateKind;

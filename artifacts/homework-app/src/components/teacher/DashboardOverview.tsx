@@ -29,6 +29,7 @@ import {
   Activity,
   Calendar,
   Clock3,
+  Coffee,
   Pencil,
   CheckCircle2,
   GraduationCap,
@@ -2521,12 +2522,13 @@ function TopStudentRow({
 }
 
 type ScheduleFormValues = {
-  kind: "weekly" | "appointment";
+  kind: "weekly" | "appointment" | "break";
   title: string;
   subject: string;
   className: string;
   dayOfWeek: string;
   lessonNumber: string;
+  breakAfterLesson: string;
   appointmentDate: string;
   startTime: string;
   endTime: string;
@@ -2569,6 +2571,7 @@ const emptyScheduleForm = (): ScheduleFormValues => ({
   className: "",
   dayOfWeek: String(new Date().getDay()),
   lessonNumber: "1",
+  breakAfterLesson: "1",
   appointmentDate: getLocalDateInput(),
   startTime: "08:00",
   endTime: "09:00",
@@ -2605,6 +2608,20 @@ function lessonNumberLabel(number: number | null | undefined, isAr: boolean) {
   return isAr
     ? `الحصة ${ARABIC_LESSON_NUMBERS[number - 1] || number}`
     : `Lesson ${number}`;
+}
+
+function breakPositionLabel(number: number | null | undefined, isAr: boolean) {
+  if (!number) return isAr ? "فترة بين الحصص" : "Between lessons";
+  const next = number + 1;
+  return isAr
+    ? `بين ${ARABIC_LESSON_NUMBERS[number - 1] || number} و${ARABIC_LESSON_NUMBERS[next - 1] || next}`
+    : `Between lessons ${number} and ${next}`;
+}
+
+function schedulePosition(entry: TeacherScheduleEntry) {
+  return entry.kind === "break"
+    ? (entry.breakAfterLesson ?? 0) + 0.5
+    : (entry.lessonNumber ?? 99);
 }
 
 function scheduleDateLabel(date: string, isAr: boolean) {
@@ -2655,9 +2672,9 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   const weeklyEntries = useMemo(
     () =>
       entries
-        .filter((entry) => entry.kind === "weekly" && entry.dayOfWeek === selectedDay)
+        .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === selectedDay)
         .sort((a, b) =>
-          (a.lessonNumber ?? 99) - (b.lessonNumber ?? 99) ||
+          schedulePosition(a) - schedulePosition(b) ||
           a.startTime.localeCompare(b.startTime),
         ),
     [entries, selectedDay],
@@ -2667,9 +2684,9 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
       SCHEDULE_DAYS.map((day) => ({
         day,
         entries: entries
-          .filter((entry) => entry.kind === "weekly" && entry.dayOfWeek === day.value)
+          .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === day.value)
           .sort((a, b) =>
-            (a.lessonNumber ?? 99) - (b.lessonNumber ?? 99) ||
+            schedulePosition(a) - schedulePosition(b) ||
             a.startTime.localeCompare(b.startTime),
           ),
       })).filter((group) => group.entries.length > 0),
@@ -2699,7 +2716,11 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
 
   function openCreate(kind: ScheduleFormValues["kind"] = "weekly") {
     const defaults = emptyScheduleForm();
-    form.reset({ ...defaults, kind });
+    form.reset({
+      ...defaults,
+      kind,
+      title: kind === "break" ? (isAr ? "سناك" : "Break") : "",
+    });
     setEditingId(null);
     setDialogOpen(true);
   }
@@ -2746,6 +2767,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
       className: entry.className || "",
       dayOfWeek: entry.dayOfWeek == null ? String(new Date().getDay()) : String(entry.dayOfWeek),
       lessonNumber: entry.lessonNumber == null ? "1" : String(entry.lessonNumber),
+      breakAfterLesson: entry.breakAfterLesson == null ? "1" : String(entry.breakAfterLesson),
       appointmentDate: entry.appointmentDate || getLocalDateInput(),
       startTime: entry.startTime,
       endTime: entry.endTime || "",
@@ -2762,8 +2784,9 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
       title: values.title.trim(),
       subject: values.subject.trim() || null,
       className: values.className.trim() || null,
-      dayOfWeek: values.kind === "weekly" ? Number(values.dayOfWeek) : null,
+      dayOfWeek: values.kind === "appointment" ? null : Number(values.dayOfWeek),
       lessonNumber: values.kind === "weekly" ? Number(values.lessonNumber) : null,
+      breakAfterLesson: values.kind === "break" ? Number(values.breakAfterLesson) : null,
       appointmentDate: values.kind === "appointment" ? values.appointmentDate : null,
       startTime: values.startTime,
       endTime: values.endTime || null,
@@ -2891,7 +2914,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                 {isAr ? "جدول المعلم" : "Teacher schedule"}
               </div>
               <div style={{ fontSize: 10.5, color: C.subtle, marginTop: 2 }}>
-                {isAr ? "حصص أسبوعية ومواعيد منفردة" : "Weekly classes and appointments"}
+                {isAr ? "حصص واستراحات ومواعيد منفردة" : "Classes, breaks, and appointments"}
               </div>
             </div>
           </div>
@@ -2949,7 +2972,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
               {isAr ? "ابدأ بإضافة جدولك" : "Start building your schedule"}
             </div>
             <div style={{ color: C.subtle, fontSize: 11, marginTop: 4 }}>
-              {isAr ? "أضف حصة أسبوعية أو موعدًا منفردًا" : "Add a weekly class or one-time appointment"}
+              {isAr ? "أضف حصة أو استراحة أو موعدًا منفردًا" : "Add a class, break, or one-time appointment"}
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <button
@@ -3026,7 +3049,9 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                 >
                   {SCHEDULE_DAYS.map((day) => {
                     const count = entries.filter(
-                      (entry) => entry.kind === "weekly" && entry.dayOfWeek === day.value,
+                      (entry) =>
+                        (entry.kind === "weekly" || entry.kind === "break") &&
+                        entry.dayOfWeek === day.value,
                     ).length;
                     const active = selectedDay === day.value;
                     return (
@@ -3061,7 +3086,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                   </div>
                   {weeklyEntries.length === 0 ? (
                     <div style={{ padding: "12px 0 10px", color: C.subtle, fontSize: 11 }}>
-                      {isAr ? "لا توجد حصة أسبوعية في هذا اليوم" : "No weekly class on this day"}
+                      {isAr ? "لا توجد حصة أو استراحة في هذا اليوم" : "No class or break on this day"}
                     </div>
                   ) : (
                     weeklyEntries.map((entry, index) => (
@@ -3146,8 +3171,8 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                   <FormItem>
                     <FormLabel>{isAr ? "نوع الإدخال" : "Entry type"}</FormLabel>
                     <FormControl>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(["weekly", "appointment"] as const).map((kind) => (
+                      <div className="grid grid-cols-3 gap-2">
+                        {(["weekly", "break", "appointment"] as const).map((kind) => (
                           <button
                             key={kind}
                             type="button"
@@ -3161,7 +3186,9 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                           >
                             {kind === "weekly"
                               ? isAr ? "حصة أسبوعية" : "Weekly class"
-                              : isAr ? "موعد منفرد" : "Appointment"}
+                              : kind === "break"
+                                ? isAr ? "استراحة / سناك" : "Break / Snack"
+                                : isAr ? "موعد منفرد" : "Appointment"}
                           </button>
                         ))}
                       </div>
@@ -3185,7 +3212,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                     </FormItem>
                   )}
                 />
-                {selectedKind === "weekly" ? (
+                {selectedKind !== "appointment" ? (
                   <FormField
                     control={form.control}
                     name="dayOfWeek"
@@ -3233,6 +3260,28 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                             {Array.from({ length: 10 }, (_, index) => index + 1).map((number) => (
                               <option key={number} value={number}>
                                 {lessonNumberLabel(number, isAr)}
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                {selectedKind === "break" && (
+                  <FormField
+                    control={form.control}
+                    name="breakAfterLesson"
+                    rules={{ required: isAr ? "اختر الحصة السابقة للاستراحة" : "Choose the preceding lesson" }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isAr ? "مكان الاستراحة" : "Break position"}</FormLabel>
+                        <FormControl>
+                          <select {...field} style={fieldStyle}>
+                            {Array.from({ length: 9 }, (_, index) => index + 1).map((number) => (
+                              <option key={number} value={number}>
+                                {breakPositionLabel(number, isAr)}
                               </option>
                             ))}
                           </select>
@@ -3560,18 +3609,27 @@ function ScheduleEntryRow({
           width: 38,
           height: 38,
           borderRadius: 11,
-          background: entry.kind === "appointment" ? C.goldPale : C.greenPale,
-          color: entry.kind === "appointment" ? C.gold : C.green,
+          background: entry.kind === "appointment" ? C.goldPale : entry.kind === "break" ? "#FFF4D6" : C.greenPale,
+          color: entry.kind === "appointment" ? C.gold : entry.kind === "break" ? C.gold : C.green,
           display: "grid",
           placeItems: "center",
           flexShrink: 0,
         }}
       >
-        {entry.kind === "appointment" ? <Calendar style={{ width: 17, height: 17 }} /> : <Clock3 style={{ width: 17, height: 17 }} />}
+        {entry.kind === "appointment"
+          ? <Calendar style={{ width: 17, height: 17 }} />
+          : entry.kind === "break"
+            ? <Coffee style={{ width: 17, height: 17 }} />
+            : <Clock3 style={{ width: 17, height: 17 }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 850, color: C.text }}>{entry.title}</span>
+          {entry.kind === "break" && (
+            <span style={{ fontSize: 10, color: C.gold, fontWeight: 850 }}>
+              {breakPositionLabel(entry.breakAfterLesson, isAr)}
+            </span>
+          )}
           {entry.kind === "weekly" && entry.lessonNumber && (
             <span style={{ fontSize: 10, color: C.green, fontWeight: 850 }}>
               {lessonNumberLabel(entry.lessonNumber, isAr)}

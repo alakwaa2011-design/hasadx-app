@@ -12,4 +12,5 @@ export type TeacherScheduleEntryInputKind = typeof TeacherScheduleEntryInputKind
 export const TeacherScheduleEntryInputKind = {
   weekly: 'weekly',
   appointment: 'appointment',
+  break: 'break',
 } as const;

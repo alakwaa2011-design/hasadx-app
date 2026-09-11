@@ -12,4 +12,5 @@ export type TeacherScheduleEntryUpdateKind = typeof TeacherScheduleEntryUpdateKi
 export const TeacherScheduleEntryUpdateKind = {
   weekly: 'weekly',
   appointment: 'appointment',
+  break: 'break',
 } as const;

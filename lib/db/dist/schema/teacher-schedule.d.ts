@@ -139,6 +139,23 @@ export declare const teacherScheduleTable: import("drizzle-orm/pg-core").PgTable
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        breakAfterLesson: import("drizzle-orm/pg-core").PgColumn<{
+            name: "break_after_lesson";
+            tableName: "teacher_schedule";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         appointmentDate: import("drizzle-orm/pg-core").PgColumn<{
             name: "appointment_date";
             tableName: "teacher_schedule";
@@ -269,6 +286,7 @@ export declare const insertTeacherScheduleSchema: z.ZodObject<{
     className: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     dayOfWeek: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     lessonNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    breakAfterLesson: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     appointmentDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     startTime: z.ZodString;
     endTime: z.ZodOptional<z.ZodNullable<z.ZodString>>;

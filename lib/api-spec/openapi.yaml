@@ -1662,7 +1662,7 @@ components:
           type: integer
         kind:
           type: string
-          enum: [weekly, appointment]
+          enum: [weekly, appointment, break]
         title:
           type: string
         subject:
@@ -1680,6 +1680,11 @@ components:
           type: integer
           minimum: 1
           maximum: 10
+          nullable: true
+        breakAfterLesson:
+          type: integer
+          minimum: 1
+          maximum: 9
           nullable: true
         appointmentDate:
           type: string
@@ -1711,7 +1716,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [weekly, appointment]
+          enum: [weekly, appointment, break]
           default: weekly
         title:
           type: string
@@ -1734,6 +1739,11 @@ components:
           type: integer
           minimum: 1
           maximum: 10
+          nullable: true
+        breakAfterLesson:
+          type: integer
+          minimum: 1
+          maximum: 9
           nullable: true
         appointmentDate:
           type: string
@@ -1811,7 +1821,7 @@ components:
           properties:
             kind:
               type: string
-              enum: [weekly, appointment]
+              enum: [weekly, appointment, break]
             title:
               type: string
               minLength: 1
