@@ -9,6 +9,8 @@ export const teacherClassesTable = pgTable(
     name: text("name").notNull(),
     /** Optional group/stage name (e.g. "خامس", "سادس") to organize classes */
     groupName: text("group_name"),
+    /** Optional visual accent selected by the teacher */
+    color: text("color"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({

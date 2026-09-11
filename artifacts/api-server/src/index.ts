@@ -52,6 +52,7 @@ import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 async function runSchemaMigrations() {
   try {
     await db.execute(sql`
+      ALTER TABLE teacher_classes ADD COLUMN IF NOT EXISTS color TEXT;
       CREATE TABLE IF NOT EXISTS presentation_outline_jobs (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

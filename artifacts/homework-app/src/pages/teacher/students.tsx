@@ -17,7 +17,7 @@ import {
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
-  Layers, UserCheck, TrendingUp, Mail, User, Star, LayoutGrid,
+  Layers, UserCheck, TrendingUp, Mail, User, Star, LayoutGrid, Palette,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -43,15 +43,16 @@ type ClassViewMode = "grid" | "list" | "compact";
 
 
 const CLASS_COLORS = [
-  { bg: "bg-teal-500", light: "bg-teal-500/10", border: "border-teal-200 dark:border-teal-800", text: "text-teal-700 dark:text-teal-400", ring: "ring-teal-400" },
-  { bg: "bg-indigo-500", light: "bg-indigo-500/10", border: "border-indigo-200 dark:border-indigo-800", text: "text-indigo-700 dark:text-indigo-400", ring: "ring-indigo-400" },
-  { bg: "bg-rose-500", light: "bg-rose-500/10", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-400", ring: "ring-rose-400" },
-  { bg: "bg-amber-500", light: "bg-amber-500/10", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400", ring: "ring-amber-400" },
-  { bg: "bg-purple-500", light: "bg-purple-500/10", border: "border-purple-200 dark:border-purple-800", text: "text-purple-700 dark:text-purple-400", ring: "ring-purple-400" },
-  { bg: "bg-cyan-500", light: "bg-cyan-500/10", border: "border-cyan-200 dark:border-cyan-800", text: "text-cyan-700 dark:text-cyan-400", ring: "ring-cyan-400" },
-  { bg: "bg-orange-500", light: "bg-orange-500/10", border: "border-orange-200 dark:border-orange-800", text: "text-orange-700 dark:text-orange-400", ring: "ring-orange-400" },
-  { bg: "bg-green-500", light: "bg-green-500/10", border: "border-green-200 dark:border-green-800", text: "text-green-700 dark:text-green-400", ring: "ring-green-400" },
-];
+  { key: "teal", labelAr: "تركوازي", labelEn: "Teal", bg: "bg-teal-500", light: "bg-teal-500/10", border: "border-teal-200 dark:border-teal-800", text: "text-teal-700 dark:text-teal-400", ring: "ring-teal-400" },
+  { key: "indigo", labelAr: "نيلي", labelEn: "Indigo", bg: "bg-indigo-500", light: "bg-indigo-500/10", border: "border-indigo-200 dark:border-indigo-800", text: "text-indigo-700 dark:text-indigo-400", ring: "ring-indigo-400" },
+  { key: "rose", labelAr: "وردي", labelEn: "Rose", bg: "bg-rose-500", light: "bg-rose-500/10", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-400", ring: "ring-rose-400" },
+  { key: "amber", labelAr: "ذهبي", labelEn: "Amber", bg: "bg-amber-500", light: "bg-amber-500/10", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400", ring: "ring-amber-400" },
+  { key: "purple", labelAr: "بنفسجي", labelEn: "Purple", bg: "bg-purple-500", light: "bg-purple-500/10", border: "border-purple-200 dark:border-purple-800", text: "text-purple-700 dark:text-purple-400", ring: "ring-purple-400" },
+  { key: "cyan", labelAr: "سماوي", labelEn: "Cyan", bg: "bg-cyan-500", light: "bg-cyan-500/10", border: "border-cyan-200 dark:border-cyan-800", text: "text-cyan-700 dark:text-cyan-400", ring: "ring-cyan-400" },
+  { key: "orange", labelAr: "برتقالي", labelEn: "Orange", bg: "bg-orange-500", light: "bg-orange-500/10", border: "border-orange-200 dark:border-orange-800", text: "text-orange-700 dark:text-orange-400", ring: "ring-orange-400" },
+  { key: "green", labelAr: "أخضر", labelEn: "Green", bg: "bg-green-500", light: "bg-green-500/10", border: "border-green-200 dark:border-green-800", text: "text-green-700 dark:text-green-400", ring: "ring-green-400" },
+] as const;
+type ClassColorKey = (typeof CLASS_COLORS)[number]["key"];
 
 function getGroupKey(student: Student) {
   return student.gradeLevel || UNGROUPED;
@@ -59,7 +60,7 @@ function getGroupKey(student: Student) {
 
 /* ─── Draggable Student Row ─────────────────────────────── */
 function StudentRow({
-  student, idx, onEdit, onDelete, onMove, onResetPassword, folders, colorIdx, isOverlay = false,
+  student, idx, onEdit, onDelete, onMove, onResetPassword, folders, colorIdx, colorKey, isOverlay = false,
 }: {
   student: Student;
   idx: number;
@@ -69,6 +70,7 @@ function StudentRow({
   onResetPassword: (s: Student) => void;
   folders: string[];
   colorIdx: number;
+  colorKey?: string | null;
   isOverlay?: boolean;
 }) {
   const { t, dir } = useI18n();
@@ -86,7 +88,7 @@ function StudentRow({
 
   const currentFolder = student.gradeLevel || UNGROUPED;
   const otherFolders = folders.filter((f) => f !== currentFolder);
-  const color = CLASS_COLORS[colorIdx % CLASS_COLORS.length];
+  const color = CLASS_COLORS.find((item) => item.key === colorKey) ?? CLASS_COLORS[colorIdx % CLASS_COLORS.length];
 
   return (
     <div
@@ -207,7 +209,7 @@ function ClassBlock({
   className: folderName, students, allFolders, isExpanded, onToggle, colorIdx,
   onRename, onDeleteClass, onEditStudent, onDeleteStudent, onMoveStudent,
   onAddStudent, onBulkAdd, onResetPassword, groupName, allGroups, onAssignGroup, onAttendance,
-  onOpenClass, viewMode,
+  onOpenClass, viewMode, colorKey, onColorChange,
 }: {
   className: string;
   students: Student[];
@@ -229,6 +231,8 @@ function ClassBlock({
   onAttendance?: (className: string) => void;
   onOpenClass: () => void;
   viewMode: ClassViewMode;
+  colorKey?: string | null;
+  onColorChange: (className: string, colorKey: ClassColorKey | null) => void;
 }) {
   const { lang, t, dir } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -240,9 +244,10 @@ function ClassBlock({
   const renameRef = useRef<HTMLInputElement>(null);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
 
   const isUngrouped = folderName === UNGROUPED;
-  const color = CLASS_COLORS[colorIdx % CLASS_COLORS.length];
+  const color = CLASS_COLORS.find((item) => item.key === colorKey) ?? CLASS_COLORS[colorIdx % CLASS_COLORS.length];
   const isCompact = viewMode === "compact";
   const isDense = viewMode !== "grid";
   const cardPadding = isCompact ? "px-2.5 py-2" : isDense ? "px-3 py-2.5" : "px-5 py-4";
@@ -341,16 +346,61 @@ function ClassBlock({
               )}
             </div>
 
-            {/* Toggle button */}
-            <button
-              onClick={onToggle}
-              className={`${isDense ? "w-8 h-8 rounded-lg" : "w-9 h-9 rounded-xl"} flex-shrink-0 flex items-center justify-center bg-muted hover:bg-muted/80 text-muted-foreground transition-colors`}
-              title={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
-              aria-label={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
-            >
-              {isExpanded ? <ChevronDown size={18} /> : dir === "rtl" ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-            </button>
+            {/* Small class controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              {!isUngrouped && (
+                <button
+                  onClick={() => setShowColorMenu((value) => !value)}
+                  className={`${isDense ? "w-8 h-8 rounded-lg" : "w-9 h-9 rounded-xl"} flex items-center justify-center ${color.light} ${color.text} hover:opacity-80 transition-colors`}
+                  title={t.teacherStudents.changeClassColor}
+                  aria-label={t.teacherStudents.changeClassColor}
+                  aria-expanded={showColorMenu}
+                >
+                  <Palette size={isDense ? 15 : 16} />
+                </button>
+              )}
+              <button
+                onClick={onToggle}
+                className={`${isDense ? "w-8 h-8 rounded-lg" : "w-9 h-9 rounded-xl"} flex items-center justify-center bg-muted hover:bg-muted/80 text-muted-foreground transition-colors`}
+                title={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
+                aria-label={isExpanded ? t.teacherStudents.collapseClass : t.teacherStudents.showStudents}
+              >
+                {isExpanded ? <ChevronDown size={18} /> : dir === "rtl" ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+              </button>
+            </div>
           </div>
+
+          {showColorMenu && !isUngrouped && !isRenaming && (
+            <div
+              className="mt-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-border/70 bg-muted/20 p-2"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span className="me-1 text-[11px] font-semibold text-muted-foreground">{t.teacherStudents.classColor}</span>
+              {CLASS_COLORS.map((option) => {
+                const selected = option.key === color.key && colorKey === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => { onColorChange(folderName, option.key); setShowColorMenu(false); }}
+                    className={`h-6 w-6 rounded-full ${option.bg} transition-transform hover:scale-110 ${selected ? "ring-2 ring-offset-2 ring-foreground/60" : ""}`}
+                    title={lang === "ar" ? option.labelAr : option.labelEn}
+                    aria-label={lang === "ar" ? option.labelAr : option.labelEn}
+                    aria-pressed={selected}
+                  />
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => { onColorChange(folderName, null); setShowColorMenu(false); }}
+                className={`ms-1 rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors ${colorKey ? "border-border text-muted-foreground hover:bg-muted" : "border-primary/40 bg-primary/5 text-primary"}`}
+                title={t.teacherStudents.resetClassColor}
+                aria-label={t.teacherStudents.resetClassColor}
+              >
+                {t.teacherStudents.resetClassColor}
+              </button>
+            </div>
+          )}
 
           {/* Action strip — separated by a divider */}
           {!isUngrouped && !isRenaming && (
@@ -566,6 +616,7 @@ function ClassBlock({
                             onResetPassword={onResetPassword}
                             folders={allFolders}
                             colorIdx={colorIdx}
+                            colorKey={colorKey}
                           />
                         ))
                       )}
@@ -620,6 +671,8 @@ export default function StudentsPage() {
 
   /* class-group mapping: className -> groupName */
   const [classGroupMap, setClassGroupMap] = useState<Record<string, string>>({});
+  /* class color mapping: className -> explicitly selected palette key */
+  const [classColorMap, setClassColorMap] = useState<Record<string, ClassColorKey>>({});
   /* new-group dialog */
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -682,7 +735,7 @@ export default function StudentsPage() {
       if (studentsRes.status === 401) { setLocation("/login"); return; }
       const data: Student[] = await studentsRes.json();
       setStudents(data);
-      const persistedClassesData: Array<{ name: string; groupName?: string | null }> = classesRes.ok
+      const persistedClassesData: Array<{ name: string; groupName?: string | null; color?: string | null }> = classesRes.ok
         ? await classesRes.json()
         : [];
       const persistedClasses: string[] = persistedClassesData.map(c => c.name);
@@ -690,6 +743,13 @@ export default function StudentsPage() {
       const map: Record<string, string> = {};
       persistedClassesData.forEach(c => { if (c.groupName) map[c.name] = c.groupName; });
       setClassGroupMap(map);
+      const colorMap: Record<string, ClassColorKey> = {};
+      persistedClassesData.forEach(c => {
+        if (CLASS_COLORS.some((option) => option.key === c.color)) {
+          colorMap[c.name] = c.color as ClassColorKey;
+        }
+      });
+      setClassColorMap(colorMap);
       const fromStudents = data.map((s) => s.gradeLevel).filter((g): g is string => !!g);
       const namedSet = new Set<string>([...persistedClasses, ...fromStudents]);
       setFolderOrder((prev) => {
@@ -837,6 +897,11 @@ export default function StudentsPage() {
         }
         setStudents((prev) => prev.filter((s) => (s.gradeLevel || UNGROUPED) !== folder));
         setFolderOrder((prev) => prev.filter((f) => f !== folder));
+        setClassColorMap((prev) => {
+          const next = { ...prev };
+          delete next[folder];
+          return next;
+        });
         toast.success(t.teacherStudents.classDeleted);
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -868,6 +933,12 @@ export default function StudentsPage() {
           )
         );
         setFolderOrder((prev) => prev.map((f) => (f === oldName ? newName : f)));
+        setClassColorMap((prev) => {
+          if (!prev[oldName]) return prev;
+          const next = { ...prev, [newName]: prev[oldName] };
+          delete next[oldName];
+          return next;
+        });
         setExpandedFolders((prev) => {
           const next = new Set(prev);
           if (next.has(oldName)) { next.delete(oldName); next.add(newName); }
@@ -941,6 +1012,35 @@ export default function StudentsPage() {
       await handleAssignGroup(cn, groupName);
     }
     toast.success(t.teacherStudents.classesAssigned.replace("{count}", String(classNames.length)).replace("{group}", groupName));
+  };
+
+  const handleChangeClassColor = async (className: string, colorKey: ClassColorKey | null) => {
+    const previousColor = classColorMap[className] ?? null;
+    setClassColorMap((prev) => {
+      const next = { ...prev };
+      if (colorKey) next[className] = colorKey;
+      else delete next[className];
+      return next;
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/classes/color`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ className, color: colorKey }),
+      });
+      if (!res.ok) throw new Error("color_update_failed");
+      toast.success(t.teacherStudents.classColorSaved);
+    } catch {
+      setClassColorMap((prev) => {
+        const next = { ...prev };
+        if (previousColor) next[className] = previousColor;
+        else delete next[className];
+        return next;
+      });
+      toast.error(t.teacherStudents.genericError);
+    }
   };
 
   /* ── Attendance ── */
@@ -1440,6 +1540,7 @@ export default function StudentsPage() {
                                   allFolders={folders}
                                   isExpanded={expandedFolders.has(folder)}
                                   colorIdx={idx}
+                                  colorKey={classColorMap[folder]}
                                   groupName={classGroupMap[folder]}
                                   allGroups={allGroups}
                                   onAssignGroup={handleAssignGroup}
@@ -1454,6 +1555,7 @@ export default function StudentsPage() {
                                   onAddStudent={openAddStudent}
                                   onBulkAdd={openBulkAdd}
                                   onResetPassword={openResetPassword}
+                                  onColorChange={handleChangeClassColor}
                                    viewMode={classViewMode}
                                 />
                               );
@@ -1489,6 +1591,7 @@ export default function StudentsPage() {
                               allFolders={folders}
                               isExpanded={expandedFolders.has(folder)}
                               colorIdx={idx}
+                              colorKey={classColorMap[folder]}
                               groupName={classGroupMap[folder]}
                               allGroups={allGroups}
                               onAssignGroup={handleAssignGroup}
@@ -1503,6 +1606,7 @@ export default function StudentsPage() {
                               onAddStudent={openAddStudent}
                               onBulkAdd={openBulkAdd}
                               onResetPassword={openResetPassword}
+                              onColorChange={handleChangeClassColor}
                                viewMode={classViewMode}
                             />
                           );
@@ -1521,6 +1625,7 @@ export default function StudentsPage() {
                     allFolders={folders}
                     isExpanded={expandedFolders.has(UNGROUPED)}
                     colorIdx={namedFolders.length}
+                    onColorChange={handleChangeClassColor}
                     onToggle={() => {
                       setExpandedFolders((prev) => {
                         const next = new Set(prev);

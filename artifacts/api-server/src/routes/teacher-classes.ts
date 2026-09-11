@@ -4,6 +4,16 @@ import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 import { featureAccess } from "@workspace/billing";
 
 const router: IRouter = Router();
+const CLASS_COLOR_KEYS = new Set([
+  "teal",
+  "indigo",
+  "rose",
+  "amber",
+  "purple",
+  "cyan",
+  "orange",
+  "green",
+]);
 
 function requireAuth(req: any, res: any, next: any) {
   if (!req.session?.teacherId) return res.status(401).json({ message: "غير مصرح" });
@@ -27,7 +37,12 @@ router.get("/teacher/classes", requireAuth, async (req: any, res) => {
     const teacherId = req.session.teacherId;
     await backfillFromStudents(teacherId);
     const rows = await db
-      .select({ id: teacherClassesTable.id, name: teacherClassesTable.name, groupName: teacherClassesTable.groupName })
+      .select({
+        id: teacherClassesTable.id,
+        name: teacherClassesTable.name,
+        groupName: teacherClassesTable.groupName,
+        color: teacherClassesTable.color,
+      })
       .from(teacherClassesTable)
       .where(eq(teacherClassesTable.teacherId, teacherId))
       .orderBy(teacherClassesTable.groupName, teacherClassesTable.name);
@@ -135,6 +150,35 @@ router.patch("/teacher/classes/group", requireAuth, async (req: any, res) => {
     res.json({ ok: true });
   } catch (err) {
     req.log?.error(err, "Group class error");
+    res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/** PATCH /api/teacher/classes/color — set or reset a class accent color */
+router.patch("/teacher/classes/color", requireAuth, async (req: any, res) => {
+  try {
+    const teacherId = req.session.teacherId;
+    const className = (req.body?.className || "").toString().trim();
+    const rawColor = req.body?.color;
+    const color = rawColor === null || rawColor === "" || rawColor === undefined
+      ? null
+      : rawColor.toString().trim();
+
+    if (!className) return res.status(400).json({ message: "اسم الصف مطلوب" });
+    if (color !== null && !CLASS_COLOR_KEYS.has(color)) {
+      return res.status(400).json({ message: "لون الصف غير صالح" });
+    }
+
+    const updated = await db
+      .update(teacherClassesTable)
+      .set({ color })
+      .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.name, className)))
+      .returning({ id: teacherClassesTable.id });
+
+    if (!updated[0]) return res.status(404).json({ message: "الصف غير موجود" });
+    res.json({ ok: true, color });
+  } catch (err) {
+    req.log?.error(err, "Class color update error");
     res.status(500).json({ message: "خطأ" });
   }
 });
