@@ -2658,7 +2658,7 @@ function scheduleDateLabel(date: string, isAr: boolean) {
   }).format(parsed);
 }
 
-function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
+export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
@@ -3552,6 +3552,7 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                         key={day.value}
                         type="button"
                         onClick={() => selectBulkDay(day.value)}
+                        data-testid={`button-bulk-day-${day.value}`}
                         className="rounded-xl border px-3 py-2 text-xs font-bold"
                         style={{
                           borderColor: active || configured ? C.green : C.border,
@@ -3571,7 +3572,12 @@ function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
                       : `Editing: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en}`}
                   </div>
                   {Object.keys(bulkDaySchedules).length > 1 && (
-                    <button type="button" onClick={removeActiveBulkDay} className="text-xs font-bold text-destructive">
+                    <button
+                      type="button"
+                      onClick={removeActiveBulkDay}
+                      data-testid="button-remove-active-bulk-day"
+                      className="text-xs font-bold text-destructive"
+                    >
                       {isAr ? "إزالة هذا اليوم" : "Remove this day"}
                     </button>
                   )}
