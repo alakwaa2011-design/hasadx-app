@@ -61,6 +61,26 @@ describe("teacher schedule image extraction", () => {
     }))).toThrow();
   });
 
+  it("normalizes a school day crossing noon from 12-hour model output", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [
+          { lessonNumber: 6, title: "", subject: "رياضيات", startTime: "١١:٤٠", endTime: "12:25", confidence: "high" },
+          { lessonNumber: 7, title: "", subject: "علوم", startTime: "12:25", endTime: "1:10", confidence: "high" },
+          { lessonNumber: 8, title: "", subject: "لغة عربية", startTime: "1:10", endTime: "1:55", confidence: "high" },
+        ],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons).toEqual([
+      expect.objectContaining({ lessonNumber: 6, startTime: "11:40", endTime: "12:25", confidence: "high" }),
+      expect.objectContaining({ lessonNumber: 7, startTime: "12:25", endTime: "13:10", confidence: "low" }),
+      expect.objectContaining({ lessonNumber: 8, startTime: "13:10", endTime: "13:55", confidence: "low" }),
+    ]);
+  });
+
   it("pins the weekday mapping and forbids invented values in the prompt", () => {
     const prompt = buildTeacherScheduleExtractionPrompt("ar");
     expect(prompt).toContain("Sunday=0");

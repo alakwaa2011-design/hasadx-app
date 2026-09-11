@@ -43,6 +43,81 @@ const extractedScheduleSchema = z.object({
 
 export type ExtractedTeacherSchedule = z.infer<typeof extractedScheduleSchema>;
 
+const arabicDigitMap: Record<string, string> = {
+  "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4",
+  "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9",
+};
+
+function parseLooseTime(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const normalized = value
+    .replace(/[٠-٩]/g, (digit) => arabicDigitMap[digit])
+    .trim()
+    .toLowerCase();
+  const match = normalized.match(/^(\d{1,2}):([0-5]\d)\s*(am|pm|ص|م)?$/);
+  if (!match) return null;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const marker = match[3];
+  if (hour > 23 || (marker && hour > 12)) return null;
+  if ((marker === "pm" || marker === "م") && hour < 12) hour += 12;
+  if ((marker === "am" || marker === "ص") && hour === 12) hour = 0;
+  return hour * 60 + minute;
+}
+
+function formatTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function normalizeSchoolDayTimes(parsed: unknown): unknown {
+  if (!parsed || typeof parsed !== "object") return parsed;
+  const root = parsed as { daySchedules?: unknown[] };
+  if (!Array.isArray(root.daySchedules)) return parsed;
+
+  root.daySchedules.forEach((dayValue) => {
+    if (!dayValue || typeof dayValue !== "object") return;
+    const day = dayValue as { lessons?: unknown[] };
+    if (!Array.isArray(day.lessons)) return;
+
+    const ordered = [...day.lessons].sort((left, right) => {
+      const leftNumber = Number((left as { lessonNumber?: unknown })?.lessonNumber);
+      const rightNumber = Number((right as { lessonNumber?: unknown })?.lessonNumber);
+      return leftNumber - rightNumber;
+    });
+    let previousStart: number | null = null;
+
+    ordered.forEach((lessonValue) => {
+      if (!lessonValue || typeof lessonValue !== "object") return;
+      const lesson = lessonValue as {
+        startTime?: unknown;
+        endTime?: unknown;
+        confidence?: unknown;
+      };
+      let start = parseLooseTime(lesson.startTime);
+      let end = parseLooseTime(lesson.endTime);
+      let adjusted = false;
+
+      if (start !== null && previousStart !== null && start < previousStart && start < 7 * 60) {
+        start += 12 * 60;
+        adjusted = true;
+      }
+      if (start !== null) {
+        lesson.startTime = formatTime(start);
+        previousStart = start;
+      }
+      if (end !== null && start !== null && end <= start && end < 7 * 60) {
+        end += 12 * 60;
+        adjusted = true;
+      }
+      if (end !== null) lesson.endTime = formatTime(end);
+      if (adjusted) lesson.confidence = "low";
+    });
+  });
+
+  return parsed;
+}
+
 export function buildTeacherScheduleExtractionPrompt(language: "ar" | "en"): string {
   const outputLanguage = language === "ar" ? "Arabic" : "English";
   return `Analyze the attached image as a teacher's weekly school timetable.
@@ -86,7 +161,7 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
   const candidate = fenced || trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
-  const parsed = JSON.parse(candidate);
+  const parsed = normalizeSchoolDayTimes(JSON.parse(candidate));
   const validated = extractedScheduleSchema.parse(parsed);
 
   return {
