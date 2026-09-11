@@ -1625,7 +1625,7 @@ export default function TeacherGame() {
 
           {giftEvents.length > 0 && !hackMode && (
             <div className="mt-8">
-              <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
                 <Gift className="w-6 h-6 text-yellow-500" />
                 {t.teacherGame.giftEvents}
               </h2>
