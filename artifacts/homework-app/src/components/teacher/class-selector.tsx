@@ -52,6 +52,8 @@ export interface ClassSelectorProps {
   portaled?: boolean;
   /** Dark gold cinematic styling for game lobby screens. */
   variant?: "default" | "cinematic";
+  /** Whether this selector may create classes inline. Default true. */
+  allowCreate?: boolean;
 }
 
 /**
@@ -70,6 +72,7 @@ export function ClassSelector({
   remember = true,
   portaled = false,
   variant = "default",
+  allowCreate = true,
 }: ClassSelectorProps) {
   const cinematic = variant === "cinematic";
   const { lang } = useI18n();
@@ -374,7 +377,7 @@ export function ClassSelector({
         )}
       </div>
 
-      <div
+      {allowCreate && <div
         className={`border-t ${cinematic ? "p-2.5" : "p-2"}`}
         style={{ borderColor: cinematic ? "rgba(212,166,58,0.15)" : "rgba(255,255,255,0.08)" }}
       >
@@ -429,7 +432,7 @@ export function ClassSelector({
             {ar ? "صف جديد" : "New class"}
           </button>
         )}
-      </div>
+      </div>}
     </div>
   );
 

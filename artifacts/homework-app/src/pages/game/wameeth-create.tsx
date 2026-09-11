@@ -1144,6 +1144,7 @@ export default function WameethCreate() {
                 onChange={() => {}}
                 onValuesChange={setTargetClasses}
                 accent={mode === "teams" ? "#a855f7" : "#3b82f6"}
+                allowCreate={false}
                 label={mode === "solo"
                   ? (ar ? "الصفوف المستهدفة (اختياري — صف واحد أو أكثر، مجموعة أو الكل)" : "Target classes (optional — one or more, a group, or all)")
                   : undefined}
