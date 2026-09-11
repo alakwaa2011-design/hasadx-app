@@ -986,6 +986,10 @@ export default function GamePlay() {
   const nameParam = searchParams.get("name") || "";
   const avatarParam = searchParams.get("avatar") || "🦁";
   const studentIdParam = searchParams.get("studentId");
+  const selectedClassParam = searchParams.get("selectedClass");
+  const rosterSelectionTokenParam = searchParams.get("rosterSelectionToken");
+  const manualNameParam = searchParams.get("manualName");
+  const requestedTeamParam = searchParams.get("requestedTeam");
   const studentAccountIdParam = searchParams.get("studentAccountId");
   const independentTokenParam = searchParams.get("token");
   const independentControlToken = getIndependentControlToken(pin);
@@ -1345,6 +1349,10 @@ export default function GamePlay() {
           name: myName,
           avatar: avatarParam,
           studentId: studentIdParam ? parseInt(studentIdParam) : undefined,
+          selectedClass: selectedClassParam || undefined,
+          rosterSelectionToken: rosterSelectionTokenParam || undefined,
+          manualName: manualNameParam === "1" ? true : undefined,
+          requestedTeam: requestedTeamParam || undefined,
           studentAccountId: studentAccountIdParam
             ? parseInt(studentAccountIdParam)
             : undefined,

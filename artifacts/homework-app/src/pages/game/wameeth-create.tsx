@@ -123,6 +123,8 @@ export default function WameethCreate() {
   const [teamCount, setTeamCount] = useState(2);
   const [customTeamNames, setCustomTeamNames] = useState<string[]>(["", "", "", "", "", ""]);
   const [targetClass, setTargetClass] = useState<string>(() => getRememberedTargetClass());
+  const [targetClasses, setTargetClasses] = useState<string[]>([]);
+  const [studentTeamChoiceEnabled, setStudentTeamChoiceEnabled] = useState(false);
   const [starting, setStarting] = useState(false);
 
   // If the organizer is not logged in, send them to the login page with a
@@ -452,6 +454,17 @@ export default function WameethCreate() {
       toast.error(ar ? "أضف سؤالين صالحين على الأقل" : "Add at least 2 valid questions");
       return;
     }
+    const concreteTargetClasses = mode === "teams"
+      ? Array.from(new Set(targetClasses.filter(name => name && name !== "__all_classes__" && !name.startsWith("__excluded_class__"))))
+      : [];
+    if (mode === "teams" && concreteTargetClasses.length === 1) {
+      toast.error(ar ? "اختر صفين على الأقل أو امسح اختيار الصفوف" : "Select at least two classes or clear the selection");
+      return;
+    }
+    if (mode === "teams" && concreteTargetClasses.length > 6) {
+      toast.error(ar ? "يمكن اختيار ستة صفوف كحد أقصى" : "Choose no more than six classes");
+      return;
+    }
     if (mode === "classroom" && classroomEligible.length < 2) {
       toast.error(ar
         ? "وميض الصف يدعم فقط اختيار متعدد وصح/خطأ — أضف سؤالين على الأقل من هذين النوعين"
@@ -477,7 +490,9 @@ export default function WameethCreate() {
           customTeamNames: mode === "teams"
             ? customTeamNames.slice(0, teamCount).map(name => name.trim())
             : null,
-          targetClass: targetClass || null,
+           targetClass: targetClass || null,
+           targetClasses: concreteTargetClasses.length ? concreteTargetClasses : null,
+           studentTeamChoiceEnabled,
         },
         source: sourceAssignmentId != null ? "assignment" : "game-launch",
         isShared,
@@ -530,7 +545,9 @@ export default function WameethCreate() {
           gameMode: mode,
           teamCount: mode === "teams" ? teamCount : undefined,
           customTeamNames: hasCustomNames ? validCustomNames : undefined,
-          targetClass: targetClass || undefined,
+           targetClass: concreteTargetClasses.length ? undefined : (targetClass || undefined),
+           targetClasses: concreteTargetClasses.length ? concreteTargetClasses : undefined,
+           studentTeamChoiceEnabled,
         },
         (res: { pin?: string; error?: string }) => {
           setStarting(false);
@@ -1056,9 +1073,9 @@ export default function WameethCreate() {
               </section>
             </div>
 
-            {mode === "teams" && (
+             {mode === "teams" && (
               <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-4 lg:space-y-5">
-                <div>
+                 {targetClasses.length === 0 && <div>
                   <label className="block text-xs lg:text-sm font-bold text-foreground mb-2 lg:mb-3 text-center">{ar ? "عدد الفرق" : "Number of teams"}</label>
                   <div className="flex justify-center gap-2 lg:gap-3">
                     {[2, 3, 4, 5, 6].map(n => (
@@ -1075,8 +1092,8 @@ export default function WameethCreate() {
                       </button>
                     ))}
                   </div>
-                </div>
-                <div>
+                 </div>}
+                 {targetClasses.length === 0 && <div>
                   <label className="block text-xs lg:text-sm font-bold text-foreground mb-2 lg:mb-3 text-center">{ar ? "أسماء الفرق (اختياري)" : "Team names (optional)"}</label>
                   <div className="space-y-2 lg:space-y-2.5">
                     {Array.from({ length: teamCount }).map((_, i) => (
@@ -1095,12 +1112,20 @@ export default function WameethCreate() {
                       />
                     ))}
                   </div>
-                </div>
+                 </div>}
+                 {targetClasses.length === 0 && <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+                   <input type="checkbox" checked={studentTeamChoiceEnabled} onChange={e => setStudentTeamChoiceEnabled(e.target.checked)} data-testid="wameeth-student-team-choice" />
+                   {ar ? "السماح للطلاب باختيار فرقهم" : "Allow students to choose their teams"}
+                 </label>}
               </div>
             )}
 
             {(mode === "solo" || mode === "teams") && (
-              <ClassSelector value={targetClass} onChange={setTargetClass} accent="#a855f7" />
+              mode === "teams" ? (
+                <ClassSelector value={targetClasses} values={targetClasses} multiple onChange={() => {}} onValuesChange={setTargetClasses} accent="#a855f7" />
+              ) : (
+                <ClassSelector value={targetClass} onChange={setTargetClass} accent="#a855f7" />
+              )
             )}
 
             <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />

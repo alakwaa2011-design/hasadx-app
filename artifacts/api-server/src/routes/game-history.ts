@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { createHmac } from "node:crypto";
 import { db, gameHistoryTable, studentsTable, assignmentsTable, presentationSessionsTable } from "@workspace/db";
 import { eq, desc, and, ne, sql } from "drizzle-orm";
 import type { Game, GamePlayer, GameQuestion } from "../game/manager.js";
@@ -104,20 +105,30 @@ router.get("/game-info/:pin", async (req, res) => {
     targetClasses: classList,
     assignmentTitle: game.assignmentTitle,
     hackMode: !!game.hackMode,
+    teamNames: game.teamNames,
+    studentTeamChoiceEnabled: !!game.studentTeamChoiceEnabled,
+    gameMode: game.gameMode,
   };
-  if (classList.length > 0 && game.teacherId) {
-    try {
-      const { inArray } = await import("drizzle-orm");
-      const students = await db
-        .select({ id: studentsTable.id, name: studentsTable.name, gradeLevel: studentsTable.gradeLevel })
-        .from(studentsTable)
-        .where(and(eq(studentsTable.teacherId, game.teacherId), inArray(studentsTable.gradeLevel, classList)));
-      info.students = students;
-    } catch {
-      info.students = [];
-    }
-  }
   res.json(info);
+});
+
+router.get("/game-info/:pin/roster", async (req, res) => {
+  const game = getGame(req.params.pin);
+  const className = typeof req.query.className === "string" ? req.query.className.trim() : "";
+  if (!game || !className) { res.status(404).json({ error: "اللعبة أو الصف غير موجود" }); return; }
+  const allowed = game.targetClasses?.length ? game.targetClasses : (game.targetClass ? [game.targetClass] : []);
+  if (!allowed.includes(className) || !game.teacherId) { res.status(403).json({ error: "الصف غير مسموح به" }); return; }
+  const rows = await db.select({ id: studentsTable.id, name: studentsTable.name })
+    .from(studentsTable)
+    .where(and(eq(studentsTable.teacherId, game.teacherId), eq(studentsTable.gradeLevel, className)));
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) { res.status(503).json({ error: "خدمة الأسماء غير متاحة" }); return; }
+  res.json({
+    students: rows.map(row => ({
+      name: row.name,
+      token: createHmac("sha256", secret).update(`${game.pin}\u0000${className}\u0000${row.id}`).digest("base64url"),
+    })),
+  });
 });
 
 router.get("/game-history", async (req, res) => {

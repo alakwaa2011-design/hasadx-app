@@ -1,6 +1,7 @@
 import { Server, Socket } from "socket.io";
-import { db, assignmentsTable, questionsTable, gameHistoryTable, studentsTable, millionBankQuestionsTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { createHmac } from "node:crypto";
+import { db, assignmentsTable, questionsTable, gameHistoryTable, studentsTable, millionBankQuestionsTable, teacherClassesTable } from "@workspace/db";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import {
   createGame,
   getGame,
@@ -77,6 +78,29 @@ interface CreateGameData {
   // Teacher-selected target class (overrides the assignment's stored class
   // when supplied). Used by Wameedh/Hack live-game flows.
   targetClass?: string;
+  targetClasses?: string[];
+  studentTeamChoiceEnabled?: boolean;
+}
+
+export function normalizeTargetClasses(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(new Set(values.filter((value): value is string => typeof value === "string")
+    .map(value => value.trim()).filter(value => value && value !== "__all_classes__" && !value.startsWith("__excluded_class__"))));
+}
+
+export function validateExplicitTargetClasses(values: unknown): { valid: boolean; classes: string[]; error?: string } {
+  if (!Array.isArray(values)) return { valid: true, classes: [] };
+  if (values.some(value => value === "__all_classes__" || (typeof value === "string" && value.startsWith("__excluded_class__")))) {
+    return { valid: false, classes: [], error: "sentinel" };
+  }
+  const classes = normalizeTargetClasses(values);
+  if (classes.length === 1) return { valid: false, classes, error: "one" };
+  if (classes.length > 6) return { valid: false, classes, error: "many" };
+  return { valid: true, classes };
+}
+
+export function normalizeRosterName(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/g, " ").trim().toLocaleLowerCase();
 }
 
 // Map Arabic / friendly subject labels to bank category enum values
@@ -138,6 +162,10 @@ interface JoinGameData {
   avatar?: string;
   studentId?: number;
   independentControlToken?: string;
+  selectedClass?: string;
+  rosterSelectionToken?: string;
+  manualName?: boolean;
+  requestedTeam?: string;
 }
 
 interface JoinGameResponse {
@@ -172,6 +200,31 @@ interface UseGiftData {
 const AUTO_ADVANCE_DELAY_MS = 5000;
 const TEACHER_RECONNECT_GRACE_LOBBY_MS = 90000;
 const TEACHER_RECONNECT_GRACE_ACTIVE_MS = 10 * 60 * 1000;
+
+export function rosterSelectionToken(pin: string, className: string, studentId: number): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return "";
+  return createHmac("sha256", secret).update(`${pin}\u0000${className}\u0000${studentId}`).digest("base64url");
+}
+
+export function isJoinMutationAllowed(input: {
+  state: string;
+  roomLocked: boolean;
+  reconnecting: boolean;
+  gameMode: string;
+  studentTeamChoiceEnabled: boolean;
+  requestedTeam: string;
+  teamNames: string[];
+  lockedTeams: string[];
+}): { valid: boolean; error?: string } {
+  if (input.state === "finished") return { valid: false, error: "اللعبة انتهت بالفعل" };
+  if (input.roomLocked && !input.reconnecting) return { valid: false, error: "الغرفة مقفلة من قبل المعلم — لا يمكن الانضمام الآن" };
+  if (input.gameMode === "teams" && input.studentTeamChoiceEnabled) {
+    if (!input.requestedTeam || !input.teamNames.includes(input.requestedTeam)) return { valid: false, error: "اختر فريقاً صحيحاً" };
+    if (input.lockedTeams.includes(input.requestedTeam)) return { valid: false, error: "هذا الفريق مقفل من قبل المعلم" };
+  }
+  return { valid: true };
+}
 
 let _sharedIo: Server | null = null;
 export function getGameIo(): Server | null { return _sharedIo; }
@@ -856,8 +909,38 @@ export function setupGameSocket(io: Server) {
         // We delay the trackEvent call until after the game is created so we
         // can include the pin (used as gameSessionId) for the live-games KPI.
 
-        const { assignmentId, questionDuration, autoAdvance, gameMode, teamCount, customTeamNames, hackMode, bankSubject, bankLevel, bankQuestionCount, targetClass: clientTargetClass } = data;
+        const { assignmentId, questionDuration, autoAdvance, gameMode, teamCount, customTeamNames, hackMode, bankSubject, bankLevel, bankQuestionCount, targetClass: clientTargetClass, targetClasses: clientTargetClasses, studentTeamChoiceEnabled } = data;
         const trimmedClientClass = typeof clientTargetClass === "string" ? clientTargetClass.trim() : "";
+        if (Array.isArray(clientTargetClasses) && clientTargetClasses.some(item => item === "__all_classes__" || (typeof item === "string" && item.startsWith("__excluded_class__")))) {
+          callback?.({ error: "يجب اختيار صفوف محددة، وليس كل الصفوف" });
+          return;
+        }
+        const requestedClasses = normalizeTargetClasses(clientTargetClasses);
+        if (requestedClasses.length > 6) {
+          callback?.({ error: "يمكن اختيار صفّين إلى ستة صفوف فقط" });
+          return;
+        }
+        if (requestedClasses.length === 1) {
+          callback?.({ error: "اختر صفين على الأقل أو استخدم الصف المفرد القديم" });
+          return;
+        }
+        if (requestedClasses.length > 0) {
+          const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
+            .where(eq(teacherClassesTable.teacherId, teacherId));
+          const ownedNames = new Set(owned.map(row => row.name.trim()));
+          if (requestedClasses.some(name => !ownedNames.has(name))) {
+            callback?.({ error: "لا يمكنك استخدام صف غير مملوك لك" });
+            return;
+          }
+        }
+        if (trimmedClientClass && requestedClasses.length === 0) {
+          const owned = await db.select({ name: teacherClassesTable.name }).from(teacherClassesTable)
+            .where(eq(teacherClassesTable.teacherId, teacherId));
+          if (!owned.some(row => row.name.trim() === trimmedClientClass)) {
+            callback?.({ error: "لا يمكنك استخدام صف غير مملوك لك" });
+            return;
+          }
+        }
 
         let questions: GameQuestion[];
         let resolvedAssignmentId = assignmentId;
@@ -984,6 +1067,13 @@ export function setupGameSocket(io: Server) {
           resolvedTargetClass = trimmedClientClass;
           resolvedTargetClasses = [trimmedClientClass];
         }
+        if (requestedClasses.length > 0) {
+          resolvedTargetClasses = requestedClasses;
+          resolvedTargetClass = requestedClasses[0];
+        }
+        const classTeams = resolvedTargetClasses && resolvedTargetClasses.length >= 2 ? resolvedTargetClasses : null;
+        const effectiveTeamCount = classTeams ? classTeams.length : (teamCount || 2);
+        const effectiveTeamNames = classTeams ?? customTeamNames;
 
         const game = createGame(
           resolvedAssignmentId,
@@ -994,11 +1084,13 @@ export function setupGameSocket(io: Server) {
           questionDuration || 20,
           autoAdvance || false,
           gameMode || "solo",
-          teamCount || 2,
-          customTeamNames,
+           effectiveTeamCount,
+           effectiveTeamNames,
           resolvedTargetClass,
           !!hackMode,
-          resolvedTargetClasses
+           resolvedTargetClasses,
+           false,
+           !!studentTeamChoiceEnabled && !classTeams
         );
 
         socket.join(`game:${game.pin}`);
@@ -1062,6 +1154,47 @@ export function setupGameSocket(io: Server) {
         return;
       }
 
+      const targetClasses = game.targetClasses?.length ? game.targetClasses : (game.targetClass ? [game.targetClass] : []);
+      const selectedClass = typeof data.selectedClass === "string" ? data.selectedClass.trim() : "";
+      let tokenStudentId: number | null = null;
+      if (targetClasses.length > 1) {
+        if (!selectedClass || !targetClasses.includes(selectedClass)) {
+          callback?.({ error: "اختر صفاً مسموحاً به في هذه اللعبة" });
+          return;
+        }
+        if (!data.manualName) {
+          const roster = await db.select({ id: studentsTable.id, name: studentsTable.name })
+            .from(studentsTable)
+            .where(and(eq(studentsTable.teacherId, game.teacherId), eq(studentsTable.gradeLevel, selectedClass)));
+          const match = roster.find(row => rosterSelectionToken(pin, selectedClass, row.id) === data.rosterSelectionToken);
+          if (!match || match.name.trim() !== trimmedName) {
+            callback?.({ error: "اختر اسماً صحيحاً من صفك" });
+            return;
+          }
+          tokenStudentId = match.id;
+        }
+      }
+      if (targetClasses.length > 0 && data.manualName) {
+        const roster = await db.select({ name: studentsTable.name })
+          .from(studentsTable)
+          .where(and(eq(studentsTable.teacherId, game.teacherId), inArray(studentsTable.gradeLevel, targetClasses)));
+        if (roster.some(row => normalizeRosterName(row.name) === normalizeRosterName(trimmedName))) {
+          callback?.({ error: "هذا الاسم موجود في القائمة — اختر الاسم المدرج في الصف الصحيح" });
+          return;
+        }
+      }
+      const requestedTeam = typeof data.requestedTeam === "string" ? data.requestedTeam.trim() : "";
+      if (game.gameMode === "teams" && game.studentTeamChoiceEnabled) {
+        if (!requestedTeam || !game.teamNames.includes(requestedTeam)) {
+          callback?.({ error: "اختر فريقاً صحيحاً" });
+          return;
+        }
+        if (game.lockedTeams.has(requestedTeam)) {
+          callback?.({ error: "هذا الفريق مقفل من قبل المعلم" });
+          return;
+        }
+      }
+
       // Reject NEW joins when the room is locked. Reconnections (player with
       // the same name already in the room) are still allowed below in addPlayer.
       if (game.roomLocked) {
@@ -1074,18 +1207,42 @@ export function setupGameSocket(io: Server) {
         }
       }
 
-      let verifiedStudentId: number | null = null;
-      const verifiedStudentAccountId: number | null = authenticatedAccountId;
-      const targetClasses = game.targetClasses?.length ? game.targetClasses : (game.targetClass ? [game.targetClass] : []);
-      if (authenticatedAccountId && game.teacherId) {
+      let verifiedStudentId: number | null = tokenStudentId;
+      const verifiedStudentAccountId: number | null = data.manualName ? null : authenticatedAccountId;
+      if (!data.manualName && authenticatedAccountId && game.teacherId) {
         try {
           const identity=await resolveWameethStudentIdentity(db,{teacherId:game.teacherId,studentAccountId:authenticatedAccountId,targetClasses});
           if(identity) {
+            if (tokenStudentId !== null && identity.studentId !== tokenStudentId) {
+              callback?.({ error: "رمز اختيار الاسم لا يطابق حساب الطالب" });
+              return;
+            }
             verifiedStudentId = identity.studentId;
           }
         } catch (err) {
           logger.warn({ err, teacherId: game.teacherId }, "Student game identity verification failed");
         }
+      }
+      // Validation above awaits database work; re-read all mutable lobby locks
+      // immediately before the player mutation to close the race window.
+      const currentGame = getGame(pin);
+      if (!currentGame) {
+        callback?.({ error: "اللعبة انتهت بالفعل" });
+        return;
+      }
+      const mutationGuard = isJoinMutationAllowed({
+        state: currentGame.state,
+        roomLocked: currentGame.roomLocked,
+        reconnecting: Array.from(currentGame.players.values()).some(p => p.name === trimmedName && !p.isBot),
+        gameMode: currentGame.gameMode,
+        studentTeamChoiceEnabled: currentGame.studentTeamChoiceEnabled,
+        requestedTeam,
+        teamNames: currentGame.teamNames,
+        lockedTeams: Array.from(currentGame.lockedTeams),
+      });
+      if (!mutationGuard.valid) {
+        callback?.({ error: mutationGuard.error });
+        return;
       }
 
       const existingSameName=Array.from(game.players.values()).find(p=>p.name===trimmedName && !p.isBot);
@@ -1127,6 +1284,8 @@ export function setupGameSocket(io: Server) {
           avatar || "🦁",
           verifiedStudentId,
           verifiedStudentAccountId,
+          requestedTeam || (targetClasses.length >= 2 ? selectedClass : null),
+          !!(requestedTeam || targetClasses.length >= 2),
         );
       }
       if (!player) {
@@ -2223,7 +2382,7 @@ export function setupGameSocket(io: Server) {
       logger.info({ pin: data.pin, teamName, locked }, "Teacher toggled team lock");
     });
 
-    socket.on("teacher:move-player", (data: PinData & { playerName: string; teamName: string }, callback?: (res: any) => void) => {
+    socket.on("teacher:move-player", (data: PinData & { playerName?: string; playerId?: string; teamName: string }, callback?: (res: any) => void) => {
       const game = getGame(data.pin);
       if (!game || game.teacherSocketId !== socket.id) {
         callback?.({ error: "غير مصرح" });
@@ -2239,23 +2398,24 @@ export function setupGameSocket(io: Server) {
         return;
       }
       const playerName = typeof data.playerName === "string" ? data.playerName.trim() : "";
+      const playerId = typeof data.playerId === "string" ? data.playerId.trim() : "";
       const teamName = typeof data.teamName === "string" ? data.teamName.trim() : "";
-      if (!playerName || !teamName) {
-        callback?.({ error: "اسم اللاعب والفريق مطلوبان" });
+      if ((!playerName && !playerId) || !teamName) {
+        callback?.({ error: "معرّف اللاعب والفريق مطلوبان" });
         return;
       }
       if (!game.teamNames.includes(teamName)) {
         callback?.({ error: "الفريق غير موجود" });
         return;
       }
-      const moved = movePlayerToTeam(game.pin, playerName, teamName);
+      const moved = movePlayerToTeam(game.pin, playerName, teamName, playerId || undefined);
       if (!moved) {
         callback?.({ error: "اللاعب غير موجود" });
         return;
       }
       io.to(`game:${game.pin}`).emit("game:players-updated", buildPlayersUpdatedPayload(game)!);
       // Notify the moved player so their UI can update myTeam.
-      const player = Array.from(game.players.values()).find((p) => p.name === playerName && !p.isBot);
+      const player = Array.from(game.players.values()).find((p) => (playerId ? p.socketId === playerId : p.name === playerName) && !p.isBot);
       if (player) {
         io.to(player.socketId).emit("game:team-changed", { teamName });
       }

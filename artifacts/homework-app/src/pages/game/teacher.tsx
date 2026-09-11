@@ -772,9 +772,9 @@ export default function TeacherGame() {
     socket.emit("teacher:toggle-team-lock", { pin, teamName, locked: !isLocked });
   };
 
-  const movePlayer = (playerName: string, teamName: string) => {
+  const movePlayer = (playerName: string, teamName: string, playerId?: string) => {
     const socket = getSocket();
-    socket.emit("teacher:move-player", { pin, playerName, teamName }, (res: any) => {
+    socket.emit("teacher:move-player", { pin, playerName, playerId, teamName }, (res: any) => {
       if (!res?.success && res?.error) {
         import("@/components/ui/sonner").then(({ toast }) => {
           toast.error(res.error);

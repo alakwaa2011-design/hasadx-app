@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { logger } from "../lib/logger";
 
 // Levenshtein distance for fuzzy dictation grading
 function levenshtein(a: string, b: string): number {
@@ -136,6 +137,8 @@ export interface GamePlayer {
   usedGiftTypes: Set<string>;
   answers: Map<number, { answer: string; time: number; correct: boolean; points: number }>;
   teamName: string | null;
+  /** A teacher/class/student-selected assignment must survive game start balancing. */
+  teamAssignmentExplicit?: boolean;
   isBot: boolean;
   botAccuracy?: number;
   disconnected?: boolean;
@@ -220,6 +223,7 @@ export interface Game {
   currentShuffledOptions: { optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null } | null;
   targetClass: string | null;
   targetClasses: string[] | null;
+  studentTeamChoiceEnabled: boolean;
   hackMode: boolean;
   takenPasswords: Set<string>;
   mysteryBoxRound: number;
@@ -338,6 +342,7 @@ export function createGame(
   /** When true, skip the initial shuffle so question ordering is preserved
    *  (used by multi-level solo challenges where level order must be kept). */
   preserveOrder: boolean = false,
+  studentTeamChoiceEnabled: boolean = false,
 ): Game {
   if (games.size >= MAX_CONCURRENT_GAMES) {
     throw new Error(
@@ -399,6 +404,7 @@ export function createGame(
     currentShuffledOptions: null,
     targetClass: targetClass || null,
     targetClasses: (targetClasses && targetClasses.length > 0) ? targetClasses : (targetClass ? [targetClass] : null),
+    studentTeamChoiceEnabled: !!studentTeamChoiceEnabled,
     hackMode: !!hackMode,
     takenPasswords: new Set(),
     mysteryBoxRound: 0,
@@ -592,7 +598,7 @@ export function assignTeamsAlphabetically(game: Game): void {
   if (game.gameMode !== "teams" || game.players.size === 0) return;
 
   const playersList = shuffleArray(
-    Array.from(game.players.values()).filter((p) => !p.disconnected),
+    Array.from(game.players.values()).filter((p) => !p.disconnected && !p.teamAssignmentExplicit),
   );
   if (playersList.length === 0) return;
   const allTeamNames = game.teamNames.length > 0
@@ -649,22 +655,23 @@ export function setTeamLocked(pin: string, teamName: string, locked: boolean): b
   return true;
 }
 
-export function movePlayerToTeam(pin: string, playerName: string, teamName: string): { player: GamePlayer; oldTeam: string | null } | null {
+export function movePlayerToTeam(pin: string, playerName: string, teamName: string, playerId?: string): { player: GamePlayer; oldTeam: string | null } | null {
   const game = games.get(pin);
   if (!game) return null;
   if (game.gameMode !== "teams") return null;
   if (!game.teamNames.includes(teamName)) return null;
   for (const p of game.players.values()) {
-    if (p.name === playerName) {
+    if ((playerId ? p.socketId === playerId : p.name === playerName)) {
       const oldTeam = p.teamName;
       p.teamName = teamName;
+      if (!p.isBot) p.teamAssignmentExplicit = true;
       return { player: p, oldTeam };
     }
   }
   return null;
 }
 
-export function addPlayer(pin: string, socketId: string, name: string, avatar: string = "🦁", studentId?: number | null, studentAccountId?: number | null): GamePlayer | null {
+export function addPlayer(pin: string, socketId: string, name: string, avatar: string = "🦁", studentId?: number | null, studentAccountId?: number | null, requestedTeam?: string | null, explicitTeam = false): GamePlayer | null {
   const game = games.get(pin);
   if (!game || game.state === "finished") return null;
 
@@ -677,7 +684,7 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
       game.players.delete(oldSocketId);
     } else {
       const incomingAccountId=studentAccountId != null ? studentAccountId : null;
-      const incomingStudentId=studentId != null && incomingAccountId != null ? studentId : null;
+      const incomingStudentId = studentId != null ? studentId : null;
       if(existingPlayer.studentId!==incomingStudentId || existingPlayer.studentAccountId!==incomingAccountId)return null;
       if (oldSocketId !== socketId) {
         game.players.delete(oldSocketId);
@@ -685,19 +692,21 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
         game.players.set(socketId, existingPlayer);
       }
       existingPlayer.disconnected = false;
-      console.log(`[GAME ${pin}] Player "${name}" reconnected (score=${existingPlayer.score})`);
+      logger.info({ pin, name, score: existingPlayer.score }, "Player reconnected");
       return existingPlayer;
     }
   }
 
-  const teamName = game.gameMode === "teams" ? getSmallestTeam(game) : null;
+  const teamName = game.gameMode === "teams"
+    ? (requestedTeam && game.teamNames.includes(requestedTeam) ? requestedTeam : getSmallestTeam(game))
+    : null;
 
   const player: GamePlayer = {
     socketId,
     name,
     audioToken: randomUUID(),
     avatar,
-    studentId: studentId != null && studentAccountId != null ? studentId : null,
+    studentId: studentId != null ? studentId : null,
     studentAccountId: studentAccountId != null ? studentAccountId : null,
     score: 0,
     streak: 0,
@@ -714,6 +723,7 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
     usedGiftTypes: new Set(),
     answers: new Map(),
     teamName,
+    teamAssignmentExplicit: !!(teamName && explicitTeam),
     isBot: false,
   };
   game.players.set(socketId, player);
@@ -989,6 +999,7 @@ export function getPlayerList(game: Game) {
       score: p.score,
       streak: p.streak,
       teamName: p.teamName,
+      playerId: p.socketId,
       isBot: p.isBot || false,
       hasPassword: game.hackMode ? !!p.password : undefined,
     }));

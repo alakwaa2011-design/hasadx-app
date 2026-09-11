@@ -16,6 +16,23 @@ interface StudentAccount {
   avatar: string | null;
 }
 
+export function mapJoinGameInfo(data: any): {
+  exists: boolean;
+  classes: string[];
+  teamNames: string[];
+  studentTeamChoiceEnabled: boolean;
+} {
+  const classes = Array.isArray(data?.targetClasses) && data.targetClasses.length > 0
+    ? data.targetClasses
+    : (typeof data?.targetClass === "string" && data.targetClass ? [data.targetClass] : []);
+  return {
+    exists: data?.exists === true,
+    classes,
+    teamNames: data?.exists === true && Array.isArray(data?.teamNames) ? data.teamNames : [],
+    studentTeamChoiceEnabled: data?.exists === true && !!data?.studentTeamChoiceEnabled,
+  };
+}
+
 export default function GameJoin() {
   useSeo({
     title: "انضم إلى لعبة | منصة حصاد",
@@ -32,12 +49,17 @@ export default function GameJoin() {
   const { t, lang } = useI18n();
 
   const [hackMode, setHackMode] = useState(false);
-  const [gameStudents, setGameStudents] = useState<{ id: number; name: string; gradeLevel?: string }[]>([]);
+  const [gameStudents, setGameStudents] = useState<{ name: string; token: string }[]>([]);
   const [gameTargetClass, setGameTargetClass] = useState<string | null>(null);
   const [gameTargetClasses, setGameTargetClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [checkedPin, setCheckedPin] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [rosterSelectionToken, setRosterSelectionToken] = useState("");
+  const [manualName, setManualName] = useState(false);
+  const [gameTeamNames, setGameTeamNames] = useState<string[]>([]);
+  const [studentTeamChoiceEnabled, setStudentTeamChoiceEnabled] = useState(false);
+  const [requestedTeam, setRequestedTeam] = useState("");
   const [studentAccount, setStudentAccount] = useState<StudentAccount | null>(null);
   const [typedChars, setTypedChars] = useState<string[]>([]);
 
@@ -70,6 +92,13 @@ export default function GameJoin() {
     if (trimmed.length < 6) {
       setHackMode(false);
       setCheckedPin("");
+      setGameTargetClass(null);
+      setGameTargetClasses([]);
+      setGameStudents([]);
+      setSelectedClass("");
+      setGameTeamNames([]);
+      setStudentTeamChoiceEnabled(false);
+      setRequestedTeam("");
       return;
     }
     if (trimmed.length === 6 && trimmed !== checkedPin) {
@@ -84,20 +113,28 @@ export default function GameJoin() {
           } else {
             setAvatar(studentAccount?.avatar || DEFAULT_AVATAR);
           }
-          const classes: string[] = Array.isArray(data.targetClasses) && data.targetClasses.length > 0
-            ? data.targetClasses
-            : (data.targetClass ? [data.targetClass] : []);
-          if (data.exists && classes.length > 0 && data.students?.length > 0) {
-            setGameTargetClass(data.targetClass || classes[0]);
-            setGameTargetClasses(classes);
-            setGameStudents(data.students);
-            if (classes.length === 1) setSelectedClass(classes[0]);
+          const info = mapJoinGameInfo(data);
+          setGameTeamNames(info.exists ? info.teamNames : []);
+          setStudentTeamChoiceEnabled(info.studentTeamChoiceEnabled);
+          setRequestedTeam("");
+          if (info.exists && info.classes.length > 0) {
+            setGameTargetClass(info.classes[0]);
+            setGameTargetClasses(info.classes);
+            setGameStudents([]);
+            if (info.classes.length === 1) setSelectedClass(info.classes[0]);
             else setSelectedClass("");
+          } else if (info.exists) {
+            setGameTargetClass(null);
+            setGameTargetClasses([]);
+            setGameStudents([]);
+            setSelectedClass("");
           } else {
             setGameTargetClass(null);
             setGameTargetClasses([]);
             setGameStudents([]);
             setSelectedClass("");
+            setGameTeamNames([]);
+            setStudentTeamChoiceEnabled(false);
           }
         })
         .catch(() => {
@@ -107,19 +144,38 @@ export default function GameJoin() {
           setGameTargetClasses([]);
           setGameStudents([]);
           setSelectedClass("");
+          setGameTeamNames([]);
+          setStudentTeamChoiceEnabled(false);
+          setRequestedTeam("");
         });
     }
   }, [pin, studentAccount?.avatar]);
+
+  useEffect(() => {
+    if (!selectedClass || !gameTargetClasses.includes(selectedClass)) {
+      setGameStudents([]);
+      return;
+    }
+    fetch(`${API_BASE}/api/game-info/${encodeURIComponent(pin.trim())}/roster?className=${encodeURIComponent(selectedClass)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setGameStudents(Array.isArray(data?.students) ? data.students : []))
+      .catch(() => setGameStudents([]));
+  }, [pin, selectedClass, gameTargetClasses]);
 
   const handleJoin = () => {
     const trimmedPin = pin.trim();
     const trimmedName = name.trim();
     if (!trimmedPin || !trimmedName) return;
     const selectedAvatar = avatar || (hackMode ? ">>>" : DEFAULT_AVATAR);
-    const sidParam = selectedStudentId ? `&studentId=${selectedStudentId}` : "";
+    const tokenParam = rosterSelectionToken ? `&rosterSelectionToken=${encodeURIComponent(rosterSelectionToken)}` : "";
+    const classParam = selectedClass ? `&selectedClass=${encodeURIComponent(selectedClass)}` : "";
+    const manualParam = manualName ? "&manualName=1" : "";
+    const teamParam = requestedTeam ? `&requestedTeam=${encodeURIComponent(requestedTeam)}` : "";
     const accountParam = studentAccount ? `&studentAccountId=${studentAccount.id}` : "";
-    setLocation(`/game/play/${trimmedPin}?name=${encodeURIComponent(trimmedName)}&avatar=${encodeURIComponent(selectedAvatar)}${sidParam}${accountParam}`);
+    setLocation(`/game/play/${trimmedPin}?name=${encodeURIComponent(trimmedName)}&avatar=${encodeURIComponent(selectedAvatar)}${classParam}${tokenParam}${manualParam}${teamParam}${accountParam}`);
   };
+  const needsTeamChoice = studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 0;
+  const canJoin = !!pin.trim() && !!name.trim() && (!needsTeamChoice || !!requestedTeam);
 
   if (hackMode) {
     return (
@@ -161,6 +217,15 @@ export default function GameJoin() {
                 </div>
               )}
 
+              {studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 0 && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-green-600">{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => setRequestedTeam(team)} className={`rounded-lg border-2 px-3 py-2 text-sm font-bold ${requestedTeam === team ? "border-green-400 bg-green-500/20 text-green-200" : "border-green-900 text-green-700"}`}>{team}</button>)}
+                  </div>
+                  {!requestedTeam && <p className="text-xs text-green-700">{lang === "ar" ? "اختر فريقًا قبل الانضمام" : "Choose a team before joining"}</p>}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-green-600 mb-1.5">
                   {">"} {lang === "ar" ? "رمز الدخول (6 أرقام)" : "ACCESS_CODE"}
@@ -177,7 +242,7 @@ export default function GameJoin() {
                 />
               </div>
 
-              {gameStudents.length > 0 ? (
+              {gameTargetClasses.length > 0 ? (
                 <div className="space-y-2">
                   {gameTargetClasses.length > 1 && (
                     <div className="space-y-1.5">
@@ -190,7 +255,7 @@ export default function GameJoin() {
                           <button
                             key={c}
                             type="button"
-                            onClick={() => { setSelectedClass(c); setSelectedStudentId(null); setName(""); }}
+                           onClick={() => { setSelectedClass(c); setSelectedStudentId(null); setRosterSelectionToken(""); setManualName(false); setName(""); }}
                             className={`py-2 px-2 rounded-lg border-2 text-xs font-bold transition-all ${
                               selectedClass === c
                                 ? "bg-green-500/20 border-green-400 text-green-200"
@@ -208,20 +273,26 @@ export default function GameJoin() {
                         {lang === "ar" ? "اختر هويتك" : "SELECT_IDENTITY"}
                       </label>
                       <select
-                        value={selectedStudentId ?? ""}
+                         disabled={manualName}
+                         value={rosterSelectionToken}
                         onChange={e => {
-                          const id = e.target.value ? parseInt(e.target.value) : null;
-                          setSelectedStudentId(id);
-                          const found = gameStudents.find(s => s.id === id);
+                           const token = e.target.value;
+                           setRosterSelectionToken(token);
+                           setManualName(false);
+                           const found = gameStudents.find(s => s.token === token);
                           setName(found ? found.name : "");
                         }}
                         className="w-full rounded-lg border-2 border-green-900 bg-black px-3 py-2.5 text-sm font-bold focus:border-green-500 focus:ring-2 focus:ring-green-500/20 outline-none transition-all text-center text-green-300"
                       >
                         <option value="">{lang === "ar" ? "— اختر اسمك —" : "— SELECT_AGENT —"}</option>
-                        {gameStudents.filter(s => !s.gradeLevel || s.gradeLevel === selectedClass).map(s => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
+                         {gameStudents.map(s => (
+                           <option key={s.token} value={s.token}>{s.name}</option>
                         ))}
                       </select>
+                       <button type="button" data-testid="button-manual-name" onClick={() => { setManualName(true); setRosterSelectionToken(""); setName(""); }} className="text-xs font-bold text-green-700 underline">
+                         {lang === "ar" ? "اسمي غير موجود" : "My name is not listed"}
+                       </button>
+                       {manualName && <input value={name} onChange={e => setName(e.target.value)} placeholder={lang === "ar" ? "اكتب اسمك" : "Enter your name"} className="w-full rounded-lg border-2 border-green-900 bg-black px-3 py-2 text-center text-green-200" />}
                       <div className="flex items-center gap-2 text-xs text-green-700">
                         <GraduationCap className="w-3 h-3" />
                         {selectedClass}
@@ -264,7 +335,7 @@ export default function GameJoin() {
 
               <motion.button
                 onClick={handleJoin}
-                disabled={!pin.trim() || !name.trim()}
+                disabled={!canJoin}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 className="w-full py-3.5 text-base font-black bg-green-900/60 hover:bg-green-800/80 border-2 border-green-500 text-green-200 rounded-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -334,6 +405,15 @@ export default function GameJoin() {
               </div>
             )}
 
+            {studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length === 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold" style={{ color: "#7A9A7C" }}>{lang === "ar" ? "اختر فريقك" : "Choose your team"}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {gameTeamNames.map(team => <button key={team} type="button" data-testid={`team-choice-${team}`} onClick={() => setRequestedTeam(team)} className="rounded-xl px-3 py-2 text-sm font-bold" style={requestedTeam === team ? { background: "#1A3A28", color: "white" } : { background: "#F0F4F1", color: "#1A3A28", border: "2px solid #E2E8E3" }}>{team}</button>)}
+                </div>
+                {!requestedTeam && <p className="text-xs" style={{ color: "#7A9A7C" }}>{lang === "ar" ? "اختر فريقًا قبل الانضمام" : "Choose a team before joining"}</p>}
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold mb-1.5" style={{ color: "#7A9A7C" }}>
                 {lang === "ar" ? "رمز اللعبة (6 أرقام)" : "Game Code (6 digits)"}
@@ -363,7 +443,7 @@ export default function GameJoin() {
               />
             </div>
 
-            {gameStudents.length > 0 ? (
+            {gameTargetClasses.length > 0 ? (
               <div className="space-y-2">
                 {gameTargetClasses.length > 1 && (
                   <div className="space-y-1.5">
@@ -376,7 +456,7 @@ export default function GameJoin() {
                         <button
                           key={c}
                           type="button"
-                          onClick={() => { setSelectedClass(c); setSelectedStudentId(null); setName(""); }}
+                           onClick={() => { setSelectedClass(c); setSelectedStudentId(null); setRosterSelectionToken(""); setManualName(false); setName(""); }}
                           className="py-2 px-2 rounded-xl text-xs font-bold transition-all"
                           style={
                             selectedClass === c
@@ -395,11 +475,13 @@ export default function GameJoin() {
                       {lang === "ar" ? "اختر اسمك" : "Select your name"}
                     </label>
                     <select
-                      value={selectedStudentId ?? ""}
-                      onChange={e => {
-                        const id = e.target.value ? parseInt(e.target.value) : null;
-                        setSelectedStudentId(id);
-                        const found = gameStudents.find(s => s.id === id);
+                       disabled={manualName}
+                         value={rosterSelectionToken}
+                       onChange={e => {
+                         const token = e.target.value;
+                         setRosterSelectionToken(token);
+                         setManualName(false);
+                         const found = gameStudents.find(s => s.token === token);
                         setName(found ? found.name : "");
                       }}
                       className="w-full rounded-xl px-3 py-2.5 text-sm font-bold outline-none transition-all text-center"
@@ -410,10 +492,14 @@ export default function GameJoin() {
                       }}
                     >
                       <option value="">{lang === "ar" ? "— اختر اسمك —" : "— Select your name —"}</option>
-                      {gameStudents.filter(s => !s.gradeLevel || s.gradeLevel === selectedClass).map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
+                         {gameStudents.map(s => (
+                           <option key={s.token} value={s.token}>{s.name}</option>
                       ))}
                     </select>
+                      <button type="button" data-testid="button-manual-name" onClick={() => { setManualName(true); setRosterSelectionToken(""); setName(""); }} className="text-xs font-bold" style={{ color: "#7A9A7C" }}>
+                        {lang === "ar" ? "اسمي غير موجود" : "My name is not listed"}
+                      </button>
+                      {manualName && <input value={name} onChange={e => setName(e.target.value)} placeholder={lang === "ar" ? "اكتب اسمك" : "Enter your name"} className="w-full rounded-xl px-3 py-2 text-center" style={{ background: "#F0F4F1", border: "1.5px solid #E2E8E3", color: "#1A3A28" }} />}
                     <div className="flex items-center gap-2 text-xs" style={{ color: "#7A9A7C" }}>
                       <GraduationCap className="w-3 h-3" />
                       {selectedClass}
@@ -496,7 +582,7 @@ export default function GameJoin() {
 
             <motion.button
               onClick={handleJoin}
-              disabled={!pin.trim() || !name.trim()}
+              disabled={!canJoin}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               className="w-full py-3.5 text-base font-black text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"

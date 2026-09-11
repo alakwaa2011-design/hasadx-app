@@ -74,6 +74,7 @@ const MAX_LOBBY_PLAYERS = 20;
 const SETTING_CARD_DESKTOP = "xl:w-[min(188px,13.5vw)] xl:shrink-0";
 
 export type LobbyPlayer = {
+  playerId?: string;
   name: string;
   score: number;
   avatar?: string;
@@ -133,7 +134,7 @@ export interface WameethWaitingRoomUIProps {
   onSetHackCustomMin: (v: string) => void;
   onKickPlayer: (name: string) => void;
   onToggleTeamLock: (teamName: string) => void;
-  onMovePlayer: (playerName: string, teamName: string) => void;
+  onMovePlayer: (playerName: string, teamName: string, playerId?: string) => void;
   onBroadcastMessageChange: (v: string) => void;
   onSendBroadcast: () => void;
   onClearSentMessages: () => void;
@@ -1789,7 +1790,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                                 isAr={isAr}
                                 teamNames={teamNames}
                                 onKick={() => onKickPlayer(p.name)}
-                                onMove={(tn) => onMovePlayer(p.name, tn)}
+                                onMove={(tn) => onMovePlayer(p.name, tn, p.playerId)}
                               />
                             ))}
                           </div>
