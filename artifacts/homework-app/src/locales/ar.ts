@@ -2244,7 +2244,7 @@ export const ar = {
     falseAnswer: "خطأ ✗",
     textAnswer: "✏️ إجابة كتابية",
     giftRoundTitle: "جولة المفاجآت!",
-    giftRoundDescription: "الطلاب يختارون قواهم الخاصة...",
+    giftRoundDescription: "المشاركون يختارون هداياهم الآن...",
     broadcast: "بث للجميع",
     broadcastSent: "✓ أُرسل",
     broadcastLabel: "إرسال رسالة للجميع",

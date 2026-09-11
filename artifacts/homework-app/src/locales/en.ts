@@ -2219,7 +2219,7 @@ export const en: typeof ar = {
     falseAnswer: "False ✗",
     textAnswer: "✏️ Text Answer",
     giftRoundTitle: "Mystery Round!",
-    giftRoundDescription: "Students are choosing their special powers...",
+    giftRoundDescription: "Participants are choosing their gifts now...",
     broadcast: "BROADCAST",
     broadcastSent: "✓ SENT",
     broadcastLabel: "BROADCAST TRANSMISSION",
