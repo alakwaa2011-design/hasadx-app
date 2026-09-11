@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { StudentLoginLayout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { Terminal, ShieldAlert, CheckCircle, Users, GraduationCap, Gamepad2, ArrowRight } from "lucide-react";
+import { Terminal, ShieldAlert, CheckCircle, Users, GraduationCap, ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { WameethPortal } from "@/components/wameeth-portal";
 import { useSeo } from "@/lib/seo";
 import { NORMAL_AVATARS, HACK_ICONS, DEFAULT_AVATAR } from "@/lib/avatars";
 import { AvatarDisplay } from "@/components/avatar-display";
@@ -66,6 +67,7 @@ export default function GameJoin() {
   const [teamChoiceError, setTeamChoiceError] = useState(false);
   const [studentAccount, setStudentAccount] = useState<StudentAccount | null>(null);
   const [typedChars, setTypedChars] = useState<string[]>([]);
+  const [isCheckingPin, setIsCheckingPin] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/student-auth/me`, { credentials: "include" })
@@ -96,6 +98,7 @@ export default function GameJoin() {
     if (trimmed.length < 6) {
       setHackMode(false);
       setCheckedPin("");
+      setIsCheckingPin(false);
       setGameTargetClass(null);
       setGameTargetClasses([]);
       setGameStudents([]);
@@ -109,9 +112,11 @@ export default function GameJoin() {
     }
     if (trimmed.length === 6 && trimmed !== checkedPin) {
       setCheckedPin(trimmed);
+      setIsCheckingPin(true);
       fetch(`${API_BASE}/api/game-info/${trimmed}`)
         .then(r => r.json())
         .then(data => {
+          setIsCheckingPin(false);
           const isHack = !!data.hackMode;
           setHackMode(isHack);
           if (isHack) {
@@ -148,6 +153,7 @@ export default function GameJoin() {
           }
         })
         .catch(() => {
+          setIsCheckingPin(false);
           setHackMode(false);
           setAvatar(studentAccount?.avatar || DEFAULT_AVATAR);
           setGameTargetClass(null);
@@ -196,6 +202,17 @@ export default function GameJoin() {
   };
   const needsTeamChoice = gameMode === "teams" && studentTeamChoiceEnabled && gameTeamNames.length > 0 && gameTargetClasses.length <= 1;
   const canJoin = !!pin.trim() && !!name.trim();
+
+  let portalStatus: "idle" | "checking" | "found" | "error" = "idle";
+  if (isCheckingPin) {
+    portalStatus = "checking";
+  } else if (pin.trim().length === 6) {
+    if (gameMode !== null || hackMode) {
+      portalStatus = "found";
+    } else if (checkedPin === pin.trim()) {
+      portalStatus = "error";
+    }
+  }
 
   if (hackMode) {
     return (
@@ -394,18 +411,7 @@ export default function GameJoin() {
           className="w-full max-w-md"
         >
           <div className="text-center mb-5">
-            <motion.div
-              animate={{ y: [0, -6, 0] }}
-              transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3"
-              style={{
-                background: "rgba(232,184,75,0.15)",
-                border: "2px solid rgba(232,184,75,0.35)",
-                boxShadow: "0 0 32px rgba(232,184,75,0.25)",
-              }}
-            >
-              <Gamepad2 className="w-8 h-8" style={{ color: "#E8B84B" }} />
-            </motion.div>
+            <WameethPortal pinLength={pin.trim().length} status={portalStatus} />
             <h1 className="text-3xl font-black text-white mb-1">
               {lang === "ar" ? "انضم للعبة" : "Join Game"}
             </h1>
