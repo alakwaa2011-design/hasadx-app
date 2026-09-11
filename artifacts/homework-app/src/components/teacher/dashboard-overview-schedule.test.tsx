@@ -5,12 +5,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bulkMutate = vi.fn();
 const deleteAllMutate = vi.fn();
+const scheduleRefetch = vi.fn();
 let scheduleRows: Array<Record<string, unknown>> = [];
 let scheduleIsError = false;
+let scheduleIsFetching = false;
 
 vi.mock("@workspace/api-client-react", () => ({
   getListTeacherScheduleQueryKey: () => ["teacher-schedule"],
-  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false, isError: scheduleIsError }),
+  useListTeacherSchedule: () => ({
+    data: scheduleRows,
+    isLoading: false,
+    isError: scheduleIsError,
+    isFetching: scheduleIsFetching,
+    refetch: scheduleRefetch,
+  }),
   useBulkCreateTeacherSchedule: () => ({ mutate: bulkMutate, isPending: false }),
   useCreateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
   useUpdateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
@@ -67,8 +75,10 @@ beforeEach(async () => {
   vi.setSystemTime(new Date("2026-09-13T09:00:00Z"));
   bulkMutate.mockReset();
   deleteAllMutate.mockReset();
+  scheduleRefetch.mockReset();
   scheduleRows = [];
   scheduleIsError = false;
+  scheduleIsFetching = false;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -213,7 +223,7 @@ describe("TeacherScheduleCard full schedule drafts", () => {
     expect(document.body.textContent).toContain("اجتماع ولي الأمر");
   });
 
-  it("shows a clear message when reopening the schedule fails", async () => {
+  it("retries a failed schedule load and shows recovered data in place", async () => {
     scheduleIsError = true;
     await act(async () => {
       root.render(
@@ -223,6 +233,22 @@ describe("TeacherScheduleCard full schedule drafts", () => {
       );
     });
     expect(document.body.textContent).toContain("تعذر تحميل الجدول");
+    await click("button-retry-dashboard-schedule");
+    expect(scheduleRefetch).toHaveBeenCalledOnce();
+
+    scheduleIsError = false;
+    scheduleRows = [{
+      id: 1,
+      kind: "weekly",
+      title: "رياضيات",
+      dayOfWeek: new Date().getDay(),
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }];
+    await renderSchedule(true);
+    expect(document.querySelector('[data-testid="status-dashboard-schedule-load-error"]')).toBeNull();
+    expect(document.body.textContent).toContain("رياضيات");
   });
 
   it.each([

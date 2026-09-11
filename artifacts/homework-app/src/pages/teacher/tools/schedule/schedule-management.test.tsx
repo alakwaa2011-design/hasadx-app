@@ -7,10 +7,12 @@ const bulkMutate = vi.fn();
 const createMutate = vi.fn();
 const deleteAllMutate = vi.fn();
 const heicConvert = vi.fn();
+const scheduleRefetch = vi.fn();
 let scheduleRows: Array<Record<string, unknown>> = [];
 
 let language = "ar";
 let scheduleIsError = false;
+let scheduleIsFetching = false;
 const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
 
 vi.mock("heic2any", () => ({
@@ -35,7 +37,13 @@ vi.mock("@/components/ui/sonner", () => ({
 
 vi.mock("@workspace/api-client-react", () => ({
   getListTeacherScheduleQueryKey: () => ["teacher-schedule"],
-  useListTeacherSchedule: () => ({ data: scheduleRows, isLoading: false, isError: scheduleIsError }),
+  useListTeacherSchedule: () => ({
+    data: scheduleRows,
+    isLoading: false,
+    isError: scheduleIsError,
+    isFetching: scheduleIsFetching,
+    refetch: scheduleRefetch,
+  }),
   useBulkCreateTeacherSchedule: () => ({ mutate: bulkMutate, isPending: false }),
   useCreateTeacherScheduleEntry: () => ({ mutate: createMutate, isPending: false }),
   useUpdateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
@@ -84,6 +92,7 @@ beforeEach(async () => {
   createMutate.mockReset();
   deleteAllMutate.mockReset();
   heicConvert.mockReset();
+  scheduleRefetch.mockReset();
   localStorage.clear();
   heicConvert.mockResolvedValue(new Blob(["jpeg-image"], { type: "image/jpeg" }));
   vi.stubGlobal("URL", {
@@ -95,6 +104,7 @@ beforeEach(async () => {
   language = "ar";
   scheduleRows = [];
   scheduleIsError = false;
+  scheduleIsFetching = false;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -345,7 +355,7 @@ describe("schedule management tool", () => {
     expect(document.body.textContent).toContain("اجتماع ولي الأمر");
   });
 
-  it("keeps the draft visible on save failure and explains reload failure", async () => {
+  it("keeps the draft visible on save failure and retries a failed reload in place", async () => {
     bulkMutate.mockImplementation((_variables, { onError }) => onError(new Error("تعذر الاتصال بالخادم")));
     await click("button-add-bulk-schedule");
     for (const day of [1, 2, 3, 4]) {
@@ -363,10 +373,30 @@ describe("schedule management tool", () => {
     expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
       .toBe("مسودة محفوظة محليًا");
     expect(toastError).toHaveBeenCalledWith("تعذر حفظ الجدول الكامل. صحح الأوقات وحاول مجددًا");
+    const cancelButton = document.querySelector('[data-testid="bulk-schedule-fixed-actions"] button') as HTMLButtonElement;
+    await act(async () => cancelButton.click());
 
     scheduleIsError = true;
     await renderPage();
     expect(document.body.textContent).toContain("تعذر تحميل الجدول");
+    await click("button-retry-schedule");
+    expect(scheduleRefetch).toHaveBeenCalledOnce();
+
+    scheduleIsError = false;
+    scheduleRows = [{
+      id: 1,
+      kind: "weekly",
+      title: "رياضيات",
+      dayOfWeek: 0,
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }];
+    await renderPage();
+    expect(document.querySelector('[data-testid="status-schedule-load-error"]')).toBeNull();
+    await click("button-schedule-view-day");
+    await click("button-management-schedule-day-0");
+    expect(document.body.textContent).toContain("رياضيات");
   });
 
   it("requires confirmation before deleting the whole schedule", async () => {

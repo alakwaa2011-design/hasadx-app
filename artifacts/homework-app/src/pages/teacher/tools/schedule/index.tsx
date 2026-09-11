@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import {
   Calendar, Coffee, Clock3, Trash2, Pencil, Image as ImageIcon, Plus, 
   UploadCloud, AlertTriangle, FileWarning, Loader2, ArrowRight, ArrowLeft,
-  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock
+  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -1101,19 +1101,32 @@ export default function ScheduleManagementPage() {
 
           {/* Main Content Area */}
           <div className="bg-card rounded-[2rem] border border-border/60 shadow-sm p-4 sm:p-6 md:p-8 relative min-h-[400px]">
-            {scheduleQuery.isError ? (
-              <div className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center">
+            {scheduleQuery.isLoading || (scheduleQuery.isError && scheduleQuery.isFetching) ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-sm z-10 rounded-[2rem]">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
+              </div>
+            ) : scheduleQuery.isError ? (
+              <div
+                className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center"
+                data-testid="status-schedule-load-error"
+              >
                 <Calendar className="mb-4 h-10 w-10 text-destructive/70" />
                 <h3 className="mb-2 text-lg font-black text-foreground">
                   {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
                 </h3>
-                <p className="text-sm font-medium text-muted-foreground">
+                <p className="mb-6 text-sm font-medium text-muted-foreground">
                   {isAr ? "تحقق من اتصالك ثم حاول مرة أخرى." : "Check your connection and try again."}
                 </p>
-              </div>
-            ) : scheduleQuery.isLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-sm z-10 rounded-[2rem]">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
+                <button
+                  type="button"
+                  onClick={() => void scheduleQuery.refetch()}
+                  disabled={scheduleQuery.isFetching}
+                  data-testid="button-retry-schedule"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-4 w-4 ${scheduleQuery.isFetching ? "animate-spin" : ""}`} />
+                  {isAr ? "إعادة المحاولة" : "Try again"}
+                </button>
               </div>
             ) : entries.length === 0 ? (
               <div className="py-24 text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">

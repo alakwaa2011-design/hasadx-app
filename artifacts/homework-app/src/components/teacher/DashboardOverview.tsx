@@ -61,6 +61,7 @@ import {
   Image as ImageIcon,
   UploadCloud,
   FileWarning,
+  RefreshCw,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
@@ -2610,13 +2611,37 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
         </div>
       </div>
 
-      {scheduleQuery.isLoading ? (
+      {scheduleQuery.isLoading || (scheduleQuery.isError && scheduleQuery.isFetching) ? (
         <div style={{ padding: 24, display: "grid", placeItems: "center", color: C.subtle }}>
           <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite" }} />
         </div>
       ) : scheduleQuery.isError ? (
-        <div style={{ padding: "22px 16px", textAlign: "center", color: C.subtle, fontSize: 12 }}>
-          {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
+        <div
+          data-testid="status-dashboard-schedule-load-error"
+          style={{ padding: "22px 16px", textAlign: "center", color: C.subtle, fontSize: 12 }}
+        >
+          <div>{isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}</div>
+          <button
+            type="button"
+            onClick={() => void scheduleQuery.refetch()}
+            disabled={scheduleQuery.isFetching}
+            data-testid="button-retry-dashboard-schedule"
+            style={{
+              ...schedulePrimaryButton,
+              margin: "12px auto 0",
+              opacity: scheduleQuery.isFetching ? 0.65 : 1,
+              cursor: scheduleQuery.isFetching ? "not-allowed" : "pointer",
+            }}
+          >
+            <RefreshCw
+              style={{
+                width: 14,
+                height: 14,
+                animation: scheduleQuery.isFetching ? "spin 1s linear infinite" : undefined,
+              }}
+            />
+            {isAr ? "إعادة المحاولة" : "Try again"}
+          </button>
         </div>
       ) : entries.length === 0 ? (
         <div style={{ padding: "24px 16px", textAlign: "center" }}>
