@@ -270,7 +270,12 @@ function ClassBlock({
       <div className={`rounded-2xl bg-card overflow-hidden transition-all duration-200
         ${isDragging
           ? "shadow-2xl ring-2 ring-primary/40 opacity-70 scale-[0.99]"
-          : "shadow-sm hover:shadow-md border border-border hover:border-border/80"}`}
+          : "shadow-sm hover:shadow-md border border-border hover:border-border/80 cursor-pointer"}`}
+        onClick={(event) => {
+          const target = event.target as HTMLElement;
+          if (target.closest("button, a, input, select, textarea")) return;
+          onToggle();
+        }}
       >
         {/* Colored accent bar at top */}
         <div className={`h-1.5 ${color.bg}`} />
@@ -347,7 +352,10 @@ function ClassBlock({
 
           {/* Action strip — separated by a divider */}
           {!isUngrouped && !isRenaming && (
-            <div className={`${isDense ? "mt-2 pt-2 gap-1" : "mt-3.5 pt-3.5 gap-2"} border-t border-border/60 flex flex-wrap items-center`}>
+            <div
+              className={`${isDense ? "mt-2 pt-2 gap-1" : "mt-3.5 pt-3.5 gap-2"} border-t border-border/60 flex flex-wrap items-center`}
+              onClick={(event) => event.stopPropagation()}
+            >
 
               {/* Primary actions */}
               <Link
@@ -480,7 +488,10 @@ function ClassBlock({
 
           {/* Ungrouped quick add */}
           {isUngrouped && (
-            <div className={`${isDense ? "mt-2 pt-2" : "mt-3 pt-3"} border-t border-border/60 flex gap-2`}>
+            <div
+              className={`${isDense ? "mt-2 pt-2" : "mt-3 pt-3"} border-t border-border/60 flex gap-2`}
+              onClick={(event) => event.stopPropagation()}
+            >
               <button
                 onClick={() => onAddStudent(UNGROUPED)}
                 className={`inline-flex items-center gap-1.5 ${isDense ? "px-2 py-1" : "px-3 py-1.5"} rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 text-xs font-semibold border border-teal-200 dark:border-teal-800 hover:bg-teal-100 transition-colors`}
@@ -501,6 +512,7 @@ function ClassBlock({
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden border-t border-border/50"
+              onClick={(event) => event.stopPropagation()}
             >
               {(() => {
                 const sortedClassStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, lang));
