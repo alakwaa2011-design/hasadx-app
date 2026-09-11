@@ -173,10 +173,14 @@ function TimerAndAlertsSection({
       aria-labelledby="schedule-timer-settings-title"
       data-testid="schedule-timer-alerts"
     >
-      <div className="relative z-10 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-        <div className="flex-1">
+      <div className="relative z-10 flex flex-col gap-5">
+        <div className="flex flex-col gap-4 border-b border-emerald-900/10 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-500/20">
+        <div className="flex items-start gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <Timer className="h-5 w-5" />
+          </div>
+          <div>
           <h2 id="schedule-timer-settings-title" className="mb-1 flex items-center gap-2 text-lg font-black text-foreground">
-            <Timer className="h-5 w-5 text-emerald-600" />
             {isAr ? "المؤقت والتنبيهات" : "Timer & alerts"}
           </h2>
           <p className="text-sm font-medium text-muted-foreground">
@@ -188,8 +192,133 @@ function TimerAndAlertsSection({
               ? "يدير العد التنازلي للحصص والفترات والمواعيد الفردية تلقائيًا"
               : "Automatically manages countdowns for lessons, breaks, and single appointments"}
           </p>
+          </div>
         </div>
 
+        <button
+          type="button"
+          role="switch"
+          aria-checked={preferences.enabled}
+          onClick={() => updatePreferences({ enabled: !preferences.enabled })}
+          className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-xs font-black transition-colors sm:min-w-[150px] ${
+            preferences.enabled
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
+              : "border-border bg-card text-muted-foreground"
+          }`}
+          data-testid="button-schedule-alerts-enabled"
+        >
+          <span>{preferences.enabled ? (isAr ? "التنبيهات مفعّلة" : "Alerts on") : (isAr ? "التنبيهات متوقفة" : "Alerts off")}</span>
+          <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${preferences.enabled ? "bg-emerald-700" : "bg-muted-foreground/35"}`} aria-hidden="true">
+            <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${preferences.enabled ? "start-6" : "start-1"}`} />
+          </span>
+        </button>
+        </div>
+
+        {preferences.enabled && (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+            <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${visibleEntry ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />
+            <div>
+              <div className="text-xs font-black text-foreground">
+                {visibleEntry
+                  ? (isBeforeStart ? (isAr ? "تنبيه نشط" : "Alert active") : (isAr ? "العد التنازلي نشط" : "Countdown active"))
+                  : (isAr ? "لا يوجد تنبيه حالي" : "No active alert")}
+              </div>
+              <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                {isAr ? "حالة الجدول الآن" : "Current schedule status"}
+              </div>
+            </div>
+          </div>
+
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              <Bell className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>
+                <span className="block text-xs font-black text-foreground">{isAr ? "تنبيه قبل البدء" : "Before start"}</span>
+                <span className="block text-[11px] font-medium text-muted-foreground">{isAr ? "ظهور العداد" : "Show countdown"}</span>
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <select
+                value={preferences.alertMinutes}
+                onChange={(event) => updatePreferences({ alertMinutes: Number(event.target.value) })}
+                className="h-8 w-14 cursor-pointer rounded-lg border border-border bg-background px-1 text-center text-sm font-black text-foreground"
+                dir="ltr"
+                aria-label={isAr ? "مدة ظهور التنبيه قبل البدء" : "Alert lead time before start"}
+                data-testid="select-schedule-alert-minutes"
+              >
+                {[1, 2, 5, 10, 15].map((minutes) => <option key={minutes} value={minutes}>{minutes}</option>)}
+              </select>
+              <span className="text-[11px] font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>
+            </span>
+          </label>
+
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              <Timer className="h-4 w-4 shrink-0 text-amber-600" />
+              <span>
+                <span className="block text-xs font-black text-foreground">{isAr ? "تنبيه قبل الانتهاء" : "Before end"}</span>
+                <span className="block text-[11px] font-medium text-muted-foreground">{isAr ? "للحصة أو الموعد" : "Lesson or appointment"}</span>
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <select
+                value={preferences.endAlertMinutes}
+                onChange={(event) => updatePreferences({ endAlertMinutes: Number(event.target.value) })}
+                className="h-8 w-14 cursor-pointer rounded-lg border border-border bg-background px-1 text-center text-sm font-black text-foreground"
+                dir="ltr"
+                aria-label={isAr ? "مدة التنبيه قبل انتهاء الحصة أو الموعد" : "Alert lead time before lesson or appointment ends"}
+                data-testid="select-schedule-end-alert-minutes"
+              >
+                <option value={0}>{isAr ? "لا" : "Off"}</option>
+                {[1, 2, 5, 10, 15].map((minutes) => <option key={minutes} value={minutes}>{minutes}</option>)}
+              </select>
+              {preferences.endAlertMinutes > 0 && <span className="text-[11px] font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>}
+            </span>
+          </label>
+
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              {preferences.soundEnabled ? <Volume2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <VolumeX className="h-4 w-4 shrink-0 text-muted-foreground" />}
+              <span>
+                <span className="block text-xs font-black text-foreground">{isAr ? "الصوت" : "Sound"}</span>
+                <span className="block text-[11px] font-medium text-muted-foreground">{preferences.soundEnabled ? (isAr ? "مفعّل" : "Enabled") : (isAr ? "متوقف" : "Off")}</span>
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => updatePreferences({ soundEnabled: !preferences.soundEnabled })}
+                className={`rounded-lg p-1.5 transition-colors ${preferences.soundEnabled ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:bg-muted"}`}
+                title={isAr ? "تشغيل أو إيقاف الصوت" : "Toggle sound"}
+                aria-label={isAr ? "تشغيل أو إيقاف صوت التنبيه" : "Toggle alert sound"}
+                aria-pressed={preferences.soundEnabled}
+                data-testid="button-schedule-alert-sound"
+              >
+                {preferences.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </button>
+              <select
+                value={preferences.soundId}
+                onChange={(event) => {
+                  const soundId = event.target.value as ScheduleCountdownPreferences["soundId"];
+                  updatePreferences({ soundId, soundEnabled: true });
+                  initAudioContext();
+                  playTimerSound(soundId, 0.38);
+                }}
+                className="h-8 max-w-[100px] rounded-lg border border-border bg-background px-1.5 text-xs font-bold text-foreground"
+                aria-label={isAr ? "اختيار صوت التنبيه ومعاينته" : "Choose and preview alert sound"}
+                data-testid="select-schedule-alert-sound"
+              >
+                {TIMER_SOUNDS.map((sound) => <option key={sound.id} value={sound.id}>{isAr ? sound.labelAr : sound.labelEn}</option>)}
+              </select>
+            </span>
+          </div>
+        </div>
+        )}
+
+        {/* Keep the advanced controls in one visual group; the previous layout made every option compete for attention. */}
+        {/* legacy control markup intentionally removed */}
+        {false && (
         <div className="flex w-full shrink-0 flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm md:w-auto">
           <button
             type="button"
@@ -303,6 +432,7 @@ function TimerAndAlertsSection({
             </>
           )}
         </div>
+        )}
       </div>
 
       {preferences.enabled && visibleEntry && (
