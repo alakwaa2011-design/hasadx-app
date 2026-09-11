@@ -81,6 +81,24 @@ describe("teacher schedule image extraction", () => {
     ]);
   });
 
+  it("keeps a readable draft when a late lesson end time is ambiguous", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 1,
+        lessons: [
+          { lessonNumber: 7, title: "", subject: "علوم", startTime: "18:25", endTime: "07:10", confidence: "high" },
+          { lessonNumber: 8, title: "", subject: "لغة عربية", startTime: "7:10", endTime: "8:00", confidence: "high" },
+        ],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons).toEqual([
+      expect.objectContaining({ lessonNumber: 7, startTime: "18:25", endTime: "19:10", confidence: "low" }),
+      expect.objectContaining({ lessonNumber: 8, startTime: "19:10", endTime: "20:00", confidence: "low" }),
+    ]);
+  });
+
   it("pins the weekday mapping and forbids invented values in the prompt", () => {
     const prompt = buildTeacherScheduleExtractionPrompt("ar");
     expect(prompt).toContain("Sunday=0");

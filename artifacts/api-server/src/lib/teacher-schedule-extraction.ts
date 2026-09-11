@@ -98,16 +98,25 @@ function normalizeSchoolDayTimes(parsed: unknown): unknown {
       let end = parseLooseTime(lesson.endTime);
       let adjusted = false;
 
-      if (start !== null && previousStart !== null && start < previousStart && start < 7 * 60) {
-        start += 12 * 60;
-        adjusted = true;
+      if (start !== null && previousStart !== null && start < previousStart) {
+        const afternoonStart = start + 12 * 60;
+        if (afternoonStart <= 23 * 60 + 59 && afternoonStart > previousStart) {
+          start = afternoonStart;
+          adjusted = true;
+        }
       }
       if (start !== null) {
         lesson.startTime = formatTime(start);
         previousStart = start;
       }
-      if (end !== null && start !== null && end <= start && end < 7 * 60) {
-        end += 12 * 60;
+      if (end !== null && start !== null && end <= start) {
+        const afternoonEnd = end + 12 * 60;
+        if (afternoonEnd <= 23 * 60 + 59 && afternoonEnd > start) {
+          end = afternoonEnd;
+        } else {
+          end = null;
+          lesson.endTime = null;
+        }
         adjusted = true;
       }
       if (end !== null) lesson.endTime = formatTime(end);
