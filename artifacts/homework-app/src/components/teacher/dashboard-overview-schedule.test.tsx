@@ -126,6 +126,20 @@ describe("TeacherScheduleCard full schedule drafts", () => {
     ]).toEqual(["٢٠ سبتمبر", "Sep 20"]);
   });
 
+  it.each([
+    { timeZone: "Pacific/Honolulu", date: "2026-01-01", ar: "١ يناير", en: "Jan 1" },
+    { timeZone: "Pacific/Kiritimati", date: "2026-12-31", ar: "٣١ ديسمبر", en: "Dec 31" },
+  ])("keeps $date on the same calendar day in $timeZone", ({ timeZone, date, ar, en }) => {
+    const previousTimeZone = process.env.TZ;
+    process.env.TZ = timeZone;
+    try {
+      expect(scheduleDateLabel(date, true)).toBe(ar);
+      expect(scheduleDateLabel(date, false)).toBe(en);
+    } finally {
+      process.env.TZ = previousTimeZone;
+    }
+  });
+
   it("stays compact and shows one selected day without management controls", async () => {
     scheduleRows.push({
       id: 1,

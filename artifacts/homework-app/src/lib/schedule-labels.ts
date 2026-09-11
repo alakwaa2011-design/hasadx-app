@@ -75,10 +75,12 @@ export function schedulePosition(entry: TeacherScheduleEntry) {
 }
 
 export function scheduleDateLabel(date: string, isAr: boolean) {
-  const parsed = new Date(`${date}T12:00:00`);
+  const [year, month, day] = date.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
   return new Intl.DateTimeFormat(isAr ? "ar-KW" : "en-US", {
     day: "numeric",
     month: "short",
+    timeZone: "UTC",
   }).format(parsed);
 }
 

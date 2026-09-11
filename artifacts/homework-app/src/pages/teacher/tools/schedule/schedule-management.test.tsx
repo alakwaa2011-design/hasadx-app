@@ -45,6 +45,7 @@ vi.mock("@workspace/api-client-react", () => ({
 }));
 
 import ScheduleManagementPage from "./index";
+import { scheduleDateLabel } from "@/lib/schedule-labels";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -175,6 +176,20 @@ describe("schedule management tool", () => {
     );
     expect(visibleDayLabels).toContain("الأحد");
     expect(daySelector.className).toContain("overflow-x-auto");
+  });
+
+  it.each([
+    { timeZone: "America/Adak", date: "2026-12-31", ar: "٣١ ديسمبر", en: "Dec 31" },
+    { timeZone: "Pacific/Auckland", date: "2027-01-01", ar: "١ يناير", en: "Jan 1" },
+  ])("shows the appointment date unchanged in $timeZone", ({ timeZone, date, ar, en }) => {
+    const previousTimeZone = process.env.TZ;
+    process.env.TZ = timeZone;
+    try {
+      expect(scheduleDateLabel(date, true)).toBe(ar);
+      expect(scheduleDateLabel(date, false)).toBe(en);
+    } finally {
+      process.env.TZ = previousTimeZone;
+    }
   });
 
   it("offers daily, weekly-list, and weekly-grid views with organized timer controls", async () => {
