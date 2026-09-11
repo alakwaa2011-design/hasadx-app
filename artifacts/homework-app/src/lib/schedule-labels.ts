@@ -4,13 +4,13 @@ import type {
 } from "@workspace/api-client-react";
 
 export const SCHEDULE_DAYS = [
-  { value: 0, ar: "الأحد", en: "Sun" },
-  { value: 1, ar: "الاثنين", en: "Mon" },
-  { value: 2, ar: "الثلاثاء", en: "Tue" },
-  { value: 3, ar: "الأربعاء", en: "Wed" },
-  { value: 4, ar: "الخميس", en: "Thu" },
-  { value: 5, ar: "الجمعة", en: "Fri" },
-  { value: 6, ar: "السبت", en: "Sat" },
+  { value: 0, ar: "الأحد", shortAr: "أحد", en: "Sun" },
+  { value: 1, ar: "الاثنين", shortAr: "إثنين", en: "Mon" },
+  { value: 2, ar: "الثلاثاء", shortAr: "ثلاثاء", en: "Tue" },
+  { value: 3, ar: "الأربعاء", shortAr: "أربعاء", en: "Wed" },
+  { value: 4, ar: "الخميس", shortAr: "خميس", en: "Thu" },
+  { value: 5, ar: "الجمعة", shortAr: "جمعة", en: "Fri" },
+  { value: 6, ar: "السبت", shortAr: "سبت", en: "Sat" },
 ] as const;
 
 export type ScheduleConflictDetails = {

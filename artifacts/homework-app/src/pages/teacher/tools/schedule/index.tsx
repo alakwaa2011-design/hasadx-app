@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import {
   Calendar, Coffee, Clock3, Trash2, Pencil, Image as ImageIcon, Plus, 
   UploadCloud, AlertTriangle, FileWarning, Loader2, ArrowRight, ArrowLeft,
-  Sparkles
+  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -23,6 +23,7 @@ import {
   useUpdateTeacherScheduleEntry,
   useDeleteTeacherSchedule,
   useDeleteTeacherScheduleEntry,
+  useGetCurrentTeacher,
   type TeacherScheduleEntry,
   type TeacherScheduleEntryInput,
 } from "@workspace/api-client-react";
@@ -44,7 +45,220 @@ import {
   type ExtractedScheduleDay,
   type ScheduleFormValues,
 } from "@/lib/schedule-labels";
+import { playTimerSound, initAudioContext } from "@/lib/timer-sounds";
+import {
+  useScheduleCountdownPreferences,
+  type ScheduleCountdownPreferences,
+} from "@/lib/schedule-countdown-preferences";
+import { selectVisibleScheduleEntry } from "@/components/teacher/timer/active-lesson-countdown";
+
 const BASE = (import.meta as any).env?.VITE_API_URL || "";
+
+function parseClockTime(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return (hours * 60 + minutes) * 60_000;
+}
+
+function formatRemaining(ms: number) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1_000));
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function ActiveTimerDisplay({
+  visibleEntry,
+  isBeforeStart,
+  currentTimeMs,
+  isAr,
+  alertMinutes,
+}: {
+  visibleEntry: TeacherScheduleEntry;
+  isBeforeStart: boolean;
+  currentTimeMs: number;
+  isAr: boolean;
+  alertMinutes: number;
+}) {
+  const startMs = parseClockTime(visibleEntry.startTime);
+  const endMs = visibleEntry.endTime ? parseClockTime(visibleEntry.endTime) : null;
+
+  const durationMs = isBeforeStart
+    ? alertMinutes * 60_000
+    : Math.max(1, (endMs || 0) - startMs);
+
+  const remainingMs = Math.max(0, (isBeforeStart ? startMs : (endMs || 0)) - currentTimeMs);
+  const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
+  const urgent = !isBeforeStart && remainingMs <= 5 * 60_000;
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border shadow-sm ${urgent ? "border-destructive/30 bg-destructive/5" : "border-emerald-700/20 bg-emerald-700/5"}`}>
+      <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/5">
+        <div
+          className={`h-full transition-all duration-1000 ease-linear ${urgent ? "bg-destructive" : "bg-emerald-500"}`}
+          style={{ width: `${progress * 100}%` }}
+        />
+      </div>
+      <div className="flex flex-col items-center justify-between gap-6 p-4 sm:p-5 md:flex-row">
+        <div className="flex w-full items-center gap-5 md:w-auto">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${urgent ? "bg-destructive/10 text-destructive" : "bg-emerald-700 text-white shadow-sm shadow-emerald-900/10"}`}>
+            {visibleEntry.kind === "break"
+              ? <Coffee className="h-6 w-6" />
+              : visibleEntry.kind === "appointment"
+                ? <CalendarClock className="h-6 w-6" />
+                : <Timer className="h-6 w-6" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="mb-0.5 text-xs font-bold text-muted-foreground/80">
+              {isBeforeStart
+                ? (isAr ? "يبدأ قريبًا:" : "Starting soon:")
+                : (isAr ? "جارٍ الآن:" : "Current:")}
+            </div>
+            <div className={`truncate text-lg font-black sm:text-xl ${urgent ? "text-destructive" : "text-emerald-900 dark:text-emerald-100"}`}>
+              {visibleEntry.title}
+              {visibleEntry.className && <span className="ms-2 text-sm font-bold opacity-70">• {visibleEntry.className}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex w-full shrink-0 flex-col items-center gap-4 rounded-xl border border-white/60 bg-white/80 px-5 py-2.5 backdrop-blur-sm dark:border-white/10 dark:bg-black/40 sm:flex-row md:w-auto">
+          <div className="text-xs font-bold text-muted-foreground">
+            {isBeforeStart
+              ? (isAr ? "متبقي للبداية" : "Starts in")
+              : (isAr ? "متبقي للنهاية" : "Ends in")}
+          </div>
+          <div
+            className={`font-mono text-2xl font-black tracking-tighter sm:text-3xl ${urgent ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`}
+            dir="ltr"
+            aria-live="off"
+          >
+            {formatRemaining(remainingMs)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimerAndAlertsSection({
+  entries,
+  isAr,
+  preferences,
+  updatePreferences,
+}: {
+  entries: TeacherScheduleEntry[];
+  isAr: boolean;
+  preferences: ScheduleCountdownPreferences;
+  updatePreferences: (patch: Partial<ScheduleCountdownPreferences>) => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const today = useMemo(() => new Date(now), [now]);
+
+  const { visibleEntry, isBeforeStart, currentTimeMs } = useMemo(
+    () => selectVisibleScheduleEntry(entries, today, preferences.alertMinutes),
+    [entries, today, preferences.alertMinutes],
+  );
+
+  return (
+    <section
+      className="relative mb-8 overflow-hidden rounded-[2rem] border border-emerald-900/10 bg-emerald-900/5 p-5 dark:border-emerald-500/20 dark:bg-emerald-900/10 sm:p-6"
+      aria-labelledby="schedule-timer-settings-title"
+      data-testid="schedule-timer-alerts"
+    >
+      <div className="relative z-10 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+        <div className="flex-1">
+          <h2 id="schedule-timer-settings-title" className="mb-1 flex items-center gap-2 text-lg font-black text-foreground">
+            <Timer className="h-5 w-5 text-emerald-600" />
+            {isAr ? "المؤقت والتنبيهات" : "Timer & alerts"}
+          </h2>
+          <p className="text-sm font-medium text-muted-foreground">
+            {isAr
+              ? "يدير العد التنازلي للحصص والفترات والمواعيد الفردية تلقائيًا"
+              : "Automatically manages countdowns for lessons, breaks, and single appointments"}
+          </p>
+        </div>
+
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm md:w-auto">
+          <div className="flex items-center gap-2 border-e border-border pe-3">
+            <div className={`h-2.5 w-2.5 rounded-full ${visibleEntry ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />
+            <span className="text-xs font-bold text-foreground">
+              {visibleEntry
+                ? (isBeforeStart
+                  ? (isAr ? "تنبيه نشط" : "Alert active")
+                  : (isAr ? "عد تنازلي نشط" : "Countdown active"))
+                : (isAr ? "جاهز" : "Ready")}
+            </span>
+          </div>
+
+          <label className="flex items-center gap-2 px-2">
+            <Bell className="h-4 w-4 text-emerald-600" />
+            <span className="whitespace-nowrap text-xs font-bold text-muted-foreground">
+              {isAr ? "تنبيه قبل" : "Alert before"}
+            </span>
+            <select
+              value={preferences.alertMinutes}
+              onChange={(event) => updatePreferences({ alertMinutes: Number(event.target.value) })}
+              className="min-w-[30px] cursor-pointer appearance-none border-none bg-transparent p-0 text-center text-sm font-bold text-foreground focus:ring-0"
+              dir="ltr"
+              aria-label={isAr ? "مدة ظهور التنبيه بالدقائق" : "Alert lead time in minutes"}
+              data-testid="select-schedule-alert-minutes"
+            >
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+            </select>
+            <span className="text-xs font-bold text-muted-foreground">{isAr ? "د" : "m"}</span>
+          </label>
+
+          <div className="hidden h-5 w-px bg-border sm:block" />
+
+          <button
+            type="button"
+            onClick={() => {
+              const next = !preferences.soundEnabled;
+              updatePreferences({ soundEnabled: next });
+              if (next) {
+                initAudioContext();
+                playTimerSound("chime", 0.45);
+              }
+            }}
+            className={`rounded-lg p-1.5 transition-colors ${preferences.soundEnabled ? "bg-emerald-100 text-emerald-700" : "text-muted-foreground hover:bg-muted"}`}
+            title={isAr ? "تنبيه صوتي" : "Sound alert"}
+            aria-label={isAr ? "تشغيل أو إيقاف صوت التنبيه" : "Toggle alert sound"}
+            aria-pressed={preferences.soundEnabled}
+            data-testid="button-schedule-alert-sound"
+          >
+            {preferences.soundEnabled
+              ? <Volume2 className="h-4 w-4" />
+              : <VolumeX className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {visibleEntry && (
+        <div className="mt-5 border-t border-emerald-900/10 pt-5 dark:border-emerald-500/20">
+          <ActiveTimerDisplay
+            visibleEntry={visibleEntry}
+            isBeforeStart={isBeforeStart}
+            currentTimeMs={currentTimeMs}
+            isAr={isAr}
+            alertMinutes={preferences.alertMinutes}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
 
 const C = {
   green: "#1E4D35",
@@ -116,79 +330,68 @@ function ScheduleEntryRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const isBreak = entry.kind === "break";
+  const isAppointment = entry.kind === "appointment";
+
+  const iconBg = isBreak ? "bg-amber-100/50" : isAppointment ? "bg-amber-100" : "bg-emerald-50";
+  const iconColor = isBreak ? "text-amber-700" : isAppointment ? "text-amber-800" : "text-emerald-700";
+  const IconComponent = isAppointment ? Calendar : isBreak ? Coffee : Clock3;
+
   return (
     <div
       data-testid={`schedule-entry-${entry.id}`}
       data-schedule-kind={entry.kind}
       data-schedule-day={entry.dayOfWeek ?? undefined}
       data-schedule-position={schedulePosition(entry)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 9,
-        padding: "10px 0",
-        borderBottom: isLast ? "none" : `1px solid ${C.border}`,
-      }}
+      className={`flex items-center gap-4 py-4 ${!isLast ? 'border-b border-border/60' : ''} group`}
     >
-      <div
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 12,
-          background: entry.kind === "appointment" ? C.goldPale : entry.kind === "break" ? "#FFF4D6" : C.greenPale,
-          color: entry.kind === "appointment" ? C.gold : entry.kind === "break" ? C.gold : C.green,
-          display: "grid",
-          placeItems: "center",
-          flexShrink: 0,
-        }}
-      >
-        {entry.kind === "appointment"
-          ? <Calendar style={{ width: 19, height: 19 }} />
-          : entry.kind === "break"
-            ? <Coffee style={{ width: 19, height: 19 }} />
-            : <Clock3 style={{ width: 19, height: 19 }} />}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 850, color: C.text }}>{entry.title}</span>
+      <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}>
+         <IconComponent className="w-[22px] h-[22px]" />
+       </div>
+
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="text-[15px] font-bold text-foreground leading-tight">{entry.title}</span>
           {entry.kind === "break" && Boolean(entry.breakAfterLesson) && (
-            <span style={{ fontSize: 11, color: C.gold, fontWeight: 850 }}>
+            <span className="text-[11px] font-bold text-amber-700 bg-amber-100/50 px-2 py-0.5 rounded-md">
               {breakPositionLabel(entry.breakAfterLesson, isAr)}
             </span>
           )}
           {entry.kind === "weekly" && entry.lessonNumber && (
-            <span style={{ fontSize: 11, color: C.green, fontWeight: 850 }}>
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
               {lessonNumberLabel(entry.lessonNumber, isAr)}
             </span>
           )}
           {entry.kind === "appointment" && entry.appointmentDate && (
-            <span style={{ fontSize: 11, color: C.gold, fontWeight: 800 }}>
+            <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
               {scheduleDateLabel(entry.appointmentDate, isAr)}
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11.5, color: C.subtle, marginTop: 4, display: "flex", gap: 7, flexWrap: "wrap" }}>
-          <span>{entry.startTime}{entry.endTime ? ` – ${entry.endTime}` : ""}</span>
+
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[13px] font-medium text-muted-foreground/80">
+          <span className="flex items-center gap-1"><Clock3 className="w-3.5 h-3.5" /> {entry.startTime}{entry.endTime ? ` - ${entry.endTime}` : ""}</span>
           {entry.className && <span>• {entry.className}</span>}
           {entry.location && <span>• {entry.location}</span>}
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+
+      <div className="flex items-center gap-1.5 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
         <button
           type="button"
           onClick={onEdit}
-          aria-label={isAr ? "تعديل" : "Edit"}
-          style={scheduleIconButton}
+          title={isAr ? "تعديل" : "Edit"}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <Pencil style={{ width: 15, height: 15 }} />
+          <Pencil className="w-[18px] h-[18px]" />
         </button>
         <button
           type="button"
           onClick={onDelete}
-          aria-label={isAr ? "حذف" : "Delete"}
-          style={{ ...scheduleIconButton, color: "#B42318" }}
+          title={isAr ? "حذف" : "Delete"}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-destructive/70 hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
-          <Trash2 style={{ width: 15, height: 15 }} />
+          <Trash2 className="w-[18px] h-[18px]" />
         </button>
       </div>
     </div>
@@ -200,9 +403,12 @@ export default function ScheduleManagementPage() {
   const isAr = lang === "ar";
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
 
+  const { data: user } = useGetCurrentTeacher({ query: { retry: false } as any });
+  const { preferences, updatePreferences } = useScheduleCountdownPreferences(user?.id);
+
   const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("day");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -210,6 +416,7 @@ export default function ScheduleManagementPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [isPreparingImage, setIsPreparingImage] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [bulkLessonCount, setBulkLessonCount] = useState(5);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,11 +427,16 @@ export default function ScheduleManagementPage() {
     };
   }, [importPreview]);
 
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error(isAr ? "استخدم صورة JPG أو PNG أو WebP" : "Use a JPG, PNG, or WebP image");
+    const isHeic = ["image/heic", "image/heif"].includes(file.type)
+      || /\.(heic|heif)$/i.test(file.name);
+    const isSupported = ["image/jpeg", "image/png", "image/webp"].includes(file.type)
+      || /\.(jpe?g|png|webp)$/i.test(file.name)
+      || isHeic;
+    if (!isSupported) {
+      toast.error(isAr ? "استخدم صورة JPG أو PNG أو WebP أو HEIC" : "Use a JPG, PNG, WebP, or HEIC image");
       e.target.value = "";
       return;
     }
@@ -233,11 +445,46 @@ export default function ScheduleManagementPage() {
       e.target.value = "";
       return;
     }
+    if (importPreview) URL.revokeObjectURL(importPreview);
     setImportFile(file);
-    const url = URL.createObjectURL(file);
-    setImportPreview(url);
+    setImportPreview(null);
     setImportDialogOpen(true);
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (!isHeic) {
+      setImportPreview(URL.createObjectURL(file));
+      return;
+    }
+
+    setIsPreparingImage(true);
+    try {
+      const { default: heic2any } = await import("heic2any");
+      const result = await heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.92,
+      });
+      const jpegBlob = Array.isArray(result) ? result[0] : result;
+      const converted = new File(
+        [jpegBlob],
+        file.name.replace(/\.(heic|heif)$/i, "") + ".jpg",
+        { type: "image/jpeg", lastModified: file.lastModified },
+      );
+      if (converted.size > 10 * 1024 * 1024) {
+        throw new Error("converted-file-too-large");
+      }
+      setImportFile(converted);
+      setImportPreview(URL.createObjectURL(converted));
+    } catch (error) {
+      setImportFile(null);
+      toast.error(
+        error instanceof Error && error.message === "converted-file-too-large"
+          ? (isAr ? "حجم الصورة بعد التحويل يتجاوز 10 ميجابايت" : "The converted image exceeds 10MB")
+          : (isAr ? "تعذر قراءة صورة HEIC. جرّب حفظها بصيغة JPG" : "Could not read the HEIC image. Try saving it as JPG"),
+      );
+    } finally {
+      setIsPreparingImage(false);
+    }
   }
 
   async function handleExtract() {
@@ -746,258 +993,309 @@ export default function ScheduleManagementPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-5xl" dir={isAr ? "rtl" : "ltr"}>
-        <div className="mb-8">
-          <Link href="/teacher?tab=tools" className="inline-flex items-center text-sm font-bold text-muted-foreground hover:text-foreground mb-6 transition-colors">
-            <BackArrow className="w-4 h-4 mr-2 ml-2" />
-            {isAr ? "العودة للأدوات" : "Back to tools"}
-          </Link>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-green-50 text-green-700 shadow-sm border border-green-100/50">
-                <Calendar className="w-7 h-7" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-black text-foreground">{isAr ? "إدارة الجدول" : "Schedule Management"}</h1>
-                <p className="text-sm font-semibold text-muted-foreground mt-1">
-                  {isAr ? "أضف حصصك الأسبوعية ومواعيدك بسهولة" : "Add your weekly classes and appointments easily"}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3 flex-wrap">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                onChange={handleImageSelect}
-              />
-              {entries.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDeleteAllDialogOpen(true)}
-                  data-testid="button-delete-whole-schedule"
-                  className="inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-bold border border-red-200 text-red-600 bg-red-50/50 hover:bg-red-50 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4 mr-2 ml-2" />
-                  {isAr ? "حذف الجدول" : "Delete schedule"}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                data-testid="button-import-schedule-image"
-                className="inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-bold border border-border bg-card hover:bg-muted/50 transition-colors shadow-sm"
-              >
-                <ImageIcon className="w-4 h-4 mr-2 ml-2 text-green-600" />
-                {isAr ? "استيراد صورة" : "Import image"}
-              </button>
-              <button
-                type="button"
-                onClick={openBulkCreate}
-                data-testid="button-add-bulk-schedule"
-                className="inline-flex items-center justify-center h-10 px-4 rounded-xl text-sm font-bold border border-border bg-card hover:bg-muted/50 transition-colors shadow-sm text-green-700"
-              >
-                {isAr ? "جدول كامل" : "Full table"}
-              </button>
-              <button
-                type="button"
-                onClick={() => openCreate()}
-                data-testid="button-add-schedule-entry"
-                className="inline-flex items-center justify-center h-10 px-5 rounded-xl text-sm font-bold bg-green-700 text-white hover:bg-green-800 transition-colors shadow-sm"
-              >
-                <Plus className="w-4 h-4 mr-2 ml-2" />
-                {isAr ? "إضافة للإدخالات" : "Add entry"}
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto p-4 md:p-8 font-sans animate-in fade-in duration-500" dir={isAr ? "rtl" : "ltr"}>
+        <div className="flex flex-col gap-8">
+          {/* Header Area */}
+           <div className="flex flex-col items-start justify-between gap-6 xl:flex-row xl:items-center">
+             <div className="flex flex-col gap-1">
+               <Link href="/teacher?tab=tools" className="mb-2 inline-flex items-center text-xs font-bold text-muted-foreground transition-colors hover:text-foreground">
+                 <BackArrow className="mr-1 ml-1 h-3.5 w-3.5" />
+                 {isAr ? "العودة للأدوات" : "Back to tools"}
+               </Link>
+               <h1 className="font-display text-3xl font-black text-foreground">{isAr ? "جدول المعلم" : "Teacher Schedule"}</h1>
+               <p className="text-sm font-medium text-muted-foreground">{isAr ? "حصص وفترات غير صفية ومواعيد منفردة" : "Manage lessons, breaks, and single appointments"}</p>
+             </div>
 
-        <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-sm">
-          {scheduleQuery.isLoading ? (
-            <div className="p-16 flex justify-center text-muted-foreground">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          ) : scheduleQuery.isError ? (
-            <div className="p-16 text-center text-muted-foreground font-semibold">
-              {isAr ? "تعذر تحميل الجدول" : "Could not load the schedule"}
-            </div>
-          ) : entries.length === 0 ? (
-            <div className="p-20 text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-4">
-                <Calendar className="w-8 h-8" />
+             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
+               <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" className="hidden" data-testid="input-import-schedule-image" />
+
+               <button type="button" onClick={() => fileInputRef.current?.click()} data-testid="button-import-schedule-image" className="flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted/50">
+                 <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                 {isAr ? "استيراد صورة" : "Import"}
+               </button>
+
+               {entries.length > 0 && (
+                 <button type="button" onClick={() => setDeleteAllDialogOpen(true)} data-testid="button-delete-whole-schedule" className="flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-destructive/20 bg-destructive/5 px-4 text-sm font-bold text-destructive shadow-sm transition-colors hover:bg-destructive/10">
+                   <Trash2 className="h-4 w-4" />
+                   {isAr ? "حذف الجدول" : "Delete All"}
+                 </button>
+               )}
+
+               <div className="mx-1 hidden h-6 w-px shrink-0 bg-border sm:block" />
+
+               <button type="button" onClick={openBulkCreate} data-testid="button-add-bulk-schedule" className="flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-card px-5 text-sm font-bold text-foreground shadow-sm transition-colors hover:bg-muted/50 sm:flex-none">
+                 {isAr ? "جدول كامل" : "Full Schedule"}
+               </button>
+
+               <button type="button" onClick={() => openCreate("weekly")} data-testid="button-add-schedule-entry" className="flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-700 px-6 text-sm font-bold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-800 sm:flex-none">
+                 <Plus className="h-4 w-4" />
+                 {isAr ? "إضافة" : "Add"}
+               </button>
+             </div>
+           </div>
+
+          {/* Timer & Alerts Section */}
+          <TimerAndAlertsSection entries={entries} isAr={isAr} preferences={preferences} updatePreferences={updatePreferences} />
+
+          {/* Main Content Area */}
+          <div className="bg-card rounded-[2rem] border border-border/60 shadow-sm p-4 sm:p-6 md:p-8 relative min-h-[400px]">
+            {scheduleQuery.isLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-sm z-10 rounded-[2rem]">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
               </div>
-              <h3 className="text-lg font-black text-foreground mb-2">
-                {isAr ? "ابدأ بإضافة جدولك" : "Start building your schedule"}
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-8 font-semibold">
-                {isAr 
-                  ? "قم ببناء جدول حصصك الأسبوعية وتحديد فترات الاستراحة والمواعيد الفردية، لتبقى دائمًا على اطلاع بمهامك." 
-                  : "Build your weekly class schedule, mark break periods, and add one-time appointments to stay on top of your day."}
-              </p>
-              
-              <div className="flex flex-wrap justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => openCreate("weekly")}
-                  className="inline-flex items-center justify-center h-11 px-6 rounded-xl text-sm font-bold bg-green-700 text-white hover:bg-green-800 transition-colors shadow-sm"
-                >
-                  <Plus className="w-4 h-4 mr-2 ml-2" />
-                  {isAr ? "إضافة حصة أسبوعية" : "Add weekly class"}
-                </button>
-                <button
-                  type="button"
-                  onClick={openBulkCreate}
-                  className="inline-flex items-center justify-center h-11 px-6 rounded-xl text-sm font-bold border-2 border-green-700/20 text-green-700 bg-green-50/50 hover:bg-green-50 transition-colors"
-                >
-                  {isAr ? "إدخال جدول كامل" : "Enter full table"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div className="p-4 flex items-center justify-between border-b border-border/60 bg-muted/20">
-                <span className="text-sm font-black text-muted-foreground px-2">
-                  {isAr ? "طريقة العرض" : "View"}
-                </span>
-                <div className="flex gap-2 p-1 bg-card border border-border/60 rounded-xl shadow-sm">
-                  {(["day", "week"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setViewMode(mode)}
-                      className="px-4 py-1.5 rounded-lg text-xs font-black transition-colors"
-                      style={{
-                        background: viewMode === mode ? C.greenPale : "transparent",
-                        color: viewMode === mode ? C.green : C.subtle,
-                      }}
-                    >
-                      {mode === "day" ? (isAr ? "عرض يومي" : "Daily view") : (isAr ? "عرض أسبوعي" : "Weekly view")}
-                    </button>
-                  ))}
+            ) : entries.length === 0 ? (
+              <div className="py-24 text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
+                <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 shadow-sm border border-emerald-100">
+                  <Calendar className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-foreground mb-3">
+                  {isAr ? "الجدول فارغ" : "Empty Schedule"}
+                </h3>
+                <p className="text-base text-muted-foreground max-w-sm mx-auto mb-10 font-medium leading-relaxed text-balance">
+                  {isAr
+                    ? "قم ببناء جدول حصصك الأسبوعية وتحديد الفترات والمواعيد الفردية، لتظهر تنبيهاتها بوضوح أثناء الدرس."
+                    : "Build your weekly schedule and set break periods to see automatic alerts during classes."}
+                </p>
+                <div className="flex flex-wrap justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => openCreate("weekly")}
+                    data-testid="button-add-schedule-entry-empty"
+                    className="flex items-center justify-center h-12 px-6 rounded-xl text-sm font-bold bg-emerald-700 text-white hover:bg-emerald-800 transition-colors shadow-sm hover:scale-105 active:scale-95"
+                  >
+                    <Plus className="w-4 h-4 mr-2 ml-2" />
+                    {isAr ? "إضافة للإدخالات" : "Add an entry"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="button-import-schedule-image-empty"
+                    className="flex items-center justify-center h-12 px-6 rounded-xl text-sm font-bold border-2 border-emerald-700/20 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50 transition-colors hover:scale-105 active:scale-95"
+                  >
+                    <ImageIcon className="w-4 h-4 mr-2 ml-2" />
+                    {isAr ? "استيراد من صورة" : "Import from image"}
+                  </button>
                 </div>
               </div>
-
-              {viewMode === "day" ? (
-                <>
-                   <div
-                     className="grid grid-cols-4 gap-2 border-b border-border/60 bg-card p-3 sm:grid-cols-7 sm:p-4"
-                     data-testid="schedule-management-day-selector"
-                   >
-                    {SCHEDULE_DAYS.map((day) => {
-                      const count = entries.filter(
-                        (entry) =>
-                          (entry.kind === "weekly" || entry.kind === "break") &&
-                          entry.dayOfWeek === day.value,
-                      ).length;
-                      const active = selectedDay === day.value;
-                      return (
-                        <button
-                          key={day.value}
-                          type="button"
-                          onClick={() => setSelectedDay(day.value)}
-                           className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl border p-2 transition-colors sm:p-3"
-                          style={{
-                            borderColor: active ? C.green : C.border,
-                            background: active ? C.green : C.surface,
-                            color: active ? "#fff" : C.subtle,
-                          }}
-                        >
-                           <div className="min-w-0 text-xs font-black sm:text-sm">
-                             <span className="sm:hidden">{isAr ? day.ar.slice(0, 3) : day.en}</span>
-                             <span className="hidden sm:inline">{isAr ? day.ar : day.en}</span>
-                          </div>
-                          <div className="text-[10px] font-bold opacity-80 bg-black/10 px-2 py-0.5 rounded-full">
-                             {count}<span className="hidden sm:inline"> {isAr ? "إدخال" : "entries"}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
+            ) : (
+              <div className="flex flex-col animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 border-b border-border/60 pb-6">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-bold text-muted-foreground whitespace-nowrap">{isAr ? "طريقة العرض:" : "View Mode:"}</span>
+                    <div className="flex bg-muted/40 p-1 rounded-xl shrink-0 overflow-x-auto">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('day')}
+                        data-testid="button-schedule-view-day"
+                        className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'day' ? 'bg-white text-emerald-800 shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {isAr ? "يومي" : "Daily"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('week-list')}
+                        data-testid="button-schedule-view-week-list"
+                        className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'week-list' ? 'bg-white text-emerald-800 shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {isAr ? "قائمة أسبوعية" : "Weekly list"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('week-grid')}
+                        data-testid="button-schedule-view-week-grid"
+                        className={`px-4 sm:px-6 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${viewMode === 'week-grid' ? 'bg-white text-emerald-800 shadow-sm border border-border/50' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {isAr ? "شبكة أسبوعية" : "Weekly grid"}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="p-6 min-h-[300px]">
-                    <div className="text-base font-black text-foreground mb-6 flex items-center gap-2">
-                      <div className="w-1.5 h-5 bg-green-600 rounded-full" />
-                      {isAr ? SCHEDULE_DAYS[selectedDay].ar : SCHEDULE_DAYS[selectedDay].en}
+                  {/* Horizontal day selector for Day mode */}
+                  {viewMode === "day" && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x w-full sm:w-auto mt-2 sm:mt-0" data-testid="schedule-management-day-selector">
+                      {SCHEDULE_DAYS.map(day => {
+                        const count = entries.filter(e => (e.kind === "weekly" || e.kind === "break") && e.dayOfWeek === day.value).length;
+                        return (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => setSelectedDay(day.value)}
+                            className={`shrink-0 snap-start flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all border ${
+                              selectedDay === day.value
+                                ? 'bg-emerald-700 border-emerald-700 text-white shadow-md shadow-emerald-900/10 font-black'
+                                : 'bg-transparent border-transparent text-muted-foreground font-bold hover:bg-muted/50'
+                            }`}
+                          >
+                            <span>{isAr ? day.ar : day.en}</span>
+                            {count > 0 && selectedDay !== day.value && (
+                              <span className="w-5 h-5 flex items-center justify-center rounded-md bg-muted text-[10px] font-black">{count}</span>
+                            )}
+                            {count > 0 && selectedDay === day.value && (
+                              <span className="w-5 h-5 flex items-center justify-center rounded-md bg-white/20 text-[10px] font-black">{count}</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
-                    
-                    {weeklyEntries.length === 0 ? (
-                      <div className="py-12 text-center text-sm font-semibold text-muted-foreground border-2 border-dashed border-border/60 rounded-2xl">
-                        {isAr ? "لا توجد حصة أو فترة مسجلة في هذا اليوم" : "No class or period registered on this day"}
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        {weeklyEntries.map((entry, index) => (
+                  )}
+                </div>
+
+                {/* Schedule List */}
+                {viewMode === "day" && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {weeklyEntries.length > 0 ? (
+                      <div className="flex flex-col">
+                        {weeklyEntries.map((entry, idx) => (
                           <ScheduleEntryRow
                             key={entry.id}
                             entry={entry}
                             isAr={isAr}
-                            isLast={index === weeklyEntries.length - 1}
+                            isLast={idx === weeklyEntries.length - 1}
                             onEdit={() => openEdit(entry)}
                             onDelete={() => removeEntry(entry)}
                           />
                         ))}
                       </div>
+                    ) : (
+                      <div className="text-center py-16 bg-muted/10 border border-dashed border-border/60 rounded-3xl">
+                        <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                        <p className="text-muted-foreground font-bold text-lg mb-1">{isAr ? "يوم فارغ" : "Empty Day"}</p>
+                        <p className="text-muted-foreground/70 text-sm font-medium">{isAr ? "لا توجد حصص مجدولة في هذا اليوم." : "No lessons scheduled for this day."}</p>
+                      </div>
                     )}
                   </div>
-                </>
-              ) : (
-                <div className="p-6">
-                  {weeklyGroups.length === 0 ? (
-                    <div className="py-12 text-center text-sm font-semibold text-muted-foreground border-2 border-dashed border-border/60 rounded-2xl">
-                      {isAr ? "لا توجد حصص أسبوعية مسجلة بعد" : "No weekly classes registered yet"}
-                    </div>
-                  ) : (
-                    <div className="space-y-8">
-                      {weeklyGroups.map(({ day, entries: dayEntries }) => (
-                        <div key={day.value} className="bg-surface/30 rounded-2xl p-5 border border-border/40">
-                          <div className="text-base font-black text-green-700 mb-4 flex items-center gap-2">
-                            <div className="w-1.5 h-5 bg-green-500 rounded-full" />
-                            {isAr ? day.ar : day.en}
-                          </div>
-                          <div className="space-y-1 bg-card rounded-xl p-2 border border-border/60 shadow-sm">
-                            {dayEntries.map((entry, index) => (
+                  )}
+
+                {viewMode === "week-list" && (
+                  <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {weeklyGroups.length > 0 ? (
+                      weeklyGroups.map(group => (
+                        <div key={group.day.value} className="relative">
+                          <h3 className="font-bold text-base text-foreground mb-4 flex items-center gap-3">
+                            <span className="w-2.5 h-6 bg-emerald-500 rounded-full" />
+                            {isAr ? group.day.ar : group.day.en}
+                          </h3>
+                          <div className="flex flex-col bg-muted/5 border border-border/50 rounded-3xl px-4 sm:px-6 py-2">
+                            {group.entries.map((entry, idx) => (
                               <ScheduleEntryRow
                                 key={entry.id}
                                 entry={entry}
                                 isAr={isAr}
-                                isLast={index === dayEntries.length - 1}
+                                isLast={idx === group.entries.length - 1}
                                 onEdit={() => openEdit(entry)}
                                 onDelete={() => removeEntry(entry)}
                               />
                             ))}
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-16 bg-muted/10 border border-dashed border-border/60 rounded-3xl">
+                        <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                        <p className="text-muted-foreground font-bold text-lg mb-1">{isAr ? "لا توجد حصص أسبوعية" : "No Weekly Classes"}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {viewMode === "week-grid" && (
+                  <div data-testid="schedule-week-grid" className="w-full overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    {weeklyGroups.length > 0 ? (
+                      <div className="flex gap-4 min-w-max">
+                        {SCHEDULE_DAYS.map(day => {
+                          const dayEntries = entries
+                            .filter(e => (e.kind === "weekly" || e.kind === "break") && e.dayOfWeek === day.value)
+                            .sort((a, b) => a.startTime.localeCompare(b.startTime) || schedulePosition(a) - schedulePosition(b));
+
+                          return (
+                            <div key={day.value} className="flex flex-col w-64 shrink-0">
+                              <div className="font-bold text-base text-foreground mb-3 flex items-center justify-between bg-muted/30 p-3 rounded-xl border border-border/60">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-5 bg-emerald-500 rounded-full" />
+                                  {isAr ? day.ar : day.en}
+                                </div>
+                                <span className="text-xs font-black text-muted-foreground px-2 py-0.5 bg-background rounded-md shadow-sm border border-border/50">
+                                  {dayEntries.length}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                {dayEntries.length > 0 ? (
+                                  dayEntries.map((entry) => (
+                                    <div
+                                      key={entry.id}
+                                      className={`p-3 rounded-xl border border-border/60 shadow-sm relative group cursor-pointer hover:border-emerald-500/50 hover:shadow-md transition-all ${entry.kind === 'break' ? 'bg-amber-50/30' : 'bg-card'}`}
+                                      onClick={() => openEdit(entry)}
+                                    >
+                                      <div className="flex items-start justify-between mb-2">
+                                        <span className="text-sm font-bold text-foreground line-clamp-2 pr-2 leading-snug">{entry.title}</span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); removeEntry(entry); }}
+                                          className="opacity-0 group-hover:opacity-100 p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-all shrink-0 -mt-1 -mr-1"
+                                          title={isAr ? "حذف" : "Delete"}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                      <div className="flex flex-col gap-2 mt-auto">
+                                        <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-muted-foreground/90">
+                                          <Clock3 className="w-3.5 h-3.5" />
+                                          <span>{entry.startTime}{entry.endTime ? ` - ${entry.endTime}` : ""}</span>
+                                        </div>
+                                        {(entry.className || entry.location) && (
+                                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold text-muted-foreground">
+                                            {entry.className && <span className="bg-muted/60 px-1.5 py-0.5 rounded-md">{entry.className}</span>}
+                                            {entry.location && <span className="bg-muted/60 px-1.5 py-0.5 rounded-md">{entry.location}</span>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 p-5 text-center text-xs font-bold text-muted-foreground">
+                                    {isAr ? "لا توجد فترات" : "No entries"}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-16 bg-muted/10 border border-dashed border-border/60 rounded-3xl">
+                        <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                        <p className="text-muted-foreground font-bold text-lg mb-1">{isAr ? "لا توجد حصص أسبوعية" : "No Weekly Classes"}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Appointments Section */}
+                {appointments.length > 0 && (
+                  <div className="mt-12 pt-8 border-t border-border/60 animate-in fade-in">
+                    <h3 className="font-bold text-lg text-foreground mb-6 flex items-center gap-3">
+                      <span className="w-10 h-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center shrink-0 shadow-sm border border-amber-200/50">
+                        <CalendarClock className="w-5 h-5" />
+                      </span>
+                      {isAr ? "المواعيد" : "Appointments"}
+                    </h3>
+                    <div className="flex flex-col bg-amber-50/20 border border-amber-100/50 rounded-3xl px-4 sm:px-6 py-2">
+                      {appointments.map((entry, idx) => (
+                        <ScheduleEntryRow
+                          key={entry.id}
+                          entry={entry}
+                          isAr={isAr}
+                          isLast={idx === appointments.length - 1}
+                          onEdit={() => openEdit(entry)}
+                          onDelete={() => removeEntry(entry)}
+                        />
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {appointments.length > 0 && (
-                <div className="p-6 border-t border-border/80 bg-amber-50/30">
-                  <div className="text-base font-black text-foreground mb-4 flex items-center gap-2">
-                    <div className="w-1.5 h-5 bg-amber-500 rounded-full" />
-                    {isAr ? "جميع المواعيد" : "All appointments"}
                   </div>
-                  <div className="space-y-1 bg-card rounded-xl p-2 border border-amber-200 shadow-sm">
-                    {appointments.map((entry, index) => (
-                      <ScheduleEntryRow
-                        key={entry.id}
-                        entry={entry}
-                        isAr={isAr}
-                        isLast={index === appointments.length - 1}
-                        onEdit={() => openEdit(entry)}
-                        onDelete={() => removeEntry(entry)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1593,7 +1891,7 @@ export default function ScheduleManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={importDialogOpen} onOpenChange={(open) => { if (!isExtracting) { setImportDialogOpen(open); if (!open) { setImportFile(null); setImportPreview(null); } } }}>
+      <Dialog open={importDialogOpen} onOpenChange={(open) => { if (!isExtracting && !isPreparingImage) { setImportDialogOpen(open); if (!open) { setImportFile(null); setImportPreview(null); } } }}>
         <DialogContent className="max-w-md rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader>
             <DialogTitle>{isAr ? "استيراد جدول معلم" : "Import Teacher Schedule"}</DialogTitle>
@@ -1615,6 +1913,29 @@ export default function ScheduleManagementPage() {
                     </button>
                   )}
                 </div>
+              ) : importFile ? (
+                <div className="relative flex flex-col items-center justify-center rounded-xl border p-5" style={{ borderColor: C.border }}>
+                  <ImageIcon className="mb-2 h-9 w-9" style={{ color: C.green }} />
+                  <div className="max-w-full truncate text-sm font-black" style={{ color: C.text }}>{importFile.name}</div>
+                  <div className="mt-1 flex items-center gap-2 text-xs" style={{ color: C.subtle }}>
+                    {isPreparingImage && <Loader2 className="h-4 w-4 animate-spin" />}
+                    <span>
+                      {isPreparingImage
+                        ? (isAr ? "جارٍ تحويل صورة الآيفون إلى JPG…" : "Converting the iPhone image to JPG…")
+                        : (isAr ? "الصورة جاهزة للاستخراج" : "The image is ready for extraction")}
+                    </span>
+                  </div>
+                  {!isExtracting && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-3 rounded-lg border px-3 py-2 text-xs font-bold"
+                      style={{ borderColor: C.border, color: C.green, background: C.card }}
+                    >
+                      {isAr ? "اختيار صورة أخرى" : "Choose another image"}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div
                   className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:bg-black/5"
@@ -1626,7 +1947,7 @@ export default function ScheduleManagementPage() {
                     {isAr ? "انقر لاختيار صورة من جهازك أو الكاميرا" : "Click to select an image from your device or camera"}
                   </p>
                   <p className="mt-1 text-xs" style={{ color: C.subtle }}>
-                    {isAr ? "JPG أو PNG أو WebP — حتى ١٠ ميجابايت" : "JPG, PNG, or WebP — up to 10MB"}
+                    {isAr ? "JPG أو PNG أو WebP أو HEIC — حتى ١٠ ميجابايت" : "JPG, PNG, WebP, or HEIC — up to 10MB"}
                   </p>
                 </div>
               )}
@@ -1647,7 +1968,7 @@ export default function ScheduleManagementPage() {
             <button
               type="button"
               onClick={() => setImportDialogOpen(false)}
-              disabled={isExtracting}
+              disabled={isExtracting || isPreparingImage}
               style={scheduleSecondaryButton}
             >
               {isAr ? "إلغاء" : "Cancel"}
@@ -1655,11 +1976,11 @@ export default function ScheduleManagementPage() {
             <button
               type="button"
               onClick={handleExtract}
-              disabled={!importFile || isExtracting}
+              disabled={!importFile || isExtracting || isPreparingImage}
               data-testid="button-confirm-extract-schedule"
               style={{
                 ...schedulePrimaryButton,
-                opacity: (!importFile || isExtracting) ? 0.65 : 1,
+                opacity: (!importFile || isExtracting || isPreparingImage) ? 0.65 : 1,
               }}
             >
               {isExtracting ? (

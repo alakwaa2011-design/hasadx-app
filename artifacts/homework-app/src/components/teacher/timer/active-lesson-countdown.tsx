@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useLocation } from "wouter";
 import { Bell, BellOff, CalendarClock, ChevronDown, ChevronUp, Coffee, Pause, Play, Settings2, Timer, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListTeacherSchedule, getListTeacherScheduleQueryKey, type TeacherScheduleEntry } from "@workspace/api-client-react";
 import { lessonNumberLabel } from "@/lib/schedule-labels";
+import {
+  useScheduleCountdownPreferences,
+} from "@/lib/schedule-countdown-preferences";
 import { initAudioContext, playTimerSound } from "@/lib/timer-sounds";
 
 function parseClockTime(value: string) {
@@ -67,18 +71,6 @@ export function selectVisibleScheduleEntry(
   }) || null;
   return { visibleEntry: upcoming, isBeforeStart: Boolean(upcoming), currentTimeMs };
 }
-
-type CountdownPreferences = {
-  alertMinutes: number;
-  soundEnabled: boolean;
-  position: { x: number; y: number } | null;
-};
-
-const DEFAULT_PREFERENCES: CountdownPreferences = {
-  alertMinutes: 5,
-  soundEnabled: false,
-  position: null,
-};
 
 function ActiveLessonPanel({
   entry,
@@ -464,46 +456,18 @@ export function GlobalActiveLessonCountdown() {
   const [hiddenKey, setHiddenKey] = useState<string | null>(null);
   const [pausedKey, setPausedKey] = useState<string | null>(null);
   const [pausedRemainingMs, setPausedRemainingMs] = useState(0);
-  const [preferences, setPreferences] = useState<CountdownPreferences>(DEFAULT_PREFERENCES);
+  const { preferences, setPreferences, updatePreferences } = useScheduleCountdownPreferences(user?.id);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const soundedKeyRef = useRef<string | null>(null);
+
+  // Hide floating countdown on the schedule page because it's integrated inline there
+  const [location] = useLocation();
+  const isSchedulePage = location === "/teacher/tools/schedule";
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(interval);
   }, []);
-
-  const storageKey = user?.id ? `hasaad_schedule_countdown_v1_${user.id}` : null;
-
-  useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || "{}") as Partial<CountdownPreferences>;
-      setPreferences({
-        alertMinutes: Math.max(1, Math.min(120, Number(saved.alertMinutes) || DEFAULT_PREFERENCES.alertMinutes)),
-        soundEnabled: Boolean(saved.soundEnabled),
-        position: saved.position && Number.isFinite(saved.position.x) && Number.isFinite(saved.position.y)
-          ? saved.position
-          : null,
-      });
-    } catch {
-      setPreferences(DEFAULT_PREFERENCES);
-    }
-  }, [storageKey]);
-
-  function updatePreferences(patch: Partial<CountdownPreferences>) {
-    setPreferences((current) => {
-      const next = { ...current, ...patch };
-      if (storageKey) {
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch {
-          // Keep the setting for this session when browser storage is unavailable.
-        }
-      }
-      return next;
-    });
-  }
 
   const today = useMemo(() => new Date(now), [now]);
   const { visibleEntry, isBeforeStart, currentTimeMs } = useMemo(
@@ -596,7 +560,7 @@ export function GlobalActiveLessonCountdown() {
     }
   }
 
-  if (userLoading || !user || !visibleEntry || !activeKey || hiddenKey === activeKey) return null;
+  if (userLoading || !user || !visibleEntry || !activeKey || hiddenKey === activeKey || isSchedulePage) return null;
 
   const panel = (
     <ActiveLessonPanel

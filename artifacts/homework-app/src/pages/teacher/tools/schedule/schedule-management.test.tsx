@@ -5,7 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const bulkMutate = vi.fn();
 const deleteAllMutate = vi.fn();
+const heicConvert = vi.fn();
 let scheduleRows: Array<Record<string, unknown>> = [];
+
+vi.mock("heic2any", () => ({
+  default: heicConvert,
+}));
 
 vi.mock("@/lib/i18n", () => ({
   useI18n: () => ({ lang: "ar" }),
@@ -27,6 +32,7 @@ vi.mock("@workspace/api-client-react", () => ({
   useUpdateTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
   useDeleteTeacherSchedule: () => ({ mutate: deleteAllMutate, isPending: false }),
   useDeleteTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
+  useGetCurrentTeacher: () => ({ data: { id: 7 }, isLoading: false }),
 }));
 
 import ScheduleManagementPage from "./index";
@@ -56,6 +62,14 @@ beforeEach(async () => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   bulkMutate.mockReset();
   deleteAllMutate.mockReset();
+  heicConvert.mockReset();
+  localStorage.clear();
+  heicConvert.mockResolvedValue(new Blob(["jpeg-image"], { type: "image/jpeg" }));
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: vi.fn(() => "blob:converted-image"),
+    revokeObjectURL: vi.fn(),
+  });
   scheduleRows = [];
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -115,12 +129,51 @@ describe("schedule management tool", () => {
       );
     });
 
-    expect(document.body.textContent).toContain("جميع المواعيد");
+    expect(document.body.textContent).toContain("المواعيد");
     expect(document.body.textContent).toContain("موعد 1");
     expect(document.body.textContent).toContain("موعد 5");
     const daySelector = document.querySelector('[data-testid="schedule-management-day-selector"]') as HTMLElement;
-    expect(daySelector.className).toContain("grid-cols-4");
-    expect(daySelector.className).toContain("sm:grid-cols-7");
+    expect(daySelector.className).toContain("overflow-x-auto");
+  });
+
+  it("offers daily, weekly-list, and weekly-grid views with organized timer controls", async () => {
+    scheduleRows = [{
+      id: 1,
+      kind: "weekly",
+      title: "رياضيات",
+      dayOfWeek: 0,
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }];
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={new QueryClient()}>
+          <ScheduleManagementPage />
+        </QueryClientProvider>,
+      );
+    });
+
+    expect(document.body.textContent).toContain("المؤقت والتنبيهات");
+    expect(button("button-schedule-view-day")).toBeTruthy();
+    expect(button("button-schedule-view-week-list")).toBeTruthy();
+    await click("button-schedule-view-week-grid");
+    expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
+    expect(document.querySelectorAll('[data-testid="schedule-week-grid"] [class*="w-64"]')).toHaveLength(7);
+  });
+
+  it("stores timer settings using the same preference contract as the floating countdown", async () => {
+    const alertSelect = document.querySelector('[data-testid="select-schedule-alert-minutes"]') as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+
+    await act(async () => {
+      setter?.call(alertSelect, "10");
+      alertSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click("button-schedule-alert-sound");
+
+    expect(JSON.parse(localStorage.getItem("hasaad_schedule_countdown_v1_7") || "{}"))
+      .toMatchObject({ alertMinutes: 10, soundEnabled: true });
   });
 
   it("loads the failing day's draft without overwriting it during period validation", async () => {
@@ -159,5 +212,25 @@ describe("schedule management tool", () => {
     expect(deleteAllMutate).not.toHaveBeenCalled();
     await click("button-confirm-delete-whole-schedule");
     expect(deleteAllMutate).toHaveBeenCalledWith(undefined, expect.any(Object));
+  });
+
+  it("accepts an iPhone HEIC file and converts it before extraction", async () => {
+    const input = document.querySelector('[data-testid="input-import-schedule-image"]') as HTMLInputElement;
+    const file = new File(["heic-image"], "IMG_3847.heic", { type: "image/heic" });
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+
+    await act(async () => {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    await vi.waitFor(() => {
+      expect(heicConvert).toHaveBeenCalledWith(expect.objectContaining({
+        blob: file,
+        toType: "image/jpeg",
+      }));
+      expect(document.querySelector('img[alt="معاينة صورة الجدول"]')?.getAttribute("src"))
+        .toBe("blob:converted-image");
+    });
+    expect(button("button-confirm-extract-schedule").disabled).toBe(false);
   });
 });

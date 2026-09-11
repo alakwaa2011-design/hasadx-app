@@ -2676,7 +2676,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                   }}
                 >
                   <div style={{ fontSize: 10, fontWeight: 800 }}>
-                    {isAr ? day.ar.slice(0, 2) : day.en}
+                    {isAr ? day.shortAr : day.en}
                   </div>
                   <div style={{ fontSize: 9, marginTop: 2, opacity: active ? 0.8 : 0.65 }}>
                     {count}
