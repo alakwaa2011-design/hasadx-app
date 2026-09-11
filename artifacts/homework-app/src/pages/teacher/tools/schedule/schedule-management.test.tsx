@@ -18,7 +18,7 @@ vi.mock("heic2any", () => ({
 }));
 
 vi.mock("@/lib/i18n", () => ({
-  useI18n: () => ({ lang: "ar" }),
+  useI18n: () => ({ lang: language }),
 }));
 
 vi.mock("@/components/layout", () => ({
@@ -67,16 +67,6 @@ async function typeInto(testId: string, value: string) {
   });
 }
 
-async function renderScheduleManagement() {
-  await act(async () => {
-    root.render(
-      <QueryClientProvider client={new QueryClient()}>
-        <ScheduleManagementPage />
-      </QueryClientProvider>,
-    );
-  });
-}
-
 async function renderPage() {
   await act(async () => {
     root.render(
@@ -101,6 +91,7 @@ beforeEach(async () => {
     revokeObjectURL: vi.fn(),
   });
   toastError.mockReset();
+  language = "ar";
   scheduleRows = [];
   scheduleIsError = false;
   container = document.createElement("div");
@@ -123,6 +114,10 @@ describe("schedule management tool", () => {
     await click("button-add-schedule-entry");
     const entryScroll = document.querySelector('[data-testid="schedule-entry-scroll-region"]');
     const entryActions = document.querySelector('[data-testid="schedule-entry-fixed-actions"]');
+
+    const entryDialog = entryScroll?.closest('[role="dialog"]');
+    const entryDescription = document.getElementById(entryDialog?.getAttribute("aria-describedby") || "");
+    expect(entryDescription?.textContent).toContain("أدخل تفاصيل الحصة أو الموعد");
     expect(entryScroll?.className).toContain("overflow-y-auto");
     expect(entryActions?.contains(button("button-save-schedule-entry"))).toBe(true);
     expect(entryScroll?.contains(button("button-save-schedule-entry"))).toBe(false);
@@ -133,37 +128,52 @@ describe("schedule management tool", () => {
 
     const scrollRegion = document.querySelector('[data-testid="bulk-schedule-scroll-region"]');
     const actions = document.querySelector('[data-testid="bulk-schedule-fixed-actions"]');
+
+    const bulkDialog = scrollRegion?.closest('[role="dialog"]');
+    const bulkDescription = document.getElementById(bulkDialog?.getAttribute("aria-describedby") || "");
+    expect(bulkDescription?.textContent).toContain("أدخل حصص الأسبوع وأوقاتها");
     expect(scrollRegion?.className).toContain("overflow-y-auto");
     expect(actions?.contains(button("button-save-bulk-schedule"))).toBe(true);
     expect(scrollRegion?.contains(button("button-save-bulk-schedule"))).toBe(false);
   });
 
+  it("links English descriptions to both schedule entry dialogs", async () => {
+    language = "en";
+    await renderPage();
+
+    await click("button-add-schedule-entry");
+    const entryDialog = document.querySelector('[data-testid="schedule-entry-scroll-region"]')?.closest('[role="dialog"]');
+    const entryDescription = document.getElementById(entryDialog?.getAttribute("aria-describedby") || "");
+    expect(entryDescription?.textContent).toContain("Enter the lesson or appointment details");
+    const cancelButton = document.querySelector('[data-testid="schedule-entry-fixed-actions"] button') as HTMLButtonElement;
+    await act(async () => cancelButton.click());
+
+    await click("button-add-bulk-schedule");
+    const bulkDialog = document.querySelector('[data-testid="bulk-schedule-scroll-region"]')?.closest('[role="dialog"]');
+    const bulkDescription = document.getElementById(bulkDialog?.getAttribute("aria-describedby") || "");
+    expect(bulkDescription?.textContent).toContain("Enter the week's lessons and times");
+  });
+
   it("lets the teacher edit every appointment, including past and later entries", async () => {
     scheduleRows = Array.from({ length: 5 }, (_, index) => ({
-        id: index + 1,
-        kind: "appointment",
-        title: `موعد ${index + 1}`,
-        appointmentDate: index === 0 ? "2020-01-01" : `2030-01-0${index + 1}`,
-        startTime: "08:00",
-        endTime: "09:00",
-      }));
-    await act(async () => {
-      root.render(
-        <QueryClientProvider client={new QueryClient()}>
-          <ScheduleManagementPage />
-        </QueryClientProvider>,
-      );
-    });
+      id: index + 1,
+      kind: "appointment",
+      title: `موعد ${index + 1}`,
+      appointmentDate: index === 0 ? "2020-01-01" : `2030-01-0${index + 1}`,
+      startTime: "08:00",
+      endTime: "09:00",
+    }));
+    await renderPage();
 
     expect(document.body.textContent).toContain("المواعيد");
     expect(document.body.textContent).toContain("موعد 1");
     expect(document.body.textContent).toContain("موعد 5");
     await click("button-schedule-view-day");
     const daySelector = document.querySelector('[data-testid="schedule-management-day-selector"]') as HTMLElement;
-
     const visibleDayLabels = Array.from(daySelector.querySelectorAll("button")).map(
       (dayButton) => dayButton.querySelector("span")?.textContent,
     );
+    expect(visibleDayLabels).toContain("الأحد");
     expect(daySelector.className).toContain("overflow-x-auto");
   });
 

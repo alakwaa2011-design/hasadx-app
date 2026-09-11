@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
@@ -1412,6 +1412,9 @@ export default function ScheduleManagementPage() {
         <DialogContent className="flex max-h-[92dvh] max-w-xl flex-col overflow-hidden rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader className="shrink-0">
             <DialogTitle>{editingId ? (isAr ? "تعديل الإدخال" : "Edit schedule entry") : (isAr ? "إضافة إلى الجدول" : "Add to schedule")}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {isAr ? "أدخل تفاصيل الحصة أو الموعد لإضافته إلى جدولك." : "Enter the lesson or appointment details to add it to your schedule."}
+            </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(submitSchedule)} className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
@@ -1641,6 +1644,9 @@ export default function ScheduleManagementPage() {
         <DialogContent className="flex max-h-[92dvh] max-w-5xl flex-col overflow-hidden rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader className="shrink-0">
             <DialogTitle>{isAr ? "إدخال جدول كامل" : "Enter a full schedule"}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {isAr ? "أدخل حصص الأسبوع وأوقاتها لحفظ الجدول كاملًا." : "Enter the week's lessons and times to save the full schedule."}
+            </DialogDescription>
           </DialogHeader>
           {importWarnings.length > 0 && (
             <div
