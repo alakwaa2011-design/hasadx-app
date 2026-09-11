@@ -1014,6 +1014,7 @@ export default function TeacherDashboard() {
                   key={tab.id}
                   onClick={() => {
                     if (tab.href) setLocation(tab.href);
+                    else if (tab.id === "students") setLocation("/teacher/students");
                     else setActiveTab(tab.id);
                   }}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
