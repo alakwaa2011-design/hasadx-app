@@ -93,3 +93,4 @@
 - [Submitted assignment question lock](submitted-assignment-question-lock.md) — once submissions exist, question edits are blocked so answer history cannot be cascaded or reinterpreted.
 - [Assignment archive and revision safety](assignment-archive-concurrency.md) — mutations use expected versions; history snapshots precede changes; restores never broaden access.
 - [Anonymous assignment attempts](anonymous-assignment-attempts.md) — without student accounts, extra attempts are assignment-wide but enforced per device with atomic server locks.
+- [Sparse teacher schedules](sparse-teacher-schedules.md) — missing lesson numbers represent valid free periods; preserve them during image import instead of renumbering or inventing rows.

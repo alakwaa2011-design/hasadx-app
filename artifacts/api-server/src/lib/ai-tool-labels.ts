@@ -33,6 +33,10 @@ export const AI_TOOL_LABELS: Readonly<Record<string, AiToolLabel>> = {
     ar: "استخراج أسئلة من مصدر",
     en: "Extract Questions from Source",
   },
+  "teacher-schedule-extract": {
+    ar: "استخراج جدول المعلم من صورة",
+    en: "Extract Teacher Schedule from Image",
+  },
   "lesson-plan": {
     ar: "خطة الدرس",
     en: "Lesson Plan",

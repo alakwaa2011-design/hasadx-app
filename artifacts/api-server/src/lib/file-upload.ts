@@ -68,14 +68,17 @@ declare global {
 
 /* Express middleware: looks up the teacher's admin flag FIRST, then
    builds a per-request multer instance limited to that tier's per-file
-   size. This means a teacher request can never buffer more than
-   5 × 50MB = 250MB and an admin request never more than 25 × 200MB =
-   5GB. The post-parse `processUploadedFiles` then re-checks the same
-   limits as a defence-in-depth measure (and to provide nicer errors).
+   size. Callers with a narrower contract may override both limits; those
+   hard caps are applied by multer before files are fully buffered. The
+   post-parse `processUploadedFiles` then re-checks the attached limits as
+   a defence-in-depth measure (and to provide nicer errors).
 
    Auth: requires session.teacherId — must be mounted AFTER
    `requireTeacher`. */
-export function createUploadFilesMiddleware(): RequestHandler {
+export function createUploadFilesMiddleware(overrides?: {
+  maxFiles?: number;
+  maxBytes?: number;
+}): RequestHandler {
   return async (req, res, next) => {
     const lang = resolveErrorLang(req);
     const ar = lang === "ar";
@@ -100,8 +103,8 @@ export function createUploadFilesMiddleware(): RequestHandler {
       return;
     }
 
-    const maxFiles = isAdmin ? ADMIN_MAX_FILES : TEACHER_MAX_FILES;
-    const maxBytes = isAdmin ? ADMIN_MAX_BYTES : TEACHER_MAX_BYTES;
+    const maxFiles = overrides?.maxFiles ?? (isAdmin ? ADMIN_MAX_FILES : TEACHER_MAX_FILES);
+    const maxBytes = overrides?.maxBytes ?? (isAdmin ? ADMIN_MAX_BYTES : TEACHER_MAX_BYTES);
     req.tierLimits = { isAdmin, maxFiles, maxBytes };
 
     /* Per-request multer. The hard cap on `fileSize` here is what

@@ -58,6 +58,9 @@ import {
   ExternalLink,
   ScanLine,
   Trash2,
+  Image as ImageIcon,
+  UploadCloud,
+  FileWarning,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
@@ -75,6 +78,8 @@ import {
 import { useFieldArray, useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { creditAwareFetch, isInsufficientCreditsResponse } from "@/lib/credit-aware-fetch";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
 
 type TabId =
   | "overview"
@@ -2571,8 +2576,66 @@ type BulkScheduleFormValues = {
     className: string;
     startTime: string;
     endTime: string;
+    confidence?: "high" | "medium" | "low";
   }>;
 };
+
+type ExtractedScheduleDay = {
+  dayOfWeek: number;
+  lessons: Array<{
+    lessonNumber: number;
+    title: string;
+    subject: string | null;
+    className: string | null;
+    startTime: string;
+    endTime: string | null;
+    confidence: "high" | "medium" | "low";
+  }>;
+};
+
+export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay[]) {
+  const schedules: Record<number, BulkScheduleFormValues["lessons"]> = {};
+  let hasNumberingGaps = false;
+
+  daySchedules.forEach((daySchedule) => {
+    const sortedLessons = [...daySchedule.lessons].sort((left, right) => left.lessonNumber - right.lessonNumber);
+    if (sortedLessons.some((lesson, index) => lesson.lessonNumber !== index + 1)) {
+      hasNumberingGaps = true;
+    }
+    schedules[daySchedule.dayOfWeek] = sortedLessons.map((extracted) => ({
+      lessonNumber: extracted.lessonNumber,
+      title: extracted.title || "",
+      subject: extracted.subject || "",
+      className: extracted.className || "",
+      startTime: extracted.startTime,
+      endTime: extracted.endTime || "",
+      confidence: extracted.confidence,
+    }));
+  });
+
+  return { schedules, hasNumberingGaps };
+}
+
+export function buildTeacherScheduleBulkInput(
+  schedules: Record<number, BulkScheduleFormValues["lessons"]>,
+  isAr: boolean,
+): TeacherScheduleBulkInput {
+  return {
+    daySchedules: Object.entries(schedules)
+      .sort(([left], [right]) => Number(left) - Number(right))
+      .map(([day, lessons]) => ({
+        dayOfWeek: Number(day),
+        lessons: lessons.map((lesson) => ({
+          lessonNumber: lesson.lessonNumber,
+          title: lesson.title.trim() || lessonNumberLabel(lesson.lessonNumber, isAr),
+          subject: lesson.subject.trim() || null,
+          className: lesson.className.trim() || null,
+          startTime: lesson.startTime,
+          endTime: lesson.endTime || null,
+        })),
+      })),
+  };
+}
 
 const SCHEDULE_DAYS = [
   { value: 0, ar: "الأحد", en: "Sun" },
@@ -2664,7 +2727,108 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
   const [viewMode, setViewMode] = useState<"day" | "week">("day");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<string | null>(null);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [bulkLessonCount, setBulkLessonCount] = useState(5);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (importPreview) URL.revokeObjectURL(importPreview);
+    };
+  }, [importPreview]);
+
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error(isAr ? "استخدم صورة JPG أو PNG أو WebP" : "Use a JPG, PNG, or WebP image");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(isAr ? "حجم الصورة يجب أن لا يتجاوز 10 ميجابايت" : "Image size must not exceed 10MB");
+      e.target.value = "";
+      return;
+    }
+    setImportFile(file);
+    const url = URL.createObjectURL(file);
+    setImportPreview(url);
+    setImportDialogOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleExtract() {
+    if (!importFile) return;
+    setIsExtracting(true);
+    const formData = new FormData();
+    formData.append("files", importFile);
+    formData.append("language", isAr ? "ar" : "en");
+
+    try {
+      const res = await creditAwareFetch(`${BASE}/api/teacher/schedule/ai/extract`, {
+        method: "POST",
+        headers: {
+          "X-Idempotency-Key": crypto.randomUUID(),
+        },
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        if (isInsufficientCreditsResponse(res)) {
+          return;
+        }
+        const body = await res.json().catch(() => null);
+        throw new Error(
+          typeof body?.message === "string"
+            ? body.message
+            : isAr ? "تعذر استخراج الجدول" : "Could not extract schedule",
+        );
+      }
+
+      const data = await res.json() as { daySchedules?: ExtractedScheduleDay[]; warnings?: unknown[] };
+      if (!Array.isArray(data.daySchedules) || data.daySchedules.length === 0) {
+        throw new Error(isAr ? "لم يتم العثور على حصص واضحة في الصورة" : "No clear lessons were found in the image");
+      }
+
+      const firstDay = data.daySchedules?.[0]?.dayOfWeek ?? new Date().getDay();
+      const { schedules: newSchedules, hasNumberingGaps } = normalizeImportedDaySchedules(data.daySchedules);
+
+      setBulkDaySchedules(newSchedules);
+      setActiveBulkDay(firstDay);
+      const lessons = newSchedules[firstDay] || emptyBulkLessons(5);
+      setBulkLessonCount(lessons.length);
+      bulkForm.reset({ lessons });
+      setImportWarnings([
+        ...(Array.isArray(data.warnings) ? data.warnings.filter((warning: unknown) => typeof warning === "string") : []),
+        ...(hasNumberingGaps
+          ? [isAr
+              ? "حُفظت أرقام الحصص كما ظهرت في الصورة، بما فيها الفترات الفارغة بين الحصص."
+              : "Lesson numbers were preserved as shown, including free periods between lessons."]
+          : []),
+      ]);
+      setImportDialogOpen(false);
+      setImportFile(null);
+      setImportPreview(null);
+      setBulkDialogOpen(true);
+
+      toast.success(isAr ? "تم الاستخراج — راجع الجدول قبل الحفظ" : "Extracted — review the schedule before saving");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : isAr ? "تعذر استخراج الجدول" : "Could not extract schedule",
+      );
+    } finally {
+      refreshCreditsBalance();
+      setIsExtracting(false);
+    }
+  }
+
   const [activeBulkDay, setActiveBulkDay] = useState(() => new Date().getDay());
   const [bulkDaySchedules, setBulkDaySchedules] = useState<Record<number, BulkScheduleFormValues["lessons"]>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -2687,6 +2851,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
       queryKey: getListTeacherScheduleQueryKey(),
     },
   });
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const createMutation = useCreateTeacherScheduleEntry();
   const bulkMutation = useBulkCreateTeacherSchedule();
   const updateMutation = useUpdateTeacherScheduleEntry();
@@ -2757,6 +2922,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
     setBulkLessonCount(5);
     setActiveBulkDay(currentDay);
     setBulkDaySchedules({ [currentDay]: lessons });
+    setImportWarnings([]);
     bulkForm.reset({
       lessons,
     });
@@ -2764,14 +2930,26 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
   }
 
   function changeBulkLessonCount(nextCount: number) {
-    const currentCount = bulkLessonFields.fields.length;
+    const currentLessons = bulkForm.getValues("lessons");
+    const currentCount = currentLessons.length;
     if (nextCount > currentCount) {
-      bulkLessonFields.append(emptyBulkLessons(nextCount - currentCount).map((lesson, index) => ({
-        ...lesson,
-        lessonNumber: currentCount + index + 1,
-      })));
+      const usedNumbers = new Set(currentLessons.map((lesson) => lesson.lessonNumber));
+      const availableNumbers = Array.from({ length: 10 }, (_, index) => index + 1)
+        .filter((number) => !usedNumbers.has(number))
+        .slice(0, nextCount - currentCount);
+      const addedLessons = availableNumbers.map((lessonNumber) => ({
+        ...emptyBulkLessons(lessonNumber)[lessonNumber - 1],
+        lessonNumber,
+      }));
+      bulkLessonFields.replace(
+        [...currentLessons, ...addedLessons].sort((left, right) => left.lessonNumber - right.lessonNumber),
+      );
     } else if (nextCount < currentCount) {
-      bulkLessonFields.remove(Array.from({ length: currentCount - nextCount }, (_, index) => nextCount + index));
+      bulkLessonFields.replace(
+        [...currentLessons]
+          .sort((left, right) => left.lessonNumber - right.lessonNumber)
+          .slice(0, nextCount),
+      );
     }
     setBulkLessonCount(nextCount);
   }
@@ -2905,27 +3083,13 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
         bulkForm.setError(`lessons.${invalidIndex}.${fieldName}`, { type: "validate", message: fieldMessage });
         toast.error(
           isAr
-            ? `راجع ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.ar} — ${lessonNumberLabel(invalidIndex + 1, true)}`
-            : `Check ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.en} — ${lessonNumberLabel(invalidIndex + 1, false)}`,
+            ? `راجع ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.ar} — ${lessonNumberLabel(invalidLesson.lessonNumber, true)}`
+            : `Check ${SCHEDULE_DAYS.find((item) => item.value === targetDay)?.en} — ${lessonNumberLabel(invalidLesson.lessonNumber, false)}`,
         );
         return;
       }
     }
-    const payload: TeacherScheduleBulkInput = {
-      daySchedules: Object.entries(schedules)
-        .sort(([left], [right]) => Number(left) - Number(right))
-        .map(([day, lessons]) => ({
-          dayOfWeek: Number(day),
-          lessons: lessons.map((lesson, index) => ({
-            lessonNumber: index + 1,
-            title: lesson.title.trim() || lessonNumberLabel(index + 1, isAr),
-            subject: lesson.subject.trim() || null,
-            className: lesson.className.trim() || null,
-            startTime: lesson.startTime,
-            endTime: lesson.endTime || null,
-          })),
-        })),
-    };
+    const payload = buildTeacherScheduleBulkInput(schedules, isAr);
 
     bulkMutation.mutate(
       { data: payload },
@@ -2949,7 +3113,7 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
               [activeBulkDay]: currentLessons,
             };
             const targetLessons = schedules[conflict.dayOfWeek];
-            const targetIndex = conflict.lessonNumber - 1;
+            const targetIndex = targetLessons?.findIndex((lesson) => lesson.lessonNumber === conflict.lessonNumber) ?? -1;
             if (targetLessons?.[targetIndex]) {
               const conflictingTime = [conflict.conflictingStartTime, conflict.conflictingEndTime]
                 .filter(Boolean)
@@ -3053,6 +3217,22 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={handleImageSelect}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="button-import-schedule-image"
+              style={{ ...scheduleSecondaryButton, color: C.green, padding: "7px 9px", fontSize: 10.5 }}
+            >
+              <ImageIcon style={{ width: 14, height: 14, marginRight: isAr ? 0 : 4, marginLeft: isAr ? 4 : 0 }} />
+              {isAr ? "استيراد صورة" : "Import image"}
+            </button>
             <button
               type="button"
               onClick={openBulkCreate}
@@ -3522,6 +3702,20 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
           <DialogHeader>
             <DialogTitle>{isAr ? "إدخال جدول كامل" : "Enter a full schedule"}</DialogTitle>
           </DialogHeader>
+          {importWarnings.length > 0 && (
+            <div
+              className="flex items-start gap-3 rounded-2xl border p-3 text-xs leading-relaxed"
+              style={{ borderColor: "rgba(217,119,6,0.3)", background: "#FFFBEB", color: "#92400E" }}
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <div className="font-black">{isAr ? "ملاحظات من قراءة الصورة" : "Image-reading notes"}</div>
+                <ul className="mt-1 list-inside list-disc space-y-1 font-semibold">
+                  {importWarnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}
+                </ul>
+              </div>
+            </div>
+          )}
           <Form {...bulkForm}>
             <form onSubmit={bulkForm.handleSubmit(submitBulkSchedule)} className="space-y-4">
               <div className="rounded-2xl border p-3" style={{ borderColor: C.border, background: C.surface }}>
@@ -3611,86 +3805,106 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
                 className="max-h-[52vh] space-y-3 overflow-y-auto rounded-2xl border p-3"
                 style={{ borderColor: C.border, background: C.card }}
               >
-                {bulkLessonFields.fields.map((lesson, index) => (
-                  <div
-                    key={lesson.id}
-                    className="grid grid-cols-1 gap-3 rounded-2xl border p-3 sm:grid-cols-12"
-                    style={{ borderColor: C.border, background: C.surface }}
-                  >
-                    <div className="flex items-center gap-2 sm:col-span-2 sm:flex-col sm:items-start sm:justify-center">
-                      <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 10,
-                          display: "grid",
-                          placeItems: "center",
-                          background: C.greenPale,
-                          color: C.green,
-                          fontWeight: 900,
-                          fontSize: 14,
-                        }}
-                      >
-                        {index + 1}
-                      </div>
-                      <div style={{ color: C.text, fontSize: 11, fontWeight: 900 }}>
-                        {lessonNumberLabel(index + 1, isAr)}
-                      </div>
-                    </div>
-                    <div className="sm:col-span-4">
-                      <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة (اختياري)" : "Lesson title (optional)"}</label>
-                      <input
-                        {...bulkForm.register(`lessons.${index}.title` as const)}
-                        placeholder={isAr ? `الافتراضي: ${lessonNumberLabel(index + 1, true)}` : `Default: ${lessonNumberLabel(index + 1, false)}`}
-                        style={fieldStyle}
-                        data-testid={`input-bulk-lesson-title-${index + 1}`}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:col-span-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
-                        <input
-                          {...bulkForm.register(`lessons.${index}.startTime` as const, {
-                            required: isAr ? "حدد وقت البداية" : "Enter a start time",
-                          })}
-                          type="time"
+                {bulkLessonFields.fields.map((lesson, index) => {
+                  const isLowConfidence = lesson.confidence === "low";
+
+                  return (
+                    <div
+                      key={lesson.id}
+                      className="grid grid-cols-1 gap-3 rounded-2xl border p-3 sm:grid-cols-12"
+                      style={{
+                        borderColor: isLowConfidence ? "#F59E0B" : C.border,
+                        background: isLowConfidence ? "#FEF3C7" : C.surface
+                      }}
+                    >
+                      <div className="flex items-center gap-2 sm:col-span-2 sm:flex-col sm:items-start sm:justify-center relative">
+                        {isLowConfidence && (
+                          <div className="absolute -top-1 -right-1 text-amber-600" title={isAr ? "يرجى التحقق من هذه البيانات" : "Please verify these details"}>
+                            <AlertTriangle className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div
                           style={{
-                            ...fieldStyle,
-                            borderColor: bulkForm.formState.errors.lessons?.[index]?.startTime ? "#B42318" : C.border,
+                            width: 34,
+                            height: 34,
+                            borderRadius: 10,
+                            display: "grid",
+                            placeItems: "center",
+                            background: isLowConfidence ? "#FDE68A" : C.greenPale,
+                            color: isLowConfidence ? "#D97706" : C.green,
+                            fontWeight: 900,
+                            fontSize: 14,
                           }}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
-                        <input
-                          {...bulkForm.register(`lessons.${index}.endTime` as const)}
-                          type="time"
-                          style={{
-                            ...fieldStyle,
-                            borderColor: bulkForm.formState.errors.lessons?.[index]?.endTime ? "#B42318" : C.border,
-                          }}
-                        />
-                      </div>
-                      {(bulkForm.formState.errors.lessons?.[index]?.startTime?.message
-                        || bulkForm.formState.errors.lessons?.[index]?.endTime?.message) && (
-                        <div className="col-span-2 text-xs font-bold text-destructive">
-                          {bulkForm.formState.errors.lessons?.[index]?.startTime?.message
-                            || bulkForm.formState.errors.lessons?.[index]?.endTime?.message}
+                        >
+                        {lesson.lessonNumber}
                         </div>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:col-span-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "المادة" : "Subject"}</label>
-                        <input {...bulkForm.register(`lessons.${index}.subject` as const)} style={fieldStyle} />
+                        <div style={{ color: C.text, fontSize: 11, fontWeight: 900 }}>
+                          {lessonNumberLabel(lesson.lessonNumber, isAr)}
+                        </div>
                       </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-bold">{isAr ? "الصف" : "Class"}</label>
-                        <input {...bulkForm.register(`lessons.${index}.className` as const)} style={fieldStyle} />
+                      <div className="sm:col-span-4">
+                        <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة (اختياري)" : "Lesson title (optional)"}</label>
+                        <input
+                          {...bulkForm.register(`lessons.${index}.title` as const)}
+                          placeholder={isAr ? `الافتراضي: ${lessonNumberLabel(lesson.lessonNumber, true)}` : `Default: ${lessonNumberLabel(lesson.lessonNumber, false)}`}
+                          style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
+                          data-testid={`input-bulk-lesson-title-${index + 1}`}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+                        <div>
+                          <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
+                          <input
+                            {...bulkForm.register(`lessons.${index}.startTime` as const, {
+                              required: isAr ? "حدد وقت البداية" : "Enter a start time",
+                            })}
+                            type="time"
+                            style={{
+                              ...fieldStyle,
+                              background: isLowConfidence ? "#FFFBEB" : C.surface,
+                              borderColor: bulkForm.formState.errors.lessons?.[index]?.startTime ? "#B42318" : C.border,
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
+                          <input
+                            {...bulkForm.register(`lessons.${index}.endTime` as const)}
+                            type="time"
+                            style={{
+                              ...fieldStyle,
+                              background: isLowConfidence ? "#FFFBEB" : C.surface,
+                              borderColor: bulkForm.formState.errors.lessons?.[index]?.endTime ? "#B42318" : C.border,
+                            }}
+                          />
+                        </div>
+                        {(bulkForm.formState.errors.lessons?.[index]?.startTime?.message
+                          || bulkForm.formState.errors.lessons?.[index]?.endTime?.message) && (
+                          <div className="col-span-2 text-xs font-bold text-destructive">
+                            {bulkForm.formState.errors.lessons?.[index]?.startTime?.message
+                              || bulkForm.formState.errors.lessons?.[index]?.endTime?.message}
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+                        <div>
+                          <label className="mb-1 block text-xs font-bold">{isAr ? "المادة" : "Subject"}</label>
+                          <input
+                            {...bulkForm.register(`lessons.${index}.subject` as const)}
+                            style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-bold">{isAr ? "الصف" : "Class"}</label>
+                          <input
+                            {...bulkForm.register(`lessons.${index}.className` as const)}
+                            style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <DialogFooter>
@@ -3713,6 +3927,97 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={importDialogOpen}
+        onOpenChange={(open) => {
+          if (!isExtracting) {
+            setImportDialogOpen(open);
+            if (!open) {
+              setImportFile(null);
+              setImportPreview(null);
+            }
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{isAr ? "استيراد جدول معلم" : "Import Teacher Schedule"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-2xl border p-4 text-center" style={{ borderColor: C.border, background: C.surface }}>
+              {importPreview ? (
+                <div className="relative mb-3 flex justify-center">
+                  <img src={importPreview} alt={isAr ? "معاينة صورة الجدول" : "Schedule image preview"} className="max-h-60 rounded-xl object-contain border shadow-sm" />
+                  {!isExtracting && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label={isAr ? "اختيار صورة أخرى" : "Choose another image"}
+                      className="absolute bottom-2 right-2 rounded-lg bg-black/60 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:bg-black/5"
+                  style={{ borderColor: C.border }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <UploadCloud className="mb-2 h-8 w-8" style={{ color: C.green }} />
+                  <p className="text-sm font-bold" style={{ color: C.text }}>
+                    {isAr ? "انقر لاختيار صورة من جهازك أو الكاميرا" : "Click to select an image from your device or camera"}
+                  </p>
+                  <p className="mt-1 text-xs" style={{ color: C.subtle }}>
+                    {isAr ? "JPG أو PNG أو WebP — حتى ١٠ ميجابايت" : "JPG, PNG, or WebP — up to 10MB"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-start gap-3 rounded-2xl p-3 text-xs leading-relaxed" style={{ background: C.goldPale, color: C.goldBright }}>
+              <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="font-semibold">
+                {isAr
+                  ? "ملاحظة: الذكاء الاصطناعي سيقوم بتحليل الجدول واستخراجه فقط، لن يتم حفظه تلقائياً. ستتمكن من مراجعة النتائج وتعديلها قبل الحفظ النهائي."
+                  : "Note: The AI will only analyze and extract the schedule. It will not be saved automatically. You will be able to review and edit the results before final saving."}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setImportDialogOpen(false)}
+              disabled={isExtracting}
+              style={{ ...scheduleSecondaryButton, color: C.text }}
+            >
+              {isAr ? "إلغاء" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              onClick={handleExtract}
+              disabled={isExtracting || !importFile}
+              data-testid="button-extract-schedule-image"
+              style={{ ...schedulePrimaryButton, opacity: isExtracting || !importFile ? 0.65 : 1 }}
+            >
+              {isExtracting ? (
+                <>
+                  <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+                  {isAr ? "جاري الاستخراج..." : "Extracting..."}
+                </>
+              ) : (
+                <>
+                  <Sparkles style={{ width: 14, height: 14 }} />
+                  {isAr ? "استخراج الجدول" : "Extract Schedule"}
+                </>
+              )}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

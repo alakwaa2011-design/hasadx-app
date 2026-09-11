@@ -1270,6 +1270,7 @@ async function runSchemaMigrations() {
         ('lesson-plan',      'خطة الدرس',               'Lesson Plan',                      'ai',    15, 15,  120),
         ('pdf-to-questions', 'استخراج أسئلة من PDF',    'Extract Questions from PDF',       'ai',    15, 15,  120),
         ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'Extract Questions from Source', 'ai', 10, 10, 180),
+        ('teacher-schedule-extract', 'استخراج جدول المعلم من صورة', 'Extract Teacher Schedule from Image', 'ai', 5, 5, 180),
         ('presentation',     'العرض التقديمي',           'Presentation',                     'ai',    20, 20,  300),
         ('presentation-slide','توليد شريحة واحدة',       'Generate One Slide',               'ai',     5,  5,  120),
         ('ai-video',         'لوحة قصة فيديو تعليمي',   'Educational Video Storyboard',     'ai',    15, 15,  180),

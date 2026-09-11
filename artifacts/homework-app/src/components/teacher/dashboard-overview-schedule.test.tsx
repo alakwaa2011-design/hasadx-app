@@ -14,7 +14,11 @@ vi.mock("@workspace/api-client-react", () => ({
   useDeleteTeacherScheduleEntry: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
-import { TeacherScheduleCard } from "./DashboardOverview";
+import {
+  buildTeacherScheduleBulkInput,
+  normalizeImportedDaySchedules,
+  TeacherScheduleCard,
+} from "./DashboardOverview";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -110,5 +114,40 @@ describe("TeacherScheduleCard full schedule drafts", () => {
       },
       expect.any(Object),
     );
+  });
+});
+
+describe("teacher schedule image draft normalization", () => {
+  it("keeps a third lesson as lesson three when the second lesson was unreadable", () => {
+    const { schedules, hasNumberingGaps } = normalizeImportedDaySchedules([{
+      dayOfWeek: 0,
+      lessons: [
+        {
+          lessonNumber: 1,
+          title: "",
+          subject: "رياضيات",
+          className: null,
+          startTime: "08:00",
+          endTime: "08:45",
+          confidence: "high",
+        },
+        {
+          lessonNumber: 3,
+          title: "",
+          subject: "علوم",
+          className: null,
+          startTime: "10:00",
+          endTime: "10:45",
+          confidence: "medium",
+        },
+      ],
+    }]);
+
+    expect(hasNumberingGaps).toBe(true);
+    expect(schedules[0].map((lesson) => lesson.lessonNumber)).toEqual([1, 3]);
+    expect(schedules[0][1].subject).toBe("علوم");
+
+    const payload = buildTeacherScheduleBulkInput(schedules, true);
+    expect(payload.daySchedules?.[0].lessons.map((lesson) => lesson.lessonNumber)).toEqual([1, 3]);
   });
 });

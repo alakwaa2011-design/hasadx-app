@@ -2,8 +2,23 @@ import { Router, type IRouter } from "express";
 import { and, asc, eq } from "drizzle-orm";
 import { db, teacherScheduleTable } from "@workspace/db";
 import { z } from "zod";
+import { checkCredits, captureCreditsOrThrow, refundCredits } from "../lib/check-credits";
+import {
+  createUploadFilesMiddleware,
+  processUploadedFiles,
+  runVisionCompletionMulti,
+} from "../lib/file-upload";
+import { resolveTier } from "../lib/ai-tier";
+import {
+  buildTeacherScheduleExtractionPrompt,
+  parseExtractedTeacherSchedule,
+} from "../lib/teacher-schedule-extraction";
 
 const router: IRouter = Router();
+const uploadFiles = createUploadFilesMiddleware({
+  maxFiles: 1,
+  maxBytes: 10 * 1024 * 1024,
+});
 
 const timePattern = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -168,6 +183,85 @@ router.get("/teacher/schedule", requireAuth, async (req: any, res): Promise<void
   res.set("Cache-Control", "no-store");
   res.json(rows);
 });
+
+router.post(
+  "/teacher/schedule/ai/extract",
+  requireAuth,
+  uploadFiles,
+  checkCredits("teacher-schedule-extract"),
+  async (req: any, res): Promise<void> => {
+    const language = req.body?.language === "en" ? "en" : "ar";
+    try {
+      const files = ((req.files as Express.Multer.File[]) || []);
+      if (files.length !== 1) {
+        await refundCredits(req, "يجب إرفاق صورة جدول واحدة");
+        res.status(400).json({
+          message: language === "ar" ? "أرفق صورة واحدة للجدول" : "Attach one schedule image",
+        });
+        return;
+      }
+      if (!["image/jpeg", "image/png", "image/webp"].includes(files[0].mimetype)) {
+        await refundCredits(req, "نوع صورة غير مدعوم");
+        res.status(415).json({
+          message: language === "ar" ? "استخدم صورة JPG أو PNG أو WebP" : "Use a JPG, PNG, or WebP image",
+        });
+        return;
+      }
+
+      const prepared = await processUploadedFiles(req, res, files, language);
+      if (!prepared) {
+        await refundCredits(req, "فشل تجهيز صورة الجدول");
+        return;
+      }
+      if (prepared.images.length !== 1) {
+        await refundCredits(req, "لم يتم العثور على صورة قابلة للقراءة");
+        res.status(400).json({
+          message: language === "ar" ? "لم نتمكن من قراءة الصورة المرفوعة" : "The attached image could not be read",
+        });
+        return;
+      }
+
+      const tier = await resolveTier(req.session.teacherId, req.body?.tier);
+      const raw = await runVisionCompletionMulti({
+        tier,
+        prompt: buildTeacherScheduleExtractionPrompt(language),
+        images: prepared.images,
+        maxTokens: 8000,
+        usage: {
+          req,
+          toolKey: "teacher-schedule-extract",
+          callKey: "schedule:vision",
+        },
+      });
+      const result = parseExtractedTeacherSchedule(raw);
+      await captureCreditsOrThrow(req, result);
+      res.json(result);
+    } catch (err: any) {
+      await refundCredits(req, "فشل استخراج جدول المعلم");
+      if (err?.code === "LIMIT_FILE_SIZE") {
+        res.status(413).json({
+          message: language === "ar" ? "حجم الصورة يتجاوز الحد المسموح" : "The image exceeds the size limit",
+        });
+        return;
+      }
+      if (err instanceof z.ZodError || err instanceof SyntaxError) {
+        req.log.warn({ err }, "Teacher schedule extraction returned invalid structured data");
+        res.status(422).json({
+          message: language === "ar"
+            ? "تعذّر فهم بنية الجدول بوضوح. جرّب صورة أوضح ومباشرة."
+            : "The schedule structure was not clear enough. Try a clearer, straight image.",
+        });
+        return;
+      }
+      req.log.error({ err }, "Teacher schedule image extraction failed");
+      res.status(500).json({
+        message: language === "ar"
+          ? "تعذّر استخراج الجدول. لم يتم خصم النقاط، ويمكنك المحاولة مرة أخرى."
+          : "Could not extract the schedule. No credits were charged; please try again.",
+      });
+    }
+  },
+);
 
 const bulkLessonSchema = z.object({
   lessonNumber: z.number().int().min(1).max(10),
