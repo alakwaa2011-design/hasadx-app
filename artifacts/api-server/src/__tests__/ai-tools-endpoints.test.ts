@@ -681,6 +681,7 @@ describe("POST /api/listening-script/generate", () => {
       expect.anything(),
       { script: "كانَ خالدٌ معروفًا بالأمانة.", language: "ar" },
     );
+    expect(mockState.refundCredits).not.toHaveBeenCalled();
     expectNoLegacyParams();
   });
 
@@ -740,6 +741,21 @@ describe("POST /api/listening-script/generate", () => {
     expect(mockState.refundCredits).toHaveBeenCalledWith(
       expect.anything(),
       "empty_generated_script",
+    );
+  });
+
+  it("does not return success when capturing the hold fails", async () => {
+    openaiReturns("نص استماع صالح.");
+    mockState.captureCreditsOrThrow.mockRejectedValueOnce(new Error("capture unavailable"));
+
+    const res = await request(makeApp(listeningScriptRouter))
+      .post("/api/listening-script/generate")
+      .send({ topic: "الأمانة" });
+
+    expect(res.status).toBe(500);
+    expect(mockState.refundCredits).toHaveBeenCalledWith(
+      expect.anything(),
+      "capture unavailable",
     );
   });
 });

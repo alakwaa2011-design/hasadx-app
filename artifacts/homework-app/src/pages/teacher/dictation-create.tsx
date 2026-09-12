@@ -107,7 +107,7 @@ const FIELD_CLASS = "text-start placeholder:text-start placeholder:text-[#94a3ab
 
 const PREVIEW_SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 
-// ===================== Types =====================
+// Types
 
 interface GradingOpts {
   ignoreDiacritics: boolean;
@@ -194,7 +194,7 @@ function estimateReadSeconds(text: string, speed: number): number {
   return Math.round(len / cps / speed);
 }
 
-// ===================== Hooks =====================
+// Hooks
 
 function useTtsPreview() {
   const { t } = useI18n();
@@ -297,7 +297,7 @@ function useTtsPreview() {
   return { speakingId, progress, currentSec, durationSec, volume, play, stopAudio, seek, setSpeed, setVolume };
 }
 
-// ===================== Sub-components =====================
+// Sub-components
 
 function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
   const { t } = useI18n();
@@ -423,7 +423,7 @@ function ListeningOptionCard({
   );
 }
 
-// ===================== Main Component =====================
+// Main Component
 
 export default function DictationCreate() {
   const { t, lang, dir } = useI18n();
@@ -861,8 +861,8 @@ export default function DictationCreate() {
           : (lang === "ar" ? "تعذّر إنشاء النص. حاول مرة أخرى." : "Could not generate the script. Please try again."),
       );
     } finally {
-      if (requestId === generatorRequestRef.current) setIsGeneratingScript(false);
       refreshCreditsBalance();
+      if (requestId === generatorRequestRef.current) setIsGeneratingScript(false);
     }
   };
 
