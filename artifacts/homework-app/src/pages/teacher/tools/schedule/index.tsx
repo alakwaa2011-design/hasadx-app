@@ -357,16 +357,19 @@ type ScheduleColorTargetKind = "column" | "row";
 function ScheduleColorPopover({
   isAr,
   selectedColor,
+  position,
   onSelect,
 }: {
   isAr: boolean;
   selectedColor?: ScheduleColor;
+  position: { top: number; left: number };
   onSelect: (color?: ScheduleColor) => void;
 }) {
   return (
     <div
       role="menu"
-      className="absolute end-0 top-[calc(100%+0.35rem)] z-[70] w-44 rounded-2xl border border-border bg-card p-2 shadow-xl"
+      className="fixed z-[70] w-44 rounded-2xl border border-border bg-card p-2 shadow-xl"
+      style={{ top: position.top, left: position.left }}
       onPointerDown={(event) => event.stopPropagation()}
     >
       <div className="mb-2 px-1 text-[10px] font-black text-muted-foreground">
@@ -557,6 +560,7 @@ export default function ScheduleManagementPage() {
   const [columnColors, setColumnColors] = useState<Record<string, ScheduleColor>>({});
   const [rowColors, setRowColors] = useState<Record<string, ScheduleColor>>({});
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
+  const [colorPopoverPosition, setColorPopoverPosition] = useState<{ top: number; left: number } | null>(null);
   const viewMenuRef = useRef<HTMLDetailsElement>(null);
   const themeMenuRef = useRef<HTMLDetailsElement>(null);
   const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
@@ -579,6 +583,7 @@ export default function ScheduleManagementPage() {
       }
       if (!(target instanceof Element) || !target.closest("[data-schedule-color-control]")) {
         setActiveColorTarget(null);
+        setColorPopoverPosition(null);
       }
     };
 
@@ -674,6 +679,7 @@ export default function ScheduleManagementPage() {
       );
     }
     setActiveColorTarget(null);
+    setColorPopoverPosition(null);
   }
 
   function renderColorControl(kind: ScheduleColorTargetKind, key: string, label: string) {
@@ -688,7 +694,20 @@ export default function ScheduleManagementPage() {
           title={isAr ? `تغيير لون ${label}` : `Change ${label} color`}
           onClick={(event) => {
             event.stopPropagation();
-            setActiveColorTarget(isOpen ? null : { kind, key });
+            if (isOpen) {
+              setActiveColorTarget(null);
+              setColorPopoverPosition(null);
+              return;
+            }
+            const rect = event.currentTarget.getBoundingClientRect();
+            const popoverWidth = 176;
+            const popoverHeight = 150;
+            const left = Math.max(8, Math.min(window.innerWidth - popoverWidth - 8, rect.right - popoverWidth));
+            const top = rect.bottom + 6 + popoverHeight <= window.innerHeight
+              ? rect.bottom + 6
+              : Math.max(8, rect.top - popoverHeight - 6);
+            setColorPopoverPosition({ top, left });
+            setActiveColorTarget({ kind, key });
           }}
           className={`inline-flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
             selectedColor ? "bg-white/80 text-emerald-800 shadow-sm" : "text-current/45 hover:bg-white/15 hover:text-current"
@@ -700,6 +719,7 @@ export default function ScheduleManagementPage() {
           <ScheduleColorPopover
             isAr={isAr}
             selectedColor={selectedColor}
+            position={colorPopoverPosition || { top: 8, left: 8 }}
             onSelect={(color) => chooseTableColor(kind, key, color)}
           />
         )}
