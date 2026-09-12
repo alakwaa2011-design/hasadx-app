@@ -2999,7 +2999,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         },
         {
           icon: <School className="w-6 h-6" />,
-          title: isAr ? "السبورة الذكية" : "Smart Whiteboard",
+          title: isAr ? "الشرح الذكي" : "Smart Explanation",
           desc: isAr
             ? "اطرح سؤالاً أو اكتب معلومة أو طلباً وسيعرضه الذكاء الاصطناعي على السبورة أمام طلابك"
             : "Ask a question, share information, or make a request — AI displays it on the board for your class",
