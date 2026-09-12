@@ -2525,6 +2525,7 @@ function TopStudentRow({
 }
 export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
+  const [, setLocation] = useLocation();
 
   const scheduleQuery = useListTeacherSchedule({
     query: {
@@ -2609,6 +2610,32 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
             </div>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setLocation("/teacher/tools/schedule")}
+          data-testid="button-open-schedule-settings"
+          aria-label={isAr ? "فتح إعدادات الجدول" : "Open schedule settings"}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            minHeight: 32,
+            padding: "6px 10px",
+            borderRadius: 10,
+            border: `1px solid ${C.green}24`,
+            background: C.greenPale,
+            color: C.green,
+            fontSize: 10.5,
+            fontWeight: 900,
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          <Pencil style={{ width: 13, height: 13 }} />
+          {isAr ? "إعداد الجدول" : "Set up schedule"}
+        </button>
       </div>
 
       {scheduleQuery.isLoading || (scheduleQuery.isError && scheduleQuery.isFetching) ? (
