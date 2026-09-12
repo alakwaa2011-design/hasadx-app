@@ -42,9 +42,9 @@ describe("teacher schedule image extraction", () => {
       warnings: ["راجع اسم الصف"],
     }));
 
-    expect(result.daySchedules[0].lessons.map((lesson) => lesson.lessonNumber)).toEqual([1, 2]);
-    expect(result.daySchedules[0].lessons[1].subject).toBe("علوم");
-    expect(result.daySchedules[0].lessons[1].className).toBeNull();
+    expect(result.daySchedules[0].lessons.map((lesson) => lesson.lessonNumber)).toEqual([2, 1]);
+    expect(result.daySchedules[0].lessons[0].subject).toBe("علوم");
+    expect(result.daySchedules[0].lessons[0].className).toBeNull();
     expect(result.daySchedules[0].breaks[0]).toMatchObject({
       title: "سناك",
       breakAfterLesson: 1,
@@ -94,7 +94,7 @@ describe("teacher schedule image extraction", () => {
     ]);
   });
 
-  it("does not infer chronology from lesson numbers", () => {
+  it("preserves the source order instead of inferring chronology from times", () => {
     const result = parseExtractedTeacherSchedule(JSON.stringify({
       daySchedules: [{
         dayOfWeek: 1,
@@ -107,8 +107,8 @@ describe("teacher schedule image extraction", () => {
     }));
 
     expect(result.daySchedules[0].lessons).toEqual([
-      expect.objectContaining({ lessonNumber: 12, startTime: "08:00", endTime: "09:00", confidence: "high" }),
       expect.objectContaining({ lessonNumber: 1, startTime: "14:00", endTime: "15:00", confidence: "high" }),
+      expect.objectContaining({ lessonNumber: 12, startTime: "08:00", endTime: "09:00", confidence: "high" }),
     ]);
   });
 

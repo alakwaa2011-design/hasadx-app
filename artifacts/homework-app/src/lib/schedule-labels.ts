@@ -182,7 +182,6 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
       hasNumberingGaps = true;
     }
     schedules[daySchedule.dayOfWeek] = [...daySchedule.lessons]
-      .sort((left, right) => left.startTime.localeCompare(right.startTime))
       .map((extracted) => ({
         lessonNumber: extracted.lessonNumber,
         title: extracted.title || extracted.subject || extracted.className || "",
@@ -194,7 +193,7 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
         confidence: extracted.confidence,
       }));
     breaks[daySchedule.dayOfWeek] = [...(daySchedule.breaks || [])]
-      .sort((left, right) => left.startTime.localeCompare(right.startTime));
+      .map((entry) => ({ ...entry }));
   });
 
   return { schedules, breaks, hasNumberingGaps };

@@ -218,6 +218,7 @@ Rules:
 - Put a cell in lessons only when the cell itself clearly represents a taught class/course. Put every other cell in breaks, even when it appears under a numbered period header.
 - lessonNumber is allowed only for a clearly taught class. Treat standalone schedule labels such as ADVISE, ADVISORY, SNACK, RECESS, PD, prayer, duty, meeting, or morning assembly as non-lesson periods.
 - Use the full cell meaning, not keyword matching. Real course names such as "Assembly Language", "Software Development", and "Prayer Studies" remain lessons.
+- Treat the image as a fixed grid of cells. Determine each cell's column from its horizontal alignment with the visible header, not from its time, the nearest lesson, or a guessed school-day sequence.
 - Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes a shared period time; otherwise omit that lesson and add a warning.
 - For every entry, copy the primary cell text into title EXACTLY as written in the image; title must not be empty when visible text exists.
 - Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
@@ -225,9 +226,11 @@ Rules:
 - confidence must be high, medium, or low for each lesson. Use low when text is blurry, partially hidden, or inferred.
 - Extract every visible non-lesson period into breaks, including prayer, duty, assembly, meeting, professional development, recess, or snack.
 - Preserve each period title EXACTLY as written in the image. Never replace it with a generic label such as Break or Snack.
-- For a non-lesson entry, breakAfterLesson stores the visible timetable period/slot number itself (for example RECESS in slot 7 uses 7). Use 0 only when no period number is visible.
+- For a non-lesson entry, breakAfterLesson stores the visible timetable column/slot number itself (for example RECESS in slot 7 uses 7). A SNACK or any other label under slot 3 must use 3 even if it is not a lesson. Use 0 ONLY when the cell is visibly under a separate unnumbered column such as "Other periods"; never use 0 merely because the model is unsure.
 - A visible period number never changes the entry type: RECESS in slot 7 remains a non-lesson entry titled RECESS, not lesson 7.
 - Multiple non-lesson periods may have the same visible period number. Keep all of them and preserve their chronological order through startTime.
+- If the horizontal column is ambiguous, keep the entry but set confidence to low and add a warning instead of assigning a guessed column.
+- Preserve the source order of days and entries. Do not sort cells by time or renumber them.
 - Do not force lesson numbers or non-lesson periods into a standard school order. Follow the source image exactly.
 - Never invent missing days, lessons, subjects, classes, or times.
 - Preserve every visible schedule title, subject, class, and label in its original source language without translation.
@@ -266,18 +269,17 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
         return {
           dayOfWeek: day.dayOfWeek,
           lessons: normalizedLessons
-            .filter((lesson) => !isClearlyNonLessonLabel(lesson.title))
-            .sort((left, right) => left.startTime.localeCompare(right.startTime)),
-          breaks: [...day.breaks
-          .map((entry) => ({
-            ...entry,
-            title: entry.title.trim(),
-            endTime: entry.endTime || null,
-          })), ...correctedPeriods]
-            .sort((left, right) => left.startTime.localeCompare(right.startTime)),
+            .filter((lesson) => !isClearlyNonLessonLabel(lesson.title)),
+          breaks: [
+            ...day.breaks.map((entry) => ({
+              ...entry,
+              title: entry.title.trim(),
+              endTime: entry.endTime || null,
+            })),
+            ...correctedPeriods,
+          ],
         };
-      })
-      .sort((left, right) => left.dayOfWeek - right.dayOfWeek),
+      }),
     warnings: validated.warnings,
   };
 }

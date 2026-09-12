@@ -96,5 +96,6 @@
 - [Sparse teacher schedules](sparse-teacher-schedules.md) — missing lesson numbers represent valid free periods; preserve them during image import instead of renumbering or inventing rows.
 - [HEIC schedule imports](heic-schedule-imports.md) — server Sharp recognizes HEIF containers but lacks HEVC decoding; convert HEIC lazily in the browser before upload.
 - [Teacher schedule appearance](teacher-schedule-appearance.md) — keep the original weekly grid as default; alternate table designs are teacher-selectable options, not replacements.
+- [Teacher schedule image extraction](teacher-schedule-image-extraction.md) — preserve source cell positions and order; never infer a missing period column from time.
 - [Listening-script generation pricing](listening-script-generation-pricing.md) — generation and regeneration cost 2 credits; use the dedicated tool key and standard hold/capture/refund flow.
 - [Paid dialog price readiness](paid-dialog-price-readiness.md) — clear cached tool prices synchronously whenever a paid-action dialog opens; disable actions until the fresh response arrives.

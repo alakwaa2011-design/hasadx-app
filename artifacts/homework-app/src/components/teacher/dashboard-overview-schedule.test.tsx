@@ -325,6 +325,45 @@ describe("TeacherScheduleCard full schedule drafts", () => {
 });
 
 describe("teacher schedule image draft normalization", () => {
+  it("preserves the source cell order and each non-lesson column position", () => {
+    const { schedules, breaks } = normalizeImportedDaySchedules([{
+      dayOfWeek: 0,
+      lessons: [
+        {
+          lessonNumber: 4,
+          title: "5A",
+          subject: null,
+          className: null,
+          startTime: "09:05",
+          endTime: "09:45",
+          confidence: "high",
+        },
+        {
+          lessonNumber: 2,
+          title: "5B",
+          subject: null,
+          className: null,
+          startTime: "08:00",
+          endTime: "08:40",
+          confidence: "high",
+        },
+      ],
+      breaks: [{
+        title: "SNACK",
+        breakAfterLesson: 3,
+        startTime: "08:40",
+        endTime: "09:00",
+        confidence: "high",
+      }],
+    }]);
+
+    expect(schedules[0].map((lesson) => lesson.lessonNumber)).toEqual([4, 2]);
+    expect(breaks[0]?.[0]).toMatchObject({
+      title: "SNACK",
+      breakAfterLesson: 3,
+    });
+  });
+
   it("keeps a third lesson as lesson three when the second lesson was unreadable", () => {
     const { schedules, hasNumberingGaps } = normalizeImportedDaySchedules([{
       dayOfWeek: 0,
