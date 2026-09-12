@@ -28,7 +28,8 @@ import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progre
 import { LiveBoard } from "./live-board";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, ChevronDown, ChevronUp
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, ChevronDown, ChevronUp,
+  Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -625,101 +626,130 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         </div>
 
         {/* Storybook Header */}
-        <div className="rewards-pavilion-hero flex flex-col sm:flex-row gap-4 items-center justify-between p-5 rounded-3xl bg-emerald-950 text-white shadow-xl relative overflow-hidden transition-all motion-reduce:transition-none">
-          <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_18%_25%,rgba(255,255,255,0.35)_0_1px,transparent_1.5px),radial-gradient(circle_at_78%_62%,rgba(251,191,36,0.45)_0_1.5px,transparent_2px)] [background-size:34px_34px,48px_48px] pointer-events-none" />
-          <div className="absolute -top-20 -left-20 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute top-10 right-10 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl pointer-events-none" />
+        <header className="relative z-10 mx-auto w-full pt-4 pb-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between rounded-[2rem] border-2 border-white/60 bg-gradient-to-b from-white/90 to-white/50 p-2 sm:p-2.5 sm:pr-4 shadow-[0_8px_30px_-12px_rgba(23,63,52,0.1)] backdrop-blur-xl">
+            {/* Left/Right (RTL): Identity & Context */}
+            <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (embedded) setEmbeddedClass(undefined);
+                  else setLocation("/teacher/rewards");
+                }}
+                className="group flex h-12 w-12 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition-all hover:bg-emerald-100 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                aria-label="الرجوع إلى اختيار الصف"
+                title="الرجوع إلى اختيار الصف"
+              >
+                <ArrowRight size={22} className="transition-transform group-hover:translate-x-0.5" />
+              </button>
 
-          <div className="flex items-center gap-4 w-full sm:w-auto relative z-10">
-            <button
-              type="button"
-              onClick={() => {
-                if (embedded) setEmbeddedClass(undefined);
-                else setLocation("/teacher/rewards");
-              }}
-              className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 text-sm font-black text-white shadow-sm backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-              aria-label="الرجوع إلى اختيار الصف"
-              title="اختيار صف آخر"
-            >
-              <ArrowRight size={18} />
-              <span className="hidden sm:inline">رجوع</span>
-            </button>
-            <RoyalCompassEmblem />
-            <div className="flex-1">
-              <h1 className="flex min-w-0 flex-wrap items-center gap-2 text-xl font-black tracking-wide">
-                رحلة التحفيز
-                <span className="group/class-selector relative min-w-0">
-                  <label htmlFor="rewards-class-selector" className="sr-only">اختر صف لوحة التحفيز</label>
-                  <select
-                    id="rewards-class-selector"
-                    value={currentClass}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        if (embedded) setEmbeddedClass(e.target.value);
-                        else setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
-                      }
-                    }}
-                    aria-label="اختر صف لوحة التحفيز"
-                    className="max-w-[12rem] cursor-pointer appearance-none truncate rounded-xl border border-white/20 bg-white/10 py-1.5 pl-8 pr-3 text-sm font-bold text-amber-50 shadow-inner outline-none backdrop-blur-md transition-all hover:bg-white/20 focus:ring-2 focus:ring-amber-400/50 sm:max-w-[18rem]"
-                  >
-                    {classOptions.map((name) => (
-                      <option key={name} value={name} className="font-bold text-emerald-950">
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-amber-200/80 group-hover/class-selector:text-amber-100 transition-colors">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                  </div>
-                </span>
-              </h1>
-              <p className="text-sm text-emerald-200/80 font-medium hidden sm:block mt-0.5">نقاط جميلة تصنع لحظات إنجاز لا تُنسى</p>
+              <div className="hidden sm:block">
+                <RoyalCompassEmblem />
+              </div>
+
+              <div className="flex flex-col min-w-0 justify-center">
+                <p className="text-[11px] sm:text-xs font-bold text-emerald-700/60 mb-0.5 sm:mb-1">رحلة التحفيز</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-black text-emerald-950 tracking-wide flex items-center gap-2">
+                    <span className="group/class-selector relative min-w-0 flex items-center">
+                      <label htmlFor="rewards-class-selector" className="sr-only">اختر صف لوحة التحفيز</label>
+                      <select
+                        id="rewards-class-selector"
+                        value={currentClass}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            if (embedded) setEmbeddedClass(e.target.value);
+                            else setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
+                          }
+                        }}
+                        aria-label="اختر صف لوحة التحفيز"
+                        className="max-w-[10rem] cursor-pointer appearance-none truncate rounded-xl border border-emerald-900/10 bg-white/80 py-1 pl-7 pr-3 text-sm font-black text-emerald-950 shadow-sm outline-none backdrop-blur-md transition-all hover:bg-emerald-50 hover:border-emerald-200 focus:ring-2 focus:ring-emerald-400/50 sm:max-w-[16rem]"
+                      >
+                        {classOptions.map((name) => (
+                          <option key={name} value={name} className="font-bold text-emerald-950">
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-700/60 group-hover/class-selector:text-emerald-700 transition-colors">
+                        <ChevronDown size={14} strokeWidth={3} />
+                      </div>
+                    </span>
+                  </h1>
+                  <span className="flex items-center justify-center rounded-lg bg-emerald-100/80 px-2 py-0.5 text-[10px] font-black text-emerald-800 shrink-0">
+                    {classData?.students?.length ?? 0} طالب
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-white/80 bg-white/60 p-1.5 shadow-sm min-w-max mx-auto sm:mx-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resumeAudioContext();
+                    setLiveBoardOpen(true);
+                  }}
+                  className="group relative flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 sm:px-4 py-2 font-black text-white shadow-md shadow-emerald-600/20 border border-emerald-500 transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
+                  aria-label="لوحة التحفيز المباشرة"
+                  data-testid="button-live-board"
+                >
+                  <Target size={16} className="text-amber-300 transition-transform group-hover:rotate-12" />
+                  <span className="text-xs sm:text-sm">لوحة التحفيز المباشرة</span>
+                  <span className="absolute -right-1 -top-1 flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75 motion-reduce:animate-none" />
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-400 border border-white/50" />
+                  </span>
+                </button>
+
+                <div className="h-6 w-px bg-emerald-900/10 mx-0.5" />
+
+                <button
+                  type="button"
+                  onClick={() => setLedgerOpen(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                  aria-label="سجل النقاط"
+                  title="السجل والملخص"
+                >
+                  <History size={18} />
+                </button>
+                <button
+                  type="button"
+                  data-testid="button-open-reward-rules"
+                  onClick={() => setRulesOpen(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                  aria-label="قواعد التحفيز التلقائي"
+                  title="قواعد التحفيز التلقائي"
+                >
+                  <Zap size={18} className="text-amber-500 fill-amber-500/20" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                  aria-label="إعدادات التحفيز"
+                  title="إعدادات التحفيز"
+                >
+                  <Settings size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMuted(!isMuted)}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20",
+                    isMuted && "bg-slate-100 text-slate-500 shadow-none hover:bg-slate-200"
+                  )}
+                  aria-label={isMuted ? "إلغاء الكتم" : "كتم الصوت"}
+                  title={isMuted ? "إلغاء الكتم" : "كتم الصوت"}
+                >
+                  {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                </button>
+              </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 relative z-10 [scrollbar-width:thin] sm:[scrollbar-width:none]">
-            <button
-              onClick={() => {
-                resumeAudioContext();
-                setLiveBoardOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all motion-reduce:transition-none shadow-sm border whitespace-nowrap bg-amber-400 text-amber-950 border-amber-300 hover:bg-amber-300"
-              data-testid="button-live-board"
-            >
-              <Sparkles size={16} />
-              لوحة التحفيز المباشرة
-            </button>
-            <button
-              onClick={() => setIsMuted(!isMuted)}
-              className="p-2 rounded-xl bg-white/10 border border-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-md shrink-0 shadow-sm"
-              title={isMuted ? "إلغاء الكتم" : "كتم الصوت"}
-            >
-              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-            </button>
-            <button
-              onClick={() => setLedgerOpen(true)}
-              className="p-2 rounded-xl bg-white/10 border border-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-md shrink-0 shadow-sm"
-              title="السجل والملخص"
-            >
-              <History size={16} />
-            </button>
-            <button
-              data-testid="button-open-reward-rules"
-              onClick={() => setRulesOpen(true)}
-              className="p-2 rounded-xl bg-white/10 border border-white/10 text-amber-300 hover:bg-white/20 hover:text-amber-200 transition-all backdrop-blur-md shrink-0 shadow-sm"
-              title="قواعد التحفيز التلقائي"
-            >
-              <Zap size={16} className="fill-amber-400/30" />
-            </button>
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="p-2 rounded-xl bg-white/10 border border-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-md shrink-0 shadow-sm"
-              title="إعدادات التحفيز"
-            >
-              <Settings size={16} />
-            </button>
-          </div>
-        </div>
+        </header>
 
         <section aria-label="ملخص التحفيز الأسبوعي" className="rewards-pavilion-summary grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {weeklySummaryLoading ? (

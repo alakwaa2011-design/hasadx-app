@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Calendar, Target, Pencil, ArrowRight, Save, Clock, Trophy, Archive } from "lucide-react";
+import { Calendar, Target, Pencil, ArrowRight, Save, Clock, Trophy, Archive, Sparkles, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatRewardPoints } from "./format";
 
@@ -30,12 +30,78 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
   const isCompleted = percentage >= 100;
 
   return (
-    <div className={cn("relative overflow-hidden rounded-[2rem] border-2 border-emerald-100 bg-white p-5 shadow-sm transition-all hover:shadow-md", className)}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className={cn("inline-flex items-center gap-1 rounded-xl px-2.5 py-0.5 text-xs font-black shadow-sm", goal.targetType === "class" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800")}>
-              {goal.targetType === "class" ? "هدف الصف" : "هدف الطالب"}
+    <motion.article
+      animate={isCompleted && !reduceMotion ? { y: [0, -5, 0], scale: [1, 1.018, 1] } : undefined}
+      transition={{ duration: 0.7, ease: "easeOut" }}
+      className={cn(
+        "relative overflow-hidden rounded-[2rem] border-2 p-5 transition-all",
+        isCompleted
+          ? "border-amber-300 bg-gradient-to-br from-amber-50 via-white to-emerald-50 shadow-[0_18px_46px_-22px_rgba(217,165,33,0.55)] ring-2 ring-amber-200/45"
+          : "border-emerald-100 bg-white shadow-sm hover:shadow-md",
+        className,
+      )}
+    >
+      {isCompleted && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.32),transparent_68%)]" />
+          <motion.div
+            aria-hidden="true"
+            initial={reduceMotion ? false : { opacity: 0, scale: 0.4, rotate: -18 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 210, damping: 14, delay: 0.12 }}
+            className="absolute -left-4 -top-4 flex h-20 w-20 items-end justify-end rounded-full bg-amber-300/20 p-4 text-amber-500"
+          >
+            <Sparkles size={28} />
+          </motion.div>
+          {!reduceMotion && (
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+              {[
+                ["right-[12%]", "top-4", "bg-amber-400"],
+                ["right-[28%]", "top-9", "bg-emerald-400"],
+                ["left-[28%]", "top-5", "bg-sky-400"],
+                ["left-[12%]", "top-14", "bg-rose-400"],
+              ].map(([x, y, color], index) => (
+                <motion.span
+                  key={index}
+                  className={cn("absolute h-2 w-2 rounded-sm", x, y, color)}
+                  initial={{ opacity: 0, y: -14, rotate: 0 }}
+                  animate={{ opacity: [0, 1, 0], y: [-14, 34], rotate: 180 }}
+                  transition={{ duration: 1.5, delay: index * 0.12, repeat: 1, repeatDelay: 0.3 }}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {isCompleted && (
+        <motion.div
+          aria-hidden="true"
+          initial={reduceMotion ? false : { opacity: 0, scale: 0.35, y: 12 }}
+          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: [1, 1.08, 1], y: 0, rotate: [0, -4, 4, 0] }}
+          transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 190, damping: 13, delay: 0.1 }}
+          className="relative z-10 mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border-4 border-white bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950 shadow-[0_16px_34px_-14px_rgba(217,165,33,0.8)] ring-4 ring-amber-200/70"
+        >
+          <Trophy size={38} strokeWidth={2.4} />
+          <motion.span
+            className="absolute -right-2 -top-2 text-amber-500"
+            animate={reduceMotion ? undefined : { scale: [0.75, 1.2, 0.75], rotate: [0, 18, 0] }}
+            transition={{ duration: 1.4, repeat: Infinity }}
+          >
+            <Sparkles size={24} />
+          </motion.span>
+        </motion.div>
+      )}
+      <div className={cn("flex items-start justify-between gap-4", isCompleted && "relative z-10 flex-col items-center text-center")}>
+        <div className={cn("flex-1", isCompleted && "w-full")}>
+          <div className={cn("mb-1.5 flex items-center gap-2", isCompleted && "justify-center")}>
+            <span className={cn(
+              "inline-flex items-center gap-1 rounded-xl px-2.5 py-0.5 text-xs font-black shadow-sm",
+              isCompleted
+                ? "border border-amber-300 bg-amber-400 text-amber-950"
+                : goal.targetType === "class" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800",
+            )}>
+              {isCompleted && <Crown size={13} />}
+              {isCompleted ? "هدف مكتمل" : goal.targetType === "class" ? "هدف الصف" : "هدف الطالب"}
             </span>
             {goal.endDate && (
               <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600/70">
@@ -44,9 +110,21 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
               </span>
             )}
           </div>
-          <h3 className="text-lg font-black text-emerald-950 leading-tight">{goal.title}</h3>
+          <h3 className={cn("font-black leading-tight text-emerald-950", isCompleted ? "mx-auto max-w-lg text-2xl" : "text-lg")}>{goal.title}</h3>
+          {isCompleted && (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="mx-auto mt-3 inline-flex max-w-md items-center justify-center rounded-2xl border border-amber-200 bg-white/85 px-4 py-2.5 text-center text-sm font-black leading-relaxed text-amber-800 shadow-sm"
+            >
+              {goal.targetType === "class"
+                ? "أحسنتم! حقق الصف الهدف واستحق الفوز"
+                : "رائع! تحقق الهدف واستحق الطالب الاحتفاء"}
+            </motion.div>
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className={cn("flex shrink-0 items-center gap-1", isCompleted && "absolute left-0 top-0")}>
           {onEdit && (
             <button onClick={onEdit} className="rounded-xl p-2.5 text-emerald-900/40 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-400/20" aria-label="تعديل الهدف">
               <Pencil size={16} />
@@ -60,15 +138,15 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
         </div>
       </div>
 
-      <div className="mt-6">
-        <div className="flex justify-between items-end mb-2.5">
+      <div className={cn("mt-6", isCompleted && "relative z-10 mt-5")}>
+        <div className={cn("mb-2.5 flex items-end justify-between", isCompleted && "justify-center gap-4")}>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-emerald-700">{formatRewardPoints(goal.currentPoints)}</span>
             <span className="text-xs font-bold text-emerald-900/50">/ {formatRewardPoints(goal.targetPoints)} نقطة</span>
           </div>
           {isCompleted ? (
-            <span className="text-xs font-black text-amber-500 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
-              <Trophy size={14} /> اكتمل!
+            <span className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-400 px-2.5 py-1 text-xs font-black text-amber-950 shadow-sm">
+              <Trophy size={14} /> فوز مستحق
             </span>
           ) : (
             <span className="text-xs font-black text-emerald-900/60 bg-emerald-50 px-2 py-0.5 rounded-lg">
@@ -77,7 +155,10 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
           )}
         </div>
         
-        <div className="relative h-4 w-full overflow-hidden rounded-full bg-emerald-50 border border-emerald-100/50 shadow-inner">
+        <div className={cn(
+          "relative h-4 w-full overflow-hidden rounded-full border shadow-inner",
+          isCompleted ? "border-amber-200 bg-amber-100" : "border-emerald-100/50 bg-emerald-50",
+        )}>
           <motion.div
             className={cn("absolute bottom-0 right-0 top-0 h-full rounded-full shadow-sm", isCompleted ? "bg-gradient-to-r from-amber-400 to-amber-500" : "bg-gradient-to-r from-emerald-400 to-emerald-500")}
             initial={reduceMotion ? { width: `${percentage}%` } : { width: "0%" }}
@@ -94,7 +175,7 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
           )}
         </div>
       </div>
-    </div>
+    </motion.article>
   );
 }
 
