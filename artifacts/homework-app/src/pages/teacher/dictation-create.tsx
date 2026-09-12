@@ -829,6 +829,14 @@ export default function DictationCreate() {
     else goNextStep();
   };
 
+  const openListeningScriptGenerator = () => {
+    setGeneratorError("");
+    setListeningScriptPrice(null);
+    setListeningScriptPriceError(false);
+    setIsListeningScriptPriceLoading(true);
+    setGeneratorOpen(true);
+  };
+
   const generateListeningScript = async () => {
     if (generatorTopic.trim().length < 2 || isGeneratingScript) return;
     generatorAbortRef.current?.abort();
@@ -1225,10 +1233,7 @@ export default function DictationCreate() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setGeneratorError("");
-                  setGeneratorOpen(true);
-                }}
+                onClick={openListeningScriptGenerator}
                 className={cn(
                   "group inline-flex min-h-[52px] w-full shrink-0 items-center justify-center gap-3 rounded-2xl bg-[#1E4D35] px-5 text-sm font-black text-white shadow-[0_10px_24px_rgba(30,77,53,0.24)] hover:bg-[#173f2b] hover:shadow-[0_12px_28px_rgba(30,77,53,0.3)] active:scale-[0.99] sm:w-auto",
                   TRANSITION,
@@ -2111,7 +2116,13 @@ export default function DictationCreate() {
         </main>
       )}
 
-      <Dialog open={generatorOpen} onOpenChange={setGeneratorOpen}>
+      <Dialog
+        open={generatorOpen}
+        onOpenChange={(open) => {
+          if (open) openListeningScriptGenerator();
+          else setGeneratorOpen(false);
+        }}
+      >
         <DialogContent
           dir={dir}
           closeLabel={lang === "ar" ? "إغلاق" : "Close"}

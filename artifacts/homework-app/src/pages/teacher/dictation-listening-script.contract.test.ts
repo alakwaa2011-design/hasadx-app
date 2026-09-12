@@ -32,6 +32,9 @@ describe("listening script generator contract", () => {
     expect(source).toContain("نظام نقاط حصاد معطّل حاليًا — لن تُخصم نقاط.");
     expect(source).toContain("إنشاء النص متاح دون خصم نقاط.");
     expect(source).toContain("!listeningScriptPriceReady");
+    expect(source).toContain("onClick={openListeningScriptGenerator}");
+    expect(source).toContain("setListeningScriptPrice(null);");
+    expect(source).toContain("setGeneratorOpen(true);");
     expect(source).not.toContain("setBalance(");
   });
 

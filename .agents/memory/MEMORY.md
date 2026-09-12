@@ -97,3 +97,4 @@
 - [HEIC schedule imports](heic-schedule-imports.md) — server Sharp recognizes HEIF containers but lacks HEVC decoding; convert HEIC lazily in the browser before upload.
 - [Teacher schedule appearance](teacher-schedule-appearance.md) — keep the original weekly grid as default; alternate table designs are teacher-selectable options, not replacements.
 - [Listening-script generation pricing](listening-script-generation-pricing.md) — generation and regeneration cost 2 credits; use the dedicated tool key and standard hold/capture/refund flow.
+- [Paid dialog price readiness](paid-dialog-price-readiness.md) — clear cached tool prices synchronously whenever a paid-action dialog opens; disable actions until the fresh response arrives.
