@@ -684,6 +684,18 @@ export default function ScheduleManagementPage() {
     setColorPopoverPosition(null);
   }
 
+  function openColorPicker(kind: ScheduleColorTargetKind, key: string, event: React.MouseEvent<HTMLElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const popoverWidth = 176;
+    const popoverHeight = 150;
+    const left = Math.max(8, Math.min(window.innerWidth - popoverWidth - 8, rect.right - popoverWidth));
+    const top = rect.bottom + 6 + popoverHeight <= window.innerHeight
+      ? rect.bottom + 6
+      : Math.max(8, rect.top - popoverHeight - 6);
+    setColorPopoverPosition({ top, left });
+    setActiveColorTarget({ kind, key });
+  }
+
   function renderColorControl(kind: ScheduleColorTargetKind, key: string, label: string) {
     const selectedColor = kind === "column" ? columnColors[key] : rowColors[key];
     const isOpen = activeColorTarget?.kind === kind && activeColorTarget.key === key;
@@ -701,17 +713,9 @@ export default function ScheduleManagementPage() {
               setColorPopoverPosition(null);
               return;
             }
-            const rect = event.currentTarget.getBoundingClientRect();
-            const popoverWidth = 176;
-            const popoverHeight = 150;
-            const left = Math.max(8, Math.min(window.innerWidth - popoverWidth - 8, rect.right - popoverWidth));
-            const top = rect.bottom + 6 + popoverHeight <= window.innerHeight
-              ? rect.bottom + 6
-              : Math.max(8, rect.top - popoverHeight - 6);
-            setColorPopoverPosition({ top, left });
-            setActiveColorTarget({ kind, key });
+            openColorPicker(kind, key, event);
           }}
-          className={`inline-flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
+          className={`inline-flex h-6 w-6 items-center justify-center rounded-lg opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 ${
             selectedColor ? "bg-white/80 text-emerald-800 shadow-sm" : "text-current/45 hover:bg-white/15 hover:text-current"
           }`}
         >
@@ -1718,7 +1722,7 @@ export default function ScheduleManagementPage() {
                               <Fragment key={lessonNumber}>
                                   <th
                                     style={columnColors[`lesson-${lessonNumber}`] ? { backgroundColor: columnColors[`lesson-${lessonNumber}`], color: "#13201A" } : undefined}
-                                    className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                                    className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
                                   tableTheme === "classic"
                                     ? "border border-border bg-emerald-800 text-white"
                                     : "text-emerald-900/60 dark:text-emerald-100/60"
@@ -1740,7 +1744,7 @@ export default function ScheduleManagementPage() {
                                 {paperBreakPositions.has(lessonNumber) && (
                                   <th
                                     style={columnColors[`break-${lessonNumber}`] ? { backgroundColor: columnColors[`break-${lessonNumber}`], color: "#13201A" } : undefined}
-                                    className={`w-28 px-2 py-3 text-xs font-black ${
+                                    className={`group w-28 px-2 py-3 text-xs font-black ${
                                       tableTheme === "classic"
                                         ? "border border-border bg-amber-700 text-white"
                                         : "text-amber-900/70 dark:text-amber-100/70"
@@ -1774,7 +1778,7 @@ export default function ScheduleManagementPage() {
                             ))}
                             <th
                               style={columnColors["other-periods"] ? { backgroundColor: columnColors["other-periods"], color: "#13201A" } : undefined}
-                              className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                              className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
                               tableTheme === "classic"
                                 ? "border border-border bg-amber-700 text-white"
                                 : "text-amber-900/60 dark:text-amber-100/60"
@@ -1804,7 +1808,12 @@ export default function ScheduleManagementPage() {
                               <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top group">
                                 <th
                                   style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)] } : undefined}
-                                  className={`sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
+                                  className={`group sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
+                                  onDoubleClick={(event) => {
+                                    if (!(event.target instanceof Element) || !event.target.closest("[data-schedule-color-control]")) {
+                                      openColorPicker("row", String(day.value), event);
+                                    }
+                                  }}
                                 >
                                    <div className={`h-full min-h-[5rem] w-full flex items-center justify-center text-sm font-black transition-colors ${
                                      tableTheme === "soft"
