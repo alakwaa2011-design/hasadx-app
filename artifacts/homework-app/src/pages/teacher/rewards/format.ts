@@ -3,3 +3,8 @@ export function formatRewardPoints(points: number | string | null | undefined): 
   const value = Number(normalized);
   return new Intl.NumberFormat("en-US").format(Number.isFinite(value) ? value : 0);
 }
+
+export function getRewardStudentFirstName(name: string | null | undefined): string {
+  const firstName = String(name ?? "").trim().split(/\s+/)[0];
+  return firstName || "طالب";
+}

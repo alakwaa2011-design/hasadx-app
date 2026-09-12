@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { getArabicRewardError } from "./error-message";
 import { trackProjectAnalyticsEvent } from "@/lib/analytics";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatRewardPoints } from "./format";
+import { formatRewardPoints, getRewardStudentFirstName } from "./format";
 import "./rewards-pavilion.css";
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void] {
@@ -1074,10 +1074,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     <div className="relative">
                       <AvatarDisplay
                         avatar={student.avatar}
-                        fallback={student.name.charAt(0)}
+                        fallback={getRewardStudentFirstName(student.name)}
                         size="4xl"
                         className={cn(
-                          "relative z-10 h-24 w-24 bg-emerald-50 shadow-md ring-[4px] ring-white transition-transform duration-500 group-hover/avatar:scale-105 motion-reduce:transition-none motion-reduce:transform-none sm:h-28 sm:w-28",
+                          "relative z-10 h-24 w-24 bg-emerald-50 px-2 text-base font-black leading-tight text-center shadow-md ring-[4px] ring-white transition-transform duration-500 group-hover/avatar:scale-105 motion-reduce:transition-none motion-reduce:transform-none sm:h-28 sm:w-28 sm:text-lg",
                           isSelected && "ring-amber-200 shadow-amber-400/30"
                         )}
                       />
@@ -1383,9 +1383,9 @@ function SingleStudentGrantDialog({
           <div className="relative mb-4">
             <AvatarDisplay
               avatar={student.avatar}
-              fallback={student.name.charAt(0)}
+              fallback={getRewardStudentFirstName(student.name)}
               size="4xl"
-              className="ring-4 ring-amber-400 shadow-2xl bg-amber-50 w-28 h-28 relative z-10"
+              className="relative z-10 h-28 w-28 bg-amber-50 px-2 text-lg font-black leading-tight text-center ring-4 ring-amber-400 shadow-2xl sm:text-xl"
             />
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
               <AdventurePointsBadge points={student.points || 0} animate />
