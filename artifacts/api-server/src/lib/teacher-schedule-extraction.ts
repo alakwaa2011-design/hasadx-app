@@ -213,10 +213,10 @@ Return ONLY valid JSON with this exact shape:
 
 Rules:
 - dayOfWeek MUST use: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6.
-- Include every visible schedule cell, whether it is a class, ADVISE/ADVISORY, SNACK, prayer, duty, meeting, development, assembly, recess, or another local school label.
+- Include every visible schedule cell, including classes and every other local label or phrase printed in the grid.
 - A numbered row or column header is only a timetable position. It does NOT make the cell a lesson and must never replace the cell text.
 - Put a cell in lessons only when the cell itself clearly represents a taught class/course. Put every other cell in breaks, even when it appears under a numbered period header.
-- lessonNumber is allowed only for a clearly taught class. Treat standalone schedule labels such as ADVISE, ADVISORY, SNACK, RECESS, PD, prayer, duty, meeting, or morning assembly as non-lesson periods.
+- lessonNumber is allowed only for a clearly taught class/course. Any standalone label or phrase that is not clearly a taught class—whether it says ADVISE, RECESS, PD, prayer, duty, meeting, an activity name, a note, or an unfamiliar local term—is a non-lesson period.
 - Use the full cell meaning, not keyword matching. Real course names such as "Assembly Language", "Software Development", and "Prayer Studies" remain lessons.
 - Treat the image as a fixed grid of cells. Determine each cell's column from its horizontal alignment with the visible header, not from its time, the nearest lesson, or a guessed school-day sequence.
 - Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes a shared period time; otherwise omit that lesson and add a warning.
@@ -224,9 +224,9 @@ Rules:
 - Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
 - If one cell contains multiple classes, preserve its visible text in className rather than inventing separate lessons.
 - confidence must be high, medium, or low for each lesson. Use low when text is blurry, partially hidden, or inferred.
-- Extract every visible non-lesson period into breaks, including prayer, duty, assembly, meeting, professional development, recess, or snack.
+- Extract every visible non-lesson label or phrase into breaks, including familiar and unfamiliar school-specific wording.
 - Preserve each period title EXACTLY as written in the image. Never replace it with a generic label such as Break or Snack.
-- For a non-lesson entry, breakAfterLesson stores the visible timetable column/slot number itself (for example RECESS in slot 7 uses 7). A SNACK or any other label under slot 3 must use 3 even if it is not a lesson. Use 0 ONLY when the cell is visibly under a separate unnumbered column such as "Other periods"; never use 0 merely because the model is unsure.
+- For any non-lesson entry, breakAfterLesson stores the visible timetable column/slot number itself. Any label under slot 3 must use 3 even if it is not a lesson. Use 0 ONLY when the cell is visibly under a separate unnumbered column such as "Other periods"; never use 0 merely because the model is unsure.
 - A visible period number never changes the entry type: RECESS in slot 7 remains a non-lesson entry titled RECESS, not lesson 7.
 - Multiple non-lesson periods may have the same visible period number. Keep all of them and preserve their chronological order through startTime.
 - If the horizontal column is ambiguous, keep the entry but set confidence to low and add a warning instead of assigning a guessed column.

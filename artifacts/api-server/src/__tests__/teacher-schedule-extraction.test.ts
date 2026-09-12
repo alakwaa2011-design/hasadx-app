@@ -5,7 +5,7 @@ import {
 } from "../lib/teacher-schedule-extraction";
 
 describe("teacher schedule image extraction", () => {
-  it("normalizes and sorts a valid extracted schedule", () => {
+  it("normalizes a valid extracted schedule without changing visible labels", () => {
     const result = parseExtractedTeacherSchedule(JSON.stringify({
       daySchedules: [
         {
@@ -31,7 +31,7 @@ describe("teacher schedule image extraction", () => {
             },
           ],
           breaks: [{
-            title: "سناك",
+            title: "ملاحظة إدارية",
             breakAfterLesson: 1,
             startTime: "08:45",
             endTime: "09:00",
@@ -46,7 +46,7 @@ describe("teacher schedule image extraction", () => {
     expect(result.daySchedules[0].lessons[0].subject).toBe("علوم");
     expect(result.daySchedules[0].lessons[0].className).toBeNull();
     expect(result.daySchedules[0].breaks[0]).toMatchObject({
-      title: "سناك",
+      title: "ملاحظة إدارية",
       breakAfterLesson: 1,
       startTime: "08:45",
       endTime: "09:00",

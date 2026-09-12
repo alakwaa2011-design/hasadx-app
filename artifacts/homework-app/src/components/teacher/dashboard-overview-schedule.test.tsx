@@ -325,7 +325,7 @@ describe("TeacherScheduleCard full schedule drafts", () => {
 });
 
 describe("teacher schedule image draft normalization", () => {
-  it("preserves the source cell order and each non-lesson column position", () => {
+  it("preserves the source cell order and any non-lesson label's column position", () => {
     const { schedules, breaks } = normalizeImportedDaySchedules([{
       dayOfWeek: 0,
       lessons: [
@@ -349,7 +349,7 @@ describe("teacher schedule image draft normalization", () => {
         },
       ],
       breaks: [{
-        title: "SNACK",
+        title: "ملاحظة إدارية",
         breakAfterLesson: 3,
         startTime: "08:40",
         endTime: "09:00",
@@ -359,7 +359,7 @@ describe("teacher schedule image draft normalization", () => {
 
     expect(schedules[0].map((lesson) => lesson.lessonNumber)).toEqual([4, 2]);
     expect(breaks[0]?.[0]).toMatchObject({
-      title: "SNACK",
+      title: "ملاحظة إدارية",
       breakAfterLesson: 3,
     });
   });
