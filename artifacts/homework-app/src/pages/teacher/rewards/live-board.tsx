@@ -43,6 +43,7 @@ export interface LiveBoardProps {
   onGroupClick?: (groupId: number) => void;
   onExit?: () => void;
   onFairnessSelect?: (studentId: number) => void;
+  onFairnessTick?: (isFinal?: boolean) => void;
   onCelebrate: (data: RewardCelebrationData) => void;
 }
 
@@ -55,6 +56,7 @@ export function LiveBoard({
   onGroupClick,
   onExit,
   onFairnessSelect,
+  onFairnessTick,
   onCelebrate,
 }: LiveBoardProps) {
   const reduceMotion = useReducedMotion();
@@ -152,6 +154,7 @@ export function LiveBoard({
     if (reduceMotion) {
       setFairnessHighlight(chosen.id);
       setIsSpinning(false);
+      onFairnessTick?.(true);
       onFairnessSelect?.(chosen.id);
       return;
     }
@@ -162,6 +165,7 @@ export function LiveBoard({
       const rand = students[Math.floor(Math.random() * students.length)];
       setFairnessHighlight(rand.id);
       spins++;
+      onFairnessTick?.(spins >= maxSpins);
       if (spins >= maxSpins) {
         if (spinTimerRef.current) clearInterval(spinTimerRef.current);
         spinTimerRef.current = null;
@@ -185,15 +189,15 @@ export function LiveBoard({
       {/* Header */}
       <header className="relative z-10 flex min-w-0 items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-2 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <button type="button" data-testid="button-exit-live-board" aria-label="الخروج من السبورة الحية" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+          <button type="button" data-testid="button-exit-live-board" aria-label="الخروج من لوحة التحفيز المباشرة" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
             <ArrowRight size={22} />
           </button>
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 truncate text-sm font-black text-emerald-950 sm:text-xl">
               <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
-              اللوحة الحية: {className}
+              لوحة التحفيز المباشرة: {className}
             </h1>
-            <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">تحديث فوري لنقاط الأبطال</p>
+            <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">امنح النقاط وشاهد ترتيب الطلاب والفرق لحظة بلحظة</p>
           </div>
         </div>
 
@@ -201,13 +205,14 @@ export function LiveBoard({
           <button 
             onClick={triggerFairnessCue} 
              type="button"
-             aria-label="من يستحق التحفيز؟"
+             aria-label="اختيار طالب للتقدير بعدل"
+             title="يختار طالبًا لم يُقدَّر هذا الأسبوع، ثم الأقل نقاطًا، ويستخدم العشوائية عند التعادل"
              data-testid="button-fairness-cue"
              disabled={isSpinning || students.length === 0}
              className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-2 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:w-auto sm:rounded-2xl sm:px-6 sm:py-3"
           >
             <Shuffle size={18} />
-            <span className="hidden sm:inline">من يستحق التحفيز؟</span>
+            <span className="hidden sm:inline">اختيار طالب للتقدير</span>
           </button>
           
            <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">

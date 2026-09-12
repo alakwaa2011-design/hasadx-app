@@ -317,6 +317,28 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     }
   };
 
+  const playFairnessTick = (isFinal = false) => {
+    if (isMuted || !audioCtxRef.current) return;
+    try {
+      const ctx = audioCtxRef.current;
+      const start = ctx.currentTime;
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(isFinal ? 1046 : 620, start);
+      if (!isFinal) oscillator.frequency.exponentialRampToValueAtTime(760, start + 0.055);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(isFinal ? 0.14 : 0.055, start + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + (isFinal ? 0.18 : 0.075));
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(start);
+      oscillator.stop(start + (isFinal ? 0.19 : 0.08));
+    } catch (error) {
+      console.warn("[Rewards] Could not play fairness cue", error);
+    }
+  };
+
   const getGrantSignature = (classN: string, studentIds: number[], typeId?: string, customReason?: string, customPoints?: number) => {
     const sorted = [...studentIds].sort((a, b) => a - b).join(",");
     return `${classN}|${sorted}|${typeId || ""}|${customReason || ""}|${customPoints || ""}`;
@@ -567,6 +589,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             }))}
             groups={boardData.groups}
             onExit={() => setLiveBoardOpen(false)}
+            onFairnessTick={playFairnessTick}
             onCelebrate={(data) => {
               playSound();
               setCelebration(data);
@@ -576,7 +599,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50" dir="rtl">
             <div className="flex flex-col items-center gap-3 font-black text-emerald-900">
               <Loader2 className="animate-spin" size={34} />
-              {boardLoading ? "نجهّز السبورة الحية…" : "تعذر تحميل السبورة الحية"}
+              {boardLoading ? "نجهّز لوحة التحفيز المباشرة…" : "تعذر تحميل لوحة التحفيز المباشرة"}
               <button type="button" onClick={() => setLiveBoardOpen(false)} className="mt-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm">رجوع</button>
             </div>
           </div>
@@ -643,12 +666,15 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
 
           <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 relative z-10 [scrollbar-width:thin] sm:[scrollbar-width:none]">
             <button
-              onClick={() => setLiveBoardOpen(true)}
+              onClick={() => {
+                resumeAudioContext();
+                setLiveBoardOpen(true);
+              }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all motion-reduce:transition-none shadow-sm border whitespace-nowrap bg-amber-400 text-amber-950 border-amber-300 hover:bg-amber-300"
               data-testid="button-live-board"
             >
               <Sparkles size={16} />
-              السبورة الحية
+              لوحة التحفيز المباشرة
             </button>
             <button
               onClick={() => setIsMuted(!isMuted)}
