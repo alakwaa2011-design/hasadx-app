@@ -112,6 +112,7 @@ async function openAiPanel() {
 }
 
 beforeEach(() => {
+  localStorage.removeItem("hw_lang");
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -120,6 +121,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  localStorage.removeItem("hw_lang");
   vi.unstubAllGlobals();
 });
 
@@ -282,6 +284,73 @@ describe("سعر استخراج الأسئلة عند إعادة فتح اللو
     expect(priceCalls).toBe(2);
     expect(container.querySelector('[data-testid="extract-price-error"]')).toBeNull();
     expect(container.querySelector('[data-testid="text-extract-cost"]')?.textContent).toContain("4 نقاط حصاد");
+    expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("يعرض فشل السعر وإعادة المحاولة بالإنجليزية ثم يفعّل الاستخراج بعد نجاح السعر", async () => {
+    localStorage.setItem("hw_lang", "en");
+    let resolveRetryPrice!: (value: Response) => void;
+    const retryPrice = new Promise<Response>(resolve => {
+      resolveRetryPrice = resolve;
+    });
+    let priceCalls = 0;
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/extract_questions_from_source")) {
+        priceCalls += 1;
+        return priceCalls === 1
+          ? Promise.resolve(response({}, 503))
+          : retryPrice;
+      }
+      if (url.includes("/auth/me")) return Promise.resolve(response({ id: 1, isAdmin: false }));
+      return Promise.resolve(response({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    await settle();
+
+    setTextValue(container.querySelector("input") as HTMLInputElement, "Test assignment");
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-wizard-next"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-method-file"]') as HTMLButtonElement).click();
+    });
+    await settle();
+    const pasteText = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent?.includes("Paste text")) as HTMLButtonElement;
+    await act(async () => pasteText.click());
+    setTextValue(
+      container.querySelector('[data-testid="input-extract-source-text"]') as HTMLTextAreaElement,
+      "Valid educational source text",
+    );
+
+    const extract = container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement;
+    expect(extract.disabled).toBe(true);
+    expect(container.querySelector('[data-testid="extract-price-error"]')?.textContent)
+      .toContain("We couldn't load the extraction cost. Retry to enable extraction.");
+    expect(container.querySelector('[data-testid="btn-retry-extract-price"]')?.textContent)
+      .toContain("Retry");
+
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-retry-extract-price"]') as HTMLButtonElement).click();
+    });
+    expect(extract.disabled).toBe(true);
+    expect(container.querySelector('[data-testid="extract-price-loading"]')?.textContent)
+      .toContain("Loading extraction cost");
+
+    await act(async () => resolveRetryPrice(response({
+      effectiveCost: 4,
+      baseCost: 4,
+      isPro: false,
+      balance: 50,
+      creditsEnabled: true,
+    })));
+    await settle();
+
+    expect(priceCalls).toBe(2);
+    expect(container.querySelector('[data-testid="extract-price-error"]')).toBeNull();
+    expect(container.querySelector('[data-testid="text-extract-cost"]')?.textContent)
+      .toContain("4 Hasad credits will be used for this extraction.");
     expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(false);
   });
 });
