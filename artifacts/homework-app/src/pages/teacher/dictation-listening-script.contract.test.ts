@@ -25,6 +25,16 @@ describe("listening script generator contract", () => {
     expect(source).toContain('data-testid="dialog-listening-script-generator"');
   });
 
+  it("shows the server-owned listening-script price before either paid action", () => {
+    expect(source).toContain("/api/credits/tool-price/listening-script");
+    expect(source).toContain('data-testid="listening-script-credit-price"');
+    expect(source).toContain("listeningScriptPrice.effectiveCost");
+    expect(source).toContain("نظام نقاط حصاد معطّل حاليًا — لن تُخصم نقاط.");
+    expect(source).toContain("إنشاء النص متاح دون خصم نقاط.");
+    expect(source).toContain("!listeningScriptPriceReady");
+    expect(source).not.toContain("setBalance(");
+  });
+
   it("only adopts a reviewed script through the real audioText state", () => {
     expect(source).toContain("setAudioText(generatedScript.slice(0, MAX_CHARS))");
     expect(source).toContain('listeningAudioText: audioText.trim()');

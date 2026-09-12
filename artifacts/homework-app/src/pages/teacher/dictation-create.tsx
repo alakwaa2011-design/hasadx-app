@@ -96,6 +96,10 @@ type AccessFlavor = "general" | "link" | "private";
 type ScriptTextType = "auto" | "story" | "dialogue" | "educational";
 type ScriptLength = "short" | "medium" | "long";
 type ScriptDiacritics = "none" | "ambiguous" | "full";
+type ListeningScriptCreditPrice = {
+  effectiveCost: number;
+  creditsEnabled: boolean;
+};
 
 function clampQuestionPoints(n: number): number {
   if (!Number.isFinite(n) || n < 0) return 0;
@@ -471,6 +475,9 @@ export default function DictationCreate() {
   const [generatedFingerprint, setGeneratedFingerprint] = useState("");
   const [generatorError, setGeneratorError] = useState("");
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [listeningScriptPrice, setListeningScriptPrice] = useState<ListeningScriptCreditPrice | null>(null);
+  const [isListeningScriptPriceLoading, setIsListeningScriptPriceLoading] = useState(false);
+  const [listeningScriptPriceError, setListeningScriptPriceError] = useState(false);
   const generatorAbortRef = useRef<AbortController | null>(null);
   const generatorRequestRef = useRef(0);
 
@@ -898,6 +905,41 @@ export default function DictationCreate() {
     setIsGeneratingScript(false);
   }, [generatorOpen]);
 
+  useEffect(() => {
+    if (!generatorOpen) return;
+    let cancelled = false;
+    setListeningScriptPrice(null);
+    setListeningScriptPriceError(false);
+    setIsListeningScriptPriceLoading(true);
+    fetch(`${API_BASE}/api/credits/tool-price/listening-script`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = response.ok ? await response.json() : null;
+        if (
+          !data
+          || typeof data.effectiveCost !== "number"
+          || typeof data.creditsEnabled !== "boolean"
+        ) {
+          throw new Error("price");
+        }
+        if (!cancelled) {
+          setListeningScriptPrice({
+            effectiveCost: data.effectiveCost,
+            creditsEnabled: data.creditsEnabled,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setListeningScriptPriceError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setIsListeningScriptPriceLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [generatorOpen]);
+
   useEffect(() => () => generatorAbortRef.current?.abort(), []);
 
   const isAudioPlaying = speakingId === "main-audio";
@@ -917,6 +959,12 @@ export default function DictationCreate() {
   const showGeneratorDiacritics = generatedLanguage
     ? generatedLanguage === "ar"
     : /[\u0600-\u06FF]/.test(generatorTopic) || (!generatorTopic.trim() && lang === "ar");
+  const listeningScriptPriceReady = listeningScriptPrice !== null;
+  const listeningScriptCostLabel = listeningScriptPrice?.creditsEnabled && listeningScriptPrice.effectiveCost > 0
+    ? (lang === "ar"
+        ? `${listeningScriptPrice.effectiveCost.toLocaleString("ar-EG-u-nu-latn")} نقاط حصاد`
+        : `${listeningScriptPrice.effectiveCost.toLocaleString("en-US")} Hasad credits`)
+    : null;
 
   const accessFlavorLabel =
     accessFlavor === "private" ? c.accessPrivate : accessFlavor === "link" ? c.accessLink : c.accessGeneral;
@@ -2174,6 +2222,28 @@ export default function DictationCreate() {
               </p>
             )}
 
+            <p
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-xs font-bold",
+                listeningScriptPriceError
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-[#D9A521]/20 bg-[#fbf7ea] text-[#725815]",
+              )}
+              data-testid="listening-script-credit-price"
+            >
+              {isListeningScriptPriceLoading
+                ? (lang === "ar" ? "جارٍ تحميل تكلفة الإنشاء..." : "Loading generation cost...")
+                : listeningScriptPriceError
+                  ? (lang === "ar" ? "تعذّر تحميل التكلفة. أغلق النافذة وافتحها للمحاولة مجددًا." : "Could not load the cost. Close and reopen this window to try again.")
+                  : !listeningScriptPrice?.creditsEnabled
+                    ? (lang === "ar" ? "نظام نقاط حصاد معطّل حاليًا — لن تُخصم نقاط." : "Hasad credits are currently disabled — no credits will be deducted.")
+                    : listeningScriptPrice.effectiveCost === 0
+                      ? (lang === "ar" ? "إنشاء النص متاح دون خصم نقاط." : "Script generation is available with no credit deduction.")
+                      : (lang === "ar"
+                          ? `تكلفة كل إنشاء أو إعادة توليد: ${listeningScriptCostLabel}.`
+                          : `Each generation or regeneration costs ${listeningScriptCostLabel}.`)}
+            </p>
+
             {generatedScript && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
@@ -2205,7 +2275,7 @@ export default function DictationCreate() {
                   <button
                     type="button"
                     onClick={generateListeningScript}
-                    disabled={isGeneratingScript || generatorTopic.trim().length < 2}
+                    disabled={isGeneratingScript || !listeningScriptPriceReady || generatorTopic.trim().length < 2}
                     className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border bg-white px-5 text-sm font-black text-[#1E4D35] disabled:opacity-50"
                     style={{ borderColor: COLOR_CARD_BORDER }}
                     data-testid="button-regenerate-listening-script"
@@ -2213,7 +2283,9 @@ export default function DictationCreate() {
                     {isGeneratingScript ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     {isGeneratingScript
                       ? (lang === "ar" ? "جارٍ إنشاء النص..." : "Generating script...")
-                      : (lang === "ar" ? "إعادة التوليد" : "Regenerate")}
+                      : (lang === "ar"
+                          ? `إعادة التوليد${listeningScriptCostLabel ? ` · ${listeningScriptCostLabel}` : ""}`
+                          : `Regenerate${listeningScriptCostLabel ? ` · ${listeningScriptCostLabel}` : ""}`)}
                   </button>
                   <button
                     type="button"
@@ -2230,14 +2302,16 @@ export default function DictationCreate() {
                 <button
                   type="button"
                   onClick={generateListeningScript}
-                  disabled={isGeneratingScript || generatorTopic.trim().length < 2}
+                  disabled={isGeneratingScript || !listeningScriptPriceReady || generatorTopic.trim().length < 2}
                   className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-[#1E4D35] px-6 text-sm font-black text-white shadow-md disabled:opacity-50"
                   data-testid="button-generate-listening-script"
                 >
                   {isGeneratingScript ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   {isGeneratingScript
                     ? (lang === "ar" ? "جارٍ إنشاء النص..." : "Generating script...")
-                    : (lang === "ar" ? "إنشاء النص" : "Create script")}
+                    : (lang === "ar"
+                        ? `إنشاء النص${listeningScriptCostLabel ? ` · ${listeningScriptCostLabel}` : ""}`
+                        : `Create script${listeningScriptCostLabel ? ` · ${listeningScriptCostLabel}` : ""}`)}
                 </button>
               )}
             </div>
