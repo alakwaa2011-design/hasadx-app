@@ -2897,8 +2897,22 @@ function CompetitiveTab({
   );
 }
 
+export function matchesTeacherToolQuery(
+  tool: { title: string; desc?: string; searchText?: string },
+  query: string,
+) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return (
+    !normalizedQuery ||
+    `${tool.title} ${tool.desc || ""} ${tool.searchText || ""}`
+      .toLocaleLowerCase()
+      .includes(normalizedQuery)
+  );
+}
+
 function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, openRewards }: any) {
   const isAr = lang === "ar";
+  const [toolsQuery, setToolsQuery] = useState("");
   // Keep the sidebar shortcut aligned with the visual order of the sections.
   const groupFilter: Record<string, string[]> = {
     "ai-tools": ["ai-tools"],
@@ -3144,62 +3158,204 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
     },
   ].filter((g) => g.tools.length > 0);
 
-  // Always show all groups; activeGroup is used only for scroll-targeting
-  const visibleGroups = toolGroups;
+  const allTools = toolGroups.flatMap((group) => group.tools);
+  const selectTool = (
+    href: string,
+    override: { title?: string; desc?: string; searchText?: string } = {},
+  ) => {
+    const current = allTools.find((tool) => tool.href === href);
+    return current ? { ...current, ...override, featured: false } : null;
+  };
+
+  const requestedGroups = [
+    {
+      groupId: "start-now",
+      groupTitle: isAr ? "ابدأ حصتك الآن" : "Start your class now",
+      groupDesc: isAr ? "أدوات سريعة تساعدك أثناء الحصة." : "Quick tools that help during class.",
+      groupIcon: <Clock className="w-4 h-4" />,
+      tools: [
+        selectTool("/teacher/rewards", {
+          searchText: "لوحة التحفيز نقاط الطلاب rewards board adventure points students",
+        }),
+        selectTool("/teacher/tools/timer", {
+          title: isAr ? "مؤقت الحصة" : "Class Timer",
+          searchText: "مؤقت الحصة ساعة الإيقاف timer stopwatch class",
+        }),
+        selectTool("/teacher/student-wheel", {
+          title: isAr ? "عجلة اختيار المشاركين" : "Participant Wheel",
+          desc: isAr
+            ? "اختر مشاركًا عشوائيًا بطريقة ممتعة."
+            : "Choose a random participant in a fun way.",
+          searchText: "عجلة اختيار المشاركين الطلاب participant student wheel random",
+        }),
+      ],
+    },
+    {
+      groupId: "ai-tools",
+      groupTitle: isAr ? "أنشئ بالذكاء" : "Create with AI",
+      groupDesc: isAr
+        ? "وفّر وقتك وأنشئ محتوى تعليميًا بمساعدة الذكاء الاصطناعي."
+        : "Save time and create educational content with AI.",
+      groupIcon: <Sparkles className="w-4 h-4" />,
+      tools: [
+        selectTool("/teacher/lesson-plans/create", { searchText: "مولد خطة الدرس lesson plan generator ai" }),
+        selectTool("/teacher/worksheets/create", { searchText: "مولد ورقة العمل worksheet generator ai" }),
+        selectTool("/teacher/new/assignment", { searchText: "مولد الأسئلة بالذكاء ai question generator" }),
+        selectTool("/teacher/mindmap/create", {
+          title: isAr ? "الخريطة الذهنية" : "Mind Map",
+          searchText: "الخريطة الذهنية مولد mind map generator ai",
+        }),
+        selectTool("/teacher/presentations", {
+          title: isAr ? "إنشاء عرض تفاعلي" : "Create Interactive Presentation",
+          searchText: "إنشاء عرض تفاعلي العروض interactive presentation slides ai",
+        }),
+        selectTool("/teacher/ai-video", {
+          title: isAr ? "فيديو تعليمي بالذكاء" : "AI Educational Video",
+          desc: isAr
+            ? "أنشئ فيديو تعليميًا من موضوع أو فكرة."
+            : "Create an educational video from a topic or idea.",
+          searchText: "فيديو تعليمي بالذكاء إنتاج ai educational video production",
+        }),
+        selectTool("/teacher/video-lesson/new", {
+          desc: isAr
+            ? "حوّل الفيديو إلى أسئلة وتفاعل أثناء المشاهدة."
+            : "Turn a video into questions and interactions during viewing.",
+          searchText: "درس فيديو تفاعلي أسئلة interactive video lesson questions",
+        }),
+        selectTool("/teacher/new/paper-grading", {
+          title: isAr ? "تصحيح الأوراق بالذكاء" : "AI Paper Grading",
+          searchText: "تصحيح الأوراق بالذكاء الاصطناعي ai paper grading",
+        }),
+        selectTool("/teacher/smart-board", {
+          title: isAr ? "الشرح الذكي" : "Smart Explanation",
+          desc: isAr
+            ? "اسأل عن أي موضوع واحصل على شرح مبسط وجاهز للعرض."
+            : "Ask about any topic and get a simple, presentation-ready explanation.",
+          searchText: "الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
+        }),
+      ],
+    },
+    {
+      groupId: "class-management",
+      groupTitle: isAr ? "إدارة الصف" : "Class Management",
+      groupDesc: isAr ? "نظّم طلابك وحصصك من مكان واحد." : "Organize students and classes in one place.",
+      groupIcon: <Users className="w-4 h-4" />,
+      tools: [
+        selectTool("/teacher/students", { searchText: "إدارة الطلاب manage students class" }),
+        selectTool("/teacher/tools/schedule", {
+          title: isAr ? "جدول الحصص" : "Class Schedule",
+          desc: isAr
+            ? "نظّم حصصك ومواعيدك واحصل على تنبيهات قبل الحصة."
+            : "Organize classes and appointments and get alerts before class.",
+          searchText: "جدول الحصص إدارة الجدول المواعيد التنبيهات class schedule appointments alerts",
+        }),
+      ],
+    },
+    {
+      groupId: "content",
+      groupTitle: isAr ? "المحتوى والموارد" : "Content & Resources",
+      groupDesc: undefined,
+      groupIcon: <Database className="w-4 h-4" />,
+      tools: [
+        selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
+        selectTool("/teacher/library", { searchText: "مكتبة المعلم teacher library resources" }),
+      ],
+    },
+    {
+      groupId: "integrations",
+      groupTitle: isAr ? "التكاملات التعليمية" : "Educational Integrations",
+      groupDesc: isAr
+        ? "اربط صفوفك ومنصاتك التعليمية بحصاد."
+        : "Connect your classes and learning platforms to Hasaad.",
+      groupIcon: <GraduationCap className="w-4 h-4" />,
+      tools: [
+        selectTool("/teacher/classroom", { searchText: "Google Classroom جوجل كلاس روم تكامل" }),
+        selectTool("/teacher/teams", { searchText: "Microsoft Teams مايكروسوفت تيمز تكامل" }),
+      ],
+    },
+    {
+      groupId: "other",
+      groupTitle: isAr ? "أدوات أخرى" : "Other Tools",
+      groupDesc: undefined,
+      groupIcon: <QrCode className="w-4 h-4" />,
+      tools: [
+        selectTool("/teacher/tools/url-qr", {
+          title: isAr ? "إنشاء رمز QR" : "Create QR Code",
+          searchText: "إنشاء رمز QR باركود رابط نص create code link text",
+        }),
+      ],
+    },
+  ].map((group) => ({ ...group, tools: group.tools.filter(Boolean) as any[] }));
+
+  const matchesQuery = (tool: any) => matchesTeacherToolQuery(tool, toolsQuery);
+  const visibleGroups = requestedGroups
+    .map((group) => ({ ...group, tools: group.tools.filter(matchesQuery) }))
+    .filter((group) => group.tools.length > 0);
+  const kidsTool = selectTool("/teacher/kids", {
+    title: isAr ? "حصاد للصغار" : "Hasaad for Kids",
+    searchText: "حصاد للصغار منصة الصغار hasaad kids platform",
+  });
+  const visibleKidsTool = kidsTool && matchesQuery(kidsTool) ? kidsTool : null;
+  const feedbackTool = allTools.find((tool) => tool.href === "/feedback");
+  const adminTool = allTools.find((tool) => tool.href === "/teacher/admin");
 
   const ChevronEnd = isAr ? ArrowLeft : ArrowRight;
   let globalIdx = 0;
 
   return (
-    <div className="space-y-9 sm:space-y-12">
-      {/* Header — left-aligned on desktop, centered on mobile for a more
-          professional feel than the centered icon-stack of before. */}
-      <div className="flex items-center gap-3 sm:gap-4 px-1">
-        <div
-          className="inline-flex w-11 h-11 sm:w-12 sm:h-12 rounded-2xl items-center justify-center shrink-0"
-          style={{ background: "rgba(34,87,57,0.10)", color: BRAND.green }}
-        >
-          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="text-base sm:text-xl font-extrabold text-foreground leading-tight">
-            {t.dashboard.toolsTitle}
+    <div className="space-y-8 sm:space-y-10" data-testid="teacher-tools-page">
+      <div className="space-y-4 px-1">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-foreground leading-tight">
+            {isAr ? "أدوات حصاد" : "Hasaad Tools"}
           </h2>
-          <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug mt-0.5">
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
             {isAr
-              ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
-              : "Everything you need to manage your class and enrich student experience"}
+              ? "أنشئ، أدر، وقدّم حصة أكثر تفاعلاً من مكان واحد."
+              : "Create, manage, and deliver a more interactive class from one place."}
           </p>
         </div>
+        <label className="flex h-11 max-w-xl items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            type="search"
+            value={toolsQuery}
+            onChange={(event) => setToolsQuery(event.target.value)}
+            placeholder={isAr ? "ابحث عن أداة..." : "Search for a tool..."}
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            data-testid="input-tools-search"
+          />
+        </label>
       </div>
 
       {visibleGroups.map((group) => (
-        <section key={group.groupId} id={`tools-group-${group.groupId}`}>
-          {/* Group header — clean, left-aligned with a soft accent
-              underline. Reads more like a Notion/Linear section than a
-              decorative chip-in-a-divider. */}
+        <section key={group.groupId} id={`tools-group-${group.groupId}`} data-testid={`tools-group-${group.groupId}`}>
           <div className="flex items-end justify-between gap-3 mb-4 px-1">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-start gap-2.5 min-w-0">
               <span
-                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                className="mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green }}
               >
                 {group.groupIcon}
               </span>
-              <h3 className="text-sm sm:text-base font-extrabold text-foreground truncate">
-                {group.groupTitle}
-              </h3>
-              <span
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
-                style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green }}
-              >
-                {group.tools.length}
-              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-extrabold text-foreground">
+                    {group.groupTitle}
+                  </h3>
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+                    style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green }}
+                  >
+                    {group.tools.length}
+                  </span>
+                </div>
+                {group.groupDesc && (
+                  <p className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground">{group.groupDesc}</p>
+                )}
+              </div>
             </div>
-            <div
-              className="flex-1 h-px mb-2 hidden sm:block"
-              style={{ background: "rgba(34,87,57,0.12)" }}
-            />
+            <div className="flex-1 h-px mb-2 hidden sm:block" style={{ background: "rgba(34,87,57,0.12)" }} />
           </div>
 
           {/* Auto-fit grid — cards stretch to fill the row no matter how
@@ -3298,6 +3454,49 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           </div>
         </section>
       ))}
+
+      {visibleKidsTool && (
+        <section data-testid="tools-kids-standalone" className="rounded-2xl border border-[rgba(217,165,33,0.28)] bg-gradient-to-br from-[rgba(217,165,33,0.08)] to-card p-4 sm:p-5">
+          <p className="mb-3 text-sm font-extrabold text-foreground">{isAr ? "حصاد للصغار" : "Hasaad for Kids"}</p>
+          <button
+            type="button"
+            onClick={() => setLocation(visibleKidsTool.href)}
+            className="flex w-full items-center gap-3 rounded-xl border border-[rgba(217,165,33,0.25)] bg-card/80 p-4 text-start transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(217,165,33,0.12)] text-[#225739]">
+              {visibleKidsTool.icon}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-foreground">{visibleKidsTool.title}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{visibleKidsTool.desc}</span>
+            </span>
+            <ChevronEnd className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </section>
+      )}
+
+      {!visibleGroups.length && !visibleKidsTool && (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+          <Search className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+          <p className="text-sm font-bold text-foreground">{isAr ? "لم نجد أداة مطابقة" : "No matching tool found"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{isAr ? "جرّب اسمًا أو وصفًا آخر." : "Try another name or description."}</p>
+        </div>
+      )}
+
+      {(feedbackTool || adminTool) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 px-1 pt-5 text-xs font-bold">
+          {feedbackTool && (
+            <button type="button" onClick={() => setLocation(feedbackTool.href)} className="text-muted-foreground hover:text-foreground">
+              {feedbackTool.title}
+            </button>
+          )}
+          {adminTool && (
+            <button type="button" onClick={() => setLocation(adminTool.href)} className="text-muted-foreground hover:text-foreground">
+              {adminTool.title}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

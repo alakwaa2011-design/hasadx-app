@@ -12,7 +12,7 @@
  * بهذه الاختبارات أولاً.
  */
 import { describe, it, expect } from "vitest";
-import { parseDashboardUrlParams } from "./dashboard";
+import { matchesTeacherToolQuery, parseDashboardUrlParams } from "./dashboard";
 
 const PATH = "/teacher";
 
@@ -132,5 +132,29 @@ describe("parseDashboardUrlParams — لا معاملات", () => {
     expect(result.tab).toBeUndefined();
     expect(result.liveGamePickerId).toBeUndefined();
     expect(result.navigateTo).toBeUndefined();
+  });
+});
+
+describe("بحث أدوات المعلم", () => {
+  const scheduleTool = {
+    title: "جدول الحصص",
+    desc: "نظّم حصصك ومواعيدك واحصل على تنبيهات قبل الحصة.",
+    searchText: "جدول الحصص إدارة الجدول المواعيد التنبيهات class schedule appointments alerts",
+  };
+
+  it("يبحث بالاسم العربي", () => {
+    expect(matchesTeacherToolQuery(scheduleTool, "جدول الحصص")).toBe(true);
+  });
+
+  it("يبحث بالوصف العربي", () => {
+    expect(matchesTeacherToolQuery(scheduleTool, "تنبيهات")).toBe(true);
+  });
+
+  it("يبحث بالكلمات الإنجليزية البديلة أثناء عرض العربية", () => {
+    expect(matchesTeacherToolQuery(scheduleTool, "schedule")).toBe(true);
+  });
+
+  it("لا يعرض أداة غير مطابقة", () => {
+    expect(matchesTeacherToolQuery(scheduleTool, "Google Classroom")).toBe(false);
   });
 });
