@@ -1,6 +1,5 @@
 import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import {
@@ -355,58 +354,6 @@ const SCHEDULE_TABLE_THEMES = [
 type ScheduleColor = (typeof SCHEDULE_COLORS)[number]["value"];
 type ScheduleColorTargetKind = "header" | "column" | "row";
 
-function ScheduleColorPopover({
-  isAr,
-  selectedColor,
-  position,
-  onSelect,
-}: {
-  isAr: boolean;
-  selectedColor?: ScheduleColor;
-  position: { top: number; left: number };
-  onSelect: (color?: ScheduleColor) => void;
-}) {
-  return createPortal(
-    <div
-      role="menu"
-      className="fixed z-[9999] w-44 rounded-2xl border border-border bg-card p-2 shadow-2xl"
-      style={{ top: position.top, left: position.left }}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <div className="mb-2 px-1 text-[10px] font-black text-muted-foreground">
-        {isAr ? "اختر لونًا" : "Choose a color"}
-      </div>
-      <div className="grid grid-cols-4 gap-1.5">
-        {SCHEDULE_COLORS.map((color) => (
-          <button
-            key={color.value}
-            type="button"
-            role="menuitem"
-            aria-label={`${isAr ? "لون " : ""}${color.label}`}
-            title={color.label}
-            onClick={() => onSelect(color.value)}
-            className={`relative flex h-8 items-center justify-center rounded-lg border transition-transform hover:scale-105 ${
-              selectedColor === color.value ? "border-emerald-800 ring-2 ring-emerald-300/60" : "border-black/10"
-            }`}
-            style={{ backgroundColor: color.value }}
-          >
-            {selectedColor === color.value && <Check className="h-4 w-4 text-emerald-950" strokeWidth={3} />}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        role="menuitem"
-        onClick={() => onSelect(undefined)}
-        className="mt-2 flex w-full items-center justify-center rounded-lg border border-border px-2 py-1.5 text-[10px] font-bold text-muted-foreground transition-colors hover:bg-muted"
-      >
-        {isAr ? "إزالة اللون" : "Remove color"}
-      </button>
-    </div>,
-    document.body,
-  );
-}
-
 const C = {
   green: "#1E4D35",
   greenPale: "rgba(30,77,53,0.07)",
@@ -563,7 +510,7 @@ export default function ScheduleManagementPage() {
   const [rowColors, setRowColors] = useState<Record<string, ScheduleColor>>({});
   const [headerColor, setHeaderColor] = useState<ScheduleColor | undefined>();
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
-  const [colorPopoverPosition, setColorPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDetailsElement>(null);
   const themeMenuRef = useRef<HTMLDetailsElement>(null);
   const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
@@ -584,9 +531,9 @@ export default function ScheduleManagementPage() {
       if (!themeMenuRef.current?.contains(target)) {
         themeMenuRef.current?.removeAttribute("open");
       }
-      if (!(target instanceof Element) || !target.closest("[data-schedule-color-control]")) {
+      if (!(target instanceof Element) || !target.closest("[data-schedule-color-menu]")) {
         setActiveColorTarget(null);
-        setColorPopoverPosition(null);
+        setColorMenuOpen(false);
       }
     };
 
@@ -678,7 +625,7 @@ export default function ScheduleManagementPage() {
         else localStorage.removeItem(`hasaad_schedule_table_header_color_v1_${user.id}`);
       }
       setActiveColorTarget(null);
-      setColorPopoverPosition(null);
+      setColorMenuOpen(false);
       return;
     }
     const current = kind === "column" ? columnColors : rowColors;
@@ -694,56 +641,7 @@ export default function ScheduleManagementPage() {
       );
     }
     setActiveColorTarget(null);
-    setColorPopoverPosition(null);
-  }
-
-  function openColorPicker(kind: ScheduleColorTargetKind, key: string, event: React.MouseEvent<HTMLElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const popoverWidth = 176;
-    const popoverHeight = 150;
-    const left = Math.max(8, Math.min(window.innerWidth - popoverWidth - 8, rect.right - popoverWidth));
-    const top = rect.bottom + 6 + popoverHeight <= window.innerHeight
-      ? rect.bottom + 6
-      : Math.max(8, rect.top - popoverHeight - 6);
-    setColorPopoverPosition({ top, left });
-    setActiveColorTarget({ kind, key });
-  }
-
-  function renderColorControl(kind: ScheduleColorTargetKind, key: string, label: string) {
-    const selectedColor = kind === "header" ? headerColor : kind === "column" ? columnColors[key] : rowColors[key];
-    const isOpen = activeColorTarget?.kind === kind && activeColorTarget.key === key;
-    return (
-      <span className="relative inline-flex" data-schedule-color-control>
-        <button
-          type="button"
-          aria-label={isAr ? `تغيير لون ${label}` : `Change ${label} color`}
-          aria-expanded={isOpen}
-          title={isAr ? `تغيير لون ${label}` : `Change ${label} color`}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (isOpen) {
-              setActiveColorTarget(null);
-              setColorPopoverPosition(null);
-              return;
-            }
-            openColorPicker(kind, key, event);
-          }}
-          className={`inline-flex h-6 w-6 items-center justify-center rounded-lg opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 ${
-            selectedColor ? "bg-white/80 text-emerald-800 shadow-sm" : "text-current/45 hover:bg-white/15 hover:text-current"
-          }`}
-        >
-          <Palette className="h-3.5 w-3.5" />
-        </button>
-        {isOpen && (
-          <ScheduleColorPopover
-            isAr={isAr}
-            selectedColor={selectedColor}
-            position={colorPopoverPosition || { top: 8, left: 8 }}
-            onSelect={(color) => chooseTableColor(kind, key, color)}
-          />
-        )}
-      </span>
-    );
+    setColorMenuOpen(false);
   }
 
   const getCellColor = (dayValue: number, columnKey: string) => rowColors[String(dayValue)] || columnColors[columnKey];
@@ -1593,6 +1491,141 @@ export default function ScheduleManagementPage() {
                     </details>
                   )}
 
+                  <div className="relative" data-schedule-color-menu>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!activeColorTarget) setActiveColorTarget({ kind: "header", key: "header" });
+                        setColorMenuOpen((open) => !open);
+                      }}
+                      aria-expanded={colorMenuOpen}
+                      data-testid="button-schedule-colors"
+                      className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm transition-colors ${
+                        colorMenuOpen
+                          ? "border-emerald-700 bg-emerald-50 text-emerald-800"
+                          : "border-border/70 bg-card text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <Palette className="h-4 w-4 text-emerald-700" />
+                      {isAr ? "ألوان الجدول" : "Table colors"}
+                    </button>
+                    {colorMenuOpen && (
+                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-card p-3 shadow-xl">
+                        <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                          {isAr ? "اختر لونًا" : "Choose a color"}
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {SCHEDULE_COLORS.map((color) => {
+                            const selectedColor = activeColorTarget?.kind === "header"
+                              ? headerColor
+                              : activeColorTarget?.kind === "column"
+                                ? columnColors[activeColorTarget.key]
+                                : activeColorTarget
+                                  ? rowColors[activeColorTarget.key]
+                                  : undefined;
+                            return (
+                              <button
+                                key={color.value}
+                                type="button"
+                                aria-label={`${isAr ? "لون " : ""}${color.label}`}
+                                title={color.label}
+                                disabled={!activeColorTarget}
+                                onClick={() => {
+                                  if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color.value);
+                                }}
+                                className={`relative flex h-9 items-center justify-center rounded-xl border transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 ${
+                                  selectedColor === color.value ? "border-emerald-800 ring-2 ring-emerald-300/60" : "border-black/10"
+                                }`}
+                                style={{ backgroundColor: color.value }}
+                              >
+                                {selectedColor === color.value && <Check className="h-4 w-4 text-emerald-950" strokeWidth={3} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-3 border-t border-border pt-3">
+                          <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                            {isAr ? "طبّق اللون على" : "Apply color to"}
+                          </div>
+                          <div className="grid max-h-44 grid-cols-2 gap-1.5 overflow-y-auto">
+                            <button
+                              type="button"
+                              onClick={() => setActiveColorTarget({ kind: "header", key: "header" })}
+                              className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
+                                activeColorTarget?.kind === "header" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {isAr ? "رأس الجدول" : "Table header"}
+                            </button>
+                            {paperScheduleDays.map(({ day }) => (
+                              <button
+                                key={`color-target-row-${day.value}`}
+                                type="button"
+                                onClick={() => setActiveColorTarget({ kind: "row", key: String(day.value) })}
+                                className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
+                                  activeColorTarget?.kind === "row" && activeColorTarget.key === String(day.value)
+                                    ? "bg-emerald-50 text-emerald-800"
+                                    : "text-muted-foreground hover:bg-muted"
+                                }`}
+                              >
+                                {isAr ? `صف ${day.ar}` : `${day.en} row`}
+                              </button>
+                            ))}
+                            {paperLessonNumbers.map((lessonNumber) => (
+                              <button
+                                key={`color-target-column-${lessonNumber}`}
+                                type="button"
+                                onClick={() => setActiveColorTarget({ kind: "column", key: `lesson-${lessonNumber}` })}
+                                className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
+                                  activeColorTarget?.kind === "column" && activeColorTarget.key === `lesson-${lessonNumber}`
+                                    ? "bg-emerald-50 text-emerald-800"
+                                    : "text-muted-foreground hover:bg-muted"
+                                }`}
+                              >
+                                {isAr ? lessonNumberLabel(lessonNumber, true) : lessonNumberLabel(lessonNumber, false)}
+                              </button>
+                            ))}
+                            {paperBreakPositions.size > 0 && Array.from(paperBreakPositions).map((lessonNumber) => (
+                              <button
+                                key={`color-target-break-${lessonNumber}`}
+                                type="button"
+                                onClick={() => setActiveColorTarget({ kind: "column", key: `break-${lessonNumber}` })}
+                                className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
+                                  activeColorTarget?.kind === "column" && activeColorTarget.key === `break-${lessonNumber}`
+                                    ? "bg-emerald-50 text-emerald-800"
+                                    : "text-muted-foreground hover:bg-muted"
+                                }`}
+                              >
+                                {isAr ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}` : `After lesson ${lessonNumber}`}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => setActiveColorTarget({ kind: "column", key: "other-periods" })}
+                              className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
+                                activeColorTarget?.kind === "column" && activeColorTarget.key === "other-periods"
+                                  ? "bg-emerald-50 text-emerald-800"
+                                  : "text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {isAr ? "فترات أخرى" : "Other periods"}
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key);
+                          }}
+                          disabled={!activeColorTarget}
+                          className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {isAr ? "إزالة لون الجزء المحدد" : "Remove selected color"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setTimerSettingsOpen((open) => !open)}
@@ -1737,7 +1770,6 @@ export default function ScheduleManagementPage() {
                               title={isAr ? "تغيير لون رأس الجدول" : "Change header row color"}
                             >
                               <div className="flex items-center justify-center">
-                                {renderColorControl("header", "header", isAr ? "رأس الجدول" : "table header")}
                               </div>
                             </th>
                             {paperLessonNumbers.map((lessonNumber) => (
@@ -1760,7 +1792,6 @@ export default function ScheduleManagementPage() {
                                       >
                                         {columnLabels[`lesson-${lessonNumber}`] || lessonNumberLabel(lessonNumber, isAr)}
                                       </button>
-                                      {renderColorControl("column", `lesson-${lessonNumber}`, columnLabels[`lesson-${lessonNumber}`] || lessonNumberLabel(lessonNumber, isAr))}
                                     </div>
                                 </th>
                                 {paperBreakPositions.has(lessonNumber) && (
@@ -1790,9 +1821,6 @@ export default function ScheduleManagementPage() {
                                           ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
                                           : `After lesson ${lessonNumber}`)}
                                       </button>
-                                      {renderColorControl("column", `break-${lessonNumber}`, columnLabels[`break-${lessonNumber}`] || (isAr
-                                        ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
-                                        : `After lesson ${lessonNumber}`))}
                                     </div>
                                   </th>
                                 )}
@@ -1816,7 +1844,6 @@ export default function ScheduleManagementPage() {
                                 >
                                   {columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods")}
                                 </button>
-                                {renderColorControl("column", "other-periods", columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods"))}
                               </div>
                             </th>
                           </tr>
@@ -1831,11 +1858,6 @@ export default function ScheduleManagementPage() {
                                 <th
                                   style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)] } : undefined}
                                   className={`group sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
-                                  onDoubleClick={(event) => {
-                                    if (!(event.target instanceof Element) || !event.target.closest("[data-schedule-color-control]")) {
-                                      openColorPicker("row", String(day.value), event);
-                                    }
-                                  }}
                                 >
                                    <div className={`h-full min-h-[5rem] w-full flex items-center justify-center text-sm font-black transition-colors ${
                                      tableTheme === "soft"
@@ -1848,7 +1870,6 @@ export default function ScheduleManagementPage() {
                                   >
                                     <div className="flex items-center justify-center gap-1">
                                       <span>{isAr ? day.ar : day.en}</span>
-                                      {renderColorControl("row", String(day.value), isAr ? day.ar : day.en)}
                                     </div>
                                   </div>
                                 </th>
