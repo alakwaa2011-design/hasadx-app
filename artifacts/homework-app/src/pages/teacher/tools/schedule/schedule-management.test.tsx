@@ -322,6 +322,26 @@ describe("schedule management tool", () => {
     expect(localStorage.getItem("hasaad_schedule_table_direction_v1_7")).toBe("ltr");
   });
 
+  it("lets each teacher hide selected days without deleting their schedule entries", async () => {
+    scheduleRows = [
+      { id: 22, kind: "weekly", title: "رياضيات", dayOfWeek: 5, lessonNumber: 1, startTime: "08:00", endTime: "09:00" },
+      { id: 23, kind: "weekly", title: "علوم", dayOfWeek: 6, lessonNumber: 2, startTime: "09:00", endTime: "10:00" },
+    ];
+    await renderPage();
+
+    await click("button-schedule-appearance");
+    expect(button("button-schedule-day-visibility-5").getAttribute("aria-checked")).toBe("true");
+    expect(button("button-schedule-day-visibility-6").getAttribute("aria-checked")).toBe("true");
+
+    await click("button-schedule-day-visibility-5");
+    await click("button-schedule-day-visibility-6");
+
+    expect(button("button-schedule-day-visibility-5").getAttribute("aria-checked")).toBe("false");
+    expect(button("button-schedule-day-visibility-6").getAttribute("aria-checked")).toBe("false");
+    expect(JSON.parse(localStorage.getItem("hasaad_schedule_hidden_days_v1_7") || "[]")).toEqual([5, 6]);
+    expect(scheduleRows).toHaveLength(2);
+  });
+
   it("supports custom schedule colors with live preview, HEX input, cancel, and apply", async () => {
     scheduleRows = [{
       id: 21,
