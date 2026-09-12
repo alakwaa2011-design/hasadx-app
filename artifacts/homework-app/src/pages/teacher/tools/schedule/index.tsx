@@ -504,6 +504,7 @@ export default function ScheduleManagementPage() {
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
   const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("week-grid");
   const [timerSettingsOpen, setTimerSettingsOpen] = useState(false);
+  const [appearanceMenuOpen, setAppearanceMenuOpen] = useState(false);
   const [tableTheme, setTableTheme] = useState<ScheduleTableTheme>("classic");
   const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
   const [columnColors, setColumnColors] = useState<Record<string, ScheduleColor>>({});
@@ -534,6 +535,9 @@ export default function ScheduleManagementPage() {
       if (!(target instanceof Element) || !target.closest("[data-schedule-color-menu]")) {
         setActiveColorTarget(null);
         setColorMenuOpen(false);
+      }
+      if (!(target instanceof Element) || !target.closest("[data-schedule-appearance-menu]")) {
+        setAppearanceMenuOpen(false);
       }
     };
 
@@ -1388,6 +1392,23 @@ export default function ScheduleManagementPage() {
             ) : (
               <div className="flex flex-col animate-in fade-in duration-300">
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-muted/20 p-2">
+                  <div className="relative" data-schedule-appearance-menu>
+                    <button
+                      type="button"
+                      onClick={() => setAppearanceMenuOpen((open) => !open)}
+                      aria-expanded={appearanceMenuOpen}
+                      data-testid="button-schedule-appearance"
+                      className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm transition-colors ${
+                        appearanceMenuOpen
+                          ? "border-emerald-700 bg-emerald-50 text-emerald-800"
+                          : "border-border/70 bg-card text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
+                      {isAr ? "مظهر الجدول" : "Table appearance"}
+                    </button>
+                    {appearanceMenuOpen && (
+                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 flex min-w-[15rem] flex-col gap-2 rounded-2xl border border-border bg-card p-2 shadow-xl">
                   <details ref={viewMenuRef} className="group relative">
                     <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
                       <Calendar className="h-4 w-4 text-emerald-700" />
@@ -1622,6 +1643,9 @@ export default function ScheduleManagementPage() {
                         >
                           {isAr ? "إزالة لون الجزء المحدد" : "Remove selected color"}
                         </button>
+                      </div>
+                    )}
+                  </div>
                       </div>
                     )}
                   </div>
