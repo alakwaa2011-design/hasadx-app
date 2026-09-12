@@ -721,6 +721,7 @@ export default function ScheduleManagementPage() {
   const [columnColors, setColumnColors] = useState<Record<string, ScheduleColor>>({});
   const [rowColors, setRowColors] = useState<Record<string, ScheduleColor>>({});
   const [headerColor, setHeaderColor] = useState<ScheduleColor | undefined>();
+  const [hiddenScheduleDays, setHiddenScheduleDays] = useState<number[]>([]);
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [customPickerOpen, setCustomPickerOpen] = useState(false);
@@ -785,6 +786,16 @@ export default function ScheduleManagementPage() {
     setRowColors(readColorMap(`hasaad_schedule_table_row_colors_v1_${user.id}`));
     const savedHeaderColor = localStorage.getItem(`hasaad_schedule_table_header_color_v1_${user.id}`);
     setHeaderColor(isValidScheduleColor(savedHeaderColor) ? savedHeaderColor : undefined);
+    try {
+      const savedHiddenDays = JSON.parse(localStorage.getItem(`hasaad_schedule_hidden_days_v1_${user.id}`) || "[]");
+      setHiddenScheduleDays(
+        Array.isArray(savedHiddenDays)
+          ? savedHiddenDays.filter((value): value is number => Number.isInteger(value) && value >= 0 && value <= 6)
+          : [],
+      );
+    } catch {
+      setHiddenScheduleDays([]);
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -833,6 +844,20 @@ export default function ScheduleManagementPage() {
     setTableDirection(direction);
     if (user?.id) {
       localStorage.setItem(`hasaad_schedule_table_direction_v1_${user.id}`, direction);
+    }
+  }
+
+  function toggleScheduleDayVisibility(dayValue: number) {
+    const isHidden = hiddenScheduleDays.includes(dayValue);
+    const nextHiddenDays = isHidden
+      ? hiddenScheduleDays.filter((value) => value !== dayValue)
+      : [...hiddenScheduleDays, dayValue];
+
+    if (!isHidden && nextHiddenDays.length >= SCHEDULE_DAYS.length) return;
+
+    setHiddenScheduleDays(nextHiddenDays);
+    if (user?.id) {
+      localStorage.setItem(`hasaad_schedule_hidden_days_v1_${user.id}`, JSON.stringify(nextHiddenDays));
     }
   }
 
@@ -1072,6 +1097,20 @@ export default function ScheduleManagementPage() {
   const entries = scheduleQuery.data || [];
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isBulkSaving = bulkMutation.isPending;
+  const visibleScheduleDays = useMemo(
+    () => SCHEDULE_DAYS.filter((day) => !hiddenScheduleDays.includes(day.value)),
+    [hiddenScheduleDays],
+  );
+  const visibleGridDays = useMemo(
+    () => SCHEDULE_DAYS.slice(0, 5).filter((day) => !hiddenScheduleDays.includes(day.value)),
+    [hiddenScheduleDays],
+  );
+
+  useEffect(() => {
+    if (visibleScheduleDays.length > 0 && !visibleScheduleDays.some((day) => day.value === selectedDay)) {
+      setSelectedDay(visibleScheduleDays[0].value);
+    }
+  }, [selectedDay, visibleScheduleDays]);
 
   const weeklyEntries = useMemo(
     () =>
@@ -1085,7 +1124,7 @@ export default function ScheduleManagementPage() {
   );
   const weeklyGroups = useMemo(
     () =>
-      SCHEDULE_DAYS.map((day) => ({
+      visibleScheduleDays.map((day) => ({
         day,
         entries: entries
           .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === day.value)
@@ -1094,17 +1133,17 @@ export default function ScheduleManagementPage() {
             schedulePosition(a) - schedulePosition(b),
           ),
       })).filter((group) => group.entries.length > 0),
-    [entries],
+    [entries, visibleScheduleDays],
   );
   const paperScheduleDays = useMemo(
     () =>
-      SCHEDULE_DAYS.slice(0, 5).map((day) => ({
+      visibleGridDays.map((day) => ({
         day,
         entries: entries
           .filter((entry) => (entry.kind === "weekly" || entry.kind === "break") && entry.dayOfWeek === day.value)
           .sort((a, b) => a.startTime.localeCompare(b.startTime) || schedulePosition(a) - schedulePosition(b)),
       })),
-    [entries],
+    [entries, visibleGridDays],
   );
   const paperLessonNumbers = useMemo(() => {
     const highestLesson = entries.reduce(
@@ -1755,6 +1794,46 @@ export default function ScheduleManagementPage() {
                     </details>
                   )}
 
+                  <div className="border-t border-border/70 pt-2">
+                    <div className="px-2">
+                      <div className="text-sm font-black text-emerald-950 dark:text-emerald-100">
+                        {isAr ? "أيام الجدول" : "Schedule days"}
+                      </div>
+                      <p className="mt-1 text-[11px] font-medium leading-relaxed text-muted-foreground">
+                        {isAr ? "أخفِ الأيام التي لا تريد ظهورها في جدولك." : "Hide days you do not want to show in your schedule."}
+                      </p>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-1.5">
+                      {SCHEDULE_DAYS.map((day) => {
+                        const isVisible = !hiddenScheduleDays.includes(day.value);
+                        const isLastVisibleDay = isVisible && visibleScheduleDays.length === 1;
+                        return (
+                          <button
+                            key={day.value}
+                            type="button"
+                            role="switch"
+                            aria-checked={isVisible}
+                            aria-label={isAr ? `${isVisible ? "إخفاء" : "إظهار"} ${day.ar}` : `${isVisible ? "Hide" : "Show"} ${day.en}`}
+                            data-testid={`button-schedule-day-visibility-${day.value}`}
+                            disabled={isLastVisibleDay}
+                            onClick={() => toggleScheduleDayVisibility(day.value)}
+                            className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+                              isVisible
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : "border-border bg-muted/40 text-muted-foreground"
+                            } disabled:cursor-not-allowed disabled:opacity-60`}
+                          >
+                            <span>{isAr ? day.ar : day.en}</span>
+                            <span className={`h-2.5 w-2.5 rounded-full ${isVisible ? "bg-emerald-600" : "bg-muted-foreground/35"}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 px-2 text-[10px] font-medium text-muted-foreground">
+                      {isAr ? "الإخفاء لا يحذف الحصص، ويمكن إظهار اليوم لاحقًا." : "Hiding a day does not delete its lessons; you can show it again later."}
+                    </p>
+                  </div>
+
                   <div className="relative" data-schedule-color-menu>
                     <button
                       type="button"
@@ -1934,7 +2013,7 @@ export default function ScheduleManagementPage() {
                   {/* Horizontal day selector for Day mode */}
                   {viewMode === "day" && (
                     <div className="flex w-full gap-2 overflow-x-auto border-t border-border/50 pt-2 scrollbar-none snap-x" data-testid="schedule-management-day-selector">
-                      {SCHEDULE_DAYS.map(day => {
+                      {visibleScheduleDays.map(day => {
                         const count = entries.filter(e => (e.kind === "weekly" || e.kind === "break") && e.dayOfWeek === day.value).length;
                         return (
                           <button
