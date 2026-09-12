@@ -2999,7 +2999,7 @@ function QuickCreateStudio({
     },
     {
       icon: <Pencil style={{ width: 16, height: 16 }} />,
-      title: isAr ? "السبورة الذكية" : "Smart board",
+      title: isAr ? "الشرح الذكي" : "Smart Explanation",
       href: "/teacher/smart-board",
     },
     {
