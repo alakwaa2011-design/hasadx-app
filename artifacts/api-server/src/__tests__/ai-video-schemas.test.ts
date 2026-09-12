@@ -287,4 +287,41 @@ describe("AI video schemas", () => {
         : item),
     }, brief)).toThrow(/structurally too long/);
   });
+
+  it("normalizes a generated teacher/student character object into the required array", () => {
+    const raw = {
+      title: brief.title,
+      version: 1,
+      characters: {
+        teacher: {
+          displayName: "Teacher",
+          appearance: "A teacher in their forties with short dark hair and a navy jacket.",
+          voice: "Warm low adult voice, measured pace, clear formal English accent.",
+        },
+        student: {
+          displayName: "Student",
+          appearance: "A student aged eleven with curly brown hair and a green school sweater.",
+          voice: "Bright youthful voice, medium pitch, curious tone and brisk English pace.",
+        },
+      },
+      scenes: Array.from({ length: 5 }, (_, index) => {
+        const speakerId = index % 2 ? "student" : "teacher";
+        const text = index % 2 ? "Water cools into droplets." : "What happens after evaporation?";
+        return {
+          ...scene(index + 1, 6),
+          narration: text,
+          transition: "cut" as const,
+          visibleCharacterIds: ["teacher", "student"],
+          dialogue: [{ speakerId, text, delivery: "Speaks naturally." }],
+        };
+      }),
+    };
+
+    const sanitized = sanitizeStoryboard(raw, brief, { expectedSceneCount: 5 });
+    expect(sanitized.characters).toEqual([
+      expect.objectContaining({ id: "teacher", role: "teacher" }),
+      expect.objectContaining({ id: "student", role: "student" }),
+    ]);
+    expect(requireRenderableDialogueStoryboard(sanitized, brief).scenes).toHaveLength(5);
+  });
 });

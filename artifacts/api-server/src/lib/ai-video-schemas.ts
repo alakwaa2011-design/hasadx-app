@@ -103,12 +103,38 @@ export class InvalidDialogueStoryboardError extends Error {
     this.name = "InvalidDialogueStoryboardError";
   }
 }
+
+function normalizeStoryboardCharacterCollection(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const storyboard = raw as Record<string, unknown>;
+  const characters = storyboard.characters;
+  if (!characters || typeof characters !== "object" || Array.isArray(characters)) return raw;
+
+  const normalizedCharacters = Object.entries(characters as Record<string, unknown>).map(([key, value]) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const character = value as Record<string, unknown>;
+    const normalizedKey = key.toLocaleLowerCase("en");
+    const inferredRole = /teacher|instructor|educator|معلم|مدرس/u.test(normalizedKey)
+      ? "teacher"
+      : /student|learner|pupil|طالب/u.test(normalizedKey)
+        ? "student"
+        : undefined;
+    return {
+      ...character,
+      ...(character.id === undefined && inferredRole ? { id: inferredRole } : {}),
+      ...(character.role === undefined && inferredRole ? { role: inferredRole } : {}),
+    };
+  });
+
+  return { ...storyboard, characters: normalizedCharacters };
+}
+
 export function sanitizeStoryboard(
   raw: unknown,
   brief: AiVideoBrief,
   options: { expectedSceneCount?: number } = {},
 ): AiVideoStoryboard {
-  const parsed = aiVideoStoryboardSchema.parse(raw);
+  const parsed = aiVideoStoryboardSchema.parse(normalizeStoryboardCharacterCollection(raw));
   if (options.expectedSceneCount !== undefined && parsed.scenes.length !== options.expectedSceneCount) {
     throw new InvalidStoryboardTimingError(
       `A ${brief.durationSeconds}-second storyboard requires exactly ${options.expectedSceneCount} scenes (about 6 seconds each); received ${parsed.scenes.length}. Please regenerate the storyboard.`,

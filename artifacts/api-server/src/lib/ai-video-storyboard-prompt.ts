@@ -38,7 +38,7 @@ export function storyboardPrompt(brief: AiVideoBrief): string {
     `Create a ${language} realistic classroom dialogue storyboard for visible, speaking characters.`,
     `The user's selected duration, ${brief.durationSeconds} seconds, is the non-negotiable whole-video limit: exactly ${sceneCount} scenes of exactly 6 seconds each.`,
     `Return strict JSON only with title, version: 1 and exactly ${sceneCount} scenes.`,
-    "Top-level characters is a stable character/voice bible containing exactly one teacher and one student. Each has id, role, displayName, appearance, and voice.",
+    "Top-level characters is a stable character/voice bible and must be a JSON array containing exactly two objects: one teacher and one student. Never return characters as an object keyed by teacher/student. Each array item has id, role, displayName, appearance, and voice.",
     "appearance must be a detailed fixed physical description (age range, face, hair, clothing and colors) repeated unchanged to the video provider for every scene. Do not use names alone as visual identity.",
     "voice must be a detailed fixed vocal description (gender presentation, age, pitch, timbre, pace, accent and manner). Teacher and student voices must be unmistakably distinct.",
     "Each scene must have: id (scene-1 format), objective, narration, onScreenText, visualPrompt, durationSeconds: 6, transition: cut, sourceImage: null, visibleCharacterIds, and dialogue.",

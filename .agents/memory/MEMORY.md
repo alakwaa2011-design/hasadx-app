@@ -80,6 +80,7 @@
 - [Kids adult account model](kids-adult-account-model.md) — the teacher is also the parent/adult account; children can play individually from that same account or via classroom board mode.
 - [Private teacher-generated media](teacher-generated-media-privacy.md) — generated teacher media stays private; authorize ownership before issuing short-lived signed URLs.
 - [Educational video quality](educational-video-quality-contract.md) — true generated motion, no silent still-image fallback; phase-one acceptance requires the user's manual review.
+- [AI video character normalization](ai-video-character-normalization.md) — storyboard models may return teacher/student as a keyed object; normalize equivalent structure before strict validation.
 - [PostgreSQL parameter inference](postgres-parameter-inference.md) — each SQL interpolation has its own type; nullable predicates require real PostgreSQL coverage, not database mocks.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
