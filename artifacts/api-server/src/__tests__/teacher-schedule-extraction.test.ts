@@ -181,7 +181,7 @@ describe("teacher schedule image extraction", () => {
     const prompt = buildTeacherScheduleExtractionPrompt("ar");
     expect(prompt).toContain("Sunday=0");
     expect(prompt).toContain("Never invent");
-    expect(prompt).toContain("Extract every visible non-lesson period");
+    expect(prompt).toContain("Extract every visible non-lesson label or phrase");
     expect(prompt).toContain("Preserve each period title EXACTLY as written");
     expect(prompt).toContain("A numbered row or column header is only a timetable position");
     expect(prompt).toContain("RECESS in slot 7 remains a non-lesson entry titled RECESS");
