@@ -353,7 +353,7 @@ const SCHEDULE_TABLE_THEMES = [
 ];
 
 type ScheduleColor = (typeof SCHEDULE_COLORS)[number]["value"];
-type ScheduleColorTargetKind = "column" | "row";
+type ScheduleColorTargetKind = "header" | "column" | "row";
 
 function ScheduleColorPopover({
   isAr,
@@ -561,6 +561,7 @@ export default function ScheduleManagementPage() {
   const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
   const [columnColors, setColumnColors] = useState<Record<string, ScheduleColor>>({});
   const [rowColors, setRowColors] = useState<Record<string, ScheduleColor>>({});
+  const [headerColor, setHeaderColor] = useState<ScheduleColor | undefined>();
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
   const [colorPopoverPosition, setColorPopoverPosition] = useState<{ top: number; left: number } | null>(null);
   const viewMenuRef = useRef<HTMLDetailsElement>(null);
@@ -616,6 +617,8 @@ export default function ScheduleManagementPage() {
     };
     setColumnColors(readColorMap(`hasaad_schedule_table_column_colors_v1_${user.id}`));
     setRowColors(readColorMap(`hasaad_schedule_table_row_colors_v1_${user.id}`));
+    const savedHeaderColor = localStorage.getItem(`hasaad_schedule_table_header_color_v1_${user.id}`);
+    setHeaderColor(SCHEDULE_COLORS.some((color) => color.value === savedHeaderColor) ? savedHeaderColor as ScheduleColor : undefined);
   }, [user?.id]);
 
   useEffect(() => {
@@ -668,6 +671,16 @@ export default function ScheduleManagementPage() {
   }
 
   function chooseTableColor(kind: ScheduleColorTargetKind, key: string, color?: ScheduleColor) {
+    if (kind === "header") {
+      setHeaderColor(color);
+      if (user?.id) {
+        if (color) localStorage.setItem(`hasaad_schedule_table_header_color_v1_${user.id}`, color);
+        else localStorage.removeItem(`hasaad_schedule_table_header_color_v1_${user.id}`);
+      }
+      setActiveColorTarget(null);
+      setColorPopoverPosition(null);
+      return;
+    }
     const current = kind === "column" ? columnColors : rowColors;
     const next = { ...current };
     if (color) next[key] = color;
@@ -697,7 +710,7 @@ export default function ScheduleManagementPage() {
   }
 
   function renderColorControl(kind: ScheduleColorTargetKind, key: string, label: string) {
-    const selectedColor = kind === "column" ? columnColors[key] : rowColors[key];
+    const selectedColor = kind === "header" ? headerColor : kind === "column" ? columnColors[key] : rowColors[key];
     const isOpen = activeColorTarget?.kind === kind && activeColorTarget.key === key;
     return (
       <span className="relative inline-flex" data-schedule-color-control>
@@ -734,6 +747,7 @@ export default function ScheduleManagementPage() {
   }
 
   const getCellColor = (dayValue: number, columnKey: string) => rowColors[String(dayValue)] || columnColors[columnKey];
+  const getHeaderColor = (columnKey?: string) => (columnKey ? columnColors[columnKey] : undefined) || headerColor;
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
