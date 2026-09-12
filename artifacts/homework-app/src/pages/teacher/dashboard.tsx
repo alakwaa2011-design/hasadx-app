@@ -1219,6 +1219,7 @@ export default function TeacherDashboard() {
                 activeTab !== "library_homework" &&
                 activeTab !== "assignments" &&
                 activeTab !== "competitive" &&
+                activeTab !== "tools" &&
                 activeTab !== "stats" &&
                 activeTab !== "credits" &&
                 activeTab !== "rewards" &&
@@ -1380,7 +1381,7 @@ export default function TeacherDashboard() {
           <div className="mb-3">
             <GuestDraftImportBanner />
           </div>
-          {activeTab !== "assignments" && activeTab !== "competitive" && activeTab !== "credits" && activeTab !== "rewards" && activeTab !== "kids_board" && (
+          {activeTab !== "assignments" && activeTab !== "competitive" && activeTab !== "tools" && activeTab !== "credits" && activeTab !== "rewards" && activeTab !== "kids_board" && (
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             <span className="[&_svg]:w-5 [&_svg]:h-5 text-primary">
               {tabs.find((t) => t.id === activeTab)?.icon}
@@ -3303,7 +3304,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
   let globalIdx = 0;
 
   return (
-    <div className="space-y-8 sm:space-y-10" data-testid="teacher-tools-page">
+    <div className="space-y-7 sm:space-y-8" data-testid="teacher-tools-page">
       <div className="space-y-4 px-1">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-foreground leading-tight">
@@ -3456,23 +3457,21 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       ))}
 
       {visibleKidsTool && (
-        <section data-testid="tools-kids-standalone" className="rounded-2xl border border-[rgba(217,165,33,0.28)] bg-gradient-to-br from-[rgba(217,165,33,0.08)] to-card p-4 sm:p-5">
-          <p className="mb-3 text-sm font-extrabold text-foreground">{isAr ? "حصاد للصغار" : "Hasaad for Kids"}</p>
-          <button
-            type="button"
-            onClick={() => setLocation(visibleKidsTool.href)}
-            className="flex w-full items-center gap-3 rounded-xl border border-[rgba(217,165,33,0.25)] bg-card/80 p-4 text-start transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(217,165,33,0.12)] text-[#225739]">
-              {visibleKidsTool.icon}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-foreground">{visibleKidsTool.title}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">{visibleKidsTool.desc}</span>
-            </span>
-            <ChevronEnd className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </section>
+        <button
+          type="button"
+          onClick={() => setLocation(visibleKidsTool.href)}
+          data-testid="tools-kids-standalone"
+          className="flex w-full items-center gap-3 rounded-2xl border border-[rgba(217,165,33,0.28)] bg-gradient-to-br from-[rgba(217,165,33,0.10)] to-card p-4 text-start shadow-sm transition hover:-translate-y-0.5 hover:border-[rgba(217,165,33,0.4)] hover:shadow-md sm:p-5"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(217,165,33,0.14)] text-[#225739]">
+            {visibleKidsTool.icon}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-extrabold text-foreground">{visibleKidsTool.title}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">{visibleKidsTool.desc}</span>
+          </span>
+          <ChevronEnd className="h-4 w-4 text-muted-foreground" />
+        </button>
       )}
 
       {!visibleGroups.length && !visibleKidsTool && (
