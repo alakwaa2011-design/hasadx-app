@@ -379,6 +379,192 @@ function scheduleColorTextColor(color?: string) {
   return contrastWithWhite >= 3.5 ? "#FFFFFF" : "#13201A";
 }
 
+function hexToHsv(hex: string) {
+  const value = hex.replace("#", "");
+  const red = Number.parseInt(value.slice(0, 2), 16) / 255;
+  const green = Number.parseInt(value.slice(2, 4), 16) / 255;
+  const blue = Number.parseInt(value.slice(4, 6), 16) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+
+  if (delta > 0) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
+
+  return {
+    hue: hue < 0 ? hue + 360 : hue,
+    saturation: max === 0 ? 0 : delta / max,
+    value: max,
+  };
+}
+
+function hsvToHex(hue: number, saturation: number, value: number) {
+  const chroma = value * saturation;
+  const section = hue / 60;
+  const x = chroma * (1 - Math.abs((section % 2) - 1));
+  const match = value - chroma;
+  const [red, green, blue] =
+    section < 1 ? [chroma, x, 0]
+      : section < 2 ? [x, chroma, 0]
+        : section < 3 ? [0, chroma, x]
+          : section < 4 ? [0, x, chroma]
+            : section < 5 ? [x, 0, chroma]
+              : [chroma, 0, x];
+  return `#${[red, green, blue]
+    .map((channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0"))
+    .join("")}`.toUpperCase();
+}
+
+function CustomScheduleColorPicker({
+  isAr,
+  initialColor,
+  onPreview,
+  onCancel,
+  onConfirm,
+}: {
+  isAr: boolean;
+  initialColor: string;
+  onPreview: (color: string) => void;
+  onCancel: () => void;
+  onConfirm: (color: string) => void;
+}) {
+  const startingColor = isValidScheduleColor(initialColor) ? initialColor : "#1E4D35";
+  const startingHsv = hexToHsv(startingColor);
+  const [hue, setHue] = useState(startingHsv.hue);
+  const [saturation, setSaturation] = useState(startingHsv.saturation);
+  const [value, setValue] = useState(startingHsv.value);
+  const [hex, setHex] = useState(startingColor.toUpperCase());
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const hueRef = useRef<HTMLDivElement>(null);
+
+  const updatePreview = (nextHue: number, nextSaturation: number, nextValue: number) => {
+    const nextHex = hsvToHex(nextHue, nextSaturation, nextValue);
+    setHue(nextHue);
+    setSaturation(nextSaturation);
+    setValue(nextValue);
+    setHex(nextHex);
+    onPreview(nextHex);
+  };
+
+  const updateSurfaceFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const bounds = surfaceRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const nextSaturation = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+    const nextValue = Math.max(0, Math.min(1, 1 - (event.clientY - bounds.top) / bounds.height));
+    updatePreview(hue, nextSaturation, nextValue);
+  };
+
+  const updateHueFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const bounds = hueRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const nextHue = Math.max(0, Math.min(359, ((event.clientX - bounds.left) / bounds.width) * 360));
+    updatePreview(nextHue, saturation, value);
+  };
+
+  const handleHexChange = (rawValue: string) => {
+    const nextHex = rawValue.startsWith("#") ? rawValue : `#${rawValue}`;
+    setHex(nextHex.toUpperCase());
+    if (!isValidScheduleColor(nextHex)) return;
+    const nextHsv = hexToHsv(nextHex);
+    setHue(nextHsv.hue);
+    setSaturation(nextHsv.saturation);
+    setValue(nextHsv.value);
+    onPreview(nextHex.toUpperCase());
+  };
+
+  const currentColor = hsvToHex(hue, saturation, value);
+
+  return (
+    <div className="mt-3 rounded-2xl border border-border bg-muted/20 p-3" dir={isAr ? "rtl" : "ltr"}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs font-black text-emerald-950 dark:text-emerald-100">
+          {isAr ? "لون مخصص" : "Custom color"}
+        </span>
+        <span className="h-6 w-6 rounded-full border border-black/10 shadow-inner" style={{ backgroundColor: currentColor }} />
+      </div>
+      <div
+        ref={surfaceRef}
+          data-testid="schedule-custom-color-surface"
+        className="relative h-36 w-full touch-none select-none overflow-hidden rounded-xl border border-black/10"
+        style={{
+          backgroundColor: `hsl(${hue} 100% 50%)`,
+          backgroundImage: "linear-gradient(to right, #fff, transparent), linear-gradient(to top, #000, transparent)",
+        }}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          updateSurfaceFromPointer(event);
+        }}
+        onPointerMove={(event) => {
+          if (event.buttons === 1 || event.pointerType === "touch") updateSurfaceFromPointer(event);
+        }}
+      >
+        <span
+          className="pointer-events-none absolute h-4 w-4 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,.45)]"
+          style={{ left: `${saturation * 100}%`, top: `${(1 - value) * 100}%`, transform: "translate(-50%, -50%)" }}
+        />
+      </div>
+      <div
+        ref={hueRef}
+        data-testid="schedule-custom-color-hue"
+        className="relative mt-3 h-4 touch-none select-none rounded-full border border-black/10"
+        style={{ background: "linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)" }}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          updateHueFromPointer(event);
+        }}
+        onPointerMove={(event) => {
+          if (event.buttons === 1 || event.pointerType === "touch") updateHueFromPointer(event);
+        }}
+      >
+        <span
+          className="pointer-events-none absolute top-1/2 h-5 w-5 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,.45)]"
+          style={{ left: `${(hue / 360) * 100}%`, transform: "translate(-50%, -50%)", backgroundColor: currentColor }}
+        />
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <label className="text-[10px] font-black text-muted-foreground" htmlFor="schedule-custom-hex">
+          HEX
+        </label>
+        <input
+          id="schedule-custom-hex"
+          value={hex}
+          onChange={(event) => handleHexChange(event.target.value)}
+          onBlur={() => isValidScheduleColor(hex) && setHex(hex.toUpperCase())}
+          inputMode="text"
+          spellCheck={false}
+          data-testid="schedule-custom-hex"
+          className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-card px-2 text-xs font-bold uppercase tracking-wider outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+          aria-label={isAr ? "قيمة HEX" : "HEX value"}
+        />
+        <span className="h-8 w-8 shrink-0 rounded-lg border border-black/10" style={{ backgroundColor: currentColor }} />
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          data-testid="button-schedule-custom-cancel"
+          className="flex-1 rounded-lg border border-border px-2 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted"
+        >
+          {isAr ? "إلغاء" : "Cancel"}
+        </button>
+        <button
+          type="button"
+          disabled={!isValidScheduleColor(hex)}
+          onClick={() => onConfirm(hex.toUpperCase())}
+          data-testid="button-schedule-custom-apply"
+          className="flex-1 rounded-lg bg-emerald-700 px-2 py-2 text-xs font-black text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {isAr ? "تطبيق اللون" : "Apply color"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const C = {
   green: "#1E4D35",
   greenPale: "rgba(30,77,53,0.07)",
@@ -537,6 +723,8 @@ export default function ScheduleManagementPage() {
   const [headerColor, setHeaderColor] = useState<ScheduleColor | undefined>();
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [customPickerOpen, setCustomPickerOpen] = useState(false);
+  const [customPreviewColor, setCustomPreviewColor] = useState<string | null>(null);
   const viewMenuRef = useRef<HTMLDetailsElement>(null);
   const themeMenuRef = useRef<HTMLDetailsElement>(null);
   const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
@@ -560,6 +748,8 @@ export default function ScheduleManagementPage() {
       if (!(target instanceof Element) || !target.closest("[data-schedule-color-menu]")) {
         setActiveColorTarget(null);
         setColorMenuOpen(false);
+        setCustomPickerOpen(false);
+        setCustomPreviewColor(null);
       }
       if (!(target instanceof Element) || !target.closest("[data-schedule-appearance-menu]")) {
         setAppearanceMenuOpen(false);
@@ -585,7 +775,7 @@ export default function ScheduleManagementPage() {
         const parsed = JSON.parse(localStorage.getItem(storageKey) || "{}");
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
         return Object.fromEntries(
-          Object.entries(parsed).filter(([, value]) => SCHEDULE_COLORS.some((color) => color.value === value)),
+           Object.entries(parsed).filter(([, value]) => isValidScheduleColor(value)),
         ) as Record<string, ScheduleColor>;
       } catch {
         return {};
@@ -594,7 +784,7 @@ export default function ScheduleManagementPage() {
     setColumnColors(readColorMap(`hasaad_schedule_table_column_colors_v1_${user.id}`));
     setRowColors(readColorMap(`hasaad_schedule_table_row_colors_v1_${user.id}`));
     const savedHeaderColor = localStorage.getItem(`hasaad_schedule_table_header_color_v1_${user.id}`);
-    setHeaderColor(SCHEDULE_COLORS.some((color) => color.value === savedHeaderColor) ? savedHeaderColor as ScheduleColor : undefined);
+    setHeaderColor(isValidScheduleColor(savedHeaderColor) ? savedHeaderColor : undefined);
   }, [user?.id]);
 
   useEffect(() => {
@@ -655,6 +845,8 @@ export default function ScheduleManagementPage() {
       }
       setActiveColorTarget(null);
       setColorMenuOpen(false);
+      setCustomPickerOpen(false);
+      setCustomPreviewColor(null);
       return;
     }
     const current = kind === "column" ? columnColors : rowColors;
@@ -671,10 +863,36 @@ export default function ScheduleManagementPage() {
     }
     setActiveColorTarget(null);
     setColorMenuOpen(false);
+    setCustomPickerOpen(false);
+    setCustomPreviewColor(null);
   }
 
-  const getCellColor = (dayValue: number, columnKey: string) => rowColors[String(dayValue)] || columnColors[columnKey];
-  const getHeaderColor = (columnKey?: string) => (columnKey ? columnColors[columnKey] : undefined) || headerColor;
+  const getCommittedTargetColor = (kind: ScheduleColorTargetKind, key: string) =>
+    kind === "header" ? headerColor : kind === "column" ? columnColors[key] : rowColors[key];
+  const getPreviewColor = (kind: ScheduleColorTargetKind, key: string) =>
+    customPreviewColor && activeColorTarget?.kind === kind && activeColorTarget.key === key
+      ? customPreviewColor
+      : undefined;
+  const selectColorTarget = (target: { kind: ScheduleColorTargetKind; key: string }) => {
+    setActiveColorTarget(target);
+    setCustomPickerOpen(false);
+    setCustomPreviewColor(null);
+  };
+  const openCustomColorPicker = () => {
+    if (!activeColorTarget) return;
+    const currentColor = getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key) || "#1E4D35";
+    setCustomPreviewColor(currentColor);
+    setCustomPickerOpen(true);
+  };
+  const getCellColor = (dayValue: number, columnKey: string) =>
+    getPreviewColor("row", String(dayValue)) ||
+    rowColors[String(dayValue)] ||
+    getPreviewColor("column", columnKey) ||
+    columnColors[columnKey];
+  const getHeaderColor = (columnKey?: string) =>
+    (columnKey ? getPreviewColor("column", columnKey) || columnColors[columnKey] : undefined) ||
+    getPreviewColor("header", "header") ||
+    headerColor;
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
@@ -1556,23 +1774,20 @@ export default function ScheduleManagementPage() {
                       {isAr ? "ألوان الجدول" : "Table colors"}
                     </button>
                     {colorMenuOpen && (
-                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-border bg-card p-3 shadow-xl">
+                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 max-h-[calc(100vh-6rem)] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-3 shadow-xl">
                         <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
                           {isAr ? "اختر لونًا" : "Choose a color"}
                         </div>
                         <div className="grid grid-cols-7 justify-items-center gap-1">
                           {SCHEDULE_COLORS.map((color) => {
-                            const selectedColor = activeColorTarget?.kind === "header"
-                              ? headerColor
-                              : activeColorTarget?.kind === "column"
-                                ? columnColors[activeColorTarget.key]
-                                : activeColorTarget
-                                  ? rowColors[activeColorTarget.key]
-                                  : undefined;
+                            const selectedColor = activeColorTarget
+                              ? getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key)
+                              : undefined;
                             return (
                               <button
                                 key={color.value}
                                 type="button"
+                                data-testid={`button-schedule-color-preset-${SCHEDULE_COLORS.indexOf(color)}`}
                                 aria-label={`${isAr ? "لون " : ""}${color.label}`}
                                 title={color.label}
                                 disabled={!activeColorTarget}
@@ -1589,6 +1804,32 @@ export default function ScheduleManagementPage() {
                             );
                           })}
                         </div>
+                        <button
+                          type="button"
+                          onClick={openCustomColorPicker}
+                          disabled={!activeColorTarget}
+                          data-testid="button-schedule-custom-color"
+                          className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-colors ${
+                            customPickerOpen
+                              ? "border-emerald-700 bg-emerald-50 text-emerald-800"
+                              : "border-border text-muted-foreground hover:bg-muted"
+                          } disabled:cursor-not-allowed disabled:opacity-40`}
+                        >
+                          <span className="h-4 w-4 rounded-md border border-dashed border-current" />
+                          {isAr ? "لون مخصص" : "Custom color"}
+                        </button>
+                        {customPickerOpen && activeColorTarget && (
+                          <CustomScheduleColorPicker
+                            isAr={isAr}
+                            initialColor={customPreviewColor || getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key) || "#1E4D35"}
+                            onPreview={setCustomPreviewColor}
+                            onCancel={() => {
+                              setCustomPickerOpen(false);
+                              setCustomPreviewColor(null);
+                            }}
+                            onConfirm={(color) => chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color)}
+                          />
+                        )}
                         <div className="mt-3 border-t border-border pt-3">
                           <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
                             {isAr ? "طبّق اللون على" : "Apply color to"}
@@ -1596,7 +1837,7 @@ export default function ScheduleManagementPage() {
                           <div className="grid max-h-44 grid-cols-2 gap-1.5 overflow-y-auto">
                             <button
                               type="button"
-                              onClick={() => setActiveColorTarget({ kind: "header", key: "header" })}
+                              onClick={() => selectColorTarget({ kind: "header", key: "header" })}
                               className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
                                 activeColorTarget?.kind === "header" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"
                               }`}
@@ -1607,7 +1848,7 @@ export default function ScheduleManagementPage() {
                               <button
                                 key={`color-target-row-${day.value}`}
                                 type="button"
-                                onClick={() => setActiveColorTarget({ kind: "row", key: String(day.value) })}
+                                 onClick={() => selectColorTarget({ kind: "row", key: String(day.value) })}
                                 className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
                                   activeColorTarget?.kind === "row" && activeColorTarget.key === String(day.value)
                                     ? "bg-emerald-50 text-emerald-800"
@@ -1621,7 +1862,7 @@ export default function ScheduleManagementPage() {
                               <button
                                 key={`color-target-column-${lessonNumber}`}
                                 type="button"
-                                onClick={() => setActiveColorTarget({ kind: "column", key: `lesson-${lessonNumber}` })}
+                                 onClick={() => selectColorTarget({ kind: "column", key: `lesson-${lessonNumber}` })}
                                 className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
                                   activeColorTarget?.kind === "column" && activeColorTarget.key === `lesson-${lessonNumber}`
                                     ? "bg-emerald-50 text-emerald-800"
@@ -1635,7 +1876,7 @@ export default function ScheduleManagementPage() {
                               <button
                                 key={`color-target-break-${lessonNumber}`}
                                 type="button"
-                                onClick={() => setActiveColorTarget({ kind: "column", key: `break-${lessonNumber}` })}
+                                 onClick={() => selectColorTarget({ kind: "column", key: `break-${lessonNumber}` })}
                                 className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
                                   activeColorTarget?.kind === "column" && activeColorTarget.key === `break-${lessonNumber}`
                                     ? "bg-emerald-50 text-emerald-800"
@@ -1647,7 +1888,7 @@ export default function ScheduleManagementPage() {
                             ))}
                             <button
                               type="button"
-                              onClick={() => setActiveColorTarget({ kind: "column", key: "other-periods" })}
+                              onClick={() => selectColorTarget({ kind: "column", key: "other-periods" })}
                               className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
                                 activeColorTarget?.kind === "column" && activeColorTarget.key === "other-periods"
                                   ? "bg-emerald-50 text-emerald-800"

@@ -185,6 +185,7 @@ describe("schedule management tool", () => {
     expect(document.body.textContent).toContain("المواعيد");
     expect(document.body.textContent).toContain("موعد 1");
     expect(document.body.textContent).toContain("موعد 5");
+    await click("button-schedule-appearance");
     await click("button-schedule-view-day");
     const daySelector = document.querySelector('[data-testid="schedule-management-day-selector"]') as HTMLElement;
     const visibleDayLabels = Array.from(daySelector.querySelectorAll("button")).map(
@@ -237,6 +238,7 @@ describe("schedule management tool", () => {
     const scheduleGrid = document.querySelector('[data-testid="schedule-week-grid"]') as HTMLElement;
     const timerSettings = document.querySelector('[data-testid="schedule-timer-alerts"]') as HTMLElement;
     expect(timerSettings.compareDocumentPosition(scheduleGrid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await click("button-schedule-appearance");
     expect(button("button-schedule-view-day")).toBeTruthy();
     expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
     expect(button("button-schedule-view-week-list")).toBeTruthy();
@@ -308,6 +310,7 @@ describe("schedule management tool", () => {
     expect(document.querySelector('[data-testid="schedule-week-grid"] table')?.getAttribute("data-table-direction"))
       .toBe("rtl");
 
+    await click("button-schedule-appearance");
     await click("button-schedule-theme-soft");
     await click("button-schedule-direction-ltr");
 
@@ -317,6 +320,46 @@ describe("schedule management tool", () => {
     expect(document.querySelector('[data-testid="schedule-week-grid"] table')?.getAttribute("data-table-direction"))
       .toBe("ltr");
     expect(localStorage.getItem("hasaad_schedule_table_direction_v1_7")).toBe("ltr");
+  });
+
+  it("supports custom schedule colors with live preview, HEX input, cancel, and apply", async () => {
+    scheduleRows = [{
+      id: 21,
+      kind: "weekly",
+      title: "رياضيات",
+      dayOfWeek: 0,
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }];
+    await renderPage();
+
+    await click("button-schedule-appearance");
+    await click("button-schedule-colors");
+    await click("button-schedule-custom-color");
+
+    const customInput = document.querySelector('[data-testid="schedule-custom-hex"]') as HTMLInputElement;
+    const lessonHeader = button("button-rename-lesson-column-1").closest("th") as HTMLElement;
+    expect(customInput.value).toBe("#1E4D35");
+
+    await typeInto("schedule-custom-hex", "#123456");
+    expect(customInput.value).toBe("#123456");
+    expect(lessonHeader.style.backgroundColor).not.toBe("");
+    expect(localStorage.getItem("hasaad_schedule_table_header_color_v1_7")).toBeNull();
+
+    await click("button-schedule-custom-cancel");
+    expect(lessonHeader.style.backgroundColor).toBe("");
+    expect(localStorage.getItem("hasaad_schedule_table_header_color_v1_7")).toBeNull();
+
+    await click("button-schedule-custom-color");
+    await typeInto("schedule-custom-hex", "#123456");
+    await click("button-schedule-custom-apply");
+    expect(localStorage.getItem("hasaad_schedule_table_header_color_v1_7")).toBe("#123456");
+    expect(lessonHeader.style.backgroundColor).not.toBe("");
+
+    await click("button-schedule-colors");
+    await click("button-schedule-color-preset-0");
+    expect(localStorage.getItem("hasaad_schedule_table_header_color_v1_7")).toBe("#D1FAE5");
   });
 
   it("shows a break after its lesson in a separate grid column", async () => {
@@ -457,6 +500,7 @@ describe("schedule management tool", () => {
     await click("button-save-schedule-entry");
 
     await renderPage();
+    await click("button-schedule-appearance");
     await click("button-schedule-view-day");
     await click("button-management-schedule-day-5");
     expect(document.body.textContent).toContain("رياضيات");
@@ -506,6 +550,7 @@ describe("schedule management tool", () => {
     }];
     await renderPage();
     expect(document.querySelector('[data-testid="status-schedule-load-error"]')).toBeNull();
+    await click("button-schedule-appearance");
     await click("button-schedule-view-day");
     await click("button-management-schedule-day-0");
     expect(document.body.textContent).toContain("رياضيات");
