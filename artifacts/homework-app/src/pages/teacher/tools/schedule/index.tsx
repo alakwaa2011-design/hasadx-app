@@ -358,8 +358,14 @@ const SCHEDULE_TABLE_THEMES = [
   { id: "notebook" as const, ar: "دفتر", en: "Notebook", swatches: ["#FFFBEB", "#FFEDD5", "#E7E5E4"] },
 ];
 
-type ScheduleColor = (typeof SCHEDULE_COLORS)[number]["value"];
+type ScheduleColor = string;
 type ScheduleColorTargetKind = "header" | "column" | "row";
+
+const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
+
+function isValidScheduleColor(value: unknown): value is ScheduleColor {
+  return typeof value === "string" && HEX_COLOR_PATTERN.test(value);
+}
 
 function scheduleColorTextColor(color?: string) {
   if (!color) return undefined;
