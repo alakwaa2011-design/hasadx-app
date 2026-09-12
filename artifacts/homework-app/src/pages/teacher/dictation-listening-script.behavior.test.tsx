@@ -232,3 +232,142 @@ describe("سعر توليد نص الاستماع", () => {
     expect(regenerate.textContent).toContain("4 نقاط حصاد");
   });
 });
+
+describe("English listening script pricing", () => {
+  it("keeps creation disabled until the positive price loads and formats Hasad credits", async () => {
+    localStorage.setItem("hw_lang", "en");
+    const price = deferredResponse();
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/listening-script")) return price.promise;
+      if (url.includes("/api/teacher/grade-levels")) return Promise.resolve(response([]));
+      return Promise.resolve(response({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nProvider><DictationCreate /></I18nProvider>
+      </QueryClientProvider>,
+    ));
+    await openGenerator();
+
+    const generate = byTestId("button-generate-listening-script") as HTMLButtonElement;
+    expect(generate.disabled).toBe(true);
+    expect(byTestId("listening-script-credit-price").textContent).toContain("Loading generation cost");
+    expect(generate.textContent).toBe("Create script");
+
+    await act(async () => price.resolve(response({ effectiveCost: 1_250, creditsEnabled: true })));
+    await settle();
+
+    expect(byTestId("listening-script-credit-price").textContent)
+      .toContain("Each generation or regeneration costs 1,250 Hasad credits.");
+    expect(generate.textContent).toContain("Create script · 1,250 Hasad credits");
+    expect(generate.disabled).toBe(false);
+  });
+
+  it.each([
+    {
+      name: "disabled credits",
+      price: { effectiveCost: 9, creditsEnabled: false },
+      message: "Hasad credits are currently disabled — no credits will be deducted.",
+    },
+    {
+      name: "zero price",
+      price: { effectiveCost: 0, creditsEnabled: true },
+      message: "Script generation is available with no credit deduction.",
+    },
+  ])("shows $name without adding a price to the creation button", async ({ price, message }) => {
+    localStorage.setItem("hw_lang", "en");
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/listening-script")) return Promise.resolve(response(price));
+      if (url.includes("/api/teacher/grade-levels")) return Promise.resolve(response([]));
+      return Promise.resolve(response({}));
+    }));
+
+    await act(async () => root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nProvider><DictationCreate /></I18nProvider>
+      </QueryClientProvider>,
+    ));
+    await openGenerator();
+    await settle();
+
+    expect(byTestId("listening-script-credit-price").textContent).toContain(message);
+    const generate = byTestId("button-generate-listening-script") as HTMLButtonElement;
+    expect(generate.textContent).toBe("Create script");
+    expect(generate.disabled).toBe(false);
+  });
+
+  it("keeps creation disabled when the English price request fails", async () => {
+    localStorage.setItem("hw_lang", "en");
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/listening-script")) return Promise.resolve(response({}, 503));
+      if (url.includes("/api/teacher/grade-levels")) return Promise.resolve(response([]));
+      return Promise.resolve(response({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nProvider><DictationCreate /></I18nProvider>
+      </QueryClientProvider>,
+    ));
+    await openGenerator();
+    await settle();
+
+    expect(byTestId("listening-script-credit-price").textContent)
+      .toContain("Could not load the cost. Close and reopen this window to try again.");
+    const generate = byTestId("button-generate-listening-script") as HTMLButtonElement;
+    expect(generate.disabled).toBe(true);
+    generate.click();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/listening-script/generate"))).toBe(false);
+  });
+
+  it("keeps regeneration disabled until the refreshed price loads and formats Hasad credits", async () => {
+    localStorage.setItem("hw_lang", "en");
+    const secondPrice = deferredResponse();
+    let priceCalls = 0;
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/listening-script")) {
+        priceCalls += 1;
+        return priceCalls === 1
+          ? Promise.resolve(response({ effectiveCost: 2, creditsEnabled: true }))
+          : secondPrice.promise;
+      }
+      if (url.includes("/api/listening-script/generate")) {
+        return Promise.resolve(response({ script: "This is a generated script.", language: "en" }));
+      }
+      if (url.includes("/api/teacher/grade-levels")) return Promise.resolve(response([]));
+      return Promise.resolve(response({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <I18nProvider><DictationCreate /></I18nProvider>
+      </QueryClientProvider>,
+    ));
+    await openGenerator();
+    await settle();
+    await act(async () => byTestId("button-generate-listening-script").click());
+    await settle();
+
+    const closeButton = Array.from(
+      byTestId("dialog-listening-script-generator").querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Close"));
+    expect(closeButton).toBeTruthy();
+    await act(async () => closeButton!.click());
+    await act(async () => byTestId("button-open-listening-script-generator").click());
+
+    const regenerate = byTestId("button-regenerate-listening-script") as HTMLButtonElement;
+    expect(regenerate.disabled).toBe(true);
+    expect(regenerate.textContent).toBe("Regenerate");
+    regenerate.click();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/api/listening-script/generate"))).toHaveLength(1);
+
+    await act(async () => secondPrice.resolve(response({ effectiveCost: 4_500, creditsEnabled: true })));
+    await settle();
+    expect(regenerate.disabled).toBe(false);
+    expect(regenerate.textContent).toContain("Regenerate · 4,500 Hasad credits");
+  });
+});
