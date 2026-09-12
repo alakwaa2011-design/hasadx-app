@@ -1369,12 +1369,15 @@ export default function ScheduleManagementPage() {
                       <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
                         <span className="flex items-center gap-2">
                           <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
-                          {isAr ? "مظهر الجدول" : "Table appearance"}
+                           {isAr ? "خيارات الجدول" : "Table options"}
                         </span>
                       </summary>
-                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex w-64 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-xl">
+                      <div
+                        className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex max-h-52 w-64 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 shadow-xl"
+                        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(34, 87, 57, 0.35) transparent" }}
+                      >
                         <span className="px-2 text-xs font-black text-muted-foreground">
-                          {isAr ? "مظهر الجدول" : "Table style"}
+                          {isAr ? "نمط الجدول" : "Table style"}
                         </span>
                         {SCHEDULE_TABLE_THEMES.map((theme) => (
                           <button
@@ -1393,7 +1396,7 @@ export default function ScheduleManagementPage() {
                           </button>
                         ))}
                         <span className="mt-1 border-t border-border px-2 pt-2 text-xs font-black text-muted-foreground">
-                          {isAr ? "بداية الجدول" : "Table direction"}
+                          {isAr ? "جهة الجدول" : "Table direction"}
                         </span>
                         <div className="flex flex-col rounded-xl bg-muted/50 p-1">
                           <button
