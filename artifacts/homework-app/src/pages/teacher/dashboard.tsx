@@ -3206,13 +3206,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       groupIcon: <Sparkles className="w-4 h-4" />,
       tools: [
         selectTool("/teacher/lesson-plans/create", { searchText: "مولد خطة الدرس lesson plan generator ai" }),
-        selectTool("/teacher/smart-board", {
-          title: isAr ? "الشرح الذكي" : "Smart Explanation",
-          desc: isAr
-            ? "اسأل عن أي موضوع واحصل على شرح مبسط وجاهز للعرض."
-            : "Ask about any topic and get a simple, presentation-ready explanation.",
-          searchText: "الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
-        }),
         selectTool("/teacher/worksheets/create", { searchText: "مولد ورقة العمل worksheet generator ai" }),
         selectTool("/teacher/new/assignment", { searchText: "مولد الأسئلة بالذكاء ai question generator" }),
         selectTool("/teacher/mindmap/create", {
@@ -3235,6 +3228,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
             ? "حوّل الفيديو إلى أسئلة وتفاعل أثناء المشاهدة."
             : "Turn a video into questions and interactions during viewing.",
           searchText: "درس فيديو تفاعلي أسئلة interactive video lesson questions",
+        }),
+        selectTool("/teacher/smart-board", {
+          title: isAr ? "الشرح الذكي" : "Smart Explanation",
+          desc: isAr
+            ? "اسأل عن أي موضوع واحصل على شرح مبسط وجاهز للعرض."
+            : "Ask about any topic and get a simple, presentation-ready explanation.",
+          searchText: "الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
         }),
         selectTool("/teacher/new/paper-grading", {
           title: isAr ? "تصحيح الأوراق بالذكاء" : "AI Paper Grading",
