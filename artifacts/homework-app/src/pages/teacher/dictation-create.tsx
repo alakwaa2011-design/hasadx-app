@@ -942,7 +942,7 @@ export default function DictationCreate() {
 
   return (
     <div
-      className="min-h-[100dvh] overflow-x-hidden pb-[calc(7.25rem+env(safe-area-inset-bottom))]"
+      className="min-h-[100dvh] overflow-x-hidden pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
       style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
       dir={dir}
     >
@@ -1176,14 +1176,15 @@ export default function DictationCreate() {
                   setGeneratorOpen(true);
                 }}
                 className={cn(
-                  "inline-flex min-h-[40px] shrink-0 items-center justify-center gap-2 rounded-xl border bg-white px-3.5 text-xs font-black text-[#1E4D35] hover:bg-[#f3f7f4]",
+                  "group inline-flex min-h-[52px] w-full shrink-0 items-center justify-center gap-3 rounded-2xl bg-[#1E4D35] px-5 text-sm font-black text-white shadow-[0_10px_24px_rgba(30,77,53,0.24)] hover:bg-[#173f2b] hover:shadow-[0_12px_28px_rgba(30,77,53,0.3)] active:scale-[0.99] sm:w-auto",
                   TRANSITION,
                 )}
-                style={{ borderColor: COLOR_CARD_BORDER }}
                 data-testid="button-open-listening-script-generator"
               >
-                <Sparkles className="h-4 w-4 text-[#D9A521]" />
-                {lang === "ar" ? "ولّد بالذكاء" : "Generate with AI"}
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/14 ring-1 ring-white/20">
+                  <Sparkles className="h-4 w-4 text-[#F4D36B] transition-transform duration-200 group-hover:rotate-6 group-hover:scale-110" />
+                </span>
+                <span>{lang === "ar" ? "أنشئ النص بالذكاء" : "Create script with AI"}</span>
               </button>
             </div>
 
@@ -2246,19 +2247,21 @@ export default function DictationCreate() {
 
       <footer
         className={cn(
-          "fixed bottom-0 inset-x-0 z-40 border-t bg-[#fcfdfc]/88 backdrop-blur-xl",
+          "mx-auto -mt-2 w-full max-w-[1100px] px-4 pb-4",
           TRANSITION,
         )}
-        style={{ borderColor: CARD_BORDER }}
         dir={dir}
       >
-        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-2 px-4 py-3 sm:justify-between sm:gap-3">
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-1">
+        <div
+          className="flex w-full flex-nowrap items-center gap-2 rounded-[22px] border bg-[#fcfdfc]/95 p-3 shadow-[0_10px_28px_rgba(15,40,28,0.08)] backdrop-blur-xl sm:gap-3"
+          style={{ borderColor: CARD_BORDER }}
+        >
+          <div className="flex min-w-0 flex-1 flex-nowrap gap-2">
             <button
               type="button"
               onClick={footerBack}
               className={cn(
-                "flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border bg-white px-4 text-sm font-black text-[#374151] hover:bg-[#f3f7f4] sm:flex-none",
+                "flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl border bg-white px-3 text-sm font-black text-[#374151] hover:bg-[#f3f7f4] sm:max-w-[150px]",
                 TRANSITION,
               )}
               style={{ borderColor: COLOR_CARD_BORDER }}
@@ -2269,7 +2272,7 @@ export default function DictationCreate() {
               type="button"
               onClick={saveDraftLocal}
               className={cn(
-                "flex min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-dashed px-4 text-sm font-bold text-[#64748B] hover:border-[#1E4D35]/25 hover:text-[#1E4D35] sm:flex-none",
+                "flex min-h-[44px] min-w-0 flex-1 items-center justify-center rounded-2xl border border-dashed px-3 text-sm font-bold text-[#64748B] hover:border-[#1E4D35]/25 hover:text-[#1E4D35] sm:max-w-[180px]",
                 TRANSITION,
               )}
               style={{ borderColor: CARD_BORDER }}
@@ -2277,34 +2280,37 @@ export default function DictationCreate() {
               {c.saveDraft}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={footerPrimaryAction}
-            disabled={createMutation.isPending}
-            className={cn(
-              "flex min-h-[44px] w-full min-w-[160px] flex-1 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-black text-white shadow-md hover:opacity-[0.97] active:scale-[0.99] disabled:opacity-50 sm:w-auto sm:flex-none",
-              TRANSITION,
-            )}
-            style={{
-              background: step === 4 ? `linear-gradient(90deg, ${BRAND} 0%, ${BRAND_MID} 100%)` : BRAND,
-              boxShadow: "0 8px 24px rgba(30, 77, 53, 0.22)",
-            }}
-          >
-            {step === 4 ? (
-              createMutation.isPending ? (
-                c.publishing
+          {(step !== 1 || title.trim()) && (
+            <button
+              type="button"
+              onClick={footerPrimaryAction}
+              disabled={createMutation.isPending}
+              className={cn(
+                "flex min-h-[44px] min-w-[128px] shrink-0 animate-in items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white shadow-md fade-in zoom-in-95 hover:opacity-[0.97] active:scale-[0.99] disabled:opacity-50 sm:min-w-[180px]",
+                TRANSITION,
+              )}
+              style={{
+                background: step === 4 ? `linear-gradient(90deg, ${BRAND} 0%, ${BRAND_MID} 100%)` : BRAND,
+                boxShadow: "0 10px 26px rgba(30, 77, 53, 0.28)",
+              }}
+              data-testid="button-listening-wizard-primary"
+            >
+              {step === 4 ? (
+                createMutation.isPending ? (
+                  c.publishing
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" /> {c.publish}
+                  </>
+                )
               ) : (
                 <>
-                  <Save className="h-4 w-4" /> {c.publish}
+                  {c.next}
+                  <ChevronLeft className="h-4 w-4" />
                 </>
-              )
-            ) : (
-              <>
-                {c.next}
-                <ChevronLeft className="h-4 w-4" />
-              </>
-            )}
-          </button>
+              )}
+            </button>
+          )}
         </div>
       </footer>
     </div>

@@ -16,6 +16,9 @@ describe("listening script generator contract", () => {
 
   it("generates inside the existing listening activity flow", () => {
     expect(source).toContain('data-testid="button-open-listening-script-generator"');
+    expect(source).toContain('"أنشئ النص بالذكاء"');
+    expect(source).toContain("min-h-[52px] w-full");
+    expect(source).toContain("bg-[#1E4D35]");
     expect(source).toContain('creditAwareFetch(`${API_BASE}/api/listening-script/generate`');
     expect(source).toContain('"x-idempotency-key": createClientRequestId()');
     expect(source).toContain("refreshCreditsBalance()");
@@ -30,5 +33,12 @@ describe("listening script generator contract", () => {
 
   it("keeps ambiguous-word diacritics as the default", () => {
     expect(source).toContain('useState<ScriptDiacritics>("ambiguous")');
+  });
+
+  it("places the action row after the card and reveals Next after entering a title", () => {
+    expect(source).not.toContain('"fixed bottom-0 inset-x-0');
+    expect(source).toContain("{(step !== 1 || title.trim()) && (");
+    expect(source).toContain('data-testid="button-listening-wizard-primary"');
+    expect(source).toContain("flex-nowrap items-center");
   });
 });
