@@ -2525,7 +2525,36 @@ function TopStudentRow({
 }
 export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }) {
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
+  const [hiddenScheduleDays, setHiddenScheduleDays] = useState<number[]>([]);
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!user?.id) {
+      setHiddenScheduleDays([]);
+      return;
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`hasaad_schedule_hidden_days_v1_${user.id}`) || "[]");
+      setHiddenScheduleDays(
+        Array.isArray(saved)
+          ? saved.filter((value): value is number => Number.isInteger(value) && value >= 0 && value <= 6)
+          : [],
+      );
+    } catch {
+      setHiddenScheduleDays([]);
+    }
+  }, [user?.id]);
+
+  const visibleScheduleDays = useMemo(() => {
+    const visibleDays = SCHEDULE_DAYS.filter((day) => !hiddenScheduleDays.includes(day.value));
+    return visibleDays.length > 0 ? visibleDays : SCHEDULE_DAYS;
+  }, [hiddenScheduleDays]);
+
+  useEffect(() => {
+    if (!visibleScheduleDays.some((day) => day.value === selectedDay)) {
+      setSelectedDay(visibleScheduleDays[0].value);
+    }
+  }, [selectedDay, visibleScheduleDays]);
 
   const scheduleQuery = useListTeacherSchedule({
     query: {
@@ -2698,13 +2727,13 @@ export function TeacherScheduleCard({ isAr, user }: { isAr: boolean; user: any }
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+               gridTemplateColumns: `repeat(${visibleScheduleDays.length}, minmax(0, 1fr))`,
               gap: 5,
               padding: "11px 12px 10px",
               borderBottom: `1px solid ${C.border}`,
             }}
           >
-            {SCHEDULE_DAYS.map((day) => {
+            {visibleScheduleDays.map((day) => {
               const count = entries.filter(
                 (entry) =>
                   (entry.kind === "weekly" || entry.kind === "break") &&

@@ -73,6 +73,7 @@ beforeEach(async () => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-13T09:00:00Z"));
+  localStorage.clear();
   bulkMutate.mockReset();
   deleteAllMutate.mockReset();
   scheduleRefetch.mockReset();
@@ -122,8 +123,8 @@ describe("TeacherScheduleCard full schedule drafts", () => {
       "Lesson 10",
     ]);
     expect([breakPositionLabel(1, true), breakPositionLabel(1, false)]).toEqual([
-      "الفترة الأولى",
-      "Period 1",
+      "بعد الحصة الأولى",
+      "After lesson 1",
     ]);
     expect([
       schedulePosition({ kind: "weekly", lessonNumber: 1 } as never),
@@ -199,6 +200,27 @@ describe("TeacherScheduleCard full schedule drafts", () => {
     await click("button-summary-schedule-day-1");
     expect(document.body.textContent).toContain("علوم");
     expect(document.body.textContent).not.toContain("رياضيات");
+  });
+
+  it("hides the teacher's disabled days from the dashboard schedule card", async () => {
+    await act(async () => root.unmount());
+    localStorage.setItem("hasaad_schedule_hidden_days_v1_101", JSON.stringify([5, 6]));
+    root = createRoot(container);
+    scheduleRows = SCHEDULE_DAYS.map((day) => ({
+      id: day.value + 1,
+      kind: "weekly",
+      title: `day-${day.value}`,
+      dayOfWeek: day.value,
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }));
+
+    await renderSchedule(true);
+
+    expect(button("button-summary-schedule-day-5")).toBeNull();
+    expect(button("button-summary-schedule-day-6")).toBeNull();
+    expect(document.querySelectorAll('[data-testid^="button-summary-schedule-day-"]')).toHaveLength(5);
   });
 
   it("shows sparse lessons, a non-lesson period, and the saved appointment after reopening", async () => {

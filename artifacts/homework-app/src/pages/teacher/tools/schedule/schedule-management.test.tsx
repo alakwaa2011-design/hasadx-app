@@ -313,8 +313,22 @@ describe("schedule management tool", () => {
 
     await click("button-schedule-appearance");
     await click("button-schedule-appearance-tab-options");
+    const themeSection = button("button-schedule-option-theme").closest("details") as HTMLDetailsElement;
+    const directionSection = button("button-schedule-option-direction").closest("details") as HTMLDetailsElement;
+    const daysSection = button("button-schedule-option-days").closest("details") as HTMLDetailsElement;
+    expect(themeSection.open).toBe(false);
+    expect(directionSection.open).toBe(false);
+    expect(daysSection.open).toBe(false);
+    await click("button-schedule-option-theme");
+    expect(themeSection.open).toBe(true);
     await click("button-schedule-theme-soft");
+    await click("button-schedule-option-theme");
+    expect(themeSection.open).toBe(false);
+    await click("button-schedule-option-direction");
+    expect(directionSection.open).toBe(true);
     await click("button-schedule-direction-ltr");
+    await click("button-schedule-option-direction");
+    expect(directionSection.open).toBe(false);
 
     expect(document.querySelector('[data-testid="schedule-week-grid"]')?.getAttribute("data-table-theme"))
       .toBe("soft");
@@ -333,6 +347,7 @@ describe("schedule management tool", () => {
 
     await click("button-schedule-appearance");
     await click("button-schedule-appearance-tab-options");
+    await click("button-schedule-option-days");
     expect(button("button-schedule-day-visibility-5").getAttribute("aria-checked")).toBe("true");
     expect(button("button-schedule-day-visibility-6").getAttribute("aria-checked")).toBe("true");
 
@@ -383,6 +398,28 @@ describe("schedule management tool", () => {
     await click("button-schedule-colors");
     await click("button-schedule-color-preset-0");
     expect(localStorage.getItem("hasaad_schedule_table_header_color_v1_7")).toBe("#D1FAE5");
+  });
+
+  it("lets the teacher color the complete days column", async () => {
+    scheduleRows = [{
+      id: 24,
+      kind: "weekly",
+      title: "رياضيات",
+      dayOfWeek: 0,
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }];
+    await renderPage();
+
+    await click("button-schedule-appearance");
+    await click("button-schedule-color-target-days");
+    await click("button-schedule-color-preset-0");
+
+    expect(JSON.parse(localStorage.getItem("hasaad_schedule_table_column_colors_v1_7") || "{}"))
+      .toMatchObject({ days: "#D1FAE5" });
+    const dayCell = document.querySelector('[data-testid="schedule-paper-day-0"] th') as HTMLElement;
+    expect(dayCell.style.backgroundColor).not.toBe("");
   });
 
   it("shows a break after its lesson in a separate grid column", async () => {

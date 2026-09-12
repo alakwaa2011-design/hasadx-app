@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import {
   Calendar, Coffee, Clock3, Trash2, Pencil, Image as ImageIcon, Plus, 
   UploadCloud, AlertTriangle, FileWarning, Loader2, ArrowRight, ArrowLeft,
-  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal, Palette, Check
+  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal, Palette, Check, ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -1821,11 +1821,24 @@ export default function ScheduleManagementPage() {
                                 <button
                                   type="button"
                                   onClick={() => selectColorTarget({ kind: "header", key: "header" })}
+                                  data-testid="button-schedule-color-target-header"
                                   className={`rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
                                     activeColorTarget?.kind === "header" ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200" : "bg-muted/30 text-muted-foreground hover:bg-muted"
                                   }`}
                                 >
                                   {isAr ? "رأس الجدول" : "Table header"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => selectColorTarget({ kind: "column", key: "days" })}
+                                  data-testid="button-schedule-color-target-days"
+                                  className={`rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                    activeColorTarget?.kind === "column" && activeColorTarget.key === "days"
+                                      ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                                      : "bg-muted/30 text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  {isAr ? "عمود الأيام" : "Days column"}
                                 </button>
                                 {paperScheduleDays.map(({ day }) => (
                                   <button
@@ -1895,13 +1908,17 @@ export default function ScheduleManagementPage() {
                             </div>
                           </div>
 
-                          <div className={`flex flex-col gap-4 ${appearanceTab === "options" ? "" : "hidden"}`}>
+                          <div className={`flex flex-col gap-2 ${appearanceTab === "options" ? "" : "hidden"}`}>
                             {viewMode === "week-grid" && (
-                              <div data-testid="schedule-table-theme-picker">
-                                <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
-                                  {isAr ? "نمط الجدول" : "Table style"}
-                                </div>
-                                <div className="flex flex-col gap-1.5">
+                              <details className="group overflow-hidden rounded-xl border border-border bg-muted/15" data-testid="schedule-table-theme-picker">
+                                <summary
+                                  className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-xs font-black text-foreground transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden"
+                                  data-testid="button-schedule-option-theme"
+                                >
+                                  <span>{isAr ? "نمط الجدول" : "Table style"}</span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div className="flex flex-col gap-1.5 border-t border-border p-2">
                                   {SCHEDULE_TABLE_THEMES.map((theme) => (
                                     <button
                                       key={theme.id}
@@ -1925,11 +1942,19 @@ export default function ScheduleManagementPage() {
                                     </button>
                                   ))}
                                 </div>
+                              </details>
+                            )}
 
-                                <div className="mt-4 mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
-                                  {isAr ? "اتجاه الجدول" : "Table direction"}
-                                </div>
-                                <div className="flex gap-1.5 bg-muted/30 p-1 rounded-xl">
+                            {viewMode === "week-grid" && (
+                              <details className="group overflow-hidden rounded-xl border border-border bg-muted/15">
+                                <summary
+                                  className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-xs font-black text-foreground transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden"
+                                  data-testid="button-schedule-option-direction"
+                                >
+                                  <span>{isAr ? "اتجاه الجدول" : "Table direction"}</span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div className="flex gap-1.5 border-t border-border bg-muted/20 p-2">
                                   <button
                                     type="button"
                                     onClick={() => chooseTableDirection("rtl")}
@@ -1951,17 +1976,22 @@ export default function ScheduleManagementPage() {
                                     {isAr ? "من اليسار" : "Left-to-right"}
                                   </button>
                                 </div>
-                              </div>
+                              </details>
                             )}
 
-                            <div className={viewMode === "week-grid" ? "border-t border-border pt-4" : ""}>
-                              <div className="mb-1 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
-                                {isAr ? "أيام الجدول" : "Schedule days"}
-                              </div>
-                              <p className="mb-3 px-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
-                                {isAr ? "أخفِ الأيام التي لا تريد ظهورها في جدولك." : "Hide days you do not want to show in your schedule."}
-                              </p>
-                              <div className="grid grid-cols-2 gap-1.5">
+                            <details className="group overflow-hidden rounded-xl border border-border bg-muted/15">
+                              <summary
+                                className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-xs font-black text-foreground transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden"
+                                data-testid="button-schedule-option-days"
+                              >
+                                <span>{isAr ? "أيام الجدول" : "Schedule days"}</span>
+                                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                              </summary>
+                              <div className="border-t border-border p-2">
+                                <p className="mb-2 px-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
+                                  {isAr ? "أخفِ الأيام التي لا تريد ظهورها في جدولك." : "Hide days you do not want to show in your schedule."}
+                                </p>
+                                <div className="grid grid-cols-2 gap-1.5">
                                 {SCHEDULE_DAYS.map((day) => {
                                   const isVisible = !hiddenScheduleDays.includes(day.value);
                                   const isLastVisibleDay = isVisible && visibleScheduleDays.length === 1;
@@ -1986,8 +2016,9 @@ export default function ScheduleManagementPage() {
                                     </button>
                                   );
                                 })}
+                                </div>
                               </div>
-                            </div>
+                            </details>
                           </div>
                         </div>
                       </div>
@@ -2133,7 +2164,7 @@ export default function ScheduleManagementPage() {
                         <thead>
                           <tr>
                             <th
-                              style={headerColor ? { backgroundColor: headerColor } : undefined}
+                              style={getHeaderColor("days") ? { backgroundColor: getHeaderColor("days"), color: scheduleColorTextColor(getHeaderColor("days")) } : undefined}
                               className={`group sticky start-0 z-20 w-28 px-2 py-3 ${tableTheme === "classic" ? "border border-border bg-emerald-800" : ""}`}
                               title={isAr ? "تغيير لون رأس الجدول" : "Change header row color"}
                             >
@@ -2224,7 +2255,7 @@ export default function ScheduleManagementPage() {
                             return (
                               <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top group">
                                 <th
-                                  style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)], color: scheduleColorTextColor(rowColors[String(day.value)]) } : undefined}
+                                  style={getCellColor(day.value, "days") ? { backgroundColor: getCellColor(day.value, "days"), color: scheduleColorTextColor(getCellColor(day.value, "days")) } : undefined}
                                   className={`group sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
                                 >
                                    <div className={`h-full min-h-[5rem] w-full flex items-center justify-center text-sm font-black transition-colors ${
@@ -2234,7 +2265,7 @@ export default function ScheduleManagementPage() {
                                          ? "rounded-lg border border-amber-200 bg-amber-100/80 text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
                                          : "rounded-none border-0 bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-300"
                                     }`}
-                                    style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)], color: scheduleColorTextColor(rowColors[String(day.value)]) } : undefined}
+                                     style={getCellColor(day.value, "days") ? { backgroundColor: getCellColor(day.value, "days"), color: scheduleColorTextColor(getCellColor(day.value, "days")) } : undefined}
                                   >
                                     <div className="flex items-center justify-center gap-1">
                                       <span>{isAr ? day.ar : day.en}</span>
