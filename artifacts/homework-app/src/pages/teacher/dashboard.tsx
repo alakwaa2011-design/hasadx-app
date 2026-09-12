@@ -94,7 +94,6 @@ import {
   Flame,
   ChevronRight,
   School,
-  Dices,
   Orbit,
   QrCode,
 } from "lucide-react";
@@ -3041,7 +3040,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           href: "/teacher/students",
         },
         {
-          icon: <Dices className="w-6 h-6" />,
+          icon: <WheelIcon size={24} />,
           title: isAr ? "عجلة اختيار الطلاب" : "Student Wheel",
           desc: isAr
             ? "أداة سريعة لاختيار طالب عشوائيًا من القائمة بإنصاف"
