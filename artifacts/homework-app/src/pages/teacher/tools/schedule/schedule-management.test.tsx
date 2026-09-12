@@ -422,6 +422,41 @@ describe("schedule management tool", () => {
     expect(dayCell.style.backgroundColor).not.toBe("");
   });
 
+  it("lets the teacher hide other periods and add or remove empty lesson columns", async () => {
+    scheduleRows = [{
+      id: 25,
+      kind: "weekly",
+      title: "رياضيات",
+      dayOfWeek: 0,
+      lessonNumber: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    }];
+    await renderPage();
+
+    expect(button("button-rename-other-periods-column")).not.toBeNull();
+    expect(button("button-rename-lesson-column-2")).toBeNull();
+
+    await click("button-schedule-appearance");
+    await click("button-schedule-appearance-tab-options");
+    const columnsSection = button("button-schedule-option-columns").closest("details") as HTMLDetailsElement;
+    expect(columnsSection.open).toBe(false);
+    await click("button-schedule-option-columns");
+    expect(columnsSection.open).toBe(true);
+
+    await click("button-toggle-other-periods-column");
+    expect(button("button-rename-other-periods-column")).toBeNull();
+    expect(localStorage.getItem("hasaad_schedule_show_other_periods_v1_7")).toBe("0");
+
+    await click("button-add-schedule-lesson-column");
+    expect(button("button-rename-lesson-column-2")).not.toBeNull();
+    expect(localStorage.getItem("hasaad_schedule_min_lesson_columns_v1_7")).toBe("2");
+
+    await click("button-remove-last-empty-schedule-column");
+    expect(button("button-rename-lesson-column-2")).toBeNull();
+    expect(localStorage.getItem("hasaad_schedule_min_lesson_columns_v1_7")).toBe("1");
+  });
+
   it("shows a break after its lesson in a separate grid column", async () => {
     scheduleRows = [
       { id: 30, kind: "weekly", title: "5A", dayOfWeek: 0, lessonNumber: 3, startTime: "09:20", endTime: "10:05" },

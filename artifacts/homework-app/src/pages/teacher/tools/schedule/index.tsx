@@ -723,6 +723,8 @@ export default function ScheduleManagementPage() {
   const [rowColors, setRowColors] = useState<Record<string, ScheduleColor>>({});
   const [headerColor, setHeaderColor] = useState<ScheduleColor | undefined>();
   const [hiddenScheduleDays, setHiddenScheduleDays] = useState<number[]>([]);
+  const [minimumLessonColumns, setMinimumLessonColumns] = useState(0);
+  const [showOtherPeriodsColumn, setShowOtherPeriodsColumn] = useState(true);
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
   const [customPickerOpen, setCustomPickerOpen] = useState(false);
   const [customPreviewColor, setCustomPreviewColor] = useState<string | null>(null);
@@ -787,6 +789,15 @@ export default function ScheduleManagementPage() {
     } catch {
       setHiddenScheduleDays([]);
     }
+    const savedMinimumColumns = Number(localStorage.getItem(`hasaad_schedule_min_lesson_columns_v1_${user.id}`));
+    setMinimumLessonColumns(
+      Number.isInteger(savedMinimumColumns) && savedMinimumColumns >= 0 && savedMinimumColumns <= 20
+        ? savedMinimumColumns
+        : 0,
+    );
+    setShowOtherPeriodsColumn(
+      localStorage.getItem(`hasaad_schedule_show_other_periods_v1_${user.id}`) !== "0",
+    );
   }, [user?.id]);
 
   useEffect(() => {
@@ -1132,16 +1143,45 @@ export default function ScheduleManagementPage() {
       })),
     [entries, visibleGridDays],
   );
-  const paperLessonNumbers = useMemo(() => {
-    const highestLesson = entries.reduce(
+  const highestScheduledLesson = useMemo(
+    () => entries.reduce(
       (highest, entry) =>
         entry.kind === "weekly" && entry.lessonNumber
           ? Math.max(highest, entry.lessonNumber)
           : highest,
       0,
-    );
-    return Array.from({ length: highestLesson }, (_, index) => index + 1);
-  }, [entries]);
+    ),
+    [entries],
+  );
+  const paperLessonNumbers = useMemo(
+    () => Array.from(
+      { length: Math.max(highestScheduledLesson, minimumLessonColumns) },
+      (_, index) => index + 1,
+    ),
+    [highestScheduledLesson, minimumLessonColumns],
+  );
+  const addLessonColumn = () => {
+    const nextCount = Math.min(20, Math.max(highestScheduledLesson, minimumLessonColumns) + 1);
+    setMinimumLessonColumns(nextCount);
+    if (user?.id) {
+      localStorage.setItem(`hasaad_schedule_min_lesson_columns_v1_${user.id}`, String(nextCount));
+    }
+  };
+  const removeLastEmptyLessonColumn = () => {
+    if (minimumLessonColumns <= highestScheduledLesson) return;
+    const nextCount = minimumLessonColumns - 1;
+    setMinimumLessonColumns(nextCount);
+    if (user?.id) {
+      localStorage.setItem(`hasaad_schedule_min_lesson_columns_v1_${user.id}`, String(nextCount));
+    }
+  };
+  const toggleOtherPeriodsColumn = () => {
+    const nextValue = !showOtherPeriodsColumn;
+    setShowOtherPeriodsColumn(nextValue);
+    if (user?.id) {
+      localStorage.setItem(`hasaad_schedule_show_other_periods_v1_${user.id}`, nextValue ? "1" : "0");
+    }
+  };
   const paperBreakPositions = useMemo(
     () =>
       new Set(
@@ -1882,17 +1922,19 @@ export default function ScheduleManagementPage() {
                                     {isAr ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}` : `After lesson ${lessonNumber}`}
                                   </button>
                                 ))}
-                                <button
-                                  type="button"
-                                  onClick={() => selectColorTarget({ kind: "column", key: "other-periods" })}
-                                  className={`col-span-full rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
-                                    activeColorTarget?.kind === "column" && activeColorTarget.key === "other-periods"
-                                      ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
-                                      : "bg-muted/30 text-muted-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  {isAr ? "فترات أخرى" : "Other periods"}
-                                </button>
+                                {showOtherPeriodsColumn && (
+                                  <button
+                                    type="button"
+                                    onClick={() => selectColorTarget({ kind: "column", key: "other-periods" })}
+                                    className={`col-span-full rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                      activeColorTarget?.kind === "column" && activeColorTarget.key === "other-periods"
+                                        ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                                        : "bg-muted/30 text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    {isAr ? "فترات أخرى" : "Other periods"}
+                                  </button>
+                                )}
                               </div>
 
                               <button
@@ -2019,6 +2061,63 @@ export default function ScheduleManagementPage() {
                                 </div>
                               </div>
                             </details>
+
+                            {viewMode === "week-grid" && (
+                              <details className="group overflow-hidden rounded-xl border border-border bg-muted/15">
+                                <summary
+                                  className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-xs font-black text-foreground transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden"
+                                  data-testid="button-schedule-option-columns"
+                                >
+                                  <span>{isAr ? "إدارة الأعمدة" : "Manage columns"}</span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                                </summary>
+                                <div className="space-y-2 border-t border-border p-2">
+                                  <button
+                                    type="button"
+                                    onClick={addLessonColumn}
+                                    disabled={paperLessonNumbers.length >= 20}
+                                    data-testid="button-add-schedule-lesson-column"
+                                    className="flex w-full items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    <span>{isAr ? "إضافة عمود حصة" : "Add lesson column"}</span>
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={removeLastEmptyLessonColumn}
+                                    disabled={minimumLessonColumns <= highestScheduledLesson}
+                                    data-testid="button-remove-last-empty-schedule-column"
+                                    className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+                                  >
+                                    <span>{isAr ? "حذف آخر عمود حصة فارغ" : "Remove last empty lesson column"}</span>
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={toggleOtherPeriodsColumn}
+                                    data-testid="button-toggle-other-periods-column"
+                                    aria-pressed={showOtherPeriodsColumn}
+                                    className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                                      showOtherPeriodsColumn
+                                        ? "border-border bg-card text-muted-foreground hover:bg-muted"
+                                        : "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                    }`}
+                                  >
+                                    <span>
+                                      {showOtherPeriodsColumn
+                                        ? (isAr ? "إخفاء عمود فترات أخرى" : "Hide other periods column")
+                                        : (isAr ? "إظهار عمود فترات أخرى" : "Show other periods column")}
+                                    </span>
+                                    {showOtherPeriodsColumn ? <Trash2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                  </button>
+                                  <p className="px-1 text-[10px] leading-relaxed text-muted-foreground">
+                                    {isAr
+                                      ? "إخفاء العمود لا يحذف الفترات المحفوظة، ويمكن إظهاره لاحقًا."
+                                      : "Hiding the column does not delete saved periods, and you can show it again later."}
+                                  </p>
+                                </div>
+                              </details>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2159,7 +2258,7 @@ export default function ScheduleManagementPage() {
                               ? "border-separate border-spacing-1"
                               : "border-separate border-spacing-2"
                         }`}
-                        style={{ minWidth: `${Math.max(760, (paperLessonNumbers.length + paperBreakPositions.size + 2) * 112)}px` }}
+                        style={{ minWidth: `${Math.max(760, (paperLessonNumbers.length + paperBreakPositions.size + (showOtherPeriodsColumn ? 2 : 1)) * 112)}px` }}
                       >
                         <thead>
                           <tr>
@@ -2225,26 +2324,28 @@ export default function ScheduleManagementPage() {
                                 )}
                               </Fragment>
                             ))}
-                            <th
-                              style={getHeaderColor("other-periods") ? { backgroundColor: getHeaderColor("other-periods"), color: scheduleColorTextColor(getHeaderColor("other-periods")) } : undefined}
-                              className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
-                              tableTheme === "classic"
-                                ? "border border-border bg-amber-700 text-white"
-                                : "text-amber-900/60 dark:text-amber-100/60"
-                              }`}
-                            >
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => openColumnLabelEditor("other-periods", isAr ? "فترات أخرى" : "Other periods")}
-                                  className="min-w-0 flex-1 rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
-                                  title={isAr ? "تغيير اسم العمود" : "Rename column"}
-                                  data-testid="button-rename-other-periods-column"
-                                >
-                                  {columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods")}
-                                </button>
-                              </div>
-                            </th>
+                            {showOtherPeriodsColumn && (
+                              <th
+                                style={getHeaderColor("other-periods") ? { backgroundColor: getHeaderColor("other-periods"), color: scheduleColorTextColor(getHeaderColor("other-periods")) } : undefined}
+                                className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                                tableTheme === "classic"
+                                  ? "border border-border bg-amber-700 text-white"
+                                  : "text-amber-900/60 dark:text-amber-100/60"
+                                }`}
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => openColumnLabelEditor("other-periods", isAr ? "فترات أخرى" : "Other periods")}
+                                    className="min-w-0 flex-1 rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                    title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                    data-testid="button-rename-other-periods-column"
+                                  >
+                                    {columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods")}
+                                  </button>
+                                </div>
+                              </th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -2364,17 +2465,18 @@ export default function ScheduleManagementPage() {
                                     </Fragment>
                                   );
                                 })}
-                                <td
-                                  style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods"), color: scheduleColorTextColor(getCellColor(day.value, "other-periods")) } : undefined}
-                                  className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
-                                >
-                                  <div
+                                {showOtherPeriodsColumn && (
+                                  <td
                                     style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods"), color: scheduleColorTextColor(getCellColor(day.value, "other-periods")) } : undefined}
-                                    className={`flex min-h-[5rem] h-full flex-col gap-2 p-1.5 ${
-                                    tableTheme === "classic"
-                                      ? "rounded-none border-0 bg-amber-50/60 dark:bg-amber-900/10"
-                                      : "rounded-2xl border border-amber-100/50 bg-amber-50/30 shadow-sm dark:border-amber-900/20 dark:bg-amber-900/10"
-                                  }`}>
+                                    className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
+                                  >
+                                    <div
+                                      style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods"), color: scheduleColorTextColor(getCellColor(day.value, "other-periods")) } : undefined}
+                                      className={`flex min-h-[5rem] h-full flex-col gap-2 p-1.5 ${
+                                      tableTheme === "classic"
+                                        ? "rounded-none border-0 bg-amber-50/60 dark:bg-amber-900/10"
+                                        : "rounded-2xl border border-amber-100/50 bg-amber-50/30 shadow-sm dark:border-amber-900/20 dark:bg-amber-900/10"
+                                    }`}>
                                     {unplacedBreaks.length === 0 && (
                                       <div className="absolute inset-2 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
@@ -2405,8 +2507,9 @@ export default function ScheduleManagementPage() {
                                         </button>
                                       );
                                     })}
-                                  </div>
-                                </td>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
