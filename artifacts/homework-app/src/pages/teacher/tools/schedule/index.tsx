@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import {
   Calendar, Coffee, Clock3, Trash2, Pencil, Image as ImageIcon, Plus, 
   UploadCloud, AlertTriangle, FileWarning, Loader2, ArrowRight, ArrowLeft,
-  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal
+  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal, Palette, Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -351,6 +351,57 @@ const SCHEDULE_TABLE_THEMES = [
   { id: "notebook" as const, ar: "دفتر", en: "Notebook", swatches: ["#FFFBEB", "#FFEDD5", "#E7E5E4"] },
 ];
 
+type ScheduleColor = (typeof SCHEDULE_COLORS)[number]["value"];
+type ScheduleColorTargetKind = "column" | "row";
+
+function ScheduleColorPopover({
+  isAr,
+  selectedColor,
+  onSelect,
+}: {
+  isAr: boolean;
+  selectedColor?: ScheduleColor;
+  onSelect: (color?: ScheduleColor) => void;
+}) {
+  return (
+    <div
+      role="menu"
+      className="absolute end-0 top-[calc(100%+0.35rem)] z-[70] w-44 rounded-2xl border border-border bg-card p-2 shadow-xl"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="mb-2 px-1 text-[10px] font-black text-muted-foreground">
+        {isAr ? "اختر لونًا" : "Choose a color"}
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {SCHEDULE_COLORS.map((color) => (
+          <button
+            key={color.value}
+            type="button"
+            role="menuitem"
+            aria-label={`${isAr ? "لون " : ""}${color.label}`}
+            title={color.label}
+            onClick={() => onSelect(color.value)}
+            className={`relative flex h-8 items-center justify-center rounded-lg border transition-transform hover:scale-105 ${
+              selectedColor === color.value ? "border-emerald-800 ring-2 ring-emerald-300/60" : "border-black/10"
+            }`}
+            style={{ backgroundColor: color.value }}
+          >
+            {selectedColor === color.value && <Check className="h-4 w-4 text-emerald-950" strokeWidth={3} />}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => onSelect(undefined)}
+        className="mt-2 flex w-full items-center justify-center rounded-lg border border-border px-2 py-1.5 text-[10px] font-bold text-muted-foreground transition-colors hover:bg-muted"
+      >
+        {isAr ? "إزالة اللون" : "Remove color"}
+      </button>
+    </div>
+  );
+}
+
 const C = {
   green: "#1E4D35",
   greenPale: "rgba(30,77,53,0.07)",
@@ -503,6 +554,9 @@ export default function ScheduleManagementPage() {
   const [timerSettingsOpen, setTimerSettingsOpen] = useState(false);
   const [tableTheme, setTableTheme] = useState<ScheduleTableTheme>("classic");
   const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
+  const [columnColors, setColumnColors] = useState<Record<string, ScheduleColor>>({});
+  const [rowColors, setRowColors] = useState<Record<string, ScheduleColor>>({});
+  const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
   const viewMenuRef = useRef<HTMLDetailsElement>(null);
   const themeMenuRef = useRef<HTMLDetailsElement>(null);
   const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
@@ -523,6 +577,9 @@ export default function ScheduleManagementPage() {
       if (!themeMenuRef.current?.contains(target)) {
         themeMenuRef.current?.removeAttribute("open");
       }
+      if (!(target instanceof Element) || !target.closest("[data-schedule-color-control]")) {
+        setActiveColorTarget(null);
+      }
     };
 
     document.addEventListener("pointerdown", closeMenusOnOutsideClick);
@@ -539,6 +596,19 @@ export default function ScheduleManagementPage() {
     if (savedDirection === "rtl" || savedDirection === "ltr") {
       setTableDirection(savedDirection);
     }
+    const readColorMap = (storageKey: string) => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+        return Object.fromEntries(
+          Object.entries(parsed).filter(([, value]) => SCHEDULE_COLORS.some((color) => color.value === value)),
+        ) as Record<string, ScheduleColor>;
+      } catch {
+        return {};
+      }
+    };
+    setColumnColors(readColorMap(`hasaad_schedule_table_column_colors_v1_${user.id}`));
+    setRowColors(readColorMap(`hasaad_schedule_table_row_colors_v1_${user.id}`));
   }, [user?.id]);
 
   useEffect(() => {
@@ -589,6 +659,55 @@ export default function ScheduleManagementPage() {
       localStorage.setItem(`hasaad_schedule_table_direction_v1_${user.id}`, direction);
     }
   }
+
+  function chooseTableColor(kind: ScheduleColorTargetKind, key: string, color?: ScheduleColor) {
+    const current = kind === "column" ? columnColors : rowColors;
+    const next = { ...current };
+    if (color) next[key] = color;
+    else delete next[key];
+    if (kind === "column") setColumnColors(next);
+    else setRowColors(next);
+    if (user?.id) {
+      localStorage.setItem(
+        `hasaad_schedule_table_${kind === "column" ? "column" : "row"}_colors_v1_${user.id}`,
+        JSON.stringify(next),
+      );
+    }
+    setActiveColorTarget(null);
+  }
+
+  function renderColorControl(kind: ScheduleColorTargetKind, key: string, label: string) {
+    const selectedColor = kind === "column" ? columnColors[key] : rowColors[key];
+    const isOpen = activeColorTarget?.kind === kind && activeColorTarget.key === key;
+    return (
+      <span className="relative inline-flex" data-schedule-color-control>
+        <button
+          type="button"
+          aria-label={isAr ? `تغيير لون ${label}` : `Change ${label} color`}
+          aria-expanded={isOpen}
+          title={isAr ? `تغيير لون ${label}` : `Change ${label} color`}
+          onClick={(event) => {
+            event.stopPropagation();
+            setActiveColorTarget(isOpen ? null : { kind, key });
+          }}
+          className={`inline-flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${
+            selectedColor ? "bg-white/80 text-emerald-800 shadow-sm" : "text-current/45 hover:bg-white/15 hover:text-current"
+          }`}
+        >
+          <Palette className="h-3.5 w-3.5" />
+        </button>
+        {isOpen && (
+          <ScheduleColorPopover
+            isAr={isAr}
+            selectedColor={selectedColor}
+            onSelect={(color) => chooseTableColor(kind, key, color)}
+          />
+        )}
+      </span>
+    );
+  }
+
+  const getCellColor = (dayValue: number, columnKey: string) => rowColors[String(dayValue)] || columnColors[columnKey];
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
@@ -1575,23 +1694,30 @@ export default function ScheduleManagementPage() {
                             <th className={`sticky start-0 z-20 w-28 px-2 py-3 ${tableTheme === "classic" ? "border border-border bg-emerald-800" : ""}`}></th>
                             {paperLessonNumbers.map((lessonNumber) => (
                               <Fragment key={lessonNumber}>
-                                <th className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                                  <th
+                                    style={columnColors[`lesson-${lessonNumber}`] ? { backgroundColor: columnColors[`lesson-${lessonNumber}`], color: "#13201A" } : undefined}
+                                    className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
                                   tableTheme === "classic"
                                     ? "border border-border bg-emerald-800 text-white"
                                     : "text-emerald-900/60 dark:text-emerald-100/60"
-                                }`}>
-                                  <button
-                                    type="button"
-                                    onClick={() => openColumnLabelEditor(`lesson-${lessonNumber}`, lessonNumberLabel(lessonNumber, isAr))}
-                                    className="w-full rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
-                                    title={isAr ? "تغيير اسم العمود" : "Rename column"}
-                                    data-testid={`button-rename-lesson-column-${lessonNumber}`}
+                                  }`}
                                   >
-                                    {columnLabels[`lesson-${lessonNumber}`] || lessonNumberLabel(lessonNumber, isAr)}
-                                  </button>
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => openColumnLabelEditor(`lesson-${lessonNumber}`, lessonNumberLabel(lessonNumber, isAr))}
+                                        className="min-w-0 flex-1 rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                        title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                        data-testid={`button-rename-lesson-column-${lessonNumber}`}
+                                      >
+                                        {columnLabels[`lesson-${lessonNumber}`] || lessonNumberLabel(lessonNumber, isAr)}
+                                      </button>
+                                      {renderColorControl("column", `lesson-${lessonNumber}`, columnLabels[`lesson-${lessonNumber}`] || lessonNumberLabel(lessonNumber, isAr))}
+                                    </div>
                                 </th>
                                 {paperBreakPositions.has(lessonNumber) && (
                                   <th
+                                    style={columnColors[`break-${lessonNumber}`] ? { backgroundColor: columnColors[`break-${lessonNumber}`], color: "#13201A" } : undefined}
                                     className={`w-28 px-2 py-3 text-xs font-black ${
                                       tableTheme === "classic"
                                         ? "border border-border bg-amber-700 text-white"
@@ -1599,40 +1725,51 @@ export default function ScheduleManagementPage() {
                                     }`}
                                     data-testid={`schedule-break-column-${lessonNumber}`}
                                   >
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const defaultLabel = isAr
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const defaultLabel = isAr
+                                            ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
+                                            : `After lesson ${lessonNumber}`;
+                                          openColumnLabelEditor(`break-${lessonNumber}`, defaultLabel);
+                                        }}
+                                        className="min-w-0 flex-1 rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                        title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                        data-testid={`button-rename-break-column-${lessonNumber}`}
+                                      >
+                                        {columnLabels[`break-${lessonNumber}`] || (isAr
                                           ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
-                                          : `After lesson ${lessonNumber}`;
-                                        openColumnLabelEditor(`break-${lessonNumber}`, defaultLabel);
-                                      }}
-                                      className="w-full rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
-                                      title={isAr ? "تغيير اسم العمود" : "Rename column"}
-                                      data-testid={`button-rename-break-column-${lessonNumber}`}
-                                    >
-                                      {columnLabels[`break-${lessonNumber}`] || (isAr
+                                          : `After lesson ${lessonNumber}`)}
+                                      </button>
+                                      {renderColorControl("column", `break-${lessonNumber}`, columnLabels[`break-${lessonNumber}`] || (isAr
                                         ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}`
-                                        : `After lesson ${lessonNumber}`)}
-                                    </button>
+                                        : `After lesson ${lessonNumber}`))}
+                                    </div>
                                   </th>
                                 )}
                               </Fragment>
                             ))}
-                            <th className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
+                            <th
+                              style={columnColors["other-periods"] ? { backgroundColor: columnColors["other-periods"], color: "#13201A" } : undefined}
+                              className={`px-2 py-3 text-sm font-black uppercase tracking-wider ${
                               tableTheme === "classic"
                                 ? "border border-border bg-amber-700 text-white"
                                 : "text-amber-900/60 dark:text-amber-100/60"
-                            }`}>
-                              <button
-                                type="button"
-                                onClick={() => openColumnLabelEditor("other-periods", isAr ? "فترات أخرى" : "Other periods")}
-                                className="w-full rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
-                                title={isAr ? "تغيير اسم العمود" : "Rename column"}
-                                data-testid="button-rename-other-periods-column"
-                              >
-                                {columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods")}
-                              </button>
+                              }`}
+                            >
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openColumnLabelEditor("other-periods", isAr ? "فترات أخرى" : "Other periods")}
+                                  className="min-w-0 flex-1 rounded-lg px-1 py-1 transition-colors hover:bg-white/15"
+                                  title={isAr ? "تغيير اسم العمود" : "Rename column"}
+                                  data-testid="button-rename-other-periods-column"
+                                >
+                                  {columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods")}
+                                </button>
+                                {renderColorControl("column", "other-periods", columnLabels["other-periods"] || (isAr ? "فترات أخرى" : "Other periods"))}
+                              </div>
                             </th>
                           </tr>
                         </thead>
@@ -1643,15 +1780,23 @@ export default function ScheduleManagementPage() {
                             );
                             return (
                               <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top group">
-                                <th className={`sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}>
+                                <th
+                                  style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)] } : undefined}
+                                  className={`sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
+                                >
                                    <div className={`h-full min-h-[5rem] w-full flex items-center justify-center text-sm font-black transition-colors ${
                                      tableTheme === "soft"
                                        ? "rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                                        : tableTheme === "notebook"
                                          ? "rounded-lg border border-amber-200 bg-amber-100/80 text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
                                          : "rounded-none border-0 bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-300"
-                                   }`}>
-                                    {isAr ? day.ar : day.en}
+                                    }`}
+                                    style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)] } : undefined}
+                                  >
+                                    <div className="flex items-center justify-center gap-1">
+                                      <span>{isAr ? day.ar : day.en}</span>
+                                      {renderColorControl("row", String(day.value), isAr ? day.ar : day.en)}
+                                    </div>
                                   </div>
                                 </th>
                                 {paperLessonNumbers.map((lessonNumber) => {
@@ -1664,8 +1809,13 @@ export default function ScheduleManagementPage() {
                                   );
                                   return (
                                     <Fragment key={lessonNumber}>
-                                      <td className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}>
-                                         <div className={`flex min-h-[5rem] h-full flex-col gap-2 border p-1.5 ${
+                                     <td
+                                       style={getCellColor(day.value, `lesson-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `lesson-${lessonNumber}`) } : undefined}
+                                       className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
+                                     >
+                                         <div
+                                           style={getCellColor(day.value, `lesson-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `lesson-${lessonNumber}`) } : undefined}
+                                           className={`flex min-h-[5rem] h-full flex-col gap-2 border p-1.5 ${
                                            tableTheme === "soft"
                                              ? "rounded-2xl border-slate-200 bg-slate-100/80 dark:border-slate-700 dark:bg-slate-800/70"
                                              : tableTheme === "notebook"
@@ -1707,8 +1857,13 @@ export default function ScheduleManagementPage() {
                                         </div>
                                       </td>
                                       {paperBreakPositions.has(lessonNumber) && (
-                                        <td className={`relative ${tableTheme === "classic" ? "border border-border bg-amber-50/50 p-0 dark:bg-amber-900/10" : "p-2"}`}>
-                                          <div className={`flex h-full min-h-[5rem] flex-col gap-2 p-1.5 ${
+                                         <td
+                                           style={getCellColor(day.value, `break-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `break-${lessonNumber}`) } : undefined}
+                                           className={`relative ${tableTheme === "classic" ? "border border-border bg-amber-50/50 p-0 dark:bg-amber-900/10" : "p-2"}`}
+                                         >
+                                           <div
+                                             style={getCellColor(day.value, `break-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `break-${lessonNumber}`) } : undefined}
+                                             className={`flex h-full min-h-[5rem] flex-col gap-2 p-1.5 ${
                                             tableTheme === "classic" ? "" : "rounded-2xl border border-amber-100/60 bg-amber-50/40"
                                           }`}>
                                             {breakEntries.map((entry) => {
@@ -1736,8 +1891,13 @@ export default function ScheduleManagementPage() {
                                     </Fragment>
                                   );
                                 })}
-                                <td className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}>
-                                  <div className={`flex min-h-[5rem] h-full flex-col gap-2 p-1.5 ${
+                                <td
+                                  style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods") } : undefined}
+                                  className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
+                                >
+                                  <div
+                                    style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods") } : undefined}
+                                    className={`flex min-h-[5rem] h-full flex-col gap-2 p-1.5 ${
                                     tableTheme === "classic"
                                       ? "rounded-none border-0 bg-amber-50/60 dark:bg-amber-900/10"
                                       : "rounded-2xl border border-amber-100/50 bg-amber-50/30 shadow-sm dark:border-amber-900/20 dark:bg-amber-900/10"
