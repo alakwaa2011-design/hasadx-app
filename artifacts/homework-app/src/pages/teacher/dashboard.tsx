@@ -3178,16 +3178,23 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         selectTool("/teacher/rewards", {
           searchText: "لوحة التحفيز نقاط الطلاب rewards board adventure points students",
         }),
-        selectTool("/teacher/tools/timer", {
-          title: isAr ? "مؤقت الحصة" : "Class Timer",
-          searchText: "مؤقت الحصة ساعة الإيقاف timer stopwatch class",
-        }),
         selectTool("/teacher/student-wheel", {
           title: isAr ? "عجلة اختيار المشاركين" : "Participant Wheel",
           desc: isAr
             ? "اختر مشاركًا عشوائيًا بطريقة ممتعة."
             : "Choose a random participant in a fun way.",
           searchText: "عجلة اختيار المشاركين الطلاب participant student wheel random",
+        }),
+        selectTool("/teacher/tools/timer", {
+          title: isAr ? "مؤقت الحصة" : "Class Timer",
+          searchText: "مؤقت الحصة ساعة الإيقاف timer stopwatch class",
+        }),
+        selectTool("/teacher/tools/url-qr", {
+          title: isAr ? "إنشاء رمز QR" : "Create QR Code",
+          desc: isAr
+            ? "حوّل رابطًا أو نصًا إلى رمز QR لطلابك."
+            : "Turn a link or text into a QR code for your students.",
+          searchText: "إنشاء رمز QR باركود رابط نص create code link text",
         }),
       ],
     },
@@ -3200,6 +3207,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       groupIcon: <Sparkles className="w-4 h-4" />,
       tools: [
         selectTool("/teacher/lesson-plans/create", { searchText: "مولد خطة الدرس lesson plan generator ai" }),
+        selectTool("/teacher/smart-board", {
+          title: isAr ? "الشرح الذكي" : "Smart Explanation",
+          desc: isAr
+            ? "اسأل عن أي موضوع واحصل على شرح مبسط وجاهز للعرض."
+            : "Ask about any topic and get a simple, presentation-ready explanation.",
+          searchText: "الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
+        }),
         selectTool("/teacher/worksheets/create", { searchText: "مولد ورقة العمل worksheet generator ai" }),
         selectTool("/teacher/new/assignment", { searchText: "مولد الأسئلة بالذكاء ai question generator" }),
         selectTool("/teacher/mindmap/create", {
@@ -3227,13 +3241,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           title: isAr ? "تصحيح الأوراق بالذكاء" : "AI Paper Grading",
           searchText: "تصحيح الأوراق بالذكاء الاصطناعي ai paper grading",
         }),
-        selectTool("/teacher/smart-board", {
-          title: isAr ? "الشرح الذكي" : "Smart Explanation",
-          desc: isAr
-            ? "اسأل عن أي موضوع واحصل على شرح مبسط وجاهز للعرض."
-            : "Ask about any topic and get a simple, presentation-ready explanation.",
-          searchText: "الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
-        }),
       ],
     },
     {
@@ -3258,8 +3265,8 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       groupDesc: undefined,
       groupIcon: <Database className="w-4 h-4" />,
       tools: [
-        selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
         selectTool("/teacher/library", { searchText: "مكتبة المعلم teacher library resources" }),
+        selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
       ],
     },
     {
@@ -3272,18 +3279,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       tools: [
         selectTool("/teacher/classroom", { searchText: "Google Classroom جوجل كلاس روم تكامل" }),
         selectTool("/teacher/teams", { searchText: "Microsoft Teams مايكروسوفت تيمز تكامل" }),
-      ],
-    },
-    {
-      groupId: "other",
-      groupTitle: isAr ? "أدوات أخرى" : "Other Tools",
-      groupDesc: undefined,
-      groupIcon: <QrCode className="w-4 h-4" />,
-      tools: [
-        selectTool("/teacher/tools/url-qr", {
-          title: isAr ? "إنشاء رمز QR" : "Create QR Code",
-          searchText: "إنشاء رمز QR باركود رابط نص create code link text",
-        }),
       ],
     },
   ].map((group) => ({ ...group, tools: group.tools.filter(Boolean) as any[] }));
@@ -3305,7 +3300,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
 
   return (
     <div className="space-y-7 sm:space-y-8" data-testid="teacher-tools-page">
-      <div className="space-y-4 px-1">
+      <div className="flex flex-col gap-4 px-1 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-foreground leading-tight">
             {isAr ? "أدوات حصاد" : "Hasaad Tools"}
@@ -3316,7 +3311,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
               : "Create, manage, and deliver a more interactive class from one place."}
           </p>
         </div>
-        <label className="flex h-11 max-w-xl items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10">
+        <label className="flex h-11 w-full items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5 shadow-sm focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 md:w-[320px] md:shrink-0">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             type="search"
