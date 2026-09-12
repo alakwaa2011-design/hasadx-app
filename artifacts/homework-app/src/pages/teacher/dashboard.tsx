@@ -3000,7 +3000,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         },
         {
           icon: <School className="w-6 h-6" />,
-          title: isAr ? "الشرح الذكي" : "Smart Explanation",
+          title: isAr ? "أداة الشرح الذكي" : "Smart Explanation Tool",
           desc: isAr
             ? "اطرح سؤالاً أو اكتب معلومة أو طلباً وسيعرضه الذكاء الاصطناعي على السبورة أمام طلابك"
             : "Ask a question, share information, or make a request — AI displays it on the board for your class",
@@ -3231,11 +3231,11 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           searchText: "درس فيديو تفاعلي أسئلة interactive video lesson questions",
         }),
         selectTool("/teacher/smart-board", {
-          title: isAr ? "الشرح الذكي" : "Smart Explanation",
+          title: isAr ? "أداة الشرح الذكي" : "Smart Explanation Tool",
           desc: isAr
             ? "اسأل عن أي موضوع واحصل على شرح مبسط وجاهز للعرض."
             : "Ask about any topic and get a simple, presentation-ready explanation.",
-          searchText: "الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
+          searchText: "أداة الشرح الذكي الشرح الذكي السبورة الذكية smart explanation whiteboard ask topic ai",
         }),
         selectTool("/teacher/new/paper-grading", {
           title: isAr ? "تصحيح الأوراق بالذكاء" : "AI Paper Grading",

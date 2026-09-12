@@ -3055,7 +3055,7 @@ function QuickCreateStudio({
     },
     {
       icon: <Pencil style={{ width: 16, height: 16 }} />,
-      title: isAr ? "الشرح الذكي" : "Smart Explanation",
+      title: isAr ? "أداة الشرح الذكي" : "Smart Explanation Tool",
       href: "/teacher/smart-board",
     },
     {

@@ -279,7 +279,6 @@ function TimerAndAlertsSection({
 
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
             <span className="flex min-w-0 items-center gap-2">
-              {preferences.soundEnabled ? <Volume2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <VolumeX className="h-4 w-4 shrink-0 text-muted-foreground" />}
               <span>
                 <span className="block text-xs font-black text-foreground">{isAr ? "الصوت" : "Sound"}</span>
                 <span className="block text-[11px] font-medium text-muted-foreground">{preferences.soundEnabled ? (isAr ? "مفعّل" : "Enabled") : (isAr ? "متوقف" : "Off")}</span>

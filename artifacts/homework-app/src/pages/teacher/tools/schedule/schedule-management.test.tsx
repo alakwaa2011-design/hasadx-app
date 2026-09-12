@@ -235,6 +235,7 @@ describe("schedule management tool", () => {
     expect(document.querySelectorAll('[data-testid="select-schedule-alert-minutes"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-testid="select-schedule-end-alert-minutes"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-testid="select-schedule-alert-sound"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-testid="button-schedule-alert-sound"] svg')).toHaveLength(1);
     const scheduleGrid = document.querySelector('[data-testid="schedule-week-grid"]') as HTMLElement;
     const timerSettings = document.querySelector('[data-testid="schedule-timer-alerts"]') as HTMLElement;
     expect(timerSettings.compareDocumentPosition(scheduleGrid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
