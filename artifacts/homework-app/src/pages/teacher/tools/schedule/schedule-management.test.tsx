@@ -239,6 +239,7 @@ describe("schedule management tool", () => {
     const timerSettings = document.querySelector('[data-testid="schedule-timer-alerts"]') as HTMLElement;
     expect(timerSettings.compareDocumentPosition(scheduleGrid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await click("button-schedule-appearance");
+    await click("button-schedule-appearance-tab-view");
     expect(button("button-schedule-view-day")).toBeTruthy();
     expect(document.querySelector('[data-testid="schedule-week-grid"]')).toBeTruthy();
     expect(button("button-schedule-view-week-list")).toBeTruthy();
@@ -311,6 +312,7 @@ describe("schedule management tool", () => {
       .toBe("rtl");
 
     await click("button-schedule-appearance");
+    await click("button-schedule-appearance-tab-options");
     await click("button-schedule-theme-soft");
     await click("button-schedule-direction-ltr");
 
@@ -330,6 +332,7 @@ describe("schedule management tool", () => {
     await renderPage();
 
     await click("button-schedule-appearance");
+    await click("button-schedule-appearance-tab-options");
     expect(button("button-schedule-day-visibility-5").getAttribute("aria-checked")).toBe("true");
     expect(button("button-schedule-day-visibility-6").getAttribute("aria-checked")).toBe("true");
 

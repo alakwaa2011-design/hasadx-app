@@ -716,6 +716,7 @@ export default function ScheduleManagementPage() {
   const [viewMode, setViewMode] = useState<"day" | "week-list" | "week-grid">("week-grid");
   const [timerSettingsOpen, setTimerSettingsOpen] = useState(false);
   const [appearanceMenuOpen, setAppearanceMenuOpen] = useState(false);
+  const [appearanceTab, setAppearanceTab] = useState<"colors" | "view" | "options">("colors");
   const [tableTheme, setTableTheme] = useState<ScheduleTableTheme>("classic");
   const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
   const [columnColors, setColumnColors] = useState<Record<string, ScheduleColor>>({});
@@ -723,11 +724,8 @@ export default function ScheduleManagementPage() {
   const [headerColor, setHeaderColor] = useState<ScheduleColor | undefined>();
   const [hiddenScheduleDays, setHiddenScheduleDays] = useState<number[]>([]);
   const [activeColorTarget, setActiveColorTarget] = useState<{ kind: ScheduleColorTargetKind; key: string } | null>(null);
-  const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [customPickerOpen, setCustomPickerOpen] = useState(false);
   const [customPreviewColor, setCustomPreviewColor] = useState<string | null>(null);
-  const viewMenuRef = useRef<HTMLDetailsElement>(null);
-  const themeMenuRef = useRef<HTMLDetailsElement>(null);
   const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
   const [editingColumnLabel, setEditingColumnLabel] = useState<{ key: string; defaultLabel: string } | null>(null);
   const [columnLabelDraft, setColumnLabelDraft] = useState("");
@@ -740,15 +738,8 @@ export default function ScheduleManagementPage() {
     const closeMenusOnOutsideClick = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Node)) return;
-      if (!viewMenuRef.current?.contains(target)) {
-        viewMenuRef.current?.removeAttribute("open");
-      }
-      if (!themeMenuRef.current?.contains(target)) {
-        themeMenuRef.current?.removeAttribute("open");
-      }
       if (!(target instanceof Element) || !target.closest("[data-schedule-color-menu]")) {
         setActiveColorTarget(null);
-        setColorMenuOpen(false);
         setCustomPickerOpen(false);
         setCustomPreviewColor(null);
       }
@@ -868,8 +859,6 @@ export default function ScheduleManagementPage() {
         if (color) localStorage.setItem(`hasaad_schedule_table_header_color_v1_${user.id}`, color);
         else localStorage.removeItem(`hasaad_schedule_table_header_color_v1_${user.id}`);
       }
-      setActiveColorTarget(null);
-      setColorMenuOpen(false);
       setCustomPickerOpen(false);
       setCustomPreviewColor(null);
       return;
@@ -886,8 +875,6 @@ export default function ScheduleManagementPage() {
         JSON.stringify(next),
       );
     }
-    setActiveColorTarget(null);
-    setColorMenuOpen(false);
     setCustomPickerOpen(false);
     setCustomPreviewColor(null);
   }
@@ -1677,7 +1664,15 @@ export default function ScheduleManagementPage() {
                   <div className="relative" data-schedule-appearance-menu>
                     <button
                       type="button"
-                      onClick={() => setAppearanceMenuOpen((open) => !open)}
+                      onClick={() => {
+                        setAppearanceMenuOpen((open) => {
+                          const nextOpen = !open;
+                          if (nextOpen && !activeColorTarget) {
+                            setActiveColorTarget({ kind: "header", key: "header" });
+                          }
+                          return nextOpen;
+                        });
+                      }}
                       aria-expanded={appearanceMenuOpen}
                       data-testid="button-schedule-appearance"
                       className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm transition-colors ${
@@ -1690,307 +1685,311 @@ export default function ScheduleManagementPage() {
                       {isAr ? "مظهر الجدول" : "Table appearance"}
                     </button>
                     {appearanceMenuOpen && (
-                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 flex min-w-[15rem] flex-col gap-2 rounded-2xl border border-border bg-card p-2 shadow-xl">
-                  <details ref={viewMenuRef} className="group relative">
-                    <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
-                      <Calendar className="h-4 w-4 text-emerald-700" />
-                      {isAr ? "العرض" : "View"}
-                    </summary>
-                    <div className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex w-52 flex-col rounded-2xl border border-border bg-card p-1.5 shadow-xl">
-                      <button
-                        type="button"
-                        onClick={() => { setViewMode("day"); document.body.click(); }}
-                        data-testid="button-schedule-view-day"
-                        className={`rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors ${viewMode === "day" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"}`}
-                      >
-                        {isAr ? "يومي" : "Daily"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setViewMode("week-list"); document.body.click(); }}
-                        data-testid="button-schedule-view-week-list"
-                        className={`rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors ${viewMode === "week-list" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"}`}
-                      >
-                        {isAr ? "قائمة أسبوعية" : "Weekly list"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setViewMode("week-grid"); document.body.click(); }}
-                        data-testid="button-schedule-view-week-grid"
-                        className={`rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-colors ${viewMode === "week-grid" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"}`}
-                      >
-                        {isAr ? "شبكة أسبوعية" : "Weekly grid"}
-                      </button>
-                    </div>
-                  </details>
+                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 flex w-[22rem] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-card shadow-xl overflow-hidden" data-schedule-appearance-menu>
+                        <div className="flex items-center gap-1 border-b border-border bg-muted/20 p-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAppearanceTab("colors");
+                              if (!activeColorTarget) setActiveColorTarget({ kind: "header", key: "header" });
+                            }}
+                            aria-pressed={appearanceTab === "colors"}
+                            data-testid="button-schedule-colors"
+                            className={`flex-1 flex items-center justify-center rounded-lg px-3 py-2 text-xs font-black transition-all ${
+                              appearanceTab === "colors" ? "bg-card text-emerald-700 shadow-sm border border-border/50" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            <Palette className="w-3.5 h-3.5 mr-1 ml-1" />
+                            {isAr ? "الألوان" : "Colors"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAppearanceTab("view")}
+                            aria-pressed={appearanceTab === "view"}
+                            data-testid="button-schedule-appearance-tab-view"
+                            className={`flex-1 flex items-center justify-center rounded-lg px-3 py-2 text-xs font-black transition-all ${
+                              appearanceTab === "view" ? "bg-card text-emerald-700 shadow-sm border border-border/50" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            <Calendar className="w-3.5 h-3.5 mr-1 ml-1" />
+                            {isAr ? "العرض" : "View"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAppearanceTab("options")}
+                            aria-pressed={appearanceTab === "options"}
+                            data-testid="button-schedule-appearance-tab-options"
+                            className={`flex-1 flex items-center justify-center rounded-lg px-3 py-2 text-xs font-black transition-all ${
+                              appearanceTab === "options" ? "bg-card text-emerald-700 shadow-sm border border-border/50" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            <SlidersHorizontal className="w-3.5 h-3.5 mr-1 ml-1" />
+                            {isAr ? "خيارات" : "Options"}
+                          </button>
+                        </div>
 
-                  {viewMode === "week-grid" && (
-                    <details ref={themeMenuRef} className="group relative shrink-0" data-testid="schedule-table-theme-picker">
-                      <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
-                        <span className="flex items-center gap-2">
-                          <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
-                           {isAr ? "خيارات الجدول" : "Table options"}
-                        </span>
-                      </summary>
-                      <div
-                        className="absolute start-0 top-[calc(100%+0.5rem)] z-40 max-h-52 w-fit max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 shadow-xl"
-                        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(34, 87, 57, 0.35) transparent" }}
-                      >
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[max-content_max-content]">
-                          <div className="min-w-0">
-                            <div className="mb-2 px-2 text-sm font-black text-emerald-950 dark:text-emerald-100">
-                              {isAr ? "نمط الجدول" : "Table style"}
+                        <div className="p-3 bg-card" data-schedule-color-menu>
+                          <div className={`flex flex-col gap-2 ${appearanceTab === "view" ? "" : "hidden"}`}>
+                            <button
+                              type="button"
+                              onClick={() => { setViewMode("day"); document.body.click(); }}
+                              data-testid="button-schedule-view-day"
+                              className={`rounded-xl px-4 py-3 text-start text-sm font-bold transition-colors ${viewMode === "day" ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200" : "text-muted-foreground hover:bg-muted"}`}
+                            >
+                              {isAr ? "يومي" : "Daily"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setViewMode("week-list"); document.body.click(); }}
+                              data-testid="button-schedule-view-week-list"
+                              className={`rounded-xl px-4 py-3 text-start text-sm font-bold transition-colors ${viewMode === "week-list" ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200" : "text-muted-foreground hover:bg-muted"}`}
+                            >
+                              {isAr ? "قائمة أسبوعية" : "Weekly list"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setViewMode("week-grid"); document.body.click(); }}
+                              data-testid="button-schedule-view-week-grid"
+                              className={`rounded-xl px-4 py-3 text-start text-sm font-bold transition-colors ${viewMode === "week-grid" ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200" : "text-muted-foreground hover:bg-muted"}`}
+                            >
+                              {isAr ? "شبكة أسبوعية" : "Weekly grid"}
+                            </button>
+                          </div>
+
+                          <div className={appearanceTab === "colors" ? "" : "hidden"}>
+                            <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                              {isAr ? "اختر لونًا" : "Choose a color"}
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                              {SCHEDULE_TABLE_THEMES.map((theme) => (
+                            <div className="grid grid-cols-7 justify-items-center gap-1.5 mb-3">
+                              {SCHEDULE_COLORS.map((color) => {
+                                const selectedColor = activeColorTarget
+                                  ? getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key)
+                                  : undefined;
+                                return (
+                                  <button
+                                    key={color.value}
+                                    type="button"
+                                    data-testid={`button-schedule-color-preset-${SCHEDULE_COLORS.indexOf(color)}`}
+                                    aria-label={`${isAr ? "لون " : ""}${color.label}`}
+                                    title={color.label}
+                                    disabled={!activeColorTarget}
+                                    onClick={() => {
+                                      if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color.value);
+                                    }}
+                                    className={`relative flex h-8 w-8 items-center justify-center rounded-full border transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 ${
+                                      selectedColor === color.value ? "border-emerald-800 ring-2 ring-emerald-300/60 shadow-sm" : "border-black/10"
+                                    }`}
+                                    style={{ backgroundColor: color.value }}
+                                  >
+                                    {selectedColor === color.value && <Check className="h-4 w-4 text-white drop-shadow-sm" strokeWidth={3} />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={openCustomColorPicker}
+                              data-testid="button-schedule-custom-color"
+                              disabled={!activeColorTarget}
+                              className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-2 text-xs font-black transition-all ${
+                                customPickerOpen
+                                  ? "border-emerald-700 bg-emerald-50 text-emerald-800"
+                                  : "border-border text-muted-foreground hover:bg-muted"
+                              } disabled:cursor-not-allowed disabled:opacity-40`}
+                            >
+                              <span className="h-4 w-4 rounded-md border border-dashed border-current" />
+                              {isAr ? "لون مخصص" : "Custom color"}
+                            </button>
+                            {customPickerOpen && activeColorTarget && (
+                              <CustomScheduleColorPicker
+                                isAr={isAr}
+                                initialColor={customPreviewColor || getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key) || "#1E4D35"}
+                                onPreview={setCustomPreviewColor}
+                                onCancel={() => {
+                                  setCustomPickerOpen(false);
+                                  setCustomPreviewColor(null);
+                                }}
+                                onConfirm={(color) => chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color)}
+                              />
+                            )}
+
+                            <div className="mt-4 border-t border-border pt-4">
+                              <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                                {isAr ? "طبّق اللون على" : "Apply color to"}
+                              </div>
+                              <div className="grid max-h-48 grid-cols-2 gap-1.5 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
                                 <button
-                                  key={theme.id}
                                   type="button"
-                                  onClick={() => chooseTableTheme(theme.id)}
-                                  aria-pressed={tableTheme === theme.id}
-                                  data-testid={`button-schedule-theme-${theme.id}`}
-                                  className={`flex w-full items-center rounded-xl border px-3 py-2 text-start text-xs font-bold transition-all ${
-                                    tableTheme === theme.id
-                                      ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
-                                      : "border-border bg-card text-muted-foreground hover:border-emerald-300"
+                                  onClick={() => selectColorTarget({ kind: "header", key: "header" })}
+                                  className={`rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                    activeColorTarget?.kind === "header" ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200" : "bg-muted/30 text-muted-foreground hover:bg-muted"
                                   }`}
                                 >
-                                  {isAr ? theme.ar : theme.en}
+                                  {isAr ? "رأس الجدول" : "Table header"}
                                 </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="min-w-0">
-                            <div className="mb-2 px-2 text-sm font-black text-emerald-950 dark:text-emerald-100">
-                              {isAr ? "جهة الجدول" : "Table direction"}
-                            </div>
-                            <div className="flex flex-col gap-1.5 rounded-xl bg-muted/50 p-1">
-                              <button
-                                type="button"
-                                onClick={() => chooseTableDirection("rtl")}
-                                aria-pressed={tableDirection === "rtl"}
-                                data-testid="button-schedule-direction-rtl"
-                                className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
-                                  tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
-                                }`}
-                              >
-                                {isAr ? "الأيام من اليمين" : "Days from right"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => chooseTableDirection("ltr")}
-                                aria-pressed={tableDirection === "ltr"}
-                                data-testid="button-schedule-direction-ltr"
-                                className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
-                                  tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
-                                }`}
-                              >
-                                {isAr ? "الأيام من اليسار" : "Days from left"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </details>
-                  )}
+                                {paperScheduleDays.map(({ day }) => (
+                                  <button
+                                    key={`color-target-row-${day.value}`}
+                                    type="button"
+                                      onClick={() => selectColorTarget({ kind: "row", key: String(day.value) })}
+                                    className={`rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                      activeColorTarget?.kind === "row" && activeColorTarget.key === String(day.value)
+                                        ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                                        : "bg-muted/30 text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    {isAr ? `صف ${day.ar}` : `${day.en} row`}
+                                  </button>
+                                ))}
+                                {paperLessonNumbers.map((lessonNumber) => (
+                                  <button
+                                    key={`color-target-column-${lessonNumber}`}
+                                    type="button"
+                                      onClick={() => selectColorTarget({ kind: "column", key: `lesson-${lessonNumber}` })}
+                                    className={`rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                      activeColorTarget?.kind === "column" && activeColorTarget.key === `lesson-${lessonNumber}`
+                                        ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                                        : "bg-muted/30 text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    {isAr ? lessonNumberLabel(lessonNumber, true) : lessonNumberLabel(lessonNumber, false)}
+                                  </button>
+                                ))}
+                                {paperBreakPositions.size > 0 && Array.from(paperBreakPositions).map((lessonNumber) => (
+                                  <button
+                                    key={`color-target-break-${lessonNumber}`}
+                                    type="button"
+                                     onClick={() => selectColorTarget({ kind: "column", key: `break-${lessonNumber}` })}
+                                    className={`rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                      activeColorTarget?.kind === "column" && activeColorTarget.key === `break-${lessonNumber}`
+                                        ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                                        : "bg-muted/30 text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    {isAr ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}` : `After lesson ${lessonNumber}`}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => selectColorTarget({ kind: "column", key: "other-periods" })}
+                                  className={`col-span-full rounded-xl px-2.5 py-2.5 text-xs font-bold transition-colors ${
+                                    activeColorTarget?.kind === "column" && activeColorTarget.key === "other-periods"
+                                      ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                                      : "bg-muted/30 text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  {isAr ? "فترات أخرى" : "Other periods"}
+                                </button>
+                              </div>
 
-                  <div className="border-t border-border/70 pt-2">
-                    <div className="px-2">
-                      <div className="text-sm font-black text-emerald-950 dark:text-emerald-100">
-                        {isAr ? "أيام الجدول" : "Schedule days"}
-                      </div>
-                      <p className="mt-1 text-[11px] font-medium leading-relaxed text-muted-foreground">
-                        {isAr ? "أخفِ الأيام التي لا تريد ظهورها في جدولك." : "Hide days you do not want to show in your schedule."}
-                      </p>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-1.5">
-                      {SCHEDULE_DAYS.map((day) => {
-                        const isVisible = !hiddenScheduleDays.includes(day.value);
-                        const isLastVisibleDay = isVisible && visibleScheduleDays.length === 1;
-                        return (
-                          <button
-                            key={day.value}
-                            type="button"
-                            role="switch"
-                            aria-checked={isVisible}
-                            aria-label={isAr ? `${isVisible ? "إخفاء" : "إظهار"} ${day.ar}` : `${isVisible ? "Hide" : "Show"} ${day.en}`}
-                            data-testid={`button-schedule-day-visibility-${day.value}`}
-                            disabled={isLastVisibleDay}
-                            onClick={() => toggleScheduleDayVisibility(day.value)}
-                            className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
-                              isVisible
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                : "border-border bg-muted/40 text-muted-foreground"
-                            } disabled:cursor-not-allowed disabled:opacity-60`}
-                          >
-                            <span>{isAr ? day.ar : day.en}</span>
-                            <span className={`h-2.5 w-2.5 rounded-full ${isVisible ? "bg-emerald-600" : "bg-muted-foreground/35"}`} />
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="mt-2 px-2 text-[10px] font-medium text-muted-foreground">
-                      {isAr ? "الإخفاء لا يحذف الحصص، ويمكن إظهار اليوم لاحقًا." : "Hiding a day does not delete its lessons; you can show it again later."}
-                    </p>
-                  </div>
-
-                  <div className="relative" data-schedule-color-menu>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!activeColorTarget) setActiveColorTarget({ kind: "header", key: "header" });
-                        setColorMenuOpen((open) => !open);
-                      }}
-                      aria-expanded={colorMenuOpen}
-                      data-testid="button-schedule-colors"
-                      className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black shadow-sm transition-colors ${
-                        colorMenuOpen
-                          ? "border-emerald-700 bg-emerald-50 text-emerald-800"
-                          : "border-border/70 bg-card text-foreground hover:bg-muted/50"
-                      }`}
-                    >
-                      <Palette className="h-4 w-4 text-emerald-700" />
-                      {isAr ? "ألوان الجدول" : "Table colors"}
-                    </button>
-                    {colorMenuOpen && (
-                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-50 max-h-[calc(100vh-6rem)] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-3 shadow-xl">
-                        <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
-                          {isAr ? "اختر لونًا" : "Choose a color"}
-                        </div>
-                        <div className="grid grid-cols-7 justify-items-center gap-1">
-                          {SCHEDULE_COLORS.map((color) => {
-                            const selectedColor = activeColorTarget
-                              ? getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key)
-                              : undefined;
-                            return (
                               <button
-                                key={color.value}
                                 type="button"
-                                data-testid={`button-schedule-color-preset-${SCHEDULE_COLORS.indexOf(color)}`}
-                                aria-label={`${isAr ? "لون " : ""}${color.label}`}
-                                title={color.label}
-                                disabled={!activeColorTarget}
                                 onClick={() => {
-                                  if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color.value);
+                                  if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key);
                                 }}
-                                className={`relative flex h-7 w-7 items-center justify-center rounded-full border transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 ${
-                                  selectedColor === color.value ? "border-emerald-800 ring-2 ring-emerald-300/60" : "border-black/10"
-                                }`}
-                                style={{ backgroundColor: color.value }}
+                                disabled={!activeColorTarget}
+                                className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                {selectedColor === color.value && <Check className="h-4 w-4 text-emerald-950" strokeWidth={3} />}
+                                {isAr ? "إزالة لون الجزء المحدد" : "Remove selected color"}
                               </button>
-                            );
-                          })}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={openCustomColorPicker}
-                          disabled={!activeColorTarget}
-                          data-testid="button-schedule-custom-color"
-                          className={`mt-2 flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-colors ${
-                            customPickerOpen
-                              ? "border-emerald-700 bg-emerald-50 text-emerald-800"
-                              : "border-border text-muted-foreground hover:bg-muted"
-                          } disabled:cursor-not-allowed disabled:opacity-40`}
-                        >
-                          <span className="h-4 w-4 rounded-md border border-dashed border-current" />
-                          {isAr ? "لون مخصص" : "Custom color"}
-                        </button>
-                        {customPickerOpen && activeColorTarget && (
-                          <CustomScheduleColorPicker
-                            isAr={isAr}
-                            initialColor={customPreviewColor || getCommittedTargetColor(activeColorTarget.kind, activeColorTarget.key) || "#1E4D35"}
-                            onPreview={setCustomPreviewColor}
-                            onCancel={() => {
-                              setCustomPickerOpen(false);
-                              setCustomPreviewColor(null);
-                            }}
-                            onConfirm={(color) => chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color)}
-                          />
-                        )}
-                        <div className="mt-3 border-t border-border pt-3">
-                          <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
-                            {isAr ? "طبّق اللون على" : "Apply color to"}
+                            </div>
                           </div>
-                          <div className="grid max-h-44 grid-cols-2 gap-1.5 overflow-y-auto">
-                            <button
-                              type="button"
-                              onClick={() => selectColorTarget({ kind: "header", key: "header" })}
-                              className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
-                                activeColorTarget?.kind === "header" ? "bg-emerald-50 text-emerald-800" : "text-muted-foreground hover:bg-muted"
-                              }`}
-                            >
-                              {isAr ? "رأس الجدول" : "Table header"}
-                            </button>
-                            {paperScheduleDays.map(({ day }) => (
-                              <button
-                                key={`color-target-row-${day.value}`}
-                                type="button"
-                                 onClick={() => selectColorTarget({ kind: "row", key: String(day.value) })}
-                                className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
-                                  activeColorTarget?.kind === "row" && activeColorTarget.key === String(day.value)
-                                    ? "bg-emerald-50 text-emerald-800"
-                                    : "text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                {isAr ? `صف ${day.ar}` : `${day.en} row`}
-                              </button>
-                            ))}
-                            {paperLessonNumbers.map((lessonNumber) => (
-                              <button
-                                key={`color-target-column-${lessonNumber}`}
-                                type="button"
-                                 onClick={() => selectColorTarget({ kind: "column", key: `lesson-${lessonNumber}` })}
-                                className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
-                                  activeColorTarget?.kind === "column" && activeColorTarget.key === `lesson-${lessonNumber}`
-                                    ? "bg-emerald-50 text-emerald-800"
-                                    : "text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                {isAr ? lessonNumberLabel(lessonNumber, true) : lessonNumberLabel(lessonNumber, false)}
-                              </button>
-                            ))}
-                            {paperBreakPositions.size > 0 && Array.from(paperBreakPositions).map((lessonNumber) => (
-                              <button
-                                key={`color-target-break-${lessonNumber}`}
-                                type="button"
-                                 onClick={() => selectColorTarget({ kind: "column", key: `break-${lessonNumber}` })}
-                                className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
-                                  activeColorTarget?.kind === "column" && activeColorTarget.key === `break-${lessonNumber}`
-                                    ? "bg-emerald-50 text-emerald-800"
-                                    : "text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                {isAr ? `بعد ${lessonNumberLabel(lessonNumber, true).replace("الحصة ", "")}` : `After lesson ${lessonNumber}`}
-                              </button>
-                            ))}
-                            <button
-                              type="button"
-                              onClick={() => selectColorTarget({ kind: "column", key: "other-periods" })}
-                              className={`rounded-xl px-2.5 py-2 text-xs font-bold transition-colors ${
-                                activeColorTarget?.kind === "column" && activeColorTarget.key === "other-periods"
-                                  ? "bg-emerald-50 text-emerald-800"
-                                  : "text-muted-foreground hover:bg-muted"
-                              }`}
-                            >
-                              {isAr ? "فترات أخرى" : "Other periods"}
-                            </button>
+
+                          <div className={`flex flex-col gap-4 ${appearanceTab === "options" ? "" : "hidden"}`}>
+                            {viewMode === "week-grid" && (
+                              <div data-testid="schedule-table-theme-picker">
+                                <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                                  {isAr ? "نمط الجدول" : "Table style"}
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                  {SCHEDULE_TABLE_THEMES.map((theme) => (
+                                    <button
+                                      key={theme.id}
+                                      type="button"
+                                      onClick={() => chooseTableTheme(theme.id)}
+                                      aria-pressed={tableTheme === theme.id}
+                                      data-testid={`button-schedule-theme-${theme.id}`}
+                                      className={`flex w-full items-center rounded-xl border px-3 py-2.5 text-start text-xs font-bold transition-all ${
+                                        tableTheme === theme.id
+                                          ? "border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm"
+                                          : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted"
+                                      }`}
+                                    >
+                                      <div className="flex h-4 w-4 shrink-0 -space-x-1 overflow-hidden rounded-full border border-black/10 me-2" dir="ltr">
+                                        {theme.swatches.map((color, i) => (
+                                          <div key={i} className="h-full w-full" style={{ backgroundColor: color }} />
+                                        ))}
+                                      </div>
+                                      {isAr ? theme.ar : theme.en}
+                                      {tableTheme === theme.id && <Check className="w-3.5 h-3.5 ms-auto" />}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div className="mt-4 mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                                  {isAr ? "اتجاه الجدول" : "Table direction"}
+                                </div>
+                                <div className="flex gap-1.5 bg-muted/30 p-1 rounded-xl">
+                                  <button
+                                    type="button"
+                                    onClick={() => chooseTableDirection("rtl")}
+                                    data-testid="button-schedule-direction-rtl"
+                                    className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+                                      tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm border border-emerald-200" : "text-muted-foreground hover:text-foreground border border-transparent"
+                                    }`}
+                                  >
+                                    {isAr ? "من اليمين" : "Right-to-left"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => chooseTableDirection("ltr")}
+                                    data-testid="button-schedule-direction-ltr"
+                                    className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+                                      tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm border border-emerald-200" : "text-muted-foreground hover:text-foreground border border-transparent"
+                                    }`}
+                                  >
+                                    {isAr ? "من اليسار" : "Left-to-right"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className={viewMode === "week-grid" ? "border-t border-border pt-4" : ""}>
+                              <div className="mb-1 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
+                                {isAr ? "أيام الجدول" : "Schedule days"}
+                              </div>
+                              <p className="mb-3 px-1 text-[10px] font-medium leading-relaxed text-muted-foreground">
+                                {isAr ? "أخفِ الأيام التي لا تريد ظهورها في جدولك." : "Hide days you do not want to show in your schedule."}
+                              </p>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {SCHEDULE_DAYS.map((day) => {
+                                  const isVisible = !hiddenScheduleDays.includes(day.value);
+                                  const isLastVisibleDay = isVisible && visibleScheduleDays.length === 1;
+                                  return (
+                                    <button
+                                      key={day.value}
+                                      type="button"
+                                      role="switch"
+                                      aria-checked={isVisible}
+                                      aria-label={isAr ? `${isVisible ? "إخفاء" : "إظهار"} ${day.ar}` : `${isVisible ? "Hide" : "Show"} ${day.en}`}
+                                      data-testid={`button-schedule-day-visibility-${day.value}`}
+                                      disabled={isLastVisibleDay}
+                                      onClick={() => toggleScheduleDayVisibility(day.value)}
+                                      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors ${
+                                        isVisible
+                                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                          : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/50"
+                                      } disabled:cursor-not-allowed disabled:opacity-60`}
+                                    >
+                                      <span>{isAr ? day.ar : day.en}</span>
+                                      <span className={`h-2.5 w-2.5 rounded-full transition-colors ${isVisible ? "bg-emerald-600" : "bg-muted-foreground/35"}`} />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key);
-                          }}
-                          disabled={!activeColorTarget}
-                          className="mt-3 w-full rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {isAr ? "إزالة لون الجزء المحدد" : "Remove selected color"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
                       </div>
                     )}
                   </div>
