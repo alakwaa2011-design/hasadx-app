@@ -8,6 +8,10 @@ describe("listening script generator contract", () => {
   it("keeps the Arabic activity title and placeholder right-aligned", () => {
     expect(source).toContain('dir={lang === "ar" ? "rtl" : "ltr"}');
     expect(source).toContain('"text-right placeholder:text-right placeholder:text-[#94a3ab]"');
+    expect(source).toContain('value.trim() ? "auto" : (lang === "ar" ? "rtl" : "ltr")');
+    expect(source).toContain("dir={fieldDirection(audioText)}");
+    expect(source).toContain("dir={fieldDirection(generatorTopic)}");
+    expect(source).toContain('dir={generatedLanguage === "en" ? "ltr" : "rtl"}');
   });
 
   it("generates inside the existing listening activity flow", () => {

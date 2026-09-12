@@ -912,6 +912,8 @@ export default function DictationCreate() {
 
   const primaryClassLabel =
     targetClasses.length === 0 ? c.noClass : targetClasses.join(lang === "ar" ? "، " : ", ");
+  const fieldDirection = (value: string): "rtl" | "ltr" | "auto" =>
+    value.trim() ? "auto" : (lang === "ar" ? "rtl" : "ltr");
   const showGeneratorDiacritics = generatedLanguage
     ? generatedLanguage === "ar"
     : /[\u0600-\u06FF]/.test(generatorTopic) || (!generatorTopic.trim() && lang === "ar");
@@ -1193,7 +1195,7 @@ export default function DictationCreate() {
                 </div>
                 <textarea
                   value={audioText}
-                  dir="auto"
+                  dir={fieldDirection(audioText)}
                   onChange={(e) => setAudioText(e.target.value.slice(0, MAX_CHARS))}
                   placeholder={c.audioPlaceholder}
                   className={cn(
@@ -1571,7 +1573,7 @@ export default function DictationCreate() {
                             <label className="text-xs font-bold text-[#64748B]">{c.questionWording}</label>
                             <textarea
                               value={q.text}
-                              dir="auto"
+                              dir={fieldDirection(q.text)}
                               onChange={(e) => updateQuestion(q.id, { text: e.target.value.slice(0, MAX_QUESTION_CHARS) })}
                               rows={3}
                               placeholder={
@@ -1614,7 +1616,7 @@ export default function DictationCreate() {
                                   </button>
                                   <input
                                     type="text"
-                                    dir="auto"
+                                    dir={fieldDirection(q[field] as string)}
                                     value={q[field] as string}
                                     onChange={(e) => updateQuestion(q.id, { [field]: e.target.value })}
                                     onClick={(e) => e.stopPropagation()}
@@ -1671,7 +1673,7 @@ export default function DictationCreate() {
                             </CollapsibleTrigger>
                             <CollapsibleContent className="border-t px-4 pb-4 pt-2" style={{ borderColor: CARD_BORDER }}>
                               <textarea
-                                dir="auto"
+                                dir={fieldDirection(q.correctAnswer)}
                                 value={q.correctAnswer}
                                 onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
                                 onClick={(e) => e.stopPropagation()}
@@ -2092,7 +2094,7 @@ export default function DictationCreate() {
                   setGeneratedLanguage(null);
                   setGeneratedFingerprint("");
                 }}
-                dir="auto"
+                dir={fieldDirection(generatorTopic)}
                 rows={3}
                 placeholder={lang === "ar" ? "مثال: قصة قصيرة عن الصدق لطلاب الصف الخامس" : "Example: A short story about honesty for fifth-grade students"}
                 className={cn(
@@ -2183,7 +2185,7 @@ export default function DictationCreate() {
                   id="generated-listening-script"
                   value={generatedScript}
                   onChange={(event) => setGeneratedScript(event.target.value.slice(0, MAX_CHARS))}
-                  dir="auto"
+                  dir={generatedLanguage === "en" ? "ltr" : "rtl"}
                   rows={10}
                   className={cn(
                     "w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-4 text-base leading-[1.8] text-[#111827]",
