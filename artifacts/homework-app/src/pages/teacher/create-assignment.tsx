@@ -434,6 +434,9 @@ export default function CreateAssignment() {
   const [extractCredit, setExtractCredit] = useState<{
     effectiveCost: number; baseCost: number; isPro: boolean; balance: number; creditsEnabled: boolean;
   } | null>(null);
+  const [extractPriceLoading, setExtractPriceLoading] = useState(false);
+  const [extractPriceError, setExtractPriceError] = useState(false);
+  const [extractPriceRequest, setExtractPriceRequest] = useState(0);
   /* Central balance source — same react-query cache as the header chip and
      the credits page. The server is the only source of truth; after any AI
      operation settles we invalidate this query instead of doing local math. */
@@ -457,6 +460,8 @@ export default function CreateAssignment() {
 
   const openImageExtractPanel = () => {
     setExtractCredit(null);
+    setExtractPriceLoading(true);
+    setExtractPriceError(false);
     setExtractError("");
     setShowImageExtract(true);
   };
@@ -715,11 +720,16 @@ export default function CreateAssignment() {
     if (!showImageExtract) return;
     let cancelled = false;
     setExtractCredit(null);
+    setExtractPriceLoading(true);
+    setExtractPriceError(false);
     fetch(`${API_BASE}/api/credits/tool-price/extract_questions_from_source`, {
       credentials: "include",
       cache: "no-store",
     })
-      .then(r => (r.ok ? r.json() : null))
+      .then(r => {
+        if (!r.ok) throw new Error("price request failed");
+        return r.json();
+      })
       .then(d => {
         if (
           !cancelled
@@ -731,14 +741,24 @@ export default function CreateAssignment() {
           && typeof d.creditsEnabled === "boolean"
         ) {
           setExtractCredit(d);
+          setExtractPriceLoading(false);
+          return;
+        }
+        if (!cancelled) {
+          setExtractPriceLoading(false);
+          setExtractPriceError(true);
         }
       })
       .catch(() => {
-        if (!cancelled) setExtractCredit(null);
+        if (!cancelled) {
+          setExtractCredit(null);
+          setExtractPriceLoading(false);
+          setExtractPriceError(true);
+        }
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showImageExtract]);
+  }, [showImageExtract, extractPriceRequest]);
 
   /** Runs the actual extraction API call. `replacePrevious` removes the
       questions produced by the previous extraction of the same source. */
@@ -2479,6 +2499,34 @@ export default function CreateAssignment() {
                           <p className="text-[10px] text-muted-foreground leading-relaxed">
                             {lang === "ar" ? "للحصول على أفضل نتيجة من PDF المصوّر، ارفع الصفحات كصور واضحة." : "For scanned PDFs, upload the pages as clear images for best results."}
                           </p>
+                           {extractPriceLoading && (
+                             <div className="flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 p-2 text-xs font-bold text-muted-foreground" data-testid="extract-price-loading">
+                               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                               {lang === "ar" ? "جاري تحميل تكلفة الاستخراج..." : "Loading extraction cost..."}
+                             </div>
+                           )}
+                           {extractPriceError && (
+                             <div className="flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 sm:flex-row sm:items-center sm:justify-between" data-testid="extract-price-error">
+                               <span className="font-bold">
+                                 {lang === "ar"
+                                   ? "تعذّر تحميل تكلفة الاستخراج. أعد المحاولة لتفعيل زر الاستخراج."
+                                   : "We couldn't load the extraction cost. Retry to enable extraction."}
+                               </span>
+                               <button
+                                 type="button"
+                                 onClick={() => {
+                                   setExtractCredit(null);
+                                   setExtractPriceLoading(true);
+                                   setExtractPriceError(false);
+                                   setExtractPriceRequest(request => request + 1);
+                                 }}
+                                 className="shrink-0 rounded-md border border-red-300 bg-white px-2.5 py-1.5 font-black text-red-700"
+                                 data-testid="btn-retry-extract-price"
+                               >
+                                 {lang === "ar" ? "إعادة المحاولة" : "Retry"}
+                               </button>
+                             </div>
+                           )}
                           {extractCredit?.creditsEnabled && extractCredit.effectiveCost > 0 && (
                             <p className="text-xs font-bold text-primary" data-testid="text-extract-cost">
                               {lang === "ar"

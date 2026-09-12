@@ -224,14 +224,23 @@ describe("سعر استخراج الأسئلة عند إعادة فتح اللو
     expect(container.querySelector('[data-testid="text-extract-cost"]')?.textContent).toContain("5 نقاط حصاد");
   });
 
-  it("يبقي الاستخراج معطّلًا عند فشل تحميل السعر", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) => {
+  it("يشرح فشل تحميل السعر ويبقي الاستخراج معطّلًا حتى تنجح إعادة المحاولة", async () => {
+    let resolveRetryPrice!: (value: Response) => void;
+    const retryPrice = new Promise<Response>(resolve => {
+      resolveRetryPrice = resolve;
+    });
+    let priceCalls = 0;
+    const fetchMock = vi.fn((url: string) => {
       if (url.includes("/api/credits/tool-price/extract_questions_from_source")) {
-        return Promise.resolve(response({}, 503));
+        priceCalls += 1;
+        return priceCalls === 1
+          ? Promise.resolve(response({}, 503))
+          : retryPrice;
       }
       if (url.includes("/auth/me")) return Promise.resolve(response({ id: 1, isAdmin: false }));
       return Promise.resolve(response({}));
-    }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
     renderPage();
     await settle();
 
@@ -251,5 +260,28 @@ describe("سعر استخراج الأسئلة عند إعادة فتح اللو
       "نص تعليمي صالح للاستخراج",
     );
     expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(container.querySelector('[data-testid="extract-price-error"]')?.textContent)
+      .toContain("تعذّر تحميل تكلفة الاستخراج");
+
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-retry-extract-price"]') as HTMLButtonElement).click();
+    });
+    expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(container.querySelector('[data-testid="extract-price-loading"]')?.textContent)
+      .toContain("جاري تحميل تكلفة الاستخراج");
+
+    await act(async () => resolveRetryPrice(response({
+      effectiveCost: 4,
+      baseCost: 4,
+      isPro: false,
+      balance: 50,
+      creditsEnabled: true,
+    })));
+    await settle();
+
+    expect(priceCalls).toBe(2);
+    expect(container.querySelector('[data-testid="extract-price-error"]')).toBeNull();
+    expect(container.querySelector('[data-testid="text-extract-cost"]')?.textContent).toContain("4 نقاط حصاد");
+    expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(false);
   });
 });
