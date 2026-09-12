@@ -41,6 +41,10 @@ export const AI_TOOL_LABELS: Readonly<Record<string, AiToolLabel>> = {
     ar: "خطة الدرس",
     en: "Lesson Plan",
   },
+  "listening-script": {
+    ar: "توليد نص نشاط الاستماع",
+    en: "Listening Activity Script",
+  },
   mindmap: {
     ar: "الخريطة الذهنية",
     en: "Mind Map",

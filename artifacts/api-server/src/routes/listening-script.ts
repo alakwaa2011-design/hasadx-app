@@ -6,6 +6,7 @@ import { isClaudeTier, modelForTier, resolveTier, type AiTier } from "../lib/ai-
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { sensitiveActionLimiter } from "../lib/rate-limiter";
+import { captureCreditsOrThrow, checkCredits, refundCredits } from "../lib/check-credits";
 
 const router: IRouter = Router();
 
@@ -80,7 +81,7 @@ function cleanGeneratedScript(value: string): string {
     .slice(0, 5000);
 }
 
-router.post("/listening-script/generate", requireTeacher, sensitiveActionLimiter, async (req, res) => {
+router.post("/listening-script/generate", requireTeacher, sensitiveActionLimiter, checkCredits("listening-script"), async (req, res) => {
   let language: "ar" | "en" = req.body?.language === "en" ? "en" : "ar";
   try {
     const parsed = generateBody.parse(req.body);
@@ -121,11 +122,15 @@ router.post("/listening-script/generate", requireTeacher, sensitiveActionLimiter
     const maxTokens = parsed.length === "long" ? 2200 : parsed.length === "medium" ? 1300 : 800;
     const script = cleanGeneratedScript(await runCompletion(req, tier, system, prompt, maxTokens));
     if (!script) {
+      await refundCredits(req, "empty_generated_script");
       res.status(502).json({ message: isArabic ? "لم يُرجع المولّد نصًا صالحًا" : "The generator returned no usable text" });
       return;
     }
-    res.json({ script, language });
+    const result = { script, language };
+    await captureCreditsOrThrow(req, result);
+    res.json(result);
   } catch (error: any) {
+    await refundCredits(req, error instanceof Error ? error.message : "listening_script_generation_failed");
     if (error?.issues) {
       res.status(400).json({ message: language === "ar" ? "تحقق من موضوع النص والخيارات" : "Check the topic and options" });
       return;

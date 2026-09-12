@@ -66,6 +66,9 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
+import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { createClientRequestId } from "@/lib/client-request-id";
+import { creditAwareFetch } from "@/lib/credit-aware-fetch";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -431,6 +434,7 @@ export default function DictationCreate() {
   };
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const refreshCreditsBalance = useRefreshCreditsBalance();
   const editorReturnTo = (() => {
     if (typeof window === "undefined") return null;
     const value = new URLSearchParams(window.location.search).get("returnTo");
@@ -831,10 +835,13 @@ export default function DictationCreate() {
     setIsGeneratingScript(true);
     setGeneratorError("");
     try {
-      const response = await fetch(`${API_BASE}/api/listening-script/generate`, {
+      const response = await creditAwareFetch(`${API_BASE}/api/listening-script/generate`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-idempotency-key": createClientRequestId(),
+        },
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
@@ -855,6 +862,7 @@ export default function DictationCreate() {
       );
     } finally {
       if (requestId === generatorRequestRef.current) setIsGeneratingScript(false);
+      refreshCreditsBalance();
     }
   };
 

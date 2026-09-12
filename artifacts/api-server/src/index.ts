@@ -1270,6 +1270,7 @@ async function runSchemaMigrations() {
         ('worksheet',        'ورقة العمل',              'Worksheet',                        'ai',    15, 15,  120),
         ('worksheet-tic-tac-toe-cell', 'إعادة توليد مربع تيك تاك توك', 'Regenerate Tic-Tac-Toe Square', 'ai', 2, 2, 120),
         ('lesson-plan',      'خطة الدرس',               'Lesson Plan',                      'ai',    15, 15,  120),
+        ('listening-script', 'توليد نص نشاط الاستماع',  'Listening Activity Script',        'ai',     2,  2,  120),
         ('pdf-to-questions', 'استخراج أسئلة من PDF',    'Extract Questions from PDF',       'ai',    15, 15,  120),
         ('extract_questions_from_source', 'استخراج أسئلة من مصدر', 'Extract Questions from Source', 'ai', 10, 10, 180),
         ('teacher-schedule-extract', 'استخراج جدول المعلم من صورة', 'Extract Teacher Schedule from Image', 'ai', 5, 5, 180),

@@ -676,7 +676,11 @@ describe("POST /api/listening-script/generate", () => {
     expect(call.messages[1].content).toContain("الطول: متوسط");
     expect(call.messages[1].content).toContain("الصف الدراسي: الصف الخامس");
     expect(call.messages[1].content).toContain("شكّل الكلمات الملتبسة فقط");
-    expect(mockState.checkedCreditToolKeys).not.toContain("listening-script");
+    expect(mockState.checkedCreditToolKeys).toContain("listening-script");
+    expect(mockState.captureCreditsOrThrow).toHaveBeenCalledWith(
+      expect.anything(),
+      { script: "كانَ خالدٌ معروفًا بالأمانة.", language: "ar" },
+    );
     expectNoLegacyParams();
   });
 
@@ -706,6 +710,37 @@ describe("POST /api/listening-script/generate", () => {
 
     expect(res.status).toBe(401);
     expect(mockState.openaiCreate).not.toHaveBeenCalled();
+  });
+
+  it("refunds the credit hold when the provider fails", async () => {
+    mockState.openaiCreate.mockRejectedValueOnce(new Error("provider unavailable"));
+
+    const res = await request(makeApp(listeningScriptRouter))
+      .post("/api/listening-script/generate")
+      .send({ topic: "قصة عن الصدق", language: "ar" });
+
+    expect(res.status).toBe(500);
+    expect(mockState.checkedCreditToolKeys).toContain("listening-script");
+    expect(mockState.captureCreditsOrThrow).not.toHaveBeenCalled();
+    expect(mockState.refundCredits).toHaveBeenCalledWith(
+      expect.anything(),
+      "provider unavailable",
+    );
+  });
+
+  it("refunds the credit hold when the provider returns an empty script", async () => {
+    openaiReturns("   ");
+
+    const res = await request(makeApp(listeningScriptRouter))
+      .post("/api/listening-script/generate")
+      .send({ topic: "قصة عن الصدق", language: "ar" });
+
+    expect(res.status).toBe(502);
+    expect(mockState.captureCreditsOrThrow).not.toHaveBeenCalled();
+    expect(mockState.refundCredits).toHaveBeenCalledWith(
+      expect.anything(),
+      "empty_generated_script",
+    );
   });
 });
 

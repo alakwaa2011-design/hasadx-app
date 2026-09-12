@@ -12,7 +12,9 @@ describe("listening script generator contract", () => {
 
   it("generates inside the existing listening activity flow", () => {
     expect(source).toContain('data-testid="button-open-listening-script-generator"');
-    expect(source).toContain('`${API_BASE}/api/listening-script/generate`');
+    expect(source).toContain('creditAwareFetch(`${API_BASE}/api/listening-script/generate`');
+    expect(source).toContain('"x-idempotency-key": createClientRequestId()');
+    expect(source).toContain("refreshCreditsBalance()");
     expect(source).toContain('data-testid="dialog-listening-script-generator"');
   });
 
