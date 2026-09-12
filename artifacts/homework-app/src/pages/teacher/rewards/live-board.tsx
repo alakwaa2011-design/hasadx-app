@@ -15,7 +15,6 @@ import {
 } from "./api";
 import type { RewardCelebrationData } from "./reward-celebration";
 import { toast } from "sonner";
-import { selectFairnessStudent } from "./fairness";
 
 export interface BoardStudent {
   id: number;
@@ -144,8 +143,8 @@ export function LiveBoard({
     setIsSpinning(true);
     setFairnessHighlight(null);
     
-    // Choose fairest student (lowest points, randomize if tied)
-    const chosen = selectFairnessStudent(students);
+    // This control is intentionally a simple random classroom picker.
+    const chosen = students[Math.floor(Math.random() * students.length)];
     if (!chosen) {
       setIsSpinning(false);
       return;
@@ -160,7 +159,7 @@ export function LiveBoard({
     }
 
     let spins = 0;
-    const maxSpins = 16;
+    const maxSpins = 24;
     spinTimerRef.current = setInterval(() => {
       const rand = students[Math.floor(Math.random() * students.length)];
       setFairnessHighlight(rand.id);
@@ -173,7 +172,7 @@ export function LiveBoard({
         setIsSpinning(false);
         onFairnessSelect?.(chosen.id);
       }
-    }, 120);
+    }, 90);
   };
 
   const groupScores = [...groups].sort((a,b) => b.score - a.score);
@@ -205,14 +204,14 @@ export function LiveBoard({
           <button 
             onClick={triggerFairnessCue} 
              type="button"
-             aria-label="اختيار طالب للتقدير بعدل"
-             title="يختار طالبًا لم يُقدَّر هذا الأسبوع، ثم الأقل نقاطًا، ويستخدم العشوائية عند التعادل"
+             aria-label="اختيار طالب عشوائيًا"
+             title="اختيار اسم عشوائي من طلاب الصف"
              data-testid="button-fairness-cue"
              disabled={isSpinning || students.length === 0}
              className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-2 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:w-auto sm:rounded-2xl sm:px-6 sm:py-3"
           >
             <Shuffle size={18} />
-            <span className="hidden sm:inline">اختيار طالب للتقدير</span>
+            <span className="hidden sm:inline">اختيار طالب عشوائيًا</span>
           </button>
           
            <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">

@@ -322,18 +322,31 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     try {
       const ctx = audioCtxRef.current;
       const start = ctx.currentTime;
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(isFinal ? 1046 : 620, start);
-      if (!isFinal) oscillator.frequency.exponentialRampToValueAtTime(760, start + 0.055);
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(isFinal ? 0.14 : 0.055, start + 0.006);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + (isFinal ? 0.18 : 0.075));
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      oscillator.start(start);
-      oscillator.stop(start + (isFinal ? 0.19 : 0.08));
+      const notes = isFinal
+        ? [
+            { delay: 0, frequency: 784, duration: 0.2, volume: 0.12 },
+            { delay: 0.11, frequency: 988, duration: 0.25, volume: 0.14 },
+            { delay: 0.23, frequency: 1319, duration: 0.5, volume: 0.18 },
+          ]
+        : [{ delay: 0, frequency: 650, duration: 0.105, volume: 0.05 }];
+
+      notes.forEach(({ delay, frequency, duration, volume }) => {
+        const noteStart = start + delay;
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = isFinal ? "sine" : "triangle";
+        oscillator.frequency.setValueAtTime(frequency, noteStart);
+        if (!isFinal) {
+          oscillator.frequency.exponentialRampToValueAtTime(790, noteStart + duration * 0.7);
+        }
+        gain.gain.setValueAtTime(0.0001, noteStart);
+        gain.gain.exponentialRampToValueAtTime(volume, noteStart + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + duration);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start(noteStart);
+        oscillator.stop(noteStart + duration + 0.01);
+      });
     } catch (error) {
       console.warn("[Rewards] Could not play fairness cue", error);
     }
