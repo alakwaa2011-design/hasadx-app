@@ -1,5 +1,6 @@
 import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "wouter";
+import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import {
@@ -365,10 +366,10 @@ function ScheduleColorPopover({
   position: { top: number; left: number };
   onSelect: (color?: ScheduleColor) => void;
 }) {
-  return (
+  return createPortal(
     <div
       role="menu"
-      className="fixed z-[70] w-44 rounded-2xl border border-border bg-card p-2 shadow-xl"
+      className="fixed z-[9999] w-44 rounded-2xl border border-border bg-card p-2 shadow-2xl"
       style={{ top: position.top, left: position.left }}
       onPointerDown={(event) => event.stopPropagation()}
     >
@@ -401,7 +402,8 @@ function ScheduleColorPopover({
       >
         {isAr ? "إزالة اللون" : "Remove color"}
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
