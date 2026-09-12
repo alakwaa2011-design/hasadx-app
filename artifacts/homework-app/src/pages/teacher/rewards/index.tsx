@@ -28,7 +28,7 @@ import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progre
 import { LiveBoard } from "./live-board";
 import {
   Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, Presentation, ChevronDown, ChevronUp
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -769,14 +769,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLiveBoardOpen(true)}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-900 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/30"
-                >
-                  <Presentation size={16} />
-                  السبورة الحية
-                </button>
                 <button
                   type="button"
                   onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
