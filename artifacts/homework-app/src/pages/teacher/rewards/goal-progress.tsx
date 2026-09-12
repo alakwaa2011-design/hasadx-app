@@ -28,6 +28,12 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
   const reduceMotion = useReducedMotion();
   const percentage = Math.min(100, Math.max(0, (goal.currentPoints / goal.targetPoints) * 100));
   const isCompleted = percentage >= 100;
+  const formattedEndDate = (() => {
+    if (!goal.endDate) return null;
+    const parsed = new Date(goal.endDate);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", { day: "numeric", month: "short" }).format(parsed);
+  })();
 
   return (
     <motion.article
@@ -85,10 +91,10 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
               {isCompleted && <Crown size={13} />}
               {isCompleted ? "هدف مكتمل" : goal.targetType === "class" ? "هدف الصف" : "هدف الطالب"}
             </span>
-            {goal.endDate && (
+            {formattedEndDate && (
               <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600/70">
                 <Clock size={12} />
-                {new Intl.DateTimeFormat("ar-SA-u-nu-latn", { day: "numeric", month: "short" }).format(new Date(goal.endDate))}
+                {formattedEndDate}
               </span>
             )}
           </div>

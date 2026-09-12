@@ -15,6 +15,7 @@ import {
 } from "./api";
 import type { RewardCelebrationData } from "./reward-celebration";
 import { toast } from "sonner";
+import { getArabicRewardError } from "./error-message";
 
 export interface BoardStudent {
   id: number;
@@ -87,7 +88,7 @@ export function LiveBoard({
       idempotencyKey: crypto.randomUUID(),
     }, {
       onSuccess: () => onCelebrate({ students: [student], points, rewardName, mode: "live" }),
-      onError: (error: Error) => toast.error(error.message || "تعذر منح نقاط الطالب"),
+      onError: (error: Error) => toast.error(getArabicRewardError(error, "تعذر منح نقاط الطالب")),
     });
   };
 
@@ -100,7 +101,7 @@ export function LiveBoard({
         students: [], isGroup: true, groupName: group.name, groupAvatar: group.avatar,
         points, rewardName, mode: "live",
       }),
-      onError: (error: Error) => toast.error(error.message || "تعذر منح نقاط المجموعة"),
+      onError: (error: Error) => toast.error(getArabicRewardError(error, "تعذر منح نقاط المجموعة")),
     });
   };
 
@@ -486,7 +487,7 @@ function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSugges
         });
         setDismissed((previous) => new Set(previous).add(suggestion.id));
       },
-      onError: (error: Error) => toast.error(error.message || "تعذر اعتماد الاقتراح"),
+      onError: (error: Error) => toast.error(getArabicRewardError(error, "تعذر اعتماد الاقتراح")),
     });
   };
   return (

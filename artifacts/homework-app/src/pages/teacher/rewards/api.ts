@@ -74,8 +74,15 @@ const normalizeGoal = (goal: any): ClassroomRewardGoal => ({
 
 const endDateToIso = (value?: string | null) => {
   if (!value) return null;
-  if (value.includes("T")) return new Date(value).toISOString();
-  return new Date(`${value}T23:59:59.999`).toISOString();
+  if (value.includes("T")) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) throw new Error("التاريخ أو الوقت غير صالح");
+    return parsed.toISOString();
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("صيغة التاريخ غير صالحة");
+  const parsed = new Date(`${value}T23:59:59.999Z`);
+  if (Number.isNaN(parsed.getTime())) throw new Error("التاريخ أو الوقت غير صالح");
+  return parsed.toISOString();
 };
 
 export interface RewardBoardSnapshot {

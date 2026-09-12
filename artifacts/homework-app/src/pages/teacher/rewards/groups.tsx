@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { cn } from "@/lib/utils";
 import { ArrowRight, Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRound, Trophy, RotateCcw, Medal } from "lucide-react";
 import { toast } from "sonner";
+import { getArabicRewardError } from "./error-message";
 import { formatRewardPoints } from "./format";
 import {
   type RewardGroup,
@@ -103,7 +104,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
       setSelectedId(groupId!);
       toast.success(selected ? "تم تحديث المجموعة" : "تم إنشاء المجموعة وتوزيع الطلاب");
     } catch (error: any) {
-      toast.error(error.message || "تعذر حفظ المجموعة");
+      toast.error(getArabicRewardError(error, "تعذر حفظ المجموعة"));
     }
   };
 
@@ -118,7 +119,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
       setSelectedId("new");
       toast.success("تم حذف المجموعة دون التأثير على نقاط الطلاب");
     } catch (error: any) {
-      toast.error(error.message || "تعذر حذف المجموعة");
+      toast.error(getArabicRewardError(error, "تعذر حذف المجموعة"));
     }
   };
 
@@ -319,7 +320,7 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
         onOpenChange(false);
       },
       onError: (err) => {
-        toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+        toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
       }
     });
   };
@@ -422,7 +423,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
         setConfirmReset(false);
       },
       onError: (err) => {
-        toast.error(err.message || "حدث خطأ أثناء تصفير النقاط");
+        toast.error(getArabicRewardError(err, "حدث خطأ أثناء تصفير النقاط"));
       }
     });
   };
@@ -439,7 +440,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
         onAward(group.name);
       },
       onError: (err) => {
-        toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+        toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
       }
     });
   };

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getArabicRewardError } from "./error-message";
 import { trackProjectAnalyticsEvent } from "@/lib/analytics";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatRewardPoints } from "./format";
@@ -423,14 +424,14 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 toast.success("تم التراجع عن منح النقاط");
               } catch (error: any) {
                 undoStarted = false;
-                toast.error(error.message || "تعذر التراجع عن منح النقاط");
+                toast.error(getArabicRewardError(error, "تعذر التراجع عن منح النقاط"));
               }
             },
           } : undefined,
         });
       },
       onError: (err) => {
-        toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+        toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
       },
       onSettled: () => {
         bulkGrantPendingRef.current = false;
@@ -468,7 +469,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       setEditingGoal(null);
       return true;
     } catch (error: any) {
-      toast.error(error.message || "تعذر حفظ الهدف");
+      toast.error(getArabicRewardError(error, "تعذر حفظ الهدف"));
       return false;
     }
   };
@@ -482,12 +483,12 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           label: "تراجع",
           onClick: () => updateGoalMutation.mutate(
             { className: currentClass, goalId: goal.id, status: "active" },
-            { onSuccess: () => toast.success("تمت إعادة الهدف"), onError: (error) => toast.error(error.message) },
+            { onSuccess: () => toast.success("تمت إعادة الهدف"), onError: (error) => toast.error(getArabicRewardError(error, "تعذرت إعادة الهدف")) },
           ),
         },
       });
     } catch (error: any) {
-      toast.error(error.message || "تعذرت أرشفة الهدف");
+      toast.error(getArabicRewardError(error, "تعذرت أرشفة الهدف"));
     }
   };
 
@@ -1277,7 +1278,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             },
             onError: (err) => {
               singleGrantPendingRef.current = false;
-              toast.error(err.message || "حدث خطأ أثناء منح النقاط");
+              toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
             },
             onSettled: () => {
               singleGrantPendingRef.current = false;
@@ -1659,7 +1660,7 @@ function BulkBalanceAdjustmentDialog({
         setReason("");
         requestKeyRef.current = null;
       },
-      onError: (error: any) => toast.error(error.message || "تعذر تعديل أرصدة الطلاب"),
+      onError: (error: any) => toast.error(getArabicRewardError(error, "تعذر تعديل أرصدة الطلاب")),
     });
   };
 

@@ -5,6 +5,7 @@ import { Loader2, RotateCcw, Clock, Users, Filter, AlertTriangle, ArrowRight } f
 import { format, isToday, isYesterday } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
+import { getArabicRewardError } from "./error-message";
 import { cn } from "@/lib/utils";
 import { formatRewardPoints } from "./format";
 
@@ -84,7 +85,7 @@ function LedgerView({ className, period }: { className: string, period: string }
       },
       onError: (err) => {
         setReversingId(null);
-        toast.error(err.message || "حدث خطأ");
+        toast.error(getArabicRewardError(err, "تعذر التراجع عن حركة التحفيز"));
       }
     });
   };

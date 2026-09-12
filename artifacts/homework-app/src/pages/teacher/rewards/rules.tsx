@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatRewardPoints } from "./format";
+import { getArabicRewardError } from "./error-message";
 
 type RewardType = { id: number; name: string; points: number; active: boolean };
 type RuleForm = Omit<RewardRuleInput, "rewardTypeId"> & { rewardTypeId: string };
@@ -102,14 +103,14 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
         setAdding(false);
         setForm(emptyRule(activeTypes[0]?.id));
       },
-      onError: (error) => toast.error(error.message || "تعذر حفظ القاعدة"),
+      onError: (error) => toast.error(getArabicRewardError(error, "تعذر حفظ القاعدة")),
     });
   };
 
   const toggleRule = (id: string, isActive: boolean) => {
     updateRule.mutate({ id, isActive: !isActive }, {
       onSuccess: () => toast.success(isActive ? "تم إيقاف القاعدة" : "تم تفعيل القاعدة"),
-      onError: (error) => toast.error(error.message || "تعذر تحديث القاعدة"),
+      onError: (error) => toast.error(getArabicRewardError(error, "تعذر تحديث القاعدة")),
     });
   };
 
@@ -120,7 +121,7 @@ export function RewardRulesDialog({ open, onOpenChange, rewardTypes }: { open: b
         setReprocessRuleId(null);
         toast.success("بدأت إعادة المعالجة بأمان");
       },
-      onError: (error) => toast.error(error.message || "تعذرت إعادة المعالجة"),
+      onError: (error) => toast.error(getArabicRewardError(error, "تعذرت إعادة المعالجة")),
     });
   };
 

@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatRewardPoints } from "./format";
+import { getArabicRewardError } from "./error-message";
 
 interface StudentControlCenterProps {
   open: boolean;
@@ -213,7 +214,7 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
         });
         toast.success("تم منح النقاط للطالب بنجاح");
       },
-      onError: (error: any) => toast.error(error.message || "تعذر منح النقاط"),
+      onError: (error: any) => toast.error(getArabicRewardError(error, "تعذر منح النقاط")),
       onSettled: () => {
         grantInFlightRef.current = false;
       },
@@ -394,7 +395,7 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
         setReason("");
         requestKeyRef.current = null;
       },
-      onError: (error: any) => toast.error(error.message || "تعذر تعديل الرصيد"),
+      onError: (error: any) => toast.error(getArabicRewardError(error, "تعذر تعديل الرصيد")),
     });
   };
 
@@ -464,7 +465,7 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
         setPassword("");
       },
       onError: (err: any) => {
-        toast.error(err.message || "حدث خطأ أثناء إعادة التعيين");
+        toast.error(getArabicRewardError(err, "حدث خطأ أثناء إعادة التعيين"));
       }
     });
   };
@@ -570,7 +571,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
         setAvatarChanged(false);
       },
       onError: (err: any) => {
-        toast.error(err.message || "فشل في تحديث البيانات");
+        toast.error(getArabicRewardError(err, "فشل في تحديث البيانات"));
       }
     });
   };
@@ -593,7 +594,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
         setAvatarChanged(false);
       },
       onError: (err: any) => {
-        toast.error(err.message || "فشل في تحديث البيانات");
+        toast.error(getArabicRewardError(err, "فشل في تحديث البيانات"));
       }
     });
   };
