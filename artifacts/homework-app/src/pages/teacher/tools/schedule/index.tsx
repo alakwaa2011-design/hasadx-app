@@ -341,6 +341,13 @@ const SCHEDULE_COLORS = [
   { value: "#F3E8FF", label: "بنفسجي", class: "bg-purple-100", textClass: "text-purple-950", borderClass: "border-purple-300" },
   { value: "#FCE7F3", label: "وردي", class: "bg-pink-100", textClass: "text-pink-950", borderClass: "border-pink-300" },
   { value: "#F1F5F9", label: "رمادي", class: "bg-slate-100", textClass: "text-slate-900", borderClass: "border-slate-300" },
+  { value: "#166534", label: "أخضر داكن", class: "bg-green-800", textClass: "text-white", borderClass: "border-green-900" },
+  { value: "#92400E", label: "ذهبي داكن", class: "bg-amber-800", textClass: "text-white", borderClass: "border-amber-900" },
+  { value: "#C2410C", label: "برتقالي داكن", class: "bg-orange-700", textClass: "text-white", borderClass: "border-orange-800" },
+  { value: "#1D4ED8", label: "أزرق داكن", class: "bg-blue-700", textClass: "text-white", borderClass: "border-blue-800" },
+  { value: "#6B21A8", label: "بنفسجي داكن", class: "bg-purple-800", textClass: "text-white", borderClass: "border-purple-900" },
+  { value: "#BE185D", label: "وردي داكن", class: "bg-pink-700", textClass: "text-white", borderClass: "border-pink-800" },
+  { value: "#334155", label: "رمادي داكن", class: "bg-slate-700", textClass: "text-white", borderClass: "border-slate-800" },
 ];
 
 type ScheduleTableTheme = "classic" | "soft" | "notebook";
@@ -353,6 +360,18 @@ const SCHEDULE_TABLE_THEMES = [
 
 type ScheduleColor = (typeof SCHEDULE_COLORS)[number]["value"];
 type ScheduleColorTargetKind = "header" | "column" | "row";
+
+function scheduleColorTextColor(color?: string) {
+  if (!color) return undefined;
+  const hex = color.replace("#", "");
+  if (hex.length !== 6) return "#13201A";
+  const [red, green, blue] = [0, 2, 4].map((index) => Number.parseInt(hex.slice(index, index + 2), 16) / 255);
+  const luminance = [red, green, blue].map((channel) =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+  const contrastWithWhite = 1.05 / (0.2126 * luminance[0] + 0.7152 * luminance[1] + 0.0722 * luminance[2] + 0.05);
+  return contrastWithWhite >= 3.5 ? "#FFFFFF" : "#13201A";
+}
 
 const C = {
   green: "#1E4D35",
