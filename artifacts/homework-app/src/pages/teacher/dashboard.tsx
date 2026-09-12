@@ -2913,6 +2913,7 @@ export function matchesTeacherToolQuery(
 
 function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, openRewards }: any) {
   const isAr = lang === "ar";
+  const isAdminUser = Boolean(user?.isAdmin) || user?.role === "admin";
   const [toolsQuery, setToolsQuery] = useState("");
   // Keep the sidebar shortcut aligned with the visual order of the sections.
   const groupFilter: Record<string, string[]> = {
@@ -3142,7 +3143,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           accent: BRAND.green,
           href: "/feedback",
         },
-        ...(user?.isAdmin
+        ...(isAdminUser
           ? [
               {
                 icon: <Crown className="w-6 h-6" />,
@@ -3281,6 +3282,21 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         selectTool("/teacher/teams", { searchText: "Microsoft Teams مايكروسوفت تيمز تكامل" }),
       ],
     },
+    ...(isAdminUser
+      ? [{
+          groupId: "admin-tools",
+          groupTitle: isAr ? "أدوات المسؤول" : "Admin Tools",
+          groupDesc: isAr
+            ? "إدارة المنصة ومتابعة المعلمين والطلاب."
+            : "Manage the platform and monitor teachers and students.",
+          groupIcon: <Crown className="w-4 h-4" />,
+          tools: [
+            selectTool("/teacher/admin", {
+              searchText: "لوحة التحكم لوحة المسؤول إدارة المنصة المعلمين الطلاب admin panel dashboard management",
+            }),
+          ],
+        }]
+      : []),
   ].map((group) => ({ ...group, tools: group.tools.filter(Boolean) as any[] }));
 
   const matchesQuery = (tool: any) => matchesTeacherToolQuery(tool, toolsQuery);
@@ -3293,7 +3309,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
   });
   const visibleKidsTool = kidsTool && matchesQuery(kidsTool) ? kidsTool : null;
   const feedbackTool = allTools.find((tool) => tool.href === "/feedback");
-  const adminTool = allTools.find((tool) => tool.href === "/teacher/admin");
 
   const ChevronEnd = isAr ? ArrowLeft : ArrowRight;
   let globalIdx = 0;
@@ -3477,18 +3492,11 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         </div>
       )}
 
-      {(feedbackTool || adminTool) && (
+      {feedbackTool && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 px-1 pt-5 text-xs font-bold">
-          {feedbackTool && (
-            <button type="button" onClick={() => setLocation(feedbackTool.href)} className="text-muted-foreground hover:text-foreground">
-              {feedbackTool.title}
-            </button>
-          )}
-          {adminTool && (
-            <button type="button" onClick={() => setLocation(adminTool.href)} className="text-muted-foreground hover:text-foreground">
-              {adminTool.title}
-            </button>
-          )}
+          <button type="button" onClick={() => setLocation(feedbackTool.href)} className="text-muted-foreground hover:text-foreground">
+            {feedbackTool.title}
+          </button>
         </div>
       )}
     </div>
