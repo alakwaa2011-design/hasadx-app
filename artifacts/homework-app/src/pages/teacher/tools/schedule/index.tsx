@@ -1731,11 +1731,19 @@ export default function ScheduleManagementPage() {
                       >
                         <thead>
                           <tr>
-                            <th className={`sticky start-0 z-20 w-28 px-2 py-3 ${tableTheme === "classic" ? "border border-border bg-emerald-800" : ""}`}></th>
+                            <th
+                              style={headerColor ? { backgroundColor: headerColor } : undefined}
+                              className={`group sticky start-0 z-20 w-28 px-2 py-3 ${tableTheme === "classic" ? "border border-border bg-emerald-800" : ""}`}
+                              title={isAr ? "تغيير لون رأس الجدول" : "Change header row color"}
+                            >
+                              <div className="flex items-center justify-center">
+                                {renderColorControl("header", "header", isAr ? "رأس الجدول" : "table header")}
+                              </div>
+                            </th>
                             {paperLessonNumbers.map((lessonNumber) => (
                               <Fragment key={lessonNumber}>
                                   <th
-                                    style={columnColors[`lesson-${lessonNumber}`] ? { backgroundColor: columnColors[`lesson-${lessonNumber}`], color: "#13201A" } : undefined}
+                                    style={getHeaderColor(`lesson-${lessonNumber}`) ? { backgroundColor: getHeaderColor(`lesson-${lessonNumber}`), color: "#13201A" } : undefined}
                                     className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
                                   tableTheme === "classic"
                                     ? "border border-border bg-emerald-800 text-white"
@@ -1757,7 +1765,7 @@ export default function ScheduleManagementPage() {
                                 </th>
                                 {paperBreakPositions.has(lessonNumber) && (
                                   <th
-                                    style={columnColors[`break-${lessonNumber}`] ? { backgroundColor: columnColors[`break-${lessonNumber}`], color: "#13201A" } : undefined}
+                                    style={getHeaderColor(`break-${lessonNumber}`) ? { backgroundColor: getHeaderColor(`break-${lessonNumber}`), color: "#13201A" } : undefined}
                                     className={`group w-28 px-2 py-3 text-xs font-black ${
                                       tableTheme === "classic"
                                         ? "border border-border bg-amber-700 text-white"
@@ -1791,7 +1799,7 @@ export default function ScheduleManagementPage() {
                               </Fragment>
                             ))}
                             <th
-                              style={columnColors["other-periods"] ? { backgroundColor: columnColors["other-periods"], color: "#13201A" } : undefined}
+                              style={getHeaderColor("other-periods") ? { backgroundColor: getHeaderColor("other-periods"), color: "#13201A" } : undefined}
                               className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
                               tableTheme === "classic"
                                 ? "border border-border bg-amber-700 text-white"
