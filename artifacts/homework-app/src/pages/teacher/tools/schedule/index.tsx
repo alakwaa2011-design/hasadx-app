@@ -1554,7 +1554,7 @@ export default function ScheduleManagementPage() {
                         <div className="mb-2 px-1 text-xs font-black text-emerald-950 dark:text-emerald-100">
                           {isAr ? "اختر لونًا" : "Choose a color"}
                         </div>
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-7 justify-items-center gap-1">
                           {SCHEDULE_COLORS.map((color) => {
                             const selectedColor = activeColorTarget?.kind === "header"
                               ? headerColor
@@ -1573,7 +1573,7 @@ export default function ScheduleManagementPage() {
                                 onClick={() => {
                                   if (activeColorTarget) chooseTableColor(activeColorTarget.kind, activeColorTarget.key, color.value);
                                 }}
-                                className={`relative flex h-9 items-center justify-center rounded-xl border transition-transform hover:scale-105 disabled:cursor-not-allowed disabled:opacity-40 ${
+                                className={`relative flex h-7 w-7 items-center justify-center rounded-full border transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-40 ${
                                   selectedColor === color.value ? "border-emerald-800 ring-2 ring-emerald-300/60" : "border-black/10"
                                 }`}
                                 style={{ backgroundColor: color.value }}
@@ -1818,7 +1818,7 @@ export default function ScheduleManagementPage() {
                             {paperLessonNumbers.map((lessonNumber) => (
                               <Fragment key={lessonNumber}>
                                   <th
-                                    style={getHeaderColor(`lesson-${lessonNumber}`) ? { backgroundColor: getHeaderColor(`lesson-${lessonNumber}`), color: "#13201A" } : undefined}
+                                    style={getHeaderColor(`lesson-${lessonNumber}`) ? { backgroundColor: getHeaderColor(`lesson-${lessonNumber}`), color: scheduleColorTextColor(getHeaderColor(`lesson-${lessonNumber}`)) } : undefined}
                                     className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
                                   tableTheme === "classic"
                                     ? "border border-border bg-emerald-800 text-white"
@@ -1839,7 +1839,7 @@ export default function ScheduleManagementPage() {
                                 </th>
                                 {paperBreakPositions.has(lessonNumber) && (
                                   <th
-                                    style={getHeaderColor(`break-${lessonNumber}`) ? { backgroundColor: getHeaderColor(`break-${lessonNumber}`), color: "#13201A" } : undefined}
+                                    style={getHeaderColor(`break-${lessonNumber}`) ? { backgroundColor: getHeaderColor(`break-${lessonNumber}`), color: scheduleColorTextColor(getHeaderColor(`break-${lessonNumber}`)) } : undefined}
                                     className={`group w-28 px-2 py-3 text-xs font-black ${
                                       tableTheme === "classic"
                                         ? "border border-border bg-amber-700 text-white"
@@ -1870,7 +1870,7 @@ export default function ScheduleManagementPage() {
                               </Fragment>
                             ))}
                             <th
-                              style={getHeaderColor("other-periods") ? { backgroundColor: getHeaderColor("other-periods"), color: "#13201A" } : undefined}
+                              style={getHeaderColor("other-periods") ? { backgroundColor: getHeaderColor("other-periods"), color: scheduleColorTextColor(getHeaderColor("other-periods")) } : undefined}
                               className={`group px-2 py-3 text-sm font-black uppercase tracking-wider ${
                               tableTheme === "classic"
                                 ? "border border-border bg-amber-700 text-white"
@@ -1899,7 +1899,7 @@ export default function ScheduleManagementPage() {
                             return (
                               <tr key={day.value} data-testid={`schedule-paper-day-${day.value}`} className="align-top group">
                                 <th
-                                  style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)] } : undefined}
+                                  style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)], color: scheduleColorTextColor(rowColors[String(day.value)]) } : undefined}
                                   className={`group sticky start-0 z-10 ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
                                 >
                                    <div className={`h-full min-h-[5rem] w-full flex items-center justify-center text-sm font-black transition-colors ${
@@ -1909,7 +1909,7 @@ export default function ScheduleManagementPage() {
                                          ? "rounded-lg border border-amber-200 bg-amber-100/80 text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
                                          : "rounded-none border-0 bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-300"
                                     }`}
-                                    style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)] } : undefined}
+                                    style={rowColors[String(day.value)] ? { backgroundColor: rowColors[String(day.value)], color: scheduleColorTextColor(rowColors[String(day.value)]) } : undefined}
                                   >
                                     <div className="flex items-center justify-center gap-1">
                                       <span>{isAr ? day.ar : day.en}</span>
@@ -1927,11 +1927,11 @@ export default function ScheduleManagementPage() {
                                   return (
                                     <Fragment key={lessonNumber}>
                                      <td
-                                       style={getCellColor(day.value, `lesson-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `lesson-${lessonNumber}`) } : undefined}
+                                       style={getCellColor(day.value, `lesson-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `lesson-${lessonNumber}`), color: scheduleColorTextColor(getCellColor(day.value, `lesson-${lessonNumber}`)) } : undefined}
                                        className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
                                      >
                                          <div
-                                           style={getCellColor(day.value, `lesson-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `lesson-${lessonNumber}`) } : undefined}
+                                           style={getCellColor(day.value, `lesson-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `lesson-${lessonNumber}`), color: scheduleColorTextColor(getCellColor(day.value, `lesson-${lessonNumber}`)) } : undefined}
                                            className={`flex min-h-[5rem] h-full flex-col gap-2 border p-1.5 ${
                                            tableTheme === "soft"
                                              ? "rounded-2xl border-slate-200 bg-slate-100/80 dark:border-slate-700 dark:bg-slate-800/70"
@@ -1975,11 +1975,11 @@ export default function ScheduleManagementPage() {
                                       </td>
                                       {paperBreakPositions.has(lessonNumber) && (
                                          <td
-                                           style={getCellColor(day.value, `break-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `break-${lessonNumber}`) } : undefined}
+                                           style={getCellColor(day.value, `break-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `break-${lessonNumber}`), color: scheduleColorTextColor(getCellColor(day.value, `break-${lessonNumber}`)) } : undefined}
                                            className={`relative ${tableTheme === "classic" ? "border border-border bg-amber-50/50 p-0 dark:bg-amber-900/10" : "p-2"}`}
                                          >
                                            <div
-                                             style={getCellColor(day.value, `break-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `break-${lessonNumber}`) } : undefined}
+                                             style={getCellColor(day.value, `break-${lessonNumber}`) ? { backgroundColor: getCellColor(day.value, `break-${lessonNumber}`), color: scheduleColorTextColor(getCellColor(day.value, `break-${lessonNumber}`)) } : undefined}
                                              className={`flex h-full min-h-[5rem] flex-col gap-2 p-1.5 ${
                                             tableTheme === "classic" ? "" : "rounded-2xl border border-amber-100/60 bg-amber-50/40"
                                           }`}>
@@ -2009,11 +2009,11 @@ export default function ScheduleManagementPage() {
                                   );
                                 })}
                                 <td
-                                  style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods") } : undefined}
+                                  style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods"), color: scheduleColorTextColor(getCellColor(day.value, "other-periods")) } : undefined}
                                   className={`relative ${tableTheme === "classic" ? "border border-border p-0" : "p-2"}`}
                                 >
                                   <div
-                                    style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods") } : undefined}
+                                    style={getCellColor(day.value, "other-periods") ? { backgroundColor: getCellColor(day.value, "other-periods"), color: scheduleColorTextColor(getCellColor(day.value, "other-periods")) } : undefined}
                                     className={`flex min-h-[5rem] h-full flex-col gap-2 p-1.5 ${
                                     tableTheme === "classic"
                                       ? "rounded-none border-0 bg-amber-50/60 dark:bg-amber-900/10"
