@@ -1373,54 +1373,62 @@ export default function ScheduleManagementPage() {
                         </span>
                       </summary>
                       <div
-                        className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex max-h-52 w-64 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 shadow-xl"
+                        className="absolute start-0 top-[calc(100%+0.5rem)] z-40 max-h-52 w-fit max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-2.5 shadow-xl"
                         style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(34, 87, 57, 0.35) transparent" }}
                       >
-                        <span className="px-2 text-xs font-black text-muted-foreground">
-                          {isAr ? "نمط الجدول" : "Table style"}
-                        </span>
-                        {SCHEDULE_TABLE_THEMES.map((theme) => (
-                          <button
-                            key={theme.id}
-                            type="button"
-                            onClick={() => chooseTableTheme(theme.id)}
-                            aria-pressed={tableTheme === theme.id}
-                            data-testid={`button-schedule-theme-${theme.id}`}
-                            className={`flex w-full items-center rounded-xl border px-3 py-2 text-start text-xs font-bold transition-all ${
-                              tableTheme === theme.id
-                                ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
-                                : "border-border bg-card text-muted-foreground hover:border-emerald-300"
-                            }`}
-                          >
-                            {isAr ? theme.ar : theme.en}
-                          </button>
-                        ))}
-                        <span className="mt-1 border-t border-border px-2 pt-2 text-xs font-black text-muted-foreground">
-                          {isAr ? "جهة الجدول" : "Table direction"}
-                        </span>
-                        <div className="flex flex-col rounded-xl bg-muted/50 p-1">
-                          <button
-                            type="button"
-                            onClick={() => chooseTableDirection("rtl")}
-                            aria-pressed={tableDirection === "rtl"}
-                            data-testid="button-schedule-direction-rtl"
-                            className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
-                              tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
-                            }`}
-                          >
-                            {isAr ? "الأيام من اليمين" : "Days from right"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => chooseTableDirection("ltr")}
-                            aria-pressed={tableDirection === "ltr"}
-                            data-testid="button-schedule-direction-ltr"
-                            className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
-                              tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
-                            }`}
-                          >
-                            {isAr ? "الأيام من اليسار" : "Days from left"}
-                          </button>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[max-content_max-content]">
+                          <div className="min-w-0">
+                            <div className="mb-2 px-2 text-sm font-black text-emerald-950 dark:text-emerald-100">
+                              {isAr ? "نمط الجدول" : "Table style"}
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              {SCHEDULE_TABLE_THEMES.map((theme) => (
+                                <button
+                                  key={theme.id}
+                                  type="button"
+                                  onClick={() => chooseTableTheme(theme.id)}
+                                  aria-pressed={tableTheme === theme.id}
+                                  data-testid={`button-schedule-theme-${theme.id}`}
+                                  className={`flex w-full items-center rounded-xl border px-3 py-2 text-start text-xs font-bold transition-all ${
+                                    tableTheme === theme.id
+                                      ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
+                                      : "border-border bg-card text-muted-foreground hover:border-emerald-300"
+                                  }`}
+                                >
+                                  {isAr ? theme.ar : theme.en}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="mb-2 px-2 text-sm font-black text-emerald-950 dark:text-emerald-100">
+                              {isAr ? "جهة الجدول" : "Table direction"}
+                            </div>
+                            <div className="flex flex-col gap-1.5 rounded-xl bg-muted/50 p-1">
+                              <button
+                                type="button"
+                                onClick={() => chooseTableDirection("rtl")}
+                                aria-pressed={tableDirection === "rtl"}
+                                data-testid="button-schedule-direction-rtl"
+                                className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
+                                  tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
+                                }`}
+                              >
+                                {isAr ? "الأيام من اليمين" : "Days from right"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => chooseTableDirection("ltr")}
+                                aria-pressed={tableDirection === "ltr"}
+                                data-testid="button-schedule-direction-ltr"
+                                className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
+                                  tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
+                                }`}
+                              >
+                                {isAr ? "الأيام من اليسار" : "Days from left"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </details>
