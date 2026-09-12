@@ -63,6 +63,7 @@ export function LiveBoard({
   const [fairnessHighlight, setFairnessHighlight] = useState<number | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const spinTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const selectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { data: suggestionsData, isError: suggestionsError } = useGetRewardSuggestions(className, { refetchInterval: 10000 });
   const { data: rewardTypesData } = useGetRewardTypes();
   const grantStudent = useGrantRewards();
@@ -114,6 +115,10 @@ export function LiveBoard({
         clearInterval(spinTimerRef.current);
         spinTimerRef.current = null;
       }
+      if (selectionTimerRef.current) {
+        clearTimeout(selectionTimerRef.current);
+        selectionTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -142,6 +147,10 @@ export function LiveBoard({
     }
     setIsSpinning(true);
     setFairnessHighlight(null);
+    if (selectionTimerRef.current) {
+      clearTimeout(selectionTimerRef.current);
+      selectionTimerRef.current = null;
+    }
     
     // This control is intentionally a simple random classroom picker.
     const chosen = students[Math.floor(Math.random() * students.length)];
@@ -155,6 +164,7 @@ export function LiveBoard({
       setIsSpinning(false);
       onFairnessTick?.(true);
       onFairnessSelect?.(chosen.id);
+      selectionTimerRef.current = setTimeout(() => setFairnessHighlight(null), 4500);
       return;
     }
 
@@ -171,11 +181,15 @@ export function LiveBoard({
         setFairnessHighlight(chosen.id);
         setIsSpinning(false);
         onFairnessSelect?.(chosen.id);
+        selectionTimerRef.current = setTimeout(() => setFairnessHighlight(null), 4500);
       }
     }, 90);
   };
 
   const groupScores = [...groups].sort((a,b) => b.score - a.score);
+  const selectedStudent = !isSpinning
+    ? students.find((student) => student.id === fairnessHighlight)
+    : undefined;
 
   return (
     <div className="fixed inset-0 z-[100] flex min-h-dvh min-w-0 max-w-[100vw] flex-col overflow-x-hidden bg-[#F8FAFC] text-slate-900 font-sans" dir="rtl" data-testid="live-board">
@@ -219,6 +233,64 @@ export function LiveBoard({
           </button>
         </div>
       </header>
+
+      <AnimatePresence>
+        {selectedStudent && (
+          <motion.div
+            className="fixed inset-0 z-[140] flex items-center justify-center bg-emerald-950/45 p-5 backdrop-blur-sm"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFairnessHighlight(null)}
+            role="dialog"
+            aria-label={`تم اختيار الطالب ${selectedStudent.name}`}
+          >
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, scale: 0.55, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 230, damping: 18 }}
+              onClick={(event) => event.stopPropagation()}
+              className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] border-4 border-amber-300 bg-gradient-to-b from-amber-50 via-white to-emerald-50 px-6 py-8 text-center shadow-[0_30px_100px_rgba(15,118,86,0.4)]"
+            >
+              <motion.div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.35),transparent_68%)]"
+                animate={reduceMotion ? undefined : { opacity: [0.55, 1, 0.55] }}
+                transition={{ duration: 1.1, repeat: Infinity }}
+              />
+              <Sparkles className="absolute right-7 top-7 text-amber-500" size={32} />
+              <Sparkles className="absolute bottom-16 left-7 text-emerald-500" size={25} />
+              <div className="relative mx-auto mb-5 w-fit">
+                <div className="absolute -inset-4 rounded-full bg-amber-300/35 blur-xl" />
+                <AvatarDisplay
+                  avatar={selectedStudent.avatar}
+                  fallback={selectedStudent.name.charAt(0)}
+                  size="xl"
+                  className="relative h-32 w-32 border-4 border-white shadow-2xl ring-4 ring-amber-300 sm:h-40 sm:w-40"
+                />
+                <div className="absolute -bottom-2 left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-amber-400 text-amber-950 shadow-lg">
+                  <Trophy size={22} />
+                </div>
+              </div>
+              <p className="relative text-sm font-black text-amber-700">تم اختيار الطالب</p>
+              <h2 className="relative mt-2 text-3xl font-black leading-tight text-emerald-950 sm:text-4xl">
+                {selectedStudent.name}
+              </h2>
+              <p className="relative mt-3 text-sm font-bold text-slate-600">
+                مبروك! أنت المختار في هذه الجولة
+              </p>
+              <button
+                type="button"
+                onClick={() => setFairnessHighlight(null)}
+                className="relative mt-6 min-h-11 rounded-2xl bg-emerald-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-colors hover:bg-emerald-700"
+              >
+                متابعة
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
        <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-2 sm:p-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
