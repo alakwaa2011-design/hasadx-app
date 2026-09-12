@@ -89,6 +89,7 @@ import {
   FileImage,
   BookOpen,
   Monitor,
+  Headphones,
   Brain,
   GraduationCap,
   Flame,
@@ -4292,6 +4293,7 @@ export function AssignmentRow({
   const deadlineExpired =
     assignment.deadline && new Date(assignment.deadline) < new Date();
   const isExam = assignment.examMode === true;
+  const isListening = assignment.activityType === "listening";
   const isArchived = Boolean(archived || assignment.archived);
   const statusActive = !isArchived && !deadlineExpired;
 
@@ -4367,7 +4369,12 @@ export function AssignmentRow({
                   {lang === "ar" ? "مؤرشف" : "Archived"}
                 </span>
               )}
-              {isExam ? (
+              {isListening ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1 rounded-full bg-sky-500/[0.1] text-sky-950 dark:text-sky-200 border border-sky-600/15 leading-none">
+                  <Headphones className="w-3.5 h-3.5 opacity-80 shrink-0" />
+                  {lang === "ar" ? "نشاط استماع" : "Listening activity"}
+                </span>
+              ) : isExam ? (
                 <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-amber-500/[0.1] text-amber-950 dark:text-amber-200 border border-amber-600/15 leading-none">
                   {lang === "ar" ? "اختبار" : "Exam"}
                 </span>
@@ -4710,7 +4717,7 @@ function AssignmentsTabRender({
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [showAllAssignments, setShowAllAssignments] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "expired" | "favorites"
+    "all" | "active" | "expired" | "favorites" | "listening"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [favorites, setFavorites] = useState<Set<number>>(() => {
@@ -4739,6 +4746,7 @@ function AssignmentsTabRender({
   const now = new Date();
   const statusFiltered = filteredAssignments.filter((a: any) => {
     if (statusFilter === "favorites" && !favorites.has(a.id)) return false;
+    if (statusFilter === "listening" && a.activityType !== "listening") return false;
     if (statusFilter === "active" && a.deadline && new Date(a.deadline) < now)
       return false;
     if (
@@ -4958,6 +4966,10 @@ function AssignmentsTabRender({
                 key: "favorites",
                 label: lang === "ar" ? "المفضلة" : "Favorites",
               },
+              {
+                key: "listening",
+                label: lang === "ar" ? "أنشطة الاستماع" : "Listening",
+              },
               { key: "active", label: lang === "ar" ? "نشط" : "Active" },
               { key: "expired", label: lang === "ar" ? "منتهي" : "Expired" },
             ].map((f) => (
@@ -4974,6 +4986,9 @@ function AssignmentsTabRender({
               >
                 {f.key === "favorites" && (
                   <Star className="inline-block w-3 h-3 me-1 opacity-90 align-[-2px]" />
+                )}
+                {f.key === "listening" && (
+                  <Headphones className="inline-block w-3 h-3 me-1 opacity-90 align-[-2px]" />
                 )}
                 {f.label}
               </button>

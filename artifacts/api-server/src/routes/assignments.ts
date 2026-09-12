@@ -178,6 +178,7 @@ router.get("/assignments", async (req, res) => {
       submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions WHERE submissions.assignment_id = ${assignmentsTable.id})`.as("submission_count"),
       hasModelImage: sql<boolean>`(${assignmentsTable.modelImageBase64} IS NOT NULL)`.as("has_model_image"),
       isAdaptive: assignmentsTable.isAdaptive,
+      activityType: assignmentsTable.activityType,
     };
 
     const baseQuery = db

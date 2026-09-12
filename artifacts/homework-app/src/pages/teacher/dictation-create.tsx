@@ -675,7 +675,13 @@ export default function DictationCreate() {
     onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
       queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
-      toast.success(isEditing ? c.updateSuccess : c.publishSuccess);
+      toast.success(
+        isEditing
+          ? c.updateSuccess
+          : lang === "ar"
+            ? "تم نشر نشاط الاستماع — ستجده مميزًا داخل «أنشطتي»"
+            : "Listening activity published — find it labeled in My Activities",
+      );
       setLocation(editorReturnTo || `/teacher/assignment/${id}`);
     },
     onError: (err: Error) => toast.error(err.message),
