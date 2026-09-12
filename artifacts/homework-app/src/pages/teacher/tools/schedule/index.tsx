@@ -1372,8 +1372,8 @@ export default function ScheduleManagementPage() {
                           {isAr ? "مظهر الجدول" : "Table appearance"}
                         </span>
                       </summary>
-                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xl">
-                        <span className="me-1 text-xs font-black text-muted-foreground">
+                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex w-64 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-xl">
+                        <span className="px-2 text-xs font-black text-muted-foreground">
                           {isAr ? "مظهر الجدول" : "Table style"}
                         </span>
                         {SCHEDULE_TABLE_THEMES.map((theme) => (
@@ -1383,46 +1383,40 @@ export default function ScheduleManagementPage() {
                             onClick={() => chooseTableTheme(theme.id)}
                             aria-pressed={tableTheme === theme.id}
                             data-testid={`button-schedule-theme-${theme.id}`}
-                            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                            className={`flex w-full items-center rounded-xl border px-3 py-2 text-start text-xs font-bold transition-all ${
                               tableTheme === theme.id
                                 ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm"
                                 : "border-border bg-card text-muted-foreground hover:border-emerald-300"
                             }`}
                           >
-                            <span className="flex -space-x-1 rtl:space-x-reverse" aria-hidden="true">
-                              {theme.swatches.map((swatch) => (
-                                <span key={swatch} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: swatch }} />
-                              ))}
-                            </span>
                             {isAr ? theme.ar : theme.en}
                           </button>
                         ))}
-                        <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
-                        <span className="text-xs font-black text-muted-foreground">
+                        <span className="mt-1 border-t border-border px-2 pt-2 text-xs font-black text-muted-foreground">
                           {isAr ? "بداية الجدول" : "Table direction"}
                         </span>
-                        <div className="flex rounded-xl bg-muted/50 p-1">
+                        <div className="flex flex-col rounded-xl bg-muted/50 p-1">
                           <button
                             type="button"
                             onClick={() => chooseTableDirection("rtl")}
                             aria-pressed={tableDirection === "rtl"}
                             data-testid="button-schedule-direction-rtl"
-                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                            className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
                               tableDirection === "rtl" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
                             }`}
                           >
-                            {isAr ? "الأحد من اليمين" : "Sunday on right"}
+                            {isAr ? "الأيام من اليمين" : "Days from right"}
                           </button>
                           <button
                             type="button"
                             onClick={() => chooseTableDirection("ltr")}
                             aria-pressed={tableDirection === "ltr"}
                             data-testid="button-schedule-direction-ltr"
-                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                            className={`rounded-lg px-3 py-2 text-start text-xs font-bold transition-all ${
                               tableDirection === "ltr" ? "bg-card text-emerald-800 shadow-sm" : "text-muted-foreground"
                             }`}
                           >
-                            {isAr ? "الأحد من اليسار" : "Sunday on left"}
+                            {isAr ? "الأيام من اليسار" : "Days from left"}
                           </button>
                         </div>
                       </div>
