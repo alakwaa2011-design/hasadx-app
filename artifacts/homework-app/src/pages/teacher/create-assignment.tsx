@@ -455,6 +455,12 @@ export default function CreateAssignment() {
   const [extractError, setExtractError] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const openImageExtractPanel = () => {
+    setExtractCredit(null);
+    setExtractError("");
+    setShowImageExtract(true);
+  };
+
   // ── Date picker ──
   const [deadlineDraft, setDeadlineDraft] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -708,10 +714,28 @@ export default function CreateAssignment() {
   useEffect(() => {
     if (!showImageExtract) return;
     let cancelled = false;
-    fetch(`${API_BASE}/api/credits/tool-price/extract_questions_from_source`, { credentials: "include" })
+    setExtractCredit(null);
+    fetch(`${API_BASE}/api/credits/tool-price/extract_questions_from_source`, {
+      credentials: "include",
+      cache: "no-store",
+    })
       .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (!cancelled && d && typeof d.effectiveCost === "number") setExtractCredit(d); })
-      .catch(() => {});
+      .then(d => {
+        if (
+          !cancelled
+          && d
+          && typeof d.effectiveCost === "number"
+          && typeof d.baseCost === "number"
+          && typeof d.isPro === "boolean"
+          && typeof d.balance === "number"
+          && typeof d.creditsEnabled === "boolean"
+        ) {
+          setExtractCredit(d);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setExtractCredit(null);
+      });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showImageExtract]);
@@ -720,7 +744,7 @@ export default function CreateAssignment() {
       questions produced by the previous extraction of the same source. */
   const runExtraction = async (replacePrevious: boolean) => {
     const hasSource = extractSourceMode === "file" ? extractFiles.length > 0 : extractSourceText.trim().length >= 5;
-    if (!hasSource || extractLoading || extractBusyRef.current) return;
+    if (!hasSource || !extractCredit || extractLoading || extractBusyRef.current) return;
     extractBusyRef.current = true;
     setDupChoiceOpen(false);
     setExtractLoading(true); setExtractError("");
@@ -2159,7 +2183,7 @@ export default function CreateAssignment() {
                           </div>
                         </button>
                         <button type="button" data-testid="btn-method-file"
-                          onClick={() => { setQuestionMethod("file"); setShowImageExtract(true); }}
+                          onClick={() => { setQuestionMethod("file"); openImageExtractPanel(); }}
                           className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 p-3 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed text-start sm:text-center">
                           <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center shrink-0"><Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
                           <div className="flex flex-col sm:items-center gap-0.5 sm:gap-1 min-w-0">
@@ -2300,7 +2324,7 @@ export default function CreateAssignment() {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-bold text-primary flex items-center gap-2"><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج أسئلة من ملف أو نص" : "Extract questions from a file or text"}</h3>
-                            <button type="button" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractFiles([]); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                            <button type="button" data-testid="btn-close-extract-panel" onClick={() => { setShowImageExtract(false); setExtractError(""); setExtractFiles([]); pendingExtractFpRef.current = null; setDupChoiceOpen(false); }} className="p-1 rounded text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                           </div>
                           <div className="grid grid-cols-2 gap-1 rounded-xl bg-background/70 border border-primary/15 p-1">
                             {([
@@ -2475,11 +2499,11 @@ export default function CreateAssignment() {
                                   : "You already extracted questions from this exact source and they are still in the editor. What would you like to do?"}
                               </p>
                               <div className="flex flex-col gap-1.5">
-                                <button type="button" onClick={() => void runExtraction(true)} data-testid="btn-dup-replace"
+                                <button type="button" onClick={() => void runExtraction(true)} disabled={!extractCredit || extractLoading} data-testid="btn-dup-replace"
                                   className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold">
                                   {lang === "ar" ? "استبدال الأسئلة المستخرجة سابقاً" : "Replace previously extracted questions"}
                                 </button>
-                                <button type="button" onClick={() => void runExtraction(false)} data-testid="btn-dup-add"
+                                <button type="button" onClick={() => void runExtraction(false)} disabled={!extractCredit || extractLoading} data-testid="btn-dup-add"
                                   className="w-full py-2 rounded-lg border border-primary/30 text-primary text-xs font-bold">
                                   {lang === "ar" ? "إضافة أسئلة جديدة على أي حال" : "Add new questions anyway"}
                                 </button>
@@ -2491,7 +2515,7 @@ export default function CreateAssignment() {
                             </div>
                           ) : (
                           <button type="button" onClick={handleExtractFromSource}
-                            disabled={extractLoading || extractRequestedTotal > 30 || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || extractRequestedTotal === 0}
+                            disabled={!extractCredit || extractLoading || extractRequestedTotal > 30 || (extractSourceMode === "file" ? extractFiles.length === 0 : extractSourceText.trim().length < 5) || extractRequestedTotal === 0}
                             data-testid="btn-extract-source"
                             className="w-full py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                             {extractLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{lang === "ar" ? "جاري القراءة والتوليد..." : "Reading & generating..."}</> : <><Camera className="w-4 h-4" />{lang === "ar" ? "استخرج وأنشئ الأسئلة" : "Extract & create questions"}</>}
@@ -2886,7 +2910,7 @@ export default function CreateAssignment() {
                               </button>
                             )}
                             {!showImageExtract && (
-                              <button type="button" onClick={() => setShowImageExtract(true)}
+                              <button type="button" data-testid="btn-open-extract-panel" onClick={openImageExtractPanel}
                                 className="flex items-center gap-2.5 p-3.5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 text-start transition-all">
                                 <Camera className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                 <div className="min-w-0">

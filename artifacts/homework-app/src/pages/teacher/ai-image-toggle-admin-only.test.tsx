@@ -11,6 +11,8 @@ import { act } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { I18nProvider } from "@/lib/i18n";
 
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => (props: any) => {
     const { initial, animate, exit, transition, layout, whileTap, whileHover, ...rest } = props;
@@ -64,6 +66,31 @@ function renderPage() {
         </I18nProvider>
       </QueryClientProvider>,
     );
+  });
+}
+
+function response(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as Response;
+}
+
+async function settle() {
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+}
+
+function setTextValue(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const prototype = input instanceof HTMLTextAreaElement
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, "value")!.set!;
+  act(() => {
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
 
@@ -131,5 +158,98 @@ describe("خيار توليد الصور بالذكاء — للمسؤول فق�
     expect(container.querySelector('[data-testid="btn-method-ai"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="btn-method-file"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="btn-method-bank"]')).toBeTruthy();
+  });
+});
+
+describe("سعر استخراج الأسئلة عند إعادة فتح اللوحة", () => {
+  it("يمسح السعر القديم فورًا ويبقي الاستخراج معطّلًا حتى ينجح السعر الجديد", async () => {
+    let resolveSecondPrice!: (value: Response) => void;
+    const secondPrice = new Promise<Response>(resolve => {
+      resolveSecondPrice = resolve;
+    });
+    let priceCalls = 0;
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/extract_questions_from_source")) {
+        priceCalls += 1;
+        return priceCalls === 1
+          ? Promise.resolve(response({ effectiveCost: 3, baseCost: 3, isPro: false, balance: 50, creditsEnabled: true }))
+          : secondPrice;
+      }
+      if (url.includes("/auth/me")) return Promise.resolve(response({ id: 1, isAdmin: false }));
+      return Promise.resolve(response({}));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    await settle();
+
+    const title = container.querySelector("input") as HTMLInputElement;
+    setTextValue(title, "نشاط اختبار");
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-wizard-next"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-method-file"]') as HTMLButtonElement).click();
+    });
+    await settle();
+
+    const pasteText = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent?.includes("لصق نص")) as HTMLButtonElement;
+    await act(async () => pasteText.click());
+    setTextValue(
+      container.querySelector('[data-testid="input-extract-source-text"]') as HTMLTextAreaElement,
+      "نص تعليمي صالح للاستخراج",
+    );
+    expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(false);
+
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-close-extract-panel"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (container.querySelector('[data-testid="section-other-methods"] > button') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-open-extract-panel"]') as HTMLButtonElement).click();
+    });
+
+    const extract = container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement;
+    expect(extract.disabled).toBe(true);
+    extract.click();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/worksheets/ai/extract"))).toBe(false);
+
+    await act(async () => resolveSecondPrice(response(
+      { effectiveCost: 5, baseCost: 5, isPro: false, balance: 50, creditsEnabled: true },
+    )));
+    await settle();
+    expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(false);
+    expect(container.querySelector('[data-testid="text-extract-cost"]')?.textContent).toContain("5 نقاط حصاد");
+  });
+
+  it("يبقي الاستخراج معطّلًا عند فشل تحميل السعر", async () => {
+    vi.stubGlobal("fetch", vi.fn((url: string) => {
+      if (url.includes("/api/credits/tool-price/extract_questions_from_source")) {
+        return Promise.resolve(response({}, 503));
+      }
+      if (url.includes("/auth/me")) return Promise.resolve(response({ id: 1, isAdmin: false }));
+      return Promise.resolve(response({}));
+    }));
+    renderPage();
+    await settle();
+
+    setTextValue(container.querySelector("input") as HTMLInputElement, "نشاط اختبار");
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-wizard-next"]') as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (container.querySelector('[data-testid="btn-method-file"]') as HTMLButtonElement).click();
+    });
+    await settle();
+    const pasteText = Array.from(container.querySelectorAll("button"))
+      .find(button => button.textContent?.includes("لصق نص")) as HTMLButtonElement;
+    await act(async () => pasteText.click());
+    setTextValue(
+      container.querySelector('[data-testid="input-extract-source-text"]') as HTMLTextAreaElement,
+      "نص تعليمي صالح للاستخراج",
+    );
+    expect((container.querySelector('[data-testid="btn-extract-source"]') as HTMLButtonElement).disabled).toBe(true);
   });
 });
