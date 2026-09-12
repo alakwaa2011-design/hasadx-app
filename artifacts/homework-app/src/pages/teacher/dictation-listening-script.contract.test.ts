@@ -1,0 +1,28 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const source = readFileSync(resolve(process.cwd(), "src/pages/teacher/dictation-create.tsx"), "utf8");
+
+describe("listening script generator contract", () => {
+  it("keeps the Arabic activity title and placeholder right-aligned", () => {
+    expect(source).toContain('dir={lang === "ar" ? "rtl" : "ltr"}');
+    expect(source).toContain('"text-right placeholder:text-right placeholder:text-[#94a3ab]"');
+  });
+
+  it("generates inside the existing listening activity flow", () => {
+    expect(source).toContain('data-testid="button-open-listening-script-generator"');
+    expect(source).toContain('`${API_BASE}/api/listening-script/generate`');
+    expect(source).toContain('data-testid="dialog-listening-script-generator"');
+  });
+
+  it("only adopts a reviewed script through the real audioText state", () => {
+    expect(source).toContain("setAudioText(generatedScript.slice(0, MAX_CHARS))");
+    expect(source).toContain('listeningAudioText: audioText.trim()');
+    expect(source).toContain('previewTts("main-audio", audioText, audioSpeed, audioVoice)');
+  });
+
+  it("keeps ambiguous-word diacritics as the default", () => {
+    expect(source).toContain('useState<ScriptDiacritics>("ambiguous")');
+  });
+});

@@ -144,6 +144,7 @@ import lessonPlansRouter from "../routes/lesson_plans";
 import whiteboardRouter from "../routes/whiteboard";
 import wheelRouter from "../routes/wheel";
 import aiQuestionsRouter from "../routes/ai-questions";
+import listeningScriptRouter from "../routes/listening-script";
 
 type Session = { teacherId?: number };
 
@@ -646,6 +647,65 @@ describe("POST /api/lesson-plans/ai/generate", () => {
       .post("/api/lesson-plans/ai/generate")
       .send({ topic: "الكسور" });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/listening-script/generate", () => {
+  it("generates a clean Arabic listening script with the requested context", async () => {
+    openaiReturns("بالطبع، إليك النص: كانَ خالدٌ معروفًا بالأمانة.");
+
+    const res = await request(makeApp(listeningScriptRouter))
+      .post("/api/listening-script/generate")
+      .send({
+        topic: "قصة قصيرة عن الأمانة",
+        textType: "story",
+        length: "medium",
+        diacritics: "ambiguous",
+        language: "ar",
+        gradeLevel: "الصف الخامس",
+        activityTitle: "الأمانة",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      script: "كانَ خالدٌ معروفًا بالأمانة.",
+      language: "ar",
+    });
+    const call = mockState.openaiCreate.mock.calls[0][0];
+    expect(call.messages[1].content).toContain("نوع النص: قصة");
+    expect(call.messages[1].content).toContain("الطول: متوسط");
+    expect(call.messages[1].content).toContain("الصف الدراسي: الصف الخامس");
+    expect(call.messages[1].content).toContain("شكّل الكلمات الملتبسة فقط");
+    expect(mockState.checkedCreditToolKeys).not.toContain("listening-script");
+    expectNoLegacyParams();
+  });
+
+  it("does not apply Arabic diacritics instructions to English output", async () => {
+    openaiReturns("Maya returned the lost notebook to its owner.");
+
+    const res = await request(makeApp(listeningScriptRouter))
+      .post("/api/listening-script/generate")
+      .send({
+        topic: "A story about honesty",
+        textType: "story",
+        length: "short",
+        diacritics: "full",
+        language: "en",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.language).toBe("en");
+    const prompt = mockState.openaiCreate.mock.calls[0][0].messages[1].content;
+    expect(prompt).toContain("The output is English; do not add Arabic diacritics.");
+  });
+
+  it("requires a teacher session", async () => {
+    const res = await request(makeApp(listeningScriptRouter, null))
+      .post("/api/listening-script/generate")
+      .send({ topic: "الأمانة" });
+
+    expect(res.status).toBe(401);
+    expect(mockState.openaiCreate).not.toHaveBeenCalled();
   });
 });
 

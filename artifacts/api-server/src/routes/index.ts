@@ -78,6 +78,7 @@ import kidsRouter from "./kids";
 import aiVideoProjectsRouter from "./ai-video-projects";
 import classroomRewardsRouter from "./classroom-rewards";
 import teacherScheduleRouter from "./teacher-schedule";
+import listeningScriptRouter from "./listening-script";
 
 const router: IRouter = Router();
 
@@ -95,6 +96,7 @@ router.use("/ai-chat", aiChatRouter);
 router.use(studentsRouter);
 router.use(classroomRewardsRouter);
 router.use(teacherScheduleRouter);
+router.use(listeningScriptRouter);
 router.use(teacherClassesRouter);
 router.use(activityLibraryStatsRouter);
 router.use(attendanceRouter);

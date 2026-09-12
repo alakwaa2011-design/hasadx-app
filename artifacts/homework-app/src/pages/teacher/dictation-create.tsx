@@ -13,6 +13,13 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -52,6 +59,9 @@ import {
   Gauge,
   Save,
   Globe,
+  Sparkles,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -80,6 +90,9 @@ const MAX_QUESTION_POINTS = 100;
 const POINT_STEP = 0.5;
 
 type AccessFlavor = "general" | "link" | "private";
+type ScriptTextType = "auto" | "story" | "dialogue" | "educational";
+type ScriptLength = "short" | "medium" | "long";
+type ScriptDiacritics = "none" | "ambiguous" | "full";
 
 function clampQuestionPoints(n: number): number {
   if (!Number.isFinite(n) || n < 0) return 0;
@@ -444,6 +457,18 @@ export default function DictationCreate() {
   const [audioVoice, setAudioVoice] = useState("shimmer");
   const [audioSpeed, setAudioSpeed] = useState(0.9);
   const [previewSpeed, setPreviewSpeed] = useState(1.0);
+  const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [generatorTopic, setGeneratorTopic] = useState("");
+  const [generatorTextType, setGeneratorTextType] = useState<ScriptTextType>("auto");
+  const [generatorLength, setGeneratorLength] = useState<ScriptLength>("medium");
+  const [generatorDiacritics, setGeneratorDiacritics] = useState<ScriptDiacritics>("ambiguous");
+  const [generatedScript, setGeneratedScript] = useState("");
+  const [generatedLanguage, setGeneratedLanguage] = useState<"ar" | "en" | null>(null);
+  const [generatedFingerprint, setGeneratedFingerprint] = useState("");
+  const [generatorError, setGeneratorError] = useState("");
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const generatorAbortRef = useRef<AbortController | null>(null);
+  const generatorRequestRef = useRef(0);
 
   // Questions
   const [questions, setQuestions] = useState<QuestionItem[]>([newQuestion("open")]);
@@ -787,6 +812,86 @@ export default function DictationCreate() {
     else goNextStep();
   };
 
+  const generateListeningScript = async () => {
+    if (generatorTopic.trim().length < 2 || isGeneratingScript) return;
+    generatorAbortRef.current?.abort();
+    const controller = new AbortController();
+    generatorAbortRef.current = controller;
+    const requestId = ++generatorRequestRef.current;
+    const payload = {
+      topic: generatorTopic.trim(),
+      textType: generatorTextType,
+      length: generatorLength,
+      diacritics: generatorDiacritics,
+      language: lang === "ar" ? "ar" as const : "en" as const,
+      gradeLevel: targetClasses[0] || undefined,
+      activityTitle: title.trim() || undefined,
+    };
+    const fingerprint = JSON.stringify(payload);
+    setIsGeneratingScript(true);
+    setGeneratorError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/listening-script/generate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data.script !== "string" || !data.script.trim()) {
+        throw new Error(data.message || (lang === "ar" ? "تعذّر إنشاء النص. حاول مرة أخرى." : "Could not generate the script. Please try again."));
+      }
+      if (requestId !== generatorRequestRef.current || controller.signal.aborted) return;
+      setGeneratedScript(data.script.slice(0, MAX_CHARS));
+      setGeneratedLanguage(data.language === "en" ? "en" : "ar");
+      setGeneratedFingerprint(fingerprint);
+    } catch (error) {
+      if (controller.signal.aborted || requestId !== generatorRequestRef.current) return;
+      setGeneratorError(
+        error instanceof Error
+          ? error.message
+          : (lang === "ar" ? "تعذّر إنشاء النص. حاول مرة أخرى." : "Could not generate the script. Please try again."),
+      );
+    } finally {
+      if (requestId === generatorRequestRef.current) setIsGeneratingScript(false);
+    }
+  };
+
+  const useGeneratedListeningScript = () => {
+    const currentFingerprint = JSON.stringify({
+      topic: generatorTopic.trim(),
+      textType: generatorTextType,
+      length: generatorLength,
+      diacritics: generatorDiacritics,
+      language: lang === "ar" ? "ar" : "en",
+      gradeLevel: targetClasses[0] || undefined,
+      activityTitle: title.trim() || undefined,
+    });
+    if (generatedFingerprint !== currentFingerprint) {
+      setGeneratorError(lang === "ar" ? "تغيّرت خيارات التوليد. أنشئ نسخة جديدة قبل استخدام النص." : "Generation options changed. Create a new version before using the script.");
+      return;
+    }
+    if (
+      audioText.trim() &&
+      audioText.trim() !== generatedScript.trim() &&
+      !window.confirm(lang === "ar" ? "يوجد نص استماع حالي. هل تريد استبداله بالنص المولّد؟" : "A listening script already exists. Replace it with the generated script?")
+    ) {
+      return;
+    }
+    setAudioText(generatedScript.slice(0, MAX_CHARS));
+    setGeneratorOpen(false);
+  };
+
+  useEffect(() => {
+    if (generatorOpen) return;
+    generatorAbortRef.current?.abort();
+    generatorRequestRef.current += 1;
+    setIsGeneratingScript(false);
+  }, [generatorOpen]);
+
+  useEffect(() => () => generatorAbortRef.current?.abort(), []);
+
   const isAudioPlaying = speakingId === "main-audio";
 
   const selectUiClass =
@@ -799,6 +904,9 @@ export default function DictationCreate() {
 
   const primaryClassLabel =
     targetClasses.length === 0 ? c.noClass : targetClasses.join(lang === "ar" ? "، " : ", ");
+  const showGeneratorDiacritics = generatedLanguage
+    ? generatedLanguage === "ar"
+    : /[\u0600-\u06FF]/.test(generatorTopic) || (!generatorTopic.trim() && lang === "ar");
 
   const accessFlavorLabel =
     accessFlavor === "private" ? c.accessPrivate : accessFlavor === "link" ? c.accessLink : c.accessGeneral;
@@ -929,11 +1037,13 @@ export default function DictationCreate() {
                   maxLength={120}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={c.titlePlaceholder}
-                  dir="auto"
+                  dir={lang === "ar" ? "rtl" : "ltr"}
                   autoComplete="off"
                   className={cn(
                     "min-h-[52px] w-full rounded-2xl border bg-white px-4 py-3 text-base font-semibold text-[#111827]",
-                    FIELD_CLASS,
+                    lang === "ar"
+                      ? "text-right placeholder:text-right placeholder:text-[#94a3ab]"
+                      : "text-left placeholder:text-left placeholder:text-[#94a3ab]",
                     "focus:border-[#1E4D35]/30 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                     TRANSITION,
                   )}
@@ -1049,6 +1159,22 @@ export default function DictationCreate() {
                   <p className="mt-0.5 text-[13px] leading-relaxed text-[#64748B]">{c.audioDescription}</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setGeneratorError("");
+                  setGeneratorOpen(true);
+                }}
+                className={cn(
+                  "inline-flex min-h-[40px] shrink-0 items-center justify-center gap-2 rounded-xl border bg-white px-3.5 text-xs font-black text-[#1E4D35] hover:bg-[#f3f7f4]",
+                  TRANSITION,
+                )}
+                style={{ borderColor: COLOR_CARD_BORDER }}
+                data-testid="button-open-listening-script-generator"
+              >
+                <Sparkles className="h-4 w-4 text-[#D9A521]" />
+                {lang === "ar" ? "ولّد بالذكاء" : "Generate with AI"}
+              </button>
             </div>
 
             <div className="space-y-5 p-6 sm:p-8">
@@ -1919,6 +2045,194 @@ export default function DictationCreate() {
           </div>
         </main>
       )}
+
+      <Dialog open={generatorOpen} onOpenChange={setGeneratorOpen}>
+        <DialogContent
+          dir={dir}
+          closeLabel={lang === "ar" ? "إغلاق" : "Close"}
+          className={cn(
+            "max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-[24px] border bg-white p-5 sm:p-7",
+            lang === "ar" && "[&>button]:left-4 [&>button]:right-auto",
+          )}
+          style={{ borderColor: CARD_BORDER }}
+          data-testid="dialog-listening-script-generator"
+        >
+          <DialogHeader className="pe-7 text-start">
+            <DialogTitle className="flex items-center gap-2 text-xl font-black text-[#0f2918]">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4eedc] text-[#D9A521]">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              {lang === "ar" ? "أنشئ نصًا لنشاط الاستماع" : "Create a listening activity script"}
+            </DialogTitle>
+            <DialogDescription className="text-start leading-relaxed text-[#64748B]">
+              {lang === "ar"
+                ? "أنشئ مسودة مناسبة لطلابك، ثم راجعها وعدّلها قبل استخدامها."
+                : "Create a student-appropriate draft, then review and edit it before using it."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 text-start">
+            <div className="space-y-2">
+              <label htmlFor="listening-script-topic" className="text-sm font-bold text-[#0f2918]">
+                {lang === "ar" ? "ماذا تريد أن يكون النص عنه؟" : "What should the script be about?"}
+              </label>
+              <textarea
+                id="listening-script-topic"
+                value={generatorTopic}
+                onChange={(event) => {
+                  setGeneratorTopic(event.target.value.slice(0, 600));
+                  setGeneratedLanguage(null);
+                  setGeneratedFingerprint("");
+                }}
+                dir="auto"
+                rows={3}
+                placeholder={lang === "ar" ? "مثال: قصة قصيرة عن الصدق لطلاب الصف الخامس" : "Example: A short story about honesty for fifth-grade students"}
+                className={cn(
+                  "w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-3 text-sm leading-relaxed text-[#111827]",
+                  FIELD_CLASS,
+                  "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/12",
+                )}
+                style={{ borderColor: COLOR_CARD_BORDER }}
+                data-testid="input-listening-script-topic"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#64748B]">{lang === "ar" ? "نوع النص" : "Text type"}</label>
+                <select
+                  value={generatorTextType}
+                  onChange={(event) => {
+                    setGeneratorTextType(event.target.value as ScriptTextType);
+                    setGeneratedFingerprint("");
+                  }}
+                  className={selectUiClass}
+                  data-testid="select-listening-script-type"
+                >
+                  <option value="auto">{lang === "ar" ? "تلقائي" : "Automatic"}</option>
+                  <option value="story">{lang === "ar" ? "قصة" : "Story"}</option>
+                  <option value="dialogue">{lang === "ar" ? "حوار" : "Dialogue"}</option>
+                  <option value="educational">{lang === "ar" ? "نص تعليمي" : "Educational text"}</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#64748B]">{lang === "ar" ? "الطول" : "Length"}</label>
+                <select
+                  value={generatorLength}
+                  onChange={(event) => {
+                    setGeneratorLength(event.target.value as ScriptLength);
+                    setGeneratedFingerprint("");
+                  }}
+                  className={selectUiClass}
+                  data-testid="select-listening-script-length"
+                >
+                  <option value="short">{lang === "ar" ? "قصير" : "Short"}</option>
+                  <option value="medium">{lang === "ar" ? "متوسط" : "Medium"}</option>
+                  <option value="long">{lang === "ar" ? "طويل" : "Long"}</option>
+                </select>
+              </div>
+              {showGeneratorDiacritics && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#64748B]">{lang === "ar" ? "التشكيل" : "Diacritics"}</label>
+                  <select
+                    value={generatorDiacritics}
+                    onChange={(event) => {
+                      setGeneratorDiacritics(event.target.value as ScriptDiacritics);
+                      setGeneratedFingerprint("");
+                    }}
+                    className={selectUiClass}
+                    data-testid="select-listening-script-diacritics"
+                  >
+                    <option value="none">{lang === "ar" ? "بدون تشكيل" : "No diacritics"}</option>
+                    <option value="ambiguous">{lang === "ar" ? "تشكيل الكلمات الملتبسة" : "Ambiguous words only"}</option>
+                    <option value="full">{lang === "ar" ? "تشكيل كامل" : "Full diacritics"}</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {targetClasses[0] && (
+              <p className="rounded-xl bg-[#f3f7f4] px-3 py-2 text-xs font-semibold text-[#225739]">
+                {lang === "ar" ? `سيُراعى الصف المحدد: ${targetClasses[0]}` : `Selected grade will be used: ${targetClasses[0]}`}
+              </p>
+            )}
+
+            {generatorError && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700">
+                {generatorError}
+              </p>
+            )}
+
+            {generatedScript && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="generated-listening-script" className="text-sm font-bold text-[#0f2918]">
+                    {lang === "ar" ? "النص المولّد" : "Generated script"}
+                  </label>
+                  <span className="text-[11px] font-semibold tabular-nums text-[#94a3ab]">{generatedScript.length} / {MAX_CHARS}</span>
+                </div>
+                <textarea
+                  id="generated-listening-script"
+                  value={generatedScript}
+                  onChange={(event) => setGeneratedScript(event.target.value.slice(0, MAX_CHARS))}
+                  dir="auto"
+                  rows={10}
+                  className={cn(
+                    "w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-4 text-base leading-[1.8] text-[#111827]",
+                    FIELD_CLASS,
+                    "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/12",
+                  )}
+                  style={{ borderColor: COLOR_CARD_BORDER }}
+                  data-testid="textarea-generated-listening-script"
+                />
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              {generatedScript ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={generateListeningScript}
+                    disabled={isGeneratingScript || generatorTopic.trim().length < 2}
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border bg-white px-5 text-sm font-black text-[#1E4D35] disabled:opacity-50"
+                    style={{ borderColor: COLOR_CARD_BORDER }}
+                    data-testid="button-regenerate-listening-script"
+                  >
+                    {isGeneratingScript ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    {isGeneratingScript
+                      ? (lang === "ar" ? "جارٍ إنشاء النص..." : "Generating script...")
+                      : (lang === "ar" ? "إعادة التوليد" : "Regenerate")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={useGeneratedListeningScript}
+                    disabled={isGeneratingScript}
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-[#1E4D35] px-5 text-sm font-black text-white shadow-md disabled:opacity-50"
+                    data-testid="button-use-listening-script"
+                  >
+                    <Check className="h-4 w-4" />
+                    {lang === "ar" ? "استخدام النص" : "Use script"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={generateListeningScript}
+                  disabled={isGeneratingScript || generatorTopic.trim().length < 2}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-[#1E4D35] px-6 text-sm font-black text-white shadow-md disabled:opacity-50"
+                  data-testid="button-generate-listening-script"
+                >
+                  {isGeneratingScript ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {isGeneratingScript
+                    ? (lang === "ar" ? "جارٍ إنشاء النص..." : "Generating script...")
+                    : (lang === "ar" ? "إنشاء النص" : "Create script")}
+                </button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <footer
         className={cn(
