@@ -503,6 +503,8 @@ export default function ScheduleManagementPage() {
   const [timerSettingsOpen, setTimerSettingsOpen] = useState(false);
   const [tableTheme, setTableTheme] = useState<ScheduleTableTheme>("classic");
   const [tableDirection, setTableDirection] = useState<"rtl" | "ltr">("rtl");
+  const viewMenuRef = useRef<HTMLDetailsElement>(null);
+  const themeMenuRef = useRef<HTMLDetailsElement>(null);
   const [columnLabels, setColumnLabels] = useState<Record<string, string>>({});
   const [editingColumnLabel, setEditingColumnLabel] = useState<{ key: string; defaultLabel: string } | null>(null);
   const [columnLabelDraft, setColumnLabelDraft] = useState("");
@@ -510,6 +512,22 @@ export default function ScheduleManagementPage() {
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const closeMenusOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!viewMenuRef.current?.contains(target)) {
+        viewMenuRef.current?.removeAttribute("open");
+      }
+      if (!themeMenuRef.current?.contains(target)) {
+        themeMenuRef.current?.removeAttribute("open");
+      }
+    };
+
+    document.addEventListener("pointerdown", closeMenusOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeMenusOnOutsideClick);
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1313,7 +1331,7 @@ export default function ScheduleManagementPage() {
             ) : (
               <div className="flex flex-col animate-in fade-in duration-300">
                 <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-muted/20 p-2">
-                  <details className="group relative">
+                  <details ref={viewMenuRef} className="group relative">
                     <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
                       <Calendar className="h-4 w-4 text-emerald-700" />
                       {isAr ? "العرض" : "View"}
@@ -1347,14 +1365,14 @@ export default function ScheduleManagementPage() {
                   </details>
 
                   {viewMode === "week-grid" && (
-                    <details className="group relative shrink-0" data-testid="schedule-table-theme-picker">
+                    <details ref={themeMenuRef} className="group relative shrink-0" data-testid="schedule-table-theme-picker">
                       <summary className="flex h-10 cursor-pointer select-none items-center gap-2 rounded-xl border border-border/70 bg-card px-4 text-sm font-black text-foreground shadow-sm list-none [&::-webkit-details-marker]:hidden">
                         <span className="flex items-center gap-2">
                           <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
                           {isAr ? "مظهر الجدول" : "Table appearance"}
                         </span>
                       </summary>
-                      <div className="absolute end-0 top-[calc(100%+0.5rem)] z-40 flex w-[min(34rem,calc(100vw-3rem))] flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xl">
+                      <div className="absolute start-0 top-[calc(100%+0.5rem)] z-40 flex w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 shadow-xl">
                         <span className="me-1 text-xs font-black text-muted-foreground">
                           {isAr ? "مظهر الجدول" : "Table style"}
                         </span>
