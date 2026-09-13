@@ -4061,10 +4061,10 @@ export default function Home() {
               <div className="mb-3 flex items-center gap-2.5">
                 <img
                   src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-                  alt={lang === "ar" ? "حصاد" : "Hasad"}
+                  alt="حصاد"
                   className="h-8 w-8 rounded-lg object-cover"
                 />
-                <span className="text-lg font-black">{lang === "ar" ? "حصاد" : "Hasad"}</span>
+                <span className="text-lg font-black">حصاد</span>
               </div>
               <p className="text-sm leading-7 text-white/55">
                 {lang === "ar"

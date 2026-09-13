@@ -316,7 +316,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     className="block font-extrabold text-sm sm:text-base text-center"
                     style={{ color: "#C9A050" }}
                   >
-                    {lang === "ar" ? "حــصــاد" : "HASAAD"}
+                    حــصــاد
                   </span>
                   <span
                     className="block font-black text-[11px] sm:text-[12px] uppercase w-full text-center"
@@ -927,7 +927,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   className="w-5 h-5 rounded object-cover opacity-70"
                 />
                 <span className="flex flex-col leading-none items-center" style={{ gap: 1 }}>
-                  <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>{lang === "ar" ? "حــصــاد" : "HASAAD"}</span>
+                  <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>حــصــاد</span>
                   <span className="block font-black text-[8px] uppercase w-full text-center" style={{ color: "#C9A050", opacity: 0.8, letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
                 </span>
               </div>
