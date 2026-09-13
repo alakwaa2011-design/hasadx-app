@@ -32,6 +32,7 @@ import {
 } from "@/lib/credit-aware-fetch";
 import {
   Library,
+  Video,
   Upload,
   Link as LinkIcon,
   FolderPlus,
@@ -70,6 +71,8 @@ import {
   ArrowLeft,
   Camera,
   Gamepad2,
+  MessageSquarePlus,
+  Users,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
@@ -115,6 +118,138 @@ interface UsageInfo {
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const ALLOWED_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip";
+
+interface InteractiveVideoLesson {
+  id: number;
+  title: string;
+  subject: string | null;
+  description: string | null;
+  videoType: string;
+  targetClass: string | null;
+  createdAt: string;
+  questionCount: number;
+  submissionCount: number;
+}
+
+function InteractiveVideoLessonsList({
+  isAr,
+  setLocation,
+}: {
+  isAr: boolean;
+  setLocation: (path: string) => void;
+}) {
+  const [lessons, setLessons] = useState<InteractiveVideoLesson[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`${API_BASE}/api/video-lessons`, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data: InteractiveVideoLesson[]) => {
+        if (!cancelled) setLessons(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setLessons([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div dir={isAr ? "rtl" : "ltr"} className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600">
+            <Video className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black">
+              {isAr ? "فيديوهاتي التفاعلية" : "My interactive videos"}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {isAr
+                ? "كل دروس الفيديو التي أضفتها إلى حسابك"
+                : "All interactive video lessons you created"}
+            </p>
+          </div>
+        </div>
+        <Button onClick={() => setLocation("/teacher/video-lesson/new")} className="gap-1.5">
+          <Plus className="w-4 h-4" />
+          {isAr ? "فيديو تفاعلي جديد" : "New interactive video"}
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="h-28 rounded-2xl border bg-muted/30 animate-pulse" />
+          ))}
+        </div>
+      ) : lessons.length === 0 ? (
+        <Card className="p-10 text-center border-dashed">
+          <Video className="w-10 h-10 mx-auto mb-3 text-rose-400/70" />
+          <h3 className="font-bold">
+            {isAr ? "لا توجد فيديوهات تفاعلية بعد" : "No interactive videos yet"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            {isAr
+              ? "أنشئ فيديو يحتوي على أسئلة تظهر للطالب أثناء المشاهدة"
+              : "Create a video with questions that appear while students watch"}
+          </p>
+          <Button variant="outline" onClick={() => setLocation("/teacher/video-lesson/new")}>
+            <Plus className="w-4 h-4 me-1.5" />
+            {isAr ? "إنشاء أول فيديو" : "Create your first video"}
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {lessons.map((lesson) => (
+            <button
+              key={lesson.id}
+              type="button"
+              onClick={() => setLocation(`/teacher/video-lesson/${lesson.id}`)}
+              className="text-start rounded-2xl border border-border/60 bg-card p-4 hover:border-rose-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+                  <Play className="w-5 h-5 fill-current" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-black truncate">{lesson.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {lesson.subject || lesson.targetClass || (isAr ? "فيديو تفاعلي" : "Interactive video")}
+                  </p>
+                </div>
+                <ArrowLeft className={`w-4 h-4 mt-1 text-muted-foreground group-hover:text-rose-600 ${isAr ? "" : "rotate-180"}`} />
+              </div>
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquarePlus className="w-3.5 h-3.5" />
+                  {lesson.questionCount} {isAr ? "أسئلة" : "questions"}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" />
+                  {lesson.submissionCount} {isAr ? "إجابات" : "responses"}
+                </span>
+                <span className="ms-auto">
+                  {new Date(lesson.createdAt).toLocaleDateString(isAr ? "ar" : "en", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "0";
@@ -1193,7 +1328,7 @@ export default function TeacherLibraryPage() {
               first item appears on the right. Active tab gets a soft
               primary tint, an underline accent and a subtle shadow. */}
           <TabsList
-            className="h-auto p-1.5 bg-slate-100/80 border border-border/60 rounded-2xl gap-1 w-full grid grid-cols-2 sm:grid-cols-5 max-w-5xl shadow-sm"
+            className="h-auto p-1.5 bg-slate-100/80 border border-border/60 rounded-2xl gap-1 w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 max-w-6xl shadow-sm"
           >
             <TabsTrigger
               value="worksheets"
@@ -1223,6 +1358,14 @@ export default function TeacherLibraryPage() {
             >
               <Presentation className="w-4 h-4" />
               {isAr ? "العروض التفاعلية" : "Presentations"}
+            </TabsTrigger>
+            <TabsTrigger
+              value="interactive-videos"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all"
+              data-testid="tab-interactive-videos"
+            >
+              <Video className="w-4 h-4" />
+              {isAr ? "الفيديو التفاعلي" : "Interactive video"}
             </TabsTrigger>
             <TabsTrigger
               value="games"
@@ -1439,6 +1582,10 @@ export default function TeacherLibraryPage() {
               </div>
               <PresentationsIndex embedded />
             </div>
+          </TabsContent>
+
+          <TabsContent value="interactive-videos" className="pt-4">
+            <InteractiveVideoLessonsList isAr={isAr} setLocation={setLocation} />
           </TabsContent>
 
           <TabsContent value="games" className="pt-4">
