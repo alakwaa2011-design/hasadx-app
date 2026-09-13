@@ -538,22 +538,31 @@ export default function PresentationEditor() {
        made the theme picker appear to do nothing even though the
        presentation-level theme was changing. Keep background images,
        but let the new theme control every slide's base background. */
-    mutateSlides((prev) => {
-      let changed = false;
-      const next = prev.map((slide) => {
-        if (
-          slide.background == null ||
-          slide.background === "#ffffff" ||
-          slide.background === "#fff"
-        ) {
-          return slide;
-        }
-        changed = true;
-        const { background: _background, ...withoutBackground } = slide;
-        return withoutBackground;
-      });
-      return changed ? next : prev;
+    let changed = false;
+    const nextSlides = slides.map((slide) => {
+      if (
+        slide.background == null ||
+        slide.background === "#ffffff" ||
+        slide.background === "#fff"
+      ) {
+        return slide;
+      }
+      changed = true;
+      const { background: _background, ...withoutBackground } = slide;
+      return withoutBackground;
     });
+    if (changed) {
+      const h = historyRef.current;
+      h.past.push(slides);
+      if (h.past.length > HISTORY_LIMIT) h.past.shift();
+      h.future = [];
+      setSlides(nextSlides);
+      setHistoryVersion((v) => v + 1);
+      setDirty(true);
+      /* Do not wait for the debounced slide autosave: the theme and the
+         cleanup must survive a fast navigation or page reload together. */
+      persist(nextSlides);
+    }
     void persistTheme({ theme: key });
   };
   const onChangePattern = (key: string) => {
@@ -2675,7 +2684,7 @@ function SlideThumbnail({
     ? { ...bg, backgroundImage: `url(${slide.backgroundImage})`, backgroundSize: "cover", backgroundPosition: "center" }
     : bg;
   return (
-    <div className="relative w-full h-full" style={thumbBg}>
+    <div data-slide-thumbnail="" className="relative w-full h-full" style={thumbBg}>
       {(slide.elements ?? []).slice(0, 12).map((el) => {
         const left = (el.x / CANVAS_W) * 100;
         const top = (el.y / CANVAS_H) * 100;
@@ -2829,6 +2838,7 @@ function SlideCanvas({
       style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}` }}
     >
       <div
+        data-slide-canvas=""
         ref={containerRef}
         className="relative w-full h-full rounded-xl shadow-2xl shadow-slate-900/15 ring-1 ring-slate-900/10 overflow-hidden"
         style={{
