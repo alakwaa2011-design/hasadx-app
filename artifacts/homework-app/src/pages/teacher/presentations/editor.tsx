@@ -533,6 +533,28 @@ export default function PresentationEditor() {
 
   const onChangeTheme = (key: string) => {
     setTheme(key);
+    /* Applying a deck theme must also remove legacy per-slide solid
+       backgrounds. Those backgrounds were written by older/generated
+       decks and intentionally take precedence in slideBgStyle, which
+       made the theme picker appear to do nothing even though the
+       presentation-level theme was changing. Keep background images,
+       but let the new theme control every slide's base background. */
+    mutateSlides((prev) => {
+      let changed = false;
+      const next = prev.map((slide) => {
+        if (
+          slide.background == null ||
+          slide.background === "#ffffff" ||
+          slide.background === "#fff"
+        ) {
+          return slide;
+        }
+        changed = true;
+        const { background: _background, ...withoutBackground } = slide;
+        return withoutBackground;
+      });
+      return changed ? next : prev;
+    });
     persistTheme({ theme: key });
   };
   const onChangePattern = (key: string) => {

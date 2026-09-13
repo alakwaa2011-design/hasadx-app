@@ -449,7 +449,7 @@ export function parseDashboardUrlParams(
 /* ── End URL-parameter parsing ───────────────────────────────────────────── */
 
 export default function TeacherDashboard() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [creatingGameForId, setCreatingGameForId] = useState<number | null>(
     null,
   );
@@ -1087,7 +1087,7 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {lang === "ar" ? "المحتوى" : "Content"}
             </p>
-            {tabs.filter(t => ["tools","presentations","videos"].includes(t.id)).map((tab) => {
+            {tabs.filter(t => ["tools"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               const isTools = tab.id === "tools";
 
@@ -1197,6 +1197,33 @@ export default function TeacherDashboard() {
                 </button>
               );
             })}
+
+            {/* My Library is the single home for worksheets, files,
+                lesson plans, interactive presentations, interactive
+                videos, and saved games. Keep it directly below Tools
+                instead of splitting those resources into sidebar links. */}
+            {(() => {
+              const active = location === "/teacher/library" || location.startsWith("/teacher/library/");
+              return (
+                <button
+                  onClick={() => setLocation("/teacher/library")}
+                  aria-current={active ? "page" : undefined}
+                  className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
+                  style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
+                >
+                  {!active && (
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
+                  )}
+                  {active && (
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
+                  )}
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{ color: active ? "#1E4D35" : "rgba(30,77,53,0.62)" }}>
+                    <Library className="w-4 h-4" />
+                  </span>
+                  <span className="relative truncate">{lang === "ar" ? "مكتبتي" : "My Library"}</span>
+                </button>
+              );
+            })()}
 
             {/* ── Divider + Account section: الباقات (last item, standalone) ── */}
             <div className="my-3 border-t border-border/50" />
