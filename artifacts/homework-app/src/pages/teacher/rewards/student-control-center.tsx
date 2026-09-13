@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatRewardPoints } from "./format";
 import { getArabicRewardError } from "./error-message";
+import { useI18n } from "@/lib/i18n";
+import { rewardText } from "./reward-i18n";
 
 interface StudentControlCenterProps {
   open: boolean;
@@ -90,6 +92,8 @@ function AdventureEmptyState({ icon: Icon, title, description, color = "emerald"
 }
 
 export function StudentControlCenter({ open, onOpenChange, studentId, className, rewardTypes }: StudentControlCenterProps) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const { data, isLoading } = useGetStudentProfile(studentId);
   
   if (!open) return null;
@@ -100,30 +104,30 @@ export function StudentControlCenter({ open, onOpenChange, studentId, className,
         <DialogHeader className="px-4 sm:px-6 py-4 sm:py-5 border-b-2 border-emerald-800 bg-emerald-950 shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
           <DialogTitle className="text-xl font-black text-white relative z-10 flex items-center gap-3 pr-24 tracking-wide">
-            {isLoading ? "جاري فتح السجل..." : (
+            {isLoading ? r("جاري فتح السجل...", "Opening profile...") : (
               <>
                 <Compass className="text-amber-400" size={28} />
-                ملف الطالب: {data?.student?.name || "بدون اسم"}
+                {r("ملف الطالب", "Student profile")}: {data?.student?.name || r("بدون اسم", "Unnamed")}
               </>
             )}
           </DialogTitle>
           <button type="button" onClick={() => onOpenChange(false)}
             className="absolute right-4 top-1/2 z-20 inline-flex -translate-y-1/2 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-white/20">
-            <ArrowRight size={16} /> رجوع
+            <ArrowRight size={16} /> {r("رجوع", "Back")}
           </button>
           <DialogDescription className="sr-only">
-            إدارة بيانات الطالب ونقاطه وإنجازاته وواجباته ونشاطه.
+             {r("إدارة بيانات الطالب ونقاطه وإنجازاته وواجباته ونشاطه.", "Manage the student's details, points, achievements, assignments, and activity.")}
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center space-y-4 text-emerald-800">
             <Loader2 className="animate-spin" size={48} />
-            <p className="font-bold">جاري تحميل ملف الطالب...</p>
+            <p className="font-bold">{r("جاري تحميل ملف الطالب...", "Loading student profile...")}</p>
           </div>
         ) : !data ? (
           <div className="flex-1 flex items-center justify-center text-emerald-900/50 font-bold">
-            لم يتم العثور على بيانات الطالب.
+             {r("لم يتم العثور على بيانات الطالب.", "Student data was not found.")}
           </div>
         ) : (
           <StudentControlContent data={data} studentId={studentId!} className={className} rewardTypes={rewardTypes} />
@@ -139,16 +143,18 @@ function StudentControlContent({ data, studentId, className, rewardTypes }: {
   className?: string;
   rewardTypes: Array<{ id: number; name: string; points: number; color?: string }>;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   return (
-    <Tabs defaultValue="overview" className="flex flex-col flex-1 overflow-hidden" dir="rtl">
+      <Tabs defaultValue="overview" className="flex flex-col flex-1 overflow-hidden" dir={lang === "ar" ? "rtl" : "ltr"}>
       <div className="px-3 sm:px-6 pt-3 sm:pt-5 border-b-2 border-emerald-100 bg-white shrink-0">
         <TabsList className="w-full flex justify-start h-auto p-1.5 bg-emerald-50/50 overflow-x-auto hide-scrollbar rounded-2xl gap-1 border border-emerald-100">
-          <TabsTrigger value="overview" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Shapes size={16} /> الملخص</TabsTrigger>
-          <TabsTrigger value="profile" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><User size={16} /> البيانات</TabsTrigger>
-          <TabsTrigger value="ledger" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Orbit size={16} /> سجل النقاط</TabsTrigger>
-          <TabsTrigger value="achievements" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Sparkles size={16} /> الإنجازات</TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Map size={16} /> الواجبات</TabsTrigger>
-          <TabsTrigger value="activity" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Waypoints size={16} /> النشاط</TabsTrigger>
+          <TabsTrigger value="overview" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Shapes size={16} /> {r("الملخص", "Overview")}</TabsTrigger>
+          <TabsTrigger value="profile" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><User size={16} /> {r("البيانات", "Details")}</TabsTrigger>
+          <TabsTrigger value="ledger" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Orbit size={16} /> {r("سجل النقاط", "Points ledger")}</TabsTrigger>
+          <TabsTrigger value="achievements" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Sparkles size={16} /> {r("الإنجازات", "Achievements")}</TabsTrigger>
+          <TabsTrigger value="assignments" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Map size={16} /> {r("الواجبات", "Assignments")}</TabsTrigger>
+          <TabsTrigger value="activity" className="gap-2 py-2.5 px-4 rounded-xl data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow-sm data-[state=active]:border-emerald-200 text-sm font-bold border border-transparent text-emerald-900/60 hover:text-emerald-900 transition-all motion-reduce:transition-none"><Waypoints size={16} /> {r("النشاط", "Activity")}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -182,6 +188,8 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
   className?: string;
   rewardTypes: Array<{ id: number; name: string; points: number; color?: string }>;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const { student, rewards } = data;
   const grantMutation = useGrantRewards();
   const studentGoals = data.goal ? [{
@@ -212,9 +220,9 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
           points: type.points,
           rewardName: type.name,
         });
-        toast.success("تم منح النقاط للطالب بنجاح");
+        toast.success(r("تم منح النقاط للطالب بنجاح", "Points awarded to the student."));
       },
-      onError: (error: any) => toast.error(getArabicRewardError(error, "تعذر منح النقاط")),
+      onError: (error: any) => toast.error(getArabicRewardError(error, r("تعذر منح النقاط", "Could not award points."))),
       onSettled: () => {
         grantInFlightRef.current = false;
       },
@@ -238,26 +246,26 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
           <h3 className="font-black text-2xl mb-2 text-emerald-950 relative z-10">{student.name}</h3>
           <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-800 bg-emerald-100/50 px-4 py-1.5 rounded-xl border border-emerald-200 relative z-10">
             <GraduationCap size={16} />
-            {student.gradeLevel || "الصف غير محدد"} • {student.studentClass || "الفصل غير محدد"}
+            {student.gradeLevel || r("الصف غير محدد", "Grade not set")} • {student.studentClass || r("الفصل غير محدد", "Class not set")}
           </div>
         </div>
 
         <div className="bg-white border-2 border-emerald-100 rounded-[2rem] p-6 space-y-4 shadow-sm relative overflow-hidden">
-          <h4 className="font-black text-lg flex items-center gap-2 text-emerald-950"><Lock size={20} className="text-emerald-500" /> حالة الدخول</h4>
+          <h4 className="font-black text-lg flex items-center gap-2 text-emerald-950"><Lock size={20} className="text-emerald-500" /> {r("حالة الدخول", "Login status")}</h4>
           {student.account?.linked ? (
             <div className="space-y-4 relative z-10">
               <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-sm font-black shadow-inner">
-                <Shield size={18} className="text-emerald-500" /> حساب البطل مرتبط
+                <Shield size={18} className="text-emerald-500" /> {r("حساب البطل مرتبط", "Student account linked")}
               </div>
               <div className="text-sm">
-                <span className="text-emerald-900/60 font-bold block mb-1.5 text-xs">اسم المستخدم</span>
+                 <span className="text-emerald-900/60 font-bold block mb-1.5 text-xs">{r("اسم المستخدم", "Username")}</span>
                 <span className="font-mono font-bold bg-slate-100 px-3 py-2 rounded-xl block border text-slate-700">{student.account.username}</span>
               </div>
               <PasswordResetDialog studentId={studentId} />
             </div>
           ) : (
             <div className="text-sm font-bold text-amber-700 bg-amber-50/50 p-4 rounded-2xl border-2 border-dashed border-amber-200 text-center">
-               لا يوجد حساب طالب مرتبط بهذا الملف بعد.
+                {r("لا يوجد حساب طالب مرتبط بهذا الملف بعد.", "No student account is linked to this profile yet.")}
             </div>
           )}
         </div>
@@ -265,10 +273,10 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
 
       <div className="md:col-span-2 space-y-6">
         {studentGoals.length > 0 && (
-          <section aria-label="أهداف تقدم الطالب" className="space-y-3">
+          <section aria-label={r("أهداف تقدم الطالب", "Student progress goals")} className="space-y-3">
             <h4 className="flex items-center gap-2 text-lg font-black text-emerald-950">
               <Compass size={20} className="text-amber-500" />
-              أهداف التقدم
+              {r("أهداف التقدم", "Progress goals")}
             </h4>
             <div className="grid gap-3 sm:grid-cols-2">
               {studentGoals.map((goal) => <GoalProgressCard key={goal.id} goal={goal} />)}
@@ -283,39 +291,39 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
            <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 border border-emerald-500 rounded-[2rem] p-6 shadow-lg shadow-emerald-700/20 text-white relative overflow-hidden flex flex-col items-center justify-center group hover:scale-[1.02] transition-transform motion-reduce:transition-none motion-reduce:transform-none">
             <div className="absolute -top-10 -left-10 w-32 h-32 bg-emerald-400/30 rounded-full blur-2xl" />
              <Waypoints size={32} className="mb-3 text-emerald-100" />
-             <div className="text-sm font-bold text-emerald-100 mb-2 tracking-wider">الواجبات المنجزة</div>
+              <div className="text-sm font-bold text-emerald-100 mb-2 tracking-wider">{r("الواجبات المنجزة", "Completed assignments")}</div>
              <div className="text-6xl font-black drop-shadow-md">{formatPoints(data.assignments?.filter((a: any) => a.submittedAt)?.length || 0)}</div>
           </div>
         </div>
         
         <div className="bg-white border-2 border-emerald-100 rounded-[2rem] p-6 shadow-sm">
-          <h4 className="font-black text-lg flex items-center gap-2 mb-5 text-emerald-950"><Phone size={20} className="text-emerald-500" /> بيانات التواصل</h4>
+          <h4 className="font-black text-lg flex items-center gap-2 mb-5 text-emerald-950"><Phone size={20} className="text-emerald-500" /> {r("بيانات التواصل", "Contact details")}</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="text-xs font-bold text-emerald-900/50 mb-1.5">ولي الأمر</div>
-              <div className="font-black text-emerald-950">{student.parentName || "غير متوفر"}</div>
+               <div className="text-xs font-bold text-emerald-900/50 mb-1.5">{r("ولي الأمر", "Parent/guardian")}</div>
+               <div className="font-black text-emerald-950">{student.parentName || r("غير متوفر", "Not available")}</div>
             </div>
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="text-xs font-bold text-emerald-900/50 mb-1.5">رقم الجوال</div>
-              <div className="font-black text-emerald-950" dir="ltr">{student.parentPhone || "غير متوفر"}</div>
+               <div className="text-xs font-bold text-emerald-900/50 mb-1.5">{r("رقم الجوال", "Phone number")}</div>
+               <div className="font-black text-emerald-950" dir="ltr">{student.parentPhone || r("غير متوفر", "Not available")}</div>
             </div>
             <div className="sm:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="text-xs font-bold text-emerald-900/50 mb-1.5">البريد الإلكتروني</div>
-              <div className="font-black text-emerald-950">{student.parentEmail || "غير متوفر"}</div>
+               <div className="text-xs font-bold text-emerald-900/50 mb-1.5">{r("البريد الإلكتروني", "Email")}</div>
+               <div className="font-black text-emerald-950">{student.parentEmail || r("غير متوفر", "Not available")}</div>
             </div>
           </div>
         </div>
 
          <div className="bg-white border-2 border-emerald-100 rounded-[2rem] p-6 shadow-sm">
            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-             <h4 className="font-black text-lg flex items-center gap-2 text-emerald-950"><Orbit size={20} className="text-amber-500" /> منح نقاط الآن</h4>
+             <h4 className="font-black text-lg flex items-center gap-2 text-emerald-950"><Orbit size={20} className="text-amber-500" /> {r("منح نقاط الآن", "Award points now")}</h4>
              <button
                type="button"
                onClick={() => setAdjustOpen(true)}
                disabled={(rewards?.balance || 0) < 1}
                className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-black text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-45"
              >
-               <SlidersHorizontal size={16} /> تعديل الرصيد
+                <SlidersHorizontal size={16} /> {r("تعديل الرصيد", "Adjust balance")}
              </button>
            </div>
           {rewardTypes.length ? (
@@ -337,7 +345,7 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
               ))}
             </div>
           ) : (
-            <p className="text-sm font-bold text-emerald-900/50">أضف أنواع التحفيز من إعدادات اللوحة أولًا.</p>
+             <p className="text-sm font-bold text-emerald-900/50">{r("أضف أنواع التحفيز من إعدادات اللوحة أولًا.", "Add reward types in board settings first.")}</p>
           )}
         </div>
          <BalanceAdjustmentDialog
@@ -360,6 +368,8 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
   studentName: string;
   currentBalance: number;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [points, setPoints] = useState(1);
   const [reason, setReason] = useState("");
   const mutation = useAdjustStudentBalance();
@@ -379,23 +389,23 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!reason.trim()) {
-      toast.error("اكتب سبب تعديل الرصيد");
+      toast.error(r("اكتب سبب تعديل الرصيد", "Enter a reason for the balance adjustment."));
       return;
     }
     if (points < 1 || points > currentBalance) {
-      toast.error("اختر عددًا لا يتجاوز الرصيد الحالي");
+      toast.error(r("اختر عددًا لا يتجاوز الرصيد الحالي", "Choose an amount no greater than the current balance."));
       return;
     }
     requestKeyRef.current ||= crypto.randomUUID();
     mutation.mutate({ studentId, points, reason: reason.trim(), idempotencyKey: requestKeyRef.current }, {
       onSuccess: (result: any) => {
-        toast.success(`تم تحديث رصيد ${studentName}. الرصيد الآن ${formatPoints(result.balance)} نقطة`);
+        toast.success(r(`تم تحديث رصيد ${studentName}. الرصيد الآن ${formatPoints(result.balance)} نقطة`, `Updated ${studentName}'s balance. New balance: ${formatPoints(result.balance)} points`));
         onOpenChange(false);
         setPoints(1);
         setReason("");
         requestKeyRef.current = null;
       },
-      onError: (error: any) => toast.error(getArabicRewardError(error, "تعذر تعديل الرصيد")),
+       onError: (error: any) => toast.error(getArabicRewardError(error, r("تعذر تعديل الرصيد", "Could not adjust the balance."))),
     });
   };
 
@@ -405,38 +415,38 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
         <DialogHeader className="border-b border-emerald-100 bg-emerald-50/60 p-6">
           <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
             className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50">
-            <ArrowRight size={16} /> رجوع
+             <ArrowRight size={16} /> {r("رجوع", "Back")}
           </button>
           <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
-            <SlidersHorizontal size={20} className="text-emerald-600" /> خصم نقاط من {studentName}
+             <SlidersHorizontal size={20} className="text-emerald-600" /> {r("خصم نقاط من", "Deduct points from")} {studentName}
           </DialogTitle>
           <DialogDescription className="pt-2 font-medium leading-relaxed text-emerald-900/65">
-            يمكنك خصم نقاط من رصيد الطالب.
+             {r("يمكنك خصم نقاط من رصيد الطالب.", "Deduct points from the student's balance.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-5 p-6">
           <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <span className="text-sm font-bold text-amber-900/70">الرصيد الحالي</span>
-            <strong className="text-lg font-black text-amber-800">{formatPoints(currentBalance)} نقطة</strong>
+             <span className="text-sm font-bold text-amber-900/70">{r("الرصيد الحالي", "Current balance")}</span>
+             <strong className="text-lg font-black text-amber-800">{formatPoints(currentBalance)} {r("نقطة", "points")}</strong>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-black text-emerald-950">عدد النقاط المراد خصمها</label>
+             <label className="mb-2 block text-sm font-black text-emerald-950">{r("عدد النقاط المراد خصمها", "Points to deduct")}</label>
             <input type="number" min={1} max={currentBalance} value={points} onChange={(e) => setPoints(Number(e.target.value))}
               className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-black outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
-            <p className="mt-1.5 text-xs font-bold text-slate-500">سيصبح الرصيد: {formatPoints(Math.max(0, currentBalance - (Number.isFinite(points) ? points : 0)))} نقطة</p>
+             <p className="mt-1.5 text-xs font-bold text-slate-500">{r("سيصبح الرصيد", "New balance")}: {formatPoints(Math.max(0, currentBalance - (Number.isFinite(points) ? points : 0)))} {r("نقطة", "points")}</p>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-black text-emerald-950">سبب الخصم</label>
+             <label className="mb-2 block text-sm font-black text-emerald-950">{r("سبب الخصم", "Reason for deduction")}</label>
             <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200}
-              placeholder="مثال: تصحيح رصيد أضيف بالخطأ"
+              placeholder={r("مثال: تصحيح رصيد أضيف بالخطأ", "Example: Correcting an incorrect balance addition")}
               className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
           </div>
           <div className="flex gap-3">
             <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
-              className="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3 font-black text-slate-600 hover:bg-slate-50">إلغاء</button>
+              className="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3 font-black text-slate-600 hover:bg-slate-50">{r("إلغاء", "Cancel")}</button>
             <button type="submit" disabled={mutation.isPending || currentBalance < 1}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-black text-white hover:bg-emerald-800 disabled:opacity-50">
-              {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} تأكيد الخصم
+               {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />} {r("تأكيد الخصم", "Confirm deduction")}
             </button>
           </div>
         </form>
@@ -446,6 +456,8 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
 }
 
 function PasswordResetDialog({ studentId }: { studentId: number }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -454,18 +466,18 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
   const handleReset = (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) {
-      toast.error("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+      toast.error(r("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "Password must be at least 6 characters."));
       return;
     }
     
     resetMutation.mutate({ studentId, newPassword: password }, {
       onSuccess: () => {
-        toast.success("تم إعادة تعيين كلمة المرور بنجاح");
+         toast.success(r("تم إعادة تعيين كلمة المرور بنجاح", "Password reset successfully."));
         setOpen(false);
         setPassword("");
       },
       onError: (err: any) => {
-        toast.error(getArabicRewardError(err, "حدث خطأ أثناء إعادة التعيين"));
+         toast.error(getArabicRewardError(err, r("حدث خطأ أثناء إعادة التعيين", "Could not reset the password.")));
       }
     });
   };
@@ -474,19 +486,19 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button className="w-full flex justify-center items-center gap-2 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-black rounded-xl transition-colors border border-slate-200">
-          <Key size={16} /> إعادة تعيين كلمة المرور
+          <Key size={16} /> {r("إعادة تعيين كلمة المرور", "Reset password")}
         </button>
       </DialogTrigger>
        <DialogContent className="sm:max-w-sm max-h-[92dvh] rounded-[2rem] border-2 border-emerald-100 p-0 overflow-hidden motion-reduce:animate-none">
         <DialogHeader className="p-6 bg-emerald-50/50 border-b-2 border-emerald-100">
-          <DialogTitle className="text-lg font-black text-emerald-950">إعادة تعيين كلمة المرور</DialogTitle>
+           <DialogTitle className="text-lg font-black text-emerald-950">{r("إعادة تعيين كلمة المرور", "Reset password")}</DialogTitle>
           <DialogDescription className="font-medium text-emerald-900/60 mt-2">
-            أدخل كلمة مرور جديدة لحساب هذا البطل. سيحتاج إلى استخدامها في تسجيل الدخول القادم.
+             {r("أدخل كلمة مرور جديدة لحساب هذا البطل. سيحتاج إلى استخدامها في تسجيل الدخول القادم.", "Enter a new password for this student's account. They will use it at the next sign-in.")}
           </DialogDescription>
         </DialogHeader>
          <form onSubmit={handleReset} className="p-6 space-y-5 overflow-y-auto">
           <div className="relative">
-            <label className="text-sm font-bold text-emerald-950 mb-2 block">كلمة المرور الجديدة</label>
+             <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("كلمة المرور الجديدة", "New password")}</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -506,7 +518,7 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <p className="text-xs font-bold text-emerald-900/50 mt-2">6 أحرف على الأقل</p>
+             <p className="text-xs font-bold text-emerald-900/50 mt-2">{r("6 أحرف على الأقل", "At least 6 characters")}</p>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button
@@ -514,7 +526,7 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
               onClick={() => setOpen(false)}
               className="px-5 py-2.5 text-sm font-bold rounded-xl text-emerald-900/60 hover:bg-emerald-50 hover:text-emerald-950 transition-colors"
             >
-              إلغاء
+               {r("إلغاء", "Cancel")}
             </button>
             <button
               type="submit"
@@ -522,7 +534,7 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
               className="px-6 py-2.5 text-sm font-black bg-emerald-600 text-white rounded-xl flex items-center gap-2 hover:bg-emerald-700 shadow-sm transition-colors"
             >
               {resetMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-              تأكيد التغيير
+               {r("تأكيد التغيير", "Confirm change")}
             </button>
           </div>
         </form>
@@ -532,6 +544,8 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
 }
 
 function ProfileTab({ student, studentId }: { student: any, studentId: number }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [formData, setFormData] = useState({
     name: student.name || "",
     gradeLevel: student.gradeLevel || "",
@@ -567,11 +581,11 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
       avatar: formData.avatar || null,
     }, {
       onSuccess: () => {
-        toast.success("تم تحديث شخصية الطالب بنجاح");
+         toast.success(r("تم تحديث شخصية الطالب بنجاح", "Student character updated."));
         setAvatarChanged(false);
       },
       onError: (err: any) => {
-        toast.error(getArabicRewardError(err, "فشل في تحديث البيانات"));
+         toast.error(getArabicRewardError(err, r("فشل في تحديث البيانات", "Could not update the details.")));
       }
     });
   };
@@ -590,11 +604,11 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
       avatar: formData.avatar || null,
     }, {
       onSuccess: () => {
-        toast.success("تم تحديث بيانات البطل بنجاح");
+         toast.success(r("تم تحديث بيانات البطل بنجاح", "Student details updated."));
         setAvatarChanged(false);
       },
       onError: (err: any) => {
-        toast.error(getArabicRewardError(err, "فشل في تحديث البيانات"));
+         toast.error(getArabicRewardError(err, r("فشل في تحديث البيانات", "Could not update the details.")));
       }
     });
   };
@@ -605,8 +619,8 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
         <div>
           <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4 mb-6">
             <div>
-              <h3 className="font-black text-xl mb-1.5 flex items-center gap-2 text-emerald-950"><User size={24} className="text-emerald-600" /> شخصية المغامر</h3>
-              <p className="text-sm text-emerald-900/60 font-medium">اختر من الشخصيات المميزة، أو افتح المجموعة الكاملة لمزيد من التنوع.</p>
+               <h3 className="font-black text-xl mb-1.5 flex items-center gap-2 text-emerald-950"><User size={24} className="text-emerald-600" /> {r("شخصية المغامر", "Adventurer character")}</h3>
+               <p className="text-sm text-emerald-900/60 font-medium">{r("اختر من الشخصيات المميزة، أو افتح المجموعة الكاملة لمزيد من التنوع.", "Choose a featured character, or open the full collection for more variety.")}</p>
             </div>
             {avatarChanged && (
               <button
@@ -616,7 +630,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
                 className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-black shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2 animate-in fade-in zoom-in duration-300 motion-reduce:animate-none motion-reduce:transition-none"
               >
                 {updateMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                حفظ الشخصية
+                 {r("حفظ الشخصية", "Save character")}
               </button>
             )}
           </div>
@@ -655,15 +669,15 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
           >
             {showAllAvatars ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             {showAllAvatars
-              ? "عرض الشخصيات المميزة فقط"
-              : `عرض المجموعة الكاملة (${ILLUSTRATED_AVATARS.length - featuredAvatars.length} شخصية إضافية)`}
+               ? r("عرض الشخصيات المميزة فقط", "Show featured characters only")
+               : r(`عرض المجموعة الكاملة (${ILLUSTRATED_AVATARS.length - featuredAvatars.length} شخصية إضافية)`, `Show full collection (${ILLUSTRATED_AVATARS.length - featuredAvatars.length} more characters)`)}
           </button>
         </div>
 
         <div className="space-y-5">
-          <h3 className="font-black text-xl mb-3 flex items-center gap-2 border-t-2 border-emerald-100/50 pt-8 text-emerald-950"><BookOpen size={24} className="text-emerald-600" /> البيانات الأساسية</h3>
+          <h3 className="font-black text-xl mb-3 flex items-center gap-2 border-t-2 border-emerald-100/50 pt-8 text-emerald-950"><BookOpen size={24} className="text-emerald-600" /> {r("البيانات الأساسية", "Basic details")}</h3>
           <div>
-            <label className="text-sm font-bold text-emerald-950 mb-2 block">الاسم الكامل</label>
+            <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("الاسم الكامل", "Full name")}</label>
              <input
                type="text"
               value={formData.name}
@@ -674,32 +688,32 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
           </div>
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="text-sm font-bold text-emerald-950 mb-2 block">الصف الدراسي</label>
+               <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("الصف الدراسي", "Grade")}</label>
                <input
                  type="text"
                 value={formData.gradeLevel}
                 onChange={e => setFormData({ ...formData, gradeLevel: e.target.value })}
                 className="w-full bg-white border-2 border-emerald-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 transition-all shadow-sm"
-                placeholder="مثال: الأول"
+                 placeholder={r("مثال: الأول", "Example: Grade 1")}
               />
             </div>
             <div>
-              <label className="text-sm font-bold text-emerald-950 mb-2 block">الفصل</label>
+               <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("الفصل", "Class")}</label>
                <input
                  type="text"
                 value={formData.studentClass}
                 onChange={e => setFormData({ ...formData, studentClass: e.target.value })}
                 className="w-full bg-white border-2 border-emerald-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 transition-all shadow-sm"
-                placeholder="مثال: 1/أ"
+                 placeholder={r("مثال: 1/أ", "Example: 1/A")}
               />
             </div>
           </div>
         </div>
 
         <div className="space-y-5">
-          <h3 className="font-black text-xl mb-3 flex items-center gap-2 border-t-2 border-emerald-100/50 pt-8 text-emerald-950"><Phone size={24} className="text-emerald-600" /> بيانات التواصل</h3>
+           <h3 className="font-black text-xl mb-3 flex items-center gap-2 border-t-2 border-emerald-100/50 pt-8 text-emerald-950"><Phone size={24} className="text-emerald-600" /> {r("بيانات التواصل", "Contact details")}</h3>
           <div>
-            <label className="text-sm font-bold text-emerald-950 mb-2 block">اسم ولي الأمر</label>
+             <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("اسم ولي الأمر", "Parent/guardian name")}</label>
              <input
                type="text"
               value={formData.parentName}
@@ -709,7 +723,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
           </div>
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="text-sm font-bold text-emerald-950 mb-2 block">رقم الجوال</label>
+               <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("رقم الجوال", "Phone number")}</label>
                <input
                  type="text"
                 value={formData.parentPhone}
@@ -719,7 +733,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
               />
             </div>
             <div>
-              <label className="text-sm font-bold text-emerald-950 mb-2 block">البريد الإلكتروني</label>
+               <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("البريد الإلكتروني", "Email")}</label>
                <input
                  type="email"
                 value={formData.parentEmail}
@@ -733,12 +747,12 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
 
         <div className="space-y-5 border-t-2 border-emerald-100/50 pt-8">
           <div>
-            <label className="text-sm font-bold text-emerald-950 mb-2 block">ملاحظات إضافية (لا تظهر للبطل)</label>
+             <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("ملاحظات إضافية (لا تظهر للبطل)", "Additional notes (not shown to the student)")}</label>
              <textarea
               value={formData.notes}
               onChange={e => setFormData({ ...formData, notes: e.target.value })}
               className="w-full bg-white border-2 border-emerald-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 transition-all shadow-sm min-h-[120px] resize-y"
-              placeholder="اكتب ملاحظاتك هنا..."
+               placeholder={r("اكتب ملاحظاتك هنا...", "Write your notes here...")}
             />
           </div>
         </div>
@@ -750,7 +764,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
              className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-3.5 rounded-2xl font-black hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:transform-none"
           >
             {updateMutation.isPending ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-            حفظ سجل البطل
+             {r("حفظ سجل البطل", "Save student profile")}
           </button>
         </div>
       </div>
@@ -759,8 +773,10 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
 }
 
 function LedgerTab({ ledger, balance }: { ledger: any[], balance: number }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   if (!ledger || ledger.length === 0) {
-    return <AdventureEmptyState icon={Orbit} title="سجل النقاط فارغ" description="لم يحصل الطالب على نقاط حتى الآن." color="amber" />;
+    return <AdventureEmptyState icon={Orbit} title={r("سجل النقاط فارغ", "Points ledger is empty")} description={r("لم يحصل الطالب على نقاط حتى الآن.", "The student has not received points yet.")} color="amber" />;
   }
 
   return (
@@ -769,11 +785,11 @@ function LedgerTab({ ledger, balance }: { ledger: any[], balance: number }) {
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10">
           <h3 className="font-black text-xl text-white flex items-center gap-2">
-            <Orbit size={24} /> رصيد نقاط المغامرة
+             <Orbit size={24} /> {r("رصيد نقاط المغامرة", "Adventure points balance")}
           </h3>
-          <p className="text-sm font-bold text-amber-50 mt-1 tracking-wide">إجمالي النقاط المتاحة للطالب الآن</p>
+           <p className="text-sm font-bold text-amber-50 mt-1 tracking-wide">{r("إجمالي النقاط المتاحة للطالب الآن", "Total points currently available to the student")}</p>
         </div>
-        <PointsOrb points={balance || 0} label="نقطة" compact />
+         <PointsOrb points={balance || 0} label={r("نقطة", "points")} compact />
       </div>
 
       <div className="bg-white border-2 border-emerald-100 rounded-[2rem] overflow-hidden shadow-sm">
@@ -781,10 +797,10 @@ function LedgerTab({ ledger, balance }: { ledger: any[], balance: number }) {
           <table className="w-full text-sm text-right">
             <thead className="bg-emerald-50/50 text-emerald-950 border-b-2 border-emerald-100">
               <tr>
-                <th className="px-5 py-4 font-black w-32">التاريخ</th>
-                <th className="px-5 py-4 font-black">النوع</th>
-                <th className="px-5 py-4 font-black">السبب / التفاصيل</th>
-                <th className="px-5 py-4 font-black text-center w-32">النقاط</th>
+                 <th className="px-5 py-4 font-black w-32">{r("التاريخ", "Date")}</th>
+                 <th className="px-5 py-4 font-black">{r("النوع", "Type")}</th>
+                 <th className="px-5 py-4 font-black">{r("السبب / التفاصيل", "Reason / details")}</th>
+                 <th className="px-5 py-4 font-black text-center w-32">{r("النقاط", "Points")}</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-emerald-50">
@@ -794,7 +810,7 @@ function LedgerTab({ ledger, balance }: { ledger: any[], balance: number }) {
                     {new Date(entry.createdAt).toLocaleDateString('en-GB')}
                   </td>
                   <td className="px-5 py-4 font-black text-emerald-950">
-                    {entry.kind === "grant" ? "منح نقاط" : entry.kind === "adjustment" ? "تعديل الرصيد" : entry.kind === "reversal" ? "تراجع عن منحة" : entry.kind === "redemption" ? "استبدال" : entry.kind === "auto" ? "تحفيز تلقائي" : entry.kind}
+                    {entry.kind === "grant" ? r("منح نقاط", "Points award") : entry.kind === "adjustment" ? r("تعديل الرصيد", "Balance adjustment") : entry.kind === "reversal" ? r("تراجع عن منحة", "Award reversed") : entry.kind === "redemption" ? r("استبدال", "Redemption") : entry.kind === "auto" ? r("تحفيز تلقائي", "Automatic reward") : entry.kind}
                   </td>
                   <td className="px-5 py-4 text-emerald-900/80 font-bold">
                     {entry.reason || "-"}
@@ -819,8 +835,10 @@ function LedgerTab({ ledger, balance }: { ledger: any[], balance: number }) {
 }
 
 function AchievementsTab({ achievements }: { achievements: any[] }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   if (!achievements || achievements.length === 0) {
-    return <AdventureEmptyState icon={Sparkles} title="رحلة الإنجازات تبدأ هنا" description="ستظهر لحظات الطالب المميزة هنا عندما يحققها." color="emerald" />;
+    return <AdventureEmptyState icon={Sparkles} title={r("رحلة الإنجازات تبدأ هنا", "The achievement journey starts here")} description={r("ستظهر لحظات الطالب المميزة هنا عندما يحققها.", "The student's standout moments will appear here as they happen.")} color="emerald" />;
   }
 
   return (
@@ -843,8 +861,10 @@ function AchievementsTab({ achievements }: { achievements: any[] }) {
 }
 
 function AssignmentsTab({ assignments }: { assignments: any[] }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   if (!assignments || assignments.length === 0) {
-    return <AdventureEmptyState icon={FileText} title="لا توجد مهمات" description="لم يتم إسناد مهمات أو تحديات لهذا البطل بعد." color="blue" />;
+    return <AdventureEmptyState icon={FileText} title={r("لا توجد مهمات", "No assignments")} description={r("لم يتم إسناد مهمات أو تحديات لهذا البطل بعد.", "No assignments or challenges have been assigned to this student yet.")} color="blue" />;
   }
 
   return (
@@ -856,25 +876,25 @@ function AssignmentsTab({ assignments }: { assignments: any[] }) {
               <span className="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">{assignment.subject}</span>
               {assignment.submittedAt && (
                 <span className="text-xs font-black text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                  <Check size={12} strokeWidth={3} /> تم الإنجاز
+                  <Check size={12} strokeWidth={3} /> {r("تم الإنجاز", "Completed")}
                 </span>
               )}
             </div>
             <h4 className="font-black text-lg text-emerald-950 mb-1">{assignment.title}</h4>
             <div className="text-xs font-bold text-emerald-900/60">
-              الوقت المحدد: <span dir="ltr">{new Date(assignment.deadline).toLocaleDateString('en-GB')}</span>
+              {r("الوقت المحدد", "Due")}: <span dir="ltr">{new Date(assignment.deadline).toLocaleDateString('en-GB')}</span>
             </div>
           </div>
 
           {assignment.submittedAt ? (
             <div className="flex items-center gap-5 shrink-0 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
               <div className="text-center">
-                <div className="text-xs font-bold text-emerald-900/50 mb-1">النتيجة</div>
+                <div className="text-xs font-bold text-emerald-900/50 mb-1">{r("النتيجة", "Score")}</div>
                 <div className="font-black font-mono text-emerald-950 text-lg">{formatRewardPoints(assignment.score)} <span className="text-emerald-900/40 text-sm">/ {formatRewardPoints(assignment.totalPoints)}</span></div>
               </div>
               {assignment.earnedPoints > 0 && (
                 <div className="text-center border-r-2 border-slate-200 pr-5">
-                  <div className="text-xs font-bold text-emerald-900/50 mb-1">نقاط مكتسبة</div>
+                  <div className="text-xs font-bold text-emerald-900/50 mb-1">{r("نقاط مكتسبة", "Points earned")}</div>
                   <div className="font-black text-amber-600 flex items-center justify-center gap-1">
                     <Orbit size={14} /> +{formatPoints(assignment.earnedPoints)}
                   </div>
@@ -883,7 +903,7 @@ function AssignmentsTab({ assignments }: { assignments: any[] }) {
             </div>
           ) : (
             <div className="text-sm font-black text-slate-500 bg-slate-100 border border-slate-200 px-5 py-2.5 rounded-xl shrink-0">
-              بانتظار الإنجاز
+              {r("بانتظار الإنجاز", "Awaiting completion")}
             </div>
           )}
         </div>
@@ -893,8 +913,10 @@ function AssignmentsTab({ assignments }: { assignments: any[] }) {
 }
 
 function ActivityTab({ activity }: { activity: any[] }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   if (!activity || activity.length === 0) {
-    return <AdventureEmptyState icon={Activity} title="لا يوجد نشاط" description="لم يتم تسجيل نشاط لهذا البطل بعد." color="rose" />;
+    return <AdventureEmptyState icon={Activity} title={r("لا يوجد نشاط", "No activity")} description={r("لم يتم تسجيل نشاط لهذا البطل بعد.", "No activity has been recorded for this student yet.")} color="rose" />;
   }
 
   return (

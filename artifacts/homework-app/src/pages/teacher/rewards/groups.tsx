@@ -6,6 +6,8 @@ import { ArrowRight, Check, Loader2, Pencil, Plus, Save, Search, Trash2, UsersRo
 import { toast } from "sonner";
 import { getArabicRewardError } from "./error-message";
 import { formatRewardPoints } from "./format";
+import { useI18n } from "@/lib/i18n";
+import { rewardText } from "./reward-i18n";
 import {
   type RewardGroup,
   useCreateRewardGroup,
@@ -30,6 +32,8 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
   students: Student[];
   initialGroupId?: number | "new";
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const { data, isLoading } = useGetRewardGroups(className);
   const groups = data?.groups ?? [];
   const createMutation = useCreateRewardGroup();
@@ -90,7 +94,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
-      toast.error("اكتب اسم المجموعة");
+      toast.error(r("اكتب اسم المجموعة", "Enter a group name."));
       return;
     }
     try {
@@ -102,9 +106,9 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
         groupId = created.id;
       }
       setSelectedId(groupId!);
-      toast.success(selected ? "تم تحديث المجموعة" : "تم إنشاء المجموعة وتوزيع الطلاب");
+      toast.success(selected ? r("تم تحديث المجموعة", "Group updated.") : r("تم إنشاء المجموعة وتوزيع الطلاب", "Group created and students assigned."));
     } catch (error: any) {
-      toast.error(getArabicRewardError(error, "تعذر حفظ المجموعة"));
+      toast.error(getArabicRewardError(error, r("تعذر حفظ المجموعة", "Could not save the group.")));
     }
   };
 
@@ -117,9 +121,9 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
     try {
       await deleteMutation.mutateAsync({ className, groupId: selected.id });
       setSelectedId("new");
-      toast.success("تم حذف المجموعة دون التأثير على نقاط الطلاب");
+      toast.success(r("تم حذف المجموعة دون التأثير على نقاط الطلاب", "Group deleted without changing student points."));
     } catch (error: any) {
-      toast.error(getArabicRewardError(error, "تعذر حذف المجموعة"));
+      toast.error(getArabicRewardError(error, r("تعذر حذف المجموعة", "Could not delete the group.")));
     }
   };
 
@@ -130,14 +134,14 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => onOpenChange(false)} disabled={saving}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-white/20 disabled:opacity-50">
-              <ArrowRight size={16} /> رجوع
+              <ArrowRight size={16} /> {r("رجوع", "Back")}
             </button>
             <DialogTitle className="flex items-center gap-2 text-xl font-black text-white">
-              <UsersRound className="text-amber-400" /> مجموعات الصف
+              <UsersRound className="text-amber-400" /> {r("مجموعات الصف", "Class groups")}
             </DialogTitle>
           </div>
           <DialogDescription className="text-sm font-medium text-emerald-100/75">
-            نظّم طلاب {className} في مجموعات ملوّنة، ثم حدد أي مجموعة من لوحة التحفيز بنقرة واحدة.
+            {r(`نظّم طلاب ${className} في مجموعات ملوّنة، ثم حدد أي مجموعة من لوحة التحفيز بنقرة واحدة.`, `Organize ${className} into color-coded groups, then select a group from the rewards board with one click.`)}
           </DialogDescription>
         </DialogHeader>
 
@@ -145,7 +149,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
           <aside className="flex gap-2 overflow-x-auto border-b-2 border-emerald-100 bg-emerald-50/40 p-3 md:flex-col md:overflow-y-auto md:border-b-0 md:border-l-2">
             <button type="button" onClick={() => setSelectedId("new")}
               className={cn("flex min-w-40 items-center gap-2 rounded-2xl border-2 px-4 py-3 text-right font-black transition-colors", selectedId === "new" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-dashed border-emerald-200 bg-white text-emerald-800 hover:border-emerald-400")}>
-              <Plus size={18} /> مجموعة جديدة
+              <Plus size={18} /> {r("مجموعة جديدة", "New group")}
             </button>
             {isLoading ? <Loader2 className="m-5 animate-spin text-emerald-600" /> : groups.map((group) => (
               <button key={group.id} type="button" onClick={() => setSelectedId(group.id)}
@@ -155,7 +159,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: group.color }} />
                   <strong className="truncate text-sm font-black text-emerald-950">{group.name}</strong>
                 </span>
-                <span className="block text-xs font-bold text-slate-500">{group.members.length} طالب</span>
+                <span className="block text-xs font-bold text-slate-500">{group.members.length} {r("طالب", "students")}</span>
               </button>
             ))}
           </aside>
@@ -168,38 +172,38 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="flex items-center gap-2 text-lg font-black text-emerald-950">
-                    {selected ? <Pencil size={19} /> : <Plus size={19} />} {selected ? "تعديل المجموعة" : "إنشاء مجموعة"}
+                  {selected ? <Pencil size={19} /> : <Plus size={19} />} {selected ? r("تعديل المجموعة", "Edit group") : r("إنشاء مجموعة", "Create group")}
                   </h3>
                   <p className="mt-1 text-xs font-bold text-slate-500">
                     {selected
-                      ? "اختر الطلاب بالضغط على أسمائهم أدناه، ثم اضغط حفظ تغييرات المجموعة."
-                      : "اكتب اسم المجموعة، اختر الطلاب بالضغط على أسمائهم، ثم أنشئ المجموعة."}
+                      ? r("اختر الطلاب بالضغط على أسمائهم أدناه، ثم اضغط حفظ تغييرات المجموعة.", "Select students below, then save the group changes.")
+                      : r("اكتب اسم المجموعة، اختر الطلاب بالضغط على أسمائهم، ثم أنشئ المجموعة.", "Enter a group name, select students, then create the group.")}
                   </p>
                 </div>
                 {selected && (
                   <button type="button" onClick={remove} disabled={deleteMutation.isPending}
                     className={cn("inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-colors", confirmDelete ? "border-rose-600 bg-rose-600 text-white" : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100")}>
                     {deleteMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                    {confirmDelete ? "اضغط مرة أخرى للتأكيد" : "حذف المجموعة"}
+                    {confirmDelete ? r("اضغط مرة أخرى للتأكيد", "Click again to confirm") : r("حذف المجموعة", "Delete group")}
                   </button>
                 )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-black text-emerald-950">اسم المجموعة</label>
+                  <label className="mb-2 block text-sm font-black text-emerald-950">{r("اسم المجموعة", "Group name")}</label>
                   <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="مثال: روّاد القراءة"
                     className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-black text-emerald-950">وصف أو هدف مختصر</label>
+                  <label className="mb-2 block text-sm font-black text-emerald-950">{r("وصف أو هدف مختصر", "Short description or goal")}</label>
                   <input value={description} onChange={(e) => setDescription(e.target.value)} maxLength={160} placeholder="مثال: فريق تحديات القراءة"
                     className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-black text-emerald-950">لون ورمز المجموعة</label>
+                <label className="mb-2 block text-sm font-black text-emerald-950">{r("لون ورمز المجموعة", "Group color and icon")}</label>
                 <div className="flex flex-col gap-3">
                   <div className="flex flex-wrap gap-2">
                     {REWARD_GROUP_COLORS.map((swatch) => (
@@ -213,7 +217,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
                   <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={() => setAvatar(null)} aria-label="بدون رمز"
                       className={cn("flex h-12 w-12 items-center justify-center rounded-xl border-2 shadow-sm transition-transform hover:scale-105 motion-reduce:transform-none", avatar === null ? "border-emerald-600 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-400")}>
-                      <span className="text-xs font-bold">بدون</span>
+                      <span className="text-xs font-bold">{r("بدون", "None")}</span>
                     </button>
                     {REWARD_GROUP_AVATARS.map((av) => (
                       <button key={av} type="button" onClick={() => setAvatar(av)} aria-label={`اختيار الرمز ${av}`}
@@ -229,12 +233,12 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
               <section className="overflow-hidden rounded-2xl border-2 border-emerald-100">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 bg-emerald-50/50 p-3">
                   <div>
-                    <h4 className="font-black text-emerald-950">اختر طلاب المجموعة</h4>
+                    <h4 className="font-black text-emerald-950">{r("اختر طلاب المجموعة", "Choose group students")}</h4>
                     <p className="text-xs font-bold text-emerald-900/55">تم اختيار {memberIds.size} من {students.length}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setMemberIds(new Set(students.map((student) => student.id)))} className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm">تحديد الكل</button>
-                    <button type="button" onClick={() => setMemberIds(new Set())} className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-slate-600 shadow-sm">مسح</button>
+                    <button type="button" onClick={() => setMemberIds(new Set(students.map((student) => student.id)))} className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-emerald-700 shadow-sm">{r("تحديد الكل", "Select all")}</button>
+                    <button type="button" onClick={() => setMemberIds(new Set())} className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-slate-600 shadow-sm">{r("مسح", "Clear")}</button>
                   </div>
                   <div className="relative w-full">
                     <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -261,7 +265,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
                           checked ? "border-white/50 bg-white text-emerald-800" : "border-emerald-200 bg-emerald-50 text-emerald-800",
                         )}>
                           {checked && <Check size={13} strokeWidth={4} />}
-                          {checked ? "تمت الإضافة" : "إضافة"}
+                           {checked ? r("تمت الإضافة", "Added") : r("إضافة", "Add")}
                         </span>
                       </button>
                     );
@@ -272,7 +276,7 @@ export function RewardGroupsDialog({ open, onOpenChange, className, students, in
               <button type="submit" disabled={saving}
                 className="sticky bottom-0 z-10 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3.5 font-black text-white shadow-lg shadow-emerald-950/20 transition-colors hover:bg-emerald-800 disabled:opacity-50">
                 {saving ? <Loader2 size={19} className="animate-spin" /> : <Save size={19} />}
-                {selected ? `حفظ المجموعة (${memberIds.size} طالب)` : `إنشاء المجموعة (${memberIds.size} طالب)`}
+                {selected ? r(`حفظ المجموعة (${memberIds.size} طالب)`, `Save group (${memberIds.size} students)`) : r(`إنشاء المجموعة (${memberIds.size} طالب)`, `Create group (${memberIds.size} students)`)}
               </button>
             </div>
           </form>
@@ -303,6 +307,8 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
   onManageClick: () => void;
   onAward: (groupName: string) => void;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const grantMutation = useGrantGroupReward();
 
   if (!group) return null;
@@ -315,12 +321,12 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
       idempotencyKey: crypto.randomUUID()
     }, {
       onSuccess: () => {
-        toast.success(`تم منح ${points} نقطة لمجموعة ${group.name}`);
+         toast.success(r(`تم منح ${points} نقطة لمجموعة ${group.name}`, `Awarded ${points} points to ${group.name}`));
         onAward(group.name);
         onOpenChange(false);
       },
       onError: (err) => {
-        toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
+         toast.error(getArabicRewardError(err, r("حدث خطأ أثناء منح النقاط", "Could not award points.")));
       }
     });
   };
@@ -330,7 +336,7 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
       <DialogContent className="sm:max-w-sm rounded-3xl p-6 text-center border-2 border-emerald-100">
         <button type="button" onClick={() => onOpenChange(false)} disabled={grantMutation.isPending}
           className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50">
-          <ArrowRight size={16} /> رجوع
+           <ArrowRight size={16} /> {r("رجوع", "Back")}
         </button>
         <div className="flex justify-center -mt-12 mb-4">
           <AvatarDisplay
@@ -344,7 +350,7 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
         <DialogHeader className="mb-6">
           <DialogTitle className="text-2xl font-black text-emerald-950">{group.name}</DialogTitle>
           <DialogDescription className="text-sm font-bold text-emerald-900/60 mt-1">
-            {formatRewardPoints(group.members.length)} أعضاء • رصيد المجموعة: <span className="text-emerald-700">{formatRewardPoints(group.score || 0)}</span> نقطة
+             {formatRewardPoints(group.members.length)} {r("أعضاء", "members")} • {r("رصيد المجموعة", "Group balance")}: <span className="text-emerald-700">{formatRewardPoints(group.score || 0)}</span> {r("نقطة", "points")}
           </DialogDescription>
         </DialogHeader>
 
@@ -371,7 +377,7 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
             }}
             className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-100 hover:text-emerald-900"
           >
-            <UsersRound size={16} /> عرض تفاصيل المجموعة
+             <UsersRound size={16} /> {r("عرض تفاصيل المجموعة", "View group details")}
           </button>
           <button
             type="button"
@@ -381,7 +387,7 @@ export function GroupAwardDialog({ open, onOpenChange, group, className, onDetai
             }}
             className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 text-sm font-bold text-emerald-800 transition-colors hover:border-emerald-400 hover:bg-emerald-50"
           >
-            <Pencil size={16} /> إدارة المجموعة
+             <Pencil size={16} /> {r("إدارة المجموعة", "Manage group")}
           </button>
         </DialogFooter>
       </DialogContent>
@@ -397,6 +403,8 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
   onBack: () => void;
   onAward: (groupName: string) => void;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const resetMutation = useResetGroupScore();
   const grantMutation = useGrantGroupReward();
   const [confirmReset, setConfirmReset] = useState(false);
@@ -419,11 +427,11 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
       idempotencyKey: crypto.randomUUID()
     }, {
       onSuccess: () => {
-        toast.success(`تم تصفير نقاط مجموعة ${group.name}`);
+         toast.success(r(`تم تصفير نقاط مجموعة ${group.name}`, `Reset points for ${group.name}`));
         setConfirmReset(false);
       },
       onError: (err) => {
-        toast.error(getArabicRewardError(err, "حدث خطأ أثناء تصفير النقاط"));
+         toast.error(getArabicRewardError(err, r("حدث خطأ أثناء تصفير النقاط", "Could not reset points.")));
       }
     });
   };
@@ -436,11 +444,11 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
       idempotencyKey: crypto.randomUUID()
     }, {
       onSuccess: () => {
-        toast.success(`تم منح ${points} نقطة لمجموعة ${group.name}`);
+         toast.success(r(`تم منح ${points} نقطة لمجموعة ${group.name}`, `Awarded ${points} points to ${group.name}`));
         onAward(group.name);
       },
       onError: (err) => {
-        toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
+         toast.error(getArabicRewardError(err, r("حدث خطأ أثناء منح النقاط", "Could not award points.")));
       }
     });
   };
@@ -454,7 +462,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
       <DialogContent className="sm:max-w-md rounded-3xl p-0 overflow-hidden border-2 border-emerald-100">
         <button type="button" onClick={onBack} disabled={resetMutation.isPending || grantMutation.isPending}
           className="absolute right-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-emerald-950/40 px-3 py-2 text-xs font-black text-white backdrop-blur-sm transition-colors hover:bg-emerald-950/60 disabled:opacity-50">
-          <ArrowRight size={16} /> رجوع
+           <ArrowRight size={16} /> {r("رجوع", "Back")}
         </button>
         <div className="bg-emerald-950 p-6 text-white text-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundColor: group.color }} />
@@ -472,7 +480,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
             <div className="mt-4 flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-2xl">
               <Trophy className="text-amber-400" size={24} />
               <span className="text-3xl font-black text-amber-400">{formatRewardPoints(group.score || 0)}</span>
-              <span className="text-sm font-bold text-emerald-100 ml-1">نقطة</span>
+               <span className="text-sm font-bold text-emerald-100 ml-1">{r("نقطة", "points")}</span>
             </div>
           </div>
         </div>
@@ -485,7 +493,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
               onClick={() => handleGrant(5)}
               className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-600 bg-emerald-700 py-3 text-sm font-black text-white transition-all hover:bg-emerald-800 disabled:opacity-50"
             >
-              <Plus size={18} /> منح 5 نقاط
+               <Plus size={18} /> {r("منح 5 نقاط", "Award 5 points")}
             </button>
             <button
               type="button"
@@ -499,13 +507,13 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
               )}
             >
               {resetMutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <RotateCcw size={18} />}
-              {confirmReset ? "تأكيد التصفير" : "تصفير"}
+               {confirmReset ? r("تأكيد التصفير", "Confirm reset") : r("تصفير", "Reset")}
             </button>
           </div>
 
           <h3 className="font-black text-emerald-950 mb-3 flex items-center gap-2 text-sm">
             <UsersRound size={16} className="text-emerald-600" />
-            أعضاء المجموعة ({group.members.length})
+             {r(`أعضاء المجموعة (${group.members.length})`, `Group members (${group.members.length})`)}
           </h3>
 
           <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-2 max-h-60 overflow-y-auto">
@@ -518,7 +526,7 @@ export function GroupDetailDialog({ open, onOpenChange, group, className, onBack
               ))}
               {group.members.length === 0 && (
                 <div className="p-4 text-center text-emerald-900/50 text-sm font-bold">
-                  لا يوجد أعضاء في هذه المجموعة.
+                   {r("لا يوجد أعضاء في هذه المجموعة.", "This group has no members.")}
                 </div>
               )}
             </div>

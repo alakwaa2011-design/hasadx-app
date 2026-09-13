@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Calendar, Target, Pencil, ArrowRight, Save, Clock, Trophy, Archive, Sparkles, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatRewardPoints } from "./format";
+import { useI18n } from "@/lib/i18n";
+import { rewardText } from "./reward-i18n";
 
 export type GoalTargetType = "class" | "student";
 
@@ -25,6 +27,8 @@ export interface GoalProgressCardProps {
 }
 
 export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalProgressCardProps) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const reduceMotion = useReducedMotion();
   const percentage = Math.min(100, Math.max(0, (goal.currentPoints / goal.targetPoints) * 100));
   const isCompleted = percentage >= 100;
@@ -89,7 +93,7 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
                 : goal.targetType === "class" ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-800",
             )}>
               {isCompleted && <Crown size={13} />}
-              {isCompleted ? "هدف مكتمل" : goal.targetType === "class" ? "هدف الصف" : "هدف الطالب"}
+              {isCompleted ? r("هدف مكتمل", "Goal complete") : goal.targetType === "class" ? r("هدف الصف", "Class goal") : r("هدف الطالب", "Student goal")}
             </span>
             {formattedEndDate && (
               <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600/70">
@@ -115,19 +119,19 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
                 <Trophy size={15} />
               </motion.span>
               {goal.targetType === "class"
-                ? "أحسنتم! حقق الصف الهدف واستحق الفوز"
-                : "رائع! تحقق الهدف واستحق الطالب الاحتفاء"}
+                ? r("أحسنتم! حقق الصف الهدف واستحق الفوز", "Well done! The class reached its goal and earned a reward.")
+                : r("رائع! تحقق الهدف واستحق الطالب الاحتفاء", "Great! The student reached the goal and earned recognition.")}
             </motion.div>
           )}
         </div>
         <div className={cn("flex shrink-0 items-center gap-1", isCompleted && "absolute left-0 top-0")}>
           {onEdit && (
-            <button onClick={onEdit} className="rounded-xl p-2.5 text-emerald-900/40 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-400/20" aria-label="تعديل الهدف">
+            <button onClick={onEdit} className="rounded-xl p-2.5 text-emerald-900/40 transition-colors hover:bg-emerald-50 hover:text-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-400/20" aria-label={r("تعديل الهدف", "Edit goal")}>
               <Pencil size={16} />
             </button>
           )}
           {onArchive && (
-            <button onClick={onArchive} className="rounded-xl p-2.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-300/30" aria-label="أرشفة الهدف">
+            <button onClick={onArchive} className="rounded-xl p-2.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-300/30" aria-label={r("أرشفة الهدف", "Archive goal")}>
               <Archive size={16} />
             </button>
           )}
@@ -138,11 +142,11 @@ export function GoalProgressCard({ goal, onEdit, onArchive, className }: GoalPro
         <div className={cn("mb-2.5 flex items-end justify-between", isCompleted && "justify-center gap-4")}>
           <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-emerald-700">{formatRewardPoints(goal.currentPoints)}</span>
-            <span className="text-xs font-bold text-emerald-900/50">/ {formatRewardPoints(goal.targetPoints)} نقطة</span>
+            <span className="text-xs font-bold text-emerald-900/50">/ {formatRewardPoints(goal.targetPoints)} {r("نقطة", "points")}</span>
           </div>
           {isCompleted ? (
             <span className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-400 px-2.5 py-1 text-xs font-black text-amber-950 shadow-sm">
-              <Trophy size={14} /> فوز مستحق
+              <Trophy size={14} /> {r("فوز مستحق", "Reward earned")}
             </span>
           ) : (
             <span className="text-xs font-black text-emerald-900/60 bg-emerald-50 px-2 py-0.5 rounded-lg">
@@ -194,6 +198,8 @@ export interface GoalDialogProps {
 }
 
 export function GoalDialog({ open, onOpenChange, initialData, onSave, students = [], saving = false }: GoalDialogProps) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [title, setTitle] = useState(initialData?.title || "");
   const [skill, setSkill] = useState(initialData?.skill || "");
   const [targetType, setTargetType] = useState<GoalTargetType>(initialData?.targetType || "class");
@@ -235,37 +241,37 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
           
           <div className="relative z-10">
             <button type="button" disabled={saving} onClick={() => onOpenChange(false)} className="absolute left-0 top-1 inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus:ring-4 focus:ring-amber-400/20 outline-none disabled:opacity-50">
-              <ArrowRight size={16} /> رجوع
+              <ArrowRight size={16} /> {r("رجوع", "Back")}
             </button>
             <DialogTitle className="text-2xl font-black text-white flex items-center gap-2.5 mt-1">
               <span className="flex items-center justify-center w-10 h-10 rounded-2xl bg-amber-400/20 border border-amber-300/30">
                 <Target className="text-amber-400" size={20} />
               </span>
-              {initialData ? "تعديل الهدف" : "هدف جديد"}
+              {initialData ? r("تعديل الهدف", "Edit goal") : r("هدف جديد", "New goal")}
             </DialogTitle>
             <DialogDescription className="text-sm font-medium text-emerald-100/80 mt-3 pr-1">
-              ضع هدفاً ملهماً يشجع الأبطال على التقدم المستمر.
+              {r("ضع هدفاً ملهماً يشجع الأبطال على التقدم المستمر.", "Set an inspiring goal that encourages steady progress.")}
             </DialogDescription>
           </div>
         </div>
 
         <form onSubmit={handleSave} className="p-7 space-y-6 bg-white">
           <div>
-            <label className="mb-2 block text-sm font-black text-emerald-950">عنوان الهدف</label>
+            <label className="mb-2 block text-sm font-black text-emerald-950">{r("عنوان الهدف", "Goal title")}</label>
             <input 
               value={title} 
               onChange={e => setTitle(e.target.value)} 
-              placeholder="مثال: إكمال قراءة 10 قصص"
+              placeholder={r("مثال: إكمال قراءة 10 قصص", "Example: Finish reading 10 stories")}
               className="w-full rounded-2xl border-2 border-emerald-100 px-4 py-3.5 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15 transition-all text-emerald-950 shadow-sm"
               required
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-black text-emerald-950">المهارة أو عادة التعلّم</label>
+            <label className="mb-2 block text-sm font-black text-emerald-950">{r("المهارة أو عادة التعلّم", "Skill or learning habit")}</label>
             <input
               value={skill}
               onChange={e => setSkill(e.target.value)}
-              placeholder="مثال: القراءة اليومية أو المشاركة بثقة"
+              placeholder={r("مثال: القراءة اليومية أو المشاركة بثقة", "Example: daily reading or confident participation")}
               className="w-full rounded-2xl border-2 border-emerald-100 px-4 py-3.5 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15 transition-all text-emerald-950 shadow-sm"
               required
             />
@@ -273,16 +279,16 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
 
           <div className="grid grid-cols-2 gap-3">
             <button type="button" onClick={() => setTargetType("class")} className={cn("flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3.5 text-sm font-black transition-all outline-none focus:ring-4", targetType === "class" ? "border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm focus:ring-emerald-400/20" : "border-slate-100 text-slate-500 hover:border-emerald-200 hover:bg-emerald-50/50 focus:ring-slate-200")}>
-              هدف للصف
+              {r("هدف للصف", "Class goal")}
             </button>
             <button type="button" onClick={() => setTargetType("student")} className={cn("flex items-center justify-center gap-2 rounded-2xl border-2 px-3 py-3.5 text-sm font-black transition-all outline-none focus:ring-4", targetType === "student" ? "border-sky-500 bg-sky-50 text-sky-800 shadow-sm focus:ring-sky-400/20" : "border-slate-100 text-slate-500 hover:border-sky-200 hover:bg-sky-50/50 focus:ring-slate-200")}>
-              هدف لطالب
+              {r("هدف لطالب", "Student goal")}
             </button>
           </div>
 
           {targetType === "student" && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-              <label className="mb-2 block text-sm font-black text-emerald-950">اختر الطالب</label>
+              <label className="mb-2 block text-sm font-black text-emerald-950">{r("اختر الطالب", "Choose student")}</label>
               <div className="relative">
                 <select 
                   value={targetId || ""} 
@@ -290,7 +296,7 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
                   className="w-full rounded-2xl border-2 border-emerald-100 px-4 py-3.5 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15 appearance-none bg-white text-emerald-950 shadow-sm"
                   required
                 >
-                  <option value="" disabled>اختر طالباً...</option>
+                  <option value="" disabled>{r("اختر طالباً...", "Choose a student...")}</option>
                   {students.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
@@ -304,7 +310,7 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-2 block text-sm font-black text-emerald-950">النقاط المستهدفة</label>
+              <label className="mb-2 block text-sm font-black text-emerald-950">{r("النقاط المستهدفة", "Target points")}</label>
               <input 
                 type="number"
                 min="1"
@@ -316,7 +322,7 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-black text-emerald-950">تاريخ الانتهاء</label>
+              <label className="mb-2 block text-sm font-black text-emerald-950">{r("تاريخ الانتهاء", "End date")}</label>
               <div className="relative">
                 <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-900/40 pointer-events-none" size={16} />
                 <input 
@@ -332,7 +338,7 @@ export function GoalDialog({ open, onOpenChange, initialData, onSave, students =
           <div className="pt-2">
             <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 py-4 font-black text-white shadow-xl shadow-emerald-900/15 transition-all hover:bg-emerald-800 hover:-translate-y-0.5 focus:ring-4 focus:ring-emerald-400/30 outline-none disabled:cursor-not-allowed disabled:opacity-60">
               <Save size={18} />
-              {initialData ? "حفظ التعديلات" : "إنشاء الهدف"}
+              {initialData ? r("حفظ التعديلات", "Save changes") : r("إنشاء الهدف", "Create goal")}
             </button>
           </div>
         </form>

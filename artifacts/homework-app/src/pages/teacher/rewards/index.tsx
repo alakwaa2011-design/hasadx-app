@@ -37,6 +37,8 @@ import { getArabicRewardError } from "./error-message";
 import { trackProjectAnalyticsEvent } from "@/lib/analytics";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatRewardPoints, getRewardStudentFirstName } from "./format";
+import { useI18n } from "@/lib/i18n";
+import { rewardText, type RewardLang } from "./reward-i18n";
 import "./rewards-pavilion.css";
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void] {
@@ -61,7 +63,7 @@ const formatPoints = formatRewardPoints;
 const INITIAL_VISIBLE_GOALS = 2;
 type TeacherClassOption = { className?: string | null; name?: string | null };
 
-function AdventurePointsBadge({ points, className, animate = false }: { points: number, className?: string, animate?: boolean }) {
+function AdventurePointsBadge({ points, className, animate = false, lang = "ar" }: { points: number, className?: string, animate?: boolean; lang?: RewardLang }) {
   return (
     <div className={cn(
       "relative flex items-center justify-center group/badge",
@@ -75,7 +77,7 @@ function AdventurePointsBadge({ points, className, animate = false }: { points: 
           <span className="absolute h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
         </span>
         <span className="text-base font-black leading-none text-white drop-shadow-md">{formatPoints(points)}</span>
-        <span className="text-xs font-black text-amber-50">نقطة</span>
+        <span className="text-xs font-black text-amber-50">{rewardText(lang, "نقطة", "points")}</span>
       </div>
     </div>
   );
@@ -99,6 +101,8 @@ function RoyalCompassEmblem() {
 }
 
 export default function RewardsPage({ embedded = false }: { embedded?: boolean }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const params = useParams<{ className?: string }>();
   const [, setLocation] = useLocation();
   const [embeddedClass, setEmbeddedClass] = useState<string>();
@@ -216,9 +220,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       totalPoints: Number((weeklySummary as any)?.metrics?.totalGrantedPoints ?? 0),
       recognizedCount: recognizedStudentIds.size,
       awaitingRecognition: Math.max(0, (classData?.students?.length ?? 0) - recognizedStudentIds.size),
-      topTypeName: topType?.typeName || "لا يوجد بعد",
+      topTypeName: topType?.typeName || r("لا يوجد بعد", "Not yet"),
     };
-  }, [classData, weeklySummary]);
+  }, [classData, lang, weeklySummary]);
 
   const singleGrantStudent = useMemo(
     () => classData?.students?.find((student: any) => student.id === singleGrantStudentId) ?? null,
@@ -368,7 +372,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     );
     const validSelectedIds = [...selectedIds].filter((id) => eligibleIds.has(id));
     if (!validSelectedIds.length) {
-      toast.error("لم يعد هناك طلاب صالحون ضمن هذا الاختيار");
+      toast.error(r("لم يعد هناك طلاب صالحون ضمن هذا الاختيار", "There are no eligible students in this selection."));
       setSelectedIds(new Set());
       return;
     }
@@ -411,27 +415,27 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         const batchId = result?.grants?.[0]?.batch_id ? String(result.grants[0].batch_id) : null;
         const reversalKey = crypto.randomUUID();
         let undoStarted = false;
-        toast.success(`تم منح ${formatPoints(pts)} نقطة لـ ${formatPoints(payload.studentIds.length)} طالب`, {
+        toast.success(r(`تم منح ${formatPoints(pts)} نقطة لـ ${formatPoints(payload.studentIds.length)} طالب`, `Granted ${formatPoints(pts)} points to ${formatPoints(payload.studentIds.length)} students`), {
           duration: 8000,
           action: batchId ? {
-            label: "تراجع",
+            label: r("تراجع", "Undo"),
             onClick: async () => {
               if (undoStarted) return;
               undoStarted = true;
               try {
                 await reverseBatchMutation.mutateAsync({ batchId, idempotencyKey: reversalKey });
                 setCelebration(null);
-                toast.success("تم التراجع عن منح النقاط");
+                toast.success(r("تم التراجع عن منح النقاط", "The points award was undone."));
               } catch (error: any) {
                 undoStarted = false;
-                toast.error(getArabicRewardError(error, "تعذر التراجع عن منح النقاط"));
+                toast.error(getArabicRewardError(error, r("تعذر التراجع عن منح النقاط", "Could not undo the points award.")));
               }
             },
           } : undefined,
         });
       },
       onError: (err) => {
-        toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
+        toast.error(getArabicRewardError(err, r("حدث خطأ أثناء منح النقاط", "Could not award the points.")));
       },
       onSettled: () => {
         bulkGrantPendingRef.current = false;
@@ -453,7 +457,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           targetPoints: data.targetPoints,
           endDate: data.endDate,
         });
-        toast.success("تم تحديث الهدف");
+      toast.success(r("تم تحديث الهدف", "Goal updated."));
       } else {
         await createGoalMutation.mutateAsync({
           className: currentClass,
@@ -464,12 +468,12 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           targetPoints: data.targetPoints,
           endDate: data.endDate,
         });
-        toast.success("تم إنشاء الهدف");
+      toast.success(r("تم إنشاء الهدف", "Goal created."));
       }
       setEditingGoal(null);
       return true;
     } catch (error: any) {
-      toast.error(getArabicRewardError(error, "تعذر حفظ الهدف"));
+    toast.error(getArabicRewardError(error, r("تعذر حفظ الهدف", "Could not save the goal.")));
       return false;
     }
   };
@@ -478,17 +482,17 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     if (!currentClass || archiveGoalMutation.isPending) return;
     try {
       await archiveGoalMutation.mutateAsync({ className: currentClass, goalId: goal.id });
-      toast.success("تمت أرشفة الهدف", {
+      toast.success(r("تمت أرشفة الهدف", "Goal archived."), {
         action: {
-          label: "تراجع",
+          label: r("تراجع", "Undo"),
           onClick: () => updateGoalMutation.mutate(
             { className: currentClass, goalId: goal.id, status: "active" },
-            { onSuccess: () => toast.success("تمت إعادة الهدف"), onError: (error) => toast.error(getArabicRewardError(error, "تعذرت إعادة الهدف")) },
+            { onSuccess: () => toast.success(r("تمت إعادة الهدف", "Goal restored.")), onError: (error) => toast.error(getArabicRewardError(error, r("تعذرت إعادة الهدف", "Could not restore the goal."))) },
           ),
         },
       });
     } catch (error: any) {
-      toast.error(getArabicRewardError(error, "تعذرت أرشفة الهدف"));
+      toast.error(getArabicRewardError(error, r("تعذرت أرشفة الهدف", "Could not archive the goal.")));
     }
   };
 
@@ -499,7 +503,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           {loadingClasses ? (
             <div className="flex flex-col items-center gap-3 text-emerald-800">
               <Loader2 className="animate-spin" size={34} />
-              <p className="font-bold">نجهّز صفوفك…</p>
+              <p className="font-bold">{r("نجهّز صفوفك…", "Preparing your classes…")}</p>
             </div>
           ) : classOptions.length > 0 ? (
             <section className="relative w-full overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/60 to-amber-50 p-6 text-center shadow-sm sm:p-10">
@@ -509,9 +513,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 type="button"
                 onClick={() => setLocation("/teacher/students")}
                 className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white/85 px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 sm:right-6 sm:top-6"
-                aria-label="العودة إلى صفوفي وطلابي"
+                aria-label={r("العودة إلى صفوفي وطلابي", "Back to my classes and students")}
               >
-                <ArrowRight size={16} /> رجوع
+                <ArrowRight size={16} /> {r("رجوع", "Back")}
               </button>
               <div className="relative">
                 <div className="mx-auto mb-5 flex w-fit items-end justify-center -space-x-3 space-x-reverse" aria-hidden="true">
@@ -529,10 +533,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     </span>
                   ))}
                 </div>
-                <p className="mb-2 text-xs font-black tracking-wide text-emerald-700">لوحة التحفيز</p>
-                <h1 className="text-2xl font-black text-emerald-950 sm:text-3xl">أي صف سنحفّز اليوم؟</h1>
+                <p className="mb-2 text-xs font-black tracking-wide text-emerald-700">{r("لوحة التحفيز", "Rewards board")}</p>
+                <h1 className="text-2xl font-black text-emerald-950 sm:text-3xl">{r("أي صف سنحفّز اليوم؟", "Which class will we motivate today?")}</h1>
                 <p className="mx-auto mt-3 max-w-xl text-sm font-bold leading-7 text-emerald-900/60 sm:text-base">
-                  اختر صفًا لعرض طلابه ومجموعاته ونقاط مغامرتهم.
+                  {r("اختر صفًا لعرض طلابه ومجموعاته ونقاط مغامرتهم.", "Choose a class to view its students, groups, and adventure points.")}
                 </p>
                 <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-2">
                   {classOptions.map((name) => (
@@ -544,7 +548,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                         else setLocation(`/teacher/rewards/${encodeURIComponent(name)}`);
                       }}
                       className="group flex min-h-16 items-center gap-3 rounded-2xl border-2 border-emerald-100 bg-white px-4 py-3 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 motion-reduce:transform-none"
-                      aria-label={`فتح لوحة تحفيز صف ${name}`}
+                      aria-label={r(`فتح لوحة تحفيز صف ${name}`, `Open the rewards board for ${name}`)}
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-950 text-amber-300">
                         <UsersRound size={20} />
@@ -565,9 +569,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   </span>
                 ))}
               </div>
-              <h1 className="text-2xl font-black text-emerald-950">أضف صفك الأول لتبدأ التحفيز</h1>
+              <h1 className="text-2xl font-black text-emerald-950">{r("أضف صفك الأول لتبدأ التحفيز", "Add your first class to start motivating students")}</h1>
               <p className="mx-auto mt-3 max-w-md font-bold leading-7 text-emerald-900/55">
-                بعد إضافة الصف والطلاب ستظهر هنا بطاقات التحفيز والمجموعات ونقاط المغامرة.
+                {r("بعد إضافة الصف والطلاب ستظهر هنا بطاقات التحفيز والمجموعات ونقاط المغامرة.", "After you add a class and students, reward cards, groups, and adventure points will appear here.")}
               </p>
               <button
                 type="button"
@@ -575,7 +579,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-6 py-3 font-black text-white shadow-lg shadow-emerald-950/15 transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/50"
               >
                 <Plus size={19} />
-                إضافة صف وطلاب
+                {r("إضافة صف وطلاب", "Add class and students")}
               </button>
             </section>
           )}
@@ -611,11 +615,11 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             }}
           />
         ) : (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50" dir="rtl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50" dir={lang === "ar" ? "rtl" : "ltr"}>
             <div className="flex flex-col items-center gap-3 font-black text-emerald-900">
               <Loader2 className="animate-spin" size={34} />
-              {boardLoading ? "نجهّز لوحة التحفيز المباشرة…" : "تعذر تحميل لوحة التحفيز المباشرة"}
-              <button type="button" onClick={() => setLiveBoardOpen(false)} className="mt-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm">رجوع</button>
+              {boardLoading ? r("نجهّز لوحة التحفيز المباشرة…", "Preparing the live rewards board…") : r("تعذر تحميل لوحة التحفيز المباشرة", "Could not load the live rewards board")}
+              <button type="button" onClick={() => setLiveBoardOpen(false)} className="mt-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm">{r("رجوع", "Back")}</button>
             </div>
           </div>
         )
@@ -638,8 +642,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   else setLocation("/teacher/rewards");
                 }}
                 className="group flex h-12 w-12 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition-all hover:bg-emerald-100 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                aria-label="الرجوع إلى اختيار الصف"
-                title="الرجوع إلى اختيار الصف"
+                aria-label={r("الرجوع إلى اختيار الصف", "Back to class selection")}
+                title={r("الرجوع إلى اختيار الصف", "Back to class selection")}
               >
                 <ArrowRight size={22} className="transition-transform group-hover:translate-x-0.5" />
               </button>
@@ -649,11 +653,11 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </div>
 
               <div className="flex flex-col min-w-0 justify-center">
-                <p className="text-[11px] sm:text-xs font-bold text-emerald-700/60 mb-0.5 sm:mb-1">رحلة التحفيز</p>
+                 <p className="text-[11px] sm:text-xs font-bold text-emerald-700/60 mb-0.5 sm:mb-1">{r("رحلة التحفيز", "Motivation journey")}</p>
                 <div className="flex items-center gap-2">
                   <h1 className="text-lg sm:text-xl font-black text-emerald-950 tracking-wide flex items-center gap-2">
                     <span className="group/class-selector relative min-w-0 flex items-center">
-                      <label htmlFor="rewards-class-selector" className="sr-only">اختر صف لوحة التحفيز</label>
+                       <label htmlFor="rewards-class-selector" className="sr-only">{r("اختر صف لوحة التحفيز", "Choose a rewards board class")}</label>
                       <select
                         id="rewards-class-selector"
                         value={currentClass}
@@ -663,7 +667,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                             else setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
                           }
                         }}
-                        aria-label="اختر صف لوحة التحفيز"
+                         aria-label={r("اختر صف لوحة التحفيز", "Choose a rewards board class")}
                         className="max-w-[10rem] cursor-pointer appearance-none truncate rounded-xl border border-emerald-900/10 bg-white/80 py-1 pl-7 pr-3 text-sm font-black text-emerald-950 shadow-sm outline-none backdrop-blur-md transition-all hover:bg-emerald-50 hover:border-emerald-200 focus:ring-2 focus:ring-emerald-400/50 sm:max-w-[16rem]"
                       >
                         {classOptions.map((name) => (
@@ -678,7 +682,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     </span>
                   </h1>
                   <span className="flex items-center justify-center rounded-lg bg-emerald-100/80 px-2 py-0.5 text-[10px] font-black text-emerald-800 shrink-0">
-                    {classData?.students?.length ?? 0} طالب
+                     {classData?.students?.length ?? 0} {r("طالب", "students")}
                   </span>
                 </div>
               </div>
@@ -694,11 +698,11 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     setLiveBoardOpen(true);
                   }}
                   className="group relative flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 sm:px-4 py-2 font-black text-white shadow-md shadow-emerald-600/20 border border-emerald-500 transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
-                  aria-label="لوحة التحفيز المباشرة"
+                   aria-label={r("لوحة التحفيز المباشرة", "Live rewards board")}
                   data-testid="button-live-board"
                 >
                   <Target size={16} className="text-amber-300 transition-transform group-hover:rotate-12" />
-                  <span className="text-xs sm:text-sm">لوحة التحفيز المباشرة</span>
+                   <span className="text-xs sm:text-sm">{r("لوحة التحفيز المباشرة", "Live rewards board")}</span>
                   <span className="absolute -right-1 -top-1 flex h-3 w-3">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75 motion-reduce:animate-none" />
                     <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-400 border border-white/50" />
@@ -711,8 +715,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   type="button"
                   onClick={() => setLedgerOpen(true)}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                  aria-label="سجل النقاط"
-                  title="السجل والملخص"
+                   aria-label={r("سجل النقاط", "Points ledger")}
+                   title={r("السجل والملخص", "Ledger and summary")}
                 >
                   <History size={18} />
                 </button>
@@ -721,8 +725,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   data-testid="button-open-reward-rules"
                   onClick={() => setRulesOpen(true)}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                  aria-label="قواعد التحفيز التلقائي"
-                  title="قواعد التحفيز التلقائي"
+                   aria-label={r("قواعد التحفيز التلقائي", "Automatic reward rules")}
+                   title={r("قواعد التحفيز التلقائي", "Automatic reward rules")}
                 >
                   <Zap size={18} className="text-amber-500 fill-amber-500/20" />
                 </button>
@@ -730,8 +734,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   type="button"
                   onClick={() => setSettingsOpen(true)}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                  aria-label="إعدادات التحفيز"
-                  title="إعدادات التحفيز"
+                   aria-label={r("إعدادات التحفيز", "Reward settings")}
+                   title={r("إعدادات التحفيز", "Reward settings")}
                 >
                   <Settings size={18} />
                 </button>
@@ -742,8 +746,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     "flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20",
                     isMuted && "bg-slate-100 text-slate-500 shadow-none hover:bg-slate-200"
                   )}
-                  aria-label={isMuted ? "إلغاء الكتم" : "كتم الصوت"}
-                  title={isMuted ? "إلغاء الكتم" : "كتم الصوت"}
+                   aria-label={isMuted ? r("إلغاء الكتم", "Unmute") : r("كتم الصوت", "Mute sound")}
+                   title={isMuted ? r("إلغاء الكتم", "Unmute") : r("كتم الصوت", "Mute sound")}
                 >
                   {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
                 </button>
@@ -752,35 +756,35 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </div>
         </header>
 
-        <section aria-label="ملخص التحفيز الأسبوعي" className="rewards-pavilion-summary grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <section aria-label={r("ملخص التحفيز الأسبوعي", "Weekly rewards summary")} className="rewards-pavilion-summary grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {weeklySummaryLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="h-[74px] animate-pulse rounded-2xl border border-emerald-100 bg-emerald-50/60" />
               ))
             ) : weeklySummaryError ? (
               <div className="col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-500 sm:col-span-4">
-                تعذر تحميل ملخص هذا الأسبوع الآن.
+                {r("تعذر تحميل ملخص هذا الأسبوع الآن.", "Could not load this week's summary.")}
               </div>
             ) : (
               <>
             <div className="rewards-pavilion-summary-card rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
               <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--gold"><Sparkles size={17} /></span>
-              <div><p className="text-xs font-bold text-emerald-900/60">نقاط هذا الأسبوع</p>
+              <div><p className="text-xs font-bold text-emerald-900/60">{r("نقاط هذا الأسبوع", "Points this week")}</p>
               <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.totalPoints)}</p></div>
             </div>
             <div className="rewards-pavilion-summary-card rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
               <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--coral"><UserRound size={17} /></span>
-              <div><p className="text-xs font-bold text-emerald-900/60">طلاب تم تحفيزهم</p>
+              <div><p className="text-xs font-bold text-emerald-900/60">{r("طلاب تم تحفيزهم", "Students recognized")}</p>
               <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.recognizedCount)}</p></div>
             </div>
             <div className={cn("rewards-pavilion-summary-card rounded-2xl border px-3 py-3 shadow-sm", weeklyStats.awaitingRecognition > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-100 bg-white")}>
               <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--mint"><Eye size={17} /></span>
-              <div><p className="text-xs font-bold text-emerald-900/60">بانتظار التحفيز</p>
+              <div><p className="text-xs font-bold text-emerald-900/60">{r("بانتظار التحفيز", "Awaiting recognition")}</p>
               <p className={cn("mt-1 text-xl font-black", weeklyStats.awaitingRecognition > 0 ? "text-amber-800" : "text-emerald-950")}>{formatPoints(weeklyStats.awaitingRecognition)}</p></div>
             </div>
             <div className="rewards-pavilion-summary-card min-w-0 rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
               <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--plum"><Zap size={17} /></span>
-              <div className="min-w-0"><p className="text-xs font-bold text-emerald-900/60">الأكثر استخدامًا</p>
+               <div className="min-w-0"><p className="text-xs font-bold text-emerald-900/60">{r("الأكثر استخدامًا", "Most used")}</p>
               <p className="mt-1 truncate text-sm font-black text-emerald-950">{weeklyStats.topTypeName}</p></div>
             </div>
               </>
@@ -795,8 +799,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <Target size={21} />
                 </span>
                 <div>
-                  <h2 id="reward-goals-title" className="font-black text-emerald-950">أهداف التقدم</h2>
-                  <p className="text-xs font-bold text-emerald-900/55">حوّل النقاط إلى رحلة تعلم واضحة</p>
+                   <h2 id="reward-goals-title" className="font-black text-emerald-950">{r("أهداف التقدم", "Progress goals")}</h2>
+                   <p className="text-xs font-bold text-emerald-900/55">{r("حوّل النقاط إلى رحلة تعلم واضحة", "Turn points into a clear learning journey")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -806,7 +810,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
                 >
                   <Plus size={16} />
-                  هدف جديد
+                   {r("هدف جديد", "New goal")}
                 </button>
               </div>
             </div>
@@ -839,8 +843,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   >
                     {showAllGoals ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     {showAllGoals
-                      ? "طي الأهداف"
-                      : `عرض ${formatPoints(goalsData!.goals.length - INITIAL_VISIBLE_GOALS)} أهداف أخرى`}
+                       ? r("طي الأهداف", "Collapse goals")
+                       : r(`عرض ${formatPoints(goalsData!.goals.length - INITIAL_VISIBLE_GOALS)} أهداف أخرى`, `Show ${formatPoints(goalsData!.goals.length - INITIAL_VISIBLE_GOALS)} more goals`)}
                   </button>
                 )}
               </div>
@@ -851,7 +855,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-emerald-200 bg-white/70 px-4 py-5 text-sm font-black text-emerald-800 transition hover:border-amber-300 hover:bg-amber-50"
               >
                 <Target size={19} className="text-amber-500" />
-                أنشئ أول هدف للصف أو لطالب
+                 {r("أنشئ أول هدف للصف أو لطالب", "Create the first class or student goal")}
               </button>
             )}
           </section>
@@ -866,14 +870,14 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   onClick={() => setViewMode("students")}
                   className={cn("px-4 py-2 rounded-lg text-sm font-black transition-colors", viewMode === "students" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
                 >
-                  الطلاب
+                   {r("الطلاب", "Students")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("groups")}
                   className={cn("px-4 py-2 rounded-lg text-sm font-black transition-colors", viewMode === "groups" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
                 >
-                  المجموعات
+                   {r("المجموعات", "Groups")}
                 </button>
               </div>
 
@@ -882,7 +886,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] sm:[scrollbar-width:none]">
                   <button type="button" onClick={() => setActiveGroupId(null)}
                     className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
-                    كل الطلاب
+                     {r("كل الطلاب", "All students")}
                   </button>
                   {(groupsData?.groups ?? []).map((group) => (
                     <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
@@ -899,7 +903,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     setGroupsOpen(true);
                   }}
                     className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900 shadow-sm hover:border-emerald-400 hover:bg-emerald-50">
-                    <Plus size={18} className="text-emerald-600" /> مجموعة جديدة
+                     <Plus size={18} className="text-emerald-600" /> {r("مجموعة جديدة", "New group")}
                   </button>
                 </div>
               )}
@@ -911,7 +915,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-900/40 group-focus-within:text-emerald-600 transition-colors" size={18} />
                   <input
                     type="text"
-                    placeholder="ابحث عن طالب..."
+                     placeholder={r("ابحث عن طالب...", "Search for a student...")}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="w-full pl-4 pr-11 py-3 rounded-2xl border-2 border-emerald-100 bg-white text-sm font-bold text-emerald-950 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 transition-all shadow-sm"
@@ -921,7 +925,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <button type="button" onClick={() => setSelectedIds(new Set(activeGroup.members.map((member) => member.studentId)))}
                     className="hidden items-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-black text-white shadow-sm sm:flex"
                     style={{ backgroundColor: activeGroup.color, borderColor: activeGroup.color }}>
-                    <UsersRound size={18} /> تحديد المجموعة
+                     <UsersRound size={18} /> {r("تحديد المجموعة", "Select group")}
                   </button>
                 )}
                 <button
@@ -929,9 +933,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl border-2 border-emerald-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 text-sm font-black text-emerald-950 transition-all shrink-0 shadow-sm"
                 >
                   {selectedIds.size === students.length && students.length > 0 ? (
-                    <><CheckSquare size={18} className="text-amber-500" /> إلغاء التحديد</>
+                     <><CheckSquare size={18} className="text-amber-500" /> {r("إلغاء التحديد", "Clear selection")}</>
                   ) : (
-                    <><Square size={18} className="text-emerald-900/40" /> {activeGroup ? "تحديد المجموعة" : "تحديد الكل"}</>
+                     <><Square size={18} className="text-emerald-900/40" /> {activeGroup ? r("تحديد المجموعة", "Select group") : r("تحديد الكل", "Select all")}</>
                   )}
                 </button>
               </div>
@@ -982,7 +986,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     {group.name}
                   </div>
                   <div className="mt-1 text-[11px] font-bold text-emerald-900/50">
-                    {group.members.length} أعضاء
+                    {group.members.length} {r("أعضاء", "members")}
                   </div>
                 </div>
               </button>
@@ -993,7 +997,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <div className="absolute inset-0 bg-emerald-100 rounded-full blur-xl opacity-50" />
                   <UsersRound size={64} className="relative drop-shadow-sm" strokeWidth={1.5} />
                 </div>
-                <p className="font-bold text-lg">لم يتم العثور على مجموعات.</p>
+                <p className="font-bold text-lg">{r("لم يتم العثور على مجموعات.", "No groups found.")}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -1002,7 +1006,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   }}
                   className="px-6 py-3 rounded-xl bg-emerald-600 text-white font-black hover:bg-emerald-700 transition-colors"
                 >
-                  إنشاء مجموعة جديدة
+                  {r("إنشاء مجموعة جديدة", "Create a new group")}
                 </button>
               </div>
             )}
@@ -1010,7 +1014,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         ) : loadingStudents ? (
           <div className="flex flex-col items-center justify-center py-20 text-emerald-800 space-y-4">
             <Loader2 className="animate-spin" size={40} />
-            <p className="font-bold">جاري تحميل الطلاب...</p>
+            <p className="font-bold">{r("جاري تحميل الطلاب...", "Loading students...")}</p>
           </div>
         ) : (
           <div className="rewards-pavilion-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7">
@@ -1032,7 +1036,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                       type="button"
                       aria-label={isSelected ? `إلغاء تحديد ${student.name}` : `تحديد ${student.name} للمنح الجماعي`}
                       aria-pressed={isSelected}
-                      title={isSelected ? "إلغاء التحديد" : "تحديد الطالب"}
+                      title={isSelected ? r("إلغاء التحديد", "Clear selection") : r("تحديد الطالب", "Select student")}
                       className={cn(
                         "absolute right-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 p-0 text-[10px] font-black shadow-md transition-all sm:right-3 sm:top-3",
                         isSelected
@@ -1059,8 +1063,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                       setStudentControlOpen(true);
                     }}
                     className="absolute left-2.5 top-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-200 bg-white p-0 text-[10px] font-black text-emerald-800 shadow-md transition-all hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-lg sm:left-3 sm:top-3"
-                    title="فتح ملف الطالب"
-                    aria-label={`فتح ملف الطالب ${student.name}`}
+                    title={r("فتح ملف الطالب", "Open student profile")}
+                    aria-label={r(`فتح ملف الطالب ${student.name}`, `Open student profile for ${student.name}`)}
                   >
                     <UserRound size={13} strokeWidth={2.7} />
                   </button>
@@ -1069,7 +1073,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     type="button"
                     onClick={() => setSingleGrantStudentId(student.id)}
                     className="relative mt-8 flex w-full flex-col items-center rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/30 group/avatar sm:mt-10"
-                    aria-label={`فتح خيارات تحفيز ${student.name}`}
+                    aria-label={r(`فتح خيارات تحفيز ${student.name}`, `Open reward options for ${student.name}`)}
                   >
                     <div className="relative">
                       <AvatarDisplay
@@ -1115,12 +1119,12 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-emerald-100">
                             <div className="h-full rounded-full bg-emerald-600" style={{ width: `${goalPercent}%` }} />
                           </div>
-                          <div className="mt-1 text-[9px] font-bold text-emerald-900/55">متبقّي {student.goal.remaining} نقطة</div>
+                          <div className="mt-1 text-[9px] font-bold text-emerald-900/55">{r(`متبقّي ${student.goal.remaining} نقطة`, `${student.goal.remaining} points remaining`)}</div>
                         </div>
                       )}
                       {(daysSinceReward === null || daysSinceReward >= 7) && (
                         <div className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-800">
-                          {daysSinceReward === null ? "لم يُحفّز بعد" : `منذ آخر تحفيز ${daysSinceReward} أيام`}
+                          {daysSinceReward === null ? r("لم يُحفّز بعد", "Not recognized yet") : r(`منذ آخر تحفيز ${daysSinceReward} أيام`, `${daysSinceReward} days since last recognition`)}
                         </div>
                       )}
                     </div>
@@ -1137,7 +1141,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               <div className="absolute inset-0 bg-emerald-100 rounded-full blur-xl opacity-50" />
               <Map size={64} className="relative drop-shadow-sm" strokeWidth={1.5} />
             </div>
-            <p className="font-bold text-lg">لم يتم العثور على طلاب في هذا الصف.</p>
+            <p className="font-bold text-lg">{r("لم يتم العثور على طلاب في هذا الصف.", "No students found in this class.")}</p>
           </div>
         )}
 
@@ -1154,8 +1158,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 {selectedIds.size}
               </div>
               <div className="text-right">
-               <div className="font-black text-sm text-emerald-950">طلاب محددون</div>
-                <button onClick={() => setSelectedIds(new Set())} className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors">إلغاء التحديد</button>
+               <div className="font-black text-sm text-emerald-950">{r("طلاب محددون", "Selected students")}</div>
+                <button onClick={() => setSelectedIds(new Set())} className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors">{r("إلغاء التحديد", "Clear selection")}</button>
               </div>
            </div>
 
@@ -1185,7 +1189,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-emerald-200 bg-white hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 transition-all motion-reduce:transition-none motion-reduce:transform-none shrink-0 text-emerald-900/60 font-bold active:scale-95"
              >
                <Plus size={18} strokeWidth={2.5} />
-                <span className="text-sm">نقاط مخصصة</span>
+                <span className="text-sm">{r("نقاط مخصصة", "Custom points")}</span>
              </button>
               {selectedIds.size > 1 && (
                 <button
@@ -1194,7 +1198,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   className="flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-black text-slate-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50 shrink-0"
                 >
                   <SlidersHorizontal size={17} />
-                  تعديل الأرصدة
+                  {r("تعديل الأرصدة", "Adjust balances")}
                 </button>
               )}
            </div>
@@ -1278,7 +1282,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             },
             onError: (err) => {
               singleGrantPendingRef.current = false;
-              toast.error(getArabicRewardError(err, "حدث خطأ أثناء منح النقاط"));
+              toast.error(getArabicRewardError(err, rewardText(lang, "حدث خطأ أثناء منح النقاط", "Could not award the points.")));
             },
             onSettled: () => {
               singleGrantPendingRef.current = false;
@@ -1359,6 +1363,8 @@ function SingleStudentGrantDialog({
   onAdjustBalance: () => void;
   loading: boolean;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [customOpen, setCustomOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [points, setPoints] = useState(1);
@@ -1388,7 +1394,7 @@ function SingleStudentGrantDialog({
               className="relative z-10 h-28 w-28 bg-amber-50 px-2 text-lg font-black leading-tight text-center ring-4 ring-amber-400 shadow-2xl sm:text-xl"
             />
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
-              <AdventurePointsBadge points={student.points || 0} animate />
+              <AdventurePointsBadge points={student.points || 0} animate lang={lang} />
             </div>
           </div>
           <DialogTitle className="text-2xl font-black text-white relative z-10 tracking-wide">{student.name}</DialogTitle>
@@ -1398,7 +1404,7 @@ function SingleStudentGrantDialog({
             disabled={loading}
             className="absolute right-4 top-4 z-20 inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white transition-colors hover:bg-white/20 disabled:opacity-50"
           >
-            <ArrowRight size={16} /> رجوع
+            <ArrowRight size={16} /> {r("رجوع", "Back")}
           </button>
         </DialogHeader>
 
@@ -1406,16 +1412,16 @@ function SingleStudentGrantDialog({
           {!customOpen ? (
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-black tracking-wide text-emerald-900/60">اختر نوع التحفيز للطالب</h3>
+                <h3 className="text-sm font-black tracking-wide text-emerald-900/60">{r("اختر نوع التحفيز للطالب", "Choose a reward for this student")}</h3>
                 <button
                   type="button"
                   onClick={onAdjustBalance}
                   disabled={loading || (student.points || 0) < 1}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-black text-slate-600 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label={`خصم نقاط من رصيد ${student.name}`}
+                  aria-label={r(`خصم نقاط من رصيد ${student.name}`, `Deduct points from ${student.name}'s balance`)}
                 >
                   <SlidersHorizontal size={13} />
-                  خصم
+                  {r("خصم", "Deduct")}
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1451,7 +1457,7 @@ function SingleStudentGrantDialog({
                   <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center bg-white shadow-sm border border-emerald-100 group-hover:border-amber-200 group-hover:scale-110 transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none">
                     <Plus size={24} strokeWidth={2.5} />
                   </div>
-                  <div className="font-black text-xs">نقاط مخصصة</div>
+                  <div className="font-black text-xs">{r("نقاط مخصصة", "Custom points")}</div>
                 </button>
               </div>
             </div>
@@ -1459,35 +1465,35 @@ function SingleStudentGrantDialog({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!reason.trim()) { toast.error("يرجى إدخال السبب"); return; }
-                if (points < 1) { toast.error("يجب أن تكون النقاط 1 على الأقل"); return; }
+                if (!reason.trim()) { toast.error(r("يرجى إدخال السبب", "Please enter a reason.")); return; }
+                if (points < 1) { toast.error(r("يجب أن تكون النقاط 1 على الأقل", "Points must be at least 1.")); return; }
                 onGrant(undefined, { reason, points });
               }}
               className="space-y-6 max-w-md mx-auto"
             >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-black text-emerald-950 flex items-center gap-2 text-lg">
-                  <Sparkles size={20} className="text-amber-500" /> نقاط مخصصة
+                  <Sparkles size={20} className="text-amber-500" /> {r("نقاط مخصصة", "Custom points")}
                 </h3>
                 <button type="button" onClick={() => setCustomOpen(false)} className="text-xs font-bold text-emerald-900/50 hover:text-emerald-950 bg-white px-3 py-1.5 rounded-lg border border-emerald-100 shadow-sm transition-colors">
-                  العودة للخيارات
+                  {r("العودة للخيارات", "Back to options")}
                 </button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-bold text-emerald-950 mb-2 block">سبب المكافأة</label>
+                  <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("سبب المكافأة", "Reward reason")}</label>
                   <input
                     type="text"
                     value={reason}
                     onChange={e => setReason(e.target.value)}
-                    placeholder="مثال: إجابة متميزة، مساعدة زميل..."
+                    placeholder={r("مثال: إجابة متميزة، مساعدة زميل...", "Example: excellent answer, helping a classmate...")}
                     className="w-full bg-white border-2 border-emerald-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 shadow-sm transition-all"
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-bold text-emerald-950 mb-2 block">عدد النقاط</label>
+                  <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("عدد النقاط", "Points")}</label>
                   <div className="relative">
                     <Zap size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 fill-amber-500/20" />
                     <input
@@ -1503,7 +1509,7 @@ function SingleStudentGrantDialog({
               <div className="pt-4 flex justify-end">
                 <button type="submit" disabled={loading} className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-lg hover:from-amber-500 hover:to-orange-600 transition-all motion-reduce:transition-none motion-reduce:transform-none flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
                   {loading ? <Loader2 size={20} className="animate-spin" /> : <Zap size={20} className="fill-white/30" />}
-                   منح النقاط
+                   {r("منح النقاط", "Award points")}
                 </button>
               </div>
             </form>
@@ -1515,13 +1521,15 @@ function SingleStudentGrantDialog({
 }
 
 function CustomGrantDialog({ open, onOpenChange, onGrant, loading }: { open: boolean, onOpenChange: (v: boolean) => void, onGrant: (data: any) => void, loading: boolean }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [reason, setReason] = useState("");
   const [points, setPoints] = useState(1);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) { toast.error("يرجى إدخال السبب"); return; }
-    if (points < 1) { toast.error("يجب أن تكون النقاط 1 على الأقل"); return; }
+    if (!reason.trim()) { toast.error(r("يرجى إدخال السبب", "Please enter a reason.")); return; }
+    if (points < 1) { toast.error(r("يجب أن تكون النقاط 1 على الأقل", "Points must be at least 1.")); return; }
     onGrant({ reason, points });
   };
 
@@ -1538,23 +1546,23 @@ function CustomGrantDialog({ open, onOpenChange, onGrant, loading }: { open: boo
         <DialogHeader className="p-6 border-b-2 border-emerald-50 bg-emerald-50/50">
           <DialogTitle className="text-xl font-black text-emerald-950 flex items-center gap-2">
             <Sparkles size={24} className="text-amber-500" />
-            منح نقاط مخصصة
+            {r("منح نقاط مخصصة", "Award custom points")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           <div>
-            <label className="text-sm font-bold text-emerald-950 mb-2 block">السبب</label>
+            <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("السبب", "Reason")}</label>
             <input
               type="text"
               value={reason}
               onChange={e => setReason(e.target.value)}
-              placeholder="مثال: مساعدة زميل، مهمة إضافية..."
+              placeholder={r("مثال: مساعدة زميل، مهمة إضافية...", "Example: helping a classmate, an extra task...")}
               className="w-full bg-white border-2 border-emerald-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 shadow-sm transition-all"
               autoFocus
             />
           </div>
           <div>
-            <label className="text-sm font-bold text-emerald-950 mb-2 block">عدد النقاط</label>
+            <label className="text-sm font-bold text-emerald-950 mb-2 block">{r("عدد النقاط", "Points")}</label>
             <div className="relative">
               <Zap size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500 fill-amber-500/20" />
               <input
@@ -1568,11 +1576,11 @@ function CustomGrantDialog({ open, onOpenChange, onGrant, loading }: { open: boo
           </div>
           <div className="pt-4 flex justify-end gap-3">
             <button type="button" onClick={() => onOpenChange(false)} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-emerald-900/60 font-bold hover:bg-emerald-50 hover:text-emerald-950 transition-colors">
-              <ArrowRight size={17} /> رجوع
+              <ArrowRight size={17} /> {r("رجوع", "Back")}
             </button>
             <button type="submit" disabled={loading} className="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black hover:from-amber-500 hover:to-orange-600 transition-all motion-reduce:transition-none motion-reduce:transform-none flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} className="fill-white/30" />}
-              تأكيد المنح
+              {r("تأكيد المنح", "Confirm award")}
             </button>
           </div>
         </form>
@@ -1594,6 +1602,8 @@ function BulkBalanceAdjustmentDialog({
   students: Array<{ id: number; name: string; points?: number }>;
   onComplete: () => void;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [points, setPoints] = useState(1);
   const [reason, setReason] = useState("");
   const mutation = useAdjustStudentBalances();
@@ -1629,15 +1639,15 @@ function BulkBalanceAdjustmentDialog({
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!reason.trim()) {
-      toast.error("اكتب سبب تعديل الأرصدة");
+      toast.error(r("اكتب سبب تعديل الأرصدة", "Enter a reason for the balance adjustment."));
       return;
     }
     if (!Number.isInteger(points) || points < 1 || points > 1000) {
-      toast.error("اختر مقدارًا صحيحًا بين 1 و1000");
+      toast.error(r("اختر مقدارًا صحيحًا بين 1 و1000", "Choose a whole number between 1 and 1,000."));
       return;
     }
     if (eligible.length === 0) {
-      toast.error("لا يوجد طالب برصيد كافٍ لهذا التعديل");
+      toast.error(r("لا يوجد طالب برصيد كافٍ لهذا التعديل", "No student has enough points for this adjustment."));
       return;
     }
     requestKeyRef.current ||= crypto.randomUUID();
@@ -1653,14 +1663,14 @@ function BulkBalanceAdjustmentDialog({
           eligible_count: result.adjusted.length,
           excluded_count: result.excluded.length,
         });
-        toast.success(`تم تعديل رصيد ${result.adjusted.length} طالب${result.excluded.length ? ` واستبعاد ${result.excluded.length}` : ""}`);
+        toast.success(r(`تم تعديل رصيد ${result.adjusted.length} طالب${result.excluded.length ? ` واستبعاد ${result.excluded.length}` : ""}`, `Adjusted ${result.adjusted.length} student balances${result.excluded.length ? ` and excluded ${result.excluded.length}` : ""}`));
         onOpenChange(false);
         onComplete();
         setPoints(1);
         setReason("");
         requestKeyRef.current = null;
       },
-      onError: (error: any) => toast.error(getArabicRewardError(error, "تعذر تعديل أرصدة الطلاب")),
+       onError: (error: any) => toast.error(getArabicRewardError(error, r("تعذر تعديل أرصدة الطلاب", "Could not adjust student balances."))),
     });
   };
 
@@ -1670,21 +1680,21 @@ function BulkBalanceAdjustmentDialog({
         <DialogHeader className="border-b border-emerald-100 bg-emerald-50/70 p-6">
           <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
             className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 disabled:opacity-50">
-            <ArrowRight size={16} /> رجوع
+             <ArrowRight size={16} /> {r("رجوع", "Back")}
           </button>
           <DialogTitle className="flex items-center gap-2 font-black text-emerald-950">
             <SlidersHorizontal size={20} className="text-emerald-700" />
-            تعديل أرصدة {students.length} طلاب
+             {r(`تعديل أرصدة ${students.length} طلاب`, `Adjust balances for ${students.length} students`)}
           </DialogTitle>
           <DialogDescription className="pt-2 font-medium leading-relaxed text-emerald-900/65">
-            سيُطبّق المقدار والسبب نفسيهما على أصحاب الرصيد الكافي فقط. راجع المعاينة قبل التأكيد.
+             {r("سيُطبّق المقدار والسبب نفسيهما على أصحاب الرصيد الكافي فقط. راجع المعاينة قبل التأكيد.", "The same amount and reason will apply only to students with enough points. Review the preview before confirming.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="flex max-h-[calc(92dvh-9rem)] flex-col">
           <div className="space-y-4 overflow-y-auto p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-black text-emerald-950">مقدار التعديل</label>
+                 <label className="mb-2 block text-sm font-black text-emerald-950">{r("مقدار التعديل", "Adjustment amount")}</label>
                 <input
                   type="number"
                   min={1}
@@ -1695,20 +1705,20 @@ function BulkBalanceAdjustmentDialog({
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-black text-emerald-950">سبب التعديل</label>
+                 <label className="mb-2 block text-sm font-black text-emerald-950">{r("سبب التعديل", "Adjustment reason")}</label>
                 <input
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                   maxLength={200}
-                  placeholder="مثال: تصحيح رصيد أضيف بالخطأ"
+                   placeholder={r("مثال: تصحيح رصيد أضيف بالخطأ", "Example: correct an accidental balance award")}
                   className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15"
                 />
               </div>
             </div>
             <div className="overflow-hidden rounded-2xl border border-slate-200">
               <div className="flex items-center justify-between bg-slate-50 px-4 py-3">
-                <strong className="text-sm font-black text-slate-800">المعاينة</strong>
-                <span className="text-xs font-bold text-emerald-700">{eligible.length} سيُعدّل · {excluded.length} سيُستبعد</span>
+                 <strong className="text-sm font-black text-slate-800">{r("المعاينة", "Preview")}</strong>
+                 <span className="text-xs font-bold text-emerald-700">{r(`${eligible.length} سيُعدّل · ${excluded.length} سيُستبعد`, `${eligible.length} will be adjusted · ${excluded.length} will be excluded`)}</span>
               </div>
               <div className="max-h-64 divide-y divide-slate-100 overflow-y-auto">
                 {students.map((student) => {
@@ -1718,7 +1728,7 @@ function BulkBalanceAdjustmentDialog({
                     <div key={student.id} className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-black text-slate-800">{student.name}</div>
-                        {!canAdjust && <div className="text-xs font-bold text-rose-600">مستبعد: الرصيد الحالي لا يكفي</div>}
+                        {!canAdjust && <div className="text-xs font-bold text-rose-600">{r("مستبعد: الرصيد الحالي لا يكفي", "Excluded: current balance is too low")}</div>}
                       </div>
                       <div className={cn("shrink-0 text-sm font-black", canAdjust ? "text-emerald-700" : "text-slate-400")}>
                         {formatPoints(current)} ← {canAdjust ? formatPoints(current - points) : "—"}
@@ -1732,12 +1742,12 @@ function BulkBalanceAdjustmentDialog({
           <div className="flex gap-3 border-t border-slate-100 bg-white p-5">
             <button type="button" onClick={() => close(false)} disabled={mutation.isPending}
               className="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3 font-black text-slate-600 hover:bg-slate-50">
-              إلغاء
+               {r("إلغاء", "Cancel")}
             </button>
             <button type="submit" disabled={mutation.isPending || eligible.length === 0}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 font-black text-white hover:bg-emerald-800 disabled:opacity-50">
               {mutation.isPending ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-              تأكيد تعديل {eligible.length}
+               {r(`تأكيد تعديل ${eligible.length}`, `Confirm adjustment for ${eligible.length}`)}
             </button>
           </div>
         </form>

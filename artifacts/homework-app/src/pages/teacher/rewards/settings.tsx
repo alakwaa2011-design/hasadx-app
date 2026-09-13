@@ -6,6 +6,8 @@ import { Loader2, Plus, Check, X, ArrowUp, ArrowDown, Edit2, ArrowRight } from "
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatRewardPoints } from "./format";
+import { useI18n } from "@/lib/i18n";
+import { rewardText } from "./reward-i18n";
 
 export const PRESET_ICONS = ["Star", "Heart", "ThumbsUp", "Zap", "Trophy", "Target", "Shield", "Flame", "Award", "Crown", "Lightbulb", "Rocket"];
 export const PRESET_COLORS = ["#468064", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0891b2", "#f97316"];
@@ -16,6 +18,8 @@ export const IconRenderer = ({ name, className, style }: { name: string, classNa
 };
 
 export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onOpenChange: (v: boolean) => void }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const { data: types, isLoading } = useGetRewardTypes();
   const createType = useCreateRewardType();
   const updateType = useUpdateRewardType();
@@ -52,24 +56,24 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
   };
 
   const saveEdit = () => {
-    if (!editForm.name.trim()) { toast.error("يرجى إدخال اسم التحفيز"); return; }
-    if (editForm.points < 1) { toast.error("قيمة التحفيز يجب أن تكون موجبة"); return; }
+    if (!editForm.name.trim()) { toast.error(r("يرجى إدخال اسم التحفيز", "Enter a reward name.")); return; }
+    if (editForm.points < 1) { toast.error(r("قيمة التحفيز يجب أن تكون موجبة", "Reward points must be positive.")); return; }
 
     if (isAdding) {
       createType.mutate(editForm, {
         onSuccess: () => {
-          toast.success("تمت الإضافة");
+          toast.success(r("تمت الإضافة", "Added."));
           cancelEdit();
         },
-        onError: () => toast.error("حدث خطأ أثناء الإضافة"),
+        onError: () => toast.error(r("حدث خطأ أثناء الإضافة", "Could not add the reward.")),
       });
     } else {
       updateType.mutate(editForm, {
         onSuccess: () => {
-          toast.success("تم الحفظ");
+          toast.success(r("تم الحفظ", "Saved."));
           cancelEdit();
         },
-        onError: () => toast.error("حدث خطأ أثناء الحفظ"),
+        onError: () => toast.error(r("حدث خطأ أثناء الحفظ", "Could not save the reward.")),
       });
     }
   };
@@ -87,7 +91,7 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
 
   const toggleActive = (t: any) => {
     updateType.mutate({ id: t.id, active: !t.active }, {
-      onSuccess: () => toast.success(t.active ? "تم الإيقاف" : "تم التفعيل")
+      onSuccess: () => toast.success(t.active ? r("تم الإيقاف", "Disabled.") : r("تم التفعيل", "Enabled."))
     });
   };
 
@@ -96,9 +100,9 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
       <DialogContent className="sm:max-w-lg p-0 bg-background/95 backdrop-blur-xl border-border overflow-hidden">
         <DialogHeader className="p-4 border-b border-border/50 bg-muted/20">
           <button type="button" onClick={() => onOpenChange(false)} className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted">
-            <ArrowRight size={15} /> رجوع
+            <ArrowRight size={15} /> {r("رجوع", "Back")}
           </button>
-          <DialogTitle className="text-lg font-bold">إدارة أنواع التحفيز</DialogTitle>
+          <DialogTitle className="text-lg font-bold">{r("إدارة أنواع التحفيز", "Manage reward types")}</DialogTitle>
         </DialogHeader>
 
         <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
@@ -128,16 +132,16 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm truncate flex items-center gap-2">
                       {t.name}
-                      {!t.active && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">متوقف</span>}
+                       {!t.active && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{r("متوقف", "Disabled")}</span>}
                     </div>
-                    <div className="text-xs text-muted-foreground font-medium">+{formatRewardPoints(t.points)} نقطة</div>
+                     <div className="text-xs text-muted-foreground font-medium">+{formatRewardPoints(t.points)} {r("نقطة", "points")}</div>
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button onClick={() => toggleActive(t)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors" title={t.active ? "إيقاف" : "تفعيل"}>
+                     <button onClick={() => toggleActive(t)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors" title={t.active ? r("إيقاف", "Disable") : r("تفعيل", "Enable")}>
                       {t.active ? <Check size={16} className="text-primary" /> : <X size={16} className="text-destructive" />}
                     </button>
-                    <button onClick={() => startEdit(t)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors" title="تعديل">
+                     <button onClick={() => startEdit(t)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors" title={r("تعديل", "Edit")}>
                       <Edit2 size={16} />
                     </button>
                   </div>
@@ -164,7 +168,7 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
               className="w-full py-3 rounded-xl border-2 border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/30 transition-all flex items-center justify-center gap-2 font-medium text-sm"
             >
               <Plus size={18} />
-              إضافة تحفيز جديد
+               {r("إضافة تحفيز جديد", "Add new reward")}
             </button>
           )}
         </div>
@@ -174,22 +178,24 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
 }
 
 function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, setForm: any, onSave: () => void, onCancel: () => void, loading: boolean }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
         <div className="flex-1">
-          <label className="text-xs font-bold text-muted-foreground mb-1 block">الاسم</label>
+           <label className="text-xs font-bold text-muted-foreground mb-1 block">{r("الاسم", "Name")}</label>
           <input 
             type="text" 
             value={form.name} 
             onChange={e => setForm({...form, name: e.target.value})}
             className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
-            placeholder="مثال: مشاركة متميزة"
+             placeholder={r("مثال: مشاركة متميزة", "Example: Excellent participation")}
             autoFocus
           />
         </div>
         <div className="w-20">
-          <label className="text-xs font-bold text-muted-foreground mb-1 block">النقاط</label>
+           <label className="text-xs font-bold text-muted-foreground mb-1 block">{r("النقاط", "Points")}</label>
           <input 
             type="number" 
             min="1"
@@ -201,7 +207,7 @@ function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, set
       </div>
 
       <div>
-        <label className="text-xs font-bold text-muted-foreground mb-1 block">الأيقونة</label>
+         <label className="text-xs font-bold text-muted-foreground mb-1 block">{r("الأيقونة", "Icon")}</label>
         <div className="flex flex-wrap gap-1.5">
           {PRESET_ICONS.map(icon => (
             <button
@@ -219,7 +225,7 @@ function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, set
       </div>
 
       <div>
-        <label className="text-[10px] font-bold text-muted-foreground mb-1 block">اللون</label>
+         <label className="text-[10px] font-bold text-muted-foreground mb-1 block">{r("اللون", "Color")}</label>
         <div className="flex flex-wrap gap-1.5">
           {PRESET_COLORS.map(color => (
             <button
@@ -237,11 +243,11 @@ function EditForm({ form, setForm, onSave, onCancel, loading }: { form: any, set
 
       <div className="flex justify-end gap-2 mt-1">
         <button onClick={onCancel} className="px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 text-xs font-bold transition-colors">
-          إلغاء
+           {r("إلغاء", "Cancel")}
         </button>
         <button onClick={onSave} disabled={loading} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold transition-colors flex items-center gap-1">
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-          حفظ
+           {r("حفظ", "Save")}
         </button>
       </div>
     </div>

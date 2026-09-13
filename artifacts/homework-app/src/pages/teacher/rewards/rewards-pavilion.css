@@ -67,7 +67,7 @@
   background: rgba(255,253,247,.84); box-shadow: 0 16px 30px -24px #466358; backdrop-filter: blur(7px);
 }
 .rewards-pavilion-goals::before {
-  content: "بوابة الإنجاز المفتوحة"; position: absolute; left: 2rem; top: -.65rem;
+  content: ""; position: absolute; left: 2rem; top: -.65rem;
   padding: .28rem .8rem; border-radius: 999px; color: #78652c; background: #fff1bb;
   font-size: .65rem; font-weight: 900;
 }

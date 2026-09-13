@@ -16,6 +16,8 @@ import {
 import type { RewardCelebrationData } from "./reward-celebration";
 import { toast } from "sonner";
 import { getArabicRewardError } from "./error-message";
+import { useI18n } from "@/lib/i18n";
+import { rewardText } from "./reward-i18n";
 
 export interface BoardStudent {
   id: number;
@@ -59,6 +61,8 @@ export function LiveBoard({
   onFairnessTick,
   onCelebrate,
 }: LiveBoardProps) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const reduceMotion = useReducedMotion();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fairnessHighlight, setFairnessHighlight] = useState<number | null>(null);
@@ -78,7 +82,7 @@ export function LiveBoard({
   const awardStudent = (student: BoardStudent) => {
     if (grantStudent.isPending) return;
     const points = defaultReward?.points || 1;
-    const rewardName = defaultReward?.name || "مشاركة سريعة";
+    const rewardName = defaultReward?.name || r("مشاركة سريعة", "Quick participation");
     grantStudent.mutate({
       className,
       studentIds: [student.id],
@@ -88,20 +92,20 @@ export function LiveBoard({
       idempotencyKey: crypto.randomUUID(),
     }, {
       onSuccess: () => onCelebrate({ students: [student], points, rewardName, mode: "live" }),
-      onError: (error: Error) => toast.error(getArabicRewardError(error, "تعذر منح نقاط الطالب")),
+      onError: (error: Error) => toast.error(getArabicRewardError(error, r("تعذر منح نقاط الطالب", "Could not award student points."))),
     });
   };
 
   const awardGroup = (group: BoardGroup) => {
     if (grantGroup.isPending) return;
     const points = defaultReward?.points || 1;
-    const rewardName = defaultReward?.name || "عمل جماعي";
+    const rewardName = defaultReward?.name || r("عمل جماعي", "Teamwork");
     grantGroup.mutate({ className, groupId: group.id, points, idempotencyKey: crypto.randomUUID() }, {
       onSuccess: () => onCelebrate({
         students: [], isGroup: true, groupName: group.name, groupAvatar: group.avatar,
         points, rewardName, mode: "live",
       }),
-      onError: (error: Error) => toast.error(getArabicRewardError(error, "تعذر منح نقاط المجموعة")),
+      onError: (error: Error) => toast.error(getArabicRewardError(error, r("تعذر منح نقاط المجموعة", "Could not award group points."))),
     });
   };
 
@@ -193,7 +197,7 @@ export function LiveBoard({
     : undefined;
 
   return (
-    <div className="fixed inset-0 z-[100] flex min-h-dvh min-w-0 max-w-[100vw] flex-col overflow-x-hidden bg-[#F8FAFC] text-slate-900 font-sans" dir="rtl" data-testid="live-board">
+    <div className="fixed inset-0 z-[100] flex min-h-dvh min-w-0 max-w-[100vw] flex-col overflow-x-hidden bg-[#F8FAFC] text-slate-900 font-sans" dir={lang === "ar" ? "rtl" : "ltr"} data-testid="live-board">
       {/* Background Decor */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-300/15 blur-[120px]" />
@@ -203,15 +207,15 @@ export function LiveBoard({
       {/* Header */}
       <header className="relative z-10 flex min-w-0 items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-2 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <button type="button" data-testid="button-exit-live-board" aria-label="الخروج من لوحة التحفيز المباشرة" onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+          <button type="button" data-testid="button-exit-live-board" aria-label={r("الخروج من لوحة التحفيز المباشرة", "Exit the live rewards board")} onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
             <ArrowRight size={22} />
           </button>
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 truncate text-sm font-black text-emerald-950 sm:text-xl">
               <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
-              لوحة التحفيز المباشرة: {className}
+              {r("لوحة التحفيز المباشرة", "Live rewards board")}: {className}
             </h1>
-            <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">امنح النقاط وشاهد ترتيب الطلاب والفرق لحظة بلحظة</p>
+            <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">{r("امنح النقاط وشاهد ترتيب الطلاب والفرق لحظة بلحظة", "Award points and watch student and team rankings in real time")}</p>
           </div>
         </div>
 
@@ -219,17 +223,17 @@ export function LiveBoard({
           <button 
             onClick={triggerFairnessCue} 
              type="button"
-             aria-label="اختيار طالب عشوائيًا"
-             title="اختيار اسم عشوائي من طلاب الصف"
+             aria-label={r("اختيار طالب عشوائيًا", "Choose a random student")}
+             title={r("اختيار اسم عشوائي من طلاب الصف", "Choose a random name from the class")}
              data-testid="button-fairness-cue"
              disabled={isSpinning || students.length === 0}
              className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-2 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:w-auto sm:rounded-2xl sm:px-6 sm:py-3"
           >
             <Shuffle size={18} />
-            <span className="hidden sm:inline">اختيار طالب عشوائيًا</span>
+             <span className="hidden sm:inline">{r("اختيار طالب عشوائيًا", "Choose random student")}</span>
           </button>
           
-           <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
+            <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? r("إنهاء ملء الشاشة", "Exit fullscreen") : r("ملء الشاشة", "Fullscreen")} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
             {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
           </button>
         </div>
@@ -274,19 +278,19 @@ export function LiveBoard({
                   <Trophy size={22} />
                 </div>
               </div>
-              <p className="relative text-sm font-black text-amber-700">تم اختيار الطالب</p>
+              <p className="relative text-sm font-black text-amber-700">{r("تم اختيار الطالب", "Student selected")}</p>
               <h2 className="relative mt-2 text-3xl font-black leading-tight text-emerald-950 sm:text-4xl">
                 {selectedStudent.name}
               </h2>
               <p className="relative mt-3 text-sm font-bold text-slate-600">
-                مبروك! أنت المختار في هذه الجولة
+                {r("مبروك! أنت المختار في هذه الجولة", "Congratulations! You were chosen for this round.")}
               </p>
               <button
                 type="button"
                 onClick={() => setFairnessHighlight(null)}
                 className="relative mt-6 min-h-11 rounded-2xl bg-emerald-800 px-6 py-2.5 text-sm font-black text-white shadow-lg transition-colors hover:bg-emerald-700"
               >
-                متابعة
+                {r("متابعة", "Continue")}
               </button>
             </motion.div>
           </motion.div>
@@ -301,7 +305,7 @@ export function LiveBoard({
           {goal && (
             <div className="shrink-0">
               <h2 className="text-xs font-black text-emerald-900/50 mb-3 uppercase tracking-wider flex items-center gap-2 px-1">
-                <Target size={14} /> هدف الإنجاز
+                <Target size={14} /> {r("هدف الإنجاز", "Progress goal")}
               </h2>
               <GoalProgressCard goal={goal} className="border-white/80 bg-white/80 backdrop-blur-xl shadow-lg shadow-emerald-900/5" />
             </div>
@@ -310,7 +314,7 @@ export function LiveBoard({
           {groupScores.length > 0 && (
             <div className="flex flex-1 flex-col lg:min-h-[300px]">
               <h2 className="text-xs font-black text-emerald-900/50 mb-3 uppercase tracking-wider flex items-center gap-2 px-1">
-                <Users size={14} /> الفرق المتنافسة
+                <Users size={14} /> {r("الفرق المتنافسة", "Competing teams")}
               </h2>
                <div className="relative flex flex-1 gap-3 overflow-x-auto rounded-[2rem] border-2 border-white/80 bg-white/60 p-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] backdrop-blur-xl lg:flex-col lg:overflow-y-auto lg:rounded-[2.5rem] lg:p-4">
                 {groupScores.map((group, index) => (
@@ -335,7 +339,7 @@ export function LiveBoard({
                         <div className="text-sm font-black text-slate-800 truncate">{group.name}</div>
                         <div className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mt-1">
                           <Trophy size={11} style={{ color: group.color }} />
-                          <span style={{ color: group.color }}>{formatRewardPoints(group.score)} نقطة</span>
+                          <span style={{ color: group.color }}>{formatRewardPoints(group.score)} {r("نقطة", "points")}</span>
                         </div>
                       </div>
                       <div className="shrink-0 text-slate-300 opacity-0 transition-all group-hover:opacity-100 group-hover:-translate-x-1">
@@ -371,7 +375,7 @@ export function LiveBoard({
                     transition={reduceMotion ? { duration: 0 } : { duration: 0.3 }}
                      type="button"
                      data-testid={`button-student-reward-${student.id}`}
-                     aria-label={`منح نقاط للطالب ${student.name}`}
+                      aria-label={r(`منح نقاط للطالب ${student.name}`, `Award points to ${student.name}`)}
                     onClick={() => awardStudent(student)}
                     className={cn(
                        "group relative flex flex-col items-center gap-3 rounded-[1.75rem] border-2 p-3 transition-all motion-reduce:transition-none outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 sm:gap-4 sm:rounded-[2.5rem] sm:p-5",
@@ -442,7 +446,7 @@ export function LiveBoard({
               <div className="w-28 h-28 rounded-full bg-slate-100 flex items-center justify-center mb-5 shadow-inner">
                 <UserRound size={56} className="text-slate-300" />
               </div>
-              <p className="text-xl font-black text-slate-500">لا يوجد أبطال في هذا الصف بعد</p>
+              <p className="text-xl font-black text-slate-500">{r("لا يوجد أبطال في هذا الصف بعد", "There are no students in this class yet")}</p>
             </div>
           )}
         </main>
@@ -469,6 +473,8 @@ export function LiveBoard({
 }
 
 function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSuggestion, reduceMotion, isError }: any) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const activeSuggestions = useMemo(
     () => suggestions.filter((suggestion: RewardSuggestion) => !dismissed.has(suggestion.id)),
@@ -476,7 +482,7 @@ function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSugges
   );
   if (activeSuggestions.length === 0) {
     if (!isError) return null;
-    return <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border border-amber-300 bg-white px-4 py-3 text-xs font-bold text-amber-900 shadow-xl sm:inset-x-auto sm:left-6" data-testid="status-suggestions-error">تعذر تحديث الاقتراحات الأكاديمية الآن</div>;
+    return <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border border-amber-300 bg-white px-4 py-3 text-xs font-bold text-amber-900 shadow-xl sm:inset-x-auto sm:left-6" data-testid="status-suggestions-error">{r("تعذر تحديث الاقتراحات الأكاديمية الآن", "Could not update academic suggestions right now")}</div>;
   }
   const approve = (suggestion: RewardSuggestion) => {
     approveSuggestion.mutate({ className, submissionId: suggestion.submissionId }, {
@@ -487,7 +493,7 @@ function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSugges
         });
         setDismissed((previous) => new Set(previous).add(suggestion.id));
       },
-      onError: (error: Error) => toast.error(getArabicRewardError(error, "تعذر اعتماد الاقتراح")),
+      onError: (error: Error) => toast.error(getArabicRewardError(error, r("تعذر اعتماد الاقتراح", "Could not approve the suggestion."))),
     });
   };
   return (
@@ -498,14 +504,14 @@ function SuggestionsOverlay({ className, suggestions, onCelebrate, approveSugges
             <div className="flex items-start gap-3">
               <div className="shrink-0 rounded-xl bg-amber-100 p-2.5 text-amber-600"><Lightbulb size={22} /></div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-black text-emerald-950"><span className="text-amber-700">{suggestion.studentName}</span> يستحق التحفيز</p>
+                <p className="text-sm font-black text-emerald-950"><span className="text-amber-700">{suggestion.studentName}</span> {r("يستحق التحفيز", "deserves recognition")}</p>
                 <p className="mt-1.5 truncate text-xs font-bold text-emerald-800">{suggestion.reason}</p>
                 <p className="mt-1 text-[11px] font-bold text-slate-600">{suggestion.evidenceDetail}</p>
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2">
-              <button type="button" onClick={() => approve(suggestion)} disabled={approveSuggestion.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-black text-emerald-950 disabled:cursor-wait disabled:opacity-60" data-testid={`approve-suggestion-${suggestion.id}`}><Check size={16} />موافق (+{suggestion.points})</button>
-              <button type="button" onClick={() => setDismissed((previous) => new Set(previous).add(suggestion.id))} className="rounded-xl bg-slate-100 p-2.5 text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="تجاهل الاقتراح" data-testid={`reject-suggestion-${suggestion.id}`}><X size={18} /></button>
+              <button type="button" onClick={() => approve(suggestion)} disabled={approveSuggestion.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-sm font-black text-emerald-950 disabled:cursor-wait disabled:opacity-60" data-testid={`approve-suggestion-${suggestion.id}`}><Check size={16} />{r("موافق", "Approve")} (+{suggestion.points})</button>
+              <button type="button" onClick={() => setDismissed((previous) => new Set(previous).add(suggestion.id))} className="rounded-xl bg-slate-100 p-2.5 text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label={r("تجاهل الاقتراح", "Dismiss suggestion")} data-testid={`reject-suggestion-${suggestion.id}`}><X size={18} /></button>
             </div>
           </motion.div>
         ))}

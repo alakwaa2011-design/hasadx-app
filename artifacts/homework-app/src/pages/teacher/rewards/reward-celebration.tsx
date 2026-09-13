@@ -4,6 +4,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Award, Sparkles, Star } from "lucide-react";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { formatRewardPoints } from "./format";
+import { useI18n } from "@/lib/i18n";
+import { rewardText } from "./reward-i18n";
 
 export interface RewardCelebrationStudent {
   id: number;
@@ -28,6 +30,8 @@ export function RewardCelebration({
   celebration: RewardCelebrationData | null;
   onComplete: () => void;
 }) {
+  const { lang } = useI18n();
+  const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const reduceMotion = useReducedMotion();
   const overlayRef = useRef<HTMLDivElement>(null);
   const onCompleteRef = useRef(onComplete);
@@ -72,7 +76,7 @@ export function RewardCelebration({
           <div className="flex flex-col">
             <span className="font-black text-amber-400 text-xl leading-none">+{formatRewardPoints(celebration.points)}</span>
             <span className="text-xs font-bold text-emerald-200 mt-0.5 truncate max-w-[150px]">
-              {celebration.isGroup ? celebration.groupName : (visibleStudents.length === 1 ? visibleStudents[0].name : `${visibleStudents.length} طلاب`)}
+               {celebration.isGroup ? celebration.groupName : (visibleStudents.length === 1 ? visibleStudents[0].name : r(`${visibleStudents.length} طلاب`, `${visibleStudents.length} students`))}
             </span>
           </div>
           {celebration.rewardName && (
@@ -97,7 +101,7 @@ export function RewardCelebration({
           }}
           role="dialog"
           aria-modal="true"
-          aria-label="احتفال بمنح النقاط"
+           aria-label={r("احتفال بمنح النقاط", "Points award celebration")}
           aria-live="polite"
           tabIndex={-1}
         >
@@ -134,7 +138,7 @@ export function RewardCelebration({
               <Star size={24} fill="currentColor" />
             </motion.div>
 
-            <div className="relative z-10 mb-2 text-sm font-black text-emerald-800 tracking-wider">إنجاز جديد في رحلة حصاد</div>
+             <div className="relative z-10 mb-2 text-sm font-black text-emerald-800 tracking-wider">{r("إنجاز جديد في رحلة حصاد", "A new achievement in the Hasaad journey")}</div>
             <div className="relative z-10 mb-5 text-5xl font-black text-primary drop-shadow-sm">+{formatRewardPoints(celebration.points)}</div>
 
             <div className="relative z-10 mb-5 flex min-h-36 items-end justify-center -space-x-4 space-x-reverse">
@@ -168,14 +172,14 @@ export function RewardCelebration({
 
             <div className="relative z-10 flex items-center justify-center gap-2 text-2xl font-black text-foreground drop-shadow-sm">
               <Award className="text-amber-500 drop-shadow-sm" size={28} />
-              {celebration.students.length === 1 ? celebration.students[0].name : `${celebration.students.length} طلاب متميزين`}
+               {celebration.students.length === 1 ? celebration.students[0].name : r(`${celebration.students.length} طلاب متميزين`, `${celebration.students.length} outstanding students`)}
             </div>
             {celebration.rewardName && (
               <p className="relative z-10 mt-1.5 text-base font-bold text-muted-foreground">{celebration.rewardName}</p>
             )}
             {remaining > 0 && (
               <p className="relative z-10 mt-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 py-1 px-3 rounded-full inline-block">
-                ومعهم {remaining} من رفاق المغامرة
+                 {r(`ومعهم ${remaining} من رفاق المغامرة`, `Plus ${remaining} adventure companions`)}
               </p>
             )}
           </motion.div>
