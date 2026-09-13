@@ -63,6 +63,7 @@ import {
   Ban,
   StopCircle,
   Folder,
+  FilePlus,
   BookOpen,
   Play,
   Copy,
@@ -1286,21 +1287,19 @@ export default function TeacherLibraryPage() {
                 if (selectionMode) exitSelectionMode();
                 else setSelectionMode(true);
               }}
+              size="icon"
+              className="h-9 w-9 p-0"
+              title={selectionMode ? T.exitSelect : T.selectMode}
+              aria-label={selectionMode ? T.exitSelect : T.selectMode}
               data-testid="btn-toggle-select"
             >
-              {selectionMode ? (
-                <>
-                  <X className="w-4 h-4 me-1.5" />
-                  {T.exitSelect}
-                </>
-              ) : (
-                <>
-                  <CheckSquare className="w-4 h-4 me-1.5" />
-                  {T.selectMode}
-                </>
-              )}
+              <CheckSquare className="w-4 h-4" />
             </Button>
-            <Button variant="outline" onClick={() => openNewFolder(activeGroupId)} data-testid="btn-add-group">
+            <Button
+              variant="outline"
+              onClick={() => openNewFolder(activeGroupId)}
+              data-testid="btn-add-group"
+            >
               <FolderPlus className="w-4 h-4 me-1.5" />
               {T.addGroup}
             </Button>
@@ -1311,7 +1310,7 @@ export default function TeacherLibraryPage() {
               }}
               data-testid="btn-add-file"
             >
-              <Plus className="w-4 h-4 me-1.5" />
+              <FilePlus className="w-4 h-4 me-1.5" />
               {T.addFile}
             </Button>
           </div>
@@ -1479,43 +1478,41 @@ export default function TeacherLibraryPage() {
                 <div className="flex shrink-0 items-center gap-1.5">
                   <Button
                     type="button"
-                    size="sm"
                     variant={selectionMode ? "default" : "outline"}
                     onClick={() => {
                       if (selectionMode) exitSelectionMode();
                       else setSelectionMode(true);
                     }}
-                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    size="icon"
+                    className="h-8 w-8 p-0"
                     title={selectionMode ? T.exitSelect : T.selectMode}
+                    aria-label={selectionMode ? T.exitSelect : T.selectMode}
                   >
-                    {selectionMode ? <X className="h-3.5 w-3.5" /> : <CheckSquare className="h-3.5 w-3.5" />}
-                    <span className="hidden sm:inline">
-                      {selectionMode ? T.exitSelect : T.selectMode}
-                    </span>
+                    <CheckSquare className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon"
                     variant="outline"
                     onClick={() => openNewFolder(activeGroupId)}
-                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    className="h-8 w-8 p-0"
                     title={T.addGroup}
+                    aria-label={T.addGroup}
                   >
                     <FolderPlus className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{T.addGroup}</span>
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
+                    size="icon"
                     onClick={() => {
                       setUploadGroupId(String(activeFolder.id));
                       setShowAddFile(true);
                     }}
-                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    className="h-8 w-8 p-0"
                     title={T.addFile}
+                    aria-label={T.addFile}
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{T.addFile}</span>
+                    <FilePlus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
