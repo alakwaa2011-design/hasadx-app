@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, bigint, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, bigint, uniqueIndex, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 
 export const teacherLibraryGroupsTable = pgTable(
@@ -7,10 +7,12 @@ export const teacherLibraryGroupsTable = pgTable(
     id: serial("id").primaryKey(),
     teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    parentGroupId: integer("parent_group_id").references((): AnyPgColumn => teacherLibraryGroupsTable.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
-    teacherNameUnique: uniqueIndex("teacher_library_groups_teacher_name_unique").on(t.teacherId, t.name),
+    teacherNameUnique: uniqueIndex("teacher_library_groups_teacher_parent_name_unique").on(t.teacherId, t.parentGroupId, t.name),
+    parentIdx: index("teacher_library_groups_parent_idx").on(t.teacherId, t.parentGroupId),
   }),
 );
 

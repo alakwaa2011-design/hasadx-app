@@ -104,3 +104,4 @@
 - [Durable timer run identity](durable-timer-run-identity.md) — scheduled countdowns need per-run identity, versioned writes, and per-run foreground sound claims across tabs.
 - [Web Push delivery and sound](web-push-delivery-sound.md) — deliver per device; visible clients use Hasaad sound, hidden/closed clients use system notification sound, never both.
 - [Schedule alert occurrence safety](schedule-alert-occurrence-safety.md) — server-side timetable alerts use teacher timezone and selected lead times; edits serialize with alert creation.
+- [Teacher library folders](teacher-library-folders.md) — teacher files use nested folders, and presentations stay embedded inside the library surface.

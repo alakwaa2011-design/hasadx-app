@@ -88,8 +88,10 @@ router.get("/library/groups", requireAuth, async (req: any, res: Response) => {
       .select({
         id: teacherLibraryGroupsTable.id,
         name: teacherLibraryGroupsTable.name,
+        parentGroupId: teacherLibraryGroupsTable.parentGroupId,
         createdAt: teacherLibraryGroupsTable.createdAt,
         fileCount: sql<number>`(SELECT COUNT(*) FROM teacher_library_files f WHERE f.group_id = ${teacherLibraryGroupsTable.id})::int`,
+        childCount: sql<number>`(SELECT COUNT(*) FROM teacher_library_groups child WHERE child.parent_group_id = ${teacherLibraryGroupsTable.id})::int`,
       })
       .from(teacherLibraryGroupsTable)
       .where(eq(teacherLibraryGroupsTable.teacherId, teacherId))
@@ -101,7 +103,7 @@ router.get("/library/groups", requireAuth, async (req: any, res: Response) => {
   }
 });
 
-const CreateGroupBody = z.object({ name: z.string().min(1).max(100) });
+const CreateGroupBody = z.object({ name: z.string().min(1).max(100), parentGroupId: z.number().int().nullable().optional() });
 router.post("/library/groups", requireAuth, async (req: any, res: Response) => {
   const parsed = CreateGroupBody.safeParse(req.body);
   if (!parsed.success) {
@@ -111,21 +113,38 @@ router.post("/library/groups", requireAuth, async (req: any, res: Response) => {
   try {
     const teacherId = req.session.teacherId;
     const name = parsed.data.name.trim();
+    const parentGroupId = parsed.data.parentGroupId ?? null;
     if (!name) {
       res.status(400).json({ message: "اسم المجموعة مطلوب" });
       return;
     }
+    if (parentGroupId !== null) {
+      const [parent] = await db
+        .select({ id: teacherLibraryGroupsTable.id })
+        .from(teacherLibraryGroupsTable)
+        .where(and(eq(teacherLibraryGroupsTable.id, parentGroupId), eq(teacherLibraryGroupsTable.teacherId, teacherId)));
+      if (!parent) {
+        res.status(400).json({ message: "المجلد الأب غير موجود" });
+        return;
+      }
+    }
     const [existing] = await db
       .select({ id: teacherLibraryGroupsTable.id })
       .from(teacherLibraryGroupsTable)
-      .where(and(eq(teacherLibraryGroupsTable.teacherId, teacherId), eq(teacherLibraryGroupsTable.name, name)));
+      .where(and(
+        eq(teacherLibraryGroupsTable.teacherId, teacherId),
+        eq(teacherLibraryGroupsTable.name, name),
+        parentGroupId === null
+          ? sql`${teacherLibraryGroupsTable.parentGroupId} IS NULL`
+          : eq(teacherLibraryGroupsTable.parentGroupId, parentGroupId),
+      ));
     if (existing) {
       res.status(409).json({ message: "المجموعة موجودة بالفعل" });
       return;
     }
     const [group] = await db
       .insert(teacherLibraryGroupsTable)
-      .values({ teacherId, name })
+      .values({ teacherId, name, parentGroupId })
       .returning();
     res.json(group);
   } catch (err) {
