@@ -103,3 +103,4 @@
 - [Slides workspace install](slides-workspace-install.md) — new slide artifacts may need the workspace catalog entry for wouter before pnpm can install and validate them.
 - [Durable timer run identity](durable-timer-run-identity.md) — scheduled countdowns need per-run identity, versioned writes, and per-run foreground sound claims across tabs.
 - [Web Push delivery and sound](web-push-delivery-sound.md) — deliver per device; visible clients use Hasaad sound, hidden/closed clients use system notification sound, never both.
+- [Schedule alert occurrence safety](schedule-alert-occurrence-safety.md) — server-side timetable alerts use teacher timezone and selected lead times; edits serialize with alert creation.

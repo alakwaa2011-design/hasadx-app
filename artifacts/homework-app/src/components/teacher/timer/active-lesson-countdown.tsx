@@ -389,7 +389,7 @@ export function GlobalActiveLessonCountdown() {
   const [hiddenKey, setHiddenKey] = useState<string | null>(null);
   const [pausedKey, setPausedKey] = useState<string | null>(null);
   const [pausedRemainingMs, setPausedRemainingMs] = useState(0);
-  const { preferences, setPreferences, updatePreferences } = useScheduleCountdownPreferences(user?.id);
+  const { preferences, setPreferences, updatePreferences } = useScheduleCountdownPreferences(user?.id, lang);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const soundedKeyRef = useRef<string | null>(null);
   const endSoundedKeyRef = useRef<string | null>(null);

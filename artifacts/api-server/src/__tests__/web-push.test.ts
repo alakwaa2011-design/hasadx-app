@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { query, sendNotification, setVapidDetails } = vi.hoisted(() => ({
+const { query, connect, sendNotification, setVapidDetails } = vi.hoisted(() => ({
   query: vi.fn(),
+  connect: vi.fn(),
   sendNotification: vi.fn(),
   setVapidDetails: vi.fn(),
 }));
 
-vi.mock("@workspace/db", () => ({ pool: { query } }));
+vi.mock("@workspace/db", () => ({ pool: { query, connect } }));
 vi.mock("web-push", () => ({
   default: { sendNotification, setVapidDetails },
 }));
@@ -16,6 +17,7 @@ vi.mock("../lib/logger", () => ({
 
 import {
   configureWebPush,
+  createDueScheduleNotifications,
   drainPushNotificationOutbox,
   isAllowedWebPushEndpoint,
   removePushSubscriptionsForSession,
@@ -73,6 +75,10 @@ function updateStatements() {
 describe("Web Push delivery outbox", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    connect.mockResolvedValue({
+      query,
+      release: vi.fn(),
+    });
     process.env.SESSION_SECRET = "web-push-test-session-secret";
     configureWebPush();
   });
@@ -203,6 +209,73 @@ describe("Web Push endpoint policy", () => {
     "https://fcm.googleapis.com.attacker.example/token",
   ])("rejects an unsafe or unsupported endpoint: %s", (endpoint) => {
     expect(isAllowedWebPushEndpoint(endpoint)).toBe(false);
+  });
+});
+
+describe("schedule notification creation", () => {
+  it("creates one start notification for the selected lead time and never duplicates it", async () => {
+    let claimed = false;
+    query.mockImplementation(async (sql: string) => {
+      if (sql.includes("FROM teacher_schedule schedule")) {
+        if (sql.includes("FOR UPDATE OF schedule")) {
+          return { rows: [{
+            id: 51,
+            teacher_id: 7,
+            kind: "weekly",
+            title: "الرياضيات",
+            class_name: "الخامس أ",
+            day_of_week: 0,
+            appointment_date: null,
+            start_time: "10:00",
+            end_time: "10:45",
+            enabled: true,
+            alert_minutes: 5,
+            end_alert_minutes: 0,
+            sound_enabled: true,
+            locale: "ar",
+            timezone: "Asia/Kuwait",
+          }] };
+        }
+        return { rows: [{
+          id: 51,
+          teacher_id: 7,
+          kind: "weekly",
+          title: "الرياضيات",
+          class_name: "الخامس أ",
+          day_of_week: 0,
+          appointment_date: null,
+          start_time: "10:00",
+          end_time: "10:45",
+          alert_minutes: 5,
+          end_alert_minutes: 0,
+          locale: "ar",
+          timezone: "Asia/Kuwait",
+        }] };
+      }
+      if (sql.includes("INSERT INTO teacher_schedule_notification_runs")) {
+        if (claimed) return { rows: [] };
+        claimed = true;
+        return { rows: [{ id: 1 }] };
+      }
+      if (sql.includes("INSERT INTO notifications")) return { rows: [{ id: 91 }] };
+      return { rows: [] };
+    });
+    connect.mockResolvedValue({ query, release: vi.fn() });
+
+    const now = new Date("2026-09-13T06:56:00.000Z");
+    await createDueScheduleNotifications(now);
+    await createDueScheduleNotifications(now);
+
+    const notificationInserts = query.mock.calls.filter(([sql]) =>
+      String(sql).includes("INSERT INTO notifications"),
+    );
+    expect(notificationInserts).toHaveLength(1);
+    expect(notificationInserts[0][1]).toEqual([
+      7,
+      "teacher_schedule_start",
+      "حصة قادمة",
+      "الرياضيات — الخامس أ تبدأ بعد 5 دقائق.",
+    ]);
   });
 });
 

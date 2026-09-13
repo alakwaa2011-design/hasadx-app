@@ -2080,6 +2080,30 @@ async function runSchemaMigrations() {
         ON teacher_timer_states(end_at)
         WHERE status = 'running' AND notification_id IS NULL;
       ALTER TABLE teacher_timer_states ADD COLUMN IF NOT EXISTS run_id UUID;
+      CREATE TABLE IF NOT EXISTS teacher_schedule_notification_preferences (
+        teacher_id INTEGER PRIMARY KEY REFERENCES teachers(id) ON DELETE CASCADE,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        alert_minutes INTEGER NOT NULL DEFAULT 5 CHECK (alert_minutes BETWEEN 1 AND 120),
+        end_alert_minutes INTEGER NOT NULL DEFAULT 5 CHECK (end_alert_minutes BETWEEN 0 AND 120),
+        sound_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        locale TEXT NOT NULL DEFAULT 'ar' CHECK (locale IN ('ar', 'en')),
+        timezone TEXT NOT NULL DEFAULT 'UTC',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE teacher_schedule_notification_preferences
+        ADD COLUMN IF NOT EXISTS sound_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+      CREATE TABLE IF NOT EXISTS teacher_schedule_notification_runs (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        schedule_entry_id INTEGER NOT NULL,
+        occurrence_date DATE NOT NULL,
+        alert_kind TEXT NOT NULL CHECK (alert_kind IN ('start', 'end')),
+        notification_id INTEGER UNIQUE REFERENCES notifications(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (schedule_entry_id, occurrence_date, alert_kind)
+      );
+      CREATE INDEX IF NOT EXISTS teacher_schedule_notification_runs_created_idx
+        ON teacher_schedule_notification_runs(created_at);
       CREATE TABLE IF NOT EXISTS teacher_timer_notifications (
         run_id UUID PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

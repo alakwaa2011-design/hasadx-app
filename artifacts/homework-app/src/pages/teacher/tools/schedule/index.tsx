@@ -51,6 +51,7 @@ import {
   type ScheduleCountdownPreferences,
 } from "@/lib/schedule-countdown-preferences";
 import { selectVisibleScheduleEntry } from "@/components/teacher/timer/active-lesson-countdown";
+import { enableCurrentDevicePushNotifications } from "@/components/push-notifications";
 
 const BASE = (import.meta as any).env?.VITE_API_URL || "";
 
@@ -154,6 +155,9 @@ function TimerAndAlertsSection({
   updatePreferences: (patch: Partial<ScheduleCountdownPreferences>) => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  const [deviceNotificationsEnabled, setDeviceNotificationsEnabled] = useState(
+    () => typeof Notification !== "undefined" && Notification.permission === "granted",
+  );
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
@@ -166,6 +170,18 @@ function TimerAndAlertsSection({
     () => selectVisibleScheduleEntry(entries, today, preferences.alertMinutes),
     [entries, today, preferences.alertMinutes],
   );
+
+  const enableDeviceNotifications = async () => {
+    try {
+      await enableCurrentDevicePushNotifications(isAr ? "ar" : "en");
+      setDeviceNotificationsEnabled(true);
+      toast.success(isAr ? "تم تفعيل إشعارات جدول الحصص على هذا الجهاز" : "Schedule notifications enabled on this device");
+    } catch (error) {
+      toast.error(error instanceof Error
+        ? error.message
+        : (isAr ? "تعذّر تفعيل إشعارات الجهاز" : "Could not enable device notifications"));
+    }
+  };
 
   return (
     <section
@@ -199,7 +215,11 @@ function TimerAndAlertsSection({
           type="button"
           role="switch"
           aria-checked={preferences.enabled}
-          onClick={() => updatePreferences({ enabled: !preferences.enabled })}
+          onClick={() => {
+            const enabled = !preferences.enabled;
+            updatePreferences({ enabled });
+            if (enabled && !deviceNotificationsEnabled) void enableDeviceNotifications();
+          }}
           className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-xs font-black transition-colors sm:min-w-[150px] ${
             preferences.enabled
               ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
@@ -215,6 +235,18 @@ function TimerAndAlertsSection({
         </div>
 
         {preferences.enabled && (
+        <>
+        {!deviceNotificationsEnabled && (
+          <button
+            type="button"
+            onClick={() => void enableDeviceNotifications()}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-black text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100"
+            data-testid="button-enable-schedule-device-notifications"
+          >
+            <Bell className="h-4 w-4" />
+            {isAr ? "فعّل إشعارات الجهاز لتصلك تنبيهات الجدول بعد إغلاق حصاد" : "Enable device notifications to receive schedule alerts after closing Hasaad"}
+          </button>
+        )}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
             <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${visibleEntry ? "animate-pulse bg-amber-500" : "bg-emerald-500"}`} />
@@ -313,6 +345,7 @@ function TimerAndAlertsSection({
             </span>
           </div>
         </div>
+        </>
         )}
 
       </div>
@@ -708,7 +741,7 @@ export default function ScheduleManagementPage() {
   const BackArrow = isAr ? ArrowRight : ArrowLeft;
 
   const { data: user } = useGetCurrentTeacher({ query: { retry: false } as any });
-  const { preferences, updatePreferences } = useScheduleCountdownPreferences(user?.id);
+  const { preferences, updatePreferences } = useScheduleCountdownPreferences(user?.id, lang);
 
   const queryClient = useQueryClient();
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());

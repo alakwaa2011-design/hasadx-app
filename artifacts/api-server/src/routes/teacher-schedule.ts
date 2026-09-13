@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, eq } from "drizzle-orm";
-import { db, teacherScheduleTable } from "@workspace/db";
+import { db, pool, teacherScheduleTable } from "@workspace/db";
 import { z } from "zod";
 import { checkCredits, captureCreditsOrThrow, refundCredits } from "../lib/check-credits";
 import {
@@ -87,6 +87,21 @@ const scheduleFields = scheduleFieldsBase.superRefine((value, ctx) => {
 
 const createScheduleSchema = scheduleFields;
 const updateScheduleSchema = scheduleFieldsBase.partial();
+const notificationPreferencesSchema = z.object({
+  enabled: z.boolean(),
+  alertMinutes: z.number().int().min(1).max(120),
+  endAlertMinutes: z.number().int().min(0).max(120),
+  soundEnabled: z.boolean(),
+  locale: z.enum(["ar", "en"]),
+  timezone: z.string().min(1).max(100).refine((timezone) => {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: timezone }).format();
+      return true;
+    } catch {
+      return false;
+    }
+  }, "المنطقة الزمنية غير صحيحة"),
+});
 
 function requireAuth(req: any, res: any, next: any) {
   if (!req.session?.teacherId) {
@@ -185,6 +200,67 @@ router.get("/teacher/schedule", requireAuth, async (req: any, res): Promise<void
     );
   res.set("Cache-Control", "no-store");
   res.json(rows);
+});
+
+router.get("/teacher/schedule/notification-preferences", requireAuth, async (req: any, res): Promise<void> => {
+  const result = await pool.query<{
+    enabled: boolean;
+    alert_minutes: number;
+    end_alert_minutes: number;
+    sound_enabled: boolean;
+    locale: "ar" | "en";
+    timezone: string;
+  }>(`SELECT enabled, alert_minutes, end_alert_minutes, sound_enabled, locale, timezone
+      FROM teacher_schedule_notification_preferences WHERE teacher_id = $1`, [req.session.teacherId]);
+  const row = result.rows[0];
+  res.set("Cache-Control", "no-store");
+  res.json(row ? {
+    exists: true,
+    enabled: row.enabled,
+    alertMinutes: row.alert_minutes,
+    endAlertMinutes: row.end_alert_minutes,
+    soundEnabled: row.sound_enabled,
+    locale: row.locale,
+    timezone: row.timezone,
+  } : { exists: false });
+});
+
+router.patch("/teacher/schedule/notification-preferences", requireAuth, async (req: any, res): Promise<void> => {
+  const parsed = notificationPreferencesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: parsed.error.issues[0]?.message || "إعدادات التنبيه غير صحيحة" });
+    return;
+  }
+  const value = parsed.data;
+  const result = await pool.query<{
+    enabled: boolean;
+    alert_minutes: number;
+    end_alert_minutes: number;
+    sound_enabled: boolean;
+    locale: "ar" | "en";
+    timezone: string;
+  }>(`INSERT INTO teacher_schedule_notification_preferences
+        (teacher_id, enabled, alert_minutes, end_alert_minutes, sound_enabled, locale, timezone, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      ON CONFLICT (teacher_id) DO UPDATE SET
+        enabled = EXCLUDED.enabled,
+        alert_minutes = EXCLUDED.alert_minutes,
+        end_alert_minutes = EXCLUDED.end_alert_minutes,
+        sound_enabled = EXCLUDED.sound_enabled,
+        locale = EXCLUDED.locale,
+        timezone = EXCLUDED.timezone,
+        updated_at = NOW()
+      RETURNING enabled, alert_minutes, end_alert_minutes, sound_enabled, locale, timezone`,
+      [req.session.teacherId, value.enabled, value.alertMinutes, value.endAlertMinutes, value.soundEnabled, value.locale, value.timezone]);
+  const row = result.rows[0];
+  res.json({
+    enabled: row.enabled,
+    alertMinutes: row.alert_minutes,
+    endAlertMinutes: row.end_alert_minutes,
+    soundEnabled: row.sound_enabled,
+    locale: row.locale,
+    timezone: row.timezone,
+  });
 });
 
 router.delete("/teacher/schedule", requireAuth, async (req: any, res): Promise<void> => {
@@ -525,18 +601,48 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
     return;
   }
 
-  const [entry] = await db
-    .update(teacherScheduleTable)
-    .set({
-      ...values,
-      updatedAt: new Date(),
-    })
-    .where(and(
-      eq(teacherScheduleTable.id, id),
-      eq(teacherScheduleTable.teacherId, req.session.teacherId),
-    ))
-    .returning();
-  res.json(entry);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const locked = await client.query(
+      `SELECT id FROM teacher_schedule WHERE id = $2 AND teacher_id = $1 FOR UPDATE`,
+      [req.session.teacherId, id],
+    );
+    if (!locked.rows.length) {
+      await client.query("ROLLBACK");
+      res.status(404).json({ message: "الموعد غير موجود" });
+      return;
+    }
+    await client.query(
+      `DELETE FROM notifications WHERE id IN (
+         SELECT notification_id FROM teacher_schedule_notification_runs
+         WHERE teacher_id = $1 AND schedule_entry_id = $2
+       );
+       DELETE FROM teacher_schedule_notification_runs WHERE teacher_id = $1 AND schedule_entry_id = $2`,
+      [req.session.teacherId, id],
+    );
+    const updated = await client.query(
+      `UPDATE teacher_schedule SET
+         kind = $3, title = $4, subject = $5, class_name = $6, color = $7,
+         day_of_week = $8, lesson_number = $9, break_after_lesson = $10,
+         appointment_date = $11, start_time = $12, end_time = $13,
+         location = $14, notes = $15, updated_at = NOW()
+       WHERE id = $2 AND teacher_id = $1
+       RETURNING *`,
+      [
+        req.session.teacherId, id, values.kind, values.title, values.subject, values.className,
+        values.color, values.dayOfWeek, values.lessonNumber, values.breakAfterLesson,
+        values.appointmentDate, values.startTime, values.endTime, values.location, values.notes,
+      ],
+    );
+    await client.query("COMMIT");
+    res.json(toApiScheduleRow(updated.rows[0]));
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 router.delete("/teacher/schedule/:id", requireAuth, async (req: any, res): Promise<void> => {
@@ -546,18 +652,59 @@ router.delete("/teacher/schedule/:id", requireAuth, async (req: any, res): Promi
     return;
   }
 
-  const deleted = await db
-    .delete(teacherScheduleTable)
-    .where(and(
-      eq(teacherScheduleTable.id, id),
-      eq(teacherScheduleTable.teacherId, req.session.teacherId),
-    ))
-    .returning({ id: teacherScheduleTable.id });
-  if (!deleted.length) {
-    res.status(404).json({ message: "الموعد غير موجود" });
-    return;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const locked = await client.query(
+      `SELECT id FROM teacher_schedule WHERE id = $2 AND teacher_id = $1 FOR UPDATE`,
+      [req.session.teacherId, id],
+    );
+    if (!locked.rows.length) {
+      await client.query("ROLLBACK");
+      res.status(404).json({ message: "الموعد غير موجود" });
+      return;
+    }
+    await client.query(
+      `DELETE FROM notifications WHERE id IN (
+         SELECT notification_id FROM teacher_schedule_notification_runs
+         WHERE teacher_id = $1 AND schedule_entry_id = $2
+       );
+       DELETE FROM teacher_schedule_notification_runs WHERE teacher_id = $1 AND schedule_entry_id = $2;
+       DELETE FROM teacher_schedule WHERE teacher_id = $1 AND id = $2`,
+      [req.session.teacherId, id],
+    );
+    await client.query("COMMIT");
+    res.sendStatus(204);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-  res.sendStatus(204);
 });
+
+function toApiScheduleRow(row: any) {
+  return {
+    id: row.id,
+    teacherId: row.teacher_id,
+    kind: row.kind,
+    title: row.title,
+    subject: row.subject,
+    className: row.class_name,
+    color: row.color,
+    dayOfWeek: row.day_of_week,
+    lessonNumber: row.lesson_number,
+    breakAfterLesson: row.break_after_lesson,
+    appointmentDate: row.appointment_date instanceof Date
+      ? row.appointment_date.toISOString().slice(0, 10)
+      : row.appointment_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    location: row.location,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export default router;

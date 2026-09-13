@@ -177,6 +177,34 @@ const mockState = vi.hoisted(() => {
     rows,
     table,
     db,
+    async rawQuery(sql: string, params: any[] = []) {
+      if (sql.includes("SELECT id FROM teacher_schedule")) {
+        return { rows: rows.filter((row) => row.teacherId === params[0] && row.id === params[1]).map((row) => ({ id: row.id })) };
+      }
+      if (sql.includes("UPDATE teacher_schedule SET")) {
+        const row = rows.find((candidate) => candidate.teacherId === params[0] && candidate.id === params[1]);
+        if (!row) return { rows: [] };
+        Object.assign(row, {
+          kind: params[2], title: params[3], subject: params[4], className: params[5],
+          color: params[6], dayOfWeek: params[7], lessonNumber: params[8],
+          breakAfterLesson: params[9], appointmentDate: params[10], startTime: params[11],
+          endTime: params[12], location: params[13], notes: params[14], updatedAt: new Date(),
+        });
+        return { rows: [{
+          id: row.id, teacher_id: row.teacherId, kind: row.kind, title: row.title,
+          subject: row.subject, class_name: row.className, color: row.color,
+          day_of_week: row.dayOfWeek, lesson_number: row.lessonNumber,
+          break_after_lesson: row.breakAfterLesson, appointment_date: row.appointmentDate,
+          start_time: row.startTime, end_time: row.endTime, location: row.location,
+          notes: row.notes, created_at: row.createdAt, updated_at: row.updatedAt,
+        }] };
+      }
+      if (sql.includes("DELETE FROM teacher_schedule WHERE")) {
+        const index = rows.findIndex((row) => row.teacherId === params[0] && row.id === params[1]);
+        if (index >= 0) rows.splice(index, 1);
+      }
+      return { rows: [] };
+    },
     reset() {
       rows.length = 0;
       nextId = 1;
@@ -192,6 +220,13 @@ vi.mock("drizzle-orm", () => ({
 
 vi.mock("@workspace/db", () => ({
   db: mockState.db,
+  pool: {
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    connect: vi.fn().mockResolvedValue({
+      query: mockState.rawQuery,
+      release: vi.fn(),
+    }),
+  },
   teacherScheduleTable: mockState.table,
 }));
 

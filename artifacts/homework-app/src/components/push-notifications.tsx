@@ -122,6 +122,7 @@ export function GlobalPushNotificationManager() {
           localStorage.setItem(key, JSON.stringify([...seen.slice(-99), notificationId]));
         }
         const timer = timerStore.getState();
+        if (String(event.data.notification?.type || "").startsWith("teacher_schedule_")) return;
         if (event.data.notification?.type === "class_timer_complete") {
           const runId = event.data.notification?.runId;
           if (!runId || !(await claimLocalTimerSound(runId))) return;

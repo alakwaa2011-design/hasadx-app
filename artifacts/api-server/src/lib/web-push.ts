@@ -29,6 +29,7 @@ type DeliveryPayload = ClaimedDelivery & {
   assignment_id: number | null;
   message_id: number | null;
   timer_run_id: string | null;
+  schedule_sound_enabled: boolean | null;
 };
 
 type PushTarget = {
@@ -42,6 +43,7 @@ type PushTarget = {
 let configured = false;
 let processing = false;
 let workerTimer: NodeJS.Timeout | null = null;
+let lastScheduleScanAt = 0;
 
 export function isAllowedWebPushEndpoint(endpoint: string): boolean {
   try {
@@ -147,6 +149,158 @@ export async function createDueTimerNotifications(): Promise<void> {
   }
 }
 
+function localDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(date);
+  const read = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+  return { year: read("year"), month: read("month"), day: read("day") };
+}
+
+function addLocalDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + days));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
+}
+
+function zonedLocalTimeToUtc(date: string, time: string, timeZone: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const desired = Date.UTC(year, month - 1, day, hour, minute);
+  let guess = desired;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date(guess));
+    const read = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+    const represented = Date.UTC(read("year"), read("month") - 1, read("day"), read("hour"), read("minute"));
+    guess += desired - represented;
+  }
+  return new Date(guess);
+}
+
+export async function createDueScheduleNotifications(now = new Date()): Promise<void> {
+  const entries = await pool.query<{
+    id: number; teacher_id: number; kind: string; title: string; class_name: string | null;
+    day_of_week: number | null; appointment_date: string | null; start_time: string;
+    end_time: string | null; alert_minutes: number; end_alert_minutes: number;
+    sound_enabled: boolean; locale: "ar" | "en"; timezone: string;
+  }>(`
+    SELECT schedule.id, schedule.teacher_id, schedule.kind, schedule.title, schedule.class_name,
+           schedule.day_of_week, schedule.appointment_date::text, schedule.start_time, schedule.end_time,
+           preferences.alert_minutes, preferences.end_alert_minutes, preferences.sound_enabled,
+           preferences.locale, preferences.timezone
+    FROM teacher_schedule schedule
+    JOIN teacher_schedule_notification_preferences preferences
+      ON preferences.teacher_id = schedule.teacher_id AND preferences.enabled = TRUE
+    WHERE schedule.kind IN ('weekly', 'appointment')
+  `);
+  for (const entry of entries.rows) {
+    let parts;
+    try {
+      parts = localDateParts(now, entry.timezone);
+    } catch {
+      continue;
+    }
+    const today = `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+    for (const occurrenceDate of [today, addLocalDays(today, 1)]) {
+      const weekday = new Date(`${occurrenceDate}T00:00:00Z`).getUTCDay();
+      if (entry.kind === "appointment"
+        ? entry.appointment_date !== occurrenceDate
+        : entry.day_of_week !== weekday) continue;
+      const alerts: Array<{ kind: "start" | "end"; time: string; lead: number }> = [
+        { kind: "start", time: entry.start_time, lead: entry.alert_minutes },
+      ];
+      if (entry.end_time && entry.end_alert_minutes > 0) {
+        alerts.push({ kind: "end", time: entry.end_time, lead: entry.end_alert_minutes });
+      }
+      for (const alert of alerts) {
+        const eventAt = zonedLocalTimeToUtc(occurrenceDate, alert.time, entry.timezone);
+        const dueAt = new Date(eventAt.getTime() - alert.lead * 60_000);
+        if (now < dueAt || now >= eventAt) continue;
+        const client = await pool.connect();
+        try {
+          await client.query("BEGIN");
+          const current = await client.query<{
+            id: number; teacher_id: number; kind: string; title: string; class_name: string | null;
+            day_of_week: number | null; appointment_date: string | null; start_time: string;
+            end_time: string | null; enabled: boolean; alert_minutes: number;
+            end_alert_minutes: number; sound_enabled: boolean; locale: "ar" | "en"; timezone: string;
+          }>(
+            `SELECT schedule.id, schedule.teacher_id, schedule.kind, schedule.title, schedule.class_name,
+                    schedule.day_of_week, schedule.appointment_date::text, schedule.start_time, schedule.end_time,
+                    preferences.enabled, preferences.alert_minutes, preferences.end_alert_minutes,
+                    preferences.sound_enabled, preferences.locale, preferences.timezone
+             FROM teacher_schedule schedule
+             JOIN teacher_schedule_notification_preferences preferences
+               ON preferences.teacher_id = schedule.teacher_id
+             WHERE schedule.id = $1 AND schedule.teacher_id = $2
+             FOR UPDATE OF schedule, preferences`,
+            [entry.id, entry.teacher_id],
+          );
+          const fresh = current.rows[0];
+          if (!fresh || !fresh.enabled) {
+            await client.query("ROLLBACK");
+            continue;
+          }
+          const freshWeekday = new Date(`${occurrenceDate}T00:00:00Z`).getUTCDay();
+          const stillOccurs = fresh.kind === "appointment"
+            ? fresh.appointment_date === occurrenceDate
+            : fresh.kind === "weekly" && fresh.day_of_week === freshWeekday;
+          const freshLead = alert.kind === "start" ? fresh.alert_minutes : fresh.end_alert_minutes;
+          const freshTime = alert.kind === "start" ? fresh.start_time : fresh.end_time;
+          if (!stillOccurs || !freshTime || freshLead <= 0) {
+            await client.query("ROLLBACK");
+            continue;
+          }
+          const freshEventAt = zonedLocalTimeToUtc(occurrenceDate, freshTime, fresh.timezone);
+          const freshDueAt = new Date(freshEventAt.getTime() - freshLead * 60_000);
+          if (now < freshDueAt || now >= freshEventAt) {
+            await client.query("ROLLBACK");
+            continue;
+          }
+          const claimed = await client.query<{ id: number }>(
+            `INSERT INTO teacher_schedule_notification_runs
+               (teacher_id, schedule_entry_id, occurrence_date, alert_kind)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (schedule_entry_id, occurrence_date, alert_kind) DO NOTHING
+             RETURNING id`,
+            [entry.teacher_id, entry.id, occurrenceDate, alert.kind],
+          );
+          if (!claimed.rows[0]) {
+            await client.query("ROLLBACK");
+            continue;
+          }
+          const isStart = alert.kind === "start";
+          const title = fresh.locale === "en"
+            ? (isStart ? "Upcoming lesson" : "Lesson ending soon")
+            : (isStart ? "حصة قادمة" : "اقترب انتهاء الحصة");
+          const context = fresh.class_name ? `${fresh.title} — ${fresh.class_name}` : fresh.title;
+          const body = fresh.locale === "en"
+            ? `${context} ${isStart ? "starts" : "ends"} in ${freshLead} minutes.`
+            : `${context} ${isStart ? "تبدأ" : "تنتهي"} بعد ${freshLead} دقائق.`;
+          const inserted = await client.query<{ id: number }>(
+            `INSERT INTO notifications (teacher_id, type, title, body, action_url)
+             VALUES ($1, $2, $3, $4, '/teacher/tools/schedule') RETURNING id`,
+            [entry.teacher_id, isStart ? "teacher_schedule_start" : "teacher_schedule_end", title, body],
+          );
+          await client.query(
+            `UPDATE teacher_schedule_notification_runs SET notification_id = $2 WHERE id = $1`,
+            [claimed.rows[0].id, inserted.rows[0].id],
+          );
+          await client.query("COMMIT");
+        } catch (error) {
+          await client.query("ROLLBACK");
+          throw error;
+        } finally {
+          client.release();
+        }
+      }
+    }
+  }
+}
+
 function toBase64Url(value: Buffer): string {
   return value.toString("base64url");
 }
@@ -237,9 +391,13 @@ async function claimDeliveries(): Promise<ClaimedDelivery[]> {
 async function loadPayload(delivery: ClaimedDelivery): Promise<DeliveryPayload | null> {
   const result = await pool.query<Omit<DeliveryPayload, keyof ClaimedDelivery>>(`
     SELECT n.title, n.body, n.type, n.action_url, n.assignment_id, n.message_id,
-           timer_runs.run_id::text AS timer_run_id
+           timer_runs.run_id::text AS timer_run_id,
+           schedule_preferences.sound_enabled AS schedule_sound_enabled
     FROM notifications n
     LEFT JOIN teacher_timer_notifications timer_runs ON timer_runs.notification_id = n.id
+    LEFT JOIN teacher_schedule_notification_runs schedule_runs ON schedule_runs.notification_id = n.id
+    LEFT JOIN teacher_schedule_notification_preferences schedule_preferences
+      ON schedule_preferences.teacher_id = schedule_runs.teacher_id
     WHERE n.id = $1 AND n.teacher_id = $2
     LIMIT 1
   `, [delivery.notification_id, delivery.teacher_id]);
@@ -306,7 +464,12 @@ async function sendDelivery(delivery: ClaimedDelivery): Promise<void> {
   try {
     await webpush.sendNotification(
       { endpoint: target.endpoint, keys: { p256dh: target.p256dh, auth: target.auth } },
-      JSON.stringify({ ...JSON.parse(body), silent: !target.sound_enabled }),
+      JSON.stringify({
+        ...JSON.parse(body),
+        silent: payload.type.startsWith("teacher_schedule_")
+          ? !payload.schedule_sound_enabled
+          : !target.sound_enabled,
+      }),
       { TTL: 60 * 60 * 24, urgency: "normal" },
     );
     await pool.query(
@@ -343,6 +506,11 @@ export async function drainPushNotificationOutbox(): Promise<void> {
   processing = true;
   try {
     await createDueTimerNotifications();
+    if (Date.now() - lastScheduleScanAt >= 30_000) {
+      lastScheduleScanAt = Date.now();
+      await createDueScheduleNotifications();
+      await pool.query(`DELETE FROM teacher_schedule_notification_runs WHERE created_at < NOW() - INTERVAL '60 days'`);
+    }
     const deliveries = await claimDeliveries();
     await Promise.all(deliveries.map((delivery) => sendDelivery(delivery)));
   } catch (error) {
