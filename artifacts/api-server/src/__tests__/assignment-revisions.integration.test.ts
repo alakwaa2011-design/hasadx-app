@@ -25,6 +25,11 @@ let archivedQuestionId = 0;
 let concurrentRestoreId = 0;
 let concurrentRevisionAId = 0;
 let concurrentRevisionBId = 0;
+let legacySourceId = 0;
+let legacyEditedId = 0;
+let legacyUsedId = 0;
+let legacyVersionRaceId = 0;
+let legacySubmissionRaceId = 0;
 
 function app(teacherId?: number) {
   const server = express();
@@ -53,6 +58,39 @@ async function questionTexts(id: number) {
   `)).rows.map((row: any) => row.text);
 }
 
+async function insertLegacyAssignment({
+  teacherId,
+  title,
+  version = 1,
+  shared = false,
+}: {
+  teacherId: number;
+  title: string;
+  version?: number;
+  shared?: boolean;
+}) {
+  const id = Number((await db.execute(sql`
+    INSERT INTO assignments
+      (title, subject, teacher_id, access_mode, is_shared, is_share_approved,
+       total_points, version, content_kind)
+    VALUES (${title}, 'Mathematics', ${teacherId}, 'public', ${shared}, ${shared},
+            1, ${version}, 'homework')
+    RETURNING id
+  `)).rows[0].id);
+  await db.execute(sql`
+    INSERT INTO questions
+      (assignment_id, question_type, text, option_a, option_b, correct_answer, points)
+    VALUES (${id}, 'mcq', 'Legacy question', 'A', 'B', 'A', 1)
+  `);
+  return id;
+}
+
+async function submissionCount(id: number) {
+  return Number((await db.execute(sql`
+    SELECT COUNT(*)::int AS count FROM submissions WHERE assignment_id = ${id}
+  `)).rows[0].count);
+}
+
 suite("assignment revision safety with PostgreSQL", () => {
   beforeAll(async () => {
     const versioningMigration = readFileSync(
@@ -70,6 +108,13 @@ suite("assignment revision safety with PostgreSQL", () => {
     await db.execute(sql.raw(versioningMigration));
     await db.execute(sql.raw(revisionsMigration));
     await db.execute(sql.raw(lifecycleMigration));
+    // The duplicate-candidate route reads this runtime-provisioned column.
+    // Keep the isolated integration database aligned with the application
+    // schema before exercising the complete cleanup flow.
+    await db.execute(sql`
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS imported_from_assignment_id INTEGER
+    `);
 
     ownerId = Number((await db.execute(sql`
       INSERT INTO teachers (name, email, password_hash)
@@ -250,6 +295,35 @@ suite("assignment revision safety with PostgreSQL", () => {
       RETURNING id
     `)).rows;
     [concurrentRevisionAId, concurrentRevisionBId] = concurrentRevisions.map((row: any) => Number(row.id));
+
+    legacySourceId = await insertLegacyAssignment({
+      teacherId: otherTeacherId,
+      title: "Legacy source",
+      shared: true,
+    });
+    legacyEditedId = await insertLegacyAssignment({
+      teacherId: ownerId,
+      title: "Legacy source (نسخة)",
+      version: 2,
+    });
+    legacyUsedId = await insertLegacyAssignment({
+      teacherId: ownerId,
+      title: "Legacy source (نسخة)",
+    });
+    legacyVersionRaceId = await insertLegacyAssignment({
+      teacherId: ownerId,
+      title: "Legacy source (نسخة)",
+    });
+    legacySubmissionRaceId = await insertLegacyAssignment({
+      teacherId: ownerId,
+      title: "Legacy source (نسخة)",
+    });
+    await db.execute(sql`
+      INSERT INTO submissions
+        (assignment_id, student_name, score, total_questions, correct_answers,
+         earned_points, total_points)
+      VALUES (${legacyUsedId}, 'Used student', 100, 1, 1, 1, 1)
+    `);
   });
 
   afterAll(async () => {
@@ -416,6 +490,88 @@ suite("assignment revision safety with PostgreSQL", () => {
     expect(await questionTexts(response.body.id)).toEqual(["Historical question"]);
   });
 
+  it("shows authenticated cleanup candidates and retains edited or used copies", async () => {
+    const response = await request(app(ownerId))
+      .get("/api/assignments/duplicate-candidates");
+
+    expect(response.status).toBe(200);
+    const candidates = response.body as any[];
+    expect(candidates.some((candidate) => candidate.source.id === legacySourceId)).toBe(true);
+
+    expect(candidates.find((candidate) => candidate.duplicate.id === legacyEditedId)).toMatchObject({
+      hasTeacherEdits: true,
+      hasUsage: false,
+      canArchive: false,
+      recommendedAction: "keep_duplicate",
+      duplicate: { version: 2, submissionCount: 0 },
+    });
+    expect(candidates.find((candidate) => candidate.duplicate.id === legacyUsedId)).toMatchObject({
+      hasTeacherEdits: false,
+      hasUsage: true,
+      canArchive: false,
+      recommendedAction: "keep_duplicate",
+      duplicate: { submissionCount: 1 },
+    });
+  });
+
+  it("rejects cleanup when the scanned version is stale", async () => {
+    const scan = await request(app(ownerId))
+      .get("/api/assignments/duplicate-candidates");
+    const candidate = (scan.body as any[]).find(
+      (item) => item.duplicate.id === legacyVersionRaceId,
+    );
+    expect(candidate).toBeDefined();
+
+    await db.execute(sql`
+      UPDATE assignments
+      SET version = version + 1, updated_at = NOW()
+      WHERE id = ${legacyVersionRaceId}
+    `);
+
+    const response = await request(app(ownerId))
+      .patch(`/api/assignments/${legacyVersionRaceId}/archive`)
+      .send({
+        archived: true,
+        version: candidate.duplicate.version,
+        expectedSubmissionCount: candidate.duplicate.submissionCount,
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("ASSIGNMENT_VERSION_CONFLICT");
+    expect((await assignment(legacyVersionRaceId)).archived_at).toBeNull();
+  });
+
+  it("rejects cleanup when a submission arrives after the scan", async () => {
+    const scan = await request(app(ownerId))
+      .get("/api/assignments/duplicate-candidates");
+    const candidate = (scan.body as any[]).find(
+      (item) => item.duplicate.id === legacySubmissionRaceId,
+    );
+    expect(candidate).toBeDefined();
+    expect(candidate.duplicate.submissionCount).toBe(0);
+
+    await db.execute(sql`
+      INSERT INTO submissions
+        (assignment_id, student_name, score, total_questions, correct_answers,
+         earned_points, total_points)
+      VALUES (${legacySubmissionRaceId}, 'Late student', 0, 1, 0, 0, 1)
+    `);
+
+    const response = await request(app(ownerId))
+      .patch(`/api/assignments/${legacySubmissionRaceId}/archive`)
+      .send({
+        archived: true,
+        version: candidate.duplicate.version,
+        expectedSubmissionCount: candidate.duplicate.submissionCount,
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("ASSIGNMENT_SUBMISSION_CONFLICT");
+    expect((await assignment(legacySubmissionRaceId)).archived_at).toBeNull();
+    expect(await submissionCount(legacySubmissionRaceId)).toBe(1);
+    expect(await questionTexts(legacySubmissionRaceId)).toEqual(["Legacy question"]);
+  });
+
   it("blocks exam start plus electronic and paper submissions after archiving", async () => {
     const studentPayload = {
       studentName: "Student",
@@ -447,5 +603,21 @@ suite("assignment revision safety with PostgreSQL", () => {
       expect(response.status).toBe(410);
       expect(response.body.code).toBe("ASSIGNMENT_ARCHIVED");
     }
+  });
+
+  it("restores an archived assignment without losing its questions or submissions", async () => {
+    const before = await assignment(archivedId);
+    const questionsBefore = await questionTexts(archivedId);
+    const submissionsBefore = await submissionCount(archivedId);
+
+    const response = await request(app(ownerId))
+      .patch(`/api/assignments/${archivedId}/archive`)
+      .send({ archived: false, version: before.version });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ id: archivedId, archivedAt: null, version: before.version + 1 });
+    expect(await questionTexts(archivedId)).toEqual(questionsBefore);
+    expect(await submissionCount(archivedId)).toBe(submissionsBefore);
+    expect((await assignment(archivedId)).archived_at).toBeNull();
   });
 });

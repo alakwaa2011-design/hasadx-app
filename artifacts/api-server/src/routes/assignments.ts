@@ -637,7 +637,7 @@ router.get("/assignments/duplicate-candidates", async (req, res): Promise<void> 
         importedFromAssignmentId: assignmentsTable.importedFromAssignmentId,
         submissionCount: sql<number>`(
           SELECT COUNT(*) FROM submissions
-          WHERE submissions.assignment_id = ${assignmentsTable.id}
+          WHERE submissions.assignment_id = assignments.id
         )`,
       })
       .from(assignmentsTable)
@@ -1850,9 +1850,13 @@ router.patch("/assignments/:id/archive", async (req, res) => {
   }
   try {
     const { id } = GetAssignmentParams.parse(req.params);
-    const { archived, version } = z.object({
+    const { archived, version, expectedSubmissionCount } = z.object({
       archived: z.boolean(),
       version: z.number().int().positive(),
+      // The duplicate-cleanup flow sends the submission count observed during
+      // its scan. Keeping this optional preserves the normal archive/restore
+      // action, while allowing cleanup to reject a copy used after the scan.
+      expectedSubmissionCount: z.number().int().nonnegative().optional(),
     }).parse(req.body);
     const updated = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT id FROM assignments WHERE id = ${id} FOR UPDATE`);
@@ -1870,6 +1874,19 @@ router.patch("/assignments/:id/archive", async (req, res) => {
           statusCode: 409,
           code: "ASSIGNMENT_VERSION_CONFLICT",
         });
+      }
+      if (archived && expectedSubmissionCount !== undefined) {
+        const [submissionSummary] = await tx
+          .select({ count: sql<number>`COUNT(*)::int` })
+          .from(submissionsTable)
+          .where(eq(submissionsTable.assignmentId, id));
+        const currentSubmissionCount = Number(submissionSummary?.count ?? 0);
+        if (expectedSubmissionCount !== 0 || currentSubmissionCount !== expectedSubmissionCount) {
+          throw Object.assign(new Error("لا يمكن أرشفة نسخة وصلت إليها تسليمات"), {
+            statusCode: 409,
+            code: "ASSIGNMENT_SUBMISSION_CONFLICT",
+          });
+        }
       }
       return (await tx
         .update(assignmentsTable)

@@ -2225,7 +2225,11 @@ function LegacyDuplicateReview({
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ archived: true, version: candidate.duplicate.version }),
+        body: JSON.stringify({
+          archived: true,
+          version: candidate.duplicate.version,
+          expectedSubmissionCount: candidate.duplicate.submissionCount,
+        }),
       });
       if (response.status === 409) {
         toast.error(isAr ? "تغيرت النسخة، حدّث الفحص ثم حاول مجددًا." : "The copy changed. Refresh the scan and try again.");

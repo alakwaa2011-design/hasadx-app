@@ -146,6 +146,13 @@ describe("assignments.ts — auth & ownership", () => {
     expect(res.body.message).toBe("غير مصرح لك بنسخ هذا الواجب");
   });
 
+  it("GET /assignments/duplicate-candidates returns 401 without a teacher session", async () => {
+    const res = await request(makeApp(null)).get(
+      "/api/assignments/duplicate-candidates",
+    );
+    expect(res.status).toBe(401);
+  });
+
   it("DELETE /assignments/:id/questions/:qid returns 403 when another teacher owns the assignment", async () => {
     pushQueue([{ id: 5, teacherId: 99 }]);
     const res = await request(makeApp({ teacherId: 1 })).delete(
