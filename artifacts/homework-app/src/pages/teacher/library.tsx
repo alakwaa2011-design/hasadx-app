@@ -287,7 +287,7 @@ export default function TeacherLibraryPage() {
   const [groups, setGroups] = useState<LibraryGroup[]>([]);
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
-  const [activeGroup, setActiveGroup] = useState<string>("all"); // "all" | "none" | groupId-as-string
+  const [activeGroup, setActiveGroup] = useState<string>("root"); // "root" | "all" | "none" | groupId-as-string
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -361,6 +361,7 @@ export default function TeacherLibraryPage() {
         : "One organized place for your files, lessons, and games",
       addFile: isAr ? "إضافة ملف" : "Add file",
       addGroup: isAr ? "مجلد جديد" : "New folder",
+      root: isAr ? "الجذر" : "Root",
       all: isAr ? "كل الملفات" : "All files",
       none: isAr ? "بدون مجموعة" : "Ungrouped",
       folders: isAr ? "المجلدات" : "Folders",
@@ -516,7 +517,7 @@ export default function TeacherLibraryPage() {
   async function loadFiles() {
     try {
       const params = new URLSearchParams();
-      params.set("groupId", activeGroup);
+      params.set("groupId", activeGroup === "root" ? "root" : activeGroup);
       if (search.trim()) params.set("search", search.trim());
       const res = await fetch(`/api/library/files?${params}`, { cache: "no-store" });
       const data = await res.json();
@@ -1160,7 +1161,10 @@ export default function TeacherLibraryPage() {
   }
 
   const usagePct = usage && usage.quotaBytes ? Math.min(100, (usage.usedBytes / usage.quotaBytes) * 100) : 0;
-  const activeGroupId = activeGroup !== "all" && activeGroup !== "none" ? Number(activeGroup) : null;
+  const activeGroupId =
+    activeGroup !== "root" && activeGroup !== "all" && activeGroup !== "none"
+      ? Number(activeGroup)
+      : null;
   const groupById = new Map(groups.map((group) => [group.id, group]));
   const activeFolder = activeGroupId ? groupById.get(activeGroupId) : null;
   const folderPath: LibraryGroup[] = [];
@@ -1177,7 +1181,7 @@ export default function TeacherLibraryPage() {
   };
 
   const visibleFolders =
-    activeGroup === "none"
+    activeGroup === "all" || activeGroup === "none"
       ? []
       : groups.filter((folder) => folder.parentGroupId === activeGroupId);
 
@@ -1187,73 +1191,73 @@ export default function TeacherLibraryPage() {
     const isExpanded = expandedGroupIds.has(folder.id);
 
     return (
-    <div key={folder.id}>
-      <div
-        className={`group flex items-center gap-1 rounded-xl ${
-          activeGroup === String(folder.id) ? "bg-violet-500/15" : ""
-        }`}
-        style={{ marginInlineStart: depth * 12 }}
-      >
-        <button
-          onClick={() => {
-            setActiveGroup(String(folder.id));
-            if (hasChildren) {
-              setExpandedGroupIds((previous) => {
-                const next = new Set(previous);
-                if (next.has(folder.id)) next.delete(folder.id);
-                else next.add(folder.id);
-                return next;
-              });
-            }
-          }}
-          className={`flex-1 min-w-0 text-start px-3 py-2.5 text-sm font-semibold ${
-            activeGroup === String(folder.id) ? "text-violet-700" : "hover:bg-muted rounded-xl"
+      <div key={folder.id}>
+        <div
+          className={`group flex items-center gap-1 rounded-xl ${
+            activeGroup === String(folder.id) ? "bg-violet-500/15" : ""
           }`}
-          data-testid={`group-${folder.id}`}
+          style={{ marginInlineStart: depth * 12 }}
         >
-          <span className="flex min-w-0 items-start gap-2">
-            {hasChildren ? (
-              <ChevronDown
-                className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${
-                  isExpanded ? "" : "-rotate-90"
-                }`}
-                aria-hidden="true"
-              />
-            ) : (
-              <span className="w-3.5 shrink-0" aria-hidden="true" />
-            )}
-            <Folder className="w-4 h-4 shrink-0 text-violet-500" />
-            <span className="min-w-0 flex-1 whitespace-normal break-words leading-5">{folder.name}</span>
-            <span className="shrink-0 text-[11px] text-muted-foreground">({folder.fileCount})</span>
-          </span>
-        </button>
-        <button
-          onClick={() => openNewFolder(folder.id)}
-          className="opacity-0 group-hover:opacity-100 transition p-1 text-muted-foreground hover:text-violet-600"
-          title={isAr ? "مجلد فرعي" : "Subfolder"}
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => {
-            setRenameTarget(folder);
-            setRenameValue(folder.name);
-          }}
-          className="opacity-0 group-hover:opacity-100 transition p-1 text-muted-foreground hover:text-foreground"
-          title={T.rename}
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => setDeleteGroupTarget(folder)}
-          className="opacity-0 group-hover:opacity-100 transition p-1 text-muted-foreground hover:text-red-600 me-1"
-          title={T.delete}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+          <button
+            onClick={() => {
+              setActiveGroup(String(folder.id));
+              if (hasChildren) {
+                setExpandedGroupIds((previous) => {
+                  const next = new Set(previous);
+                  if (next.has(folder.id)) next.delete(folder.id);
+                  else next.add(folder.id);
+                  return next;
+                });
+              }
+            }}
+            className={`flex-1 min-w-0 text-start px-3 py-2.5 text-sm font-semibold ${
+              activeGroup === String(folder.id) ? "text-violet-700" : "hover:bg-muted rounded-xl"
+            }`}
+            data-testid={`group-${folder.id}`}
+          >
+            <span className="flex min-w-0 items-start gap-2">
+              {hasChildren ? (
+                <ChevronDown
+                  className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${
+                    isExpanded ? "" : "-rotate-90"
+                  }`}
+                />
+              ) : (
+                <span className="w-3.5 shrink-0" />
+              )}
+              <Folder className="w-4 h-4 shrink-0 text-violet-500" />
+              <span className="min-w-0 truncate">{folder.name}</span>
+              <span className="text-[11px] text-muted-foreground">({folder.fileCount})</span>
+            </span>
+          </button>
+          <button
+            onClick={() => openNewFolder(folder.id)}
+            className="opacity-0 group-hover:opacity-100 transition p-1 text-muted-foreground hover:text-violet-600"
+            title={isAr ? "مجلد فرعي" : "Subfolder"}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => {
+              setRenameTarget(folder);
+              setRenameValue(folder.name);
+            }}
+            className="opacity-0 group-hover:opacity-100 transition p-1 text-muted-foreground hover:text-foreground"
+            title={T.rename}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => setDeleteGroupTarget(folder)}
+            className="opacity-0 group-hover:opacity-100 transition p-1 text-muted-foreground hover:text-red-600 me-1"
+            title={T.delete}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {isExpanded &&
+          childFolders.map((child) => renderFolder(child, depth + 1))}
       </div>
-      {isExpanded && childFolders.map((child) => renderFolder(child, depth + 1))}
-    </div>
     );
   };
 
@@ -1287,19 +1291,21 @@ export default function TeacherLibraryPage() {
                 if (selectionMode) exitSelectionMode();
                 else setSelectionMode(true);
               }}
-              size="icon"
-              className="h-9 w-9 p-0"
-              title={selectionMode ? T.exitSelect : T.selectMode}
-              aria-label={selectionMode ? T.exitSelect : T.selectMode}
               data-testid="btn-toggle-select"
             >
-              <CheckSquare className="w-4 h-4" />
+              {selectionMode ? (
+                <>
+                  <X className="w-4 h-4 me-1.5" />
+                  {T.exitSelect}
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="w-4 h-4 me-1.5" />
+                  {T.selectMode}
+                </>
+              )}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => openNewFolder(activeGroupId)}
-              data-testid="btn-add-group"
-            >
+            <Button variant="outline" onClick={() => openNewFolder(activeGroupId)} data-testid="btn-add-group">
               <FolderPlus className="w-4 h-4 me-1.5" />
               {T.addGroup}
             </Button>
@@ -1310,7 +1316,7 @@ export default function TeacherLibraryPage() {
               }}
               data-testid="btn-add-file"
             >
-              <FilePlus className="w-4 h-4 me-1.5" />
+              <Plus className="w-4 h-4 me-1.5" />
               {T.addFile}
             </Button>
           </div>
@@ -1415,14 +1421,22 @@ export default function TeacherLibraryPage() {
           <TabsContent value="files" className="pt-4">
         <div className="flex flex-col md:flex-row-reverse gap-4" dir="ltr">
           {/* Group sidebar */}
-          <Card dir={isAr ? "rtl" : "ltr"} className="order-2 md:order-1 p-3 h-fit md:w-[280px] shrink-0 rounded-2xl border-border/60 shadow-sm">
-            <button
-              onClick={() => setActiveGroup("all")}
+          <Card dir={isAr ? "rtl" : "ltr"} className="order-2 md:order-1 p-3 h-fit md:w-[240px] shrink-0 rounded-2xl border-border/60 shadow-sm">
+             <button
+               onClick={() => setActiveGroup("root")}
+               className={`w-full text-start px-3 py-2 rounded-lg text-sm font-medium transition ${
+                 activeGroup === "root" ? "bg-violet-500/15 text-violet-700" : "hover:bg-muted"
+               }`}
+             >
+               {T.root}
+             </button>
+             <button
+                onClick={() => setActiveGroup("all")}
               className={`w-full text-start px-3 py-2 rounded-lg text-sm font-medium transition ${
                 activeGroup === "all" ? "bg-violet-500/15 text-violet-700" : "hover:bg-muted"
               }`}
             >
-              {T.all}
+                 {T.all}
             </button>
             <button
               onClick={() => setActiveGroup("none")}
@@ -1447,10 +1461,10 @@ export default function TeacherLibraryPage() {
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground overflow-x-auto whitespace-nowrap">
               <button
                 type="button"
-                onClick={() => setActiveGroup("all")}
+                onClick={() => setActiveGroup("root")}
                 className="hover:text-violet-700 transition-colors"
               >
-                {T.all}
+                {activeGroup === "root" ? T.root : T.all}
               </button>
               {folderPath.map((folder) => (
                 <span key={folder.id} className="inline-flex items-center gap-1.5">

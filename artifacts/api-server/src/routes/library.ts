@@ -215,7 +215,7 @@ router.get("/library/files", requireAuth, async (req: any, res: Response) => {
     const search = ((req.query.search as string) || "").trim();
 
     const conditions: any[] = [eq(teacherLibraryFilesTable.teacherId, teacherId)];
-    if (groupParam === "none") {
+    if (groupParam === "none" || groupParam === "root") {
       conditions.push(sql`${teacherLibraryFilesTable.groupId} IS NULL`);
     } else if (groupParam && groupParam !== "all") {
       const gid = parseInt(groupParam);
