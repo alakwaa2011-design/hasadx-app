@@ -152,7 +152,6 @@ export default function TeacherLibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [activeGroup, setActiveGroup] = useState<string>("all"); // "all" | "none" | groupId-as-string
-  const [libraryView, setLibraryView] = useState<"home" | "presentations">("home");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -1109,15 +1108,7 @@ export default function TeacherLibraryPage() {
               <p className="text-sm text-muted-foreground">{T.subtitle}</p>
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              onClick={() => setLibraryView("presentations")}
-              data-testid="btn-go-presentations"
-            >
-              <Presentation className="w-4 h-4 me-1.5" />
-              {isAr ? "العروض التفاعلية" : "Presentations"}
-            </Button>
+          <div className="flex gap-2 flex-wrap" dir={isAr ? "ltr" : "rtl"}>
             <Button
               variant={selectionMode ? "default" : "outline"}
               onClick={() => {
@@ -1156,20 +1147,6 @@ export default function TeacherLibraryPage() {
           </div>
         </div>
 
-        {libraryView === "presentations" ? (
-          <div className="rounded-[28px] border border-border/60 bg-card/50 p-2 sm:p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3 px-2 pb-3">
-              <div>
-                <p className="text-xs font-bold text-violet-600">{isAr ? "داخل مكتبتي" : "Inside My Library"}</p>
-                <h2 className="text-lg font-black">{isAr ? "العروض التفاعلية" : "Interactive presentations"}</h2>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => setLibraryView("home")}>
-                {isAr ? "العودة إلى مكتبتي" : "Back to my library"}
-              </Button>
-            </div>
-            <PresentationsIndex embedded />
-          </div>
-        ) : (
         <>
         {selectionMode && (
           <Card className="p-3 flex items-center gap-3 flex-wrap bg-violet-50/50 dark:bg-violet-950/20 border-violet-300">
@@ -1216,7 +1193,7 @@ export default function TeacherLibraryPage() {
               first item appears on the right. Active tab gets a soft
               primary tint, an underline accent and a subtle shadow. */}
           <TabsList
-            className="h-auto p-1.5 bg-slate-100/80 border border-border/60 rounded-2xl gap-1 w-full grid grid-cols-2 sm:grid-cols-4 max-w-3xl shadow-sm"
+            className="h-auto p-1.5 bg-slate-100/80 border border-border/60 rounded-2xl gap-1 w-full grid grid-cols-2 sm:grid-cols-5 max-w-5xl shadow-sm"
           >
             <TabsTrigger
               value="worksheets"
@@ -1238,6 +1215,14 @@ export default function TeacherLibraryPage() {
             >
               <BookOpen className="w-4 h-4" />
               {isAr ? "تحضير الدروس" : "Lesson plans"}
+            </TabsTrigger>
+            <TabsTrigger
+              value="presentations"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all"
+              data-testid="tab-interactive-presentations"
+            >
+              <Presentation className="w-4 h-4" />
+              {isAr ? "العروض التفاعلية" : "Presentations"}
             </TabsTrigger>
             <TabsTrigger
               value="games"
@@ -1446,13 +1431,22 @@ export default function TeacherLibraryPage() {
             <SavedDocsList kind="lesson-plans" isAr={isAr} />
           </TabsContent>
 
+          <TabsContent value="presentations" className="pt-4">
+            <div className="rounded-[28px] border border-border/60 bg-card/50 p-2 sm:p-4 shadow-sm">
+              <div className="px-2 pb-3">
+                <p className="text-xs font-bold text-violet-600">{isAr ? "داخل مكتبتي" : "Inside My Library"}</p>
+                <h2 className="text-lg font-black">{isAr ? "العروض التفاعلية" : "Interactive presentations"}</h2>
+              </div>
+              <PresentationsIndex embedded />
+            </div>
+          </TabsContent>
+
           <TabsContent value="games" className="pt-4">
             <SavedGameActivitiesList isAr={isAr} />
           </TabsContent>
 
         </Tabs>
         </>
-        )}
       </div>
 
       {/* Add group dialog */}
