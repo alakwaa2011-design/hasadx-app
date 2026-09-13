@@ -1468,6 +1468,58 @@ export default function TeacherLibraryPage() {
                 </span>
               ))}
             </div>
+            {activeFolder && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-violet-200/70 bg-violet-50/60 px-3 py-2.5">
+                <div className="flex min-w-0 items-center gap-2 text-sm font-bold text-violet-800">
+                  <Folder className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {isAr ? `إجراءات مجلد: ${activeFolder.name}` : `Actions for: ${activeFolder.name}`}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={selectionMode ? "default" : "outline"}
+                    onClick={() => {
+                      if (selectionMode) exitSelectionMode();
+                      else setSelectionMode(true);
+                    }}
+                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    title={selectionMode ? T.exitSelect : T.selectMode}
+                  >
+                    {selectionMode ? <X className="h-3.5 w-3.5" /> : <CheckSquare className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">
+                      {selectionMode ? T.exitSelect : T.selectMode}
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openNewFolder(activeGroupId)}
+                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    title={T.addGroup}
+                  >
+                    <FolderPlus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{T.addGroup}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setUploadGroupId(String(activeFolder.id));
+                      setShowAddFile(true);
+                    }}
+                    className="h-8 gap-1.5 px-2.5 text-xs"
+                    title={T.addFile}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{T.addFile}</span>
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-muted-foreground" />
               <Input
