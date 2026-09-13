@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/grade5-dhikr-lesson/"
+title = "درس ذكر الله تعالى — الصف الخامس"
+description = "عرض باوربوينت تعليمي تفاعلي لحصة نموذجية في التربية الإسلامية للصف الخامس، مستند إلى صفحات الكتاب المرفقة ويجمع بين الشرح والقراءة والأنشطة والتقويم."
+version = "1.0.0"
+id = "artifacts/grade5-dhikr-lesson"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/grade5-dhikr-lesson/" ]
+localPort = 21407
+
+[services.development]
+run = "pnpm --filter @workspace/grade5-dhikr-lesson run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/grade5-dhikr-lesson", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/grade5-dhikr-lesson/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21407"
+BASE_PATH = "/grade5-dhikr-lesson/"

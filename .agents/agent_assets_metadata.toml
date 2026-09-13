@@ -1714,6 +1714,7 @@ uri = "file://artifacts/hasaad-meta-video/public/audio/voiceover.mp3"
 type = "audio"
 title = "hasaad reels voiceover"
 description = "Text-to-speech audio: مع حصاد، تتحول فكرة الدرس إلى تجربة تعليمية متكاملة. أنشئ الواجبات، وخطط الدروس، وأوراق العمل بالذكاء الاصطناعي خلال ثوانٍ. أشعل حماس الصف بألعاب وميض، وشد الحبل، وإكس أو، والعج…"
+logical_id = "5039a106-ad64-43a6-948e-ee25163e58e7"
 
 [[outputs]]
 id = "hm9ckYLiQJ80HSoyvCBnz"
@@ -1721,3 +1722,4 @@ uri = "file://artifacts/hasaad-meta-video/public/audio/voiceover_2.mp3"
 type = "audio"
 title = "hasaad reels voiceover"
 description = "Text-to-speech audio: مع حصاد، تتحول فكرة الدرس إلى تجربة تعليمية متكاملة. أنشئ الواجبات، وخطط الدروس، وأوراق العمل بالذكاء الاصطناعي خلال ثوانٍ. أشعل حماس الصف بألعاب وميض، وشد الحبل، وإكس أو، والعج…"
+logical_id = "1c4dacc8-9836-4035-b131-37eb9a48c4fc"
