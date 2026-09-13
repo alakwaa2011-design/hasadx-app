@@ -1211,7 +1211,7 @@ export default function TeacherLibraryPage() {
         {/* Top-level tabs — switch between uploaded files, generated
             worksheets, lesson plans, and saved games. Each tab is a separate listing
             against its own backing API; only the active tab fetches. */}
-        <Tabs defaultValue="worksheets" className="w-full">
+        <Tabs defaultValue="worksheets" dir={isAr ? "rtl" : "ltr"} className="w-full">
           {/* Stylized tab bar — DOM order is RTL-friendly: in Arabic the
               first item appears on the right. Active tab gets a soft
               primary tint, an underline accent and a subtle shadow. */}
@@ -1250,9 +1250,9 @@ export default function TeacherLibraryPage() {
           </TabsList>
 
           <TabsContent value="files" className="pt-4">
-        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
+        <div className="flex flex-col md:flex-row-reverse gap-4" dir="ltr">
           {/* Group sidebar */}
-          <Card className="p-3 h-fit rounded-2xl border-border/60 shadow-sm">
+          <Card dir={isAr ? "rtl" : "ltr"} className="order-2 md:order-1 p-3 h-fit md:w-[240px] shrink-0 rounded-2xl border-border/60 shadow-sm">
             <button
               onClick={() => setActiveGroup("all")}
               className={`w-full text-start px-3 py-2 rounded-lg text-sm font-medium transition ${
@@ -1279,7 +1279,7 @@ export default function TeacherLibraryPage() {
           </Card>
 
           {/* File list */}
-          <div className="space-y-3">
+          <div dir={isAr ? "rtl" : "ltr"} className="order-1 md:order-2 min-w-0 flex-1 space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground overflow-x-auto whitespace-nowrap">
               <button
                 type="button"
@@ -1309,7 +1309,7 @@ export default function TeacherLibraryPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={T.search}
-                className="ps-9"
+                className={isAr ? "pe-9 ps-3 text-right" : "ps-9"}
               />
             </div>
 
