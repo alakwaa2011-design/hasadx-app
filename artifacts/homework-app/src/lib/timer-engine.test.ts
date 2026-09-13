@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { timerStore, TimerState } from "./timer-store";
-import { calculateTimerStateCore, evaluateMilestones } from "./use-timer-engine";
+import { calculateTimerStateCore, evaluateMilestones, newCountdownTargetState } from "./use-timer-engine";
 
 describe("Timer Core Calculations", () => {
   it("should calculate countdown correctly before zero", () => {
@@ -165,6 +165,23 @@ describe("Timer Action Semantics", () => {
     const stateAfter = timerStore.getState();
     expect(stateAfter.isRunning).toBe(true);
     expect(stateAfter.completedHandled).toBe(false); // Reset to false
+  });
+
+  it("choosing a new duration forgets the completed server run", () => {
+    timerStore.setState({
+      serverRunId: "8143ed9d-7240-4fa9-a9c6-bc48ae87d7ad",
+      serverVersion: 4,
+      completedHandled: true,
+    });
+
+    timerStore.setState(newCountdownTargetState(120_000));
+
+    expect(timerStore.getState()).toMatchObject({
+      targetMs: 120_000,
+      accumulatedMs: 0,
+      completedHandled: false,
+      serverRunId: null,
+    });
   });
 });
 

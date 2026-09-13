@@ -7,6 +7,7 @@ import { Card, Button } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
 import { timerStore } from "@/lib/timer-store";
 import { playTimerSound } from "@/lib/timer-sounds";
+import { claimLocalTimerSound } from "@/lib/timer-server-sync";
 import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -55,7 +56,7 @@ export function GlobalPushNotificationManager() {
 
   useEffect(() => {
     if (!user || !supported()) return;
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === "HASAAD_PUSH_NAVIGATE" && typeof event.data.actionUrl === "string") {
         setLocation(event.data.actionUrl);
         return;
@@ -70,6 +71,10 @@ export function GlobalPushNotificationManager() {
           localStorage.setItem(key, JSON.stringify([...seen.slice(-99), notificationId]));
         }
         const timer = timerStore.getState();
+        if (event.data.notification?.type === "class_timer_complete") {
+          const runId = event.data.notification?.runId;
+          if (!runId || !(await claimLocalTimerSound(runId))) return;
+        }
         if (!timer.soundMuted) playTimerSound(timer.soundSelection, timer.soundVolume);
       }
     };

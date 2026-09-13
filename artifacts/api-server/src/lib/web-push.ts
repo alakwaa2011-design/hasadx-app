@@ -22,6 +22,7 @@ type DeliveryPayload = ClaimedDelivery & {
   action_url: string | null;
   assignment_id: number | null;
   message_id: number | null;
+  timer_run_id: string | null;
 };
 
 type PushTarget = {
@@ -35,6 +36,78 @@ type PushTarget = {
 let configured = false;
 let processing = false;
 let workerTimer: NodeJS.Timeout | null = null;
+
+export async function createDueTimerNotifications(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const due = await client.query<{
+      teacher_id: number;
+      version: number;
+      task_name: string;
+    }>(`
+      SELECT teacher_id, version, task_name
+      FROM teacher_timer_states
+      WHERE status = 'running'
+        AND end_at <= NOW() - INTERVAL '10 seconds'
+        AND client_handled_at IS NULL
+        AND notification_id IS NULL
+      ORDER BY end_at
+      FOR UPDATE SKIP LOCKED
+      LIMIT 50
+    `);
+    for (const timer of due.rows) {
+      const title = "انتهى مؤقت الحصة";
+      const body = timer.task_name
+        ? `انتهى وقت: ${timer.task_name}`
+        : "انتهى الوقت المحدد في مؤقت الحصة.";
+      const run = await client.query<{ run_id: string }>(
+        `SELECT run_id FROM teacher_timer_states
+         WHERE teacher_id = $1 AND version = $2 AND status = 'running'`,
+        [timer.teacher_id, timer.version],
+      );
+      if (!run.rows[0]?.run_id) continue;
+      const alreadyCreated = await client.query<{ notification_id: number }>(
+        `SELECT notification_id FROM teacher_timer_notifications WHERE run_id = $1`,
+        [run.rows[0].run_id],
+      );
+      if (alreadyCreated.rows[0]) {
+        await client.query(
+          `UPDATE teacher_timer_states
+           SET status = 'completed', notification_id = $3,
+               version = version + 1, updated_at = NOW()
+           WHERE teacher_id = $1 AND version = $2`,
+          [timer.teacher_id, timer.version, alreadyCreated.rows[0].notification_id],
+        );
+        continue;
+      }
+      const inserted = await client.query<{ id: number }>(
+        `INSERT INTO notifications (teacher_id, type, title, body, action_url)
+         VALUES ($1, 'class_timer_complete', $2, $3, '/teacher/tools/timer')
+         RETURNING id`,
+        [timer.teacher_id, title, body],
+      );
+      await client.query(
+        `UPDATE teacher_timer_states
+         SET status = 'completed', notification_id = $3,
+             version = version + 1, updated_at = NOW()
+         WHERE teacher_id = $1 AND version = $2 AND notification_id IS NULL`,
+        [timer.teacher_id, timer.version, inserted.rows[0].id],
+      );
+      await client.query(
+        `INSERT INTO teacher_timer_notifications (run_id, teacher_id, notification_id)
+         VALUES ($1, $2, $3)`,
+        [run.rows[0].run_id, timer.teacher_id, inserted.rows[0].id],
+      );
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 function toBase64Url(value: Buffer): string {
   return value.toString("base64url");
@@ -125,9 +198,11 @@ async function claimDeliveries(): Promise<ClaimedDelivery[]> {
 
 async function loadPayload(delivery: ClaimedDelivery): Promise<DeliveryPayload | null> {
   const result = await pool.query<Omit<DeliveryPayload, keyof ClaimedDelivery>>(`
-    SELECT title, body, type, action_url, assignment_id, message_id
-    FROM notifications
-    WHERE id = $1 AND teacher_id = $2
+    SELECT n.title, n.body, n.type, n.action_url, n.assignment_id, n.message_id,
+           timer_runs.run_id::text AS timer_run_id
+    FROM notifications n
+    LEFT JOIN teacher_timer_notifications timer_runs ON timer_runs.notification_id = n.id
+    WHERE n.id = $1 AND n.teacher_id = $2
     LIMIT 1
   `, [delivery.notification_id, delivery.teacher_id]);
   return result.rows[0] ? { ...delivery, ...result.rows[0] } : null;
@@ -181,6 +256,7 @@ async function sendDelivery(delivery: ClaimedDelivery): Promise<void> {
     title: payload.title,
     body: payload.body,
     actionUrl: actionUrlFor(payload),
+    runId: payload.timer_run_id,
   });
 
   try {
@@ -222,6 +298,7 @@ export async function drainPushNotificationOutbox(): Promise<void> {
   if (!configured || processing) return;
   processing = true;
   try {
+    await createDueTimerNotifications();
     const deliveries = await claimDeliveries();
     await Promise.all(deliveries.map((delivery) => sendDelivery(delivery)));
   } catch (error) {

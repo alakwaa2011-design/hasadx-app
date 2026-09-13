@@ -30,6 +30,8 @@ export interface TimerState {
   soundLapEnabled: boolean;
   milestonesFired: Record<number, boolean>;
   completedHandled: boolean; // to trigger sound only once
+  serverRunId: string | null;
+  serverVersion: number;
 }
 
 const DEFAULT_STATE: TimerState = {
@@ -54,6 +56,8 @@ const DEFAULT_STATE: TimerState = {
   soundLapEnabled: true,
   milestonesFired: {},
   completedHandled: false,
+  serverRunId: null,
+  serverVersion: 0,
 };
 
 let state: TimerState = { ...DEFAULT_STATE };

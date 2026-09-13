@@ -79,6 +79,7 @@ import aiVideoProjectsRouter from "./ai-video-projects";
 import classroomRewardsRouter from "./classroom-rewards";
 import teacherScheduleRouter from "./teacher-schedule";
 import listeningScriptRouter from "./listening-script";
+import teacherTimerRouter from "./teacher-timer";
 
 const router: IRouter = Router();
 
@@ -90,6 +91,7 @@ router.use(assignmentsRouter);
 router.use(directPlayRouter);
 router.use(submissionsRouter);
 router.use(notificationsRouter);
+router.use(teacherTimerRouter);
 router.use(aiQuestionsRouter);
 router.use(aiMindmapRouter);
 router.use("/ai-chat", aiChatRouter);

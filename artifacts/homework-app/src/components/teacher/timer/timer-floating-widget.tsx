@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { shouldShowFloatingTimer, shouldAutoMinimizeTimer, handleTimerAuthTransition } from "@/lib/timer-policies";
 import { StableReadout } from "./timer-widget-core";
+import { claimLocalTimerSound, markTimerHandled, restoreTimerFromServer } from "@/lib/timer-server-sync";
 
 export function GlobalTeacherTimer() {
   const [location, setLocation] = useLocation();
@@ -25,7 +26,10 @@ export function GlobalTeacherTimer() {
     handleTimerAuthTransition(
       isLoading,
       user?.id,
-      (id) => timerStore.initForUser(id),
+      (id) => {
+        timerStore.initForUser(id);
+        void restoreTimerFromServer(id);
+      },
       () => timerStore.clearUser()
     );
   }, [user?.id, isLoading]);
@@ -34,10 +38,13 @@ export function GlobalTeacherTimer() {
   useEffect(() => {
     if (!state.initializedUserId || state.initializedUserId !== user?.id) return;
     if (state.mode === "countdown" && hasCrossedZero && state.isActive && !state.completedHandled) {
-      if (!state.soundMuted) {
-        playTimerSound(state.soundSelection, state.soundVolume);
+      if (!state.soundMuted && state.serverRunId) {
+        void claimLocalTimerSound(state.serverRunId).then((claimed) => {
+          if (claimed) playTimerSound(state.soundSelection, state.soundVolume);
+        });
       }
       timerStore.setState({ completedHandled: true });
+      if (state.serverRunId) markTimerHandled(state.serverRunId);
     }
   }, [hasCrossedZero, state.mode, state.isActive, state.completedHandled, state.soundMuted, state.soundSelection, state.soundVolume, state.initializedUserId, user?.id]);
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, useCallback } from "react";
 import { timerStore, TimerState } from "./timer-store";
 import { playControlSound, playLapSound } from "./timer-sounds";
+import { cancelServerTimer, syncPausedTimer, syncRunningTimer } from "./timer-server-sync";
 
 export type MilestoneType = "warning" | "tick";
 
@@ -74,6 +75,16 @@ export function calculateTimerStateCore(state: TimerState, now: number) {
   return { elapsed, remainingMs, isOvertime, isFinished, hasCrossedZero };
 }
 
+export function newCountdownTargetState(ms: number): Partial<TimerState> {
+  return {
+    targetMs: ms,
+    accumulatedMs: 0,
+    completedHandled: false,
+    milestonesFired: {},
+    serverRunId: null,
+  };
+}
+
 export function useTimerEngine() {
   const state = useTimerState();
   const [now, setNow] = useState(Date.now());
@@ -115,12 +126,16 @@ export function useTimerEngine() {
   const start = useCallback(() => {
     if (state.isRunning) return;
     const currentElapsed = calculateElapsed();
+    const now = Date.now();
     timerStore.setState({
       isRunning: true,
-      startTimestamp: Date.now(),
+      startTimestamp: now,
       // Only clear completedHandled if we are actually starting a timer that hasn't finished yet
       ...(currentElapsed < state.targetMs ? { completedHandled: false } : {})
     });
+    if (state.mode === "countdown") {
+      syncRunningTimer(now + Math.max(0, state.targetMs - currentElapsed), state.taskName, !state.serverRunId);
+    }
     if (!state.soundMuted && state.soundControlsEnabled) {
       playControlSound("start", state.soundVolume);
     }
@@ -134,22 +149,31 @@ export function useTimerEngine() {
       accumulatedMs: currentElapsed,
       startTimestamp: null
     });
+    if (state.mode === "countdown") {
+      syncPausedTimer(Math.max(0, state.targetMs - currentElapsed), state.taskName);
+    }
     if (!state.soundMuted && state.soundControlsEnabled) {
       playControlSound("pause", state.soundVolume);
     }
   }, [state.isRunning, calculateElapsed, state.soundMuted, state.soundControlsEnabled, state.soundVolume]);
 
   const reset = useCallback(() => {
+    cancelServerTimer();
     timerStore.reset();
   }, []);
 
   const addTime = useCallback((ms: number) => {
+    const currentElapsed = calculateElapsed();
+    const nextTarget = state.targetMs + ms;
     timerStore.setState((prev) => ({
       targetMs: prev.targetMs + ms,
       completedHandled: false,
       milestonesFired: {}
     }));
-  }, []);
+    if (state.mode === "countdown" && state.isRunning) {
+      syncRunningTimer(Date.now() + Math.max(0, nextTarget - currentElapsed), state.taskName);
+    }
+  }, [calculateElapsed, state.isRunning, state.mode, state.targetMs, state.taskName]);
 
   const addLap = useCallback((name?: string) => {
     if (state.mode !== "stopwatch") return;
@@ -177,12 +201,14 @@ export function useTimerEngine() {
   }, []);
 
   const setMode = useCallback((mode: "countdown" | "stopwatch") => {
+    cancelServerTimer();
     timerStore.setState({ mode });
     reset();
   }, [reset]);
 
   const setTarget = useCallback((ms: number) => {
-    timerStore.setState({ targetMs: ms, accumulatedMs: 0, completedHandled: false, milestonesFired: {} });
+    cancelServerTimer();
+    timerStore.setState(newCountdownTargetState(ms));
   }, []);
 
   const openTool = useCallback(() => {
@@ -190,6 +216,7 @@ export function useTimerEngine() {
   }, []);
 
   const closeTool = useCallback(() => {
+    cancelServerTimer();
     timerStore.setState({ isActive: false, isRunning: false, studentDisplayActive: false });
   }, []);
 
