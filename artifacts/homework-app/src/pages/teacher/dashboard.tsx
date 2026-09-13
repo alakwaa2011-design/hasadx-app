@@ -323,6 +323,7 @@ interface SharedAssignment {
   isAdminContent?: boolean;
   createdAt: string;
   questionCount: number;
+  importedAssignmentId?: number | null;
 }
 
 type GameMode = "solo" | "teams" | "classroom" | "independent";
@@ -559,14 +560,21 @@ export default function TeacherDashboard() {
     setSharedLoading(true);
     fetch(`${BASE_URL}/api/assignments/shared`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) =>
-        setSharedAssignments(
-          Array.isArray(d)
-            ? (d as SharedAssignment[]).filter((a) => a.teacherId !== user.id)
-            : [],
-        ),
-      )
-      .catch(() => setSharedAssignments([]))
+      .then((d) => {
+        const shared = Array.isArray(d)
+          ? (d as SharedAssignment[]).filter((a) => a.teacherId !== user.id)
+          : [];
+        setSharedAssignments(shared);
+        setImportedIds(new Set(
+          shared
+            .filter((assignment) => assignment.importedAssignmentId != null)
+            .map((assignment) => assignment.id),
+        ));
+      })
+      .catch(() => {
+        setSharedAssignments([]);
+        setImportedIds(new Set());
+      })
       .finally(() => setSharedLoading(false));
   }, [activeTab, user]);
 
@@ -582,10 +590,15 @@ export default function TeacherDashboard() {
         credentials: "include",
       });
       if (res.ok) {
+        const result = await res.json().catch(() => ({}));
         toast.success(
-          lang === "ar"
-            ? "تم الاستيراد! الواجب الآن في قائمتك."
-            : "Imported! Assignment added to your list.",
+          result.alreadyImported
+            ? (lang === "ar"
+              ? "هذا الواجب موجود لديك بالفعل."
+              : "This assignment is already in your library.")
+            : (lang === "ar"
+              ? "تم الاستيراد! الواجب الآن في قائمتك."
+              : "Imported! Assignment added to your list."),
         );
         setImportedIds((prev) => new Set(prev).add(id));
         queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
@@ -603,6 +616,17 @@ export default function TeacherDashboard() {
         s.delete(id);
         return s;
       });
+    }
+  };
+
+  const openImportedAssignment = (id: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const source = sharedAssignments.find((assignment) => assignment.id === id);
+    if (source?.importedAssignmentId) {
+      setLocation(`/teacher/assignment/${source.importedAssignmentId}`);
     }
   };
 
@@ -899,6 +923,7 @@ export default function TeacherDashboard() {
             importingIds={importingIds}
             importedIds={importedIds}
             importAssignment={importSharedAssignment}
+            openImportedAssignment={openImportedAssignment}
             creatingGameForId={creatingGameForId}
             startGame={openGameSetup}
           />
@@ -3988,6 +4013,7 @@ function SharedTab({
   importingIds,
   importedIds,
   importAssignment,
+  openImportedAssignment,
   creatingGameForId,
   startGame,
 }: {
@@ -3997,6 +4023,7 @@ function SharedTab({
   importingIds: Set<number>;
   importedIds: Set<number>;
   importAssignment: (id: number, e?: React.MouseEvent) => void;
+  openImportedAssignment: (id: number, e?: React.MouseEvent) => void;
   creatingGameForId: number | null;
   startGame: (id: number, e?: React.MouseEvent) => void;
 }) {
@@ -4124,8 +4151,10 @@ function SharedTab({
                     </button>
                   )}
                   <button
-                    onClick={(e) => importAssignment(a.id, e)}
-                    disabled={importingIds.has(a.id) || importedIds.has(a.id)}
+                     onClick={(e) => importedIds.has(a.id)
+                       ? openImportedAssignment(a.id, e)
+                       : importAssignment(a.id, e)}
+                     disabled={importingIds.has(a.id)}
                     className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs border-2 transition-all whitespace-nowrap ${importedIds.has(a.id) ? "border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" : "border-primary/40 hover:border-primary text-primary hover:bg-primary/5"} disabled:opacity-60`}
                   >
                     {importingIds.has(a.id) ? (
@@ -4136,7 +4165,7 @@ function SharedTab({
                     ) : importedIds.has(a.id) ? (
                       <>
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        {lang === "ar" ? "تم الاستيراد ✓" : "Imported ✓"}
+                         {lang === "ar" ? "تم الاستيراد — فتح النسخة" : "Imported — Open copy"}
                       </>
                     ) : (
                       <>

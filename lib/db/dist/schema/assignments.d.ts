@@ -658,6 +658,23 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        importedFromAssignmentId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "imported_from_assignment_id";
+            tableName: "assignments";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         activityType: import("drizzle-orm/pg-core").PgColumn<{
             name: "activity_type";
             tableName: "assignments";
@@ -747,7 +764,6 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
     dialect: "pg";
 }>;
 export declare const insertAssignmentSchema: z.ZodObject<{
-    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -756,6 +772,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClasses: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    teacherId: z.ZodInt;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     showResults: z.ZodOptional<z.ZodBoolean>;
     modelImageBase64: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -779,6 +796,7 @@ export declare const insertAssignmentSchema: z.ZodObject<{
     closedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     extraAttempts: z.ZodOptional<z.ZodInt>;
     fromPresentationSlide: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    importedFromAssignmentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     activityType: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     listeningAudioText: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     listeningVoice: z.ZodOptional<z.ZodNullable<z.ZodString>>;

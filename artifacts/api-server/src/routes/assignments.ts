@@ -298,9 +298,6 @@ router.post("/assignments", async (req, res) => {
     res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
     return;
   }
-
-  // Policy 2026-08: manual work creation is never limited by plan quotas.
-  // AI costs are governed exclusively by the Hasad credits system.
   const teacherId = req.session.teacherId;
 
   try {
@@ -521,6 +518,7 @@ router.get("/assignments/shared", async (req, res) => {
     res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
     return;
   }
+  const teacherId = req.session.teacherId;
   try {
     const teacherId = req.session.teacherId!;
     const dismissed = await db
@@ -585,7 +583,26 @@ router.get("/assignments/shared", async (req, res) => {
       .where(whereClause)
       .orderBy(sql`${assignmentsTable.createdAt} DESC`);
 
-    res.json(assignments);
+    const imported = await db
+      .select({
+        sourceId: assignmentsTable.importedFromAssignmentId,
+        assignmentId: assignmentsTable.id,
+      })
+      .from(assignmentsTable)
+      .where(and(
+        eq(assignmentsTable.teacherId, teacherId),
+        isNotNull(assignmentsTable.importedFromAssignmentId),
+      ));
+    const importedBySource = new Map(
+      imported
+        .filter((row): row is { sourceId: number; assignmentId: number } => row.sourceId != null)
+        .map((row) => [row.sourceId, row.assignmentId]),
+    );
+
+    res.json(assignments.map((assignment) => ({
+      ...assignment,
+      importedAssignmentId: importedBySource.get(assignment.id) ?? null,
+    })));
   } catch (err) {
     req.log.error(err, "Shared assignments error");
     res.status(500).json({ message: "خطأ" });
@@ -2019,86 +2036,142 @@ router.post("/assignments/:id/import", async (req, res) => {
     res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
     return;
   }
+  const teacherId = req.session.teacherId;
   try {
     const id = Number(req.params.id);
     if (!id) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
 
-    const [original] = await db
-      .select()
-      .from(assignmentsTable)
-      .where(and(
-        eq(assignmentsTable.id, id),
-        eq(assignmentsTable.isShared, true),
-        // Admin-hidden items must not be importable even if the ID is known.
-        eq(assignmentsTable.hiddenByAdmin, false),
-        // Private-access rows are never importable from the public library.
-        ne(assignmentsTable.accessMode, "private"),
-      ))
-      .limit(1);
+    const result = await db.transaction(async (tx) => {
+      const [original] = await tx
+        .select()
+        .from(assignmentsTable)
+        .where(and(
+          eq(assignmentsTable.id, id),
+          eq(assignmentsTable.isShared, true),
+          // Admin-hidden items must not be importable even if the ID is known.
+          eq(assignmentsTable.hiddenByAdmin, false),
+          // Private-access rows are never importable from the public library.
+          ne(assignmentsTable.accessMode, "private"),
+        ))
+        .for("update")
+        .limit(1);
 
-    if (!original) {
+      if (!original) return { kind: "not_found" as const };
+      if (original.teacherId === teacherId) return { kind: "own" as const };
+
+      const [existing] = await tx
+        .select({
+          id: assignmentsTable.id,
+          title: assignmentsTable.title,
+        })
+        .from(assignmentsTable)
+        .where(and(
+          eq(assignmentsTable.teacherId, teacherId),
+          eq(assignmentsTable.importedFromAssignmentId, original.id),
+        ))
+        .limit(1);
+      if (existing) {
+        return { kind: "already_imported" as const, assignment: existing };
+      }
+
+      const [originalTeacher] = await tx
+        .select({ name: teachersTable.name })
+        .from(teachersTable)
+        .where(eq(teachersTable.id, original.teacherId))
+        .limit(1);
+      const credit = originalTeacher?.name ? ` (مستورد من ${originalTeacher.name})` : " (مستورد)";
+
+      const [newAssignment] = await tx
+        .insert(assignmentsTable)
+        .values({
+          title: `${original.title}${credit}`,
+          subject: original.subject,
+          description: original.description,
+          submissionMode: original.submissionMode,
+          accessMode: "code",
+          accessCode: original.accessCode,
+          targetClass: original.targetClass,
+          categoryId: null,
+          showResults: original.showResults,
+          modelImageBase64: original.modelImageBase64,
+          totalPoints: original.totalPoints,
+          deadline: null,
+          examMode: original.examMode,
+          examDurationMinutes: original.examDurationMinutes,
+          resultsReleaseMode: original.resultsReleaseMode,
+          teacherId,
+          isShared: false,
+          importedFromAssignmentId: original.id,
+          // Preserve contentKind so a competition stays in the competitions
+          // library when imported and (later) re-shared by the new owner.
+          contentKind: original.contentKind ?? "homework",
+        })
+        .returning();
+
+      const questions = await tx
+        .select()
+        .from(questionsTable)
+        .where(eq(questionsTable.assignmentId, id));
+
+      if (questions.length > 0) {
+        await tx.insert(questionsTable).values(
+          questions.map((q) => ({
+            assignmentId: newAssignment.id,
+            questionType: q.questionType || "mcq",
+            text: q.text,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctAnswer: q.correctAnswer,
+            points: q.points || 1,
+            imageUrl: q.imageUrl || null,
+            readAloud: q.readAloud ?? false,
+            allowMultipleAnswers: q.allowMultipleAnswers ?? false,
+            repeatQuestion: q.repeatQuestion ?? false,
+          })),
+        );
+      }
+
+      return { kind: "created" as const, assignment: newAssignment };
+    });
+
+    if (result.kind === "not_found") {
       res.status(404).json({ message: "الواجب غير موجود أو غير متاح للاستيراد" });
       return;
     }
-
-    if (original.teacherId === req.session.teacherId) {
+    if (result.kind === "own") {
       res.status(400).json({ message: "هذا واجبك الخاص" });
       return;
     }
-
-    const originalTeacher = await db.select({ name: teachersTable.name }).from(teachersTable).where(eq(teachersTable.id, original.teacherId)).limit(1);
-    const credit = originalTeacher[0]?.name ? ` (مستورد من ${originalTeacher[0].name})` : " (مستورد)";
-
-    const [newAssignment] = await db
-      .insert(assignmentsTable)
-      .values({
-        title: `${original.title}${credit}`,
-        subject: original.subject,
-        description: original.description,
-        submissionMode: original.submissionMode,
-        accessMode: "code",
-        accessCode: original.accessCode,
-        targetClass: original.targetClass,
-        categoryId: null,
-        showResults: original.showResults,
-        modelImageBase64: original.modelImageBase64,
-        totalPoints: original.totalPoints,
-        deadline: null,
-        examMode: original.examMode,
-        examDurationMinutes: original.examDurationMinutes,
-        resultsReleaseMode: original.resultsReleaseMode,
-        teacherId: req.session.teacherId,
-        isShared: false,
-        // Preserve contentKind so a competition stays in the competitions
-        // library when imported and (later) re-shared by the new owner.
-        contentKind: original.contentKind ?? "homework",
-      })
-      .returning();
-
-    const questions = await db.select().from(questionsTable).where(eq(questionsTable.assignmentId, id));
-
-    if (questions.length > 0) {
-      await db.insert(questionsTable).values(
-        questions.map((q) => ({
-          assignmentId: newAssignment.id,
-          questionType: q.questionType || "mcq",
-          text: q.text,
-          optionA: q.optionA,
-          optionB: q.optionB,
-          optionC: q.optionC,
-          optionD: q.optionD,
-          correctAnswer: q.correctAnswer,
-          points: q.points || 1,
-          imageUrl: q.imageUrl || null,
-          readAloud: q.readAloud ?? false,
-          allowMultipleAnswers: q.allowMultipleAnswers ?? false,
-          repeatQuestion: q.repeatQuestion ?? false,
-        })),
-      );
+    if (result.kind === "already_imported") {
+      res.status(200).json({
+        id: result.assignment.id,
+        title: result.assignment.title,
+        alreadyImported: true,
+      });
+      return;
     }
 
-    res.status(201).json({ id: newAssignment.id, title: newAssignment.title });
+    res.status(201).json({ id: result.assignment.id, title: result.assignment.title, alreadyImported: false });
   } catch (err) {
+    if ((err as any)?.code === "23505") {
+      const [existing] = await db
+        .select({
+          id: assignmentsTable.id,
+          title: assignmentsTable.title,
+        })
+        .from(assignmentsTable)
+        .where(and(
+          eq(assignmentsTable.teacherId, teacherId),
+          eq(assignmentsTable.importedFromAssignmentId, Number(req.params.id)),
+        ))
+        .limit(1);
+      if (existing) {
+        res.status(200).json({ id: existing.id, title: existing.title, alreadyImported: true });
+        return;
+      }
+    }
     req.log.error(err, "Import assignment error");
     res.status(500).json({ message: "خطأ في الاستيراد" });
   }

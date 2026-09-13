@@ -114,6 +114,11 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP;
       ALTER TABLE assignments
         ADD COLUMN IF NOT EXISTS extra_attempts INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS imported_from_assignment_id INTEGER;
+      CREATE UNIQUE INDEX IF NOT EXISTS assignments_imported_source_unique_idx
+        ON assignments(teacher_id, imported_from_assignment_id)
+        WHERE imported_from_assignment_id IS NOT NULL;
       DO $$
       BEGIN
         IF NOT EXISTS (

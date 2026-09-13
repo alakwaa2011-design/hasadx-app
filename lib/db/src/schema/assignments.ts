@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean, index, check } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -50,6 +50,8 @@ export const assignmentsTable = pgTable("assignments", {
   /** When created from a presentation activity slide, stores "presId:slideId" so the same
    *  assignment is reused on subsequent plays instead of creating a new one each time. */
   fromPresentationSlide: text("from_presentation_slide"),
+  /** Source assignment id when this row was imported from the shared library. */
+  importedFromAssignmentId: integer("imported_from_assignment_id"),
   // ─── Listening Activity fields ───────────────────────────────────────────────
   /** "listening" | null — marks this assignment as a listening activity */
   activityType: text("activity_type"),
@@ -72,6 +74,9 @@ export const assignmentsTable = pgTable("assignments", {
   // leading position keeps the scan covering for both library tabs.
   sharedLibraryIdx: index("assignments_shared_library_idx").on(
     t.isShared, t.hiddenByAdmin, t.contentKind, t.createdAt,
+  ),
+  importedSourceUniqueIdx: uniqueIndex("assignments_imported_source_unique_idx").on(
+    t.teacherId, t.importedFromAssignmentId,
   ),
 }));
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({
