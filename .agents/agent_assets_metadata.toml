@@ -1723,3 +1723,17 @@ type = "audio"
 title = "hasaad reels voiceover"
 description = "Text-to-speech audio: مع حصاد، تتحول فكرة الدرس إلى تجربة تعليمية متكاملة. أنشئ الواجبات، وخطط الدروس، وأوراق العمل بالذكاء الاصطناعي خلال ثوانٍ. أشعل حماس الصف بألعاب وميض، وشد الحبل، وإكس أو، والعج…"
 logical_id = "1c4dacc8-9836-4035-b131-37eb9a48c4fc"
+
+[[outputs]]
+id = "e8nadVpizPVHGcxNLsTxc"
+uri = "file://.local/outputs/--------------------------------.pptx"
+type = "slides"
+title = "درس ذكر الله تعالى — الصف الخامس (PPTX)"
+description = "عرض باوربوينت من 18 شريحة عن درس ذِكر الله تعالى، مع أنشطة وتقويم ختامي وصور مرجعية من صفحات الكتاب."
+logical_id = "ff803065-e41a-4b7f-b184-1b51d2b1e805"
+content_hash = "sha256:9a047c10a826a4d0ba38d8ca257e7417c7859559cb209e1c22eba9969aca7503"
+size = 10919140
+mtime_ms = 1789275308537
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/ff803065-e41a-4b7f-b184-1b51d2b1e805/4032dfb0-0d25-46cb-b68f-00dd9f910469"
+storage_version_token = "1789275313559565"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"

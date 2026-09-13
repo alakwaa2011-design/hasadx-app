@@ -11,14 +11,13 @@
 }
 
 :root {
-  /* Replace these with brand colors */
-  --slide-primary: #4f46e5;
-  --slide-accent: #06b6d4;
-  --slide-bg: #f8fafc;
-  --slide-text: #0f172a;
-  --slide-muted: #64748b;
-  --font-display-family: 'Inter', system-ui, sans-serif;
-  --font-body-family: 'Inter', system-ui, sans-serif;
+  --slide-primary: #1f6f4a;
+  --slide-accent: #8b5a9d;
+  --slide-bg: #f6f1e8;
+  --slide-text: #27352f;
+  --slide-muted: #6e7d74;
+  --font-display-family: 'Tajawal', sans-serif;
+  --font-body-family: 'Tajawal', sans-serif;
   color-scheme: light;
 }
 
@@ -33,6 +32,7 @@ body,
 body {
   background: var(--slide-bg);
   color: var(--slide-text);
+  font-family: var(--font-body-family);
 }
 
 .slide {
@@ -45,4 +45,34 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+@keyframes dhikr-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.6vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dhikr-soft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2.6vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-dhikr-slide-in {
+  animation: dhikr-slide-in 700ms ease-out both;
+}
+
+.animate-dhikr-soft-rise {
+  animation: dhikr-soft-rise 850ms 120ms ease-out both;
 }

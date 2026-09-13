@@ -1,1 +1,20 @@
-[]
+[
+  {"id":"dhikr-01","position":1,"filepath":"src/pages/slides/Slide01.tsx","title":"ذِكر الله تعالى","description":"غلاف الدرس وسؤال البداية","speakerNotes":""},
+  {"id":"dhikr-02","position":2,"filepath":"src/pages/slides/Slide02.tsx","title":"رحلة الحصة في 45 دقيقة","description":"خطة الحصة والاستراتيجيات","speakerNotes":""},
+  {"id":"dhikr-03","position":3,"filepath":"src/pages/slides/Slide03.tsx","title":"ماذا سأتعلّم؟","description":"نواتج التعلم وقيمة الدرس","speakerNotes":""},
+  {"id":"dhikr-04","position":4,"filepath":"src/pages/slides/Slide04.tsx","title":"تمهيد: قبل أن نخرج من المنزل","description":"موقف حواري وأسئلة تمهيدية","speakerNotes":""},
+  {"id":"dhikr-05","position":5,"filepath":"src/pages/slides/Slide05.tsx","title":"حديث الدرس","description":"قراءة حديث الحي والميت","speakerNotes":""},
+  {"id":"dhikr-06","position":6,"filepath":"src/pages/slides/Slide06.tsx","title":"ما معنى ذكر الله تعالى؟","description":"تعريف الذكر وآية الطمأنينة","speakerNotes":""},
+  {"id":"dhikr-07","position":7,"filepath":"src/pages/slides/Slide07.tsx","title":"آداب ذكر الله تعالى","description":"ستة آداب للذكر","speakerNotes":""},
+  {"id":"dhikr-08","position":8,"filepath":"src/pages/slides/Slide08.tsx","title":"حوار سلوكي: أثر الذكر في حياتي","description":"ربط الذكر بالشعور والسلوك","speakerNotes":""},
+  {"id":"dhikr-09","position":9,"filepath":"src/pages/slides/Slide09.tsx","title":"نشاط الكتاب: أفهم وأستنتج","description":"معنى الذكر ووجه الشبه","speakerNotes":""},
+  {"id":"dhikr-10","position":10,"filepath":"src/pages/slides/Slide10.tsx","title":"فضل ذكر الله تعالى ومجالسه","description":"ستة فضائل للذكر","speakerNotes":""},
+  {"id":"dhikr-11","position":11,"filepath":"src/pages/slides/Slide11.tsx","title":"نشاط الكتاب: أكتب وأشارك","description":"تسجيل الآداب وتحدي المجموعة","speakerNotes":""},
+  {"id":"dhikr-12","position":12,"filepath":"src/pages/slides/Slide12.tsx","title":"مجالس الذكر تحفّها السكينة","description":"حديث مجالس الذكر","speakerNotes":""},
+  {"id":"dhikr-13","position":13,"filepath":"src/pages/slides/Slide13.tsx","title":"دعاء عظيم بأربع كلمات","description":"حديث جويرية رضي الله عنها","speakerNotes":""},
+  {"id":"dhikr-14","position":14,"filepath":"src/pages/slides/Slide14.tsx","title":"نشاط التثبيت: أستمع وأقرأ","description":"تثبيت حفظ الدعاء بالاستماع والقراءة","speakerNotes":""},
+  {"id":"dhikr-15","position":15,"filepath":"src/pages/slides/Slide15.tsx","title":"فائدة الذكر: الحي والميت","description":"مناقشة وجه الشبه","speakerNotes":""},
+  {"id":"dhikr-16","position":16,"filepath":"src/pages/slides/Slide16.tsx","title":"أوقات يستحب فيها الذكر ويستجاب فيها الدعاء","description":"تصنيف الأوقات","speakerNotes":""},
+  {"id":"dhikr-17","position":17,"filepath":"src/pages/slides/Slide17.tsx","title":"مهمة إبداعية: بطاقة أذكاري اليومية","description":"تصميم بطاقة أذكار","speakerNotes":""},
+  {"id":"dhikr-18","position":18,"filepath":"src/pages/slides/Slide18.tsx","title":"أقوّم تعلمي","description":"تقويم ختامي وبطاقة خروج","speakerNotes":""}
+]
