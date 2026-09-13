@@ -10,7 +10,11 @@ export default function Slide14() {
           <Bullet>أثبت من حفظ الدعاء خلال قراءتي مع مجموعتي.</Bullet>
           <div className="mt-[3vh] rounded-[1.5vw] bg-[#fffaf0] p-[1.5vw] text-[1.65vw] font-bold leading-relaxed text-[#1f6f4a]">مهمة ثنائية: يصحح كل طالب قراءة زميله بلطف.</div>
         </Panel>
-        <Quote reference="الدعاء">
+        <Quote
+          reference="الدعاء"
+          audioText="سبحان الله وبحمده، عدد خلقه، ورضا نفسه، وزنة عرشه، ومداد كلماته."
+          audioTone="gold"
+        >
           سبحان الله وبحمده، عدد خلقه، ورضا نفسه، وزنة عرشه، ومداد كلماته.
         </Quote>
       </div>

@@ -81,3 +81,8 @@ body {
 .animate-dhikr-soft-rise {
   animation: dhikr-soft-rise 850ms 120ms ease-out both;
 }
+
+/* Audio controls are presentation-only and must not appear in static exports. */
+.slide .audio-control {
+  display: none;
+}

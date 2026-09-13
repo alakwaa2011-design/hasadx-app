@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 const base = import.meta.env.BASE_URL;
 
@@ -54,17 +54,85 @@ export function Label({ children, tone = "plum" }: { children: ReactNode; tone?:
   return <span className={`inline-flex rounded-full px-[1.3vw] py-[0.7vh] text-[1.25vw] font-bold ${tones[tone]}`}>{children}</span>;
 }
 
+export function AudioReadButton({ text, tone = "plum" }: { text: string; tone?: "plum" | "green" | "gold" }) {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window;
+
+  useEffect(() => {
+    if (!speechAvailable) return;
+    const handleEnd = () => setIsSpeaking(false);
+    window.speechSynthesis.addEventListener("end", handleEnd);
+    window.speechSynthesis.addEventListener("error", handleEnd);
+    return () => {
+      window.speechSynthesis.removeEventListener("end", handleEnd);
+      window.speechSynthesis.removeEventListener("error", handleEnd);
+    };
+  }, [speechAvailable]);
+
+  const toggleSpeech = () => {
+    if (!speechAvailable) return;
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "ar-SA";
+    utterance.rate = 0.78;
+    utterance.pitch = 1;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
+  const colors = {
+    plum: "border-[#8b5a9d] bg-[#f0e6f3] text-[#5b326d]",
+    green: "border-[#1f6f4a] bg-[#e8f0df] text-[#1f6f4a]",
+    gold: "border-[#c79a43] bg-[#fbf0cf] text-[#806019]",
+  };
+
+  return (
+    <button
+      type="button"
+      className={`audio-control mt-[2vh] inline-flex items-center gap-[0.65vw] rounded-full border-[0.14vw] px-[1.15vw] py-[0.75vh] text-[1.35vw] font-extrabold shadow-[0_0.35vw_1vw_rgba(55,72,56,0.08)] ${colors[tone]} ${!speechAvailable ? "cursor-not-allowed opacity-60" : ""}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        toggleSpeech();
+      }}
+      aria-label={speechAvailable ? (isSpeaking ? "إيقاف النطق" : "استمع إلى النص") : "النطق غير متاح في هذا المتصفح"}
+      disabled={!speechAvailable}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[1.45vw] w-[1.45vw] fill-none stroke-current stroke-[2]">
+        {isSpeaking ? (
+          <>
+            <path d="M6 5v14M12 5v14" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <path d="M4 9v6h4l5 4V5L8 9H4Z" strokeLinejoin="round" />
+            <path d="M17 9.5a4 4 0 0 1 0 5M19.5 7a7.5 7.5 0 0 1 0 10" strokeLinecap="round" />
+          </>
+        )}
+      </svg>
+      <span>{isSpeaking ? "إيقاف" : "استمع"}</span>
+    </button>
+  );
+}
 export function Bullet({ children, tone = "green" }: { children: ReactNode; tone?: "green" | "plum" | "gold" }) {
   const colors = { green: "bg-[#1f6f4a]", plum: "bg-[#8b5a9d]", gold: "bg-[#c79a43]" };
   return <div className="flex items-start gap-[1vw] text-[1.9vw] leading-relaxed"><span className={`mt-[1.1vh] h-[0.85vw] w-[0.85vw] shrink-0 rounded-full ${colors[tone]}`} /><span>{children}</span></div>;
 }
 
-export function Quote({ children, reference }: { children: ReactNode; reference?: ReactNode }) {
+export function Quote({ children, reference, audioText, audioTone = "plum" }: { children: ReactNode; reference?: ReactNode; audioText?: string; audioTone?: "plum" | "green" | "gold" }) {
   return (
     <div className="relative rounded-[2vw] border-[0.18vw] border-[#c79a43] bg-[#fffaf0] px-[3vw] py-[3vh] text-center shadow-[0_0.8vw_2vw_rgba(55,72,56,0.08)]">
       <div className="absolute -top-[2.2vh] right-[3vw] rounded-full bg-[#8b5a9d] px-[1.1vw] py-[0.6vh] text-[1.2vw] font-bold text-[#fffaf0]">حديث الدرس</div>
       <p className="text-[2.35vw] font-bold leading-[1.8] text-[#5b326d]">{children}</p>
       {reference && <p className="mt-[1.6vh] text-[1.35vw] text-[#6e7d74]">{reference}</p>}
+      {audioText && <AudioReadButton text={audioText} tone={audioTone} />}
     </div>
   );
 }

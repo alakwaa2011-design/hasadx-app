@@ -4,7 +4,11 @@ export default function Slide12() {
   return (
     <Frame title="مجالس الذكر تحفّها السكينة" number="١٢">
       <div className="grid h-full grid-cols-[1.15fr_0.85fr] items-center gap-[3vw]">
-        <Quote reference="عن أبي هريرة وأبي سعيد الخدري رضي الله عنهما أنهما شهدا على النبي ﷺ أنه قال">
+        <Quote
+          reference="عن أبي هريرة وأبي سعيد الخدري رضي الله عنهما أنهما شهدا على النبي ﷺ أنه قال"
+          audioText="لا يقعد قوم يذكرون الله عز وجل إلا حفتهم الملائكة، وغشيتهم الرحمة، ونزلت عليهم السكينة، وذكرهم الله فيمن عنده."
+          audioTone="green"
+        >
           لا يقعد قوم يذكرون الله عز وجل إلا حفتهم الملائكة، وغشيتهم الرحمة، ونزلت عليهم السكينة، وذكرهم الله فيمن عنده.
         </Quote>
         <Panel tone="green" className="flex flex-col justify-center text-center">
