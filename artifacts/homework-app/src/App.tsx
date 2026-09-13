@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { GlobalAiAssistant } from "@/components/ai-assistant";
 import { GlobalTeacherTimer } from "@/components/teacher/timer/timer-floating-widget";
 import { GlobalActiveLessonCountdown } from "@/components/teacher/timer/active-lesson-countdown";
+import { GlobalPushNotificationManager } from "@/components/push-notifications";
 import { InsufficientCreditsDialog } from "@/components/insufficient-credits-dialog";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { HeartbeatTracker } from "@/components/heartbeat-tracker";
@@ -809,6 +810,7 @@ function App() {
                 <GlobalAiAssistant />
                 <GlobalTeacherTimer />
                 <GlobalActiveLessonCountdown />
+                <GlobalPushNotificationManager />
                 <InsufficientCreditsDialog />
                 <PageViewTracker />
                 <HeartbeatTracker />

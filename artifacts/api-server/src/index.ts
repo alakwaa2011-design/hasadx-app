@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import { setRealtimeServer } from "./lib/realtime";
 import app, { sessionMiddleware, ensureSessionTable, corsOriginFn } from "./app";
 import { logger } from "./lib/logger";
+import { startWebPushWorker } from "./lib/web-push";
 import { setupGameSocket } from "./game/socket-handlers";
 import { setupWhiteboardSocket } from "./game/whiteboard-handlers";
 import { setupTugSocket } from "./game/tug-handlers";
@@ -2000,6 +2001,66 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "plans: quota column drop failed");
   }
+
+  // ── Web Push subscriptions and durable notification outbox ───────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        locale TEXT NOT NULL DEFAULT 'ar',
+        sound_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        failure_count INTEGER NOT NULL DEFAULT 0,
+        last_success_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS push_subscriptions_teacher_idx
+        ON push_subscriptions(teacher_id);
+
+      DROP TABLE IF EXISTS push_notification_outbox;
+      CREATE TABLE IF NOT EXISTS push_notification_deliveries (
+        id SERIAL PRIMARY KEY,
+        notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        subscription_id INTEGER NOT NULL REFERENCES push_subscriptions(id) ON DELETE CASCADE,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        processed_at TIMESTAMPTZ,
+        last_error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (notification_id, subscription_id)
+      );
+      CREATE INDEX IF NOT EXISTS push_notification_deliveries_pending_idx
+        ON push_notification_deliveries(processed_at, next_attempt_at);
+
+      CREATE OR REPLACE FUNCTION queue_notification_for_web_push()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        INSERT INTO push_notification_deliveries
+          (notification_id, teacher_id, subscription_id)
+        SELECT NEW.id, NEW.teacher_id, subscriptions.id
+        FROM push_subscriptions AS subscriptions
+        WHERE subscriptions.teacher_id = NEW.teacher_id
+        ON CONFLICT (notification_id, subscription_id) DO NOTHING;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+
+      DROP TRIGGER IF EXISTS notifications_web_push_outbox ON notifications;
+      CREATE TRIGGER notifications_web_push_outbox
+        AFTER INSERT ON notifications
+        FOR EACH ROW
+        EXECUTE FUNCTION queue_notification_for_web_push();
+    `);
+    logger.info("Web Push schema and notification trigger migrated");
+  } catch (err) {
+    logger.error(err, "Web Push schema migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {
@@ -2132,6 +2193,7 @@ httpServer.listen(port, () => {
       startMissingWelcomeCreditsAlertJob();
       startAnnualCreditReleaseJob();
       startPresentationOutlineWorker();
+      startWebPushWorker();
 
       import("./lib/ai-video-renderer").then(({
         failStaleAiVideoRenders,

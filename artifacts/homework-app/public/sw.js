@@ -2,7 +2,7 @@
 // installs aggressively) is forced to drop the previous cache. Old SW
 // installs were serving stale hashed bundles after deploys, producing a
 // blank /organizer screen in Chrome only.
-const CACHE_NAME = "hasadx-v9-2026-08-07";
+const CACHE_NAME = "hasadx-v10-2026-09-13";
 
 // Dedicated cache for self-hosted fonts. Fonts are immutable once deployed
 // (filenames include a content hash), so we use cache-first with a long TTL
@@ -82,6 +82,58 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (_) {
+    data = {};
+  }
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const visibleWindow = windows.find((client) => client.visibilityState === "visible");
+    if (visibleWindow) {
+      visibleWindow.postMessage({ type: "HASAAD_PUSH_ACTIVE", notification: data });
+      return;
+    }
+
+    await self.registration.showNotification(data.title || "حصاد", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.notificationId ? `hasaad-${data.notificationId}` : undefined,
+      renotify: false,
+      silent: data.silent === true,
+      data: {
+        actionUrl: data.actionUrl || "/teacher",
+        notificationId: data.notificationId || null,
+      },
+    });
+  })());
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const actionUrl = event.notification.data?.actionUrl || "/teacher";
+  const targetUrl = new URL(actionUrl, self.location.origin).href;
+  const safeTargetUrl = new URL(targetUrl).origin === self.location.origin
+    ? targetUrl
+    : new URL("/teacher", self.location.origin).href;
+
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("navigate" in client && "focus" in client) {
+        await client.navigate(safeTargetUrl);
+        await client.focus();
+        return;
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(safeTargetUrl);
+  })());
 });
 
 self.addEventListener("fetch", (event) => {

@@ -6,6 +6,7 @@ export * from "./questions";
 export * from "./submissions";
 export * from "./answers";
 export * from "./notifications";
+export * from "./push-subscriptions";
 export * from "./students";
 export * from "./feedback";
 export * from "./question-bank";

@@ -101,3 +101,4 @@
 - [Listening-script generation pricing](listening-script-generation-pricing.md) — generation and regeneration cost 2 credits; use the dedicated tool key and standard hold/capture/refund flow.
 - [Paid dialog price readiness](paid-dialog-price-readiness.md) — clear cached tool prices synchronously whenever a paid-action dialog opens; disable actions until the fresh response arrives.
 - [Slides workspace install](slides-workspace-install.md) — new slide artifacts may need the workspace catalog entry for wouter before pnpm can install and validate them.
+- [Web Push delivery and sound](web-push-delivery-sound.md) — deliver per device; visible clients use Hasaad sound, hidden/closed clients use system notification sound, never both.

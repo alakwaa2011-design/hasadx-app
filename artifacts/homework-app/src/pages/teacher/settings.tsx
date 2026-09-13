@@ -22,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useDarkMode, type ColorScheme } from "@/lib/dark-mode";
 import { cn } from "@/lib/utils";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { PushNotificationSettings } from "@/components/push-notifications";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -371,6 +372,8 @@ export default function TeacherSettings() {
               {lang === "ar" ? "تخصيص حسابك وتفضيلاتك" : "Customize your account and preferences"}
             </p>
           </div>
+
+          <PushNotificationSettings />
 
           {/* Appearance Section */}
           <Card className="p-6 sm:p-8 shadow-xl border-t-4 border-t-violet-500 mb-6">
