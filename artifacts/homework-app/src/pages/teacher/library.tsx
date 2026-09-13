@@ -361,6 +361,10 @@ export default function TeacherLibraryPage() {
       addGroup: isAr ? "مجلد جديد" : "New folder",
       all: isAr ? "كل الملفات" : "All files",
       none: isAr ? "بدون مجموعة" : "Ungrouped",
+      folders: isAr ? "المجلدات" : "Folders",
+      openFolder: isAr ? "فتح المجلد" : "Open folder",
+      filesCount: (n: number) => (isAr ? `${n} ملف` : `${n} file${n === 1 ? "" : "s"}`),
+      subfoldersCount: (n: number) => (isAr ? `${n} مجلد فرعي` : `${n} subfolder${n === 1 ? "" : "s"}`),
       search: isAr ? "بحث في الملفات..." : "Search files...",
       empty: isAr ? "لا توجد ملفات بعد" : "No files yet",
       uploadTab: isAr ? "رفع من الجهاز" : "Upload from device",
@@ -1170,6 +1174,11 @@ export default function TeacherLibraryPage() {
     setShowAddGroup(true);
   };
 
+  const visibleFolders =
+    activeGroup === "none"
+      ? []
+      : groups.filter((folder) => folder.parentGroupId === activeGroupId);
+
   const renderFolder = (folder: LibraryGroup, depth = 0): ReactNode => (
     <div key={folder.id}>
       <div
@@ -1406,7 +1415,8 @@ export default function TeacherLibraryPage() {
             {groups.filter((folder) => folder.parentGroupId === null).map((folder) => renderFolder(folder))}
           </Card>
 
-          {/* File list */}
+           {/* Computer-style contents view: folders at this level first,
+               then the files that belong to the currently open folder. */}
           <div dir={isAr ? "rtl" : "ltr"} className="order-1 md:order-2 min-w-0 flex-1 space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground overflow-x-auto whitespace-nowrap">
               <button
@@ -1440,6 +1450,90 @@ export default function TeacherLibraryPage() {
                 className={isAr ? "pe-9 ps-3 text-right" : "ps-9"}
               />
             </div>
+
+             {visibleFolders.length > 0 && (
+               <section className="space-y-2" aria-labelledby="library-folders-heading">
+                 <div className="flex items-center justify-between gap-3">
+                   <h2 id="library-folders-heading" className="text-sm font-black text-foreground">
+                     {T.folders}
+                   </h2>
+                   <Button
+                     type="button"
+                     size="sm"
+                     variant="ghost"
+                     onClick={() => openNewFolder(activeGroupId)}
+                     className="h-8 gap-1.5 text-violet-700 hover:bg-violet-50"
+                   >
+                     <FolderPlus className="w-4 h-4" />
+                     {T.addGroup}
+                   </Button>
+                 </div>
+                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                   {visibleFolders.map((folder) => (
+                     <div
+                       key={folder.id}
+                       className="group rounded-2xl border border-violet-200/70 bg-card p-3 shadow-sm hover:border-violet-400 hover:shadow-md transition-all"
+                     >
+                       <div className="flex items-start gap-2.5">
+                         <button
+                           type="button"
+                           onClick={() => setActiveGroup(String(folder.id))}
+                           className="flex min-w-0 flex-1 items-start gap-2.5 text-start"
+                           title={T.openFolder}
+                           data-testid={`open-group-${folder.id}`}
+                         >
+                           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700">
+                             <Folder className="h-5 w-5 fill-violet-200" />
+                           </span>
+                           <span className="min-w-0 pt-0.5">
+                             <span className="block truncate text-sm font-black">{folder.name}</span>
+                             <span className="mt-1 block text-[11px] text-muted-foreground">
+                               {T.filesCount(folder.fileCount)}
+                             </span>
+                           </span>
+                         </button>
+                         <div className="flex shrink-0 items-center gap-0.5">
+                           <button
+                             type="button"
+                             onClick={() => {
+                               setRenameTarget(folder);
+                               setRenameValue(folder.name);
+                             }}
+                             className="rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+                             title={T.rename}
+                             aria-label={`${T.rename}: ${folder.name}`}
+                           >
+                             <Pencil className="h-3.5 w-3.5" />
+                           </button>
+                           <button
+                             type="button"
+                             onClick={() => setDeleteGroupTarget(folder)}
+                             className="rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
+                             title={T.delete}
+                             aria-label={`${T.delete}: ${folder.name}`}
+                           >
+                             <Trash2 className="h-3.5 w-3.5" />
+                           </button>
+                         </div>
+                       </div>
+                       <button
+                         type="button"
+                         onClick={() => setActiveGroup(String(folder.id))}
+                         className="mt-3 flex w-full items-center justify-between border-t border-border/60 pt-2 text-[11px] font-semibold text-muted-foreground hover:text-violet-700"
+                       >
+                         <span>{T.openFolder}</span>
+                         <ArrowLeft className={`h-3.5 w-3.5 ${isAr ? "" : "rotate-180"}`} />
+                       </button>
+                       {folder.childCount > 0 && (
+                         <div className="mt-1 text-[10px] text-muted-foreground">
+                           {T.subfoldersCount(folder.childCount)}
+                         </div>
+                       )}
+                     </div>
+                   ))}
+                 </div>
+               </section>
+             )}
 
             {loading ? (
               <Card className="p-8 text-center text-muted-foreground">
