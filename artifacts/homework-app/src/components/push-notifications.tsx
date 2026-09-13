@@ -33,6 +33,12 @@ async function currentSubscription(): Promise<PushSubscription | null> {
   return registration.pushManager.getSubscription();
 }
 
+async function currentSubscriptionWithTimeout(timeoutMs = 1_000): Promise<PushSubscription | null> {
+  return Promise.race([
+    currentSubscription().catch(() => null),
+    new Promise<null>((resolve) => window.setTimeout(() => resolve(null), timeoutMs)),
+  ]);
+}
 async function saveSubscription(subscription: PushSubscription, lang: "ar" | "en"): Promise<void> {
   const timer = timerStore.getState();
   const response = await fetch(`${API_BASE}/api/notifications/push/subscribe`, {
@@ -48,6 +54,17 @@ async function saveSubscription(subscription: PushSubscription, lang: "ar" | "en
   if (!response.ok) throw new Error("Unable to save push subscription");
 }
 
+export async function logoutCurrentTeacherDevice(): Promise<void> {
+  const subscription = await currentSubscriptionWithTimeout();
+  const response = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pushEndpoint: subscription?.endpoint ?? null }),
+  });
+  if (!response.ok) throw new Error("Unable to log out");
+  void subscription?.unsubscribe().catch(() => undefined);
+}
 export function GlobalPushNotificationManager() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();

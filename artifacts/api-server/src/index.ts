@@ -2011,6 +2011,7 @@ async function runSchemaMigrations() {
         endpoint TEXT NOT NULL UNIQUE,
         p256dh TEXT NOT NULL,
         auth TEXT NOT NULL,
+        session_id TEXT,
         user_agent TEXT,
         locale TEXT NOT NULL DEFAULT 'ar',
         sound_enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -2021,6 +2022,10 @@ async function runSchemaMigrations() {
       );
       CREATE INDEX IF NOT EXISTS push_subscriptions_teacher_idx
         ON push_subscriptions(teacher_id);
+      ALTER TABLE push_subscriptions
+        ADD COLUMN IF NOT EXISTS session_id TEXT;
+      CREATE INDEX IF NOT EXISTS push_subscriptions_session_idx
+        ON push_subscriptions(session_id);
 
       DROP TABLE IF EXISTS push_notification_outbox;
       CREATE TABLE IF NOT EXISTS push_notification_deliveries (

@@ -7,6 +7,12 @@ const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:support@hasaadx.com";
 const MAX_ATTEMPTS = 5;
 const BATCH_SIZE = 20;
 
+const ALLOWED_PUSH_HOSTS = new Set([
+  "fcm.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "push.services.mozilla.com",
+  "web.push.apple.com",
+]);
 type ClaimedDelivery = {
   id: number;
   notification_id: number;
@@ -36,6 +42,38 @@ type PushTarget = {
 let configured = false;
 let processing = false;
 let workerTimer: NodeJS.Timeout | null = null;
+
+export function isAllowedWebPushEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      (url.port && url.port !== "443")
+    ) {
+      return false;
+    }
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    return ALLOWED_PUSH_HOSTS.has(hostname) || hostname.endsWith(".notify.windows.com");
+  } catch {
+    return false;
+  }
+}
+
+export async function removePushSubscriptionsForSession(
+  teacherId: number,
+  sessionId: string,
+  endpoint: string | null,
+): Promise<void> {
+  await pool.query({
+    text: `DELETE FROM push_subscriptions
+           WHERE teacher_id = $1
+             AND (session_id = $2 OR ($3::text IS NOT NULL AND endpoint = $3))`,
+    values: [teacherId, sessionId, endpoint],
+    query_timeout: 750,
+  } as any);
+}
 
 export async function createDueTimerNotifications(): Promise<void> {
   const client = await pool.connect();
@@ -250,6 +288,12 @@ async function sendDelivery(delivery: ClaimedDelivery): Promise<void> {
   }
 
   const target = targets[0];
+  if (!isAllowedWebPushEndpoint(target.endpoint)) {
+    await pool.query(`DELETE FROM push_subscriptions WHERE id = $1`, [target.id]);
+    await markProcessed(delivery.id, "Rejected unsafe Web Push endpoint");
+    logger.warn({ subscriptionId: target.id }, "Rejected unsafe Web Push endpoint");
+    return;
+  }
   const body = JSON.stringify({
     notificationId: delivery.notification_id,
     type: payload.type,

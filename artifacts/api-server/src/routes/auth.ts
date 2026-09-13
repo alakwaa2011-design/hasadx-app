@@ -1,13 +1,21 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { db, pool, teachersTable, passwordResetTokensTable, trustedDevicesTable } from "@workspace/db";
-import { eq, or, and, isNull, gt } from "drizzle-orm";
+import {
+  db,
+  pool,
+  teachersTable,
+  passwordResetTokensTable,
+  trustedDevicesTable,
+  pushSubscriptionsTable,
+} from "@workspace/db";
+import { eq, ne, or, and, isNull, gt } from "drizzle-orm";
 import {
   RegisterTeacherBody,
   LoginTeacherBody,
 } from "@workspace/api-zod";
 import { z } from "zod";
+import { removePushSubscriptionsForSession } from "../lib/web-push";
 
 const PHONE_REGEX = /^\+\d{7,15}$/;
 const LEGACY_PHONE_REGEX = /^\d{7,15}$/;
@@ -103,11 +111,19 @@ async function revokeTeacherSessions(
         `DELETE FROM "session" WHERE (sess->>'teacherId')::int = $1 AND sid <> $2`,
         [teacherId, exceptSid],
       );
+      await db.delete(pushSubscriptionsTable).where(and(
+        eq(pushSubscriptionsTable.teacherId, teacherId),
+        or(
+          ne(pushSubscriptionsTable.sessionId, exceptSid),
+          isNull(pushSubscriptionsTable.sessionId),
+        ),
+      ));
     } else {
       await pool.query(
         `DELETE FROM "session" WHERE (sess->>'teacherId')::int = $1`,
         [teacherId],
       );
+      await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.teacherId, teacherId));
     }
   } catch (err) {
     log.error({ err, teacherId }, "Failed to revoke teacher sessions");
@@ -1228,6 +1244,13 @@ router.delete("/auth/sessions", async (req, res) => {
       `DELETE FROM "session" WHERE (sess->>'teacherId')::int = $1 AND sid <> $2`,
       [teacherId, currentSid],
     );
+    await db.delete(pushSubscriptionsTable).where(and(
+      eq(pushSubscriptionsTable.teacherId, teacherId),
+      or(
+        ne(pushSubscriptionsTable.sessionId, currentSid),
+        isNull(pushSubscriptionsTable.sessionId),
+      ),
+    ));
     res.json({
       message: "تم تسجيل الخروج من الأجهزة الأخرى",
       revoked: result.rowCount ?? 0,
@@ -1260,6 +1283,10 @@ router.delete("/auth/sessions/:sid", async (req, res) => {
       res.status(404).json({ message: "الجلسة غير موجودة" });
       return;
     }
+    await db.delete(pushSubscriptionsTable).where(and(
+      eq(pushSubscriptionsTable.teacherId, teacherId),
+      eq(pushSubscriptionsTable.sessionId, targetSid),
+    ));
     if (wasCurrent) {
       // Avoid resaving the destroyed session.
       req.session.destroy(() => {
@@ -1330,15 +1357,26 @@ router.put("/auth/preferences", async (req, res) => {
   }
 });
 
-router.post("/auth/logout", (req, res) => {
+router.post("/auth/logout", async (req, res) => {
   const sess: any = req.session;
   const teacherId = sess?.teacherId ?? null;
-  if (teacherId) {
-    logActivity({ req, userId: teacherId, userRole: "teacher", action: "logout" });
+  try {
+    if (teacherId) {
+      logActivity({ req, userId: teacherId, userRole: "teacher", action: "logout" });
+      const pushEndpoint = typeof req.body?.pushEndpoint === "string"
+        ? req.body.pushEndpoint.slice(0, 4096)
+        : null;
+      try {
+        await removePushSubscriptionsForSession(teacherId, req.sessionID, pushEndpoint);
+      } catch (error) {
+        req.log.warn({ err: error, teacherId }, "Push subscription cleanup failed during logout");
+      }
+    }
+  } finally {
+    req.session.destroy(() => {
+      res.json({ message: "تم تسجيل الخروج بنجاح" });
+    });
   }
-  req.session.destroy(() => {
-    res.json({ message: "تم تسجيل الخروج بنجاح" });
-  });
 });
 
 router.post("/auth/google", authLimiter, async (req, res) => {

@@ -2,9 +2,21 @@ import { Router, type IRouter } from "express";
 import { db, notificationsTable, pushSubscriptionsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
-import { getVapidPublicKey, drainPushNotificationOutbox } from "../lib/web-push";
+import { rateLimit } from "express-rate-limit";
+import {
+  getVapidPublicKey,
+  drainPushNotificationOutbox,
+  isAllowedWebPushEndpoint,
+} from "../lib/web-push";
 
 const router: IRouter = Router();
+const pushTestLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "يرجى الانتظار قبل إرسال إشعار تجريبي آخر" },
+});
 
 const PushSubscriptionBody = z.object({
   endpoint: z.string().url().max(4096),
@@ -127,6 +139,10 @@ router.post("/notifications/push/subscribe", async (req, res): Promise<void> => 
     return;
   }
   const { endpoint, keys, locale, soundEnabled } = parsed.data;
+  if (!isAllowedWebPushEndpoint(endpoint)) {
+    res.status(400).json({ message: "عنوان خدمة الإشعارات غير مدعوم" });
+    return;
+  }
   await db
     .insert(pushSubscriptionsTable)
     .values({
@@ -134,6 +150,7 @@ router.post("/notifications/push/subscribe", async (req, res): Promise<void> => 
       endpoint,
       p256dh: keys.p256dh,
       auth: keys.auth,
+      sessionId: req.sessionID,
       locale,
       soundEnabled,
       userAgent: req.get("user-agent")?.slice(0, 500),
@@ -144,6 +161,7 @@ router.post("/notifications/push/subscribe", async (req, res): Promise<void> => 
         teacherId: req.session.teacherId,
         p256dh: keys.p256dh,
         auth: keys.auth,
+        sessionId: req.sessionID,
         locale,
         soundEnabled,
         failureCount: 0,
@@ -192,7 +210,7 @@ router.post("/notifications/push/unsubscribe", async (req, res): Promise<void> =
   res.json({ success: true });
 });
 
-router.post("/notifications/push/test", async (req, res): Promise<void> => {
+router.post("/notifications/push/test", pushTestLimiter, async (req, res): Promise<void> => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول" });
     return;

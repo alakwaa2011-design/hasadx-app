@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useGetCurrentTeacher,
-  useLogoutTeacher,
 } from "@workspace/api-client-react";
 import {
   LogOut,
@@ -45,6 +44,7 @@ import { AdminUiSwitcher } from "./admin-ui-switcher";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-provider";
 import { useSmartBack } from "@/lib/nav-history";
+import { logoutCurrentTeacherDevice } from "@/components/push-notifications";
 import { useDarkMode } from "@/lib/dark-mode";
 import { SocialLinksBar } from "./social-links-bar";
 
@@ -219,14 +219,18 @@ export function Layout({ children, noHeader }: LayoutProps) {
   const { student, loading: studentLoading } = useStudentSession();
   const isLoading = teacherLoading || studentLoading;
 
-  const logoutMutation = useLogoutTeacher({
-    mutation: {
-      onSuccess: () => {
-        queryClient.clear();
-        window.location.href = "/";
-      },
-    },
-  });
+  const [logoutPending, setLogoutPending] = useState(false);
+  const logoutTeacher = async () => {
+    if (logoutPending) return;
+    setLogoutPending(true);
+    try {
+      await logoutCurrentTeacherDevice();
+      queryClient.clear();
+      window.location.href = "/";
+    } catch {
+      setLogoutPending(false);
+    }
+  };
 
   const isTeacherAdmin = Boolean((user as any)?.isAdmin) || (user as any)?.role === "admin";
   const dmUnreadCount = useDmUnreadCount(!!user && !isTeacherAdmin);
@@ -448,13 +452,13 @@ export function Layout({ children, noHeader }: LayoutProps) {
                             <div className="border-t border-border/60 my-1" />
                             <button
                               onClick={() => {
-                                logoutMutation.mutate();
+                                void logoutTeacher();
                                 setUserMenuOpen(false);
                               }}
-                              disabled={logoutMutation.isPending}
+                              disabled={logoutPending}
                               className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/5 w-full transition-colors"
                             >
-                              {logoutMutation.isPending ? (
+                              {logoutPending ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <LogOut className="w-4 h-4" />
@@ -773,7 +777,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                       <div className="border-t border-border/40 my-1" />
                       <button
                         onClick={() => {
-                          logoutMutation.mutate();
+                          void logoutTeacher();
                           setMobileMenuOpen(false);
                         }}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/5 active:bg-destructive/10 w-full transition-colors"

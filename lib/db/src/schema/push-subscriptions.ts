@@ -19,6 +19,7 @@ export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   endpoint: text("endpoint").notNull(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
+  sessionId: text("session_id"),
   userAgent: text("user_agent"),
   locale: text("locale").notNull().default("ar"),
   soundEnabled: boolean("sound_enabled").notNull().default(true),
@@ -29,6 +30,7 @@ export const pushSubscriptionsTable = pgTable("push_subscriptions", {
 }, (table) => ({
   endpointUnique: uniqueIndex("push_subscriptions_endpoint_uq").on(table.endpoint),
   teacherIdx: index("push_subscriptions_teacher_idx").on(table.teacherId),
+  sessionIdx: index("push_subscriptions_session_idx").on(table.sessionId),
 }));
 
 export const pushNotificationDeliveriesTable = pgTable("push_notification_deliveries", {

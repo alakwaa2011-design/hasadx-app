@@ -94,11 +94,10 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const visibleWindow = windows.find((client) => client.visibilityState === "visible");
-    if (visibleWindow) {
-      visibleWindow.postMessage({ type: "HASAAD_PUSH_ACTIVE", notification: data });
-      return;
-    }
+    const visibleWindows = windows.filter((client) => client.visibilityState === "visible");
+    visibleWindows.forEach((client) => {
+      client.postMessage({ type: "HASAAD_PUSH_ACTIVE", notification: data });
+    });
 
     await self.registration.showNotification(data.title || "حصاد", {
       body: data.body || "",
@@ -106,7 +105,10 @@ self.addEventListener("push", (event) => {
       badge: "/icons/icon-192.png",
       tag: data.notificationId ? `hasaad-${data.notificationId}` : undefined,
       renotify: false,
-      silent: data.silent === true,
+      // A visible teacher tab plays the selected Hasaad sound. Keep the
+      // mandatory system notification silent in that case so retries/tabs
+      // cannot produce both the custom and system sounds.
+      silent: visibleWindows.length > 0 || data.silent === true,
       data: {
         actionUrl: data.actionUrl || "/teacher",
         notificationId: data.notificationId || null,
