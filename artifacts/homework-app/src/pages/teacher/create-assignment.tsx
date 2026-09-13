@@ -1220,8 +1220,8 @@ export default function CreateAssignment() {
         resultsReleaseMode: resultsReleaseMode !== "immediate" ? resultsReleaseMode : undefined,
         aiGradingInstructions: aiGradingInstructions.trim() || undefined,
         isShared, categoryId: categoryId || undefined,
-        // contentKind drives which public library the activity appears in:
-        // contest mode → "مكتبة المسابقات الجاهزة", otherwise "مكتبة الأنشطة".
+        // Preserve contest mode as an activity format. Both formats appear
+        // together in the unified activities library.
         contentKind: isContestMode ? "competition" : "homework",
         isAdaptive: isAdaptive || undefined,
         adaptiveConfig: (isAdaptive ? {
@@ -3415,49 +3415,6 @@ export default function CreateAssignment() {
                         </button>
                       </div>
 
-                      <AnimatePresence initial={false}>
-                        {isShared && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2, ease: "easeInOut" }}
-                            className="overflow-hidden"
-                          >
-                            <div className="pt-1">
-                              <p className="text-[11px] font-bold text-slate-500 mb-2">
-                                {lang === "ar" ? "أين يستقر في المكتبة العامة؟" : "Where does it land in the public library?"}
-                              </p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <button
-                                  type="button"
-                                  data-testid="btn-library-activities"
-                                  onClick={() => setIsContestMode(false)}
-                                  className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-start transition-all ${!isContestMode ? "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20" : "border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800/50"}`}
-                                >
-                                  <FileText className={`w-5 h-5 shrink-0 ${!isContestMode ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
-                                  <div className="min-w-0">
-                                    <div className={`text-[13px] font-black leading-tight ${!isContestMode ? "text-emerald-800 dark:text-emerald-300" : "text-slate-700 dark:text-slate-300"}`}>{lang === "ar" ? "مكتبة الأنشطة" : "Activities Library"}</div>
-                                    <div className="text-[10px] font-bold mt-0.5 text-slate-500 truncate">{lang === "ar" ? "واجب أو اختبار" : "Homework or exam"}</div>
-                                  </div>
-                                </button>
-                                <button
-                                  type="button"
-                                  data-testid="btn-library-competitions"
-                                  onClick={() => setIsContestMode(true)}
-                                  className={`flex items-center gap-2.5 p-3 rounded-2xl border-2 text-start transition-all ${isContestMode ? "border-amber-500 bg-amber-50/50 dark:bg-amber-900/20" : "border-slate-100 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-800/50"}`}
-                                >
-                                  <Star className={`w-5 h-5 shrink-0 ${isContestMode ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
-                                  <div className="min-w-0">
-                                    <div className={`text-[13px] font-black leading-tight ${isContestMode ? "text-amber-800 dark:text-amber-300" : "text-slate-700 dark:text-slate-300"}`}>{lang === "ar" ? "مكتبة المسابقات" : "Competitions Library"}</div>
-                                    <div className="text-[10px] font-bold mt-0.5 text-slate-500 truncate">{lang === "ar" ? "أسئلة مسابقة جاهزة" : "Ready contest questions"}</div>
-                                  </div>
-                                </button>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                     </div>
                   )}
 

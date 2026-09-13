@@ -298,7 +298,6 @@ type TabId =
   | "assignments"
   | "shared"
   | "library_homework"
-  | "library_competitions"
   | "competitive"
   | "solo_challenges"
   | "tools"
@@ -366,7 +365,7 @@ type AssignmentLiveGameChoice =
 
 const DASHBOARD_ALLOWED_TABS = [
   "overview", "credits", "assignments", "shared", "library_homework",
-  "library_competitions", "competitive", "tools", "videos", "stats", "students",
+  "competitive", "tools", "videos", "stats", "students",
   "rewards", "kids_board",
 ] as const;
 
@@ -805,12 +804,6 @@ export default function TeacherDashboard() {
       icon: <BookOpen className="w-4 h-4" />,
     },
     {
-      id: "library_competitions",
-      label: t.dashboard.competitionsLibrary,
-      shortLabel: t.dashboard.competitionsShort,
-      icon: <Trophy className="w-4 h-4" />,
-    },
-    {
       id: "competitive",
       label: t.dashboard.educationalGames,
       shortLabel: t.dashboard.startQuiz,
@@ -995,10 +988,7 @@ export default function TeacherDashboard() {
           <ParentMessagesContent />
         )}
         {activeTab === "library_homework" && (
-          <SharedContentPage embedded forceKind="homework" />
-        )}
-        {activeTab === "library_competitions" && (
-          <SharedContentPage embedded forceKind="competition" />
+          <SharedContentPage embedded />
         )}
         {activeTab === "presentations" && (
           <PresentationsIndex embedded />
@@ -1050,8 +1040,8 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "hsl(var(--muted-foreground))"}}>
               {t.dashboard.overview}
             </p>
-            {tabs.filter(t => ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","students","rewards","parent_messages","stats", ...(isAdminUser ? ["kids_board"] : [])].includes(t.id)).sort((a, b) => {
-                const order = ["overview","assignments","competitive","library_homework","library_competitions","solo_challenges","islamic","kids_board","students","rewards","parent_messages","stats"];
+            {tabs.filter(t => ["overview","assignments","competitive","library_homework","solo_challenges","islamic","students","rewards","parent_messages","stats", ...(isAdminUser ? ["kids_board"] : [])].includes(t.id)).sort((a, b) => {
+                const order = ["overview","assignments","competitive","library_homework","solo_challenges","islamic","kids_board","students","rewards","parent_messages","stats"];
                 return order.indexOf(a.id) - order.indexOf(b.id);
               }).map((tab) => {
               const active = activeTab === tab.id;
@@ -1269,8 +1259,7 @@ export default function TeacherDashboard() {
             <div
               className={cn(
                 "px-6 xl:px-10 2xl:px-14",
-                activeTab === "library_competitions" ||
-                  activeTab === "library_homework" ||
+                activeTab === "library_homework" ||
                   activeTab === "assignments"
                   ? "py-4 pt-4"
                   : "py-8",
@@ -1278,8 +1267,7 @@ export default function TeacherDashboard() {
             >
               <div
                 className={cn(
-                  activeTab === "library_competitions" ||
-                    activeTab === "library_homework" ||
+                  activeTab === "library_homework" ||
                     activeTab === "assignments"
                     ? "mb-3"
                     : "mb-6",
@@ -1288,8 +1276,7 @@ export default function TeacherDashboard() {
                 <GuestDraftImportBanner />
               </div>
               {/* Tab heading — skipped when the tab renders its own hero (libraries + assignments). */}
-              {activeTab !== "library_competitions" &&
-                activeTab !== "library_homework" &&
+              {activeTab !== "library_homework" &&
                 activeTab !== "assignments" &&
                 activeTab !== "competitive" &&
                 activeTab !== "tools" &&
@@ -1304,7 +1291,7 @@ export default function TeacherDashboard() {
               </div>
               )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
-          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "library_competitions", "videos", "presentations", "parent_messages", "stats", "rewards", "kids_board"].includes(activeTab) && (
+          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "videos", "presentations", "parent_messages", "stats", "rewards", "kids_board"].includes(activeTab) && (
           <div
             className={cn(
               "grid grid-cols-3 gap-3",

@@ -84,7 +84,7 @@ describe("parseDashboardUrlParams — ?tab وحده", () => {
 
   const recognised = [
     "overview", "assignments", "shared", "library_homework",
-    "library_competitions", "competitive", "tools", "videos", "stats", "students",
+    "competitive", "tools", "videos", "stats", "students",
     "rewards", "kids_board",
   ] as const;
 

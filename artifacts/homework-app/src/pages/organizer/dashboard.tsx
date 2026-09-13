@@ -752,7 +752,7 @@ export default function OrganizerDashboard() {
             {/* ── Tab 3: مكتبة + عروض ── */}
             {sideTab === "library" && (
               <div className="flex-1 overflow-y-auto p-4">
-                {/* 3 direct-navigation shortcut links */}
+                {/* Direct-navigation shortcut links */}
                 <p
                   className="text-[10px] font-black uppercase tracking-widest mb-2"
                   style={{ color: "rgba(27,107,63,0.55)" }}
@@ -762,13 +762,6 @@ export default function OrganizerDashboard() {
                 <div className="space-y-1.5 mb-4">
                   {(
                     [
-                      {
-                        href: "/teacher/library/competitions",
-                        title: lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
-                        Icon: Library,
-                        accent: "#0e7490",
-                        bg: "rgba(34,211,238,0.10)",
-                      },
                       {
                         href: "/teacher/library/homework",
                         title: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",

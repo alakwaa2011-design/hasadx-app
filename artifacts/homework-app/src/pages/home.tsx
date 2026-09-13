@@ -523,7 +523,7 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
             </p>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold mb-3 border border-amber-500/15">
               <Zap className="w-3.5 h-3.5" />
-              {lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library"}
+              {lang === "ar" ? "من مكتبة الأنشطة" : "From the Activities Library"}
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {lang === "ar" ? "أسئلة ومسابقات جاهزة" : "Ready-made Quizzes"}

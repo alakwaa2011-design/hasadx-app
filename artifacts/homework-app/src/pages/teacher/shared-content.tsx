@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
   Search, User, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
-  Gamepad2, EyeOff, FolderOpen, MoreVertical, Zap, Users, Plus,
+  Gamepad2, EyeOff, MoreVertical, Zap, Users, Plus,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -195,28 +195,15 @@ interface SharedPresentation {
 
 export default function SharedContentPage({
   embedded,
-  forceKind,
 }: {
   embedded?: boolean;
-  forceKind?: "homework" | "competition";
 } = {}) {
   const { t, lang } = useI18n();
-  const [path, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
 
-  // The page now serves three URLs:
-  //   /teacher/library/homework      → kind="homework" (مكتبة الأنشطة)
-  //   /teacher/library/competitions  → kind="competition" (مكتبة المسابقات الجاهزة)
-  //   /teacher/shared (legacy)       → kind=null (everything, both kinds)
-  // In competition mode we hide the questions/videos tabs and only show
-  // assignments tagged contentKind='competition'.
-  const libraryKind: "homework" | "competition" | null = forceKind
-    ? forceKind
-    : path.endsWith("/library/competitions") ? "competition" :
-      path.endsWith("/library/homework") ? "homework" : null;
-  const isCompetitionLibrary = libraryKind === "competition";
-  const isActivitiesLibrary = libraryKind === "homework";
+  const isActivitiesLibrary = true;
 
   const AuthorBadge = ({ isAdminContent, teacherName }: { isAdminContent?: boolean; teacherName?: string | null }) => {
     if (isAdminContent) return null;
@@ -239,7 +226,6 @@ export default function SharedContentPage({
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
   const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
-  const [changingKindIds, setChangingKindIds] = useState<Set<number>>(new Set());
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   // Admin-only toggle: when ON, the page also fetches admin-hidden rows
@@ -290,37 +276,27 @@ export default function SharedContentPage({
         setCurrentTeacherId(meData.id || null);
         setIsAdmin(!!meData.isAdmin);
         const params = new URLSearchParams();
-        if (libraryKind) params.set("kind", libraryKind);
         if (showHidden && meData.isAdmin) params.set("showHidden", "1");
         const qs = params.toString();
         const aUrl = qs
           ? `${API_BASE}/api/assignments/shared?${qs}`
           : `${API_BASE}/api/assignments/shared`;
-        // Competition library: assignments only — skip the (slower) bank
-        // and video lookups entirely so the tab feels snappy.
         // Admin show-hidden mode applies to ALL shared endpoints, not just
         // assignments — so question-bank and video moderation works too.
         const adminShowHidden = showHidden && meData.isAdmin;
         const qbUrl = `${API_BASE}/api/question-bank/shared${adminShowHidden ? "?showHidden=1" : ""}`;
         const vidUrl = `${API_BASE}/api/video-lessons/shared/all${adminShowHidden ? "?showHidden=1" : ""}`;
-        const fetches: Promise<Response>[] = [fetch(aUrl, { credentials: "include" })];
-        if (!isCompetitionLibrary) {
-          fetches.push(fetch(qbUrl, { credentials: "include" }));
-          fetches.push(fetch(vidUrl, { credentials: "include" }));
-        }
-        if (isActivitiesLibrary) {
-          fetches.push(fetch(`${API_BASE}/api/game-activities/shared`, { credentials: "include" }));
-          fetches.push(fetch(`${API_BASE}/api/presentations`, { credentials: "include" }));
-        }
+        const fetches: Promise<Response>[] = [
+          fetch(aUrl, { credentials: "include" }),
+          fetch(qbUrl, { credentials: "include" }),
+          fetch(vidUrl, { credentials: "include" }),
+          fetch(`${API_BASE}/api/game-activities/shared`, { credentials: "include" }),
+          fetch(`${API_BASE}/api/presentations`, { credentials: "include" }),
+        ];
         const [aRes, qRes, vRes, gRes, pRes] = await Promise.all(fetches);
         if (aRes.ok) setAssignments(await aRes.json());
-        if (!isCompetitionLibrary) {
-          if (qRes && qRes.ok) setQuestions(await qRes.json());
-          if (vRes && vRes.ok) setVideoLessons(await vRes.json());
-        } else {
-          setQuestions([]);
-          setVideoLessons([]);
-        }
+        if (qRes?.ok) setQuestions(await qRes.json());
+        if (vRes?.ok) setVideoLessons(await vRes.json());
         if (isActivitiesLibrary && gRes?.ok) {
           const rows = await gRes.json() as SharedGameActivity[];
           setGameActivities(rows.map((game) => {
@@ -336,17 +312,13 @@ export default function SharedContentPage({
                 : typeof settings.gradeLevel === "string" ? settings.gradeLevel : null,
             };
           }));
-        } else if (!isActivitiesLibrary) {
-          setGameActivities([]);
         }
         if (isActivitiesLibrary && pRes?.ok) {
           setPresentations(await pRes.json());
-        } else if (!isActivitiesLibrary) {
-          setPresentations([]);
         }
       } catch {} finally { setLoading(false); }
     })();
-  }, [libraryKind, isCompetitionLibrary, showHidden]);
+  }, [showHidden, setLocation]);
 
   /** Admin-only: restore a previously hidden row. */
   const unhideAsAdmin = async (
@@ -419,35 +391,6 @@ export default function SharedContentPage({
       toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
     } finally {
       setHidingIds(prev => { const s = new Set(prev); s.delete(key); return s; });
-    }
-  };
-
-  /** Admin-only: change the library classification of a shared assignment. */
-  const changeLibraryKind = async (assignmentId: number, newKind: "homework" | "competition" | "both") => {
-    if (!isAdmin) return;
-    setChangingKindIds(prev => new Set(prev).add(assignmentId));
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/assignments/${assignmentId}/content-kind`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentKind: newKind }),
-      });
-      if (res.ok) {
-        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, contentKind: newKind } : a));
-        const kindLabel = newKind === "both"
-          ? (lang === "ar" ? "كلتا المكتبتين" : "both libraries")
-          : newKind === "competition"
-            ? (lang === "ar" ? "مكتبة المسابقات" : "Competitions Library")
-            : (lang === "ar" ? "مكتبة الأنشطة" : "Activities Library");
-        toast.success(lang === "ar" ? `تم نقله إلى ${kindLabel}` : `Moved to ${kindLabel}`);
-      } else {
-        toast.error(lang === "ar" ? "تعذّر التغيير" : "Failed to change");
-      }
-    } catch {
-      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
-    } finally {
-      setChangingKindIds(prev => { const s = new Set(prev); s.delete(assignmentId); return s; });
     }
   };
 
@@ -731,7 +674,6 @@ export default function SharedContentPage({
         embedded
           ? cn(
               "py-4",
-              isCompetitionLibrary && "pt-1 pb-3",
               isActivitiesLibrary && "pt-1 pb-3",
             )
           : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl",
@@ -752,7 +694,6 @@ export default function SharedContentPage({
           className={cn(
             "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between",
             isActivitiesLibrary ? "mb-4 sm:mb-4" : "mb-6",
-            embedded && isCompetitionLibrary && "mb-4",
             embedded && isActivitiesLibrary && "mb-3",
             isActivitiesLibrary &&
               "rounded-xl border border-border/35 bg-gradient-to-r from-teal-500/[0.07] via-card/60 to-background/90 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm",
@@ -766,11 +707,7 @@ export default function SharedContentPage({
                 ? "w-10 h-10 sm:w-11 sm:h-11 rounded-xl shadow-md ring-2 ring-primary/10"
                 : "w-12 h-12 rounded-2xl shadow-lg",
             )}
-            style={{
-              background: isCompetitionLibrary
-                ? "linear-gradient(135deg,#f59e0b,#ea580c)"
-                : "linear-gradient(135deg,#6ba184,#2f684d)",
-            }}
+            style={{ background: "linear-gradient(135deg,#6ba184,#2f684d)" }}
           >
             <Globe className={cn("text-white", isActivitiesLibrary ? "w-5 h-5 sm:w-[22px] sm:h-[22px]" : "w-6 h-6")} />
           </div>
@@ -781,11 +718,7 @@ export default function SharedContentPage({
                 isActivitiesLibrary ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl",
               )}
             >
-              {libraryKind === "competition"
-                ? (lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library")
-                : libraryKind === "homework"
-                ? (lang === "ar" ? "مكتبة الأنشطة" : "Activities Library")
-                : t.sharedContent.title}
+              {lang === "ar" ? "مكتبة الأنشطة" : "Activities Library"}
             </h1>
             <p
               className={cn(
@@ -793,15 +726,9 @@ export default function SharedContentPage({
                 isActivitiesLibrary ? "text-[11px] sm:text-xs mt-0.5" : "text-sm mt-0.5",
               )}
             >
-              {libraryKind === "competition"
-                ? (lang === "ar"
-                    ? "تصفح وشغّل مسابقات جاهزة شاركها معلمون آخرون"
-                    : "Browse ready-to-play competitions shared by other teachers")
-                : libraryKind === "homework"
-                ? (lang === "ar"
-                    ? "استورد إلى حسابك أو شغّل مباشرة — صُممت للفصل دون تعقيد."
-                    : "Import to your account or play live — built for class flow without clutter.")
-                : t.sharedContent.subtitle}
+              {lang === "ar"
+                ? "كل الأنشطة والمسابقات والاختبارات والألعاب والفيديوهات في مكان واحد."
+                : "All activities, competitions, exams, games, and videos in one place."}
             </p>
           </div>
           </div>
@@ -832,12 +759,8 @@ export default function SharedContentPage({
         >
           {([
             { key: "assignments" as Tab, label: t.sharedContent.tabAssignments, icon: BookText, count: assignments.length },
-            // Competition library: only show the assignments tab —
-            // question-bank and video lessons live in the activities library.
-            ...(isCompetitionLibrary ? [] : [
-              { key: "questions" as Tab, label: t.sharedContent.tabQuestions, icon: HelpCircle, count: questions.length },
-              { key: "videos" as Tab, label: lang === "ar" ? "دروس فيديو" : "Video Lessons", icon: Video, count: videoLessons.length },
-            ]),
+            { key: "questions" as Tab, label: t.sharedContent.tabQuestions, icon: HelpCircle, count: questions.length },
+            { key: "videos" as Tab, label: lang === "ar" ? "دروس فيديو" : "Video Lessons", icon: Video, count: videoLessons.length },
           ]).map(tab => (
             <button
               key={tab.key}
@@ -1048,7 +971,7 @@ export default function SharedContentPage({
                                   className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full"
                                 >
                                   <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                                  {isCompetitionLibrary ? t.sharedContent.copyLink : (lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment")}
+                                  {lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment"}
                                 </button>
                                 <button
                                   onClick={() => launchAsGame(a.id, "teams")}
@@ -1075,25 +998,6 @@ export default function SharedContentPage({
                         {/* Admin controls — shown on card hover */}
                         {isAdmin && (
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="relative group/lib">
-                              <button
-                                type="button"
-                                disabled={changingKindIds.has(a.id)}
-                                title={lang === "ar" ? "تغيير المكتبة" : "Change library"}
-                                className="w-6 h-6 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-40"
-                              >
-                                {changingKindIds.has(a.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderOpen className="w-3 h-3" />}
-                              </button>
-                              <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/lib:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
-                                {([ { value: "homework" as const, labelAr: "مكتبة الأنشطة", cls: "text-blue-600" }, { value: "competition" as const, labelAr: "مكتبة المسابقات", cls: "text-amber-600" }, { value: "both" as const, labelAr: "كلتا المكتبتين", cls: "text-violet-600" } ]).map(opt => (
-                                  <button key={opt.value} type="button" onClick={() => changeLibraryKind(a.id, opt.value)}
-                                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full ${opt.cls} ${a.contentKind === opt.value ? "bg-muted/60 font-bold" : ""}`}>
-                                    {a.contentKind === opt.value && <CheckCircle2 className="w-3 h-3" />}
-                                    {lang === "ar" ? opt.labelAr : opt.value === "both" ? "Both libraries" : opt.value === "competition" ? "Competitions" : "Activities"}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
                             {a.hiddenByAdmin ? (
                               <button onClick={() => unhideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
                                 title={lang === "ar" ? "إعادة الإظهار" : "Restore"}

@@ -408,11 +408,9 @@ function Router() {
         {/* Legacy /teacher/shared → redirect to the new activities library
             (task #595 split). Existing bookmarks and links keep working. */}
         <Route path="/teacher/shared" component={LegacySharedRedirect} />
-        {/* Split libraries — same component, kind comes from the URL */}
         {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/library/homework" component={SharedContentPage} />
-        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
-        <Route path="/teacher/library/competitions" component={SharedContentPage} />
+        <Route path="/teacher/library/competitions" component={LegacySharedRedirect} />
         <Route path="/teacher/categories" component={CategoriesPage} />
         <Route path="/teacher/collections" component={CollectionsPage} />
         <Route path="/teacher/class-grades/:gradeLevel" component={ClassGrades} />
