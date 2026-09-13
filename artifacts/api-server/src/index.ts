@@ -2026,6 +2026,10 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS session_id TEXT;
       CREATE INDEX IF NOT EXISTS push_subscriptions_session_idx
         ON push_subscriptions(session_id);
+      ALTER TABLE notifications
+        ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS notifications_teacher_active_idx
+        ON notifications(teacher_id, expires_at, created_at DESC);
 
       DROP TABLE IF EXISTS push_notification_outbox;
       CREATE TABLE IF NOT EXISTS push_notification_deliveries (
@@ -2104,6 +2108,24 @@ async function runSchemaMigrations() {
       );
       CREATE INDEX IF NOT EXISTS teacher_schedule_notification_runs_created_idx
         ON teacher_schedule_notification_runs(created_at);
+      UPDATE notifications AS notification
+      SET expires_at = (
+        runs.occurrence_date
+        + COALESCE(
+            CASE WHEN notification.type = 'teacher_schedule_start'
+              THEN schedule.end_time::time
+              ELSE schedule.end_time::time
+            END,
+            schedule.start_time::time
+          )
+      ) AT TIME ZONE preferences.timezone
+      FROM teacher_schedule_notification_runs AS runs
+      JOIN teacher_schedule AS schedule ON schedule.id = runs.schedule_entry_id
+      JOIN teacher_schedule_notification_preferences AS preferences
+        ON preferences.teacher_id = runs.teacher_id
+      WHERE notification.id = runs.notification_id
+        AND notification.expires_at IS NULL
+        AND notification.type IN ('teacher_schedule_start', 'teacher_schedule_end');
       CREATE TABLE IF NOT EXISTS teacher_timer_notifications (
         run_id UUID PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

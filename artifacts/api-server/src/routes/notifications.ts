@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, notificationsTable, pushSubscriptionsTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gt, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { rateLimit } from "express-rate-limit";
 import {
@@ -43,7 +43,10 @@ router.get("/notifications", async (req, res) => {
   const notifications = await db
     .select()
     .from(notificationsTable)
-    .where(eq(notificationsTable.teacherId, req.session.teacherId))
+    .where(and(
+      eq(notificationsTable.teacherId, req.session.teacherId),
+      or(isNull(notificationsTable.expiresAt), gt(notificationsTable.expiresAt, new Date())),
+    ))
     .orderBy(desc(notificationsTable.createdAt))
     .limit(50);
 

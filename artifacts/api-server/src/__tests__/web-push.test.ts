@@ -275,6 +275,7 @@ describe("schedule notification creation", () => {
       "teacher_schedule_start",
       "حصة قادمة",
       "الرياضيات — الخامس أ تبدأ بعد 5 دقائق.",
+      new Date("2026-09-13T07:45:00.000Z"),
     ]);
   });
 });

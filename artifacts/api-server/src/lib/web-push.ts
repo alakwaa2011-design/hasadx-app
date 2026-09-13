@@ -273,6 +273,13 @@ export async function createDueScheduleNotifications(now = new Date()): Promise<
             continue;
           }
           const isStart = alert.kind === "start";
+          let expiresAt = freshEventAt;
+          if (isStart && fresh.end_time) {
+            expiresAt = zonedLocalTimeToUtc(occurrenceDate, fresh.end_time, fresh.timezone);
+            if (expiresAt <= freshEventAt) {
+              expiresAt = zonedLocalTimeToUtc(addLocalDays(occurrenceDate, 1), fresh.end_time, fresh.timezone);
+            }
+          }
           const title = fresh.locale === "en"
             ? (isStart ? "Upcoming lesson" : "Lesson ending soon")
             : (isStart ? "حصة قادمة" : "اقترب انتهاء الحصة");
@@ -281,9 +288,9 @@ export async function createDueScheduleNotifications(now = new Date()): Promise<
             ? `${context} ${isStart ? "starts" : "ends"} in ${freshLead} minutes.`
             : `${context} ${isStart ? "تبدأ" : "تنتهي"} بعد ${freshLead} دقائق.`;
           const inserted = await client.query<{ id: number }>(
-            `INSERT INTO notifications (teacher_id, type, title, body, action_url)
-             VALUES ($1, $2, $3, $4, '/teacher/tools/schedule') RETURNING id`,
-            [entry.teacher_id, isStart ? "teacher_schedule_start" : "teacher_schedule_end", title, body],
+            `INSERT INTO notifications (teacher_id, type, title, body, action_url, expires_at)
+             VALUES ($1, $2, $3, $4, '/teacher/tools/schedule', $5) RETURNING id`,
+            [entry.teacher_id, isStart ? "teacher_schedule_start" : "teacher_schedule_end", title, body, expiresAt],
           );
           await client.query(
             `UPDATE teacher_schedule_notification_runs SET notification_id = $2 WHERE id = $1`,
