@@ -515,20 +515,19 @@ export default function PresentationEditor() {
   /* Persist deck-level theme/pattern immediately (rare events, no
      debounce needed). Optimistically update local state first. */
   const persistTheme = useCallback(
-    (next: { theme?: string; pattern?: string }) => {
+    async (next: { theme?: string; pattern?: string }) => {
       if (!Number.isFinite(id)) return;
-      updateMutation.mutate(
-        { id, data: next as never },
-        {
-          onSuccess: () => {
-            setSavedAt(new Date());
-            queryClient.invalidateQueries({ queryKey: getGetPresentationQueryKey(id) });
-          },
-          onError: () => toast.error("Save failed"),
-        },
-      );
+      try {
+        await updateMutation.mutateAsync({ id, data: next as never });
+        setSavedAt(new Date());
+        queryClient.invalidateQueries({ queryKey: getGetPresentationQueryKey(id) });
+        return true;
+      } catch {
+        toast.error(isAr ? "تعذّر حفظ سمة العرض" : "Could not save the presentation theme");
+        return false;
+      }
     },
-    [id, queryClient, updateMutation],
+    [id, isAr, queryClient, updateMutation],
   );
 
   const onChangeTheme = (key: string) => {
@@ -555,12 +554,25 @@ export default function PresentationEditor() {
       });
       return changed ? next : prev;
     });
-    persistTheme({ theme: key });
+    void persistTheme({ theme: key });
   };
   const onChangePattern = (key: string) => {
     setPattern(key);
-    persistTheme({ pattern: key });
+    void persistTheme({ pattern: key });
   };
+
+  /* Present in the same app tab, after the latest deck-level visual
+     settings have reached the server. Without awaiting this save, a
+     quick click on Present could load the previous theme in present
+     mode and make the colors appear to change. */
+  const startPresent = useCallback(
+    async (slideNumber: number) => {
+      const saved = await persistTheme({ theme, pattern });
+      if (saved === false) return;
+      setLocation(`/teacher/presentations/${id}/present?slide=${slideNumber}`);
+    },
+    [id, pattern, persistTheme, setLocation, theme],
+  );
 
   const activeSlide = slides[activeIdx];
   const selectedEl = useMemo(
@@ -1571,7 +1583,7 @@ export default function PresentationEditor() {
               <Button
                 size="sm"
                 onClick={() => {
-                  window.open(`/teacher/presentations/${id}/present?slide=1`, "_blank", "noopener");
+                  void startPresent(1);
                 }}
                 className="h-9 px-4 sm:px-5 gap-2 rounded-none font-bold border-0 bg-[#225739] text-white hover:brightness-110"
                 title={isAr ? "ابدأ من البداية" : "Start from beginning"}
@@ -1582,10 +1594,7 @@ export default function PresentationEditor() {
               <Button
                 size="sm"
                 onClick={() => {
-                  window.open(
-                    `/teacher/presentations/${id}/present?slide=${activeIdx + 1}`,
-                    "_blank", "noopener",
-                  );
+                  void startPresent(activeIdx + 1);
                 }}
                 className="h-9 px-2 sm:px-3 rounded-none border-0 border-s border-emerald-800/40 font-bold bg-[#225739] text-white hover:brightness-110"
                 title={isAr ? "ابدأ من الشريحة الحالية" : "Start from current slide"}
@@ -2047,13 +2056,8 @@ export default function PresentationEditor() {
             launchingWameeth={launchingWameeth}
             onLinkExistingActivity={handleLinkExistingActivity}
             onPresent={(fromCurrent) => {
-              /* Mobile browsers block `window.open` for non-direct
-                 user gestures (and especially after any async work),
-                 so on the mobile shell we navigate the same tab
-                 instead — that always works. The deep-link via
-                 ?slide=N preserves "start from current slide". */
               const slideNum = fromCurrent ? activeIdx + 1 : 1;
-              window.location.href = `/teacher/presentations/${id}/present?slide=${slideNum}`;
+              void startPresent(slideNum);
             }}
             onSaveNow={saveNow}
             onOpenAiBuilder={() => setAiBuilderOpen(true)}
