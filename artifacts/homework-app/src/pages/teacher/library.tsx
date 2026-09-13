@@ -1205,12 +1205,12 @@ export default function TeacherLibraryPage() {
               });
             }
           }}
-          className={`flex-1 min-w-0 text-start px-3 py-2.5 text-sm font-semibold truncate ${
+          className={`flex-1 min-w-0 text-start px-3 py-2.5 text-sm font-semibold ${
             activeGroup === String(folder.id) ? "text-violet-700" : "hover:bg-muted rounded-xl"
           }`}
           data-testid={`group-${folder.id}`}
         >
-          <span className="inline-flex items-center gap-2">
+          <span className="flex min-w-0 items-start gap-2">
             {hasChildren ? (
               <ChevronDown
                 className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${
@@ -1222,8 +1222,8 @@ export default function TeacherLibraryPage() {
               <span className="w-3.5 shrink-0" aria-hidden="true" />
             )}
             <Folder className="w-4 h-4 shrink-0 text-violet-500" />
-            <span className="truncate">{folder.name}</span>
-            <span className="text-[11px] text-muted-foreground">({folder.fileCount})</span>
+            <span className="min-w-0 flex-1 whitespace-normal break-words leading-5">{folder.name}</span>
+            <span className="shrink-0 text-[11px] text-muted-foreground">({folder.fileCount})</span>
           </span>
         </button>
         <button
@@ -1416,7 +1416,7 @@ export default function TeacherLibraryPage() {
           <TabsContent value="files" className="pt-4">
         <div className="flex flex-col md:flex-row-reverse gap-4" dir="ltr">
           {/* Group sidebar */}
-          <Card dir={isAr ? "rtl" : "ltr"} className="order-2 md:order-1 p-3 h-fit md:w-[240px] shrink-0 rounded-2xl border-border/60 shadow-sm">
+          <Card dir={isAr ? "rtl" : "ltr"} className="order-2 md:order-1 p-3 h-fit md:w-[280px] shrink-0 rounded-2xl border-border/60 shadow-sm">
             <button
               onClick={() => setActiveGroup("all")}
               className={`w-full text-start px-3 py-2 rounded-lg text-sm font-medium transition ${
