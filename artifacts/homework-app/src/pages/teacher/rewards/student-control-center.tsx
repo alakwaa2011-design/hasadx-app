@@ -130,18 +130,25 @@ export function StudentControlCenter({ open, onOpenChange, studentId, className,
              {r("لم يتم العثور على بيانات الطالب.", "Student data was not found.")}
           </div>
         ) : (
-          <StudentControlContent data={data} studentId={studentId!} className={className} rewardTypes={rewardTypes} />
+          <StudentControlContent
+            data={data}
+            studentId={studentId!}
+            className={className}
+            rewardTypes={rewardTypes}
+            onAvatarSaved={() => onOpenChange(false)}
+          />
         )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function StudentControlContent({ data, studentId, className, rewardTypes }: {
+function StudentControlContent({ data, studentId, className, rewardTypes, onAvatarSaved }: {
   data: any;
   studentId: number;
   className?: string;
   rewardTypes: Array<{ id: number; name: string; points: number; color?: string }>;
+  onAvatarSaved: () => void;
 }) {
   const { lang } = useI18n();
   const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
@@ -163,7 +170,7 @@ function StudentControlContent({ data, studentId, className, rewardTypes }: {
           <OverviewTab data={data} studentId={studentId} className={className} rewardTypes={rewardTypes} />
         </TabsContent>
         <TabsContent value="profile" className="m-0 h-full outline-none">
-          <ProfileTab student={data.student} studentId={studentId} />
+          <ProfileTab student={data.student} studentId={studentId} onAvatarSaved={onAvatarSaved} />
         </TabsContent>
         <TabsContent value="ledger" className="m-0 h-full outline-none">
           <LedgerTab ledger={data.rewards?.ledger} balance={data.rewards?.balance} />
@@ -543,7 +550,11 @@ function PasswordResetDialog({ studentId }: { studentId: number }) {
   );
 }
 
-function ProfileTab({ student, studentId }: { student: any, studentId: number }) {
+function ProfileTab({ student, studentId, onAvatarSaved }: {
+  student: any;
+  studentId: number;
+  onAvatarSaved: () => void;
+}) {
   const { lang } = useI18n();
   const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
   const [formData, setFormData] = useState({
@@ -583,6 +594,7 @@ function ProfileTab({ student, studentId }: { student: any, studentId: number })
       onSuccess: () => {
          toast.success(r("تم تحديث شخصية الطالب بنجاح", "Student character updated."));
         setAvatarChanged(false);
+        onAvatarSaved();
       },
       onError: (err: any) => {
          toast.error(getArabicRewardError(err, r("فشل في تحديث البيانات", "Could not update the details.")));
