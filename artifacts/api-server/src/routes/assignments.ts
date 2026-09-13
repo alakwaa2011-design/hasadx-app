@@ -14,6 +14,7 @@ import { featureAccess } from "@workspace/billing";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
+import { buildLegacyDuplicateCandidates } from "../lib/assignment-duplicate-detection";
 
 const UpdateAssignmentBody = z.object({
   version: z.number().int().positive(),
@@ -606,6 +607,116 @@ router.get("/assignments/shared", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Shared assignments error");
     res.status(500).json({ message: "خطأ" });
+  }
+});
+
+// Legacy imports predate importedFromAssignmentId. Only return high-confidence
+// candidates (same source, title family, settings, and every question) so the
+// teacher can review them before choosing to archive anything.
+router.get("/assignments/duplicate-candidates", async (req, res): Promise<void> => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+    return;
+  }
+
+  try {
+    const localAssignments = await db
+      .select({
+        id: assignmentsTable.id,
+        teacherId: assignmentsTable.teacherId,
+        title: assignmentsTable.title,
+        subject: assignmentsTable.subject,
+        contentKind: assignmentsTable.contentKind,
+        totalPoints: assignmentsTable.totalPoints,
+        createdAt: assignmentsTable.createdAt,
+        updatedAt: assignmentsTable.updatedAt,
+        version: assignmentsTable.version,
+        archivedAt: assignmentsTable.archivedAt,
+        importedFromAssignmentId: assignmentsTable.importedFromAssignmentId,
+        submissionCount: sql<number>`(
+          SELECT COUNT(*) FROM submissions
+          WHERE submissions.assignment_id = ${assignmentsTable.id}
+        )`,
+      })
+      .from(assignmentsTable)
+      .where(and(
+        eq(assignmentsTable.teacherId, teacherId),
+        isNull(assignmentsTable.archivedAt),
+        isNull(assignmentsTable.importedFromAssignmentId),
+        isNull(assignmentsTable.fromPresentationSlide),
+        or(isNull(assignmentsTable.source), ne(assignmentsTable.source, "worksheet")),
+      ));
+
+    const sources = await db
+      .select({
+        id: assignmentsTable.id,
+        teacherId: assignmentsTable.teacherId,
+        title: assignmentsTable.title,
+        subject: assignmentsTable.subject,
+        contentKind: assignmentsTable.contentKind,
+        totalPoints: assignmentsTable.totalPoints,
+        createdAt: assignmentsTable.createdAt,
+        updatedAt: assignmentsTable.updatedAt,
+        version: assignmentsTable.version,
+        archivedAt: assignmentsTable.archivedAt,
+        submissionCount: sql<number>`0`,
+        teacherName: teachersTable.name,
+      })
+      .from(assignmentsTable)
+      .leftJoin(teachersTable, eq(assignmentsTable.teacherId, teachersTable.id))
+      .where(and(
+        eq(assignmentsTable.isShared, true),
+        isNull(assignmentsTable.archivedAt),
+        ne(assignmentsTable.accessMode, "private"),
+        eq(assignmentsTable.hiddenByAdmin, false),
+        ne(assignmentsTable.teacherId, teacherId),
+        isNull(assignmentsTable.fromPresentationSlide),
+        or(isNull(assignmentsTable.source), ne(assignmentsTable.source, "worksheet")),
+      ));
+
+    const assignmentIds = [...new Set([
+      ...localAssignments.map((assignment) => assignment.id),
+      ...sources.map((assignment) => assignment.id),
+    ])];
+    const questions = assignmentIds.length > 0
+      ? await db
+          .select({
+            assignmentId: questionsTable.assignmentId,
+            questionType: questionsTable.questionType,
+            text: questionsTable.text,
+            optionA: questionsTable.optionA,
+            optionB: questionsTable.optionB,
+            optionC: questionsTable.optionC,
+            optionD: questionsTable.optionD,
+            correctAnswer: questionsTable.correctAnswer,
+            points: questionsTable.points,
+            imageUrl: questionsTable.imageUrl,
+            readAloud: questionsTable.readAloud,
+            difficulty: questionsTable.difficulty,
+            skill: questionsTable.skill,
+            allowMultipleAnswers: questionsTable.allowMultipleAnswers,
+            repeatQuestion: questionsTable.repeatQuestion,
+          })
+          .from(questionsTable)
+          .where(inArray(questionsTable.assignmentId, assignmentIds))
+      : [];
+
+    const questionsByAssignmentId = new Map<number, typeof questions>();
+    for (const question of questions) {
+      const group = questionsByAssignmentId.get(question.assignmentId) ?? [];
+      group.push(question);
+      questionsByAssignmentId.set(question.assignmentId, group);
+    }
+
+    res.json(buildLegacyDuplicateCandidates({
+      sources,
+      localAssignments,
+      questionsByAssignmentId,
+    }));
+  } catch (err) {
+    req.log.error({ err }, "Legacy assignment duplicate scan failed");
+    res.status(500).json({ message: "تعذر فحص النسخ المتشابهة" });
   }
 });
 

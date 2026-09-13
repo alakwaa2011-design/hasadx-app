@@ -78,6 +78,9 @@ export const assignmentsTable = pgTable("assignments", {
   importedSourceUniqueIdx: uniqueIndex("assignments_imported_source_unique_idx").on(
     t.teacherId, t.importedFromAssignmentId,
   ),
+  legacyDuplicateScanIdx: index("assignments_legacy_duplicate_scan_idx").on(
+    t.teacherId, t.archivedAt, t.importedFromAssignmentId, t.createdAt,
+  ),
 }));
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({
   id: true,

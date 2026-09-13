@@ -326,6 +326,27 @@ interface SharedAssignment {
   importedAssignmentId?: number | null;
 }
 
+interface LegacyDuplicateCandidate {
+  source: {
+    id: number;
+    title: string;
+    teacherName: string | null;
+    questionCount: number;
+  };
+  duplicate: {
+    id: number;
+    title: string;
+    createdAt: string;
+    version: number;
+    questionCount: number;
+    submissionCount: number;
+  };
+  hasTeacherEdits: boolean;
+  hasUsage: boolean;
+  canArchive: boolean;
+  recommendedAction: "archive_duplicate" | "keep_duplicate";
+}
+
 type GameMode = "solo" | "teams" | "classroom" | "independent";
 
 /** Games that can be launched from an assignment (live session). Default: وميض */
@@ -2136,28 +2157,190 @@ function AssignmentsTab({
   }
 
   return (
-    <AssignmentsTabRender
-      assignments={displayedAssignments}
-      filteredAssignments={filteredAssignments}
-      collections={collections}
-      creatingGameForId={creatingGameForId}
-      startGame={startGame}
-      deleteAssignment={deleteAssignment}
-      setLocation={setLocation}
-      setActiveTab={setActiveTab}
-      lang={lang}
-      t={t}
-      queryClient={queryClient}
-      addToCollection={addToCollection}
-      removeFromCollection={removeFromCollection}
-      creatingGroupName={creatingGroupName}
-      setCreatingGroupName={setCreatingGroupName}
-      createGroupAndAdd={createGroupAndAdd}
-      savingGroup={savingGroup}
-      showArchived={showArchived}
-      setShowArchived={setShowArchived}
-      archiveAssignment={archiveAssignment}
-    />
+    <div className="space-y-3">
+      <LegacyDuplicateReview lang={lang} queryClient={queryClient} />
+      <AssignmentsTabRender
+        assignments={displayedAssignments}
+        filteredAssignments={filteredAssignments}
+        collections={collections}
+        creatingGameForId={creatingGameForId}
+        startGame={startGame}
+        deleteAssignment={deleteAssignment}
+        setLocation={setLocation}
+        setActiveTab={setActiveTab}
+        lang={lang}
+        t={t}
+        queryClient={queryClient}
+        addToCollection={addToCollection}
+        removeFromCollection={removeFromCollection}
+        creatingGroupName={creatingGroupName}
+        setCreatingGroupName={setCreatingGroupName}
+        createGroupAndAdd={createGroupAndAdd}
+        savingGroup={savingGroup}
+        showArchived={showArchived}
+        setShowArchived={setShowArchived}
+        archiveAssignment={archiveAssignment}
+      />
+    </div>
+  );
+}
+
+function LegacyDuplicateReview({
+  lang,
+  queryClient,
+}: {
+  lang: string;
+  queryClient: ReturnType<typeof useQueryClient>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [archivingId, setArchivingId] = useState<number | null>(null);
+  const isAr = lang === "ar";
+  const { data, isLoading, isError, refetch } = useQuery<LegacyDuplicateCandidate[]>({
+    queryKey: ["/api/assignments/duplicate-candidates"],
+    enabled: open,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const response = await fetch(`${BASE_URL}/api/assignments/duplicate-candidates`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("duplicate candidates");
+      const result = await response.json();
+      return Array.isArray(result) ? result : [];
+    },
+  });
+
+  async function archiveDuplicate(candidate: LegacyDuplicateCandidate) {
+    if (!candidate.canArchive || archivingId != null) return;
+    if (!window.confirm(
+      isAr
+        ? `هل تريد أرشفة النسخة الزائدة «${candidate.duplicate.title}»؟ لن تُحذف البيانات ويمكن استعادتها لاحقًا.`
+        : `Archive the extra copy “${candidate.duplicate.title}”? Nothing is deleted and it can be restored later.`,
+    )) return;
+
+    setArchivingId(candidate.duplicate.id);
+    try {
+      const response = await fetch(`${BASE_URL}/api/assignments/${candidate.duplicate.id}/archive`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true, version: candidate.duplicate.version }),
+      });
+      if (response.status === 409) {
+        toast.error(isAr ? "تغيرت النسخة، حدّث الفحص ثم حاول مجددًا." : "The copy changed. Refresh the scan and try again.");
+        return;
+      }
+      if (!response.ok) throw new Error("archive duplicate");
+      toast.success(isAr ? "تمت أرشفة النسخة الزائدة دون حذف بياناتها." : "The extra copy was archived without deleting its data.");
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      await refetch();
+    } catch {
+      toast.error(isAr ? "تعذر أرشفة النسخة." : "Could not archive the copy.");
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
+  return (
+    <Card className="border-primary/20 bg-primary/[0.035] p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-xl bg-primary/10 p-2 text-primary">
+            <Search className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-black text-foreground">
+              {isAr ? "مراجعة النسخ القديمة" : "Review older copies"}
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {isAr
+                ? "نفحص التطابق الآمن مع مصادر المكتبة فقط، ولا نحذف أي نسخة."
+                : "We check only high-confidence library matches. Nothing is deleted."}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-card px-4 py-2.5 text-xs font-black text-primary transition-colors hover:bg-primary/5"
+        >
+          <Search className="h-4 w-4" />
+          {open ? (isAr ? "إخفاء المراجعة" : "Hide review") : (isAr ? "فحص النسخ المتشابهة" : "Scan for copies")}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-4 border-t border-primary/10 pt-4">
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isAr ? "جارٍ فحص المكتبة..." : "Scanning your library..."}
+            </div>
+          ) : isError ? (
+            <p className="text-sm text-destructive">
+              {isAr ? "تعذر فحص النسخ الآن." : "The copy scan is unavailable right now."}
+            </p>
+          ) : data?.length ? (
+            <div className="space-y-2.5">
+              <p className="text-xs font-bold text-foreground/80">
+                {isAr ? `تم العثور على ${data.length} نسخة للمراجعة قبل الأرشفة.` : `${data.length} copy record(s) found for review.`}
+              </p>
+              {data.map((candidate) => (
+                <div
+                  key={`${candidate.source.id}-${candidate.duplicate.id}`}
+                  className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
+                      <span className="truncate">{candidate.duplicate.title}</span>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate text-muted-foreground">{candidate.source.title}</span>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {isAr ? "المصدر" : "Source"}: {candidate.source.teacherName || (isAr ? "معلم" : "Teacher")}
+                      {" · "}
+                      {candidate.duplicate.questionCount} {isAr ? "سؤال" : "questions"}
+                      {" · "}
+                      {candidate.duplicate.submissionCount} {isAr ? "تسليم" : "submissions"}
+                    </p>
+                    {candidate.hasTeacherEdits || candidate.hasUsage ? (
+                      <p className="mt-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="me-1 inline h-3.5 w-3.5" />
+                        {isAr ? "يُفضّل الاحتفاظ بها لأنها معدلة أو مستخدمة." : "Keep it: it has edits or student usage."}
+                      </p>
+                    ) : candidate.recommendedAction === "keep_duplicate" ? (
+                      <p className="mt-1 text-xs font-bold text-muted-foreground">
+                        {isAr ? "هذه النسخة الأحدث من النسخ المتطابقة." : "This is the newest untouched matching copy."}
+                      </p>
+                    ) : null}
+                  </div>
+                  {candidate.canArchive ? (
+                    <button
+                      type="button"
+                      onClick={() => archiveDuplicate(candidate)}
+                      disabled={archivingId === candidate.duplicate.id}
+                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                    >
+                      {archivingId === candidate.duplicate.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+                      {isAr ? "أرشفة الزائد" : "Archive extra"}
+                    </button>
+                  ) : (
+                    <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {isAr ? "محتفظ بها" : "Keep this copy"}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {isAr ? "لم نعثر على نسخ مكررة بدرجة أمان عالية." : "No high-confidence duplicate copies were found."}
+            </p>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

@@ -626,6 +626,10 @@ async function runSchemaMigrations() {
         ON assignments (is_shared, hidden_by_admin, content_kind, created_at DESC)
     `);
     await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS assignments_legacy_duplicate_scan_idx
+        ON assignments (teacher_id, archived_at, imported_from_assignment_id, created_at DESC)
+    `);
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS class_custom_columns (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
