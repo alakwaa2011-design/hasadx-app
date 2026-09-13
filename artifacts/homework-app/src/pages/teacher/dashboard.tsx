@@ -3187,8 +3187,8 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           searchText: "عجلة اختيار المشاركين الطلاب participant student wheel random",
         }),
         selectTool("/teacher/tools/timer", {
-          title: isAr ? "مؤقت الحصة" : "Class Timer",
-          searchText: "مؤقت الحصة ساعة الإيقاف timer stopwatch class",
+          title: isAr ? "المؤقت وساعة الإيقاف" : "Timer & Stopwatch",
+          searchText: "المؤقت وساعة الإيقاف مؤقت عد تنازلي ساعة الإيقاف timer stopwatch class",
         }),
         selectTool("/teacher/tools/url-qr", {
           title: isAr ? "إنشاء رمز QR" : "Create QR Code",
