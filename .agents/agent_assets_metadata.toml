@@ -1737,3 +1737,17 @@ mtime_ms = 1789275308537
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/ff803065-e41a-4b7f-b184-1b51d2b1e805/4032dfb0-0d25-46cb-b68f-00dd9f910469"
 storage_version_token = "1789275313559565"
 content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "RAhe1ZjXFVgq6X1VOIe1B"
+uri = "file://.local/outputs/-------------------------------------.pptx"
+type = "slides"
+title = "درس ذكر الله تعالى — نسخة عربية منسقة (PPTX)"
+description = "نسخة محدثة باتجاه RTL وخط عربي ثابت، دون تذييلات متكررة أو رموز غير مفهومة."
+logical_id = "354f1681-76f1-44a5-b7d9-6f7ae707188f"
+content_hash = "sha256:be3537b276022a811f5ebb44cdaf4b8e6a643fa150c56ac8f0e85bae8026dbf7"
+size = 10865195
+mtime_ms = 1789275816277
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/354f1681-76f1-44a5-b7d9-6f7ae707188f/9a24b96f-de61-4e33-95a5-5298990d895c"
+storage_version_token = "1789275821189838"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
