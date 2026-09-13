@@ -23,6 +23,7 @@ const question = (assignmentId: number, text = "ما عاصمة مصر؟") => ({
   repeatQuestion: false,
 });
 
+
 const assignment = (overrides: Record<string, unknown> = {}) => ({
   id: 1,
   teacherId: 10,
@@ -34,6 +35,7 @@ const assignment = (overrides: Record<string, unknown> = {}) => ({
   updatedAt: date("09:00"),
   version: 1,
   archivedAt: null,
+  duplicateScanConfirmedAt: null,
   importedFromAssignmentId: null,
   submissionCount: 0,
   teacherName: "المعلم المصدر",
@@ -138,5 +140,31 @@ describe("legacy assignment duplicate detection", () => {
     });
 
     expect(result).toEqual([]);
+  });
+
+  it("excludes an intentionally kept copy without changing its content", () => {
+    const source = assignment({ id: 2, teacherId: 20 });
+    const local = assignment({
+      id: 3,
+      teacherId: 10,
+      duplicateScanConfirmedAt: new Date("2026-01-01T12:00:00.000Z"),
+    });
+    const questions = new Map([
+      [2, [question(2)]],
+      [3, [question(3)]],
+    ]);
+
+    const result = buildLegacyDuplicateCandidates({
+      sources: [source],
+      localAssignments: [local],
+      questionsByAssignmentId: questions,
+    });
+
+    expect(result).toEqual([]);
+    expect(local).toMatchObject({
+      archivedAt: null,
+      version: 1,
+      submissionCount: 0,
+    });
   });
 });

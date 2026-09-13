@@ -9,6 +9,7 @@ type AssignmentForDuplicateScan = {
   updatedAt: Date;
   version: number;
   archivedAt: Date | null;
+  duplicateScanConfirmedAt?: Date | null;
   importedFromAssignmentId?: number | null;
   submissionCount: number;
   teacherName?: string | null;
@@ -144,6 +145,7 @@ export function buildLegacyDuplicateCandidates({
     for (const local of localAssignments) {
       if (
         local.teacherId === source.teacherId ||
+        local.duplicateScanConfirmedAt != null ||
         local.importedFromAssignmentId != null ||
         local.archivedAt != null ||
         !titleMatches(source.title, local.title) ||

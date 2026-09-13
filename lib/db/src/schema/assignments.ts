@@ -45,6 +45,9 @@ export const assignmentsTable = pgTable("assignments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   version: integer("version").notNull().default(1),
   archivedAt: timestamp("archived_at"),
+  /** When the owner confirms this legacy duplicate is an intentional copy.
+   *  This is review metadata only; it does not archive or alter the assignment. */
+  duplicateScanConfirmedAt: timestamp("duplicate_scan_confirmed_at"),
   closedAt: timestamp("closed_at"),
   extraAttempts: integer("extra_attempts").notNull().default(0),
   /** When created from a presentation activity slide, stores "presId:slideId" so the same
@@ -88,6 +91,7 @@ export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit(
   updatedAt: true,
   version: true,
   archivedAt: true,
+  duplicateScanConfirmedAt: true,
 });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;

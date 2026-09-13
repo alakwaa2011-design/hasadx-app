@@ -599,7 +599,8 @@ async function runSchemaMigrations() {
       ALTER TABLE assignments
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP,
         ADD COLUMN IF NOT EXISTS version INTEGER,
-        ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP
+        ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS duplicate_scan_confirmed_at TIMESTAMP
     `);
     await db.execute(sql`
       UPDATE assignments
@@ -628,6 +629,10 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS assignments_legacy_duplicate_scan_idx
         ON assignments (teacher_id, archived_at, imported_from_assignment_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS assignments_duplicate_confirmation_idx
+        ON assignments (teacher_id, duplicate_scan_confirmed_at)
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS class_custom_columns (

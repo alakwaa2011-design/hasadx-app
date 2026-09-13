@@ -2194,6 +2194,7 @@ function LegacyDuplicateReview({
 }) {
   const [open, setOpen] = useState(false);
   const [archivingId, setArchivingId] = useState<number | null>(null);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const isAr = lang === "ar";
   const { data, isLoading, isError, refetch } = useQuery<LegacyDuplicateCandidate[]>({
     queryKey: ["/api/assignments/duplicate-candidates"],
@@ -2238,6 +2239,34 @@ function LegacyDuplicateReview({
       toast.error(isAr ? "تعذر أرشفة النسخة." : "Could not archive the copy.");
     } finally {
       setArchivingId(null);
+    }
+  }
+
+  async function confirmIntentionalDuplicate(candidate: LegacyDuplicateCandidate) {
+    if (confirmingId != null || archivingId != null) return;
+    if (!window.confirm(
+      isAr
+        ? `هل هذه النسخة مقصودة «${candidate.duplicate.title}»؟ ستبقى كما هي ولن تظهر في فحوص النسخ القادمة.`
+        : `Is “${candidate.duplicate.title}” an intentional copy? It will stay unchanged and won't appear in future copy scans.`,
+    )) return;
+
+    setConfirmingId(candidate.duplicate.id);
+    try {
+      const response = await fetch(`${BASE_URL}/api/assignments/${candidate.duplicate.id}/duplicate-confirmation`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("confirm duplicate");
+      toast.success(
+        isAr
+          ? "تم تأكيد النسخة المقصودة، وستبقى بياناتها كما هي."
+          : "The intentional copy was confirmed and remains unchanged.",
+      );
+      await refetch();
+    } catch {
+      toast.error(isAr ? "تعذر حفظ التأكيد." : "Could not save the confirmation.");
+    } finally {
+      setConfirmingId(null);
     }
   }
 
@@ -2314,22 +2343,28 @@ function LegacyDuplicateReview({
                       </p>
                     ) : null}
                   </div>
-                  {candidate.canArchive ? (
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    {candidate.canArchive && (
+                      <button
+                        type="button"
+                        onClick={() => archiveDuplicate(candidate)}
+                        disabled={archivingId === candidate.duplicate.id || confirmingId != null}
+                        className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                      >
+                        {archivingId === candidate.duplicate.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+                        {isAr ? "أرشفة الزائد" : "Archive extra"}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => archiveDuplicate(candidate)}
-                      disabled={archivingId === candidate.duplicate.id}
-                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-60 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                      onClick={() => confirmIntentionalDuplicate(candidate)}
+                      disabled={confirmingId === candidate.duplicate.id || archivingId != null}
+                      className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300/70 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
                     >
-                      {archivingId === candidate.duplicate.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
-                      {isAr ? "أرشفة الزائد" : "Archive extra"}
+                      {confirmingId === candidate.duplicate.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                      {isAr ? "هذه النسخة مقصودة" : "This copy is intentional"}
                     </button>
-                  ) : (
-                    <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isAr ? "محتفظ بها" : "Keep this copy"}
-                    </span>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>

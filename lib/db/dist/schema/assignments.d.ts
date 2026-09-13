@@ -607,6 +607,23 @@ export declare const assignmentsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        duplicateScanConfirmedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "duplicate_scan_confirmed_at";
+            tableName: "assignments";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         closedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "closed_at";
             tableName: "assignments";

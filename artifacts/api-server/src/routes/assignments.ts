@@ -633,6 +633,7 @@ router.get("/assignments/duplicate-candidates", async (req, res): Promise<void> 
         updatedAt: assignmentsTable.updatedAt,
         version: assignmentsTable.version,
         archivedAt: assignmentsTable.archivedAt,
+        duplicateScanConfirmedAt: assignmentsTable.duplicateScanConfirmedAt,
         importedFromAssignmentId: assignmentsTable.importedFromAssignmentId,
         submissionCount: sql<number>`(
           SELECT COUNT(*) FROM submissions
@@ -643,6 +644,7 @@ router.get("/assignments/duplicate-candidates", async (req, res): Promise<void> 
       .where(and(
         eq(assignmentsTable.teacherId, teacherId),
         isNull(assignmentsTable.archivedAt),
+        isNull(assignmentsTable.duplicateScanConfirmedAt),
         isNull(assignmentsTable.importedFromAssignmentId),
         isNull(assignmentsTable.fromPresentationSlide),
         or(isNull(assignmentsTable.source), ne(assignmentsTable.source, "worksheet")),
@@ -717,6 +719,51 @@ router.get("/assignments/duplicate-candidates", async (req, res): Promise<void> 
   } catch (err) {
     req.log.error({ err }, "Legacy assignment duplicate scan failed");
     res.status(500).json({ message: "تعذر فحص النسخ المتشابهة" });
+  }
+});
+
+// Record that the owner has reviewed this legacy copy and intentionally wants
+// to keep it. This is separate from assignment editing, sharing, and archive
+// state so the review cannot change library permissions or assignment data.
+router.post("/assignments/:id/duplicate-confirmation", async (req, res): Promise<void> => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+    return;
+  }
+
+  try {
+    const { id } = GetAssignmentParams.parse(req.params);
+    const [assignment] = await db
+      .select({ id: assignmentsTable.id })
+      .from(assignmentsTable)
+      .where(and(
+        eq(assignmentsTable.id, id),
+        eq(assignmentsTable.teacherId, teacherId),
+      ))
+      .limit(1);
+
+    if (!assignment) {
+      res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+
+    await db
+      .update(assignmentsTable)
+      .set({ duplicateScanConfirmedAt: new Date() })
+      .where(and(
+        eq(assignmentsTable.id, id),
+        eq(assignmentsTable.teacherId, teacherId),
+      ));
+
+    res.json({ ok: true, assignmentId: id });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: "معرّف غير صالح" });
+      return;
+    }
+    req.log.error({ err: error }, "Confirm intentional duplicate error");
+    res.status(500).json({ message: "تعذر حفظ قرار الاحتفاظ بالنسخة" });
   }
 });
 
