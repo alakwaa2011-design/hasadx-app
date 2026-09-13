@@ -287,6 +287,7 @@ export default function TeacherLibraryPage() {
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [usage, setUsage] = useState<UsageInfo | null>(null);
   const [activeGroup, setActiveGroup] = useState<string>("all"); // "all" | "none" | groupId-as-string
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -1179,7 +1180,12 @@ export default function TeacherLibraryPage() {
       ? []
       : groups.filter((folder) => folder.parentGroupId === activeGroupId);
 
-  const renderFolder = (folder: LibraryGroup, depth = 0): ReactNode => (
+  const renderFolder = (folder: LibraryGroup, depth = 0): ReactNode => {
+    const childFolders = groups.filter((child) => child.parentGroupId === folder.id);
+    const hasChildren = childFolders.length > 0;
+    const isExpanded = expandedGroupIds.has(folder.id);
+
+    return (
     <div key={folder.id}>
       <div
         className={`group flex items-center gap-1 rounded-xl ${
@@ -1188,13 +1194,33 @@ export default function TeacherLibraryPage() {
         style={{ marginInlineStart: depth * 12 }}
       >
         <button
-          onClick={() => setActiveGroup(String(folder.id))}
+          onClick={() => {
+            setActiveGroup(String(folder.id));
+            if (hasChildren) {
+              setExpandedGroupIds((previous) => {
+                const next = new Set(previous);
+                if (next.has(folder.id)) next.delete(folder.id);
+                else next.add(folder.id);
+                return next;
+              });
+            }
+          }}
           className={`flex-1 min-w-0 text-start px-3 py-2.5 text-sm font-semibold truncate ${
             activeGroup === String(folder.id) ? "text-violet-700" : "hover:bg-muted rounded-xl"
           }`}
           data-testid={`group-${folder.id}`}
         >
           <span className="inline-flex items-center gap-2">
+            {hasChildren ? (
+              <ChevronDown
+                className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-transform ${
+                  isExpanded ? "" : "-rotate-90"
+                }`}
+                aria-hidden="true"
+              />
+            ) : (
+              <span className="w-3.5 shrink-0" aria-hidden="true" />
+            )}
             <Folder className="w-4 h-4 shrink-0 text-violet-500" />
             <span className="truncate">{folder.name}</span>
             <span className="text-[11px] text-muted-foreground">({folder.fileCount})</span>
@@ -1225,9 +1251,10 @@ export default function TeacherLibraryPage() {
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
-      {groups.filter((child) => child.parentGroupId === folder.id).map((child) => renderFolder(child, depth + 1))}
+      {isExpanded && childFolders.map((child) => renderFolder(child, depth + 1))}
     </div>
-  );
+    );
+  };
 
   return (
     <Layout>
