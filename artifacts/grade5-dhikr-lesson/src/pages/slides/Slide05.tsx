@@ -8,7 +8,6 @@ export default function Slide05() {
           <Label tone="green">نشاط أداء</Label>
           <div className="mt-[2vh] text-[3.4vw] font-black text-[#1f6f4a]">اقرأ</div>
           <p className="mt-[1.5vh] text-[1.7vw] leading-relaxed">أقرأ الحديث مع المعلم قراءة سليمة، ثم أستمع لقراءة زميلي وأحسنها.</p>
-          <div className="mt-[3vh] text-[4.8vw] text-[#c79a43]">◌</div>
         </Panel>
         <Quote reference="عن أبي موسى الأشعري رضي الله عنه قال: قال النبي ﷺ">
           مَثَلُ الَّذِي يَذْكُرُ رَبَّهُ، وَالَّذِي لَا يَذْكُرُ رَبَّهُ مَثَلُ الْحَيِّ وَالْمَيِّتِ.

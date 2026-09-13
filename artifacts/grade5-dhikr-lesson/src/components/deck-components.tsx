@@ -2,15 +2,14 @@ import type { ReactNode } from "react";
 
 const base = import.meta.env.BASE_URL;
 
-export function Frame({ children, title, number, eyebrow = "التربية الإسلامية", dark = false }: { children: ReactNode; title: string; number: string; eyebrow?: string; dark?: boolean }) {
+export function Frame({ children, title, number, dark = false }: { children: ReactNode; title: string; number: string; dark?: boolean }) {
   return (
     <div dir="rtl" className={`relative w-screen h-screen overflow-hidden ${dark ? "bg-[#1d5a3d] text-[#fffaf0]" : "bg-[#f6f1e8] text-[#27352f]"}`}>
       <div className={`absolute inset-x-0 top-0 h-[2.5vh] ${dark ? "bg-[#c79a43]" : "bg-[#1f6f4a]"}`} />
       <div className={`absolute -top-[16vh] -left-[8vw] h-[38vh] w-[38vh] rounded-full border-[1.2vh] ${dark ? "border-[#3f845f]/40" : "border-[#d6e4c7]"}`} />
       <div className={`absolute -bottom-[16vh] -right-[8vw] h-[42vh] w-[42vh] rounded-full border-[1.2vh] ${dark ? "border-[#c79a43]/25" : "border-[#e4c78b]/35"}`} />
       <div className="relative z-10 flex h-full flex-col px-[6vw] py-[6vh]">
-        <div className="flex items-center justify-between">
-          <div className={`text-[1.2vw] font-bold tracking-[0.16em] ${dark ? "text-[#dbe9d1]" : "text-[#6e7d74]"}`}>{eyebrow}</div>
+        <div className="flex items-center justify-end">
           <div className={`flex items-center gap-[0.8vw] text-[1.25vw] font-bold ${dark ? "text-[#f2d18a]" : "text-[#7b4a8b]"}`}>
             <span className="h-[1.1vw] w-[1.1vw] rounded-full bg-[#c79a43]" />
             <span>{number}</span>
@@ -21,10 +20,6 @@ export function Frame({ children, title, number, eyebrow = "التربية ال�
           <div className={`h-[0.7vh] w-[8vw] shrink-0 rounded-full ${dark ? "bg-[#c79a43]" : "bg-[#c79a43]"}`} />
         </div>
         <div className="animate-dhikr-soft-rise mt-[3.2vh] min-h-0 flex-1">{children}</div>
-        <div className={`mt-[2vh] flex items-center justify-between text-[1.1vw] font-medium ${dark ? "text-[#dbe9d1]" : "text-[#7d8d82]"}`}>
-          <span>ذِكر الله تعالى</span>
-          <span>الصف الخامس</span>
-        </div>
       </div>
     </div>
   );
@@ -37,16 +32,8 @@ export function Cover({ children }: { children: ReactNode }) {
       <div className="absolute inset-0 bg-gradient-to-l from-[#173e2d]/95 via-[#1d5a3d]/72 to-[#1d5a3d]/25" />
       <div className="absolute inset-x-0 top-0 h-[2.7vh] bg-[#c79a43]" />
       <div className="absolute bottom-[-16vh] left-[-8vw] h-[50vh] w-[50vh] rounded-full border-[1.5vh] border-[#f2d18a]/20" />
-      <div className="relative z-10 flex h-full flex-col justify-between px-[7vw] py-[7vh]">
-        <div className="flex items-center justify-between text-[1.4vw] font-bold tracking-[0.14em] text-[#f2d18a]">
-          <span>التربية الإسلامية</span>
-          <span>الصف الخامس</span>
-        </div>
+      <div className="relative z-10 flex h-full flex-col justify-center px-[7vw] py-[7vh]">
         <div className="animate-dhikr-soft-rise max-w-[65vw]">{children}</div>
-        <div className="flex items-center justify-between text-[1.15vw] text-[#e7efdc]">
-          <span>حصة نموذجية</span>
-          <span>من الكتاب المدرسي</span>
-        </div>
       </div>
     </div>
   );
@@ -95,9 +82,9 @@ export function Activity({ number, title, children, tone = "green" }: { number: 
   );
 }
 
-export function IconTile({ symbol, label, tone = "green" }: { symbol: string; label: string; tone?: "green" | "plum" | "gold" }) {
+export function IconTile({ symbol: _symbol, label, tone = "green" }: { symbol: string; label: string; tone?: "green" | "plum" | "gold" }) {
   const colors = { green: "bg-[#e8f0df] text-[#1f6f4a] border-[#a9c492]", plum: "bg-[#f0e6f3] text-[#8b5a9d] border-[#c8a8d2]", gold: "bg-[#fbf0cf] text-[#9a7120] border-[#e3bd69]" };
-  return <div className={`flex min-h-[13vh] flex-col items-center justify-center gap-[1vh] rounded-[1.8vw] border-[0.16vw] ${colors[tone]} p-[1vw]`}><div className="text-[3vw] font-black">{symbol}</div><div className="text-center text-[1.35vw] font-bold">{label}</div></div>;
+  return <div className={`flex min-h-[13vh] flex-col items-center justify-center gap-[1vh] rounded-[1.8vw] border-[0.16vw] ${colors[tone]} p-[1vw]`}><div className="flex h-[3vw] w-[3vw] items-center justify-center rounded-full border-[0.18vw] border-current"><span className="h-[0.9vw] w-[0.9vw] rounded-full bg-current" /></div><div className="text-center text-[1.35vw] font-bold">{label}</div></div>;
 }
 
 export function ImageCard({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
