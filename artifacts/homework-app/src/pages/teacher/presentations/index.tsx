@@ -305,6 +305,8 @@ export default function PresentationsIndex({
       dir={isAr ? "rtl" : "ltr"}
     >
 
+        {!embedded && (
+        <>
         {/* ─── Hero Banner ─────────────────────────────────────── */}
         <div
           className="relative overflow-hidden rounded-[20px] sm:rounded-3xl mb-4 sm:mb-6 bg-white sm:[background:linear-gradient(135deg,#071f0f_0%,#0f3d21_40%,#14532d_75%,#195e34_100%)] max-sm:border max-sm:border-black/[0.04] max-sm:shadow-sm"
@@ -408,6 +410,8 @@ export default function PresentationsIndex({
             </div>}
           </div>
         </div>
+        </>
+        )}
 
         {/* ─── Tabs + Search ───────────────────────────────────── */}
         <div className="flex flex-col-reverse sm:flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4 sm:mb-5">
