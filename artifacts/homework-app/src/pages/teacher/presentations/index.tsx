@@ -592,6 +592,7 @@ function PresentationCard({
   onGoLive,
   goLiveLoading,
   isOwner,
+  viewOnly,
 }: {
   p: PresentationSummary;
   isAr: boolean;
@@ -605,6 +606,7 @@ function PresentationCard({
   onGoLive: () => void;
   goLiveLoading: boolean;
   isOwner: boolean;
+  viewOnly: boolean;
 }) {
   const isPublished = p.status === "published";
 
@@ -798,13 +800,13 @@ function PresentationCard({
           ) : (
             <h3
               className={`flex-1 text-[13px] sm:text-[14px] font-semibold text-foreground line-clamp-1 sm:line-clamp-2 leading-[1.25] sm:leading-[1.4]${isOwner ? " cursor-text select-none" : ""}`}
-              onDoubleClick={isOwner ? startEdit : undefined}
-              title={isOwner ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
+              onDoubleClick={isOwner && !viewOnly ? startEdit : undefined}
+              title={isOwner && !viewOnly ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
             >
               {p.title}
             </h3>
           )}
-          {!editing && (
+          {!viewOnly && !editing && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -876,7 +878,7 @@ function PresentationCard({
         </button>
 
         {/* Visible quick-action buttons */}
-        {isOwner && !editing && (
+        {!viewOnly && isOwner && !editing && (
           <div className="hidden sm:flex items-center gap-2 mb-3">
             <button
               type="button"
@@ -943,11 +945,13 @@ function EmptyState({
   onCreate,
   hasSearch,
   tab,
+  viewOnly,
 }: {
   isAr: boolean;
-  onCreate: () => void;
+  onCreate?: () => void;
   hasSearch: boolean;
   tab: TabId;
+  viewOnly?: boolean;
 }) {
   if (hasSearch) {
     return (
@@ -968,6 +972,11 @@ function EmptyState({
     );
   }
   const msg =
+    viewOnly
+      ? isAr
+        ? "لا توجد عروض تفاعلية محفوظة حتى الآن"
+        : "No saved interactive presentations yet"
+      :
     tab === "published"
       ? isAr
         ? "لا توجد عروض منشورة بعد"
@@ -994,17 +1003,21 @@ function EmptyState({
         <Sparkles className="w-10 h-10 text-white" />
       </div>
       <h3 className="text-xl font-black text-foreground mb-2">
-        {isAr ? "ابدأ إبداعك هنا" : "Start creating"}
+        {viewOnly
+          ? (isAr ? "لا توجد عروض محفوظة" : "No saved presentations")
+          : (isAr ? "ابدأ إبداعك هنا" : "Start creating")}
       </h3>
       <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto leading-relaxed">{msg}</p>
-      <Button
-        onClick={onCreate}
-        className="gap-2 font-bold rounded-2xl px-6 h-auto py-2.5"
-        style={{ background: BRAND_GREEN, color: "white" }}
-      >
-        <Plus className="w-4 h-4" />
-        {isAr ? "إنشاء عرض يدويًا" : "Create manually"}
-      </Button>
+      {onCreate && (
+        <Button
+          onClick={onCreate}
+          className="gap-2 font-bold rounded-2xl px-6 h-auto py-2.5"
+          style={{ background: BRAND_GREEN, color: "white" }}
+        >
+          <Plus className="w-4 h-4" />
+          {isAr ? "إنشاء عرض يدويًا" : "Create manually"}
+        </Button>
+      )}
     </div>
   );
 }

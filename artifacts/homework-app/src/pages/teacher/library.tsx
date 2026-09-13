@@ -1580,7 +1580,7 @@ export default function TeacherLibraryPage() {
                 <p className="text-xs font-bold text-violet-600">{isAr ? "داخل مكتبتي" : "Inside My Library"}</p>
                 <h2 className="text-lg font-black">{isAr ? "العروض التفاعلية" : "Interactive presentations"}</h2>
               </div>
-              <PresentationsIndex embedded />
+              <PresentationsIndex embedded viewOnly />
             </div>
           </TabsContent>
 
