@@ -122,7 +122,13 @@ const KIND_THEME: Record<ContentKind, { bar: string; bg: string; text: string; d
   "general":    { bar: "#374151", bg: "#f9fafb", text: "#1f2937", dim: "#6b7280" },
 };
 
-export default function PresentationsIndex({ embedded }: { embedded?: boolean } = {}) {
+export default function PresentationsIndex({
+  embedded,
+  viewOnly = false,
+}: {
+  embedded?: boolean;
+  viewOnly?: boolean;
+} = {}) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const [, setLocation] = useLocation();
@@ -136,11 +142,11 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
   const [goLiveLoading, setGoLiveLoading] = useState<number | null>(null);
 
   useEffect(() => {
-    if (location === "/teacher/presentations/new") {
+    if (!viewOnly && location === "/teacher/presentations/new") {
       setShowCreate(true);
       setLocation("/teacher/presentations", { replace: true });
     }
-  }, [location, setLocation]);
+  }, [location, setLocation, viewOnly]);
   const [deleteTarget, setDeleteTarget] = useState<PresentationSummary | null>(null);
 
   const { data: me } = useGetCurrentTeacher({
@@ -342,10 +348,14 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               <h1 className="text-xl sm:text-[28px] font-black text-[#173d2a] sm:text-white mb-1 sm:mb-1.5 leading-tight tracking-tight">
                 {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
               </h1>
-              <p className="text-[11px] sm:text-sm text-slate-500 sm:text-white/55 mb-2.5 sm:mb-4 leading-relaxed max-w-sm">
+                <p className="text-[11px] sm:text-sm text-slate-500 sm:text-white/55 mb-2.5 sm:mb-4 leading-relaxed max-w-sm">
                 {isAr
-                  ? "أنشئ عروضاً تفاعلية احترافية بالذكاء الاصطناعي"
-                  : "Build professional interactive lessons powered by AI"}
+                  ? viewOnly
+                    ? "استعرض عروضك التفاعلية المحفوظة"
+                    : "أنشئ عروضاً تفاعلية احترافية بالذكاء الاصطناعي"
+                  : viewOnly
+                    ? "Browse your saved interactive presentations"
+                    : "Build professional interactive lessons powered by AI"}
               </p>
               {!isLoading && (
                 <div className="flex items-center gap-1 flex-wrap">
@@ -367,7 +377,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
             </div>
 
             {/* Right: CTAs */}
-            <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:flex-col shrink-0">
+            {!viewOnly && <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:flex-col shrink-0">
               {/* Primary — إنشاء عرض يدويًا */}
               <button
                 type="button"
@@ -395,7 +405,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 <Upload className="w-3.5 h-3.5 shrink-0" />
                 {isAr ? "استيراد ملف" : "Import file"}
               </button>
-            </div>
+            </div>}
           </div>
         </div>
 
@@ -476,7 +486,13 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState isAr={isAr} onCreate={() => setShowCreate(true)} hasSearch={!!search} tab={tab} />
+          <EmptyState
+            isAr={isAr}
+            onCreate={viewOnly ? undefined : () => setShowCreate(true)}
+            hasSearch={!!search}
+            tab={tab}
+            viewOnly={viewOnly}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
             {filtered.map((p) => (
@@ -494,6 +510,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 onGoLive={() => handleGoLive(p.id)}
                 goLiveLoading={goLiveLoading === p.id}
                 isOwner={!!me && p.teacherId === me.id}
+                viewOnly={viewOnly}
               />
             ))}
           </div>
@@ -501,24 +518,28 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
       </div>
 
       {/* Create modal */}
-      <CreateModal
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        isAr={isAr}
-        loading={createMut.isPending}
-        onSubmit={(payload) => createMut.mutate({ data: payload })}
-      />
+      {!viewOnly && (
+        <CreateModal
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          isAr={isAr}
+          loading={createMut.isPending}
+          onSubmit={(payload) => createMut.mutate({ data: payload })}
+        />
+      )}
 
       {/* Import file */}
-      <ImportModal
-        open={showImport}
-        onOpenChange={setShowImport}
-        isAr={isAr}
-        loading={importLoading}
-        onImport={handleImport}
-        maxMb={50}
-        maxImages={10}
-      />
+      {!viewOnly && (
+        <ImportModal
+          open={showImport}
+          onOpenChange={setShowImport}
+          isAr={isAr}
+          loading={importLoading}
+          onImport={handleImport}
+          maxMb={50}
+          maxImages={10}
+        />
+      )}
 
 
       {/* Delete confirm */}
