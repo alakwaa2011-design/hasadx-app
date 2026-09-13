@@ -10,6 +10,10 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { shouldShowFloatingTimer, shouldAutoMinimizeTimer, handleTimerAuthTransition } from "@/lib/timer-policies";
 import { StableReadout } from "./timer-widget-core";
 import { claimLocalTimerSound, markTimerHandled, restoreTimerFromServer } from "@/lib/timer-server-sync";
+import { enableCurrentDevicePushNotifications } from "@/components/push-notifications";
+import { toast } from "@/components/ui/sonner";
+
+let timerNotificationPromptAttempted = false;
 
 export function GlobalTeacherTimer() {
   const [location, setLocation] = useLocation();
@@ -99,6 +103,20 @@ export function GlobalTeacherTimer() {
     if (state.isRunning) {
       pause();
     } else {
+      if (state.mode === "countdown" && !timerNotificationPromptAttempted) {
+        timerNotificationPromptAttempted = true;
+        void enableCurrentDevicePushNotifications(lang)
+          .then(() => {
+            toast.success(isAr
+              ? "تم تفعيل تنبيه انتهاء المؤقت على هذا الجهاز"
+              : "Timer completion alerts are enabled on this device");
+          })
+          .catch((error) => {
+            toast.error(error instanceof Error
+              ? error.message
+              : (isAr ? "تعذّر تفعيل تنبيه المؤقت" : "Could not enable timer alerts"));
+          });
+      }
       start();
     }
   };

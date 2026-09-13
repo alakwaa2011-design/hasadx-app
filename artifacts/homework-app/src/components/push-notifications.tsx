@@ -54,6 +54,40 @@ async function saveSubscription(subscription: PushSubscription, lang: "ar" | "en
   if (!response.ok) throw new Error("Unable to save push subscription");
 }
 
+export async function enableCurrentDevicePushNotifications(lang: "ar" | "en"): Promise<PushSubscription> {
+  const isAr = lang === "ar";
+  if (!supported()) {
+    throw new Error(isAr ? "هذا المتصفح لا يدعم إشعارات الويب" : "This browser does not support Web Push");
+  }
+  const iosNeedsInstall = /iPad|iPhone|iPod/.test(navigator.userAgent) && !isStandalone();
+  if (iosNeedsInstall) {
+    throw new Error(isAr
+      ? "ثبّت حصاد على الشاشة الرئيسية أولًا، ثم افتحه من الأيقونة لتفعيل تنبيه المؤقت"
+      : "Install Hasaad on your Home Screen, then open it from the icon to enable timer alerts");
+  }
+  const existing = await currentSubscription();
+  if (existing) {
+    await saveSubscription(existing, lang);
+    return existing;
+  }
+  const permission = Notification.permission === "granted"
+    ? "granted"
+    : await Notification.requestPermission();
+  if (permission !== "granted") {
+    throw new Error(isAr ? "لم يتم منح إذن الإشعارات" : "Notification permission was not granted");
+  }
+  const keyResponse = await fetch(`${API_BASE}/api/notifications/push/public-key`, { credentials: "include" });
+  const keyData = await keyResponse.json();
+  if (!keyResponse.ok) throw new Error(keyData.message || "Web Push unavailable");
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: decodeBase64Url(keyData.publicKey),
+  });
+  await saveSubscription(subscription, lang);
+  return subscription;
+}
+
 export async function logoutCurrentTeacherDevice(): Promise<void> {
   const subscription = await currentSubscriptionWithTimeout();
   const response = await fetch(`${API_BASE}/api/auth/logout`, {
@@ -152,20 +186,8 @@ export function PushNotificationSettings() {
   const enable = async () => {
     setBusy(true);
     try {
-      if (!supported()) throw new Error(isAr ? "هذا المتصفح لا يدعم إشعارات الويب" : "This browser does not support Web Push");
-      if (iosNeedsInstall) throw new Error(isAr ? "ثبّت حصاد على الشاشة الرئيسية أولًا، ثم افتحه من الأيقونة" : "Install Hasaad on your Home Screen, then open it from the icon");
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      if (result !== "granted") throw new Error(isAr ? "لم يتم منح إذن الإشعارات" : "Notification permission was not granted");
-      const keyResponse = await fetch(`${API_BASE}/api/notifications/push/public-key`, { credentials: "include" });
-      const keyData = await keyResponse.json();
-      if (!keyResponse.ok) throw new Error(keyData.message || "Web Push unavailable");
-      const registration = await navigator.serviceWorker.ready;
-      const next = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: decodeBase64Url(keyData.publicKey),
-      });
-      await saveSubscription(next, lang);
+      const next = await enableCurrentDevicePushNotifications(lang);
+      setPermission(Notification.permission);
       setSubscription(next);
       toast.success(isAr ? "تم تفعيل إشعارات الجهاز" : "Device notifications enabled");
     } catch (error) {
