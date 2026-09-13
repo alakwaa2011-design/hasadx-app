@@ -5,7 +5,8 @@ import { useForm, useFieldArray } from "react-hook-form";
 import {
   Calendar, Coffee, Clock3, Trash2, Pencil, Image as ImageIcon, Plus, 
   UploadCloud, AlertTriangle, FileWarning, Loader2, ArrowRight, ArrowLeft,
-  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal, Palette, Check, ChevronDown
+  Sparkles, Bell, Volume2, VolumeX, Timer, CalendarClock, RefreshCw, MoreHorizontal, SlidersHorizontal, Palette, Check, ChevronDown,
+  CircleHelp, Smartphone, MonitorSmartphone, Wifi, ShieldCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -158,6 +159,7 @@ function TimerAndAlertsSection({
   const [deviceNotificationsEnabled, setDeviceNotificationsEnabled] = useState(
     () => typeof Notification !== "undefined" && Notification.permission === "granted",
   );
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
@@ -211,27 +213,38 @@ function TimerAndAlertsSection({
           </div>
         </div>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={preferences.enabled}
-          onClick={() => {
-            const enabled = !preferences.enabled;
-            updatePreferences({ enabled });
-            if (enabled && !deviceNotificationsEnabled) void enableDeviceNotifications();
-          }}
-          className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 text-xs font-black transition-colors sm:min-w-[150px] ${
-            preferences.enabled
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
-              : "border-border bg-card text-muted-foreground"
-          }`}
-          data-testid="button-schedule-alerts-enabled"
-        >
-          <span>{preferences.enabled ? (isAr ? "التنبيهات مفعّلة" : "Alerts on") : (isAr ? "التنبيهات متوقفة" : "Alerts off")}</span>
-          <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${preferences.enabled ? "bg-emerald-700" : "bg-muted-foreground/35"}`} aria-hidden="true">
-            <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${preferences.enabled ? "start-6" : "start-1"}`} />
-          </span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setInstructionsOpen(true)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-emerald-900/15 bg-white/75 px-3 py-2 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:bg-white dark:border-emerald-500/25 dark:bg-emerald-950/20 dark:text-emerald-200 dark:hover:bg-emerald-950/35"
+            data-testid="button-schedule-notification-instructions"
+          >
+            <CircleHelp className="h-4 w-4" />
+            {isAr ? "طريقة تفعيل الإشعارات" : "Notification setup"}
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={preferences.enabled}
+            onClick={() => {
+              const enabled = !preferences.enabled;
+              updatePreferences({ enabled });
+              if (enabled && !deviceNotificationsEnabled) void enableDeviceNotifications();
+            }}
+            className={`flex min-h-10 items-center justify-between gap-4 rounded-xl border px-3 py-2 text-xs font-black transition-colors sm:min-w-[150px] ${
+              preferences.enabled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
+                : "border-border bg-card text-muted-foreground"
+            }`}
+            data-testid="button-schedule-alerts-enabled"
+          >
+            <span>{preferences.enabled ? (isAr ? "التنبيهات مفعّلة" : "Alerts on") : (isAr ? "التنبيهات متوقفة" : "Alerts off")}</span>
+            <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${preferences.enabled ? "bg-emerald-700" : "bg-muted-foreground/35"}`} aria-hidden="true">
+              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${preferences.enabled ? "start-6" : "start-1"}`} />
+            </span>
+          </button>
+        </div>
         </div>
 
         {preferences.enabled && (
@@ -361,6 +374,90 @@ function TimerAndAlertsSection({
           />
         </div>
       )}
+
+      <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+        <DialogContent className="max-h-[88dvh] max-w-lg overflow-y-auto rounded-[1.75rem] border-emerald-900/10 p-0" dir={isAr ? "rtl" : "ltr"}>
+          <div className="border-b border-emerald-900/10 bg-gradient-to-br from-emerald-950 to-emerald-800 px-5 py-5 text-white sm:px-6">
+            <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-white/12">
+              <Bell className="h-5 w-5" />
+            </div>
+            <DialogHeader className="text-start">
+              <DialogTitle className="text-xl font-black text-white">
+                {isAr ? "اجعل تنبيهات حصاد تصل دائمًا" : "Keep Hasaad alerts working"}
+              </DialogTitle>
+              <DialogDescription className="text-sm font-medium leading-6 text-emerald-50/80">
+                {isAr
+                  ? "نفّذ الخطوات مرة واحدة على كل جهاز تريد استقبال تنبيهات الحصص والمواعيد عليه."
+                  : "Complete these steps once on every device where you want lesson and appointment alerts."}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="space-y-3 px-5 py-5 sm:px-6">
+            {[
+              {
+                Icon: ShieldCheck,
+                title: isAr ? "فعّل التنبيهات في حصاد" : "Turn on Hasaad alerts",
+                body: isAr
+                  ? "شغّل «التنبيهات مفعّلة»، ثم اضغط «تفعيل إشعارات الجهاز» واسمح بالإشعارات عند ظهور رسالة المتصفح."
+                  : "Turn on alerts, then choose Enable device notifications and allow the browser permission.",
+              },
+              {
+                Icon: Smartphone,
+                title: isAr ? "على iPhone وiPad" : "On iPhone and iPad",
+                body: isAr
+                  ? "أضف حصاد إلى الشاشة الرئيسية من قائمة المشاركة، افتحه من الأيقونة، ثم فعّل إشعارات الجهاز من داخل حصاد."
+                  : "Add Hasaad to the Home Screen from Share, open it from its icon, then enable device notifications inside Hasaad.",
+              },
+              {
+                Icon: MonitorSmartphone,
+                title: isAr ? "على Android والكمبيوتر" : "On Android and desktop",
+                body: isAr
+                  ? "اسمح بالإشعارات لهذا الموقع من إعدادات المتصفح، وتأكد أن إشعارات المتصفح نفسه مسموحة في إعدادات الجهاز."
+                  : "Allow notifications for this site in the browser and ensure the browser itself can notify in system settings.",
+              },
+              {
+                Icon: Wifi,
+                title: isAr ? "حتى بعد إغلاق حصاد" : "After closing Hasaad",
+                body: isAr
+                  ? "ستصل رسالة من نظام الجهاز ما دام الجهاز متصلًا بالإنترنت ولم تُوقف إشعارات حصاد أو المتصفح. لا تسجّل الخروج من الحساب على الجهاز."
+                  : "A system notification arrives while online unless Hasaad or browser notifications are blocked. Stay signed in on the device.",
+              },
+            ].map(({ Icon, title, body }, index) => (
+              <div key={title} className="flex gap-3 rounded-2xl border border-border/70 bg-muted/25 p-3.5">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="mb-1 flex items-center gap-2 text-sm font-black text-foreground">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-300">{String(index + 1).padStart(2, "0")}</span>
+                    {title}
+                  </div>
+                  <p className="text-xs font-medium leading-5 text-muted-foreground">{body}</p>
+                </div>
+              </div>
+            ))}
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/25 dark:text-amber-100">
+              {isAr
+                ? "عند إغلاق حصاد يُستخدم صوت إشعار الجهاز. أما صوت حصاد الذي اخترته فيعمل عندما تكون المنصة مفتوحة."
+                : "When Hasaad is closed, your device notification sound is used. Your selected Hasaad sound plays while the app is open."}
+            </div>
+
+            {!deviceNotificationsEnabled && (
+              <button
+                type="button"
+                onClick={() => void enableDeviceNotifications()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-3 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-900"
+                data-testid="button-enable-notifications-from-instructions"
+              >
+                <Bell className="h-4 w-4" />
+                {isAr ? "تفعيل إشعارات هذا الجهاز الآن" : "Enable this device now"}
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
