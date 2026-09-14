@@ -3481,7 +3481,7 @@ export const ar = {
     settingsSaved: "تم حفظ الإعدادات", loadError: "خطأ في تحميل البيانات", participantDeleted: "تم حذف المشارك", questionsSaved: "تم حفظ الأسئلة", saveQuestionsFailed: "فشل حفظ الأسئلة", participants: "كشف اللاعبين", noParticipants: "لا يوجد مشاركون بعد", noParticipantsHint: "شارك الرابط مع طلابك لتبدأ النتائج بالظهور هنا", audio: "صوتي", noAudio: "بلا صوت",
     aiHint: "ولّد أسئلة جديدة تلقائياً ثم عدّلها كما تشاء", topicExample: "مثال: الجهاز الهضمي", subjectExample: "مثال: علوم", titleExample: "مثال: اختبار الوحدة الأولى", manualHint: "اكتب الأسئلة والخيارات بنفسك خطوة بخطوة",
     level: "المرحلة", allQuestions: "الكل", saveSettings: "حفظ الإعدادات", saving: "جاري الحفظ...", editQuestionAudio: "تعديل صوت الأسئلة", saveEdits: "حفظ التعديلات", deleteParticipant: "حذف المشارك (المسؤول فقط)", deleteChallenge: "حذف المسابقة نهائياً", points: "نقطة", trueLabel: "صح", falseLabel: "خطأ",
-    attemptsOnce: "مرة", attemptsTwice: "مرتان", attemptsBest3: "أفضل 3", attemptsChoose: "يختار اللاعب بعد المحاولتين", attemptsBest: "يُحتسب أفضل نتيجة من {n}",
+    attemptsOnce: "مرة", attemptsTwice: "مرتان", attemptsBest3: "أفضل 3", attemptsUnlimited: "مفتوح", attemptsChoose: "يختار اللاعب بعد المحاولتين", attemptsBest: "يُحتسب أفضل نتيجة من {n}",
   },
   dictationCreate: {
     back: "رجوع", wizardSteps: "خطوات المعالج", basics: "الأساسيات", contentQuestions: "المحتوى والأسئلة", publishingSettings: "إعدادات النشر", review: "مراجعة",

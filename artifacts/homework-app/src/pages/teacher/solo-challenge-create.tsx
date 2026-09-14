@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Target, Sparkles, BookOpen, ChevronLeft, ChevronRight, Plus, Trash2, Check,
   Loader2, Search, Clock, Trophy, FileText, Calendar, ChevronDown,
-  X, Settings, Layers, PenLine, Users, XCircle
+  X, Settings, Layers, PenLine, Users, XCircle, RotateCw
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
@@ -80,6 +80,7 @@ export default function SoloChallengeCreatePage() {
   const [notes, setNotes] = useState("");
   const [timePerQuestion, setTimePerQuestion] = useState(20);
   const [leaderboardDisplay, setLeaderboardDisplay] = useState<"top3" | "top20" | "all">("top20");
+  const [maxAttempts, setMaxAttempts] = useState(1);
   const [expiresAt, setExpiresAt] = useState("");
   const [questionsPerParticipant, setQuestionsPerParticipant] = useState<number | "">("");
   const [allowedClasses, setAllowedClasses] = useState<string[]>([]);
@@ -138,6 +139,9 @@ export default function SoloChallengeCreatePage() {
         setQuestions(restored as Question[]);
         setTimePerQuestion(saved.timePerQuestion);
         setLeaderboardDisplay(saved.leaderboardDisplay);
+        if (typeof saved.maxAttempts === "number" && Number.isInteger(saved.maxAttempts) && saved.maxAttempts >= 0) {
+          setMaxAttempts(saved.maxAttempts);
+        }
         if (typeof saved.notes === "string") setNotes(saved.notes);
         if (typeof saved.expiresAt === "string") setExpiresAt(saved.expiresAt);
         if (typeof saved.questionsPerParticipant === "number") setQuestionsPerParticipant(saved.questionsPerParticipant);
@@ -246,6 +250,7 @@ export default function SoloChallengeCreatePage() {
           expiresAt: expiresAt || null,
           timePerQuestion,
           leaderboardDisplay,
+          maxAttempts,
           questionsPerParticipant: diffDistribution ? null : (questionsPerParticipant === "" ? null : questionsPerParticipant),
           difficultyDistribution: diffDistribution,
           isMultiLevel,
@@ -287,6 +292,7 @@ export default function SoloChallengeCreatePage() {
         notes: notes || null,
         timePerQuestion,
         leaderboardDisplay,
+        maxAttempts,
         expiresAt: expiresAt || null,
         questionsPerParticipant: diffDistribution ? null : (questionsPerParticipant === "" ? null : questionsPerParticipant),
         difficultyDistribution: diffDistribution,
@@ -464,6 +470,7 @@ export default function SoloChallengeCreatePage() {
                       notes={notes} onNotes={setNotes}
                       timePerQuestion={timePerQuestion} onTime={setTimePerQuestion}
                       leaderboardDisplay={leaderboardDisplay} onLd={setLeaderboardDisplay}
+                      maxAttempts={maxAttempts} onMaxAttempts={setMaxAttempts}
                       expiresAt={expiresAt} onExpires={setExpiresAt}
                       questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                       maxQuestions={selectedAssignment?.questionCount}
@@ -639,6 +646,7 @@ export default function SoloChallengeCreatePage() {
                     notes={notes} onNotes={setNotes}
                     timePerQuestion={timePerQuestion} onTime={setTimePerQuestion}
                     leaderboardDisplay={leaderboardDisplay} onLd={setLeaderboardDisplay}
+                    maxAttempts={maxAttempts} onMaxAttempts={setMaxAttempts}
                     expiresAt={expiresAt} onExpires={setExpiresAt}
                     questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                     maxQuestions={questions.filter(q => q.text.trim() && q.optionA && q.optionB && q.optionC && q.optionD).length}
@@ -752,6 +760,7 @@ export default function SoloChallengeCreatePage() {
                     notes={notes} onNotes={setNotes}
                     timePerQuestion={timePerQuestion} onTime={setTimePerQuestion}
                     leaderboardDisplay={leaderboardDisplay} onLd={setLeaderboardDisplay}
+                    maxAttempts={maxAttempts} onMaxAttempts={setMaxAttempts}
                     expiresAt={expiresAt} onExpires={setExpiresAt}
                     questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                     maxQuestions={questions.filter(isValidQ).length}
@@ -787,6 +796,7 @@ function SettingsPanel({
   notes, onNotes,
   timePerQuestion, onTime,
   leaderboardDisplay, onLd,
+  maxAttempts, onMaxAttempts,
   expiresAt, onExpires,
   questionsPerParticipant, onQpp,
   maxQuestions,
@@ -799,6 +809,7 @@ function SettingsPanel({
   notes: string; onNotes: (v: string) => void;
   timePerQuestion: number; onTime: (v: number) => void;
   leaderboardDisplay: "top3" | "top20" | "all"; onLd: (v: "top3" | "top20" | "all") => void;
+  maxAttempts: number; onMaxAttempts: (v: number) => void;
   expiresAt: string; onExpires: (v: string) => void;
   questionsPerParticipant: number | ""; onQpp: (v: number | "") => void;
   maxQuestions?: number;
@@ -809,7 +820,7 @@ function SettingsPanel({
   teacherClasses: string[];
 }) {
   const [open, setOpen] = useState(false);
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const s = t.soloChallenges;
 
   const updateLevel = (i: number, patch: Partial<ChallengeLevel>) => {
@@ -1027,6 +1038,34 @@ function SettingsPanel({
                   </div>
                 </div>
               )}
+
+              {/* ── Attempts ── */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
+                <label className="flex items-center gap-2 text-xs font-bold text-foreground">
+                  <RotateCw className="w-4 h-4 text-primary" />
+                  {lang === "ar" ? "المحاولات المسموحة" : "Allowed attempts"}
+                </label>
+                <div className="flex bg-muted/50 p-1 rounded-xl border border-border/50 self-start sm:self-auto">
+                  {([
+                    { value: 1, label: s.attemptsOnce },
+                    { value: 2, label: s.attemptsTwice },
+                    { value: 0, label: s.attemptsUnlimited },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => onMaxAttempts(option.value)}
+                      className={cn(
+                        "px-3 py-1.5 text-[11px] font-bold transition-all rounded-lg",
+                        maxAttempts === option.value
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* ── Leaderboard ── */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">

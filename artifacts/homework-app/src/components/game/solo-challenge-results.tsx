@@ -26,9 +26,8 @@ function fmtTime(sec: number): string {
 //   1  (default) → only the first attempt ever counts; replays don't change it.
 //   2             → after the 2nd attempt, the player manually picks which of
 //                   the two results to keep as their final score.
-//   >2            → the player must complete all N attempts; the best result
-//                   (by correct answers, then points, then speed) is picked
-//                   automatically and submitted.
+//   0             → unlimited replays; every completed run is submitted and the
+//                   server keeps the participant's best result.
 //
 // LocalStorage keys (per challenge slug):
 //   hasad_solo_final_<slug>    → the finalized/locked-in result (all modes)
@@ -98,7 +97,7 @@ export function SoloChallengeResults({
   const [maxAttempts] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
     const n = Number(sessionStorage.getItem("solo_challenge_max_attempts"));
-    return Number.isFinite(n) && n >= 1 ? n : 1;
+    return Number.isFinite(n) && n >= 0 ? n : 1;
   });
   const [gamePin] = useState<string | null>(() =>
     typeof window !== "undefined" ? sessionStorage.getItem("solo_challenge_game_pin") : null,
@@ -149,6 +148,9 @@ export function SoloChallengeResults({
     attempts: AttemptRecord[];
     isNew: boolean; // true when this playthrough is what produced `display`
   }>(() => {
+    if (maxAttempts === 0) {
+      return { phase: "final", display: currentAttempt, attempts: [currentAttempt], isNew: true };
+    }
     if (existingFinal) {
       return { phase: "final", display: existingFinal, attempts: [], isNew: false };
     }
@@ -231,7 +233,7 @@ export function SoloChallengeResults({
     } else {
       // phase === "final"
       if (outcome.isNew) {
-        if (finalKey) {
+        if (finalKey && maxAttempts !== 0) {
           try { localStorage.setItem(finalKey, JSON.stringify(outcome.display)); } catch { /* storage full */ }
         }
         if (attemptsKey) {
@@ -612,6 +614,15 @@ export function SoloChallengeResults({
                 }}
               >
                 <Lock className="w-3 h-3" /> {isAr ? "نتيجتك النهائية المحفوظة" : "Your saved final score"}
+              </span>
+            </div>
+          ) : maxAttempts === 0 ? (
+            <div className="mt-2 flex justify-center">
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold"
+                style={{ background: "rgba(232,184,75,0.12)", border: "1px solid rgba(232,184,75,0.35)", color: "#E8B84B" }}
+              >
+                <RotateCcw className="w-3 h-3" /> {isAr ? "يمكنك اللعب مجددًا — تُحتسب أفضل نتيجة" : "Replay anytime — your best score counts"}
               </span>
             </div>
           ) : maxAttempts === 2 ? (

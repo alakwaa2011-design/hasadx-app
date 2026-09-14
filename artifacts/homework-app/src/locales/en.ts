@@ -3456,7 +3456,7 @@ export const en: typeof ar = {
     settingsSaved: "Settings saved", loadError: "Failed to load data", participantDeleted: "Participant deleted", questionsSaved: "Questions saved", saveQuestionsFailed: "Failed to save questions", participants: "Participants", noParticipants: "No participants yet", noParticipantsHint: "Share the link with your students to see results here", audio: "Audio", noAudio: "No audio",
     aiHint: "Generate new questions automatically, then edit them as you wish", topicExample: "e.g. Digestive system", subjectExample: "e.g. Science", titleExample: "e.g. Unit One Quiz", manualHint: "Write the questions and choices yourself, step by step",
     level: "Level", allQuestions: "All", saveSettings: "Save Settings", saving: "Saving...", editQuestionAudio: "Edit Question Audio", saveEdits: "Save Changes", deleteParticipant: "Delete participant (admins only)", deleteChallenge: "Delete challenge permanently", points: "points", trueLabel: "True", falseLabel: "False",
-    attemptsOnce: "Once", attemptsTwice: "Twice", attemptsBest3: "Best of 3", attemptsChoose: "The player chooses after two attempts", attemptsBest: "The best result of {n} is counted",
+    attemptsOnce: "Once", attemptsTwice: "Twice", attemptsBest3: "Best of 3", attemptsUnlimited: "Unlimited", attemptsChoose: "The player chooses after two attempts", attemptsBest: "The best result of {n} is counted",
   },
   dictationCreate: {
     back: "Back", wizardSteps: "Wizard steps", basics: "Basics", contentQuestions: "Content & Questions", publishingSettings: "Publishing Settings", review: "Review",

@@ -361,7 +361,10 @@ router.post("/solo-challenges", async (req, res) => {
     const timePerQuestion = Math.max(5, Math.min(120, Number(req.body?.timePerQuestion) || 20));
     const ld = req.body?.leaderboardDisplay;
     const leaderboardDisplay = ["top3", "top20", "all"].includes(ld) ? ld : "top20";
-    const maxAttempts = Math.max(1, Math.min(10, Number(req.body?.maxAttempts) || 1));
+    const requestedMaxAttempts = Number(req.body?.maxAttempts);
+    const maxAttempts = Number.isInteger(requestedMaxAttempts) && requestedMaxAttempts >= 0 && requestedMaxAttempts <= 10
+      ? requestedMaxAttempts
+      : 1;
     const notes = req.body?.notes ? String(req.body.notes).slice(0, 1000) : null;
     const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
     if (expiresAt && isNaN(expiresAt.getTime())) {
@@ -424,8 +427,8 @@ router.post("/solo-challenges/standalone", async (req, res) => {
     let maxAttempts = 1;
     if (req.body?.maxAttempts != null) {
       const ma = Number(req.body.maxAttempts);
-      if (!Number.isInteger(ma) || ma < 1 || ma > 10) {
-        return res.status(400).json({ message: "عدد المحاولات يجب أن يكون بين 1 و10" });
+      if (!Number.isInteger(ma) || ma < 0 || ma > 10) {
+        return res.status(400).json({ message: "عدد المحاولات يجب أن يكون بين 0 و10، والصفر يعني مفتوح" });
       }
       maxAttempts = ma;
     }
@@ -706,8 +709,8 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
     }
     if ("maxAttempts" in req.body) {
       const ma = Number(req.body.maxAttempts);
-      if (!Number.isInteger(ma) || ma < 1 || ma > 10) {
-        return res.status(400).json({ message: "عدد المحاولات يجب أن يكون بين 1 و10" });
+      if (!Number.isInteger(ma) || ma < 0 || ma > 10) {
+        return res.status(400).json({ message: "عدد المحاولات يجب أن يكون بين 0 و10، والصفر يعني مفتوح" });
       }
       update.maxAttempts = ma;
     }
@@ -1160,7 +1163,8 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
             eq(soloChallengeAttemptsTable.slug, slug),
             eq(soloChallengeAttemptsTable.participantKey, participantKey),
           ));
-        if ((attempts?.count ?? 0) >= (challenge.maxAttempts ?? 1)) {
+        const maxAttempts = challenge.maxAttempts ?? 1;
+        if (maxAttempts > 0 && (attempts?.count ?? 0) >= maxAttempts) {
           throw new Error("MAX_ATTEMPTS_REACHED");
         }
         await tx.insert(soloChallengeAttemptsTable).values({
@@ -1254,30 +1258,67 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
       .limit(1);
     if (!attempt) return res.status(409).json({ message: "تعذر التحقق من المحاولة" });
 
-    const [existingScore] = await db
-      .select({ gameRunId: soloChallengeScoresTable.gameRunId })
-      .from(soloChallengeScoresTable)
-      .where(and(
-        eq(soloChallengeScoresTable.slug, slug),
-        eq(soloChallengeScoresTable.participantKey, participantKey),
-      ))
-      .limit(1);
-    if (existingScore) return res.json({ ok: true, duplicate: true });
-
     const verifiedTimeTaken = Math.max(
       0,
       Math.round(Array.from(player.answers.values()).reduce((sum, answer) => sum + answer.time, 0) / 1000),
     );
-    await db.insert(soloChallengeScoresTable).values({
-      slug,
-      participantKey,
-      gameRunId: scoreProof,
-      playerName: player.name,
-      score: Math.max(0, Math.round(player.score)),
-      correctCount: Math.max(0, Math.round(player.totalCorrect)),
-      timeTaken: verifiedTimeTaken,
-    }).onConflictDoNothing();
-    res.json({ ok: true });
+    const nextScore = Math.max(0, Math.round(player.score));
+    const nextCorrectCount = Math.max(0, Math.round(player.totalCorrect));
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${slug}:${participantKey}`}))`);
+      const [existingScore] = await tx
+        .select({
+          gameRunId: soloChallengeScoresTable.gameRunId,
+          score: soloChallengeScoresTable.score,
+          correctCount: soloChallengeScoresTable.correctCount,
+          timeTaken: soloChallengeScoresTable.timeTaken,
+        })
+        .from(soloChallengeScoresTable)
+        .where(and(
+          eq(soloChallengeScoresTable.slug, slug),
+          eq(soloChallengeScoresTable.participantKey, participantKey),
+        ))
+        .limit(1);
+
+      if (existingScore?.gameRunId === scoreProof) return "duplicate";
+      const isBetter = !existingScore ||
+        nextCorrectCount > existingScore.correctCount ||
+        (nextCorrectCount === existingScore.correctCount &&
+          (verifiedTimeTaken < (existingScore.timeTaken ?? Number.MAX_SAFE_INTEGER) ||
+            (verifiedTimeTaken === (existingScore.timeTaken ?? Number.MAX_SAFE_INTEGER) &&
+              nextScore > existingScore.score)));
+
+      if (!existingScore) {
+        await tx.insert(soloChallengeScoresTable).values({
+          slug,
+          participantKey,
+          gameRunId: scoreProof,
+          playerName: player.name,
+          score: nextScore,
+          correctCount: nextCorrectCount,
+          timeTaken: verifiedTimeTaken,
+        });
+        return "created";
+      }
+      if (!isBetter) return "kept";
+
+      await tx
+        .update(soloChallengeScoresTable)
+        .set({
+          gameRunId: scoreProof,
+          playerName: player.name,
+          score: nextScore,
+          correctCount: nextCorrectCount,
+          timeTaken: verifiedTimeTaken,
+          playedAt: new Date(),
+        })
+        .where(and(
+          eq(soloChallengeScoresTable.slug, slug),
+          eq(soloChallengeScoresTable.participantKey, participantKey),
+        ));
+      return "updated";
+    });
+    res.json({ ok: true, result });
   } catch (err) {
     req.log.error(err, "Solo challenge score error");
     res.status(500).json({ message: "خطأ في تسجيل الدرجة" });

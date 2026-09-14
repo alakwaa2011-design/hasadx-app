@@ -99,7 +99,7 @@ export default function SoloPlayPage() {
     if (!slug || typeof window === "undefined") return;
     try {
       const finalRaw = localStorage.getItem(`hasad_solo_final_${slug}`) || localStorage.getItem(`hasad_solo_first_${slug}`);
-      if (finalRaw) {
+      if (finalRaw && info?.maxAttempts !== 0) {
         const saved = JSON.parse(finalRaw) as { name?: string };
         if (saved?.name) setPlayerName(saved.name);
         setAttemptProgress({ used: 0, max: 0, isFinal: true });

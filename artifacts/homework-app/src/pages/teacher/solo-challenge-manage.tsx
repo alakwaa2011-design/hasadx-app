@@ -602,19 +602,18 @@ export default function SoloChallengeManagePage() {
                            <p className="text-xs font-medium text-muted-foreground mt-1">كم مرة يمكن للطالب إعادة التحدي لتحسين نتيجته؟</p>
                          </div>
                          <div className="flex items-center gap-1 bg-background rounded-xl border border-border/60 p-1 shadow-sm shrink-0">
-                            {([1, 2, 3] as const).map(v => (
+                             {([1, 2, 0] as const).map(v => (
                                <button key={v} onClick={() => { setEditMaxAttempts(v); mark(); }}
                                  className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-colors", editMaxAttempts === v ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground")}
                                >
-                                 {v === 1 ? s.attemptsOnce : v === 2 ? s.attemptsTwice : s.attemptsBest3}
+                                  {v === 1 ? s.attemptsOnce : v === 2 ? s.attemptsTwice : s.attemptsUnlimited}
                                </button>
                             ))}
                          </div>
                       </div>
-                      {editMaxAttempts > 1 && (
+                       {editMaxAttempts === 2 && (
                         <div className="ml-4 mr-4 p-4 bg-primary/5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between border border-primary/10 gap-3">
-                           <span className="text-xs font-bold text-primary">{editMaxAttempts === 2 ? s.attemptsChoose : s.attemptsBest.replace("{n}", String(editMaxAttempts))} — أو أدخل رقماً (أقصى حد 10):</span>
-                           <input type="number" min={2} max={10} value={editMaxAttempts} onChange={e => { let n = Math.max(2, Math.min(10, Number(e.target.value) || 2)); setEditMaxAttempts(n); mark(); }} className="w-20 px-3 py-2 rounded-lg border border-primary/20 text-center font-black text-sm bg-card shadow-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                            <span className="text-xs font-bold text-primary">{s.attemptsChoose}</span>
                         </div>
                       )}
 
