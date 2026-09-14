@@ -9,6 +9,7 @@ export default defineConfig({
     exclude: [
       "src/__tests__/ai-video-render-recovery.integration.test.ts",
       "src/__tests__/ai-video-request-journal.integration.test.ts",
+      "src/__tests__/teacher-schedule-vision-regression.integration.test.ts",
     ],
     // Registers a global vi.mock("@workspace/db") backed by a Proxy so any
     // table export — current or future — is auto-stubbed. Tests that supply

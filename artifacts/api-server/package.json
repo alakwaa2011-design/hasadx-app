@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:ai-vision": "vitest run --config vitest.ai-vision.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

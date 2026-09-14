@@ -52,6 +52,17 @@ args = "pnpm --filter @workspace/api-server exec tsc --noEmit"
 [workflows.workflow.metadata]
 isValidation = true
 
+[[workflows.workflow]]
+name = "api-server-ai-vision-regression"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run test:ai-vision"
+
+[workflows.workflow.metadata]
+isValidation = true
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
