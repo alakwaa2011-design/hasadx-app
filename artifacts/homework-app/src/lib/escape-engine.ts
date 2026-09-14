@@ -97,6 +97,34 @@ const FEEDBACK_WRONG = 2;
 /** Presentational skins cycled across the non-final locks. */
 const LOCK_SKINS: LockType[] = ["digits", "laser", "wires"];
 
+function shuffledIndices(length: number, rng: () => number): number[] {
+  const indices = Array.from({ length }, (_, index) => index);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return indices;
+}
+
+/**
+ * Creates a fresh question order for every run and independently shuffles each
+ * question's options while preserving the correct-answer mapping.
+ */
+export function shuffleEscapeQuestions(
+  questions: EscapeQuestion[],
+  rng: () => number = Math.random,
+): EscapeQuestion[] {
+  return shuffledIndices(questions.length, rng).map((questionIndex) => {
+    const question = questions[questionIndex];
+    const optionOrder = shuffledIndices(question.options.length, rng);
+    return {
+      ...question,
+      options: optionOrder.map((optionIndex) => question.options[optionIndex]),
+      correct: optionOrder.indexOf(question.correct),
+    };
+  });
+}
+
 /**
  * Distribute the questions across `lockCount` locks as evenly as possible.
  * Earlier locks get the extras so the final Master Vault stays lean & tense.
@@ -133,12 +161,13 @@ export function createEscapeState(
   config: EscapeSetupConfig,
   rng: () => number = Math.random,
 ): EscapeState {
+  const questions = shuffleEscapeQuestions(config.questions, rng);
   return {
     status: "idle",
     timeLeft: config.totalTime,
     totalTime: config.totalTime,
-    questions: config.questions,
-    locks: buildLocks(config.questions.length, config.lockCount, rng),
+    questions,
+    locks: buildLocks(questions.length, config.lockCount, rng),
     lockIndex: 0,
     qPos: 0,
     phase: "question",

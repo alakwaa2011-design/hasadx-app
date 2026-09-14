@@ -8,7 +8,7 @@
 // Identity: Hasaad gold (#F7C948 / #D9A521) glowing inside a deep midnight
 // vault (#0b1220 → #131c33). Everything is SVG/CSS/Web Audio — no assets.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { resolveImageUrl } from "@/lib/image-url";
 import {
@@ -886,13 +886,14 @@ const OPTION_GRADIENT = [
 ];
 
 export function EscapeGameView({
-  state, dispatch, sound, ar, variant,
+  state, dispatch, sound, ar, variant, headerAction,
 }: {
   state: EscapeState;
   dispatch: (a: EscapeAction) => void;
   sound: EscapeSoundEngine;
   ar: boolean;
   variant: "class" | "solo";
+  headerAction?: ReactNode;
 }) {
   const reduce = useReducedMotion();
   const lock = state.locks[state.lockIndex];
@@ -998,6 +999,7 @@ export function EscapeGameView({
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
         <LockChain locks={state.locks} currentIndex={state.lockIndex} ar={ar} />
         <div className="flex items-center gap-2.5">
+          {headerAction}
           <CodeSlots locks={state.locks} ar={ar} />
           <EscapeTimer timeLeft={state.timeLeft} urgent={urgent} big={big} />
         </div>

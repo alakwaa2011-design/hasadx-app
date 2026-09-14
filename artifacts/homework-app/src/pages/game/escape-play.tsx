@@ -194,15 +194,6 @@ export default function EscapePlay() {
       <VaultBackdrop danger={phase === "playing" && !!state && state.timeLeft <= 60} />
       {phase === "done" && state?.status === "won" && <EscapeBurst />}
 
-      {(phase === "playing" || phase === "done") && (
-        <button onClick={toggleMute}
-          className="fixed top-3 z-50 rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm"
-          style={{ insetInlineEnd: 12 }}
-          aria-label={muted ? "unmute" : "mute"}>
-          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </button>
-      )}
-
       {/* ── ENTER: PIN + name ── */}
       {(phase === "enter" || phase === "joining") && (
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
@@ -311,7 +302,23 @@ export default function EscapePlay() {
               <span className="truncate">{displayTitle} — {name.trim()}</span>
             </p>
           </div>
-          <EscapeGameView state={state} dispatch={dispatch} sound={getSound()} ar={ar} variant="solo" />
+          <EscapeGameView
+            state={state}
+            dispatch={dispatch}
+            sound={getSound()}
+            ar={ar}
+            variant="solo"
+            headerAction={(
+              <button
+                onClick={toggleMute}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white/85 transition-colors hover:bg-white/15"
+                aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}
+                title={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}
+              >
+                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+            )}
+          />
         </>
       )}
 

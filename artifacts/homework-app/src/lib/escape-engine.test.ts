@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildLocks, createEscapeState, currentQuestion, escapeProgress,
   escapeReducer, escapeScore, revealedCode, ESCAPE_PENALTY,
+  shuffleEscapeQuestions,
   type EscapeQuestion, type EscapeState,
 } from "./escape-engine";
 
@@ -55,6 +56,25 @@ describe("buildLocks", () => {
   });
 });
 
+describe("shuffleEscapeQuestions", () => {
+  it("shuffles questions and options without changing the correct answer", () => {
+    const questions: EscapeQuestion[] = [
+      { text: "first", options: ["wrong 1", "correct 1", "wrong 2"], correct: 1 },
+      { text: "second", options: ["correct 2", "wrong 3", "wrong 4"], correct: 0 },
+    ];
+    const shuffled = shuffleEscapeQuestions(questions, () => 0);
+
+    expect(shuffled.map((question) => question.text)).toEqual(["second", "first"]);
+    expect(shuffled.find((question) => question.text === "first")?.options[
+      shuffled.find((question) => question.text === "first")!.correct
+    ]).toBe("correct 1");
+    expect(shuffled.find((question) => question.text === "second")?.options[
+      shuffled.find((question) => question.text === "second")!.correct
+    ]).toBe("correct 2");
+    expect(questions[0].options).toEqual(["wrong 1", "correct 1", "wrong 2"]);
+  });
+});
+
 describe("escapeReducer — happy path", () => {
   it("opens a lock after all its questions are solved and reveals its digit", () => {
     let s = fresh(8, 4); // 2 questions per lock
@@ -70,12 +90,13 @@ describe("escapeReducer — happy path", () => {
 
   it("continue moves to the next lock", () => {
     let s = fresh(8, 4);
+    const nextLockFirstQuestion = s.questions[s.locks[1].questionIdxs[0]].text;
     s = solveOne(s);
     s = solveOne(s);
     s = escapeReducer(s, { type: "continue" });
     expect(s.lockIndex).toBe(1);
     expect(s.phase).toBe("question");
-    expect(currentQuestion(s)?.text).toBe("Q2");
+    expect(currentQuestion(s)?.text).toBe(nextLockFirstQuestion);
   });
 
   it("wins when the final vault opens", () => {
@@ -93,6 +114,8 @@ describe("escapeReducer — wrong answers & alarm", () => {
   it("burns the penalty, bumps the alarm and rotates back to the question later", () => {
     let s = fresh(4, 2, 300);
     const cq = currentQuestion(s)!;
+    const missedQuestion = cq.text;
+    const nextQuestion = s.questions[s.locks[0].questionIdxs[1]].text;
     const wrongIdx = (cq.correct + 1) % cq.options.length;
     s = escapeReducer(s, { type: "answer", index: wrongIdx });
     expect(s.correct).toBe(false);
@@ -103,12 +126,12 @@ describe("escapeReducer — wrong answers & alarm", () => {
     s = escapeReducer(s, { type: "tick" });
     s = escapeReducer(s, { type: "tick" });
     expect(s.phase).toBe("question");
-    // Lock has 2 questions: after missing Q0 we rotate to Q1.
-    expect(currentQuestion(s)?.text).toBe("Q1");
-    // Solve Q1 → rotates back to the missed Q0 (lock not open yet).
+    // A missed question rotates behind the next question in the same lock.
+    expect(currentQuestion(s)?.text).toBe(nextQuestion);
+    // Solve the next question → rotate back to the missed one.
     s = solveOne(s);
     expect(s.phase).toBe("question");
-    expect(currentQuestion(s)?.text).toBe("Q0");
+    expect(currentQuestion(s)?.text).toBe(missedQuestion);
     expect(s.locks[0].open).toBe(false);
   });
 
