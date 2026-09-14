@@ -310,25 +310,21 @@ export function SoloChallengeResults({
     legend: {
       title: isAr ? "أسطورة!" : "Legend!",
       subtitle: isAr ? "أداء استثنائي — تستحق التحدي" : "Exceptional performance",
-      emoji: "🏆",
       color: "#FFD66E",
     },
     excellent: {
       title: isAr ? "ممتاز!" : "Excellent!",
       subtitle: isAr ? "نتيجة رائعة — تحدّى أصدقاءك" : "Great score — challenge your friends",
-      emoji: "✨",
       color: "#E8B84B",
     },
     good: {
       title: isAr ? "جيد!" : "Good!",
       subtitle: isAr ? "تقدر تتحسن — جرّب مرة أخرى" : "You can do better",
-      emoji: "👏",
       color: "#86E8B1",
     },
     keep_going: {
       title: isAr ? "استمر!" : "Keep Going!",
       subtitle: isAr ? "الأبطال لا يستسلمون — أعد المحاولة" : "Champions don't quit",
-      emoji: "💪",
       color: "#A8C8FF",
     },
   }[tier];
@@ -351,6 +347,14 @@ export function SoloChallengeResults({
     return leaderboard.findIndex((e) => e.playerName === displayName);
   })();
   const myRank = myRankIdx >= 0 ? myRankIdx + 1 : null;
+  const visibleLeaderboard = leaderboard.slice(
+    0,
+    soloLeaderboardDisplay === "top3"
+      ? 3
+      : soloLeaderboardDisplay === "all"
+        ? leaderboard.length
+        : 20,
+  );
 
   const handleShare = () => {
     if (typeof navigator.share === "function") {
@@ -575,21 +579,10 @@ export function SoloChallengeResults({
             boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
           }}
         >
-          <motion.div
-            animate={{ rotate: [0, -5, 5, 0], scale: [1, 1.06, 1] }}
-            transition={{ repeat: Infinity, duration: 2.6 }}
-            className="inline-block text-5xl sm:text-7xl"
-            style={{
-              filter: `drop-shadow(0 0 22px ${TIER.color}88)`,
-            }}
-          >
-            {TIER.emoji}
-          </motion.div>
-
           {/* Tier-aware celebratory headline — scales the dopamine hit
               to the player's actual performance. */}
           <h1
-            className="mt-2 text-2xl sm:text-4xl font-black tracking-tight"
+            className="text-2xl sm:text-4xl font-black tracking-tight"
             style={{ color: TIER.color }}
           >
             {TIER.title}
@@ -762,7 +755,7 @@ export function SoloChallengeResults({
                 {isAr ? "لا توجد نتائج بعد" : "No scores yet"}
               </p>
             ) : (
-              leaderboard.slice(0, 20).map((entry, i) => {
+              visibleLeaderboard.map((entry, i) => {
                 const isMe = myRankIdx === i;
                 return (
                   <div

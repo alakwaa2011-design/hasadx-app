@@ -716,6 +716,11 @@ function doAutoAdvance(io: Server, pin: string) {
   clearQuestionTimeout(currentGame);
   const question = nextQuestion(currentGame);
   if (!question) {
+    // The final auto-advance is also a terminal transition. Without this
+    // assignment late reconnects see the old "leaderboard" state and are
+    // sent back to the Wameeth lobby instead of staying on the finished
+    // results screen.
+    currentGame.state = "finished";
     emitLeaderboardData(io, currentGame, "game:finished", {
       totalQuestions: currentGame.questions.length,
     });
@@ -869,6 +874,7 @@ function finishGiftRound(io: Server, game: Game) {
   const hasMoreQuestions = game.currentQuestionIndex + 1 < game.questions.length;
   if (!hasMoreQuestions) {
     nextQuestion(game);
+    game.state = "finished";
     emitLeaderboardData(io, game, "game:finished", {
       totalQuestions: game.questions.length,
     });
@@ -2364,6 +2370,7 @@ export function setupGameSocket(io: Server) {
 
       const question = nextQuestion(game);
       if (!question) {
+        game.state = "finished";
         emitLeaderboardData(io, game, "game:finished", {
           totalQuestions: game.questions.length,
         });

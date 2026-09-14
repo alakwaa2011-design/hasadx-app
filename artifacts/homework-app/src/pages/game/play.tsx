@@ -326,12 +326,54 @@ const POWER_UP_INFO: Record<
   },
 };
 
-const ENCOURAGEMENT_MSGS: Record<number, string[]> = {
-  2: ["أحسنت! استمر 🔥", "رائع! إجابتان صحيحتان 💪"],
-  3: ["ثلاث متتاليات! أنت في قمة نشاطك 🔥🔥", "لا يُصدق! ثلاث صح! ⚡"],
-  4: ["أربع إجابات صحيحة! أنت لا يُوقف! 🚀", "أسطوري! أربع متتاليات! 👑"],
-  5: ["خمس متتاليات! أنت البطل المطلق! 👑🔥", "لا يُصدق! خمسة صح! ⭐⭐⭐"],
+type EncouragementMessage = {
+  title: string;
+  subtitle: string;
+  icon: React.ElementType;
+  color: string;
 };
+
+const ENCOURAGEMENT_MSGS: Record<
+  number,
+  { ar: [string, string]; en: [string, string]; icon: React.ElementType; color: string }
+> = {
+  1: {
+    ar: ["أحسنت", "إجابة موفّقة — واصل تركيزك"],
+    en: ["Well done", "A strong answer — keep your focus"],
+    icon: CheckCircle,
+    color: "#86E8B1",
+  },
+  2: {
+    ar: ["استمر", "إجابتان صحيحتان متتاليتان"],
+    en: ["Keep going", "Two correct answers in a row"],
+    icon: Zap,
+    color: "#E8B84B",
+  },
+  3: {
+    ar: ["أداء رائع", "ثلاث إجابات صحيحة متتالية"],
+    en: ["Great momentum", "Three correct answers in a row"],
+    icon: Sparkles,
+    color: "#A8C8FF",
+  },
+  4: {
+    ar: ["تقدّم ممتاز", "أربع إجابات صحيحة متتالية"],
+    en: ["Excellent progress", "Four correct answers in a row"],
+    icon: Award,
+    color: "#C8A7FF",
+  },
+  5: {
+    ar: ["سلسلة مذهلة", "خمس إجابات صحيحة متتالية"],
+    en: ["Amazing streak", "Five correct answers in a row"],
+    icon: Flame,
+    color: "#FFB86C",
+  },
+};
+
+function getEncouragementMessage(streak: number, lang: string): EncouragementMessage {
+  const copy = ENCOURAGEMENT_MSGS[Math.min(Math.max(streak, 1), 5)];
+  const [title, subtitle] = lang === "ar" ? copy.ar : copy.en;
+  return { title, subtitle, icon: copy.icon, color: copy.color };
+}
 
 function HackRulesTerminal({ lang }: { lang: string }) {
   const lines =
@@ -1050,7 +1092,9 @@ export default function GamePlay() {
 
   const [countdownVal, setCountdownVal] = useState<number | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState<any>(null);
-  const [encouragementMsg, setEncouragementMsg] = useState<string | null>(null);
+  const [encouragementMsg, setEncouragementMsg] =
+    useState<EncouragementMessage | null>(null);
+  const EncouragementIcon = encouragementMsg?.icon ?? CheckCircle;
   const [shieldNotification, setShieldNotification] = useState<string | null>(
     null,
   );
@@ -1635,13 +1679,8 @@ export default function GamePlay() {
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 2000);
           const streak = result.streak;
-          const msgs =
-            streak >= 5
-              ? ENCOURAGEMENT_MSGS[5]
-              : ENCOURAGEMENT_MSGS[streak] || null;
-          if (msgs) {
-            const msg = msgs[Math.floor(Math.random() * msgs.length)];
-            setEncouragementMsg(msg);
+          if (streak >= 1) {
+            setEncouragementMsg(getEncouragementMessage(streak, lang));
             setTimeout(() => setEncouragementMsg(null), 2800);
           }
         } else {
@@ -3682,9 +3721,33 @@ export default function GamePlay() {
               initial={{ y: 80, opacity: 0, scale: 0.8 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -60, opacity: 0, scale: 0.8 }}
-              className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-4 rounded-2xl shadow-2xl font-black text-xl text-center max-w-[320px]"
+              className="fixed bottom-7 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,360px)] rounded-2xl border px-4 py-3.5 text-white shadow-2xl backdrop-blur-xl"
+              style={{
+                background: `linear-gradient(135deg, ${encouragementMsg.color}26, rgba(8,24,17,0.94))`,
+                borderColor: `${encouragementMsg.color}70`,
+                boxShadow: `0 14px 40px rgba(0,0,0,0.35), 0 0 24px ${encouragementMsg.color}20`,
+              }}
             >
-              {encouragementMsg}
+              <div className="flex items-center gap-3" dir={dir}>
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border"
+                  style={{
+                    color: encouragementMsg.color,
+                    borderColor: `${encouragementMsg.color}55`,
+                    background: `${encouragementMsg.color}18`,
+                  }}
+                >
+                  <EncouragementIcon className="h-6 w-6" strokeWidth={2.4} />
+                </div>
+                <div className="min-w-0 text-start">
+                  <p className="text-base font-black leading-tight">
+                    {encouragementMsg.title}
+                  </p>
+                  <p className="mt-1 text-xs font-bold text-white/65">
+                    {encouragementMsg.subtitle}
+                  </p>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

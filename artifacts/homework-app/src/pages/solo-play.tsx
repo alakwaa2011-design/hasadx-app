@@ -531,7 +531,16 @@ export default function SoloPlayPage() {
                       <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                     </div>
                   ) : (
-                    leaderboard.slice(0, 20).map((entry, i) => (
+                    leaderboard
+                      .slice(
+                        0,
+                        info?.leaderboardDisplay === "top3"
+                          ? 3
+                          : info?.leaderboardDisplay === "all"
+                            ? leaderboard.length
+                            : 20,
+                      )
+                      .map((entry, i) => (
                       <div key={i} className="flex items-center gap-2 px-2.5 py-1 rounded-lg">
                         <span className="w-6 flex justify-center text-xs font-black shrink-0"
                           style={{ color: i === 0 ? "#E8B84B" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "rgba(255,255,255,0.4)" }}>
@@ -548,7 +557,7 @@ export default function SoloPlayPage() {
                           {entry.score > 0 ? entry.score.toLocaleString() : "—"}
                         </span>
                       </div>
-                    ))
+                      ))
                   )}
                 </div>
               </div>
