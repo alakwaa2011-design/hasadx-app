@@ -116,7 +116,13 @@ export default function EscapePlay() {
     };
     const onEnded = () => {
       toast(ar ? "أنهى المعلم الجلسة" : "The teacher ended the session");
-      setLocation("/");
+      setPhase((currentPhase) => {
+        if (currentPhase === "playing" || currentPhase === "ready") {
+          rawDispatch({ type: "finish" });
+          return "done";
+        }
+        return "enter";
+      });
     };
     const onReconnect = () => {
       // Same name ⇒ the server resumes our player record silently.
@@ -312,6 +318,15 @@ export default function EscapePlay() {
                   {ar ? "هربت من القبو!" : "You escaped!"}
                 </h2>
               </>
+            ) : state.status === "stopped" ? (
+              <>
+                <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-amber-300/40 bg-amber-300/10 text-5xl">
+                  🏁
+                </div>
+                <h2 className="mb-1 text-3xl font-black text-amber-200">
+                  {ar ? "انتهت المسابقة" : "Competition ended"}
+                </h2>
+              </>
             ) : (
               <>
                 <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-white/20 bg-white/5 text-5xl">
@@ -325,7 +340,9 @@ export default function EscapePlay() {
             <p className="mb-4 text-sm font-bold text-white/65">
               {state.status === "won"
                 ? (ar ? "أحسنت! نتيجتك وصلت للمعلم مباشرة 🎉" : "Well done! Your result is live on the teacher's board 🎉")
-                : (ar ? "لا بأس — نتيجتك وصلت للمعلم، والجولة القادمة لك 💪" : "Your result reached the teacher — next round is yours 💪")}
+                : state.status === "stopped"
+                  ? (ar ? "هذه نتيجتك والوقت المتبقي عند لحظة إنهاء المعلم للمسابقة." : "This is your result and remaining time when the teacher ended the competition.")
+                  : (ar ? "لا بأس — نتيجتك وصلت للمعلم، والجولة القادمة لك 💪" : "Your result reached the teacher — next round is yours 💪")}
             </p>
 
             <div className="mx-auto mb-4 w-fit rounded-2xl border-2 border-amber-300/45 bg-black/50 px-8 py-2.5">

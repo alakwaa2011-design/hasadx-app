@@ -7,9 +7,8 @@ import { useEffect, useReducer, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, LogOut, Maximize, Minimize, Square, Volume2, VolumeX } from "lucide-react";
+import { LogOut, Maximize, Minimize, Volume2, VolumeX } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { useSmartBack } from "@/lib/nav-history";
 import {
   createEscapeState, escapeReducer, escapeScore, ESCAPE_CLASS_SETUP_KEY,
   type EscapeQuestion, type EscapeState,
@@ -49,7 +48,6 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
   const { lang, t, dir } = useI18n();
   const ar = lang === "ar";
   const [, setLocation] = useLocation();
-  const goBack = useSmartBack("/teacher/games");
   const [state, dispatch] = useReducer(
     escapeReducer,
     undefined,
@@ -100,18 +98,15 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
     else document.documentElement.requestFullscreen().catch(() => {});
   };
 
-  const stopGame = () => {
-    if (!window.confirm(ar ? "هل تريد إيقاف الجولة الحالية والعودة إلى الإعداد؟" : "Stop this round and return to setup?")) return;
-    getSound().stopAmbient();
-    getSound().stopMusic();
-    setLocation("/game/escape/create");
-  };
-
   const exitGame = () => {
-    if (!window.confirm(ar ? "هل تريد الخروج من غرفة الهروب؟" : "Exit the escape room?")) return;
+    if (state.status !== "playing") {
+      setLocation("/teacher/games");
+      return;
+    }
+    if (!window.confirm(ar ? "هل تريد إنهاء المسابقة وعرض النتيجة؟" : "End the competition and show the result?")) return;
     getSound().stopAmbient();
     getSound().stopMusic();
-    setLocation("/teacher/dashboard");
+    dispatch({ type: "finish" });
   };
 
   const title = setup.title || t.escapeClass.defaultTitle;
@@ -132,12 +127,6 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
             🔐 {title}
           </p>
           <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5">
-            <button onClick={goBack}
-              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/10 px-2.5 text-xs font-black text-amber-100 transition-colors hover:bg-amber-300/20"
-              aria-label={ar ? "رجوع" : "Back"}>
-              {ar ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
-              <span>{ar ? "رجوع" : "Back"}</span>
-            </button>
             <button onClick={toggleMute}
               className="flex min-h-9 items-center gap-1.5 rounded-xl border border-white/15 bg-white/8 px-2.5 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
               aria-label={muted ? t.escapeClass.unmute : t.escapeClass.mute}>
@@ -150,14 +139,6 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
               {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
               <span>{ar ? "ملء الشاشة" : "Fullscreen"}</span>
             </button>
-            {state.status === "playing" && (
-              <button onClick={stopGame}
-                className="flex min-h-9 items-center gap-1.5 rounded-xl border border-orange-300/25 bg-orange-400/10 px-2.5 text-xs font-black text-orange-200 transition-colors hover:bg-orange-400/20"
-                aria-label={ar ? "إيقاف اللعبة" : "Stop game"}>
-                <Square className="h-4 w-4" fill="currentColor" />
-                <span>{ar ? "إيقاف" : "Stop"}</span>
-              </button>
-            )}
             <button onClick={exitGame}
               className="flex min-h-9 items-center gap-1.5 rounded-xl border border-red-300/25 bg-red-500/10 px-2.5 text-xs font-black text-red-200 transition-colors hover:bg-red-500/20"
               aria-label={ar ? "الخروج" : "Exit"}>
@@ -173,7 +154,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
       )}
 
       {/* ── WIN / LOSE ceremony ── */}
-      {(state.status === "won" || state.status === "lost") && (
+      {(state.status === "won" || state.status === "lost" || state.status === "stopped") && (
         <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-4 px-4 py-8 text-center"
           style={{ direction: dir }}>
           <motion.div initial={{ opacity: 0, y: 18, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -192,6 +173,18 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
                 </h2>
                 <p className="mb-4 text-base font-bold text-white/70">
                   {t.escapeClass.escapedDescription}
+                </p>
+              </>
+            ) : state.status === "stopped" ? (
+              <>
+                <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/35 bg-amber-300/10 text-5xl backdrop-blur-md">
+                  🏁
+                </div>
+                <h2 className="mb-1 text-3xl font-black text-amber-200 sm:text-4xl">
+                  {ar ? "تم إنهاء المسابقة" : "Competition ended"}
+                </h2>
+                <p className="mb-4 text-base font-bold text-white/70">
+                  {ar ? "هذه نتيجة الصف عند لحظة الإنهاء." : "This is the class result at the moment the competition ended."}
                 </p>
               </>
             ) : (

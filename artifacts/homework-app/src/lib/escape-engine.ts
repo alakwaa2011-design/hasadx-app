@@ -51,7 +51,7 @@ export interface EscapeSetupConfig {
 export type EscapePhase = "question" | "feedback" | "lock-open";
 
 export interface EscapeState {
-  status: "idle" | "playing" | "won" | "lost";
+  status: "idle" | "playing" | "won" | "lost" | "stopped";
   timeLeft: number;
   totalTime: number;
   questions: EscapeQuestion[];
@@ -80,6 +80,7 @@ export interface EscapeState {
 
 export type EscapeAction =
   | { type: "start" }
+  | { type: "finish" }
   | { type: "tick" }
   | { type: "answer"; index: number }
   | { type: "fifty" }
@@ -229,6 +230,11 @@ export function escapeReducer(state: EscapeState, action: EscapeAction): EscapeS
     case "start": {
       if (state.status !== "idle") return state;
       return { ...state, status: "playing", phase: "question" };
+    }
+
+    case "finish": {
+      if (state.status !== "playing" && state.status !== "idle") return state;
+      return { ...state, status: "stopped" };
     }
 
     case "tick": {

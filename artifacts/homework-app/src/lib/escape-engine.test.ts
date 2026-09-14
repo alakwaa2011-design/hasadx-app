@@ -168,6 +168,15 @@ describe("escapeReducer — hints (50/50)", () => {
 });
 
 describe("escapeReducer — guards", () => {
+  it("finishes a running competition without changing its score or remaining time", () => {
+    const s = fresh(8, 4, 300);
+    const finished = escapeReducer(s, { type: "finish" });
+    expect(finished.status).toBe("stopped");
+    expect(finished.timeLeft).toBe(300);
+    expect(escapeScore(finished)).toBe(escapeScore(s));
+    expect(escapeReducer(finished, { type: "tick" })).toBe(finished);
+  });
+
   it("ignores answers outside the question phase and double answers", () => {
     let s = fresh();
     const cq = currentQuestion(s)!;

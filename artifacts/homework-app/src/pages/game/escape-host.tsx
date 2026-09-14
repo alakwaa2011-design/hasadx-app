@@ -10,11 +10,10 @@ import { useLocation, useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, ArrowRight, Play, LogOut, Loader2, Users, Square,
+  Play, LogOut, Loader2, Users,
   Volume2, VolumeX, Maximize, Minimize,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { useSmartBack } from "@/lib/nav-history";
 import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { HostJoinBar } from "@/components/host-join-bar";
@@ -37,11 +36,10 @@ export default function EscapeHost() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
-  const goBack = useSmartBack("/teacher/games");
   const [, params] = useRoute("/game/escape/host/:pin");
   const pin = params?.pin || "";
 
-  const [phase, setPhase] = useState<"connecting" | "lobby" | "playing" | "error">("connecting");
+  const [phase, setPhase] = useState<"connecting" | "lobby" | "playing" | "results" | "error">("connecting");
   const [players, setPlayers] = useState<HostPlayer[]>([]);
   const [title, setTitle] = useState<string | undefined>(undefined);
   const startedRef = useRef(false);
@@ -104,7 +102,7 @@ export default function EscapeHost() {
     };
     const onStarted = () => { startedRef.current = true; setPhase("playing"); };
     const onEnded = () => {
-      if (startedRef.current) return; // we ended it ourselves via the button
+      if (startedRef.current) setPhase("results");
     };
 
     socket.on("escape:players", onPlayers);
@@ -129,19 +127,15 @@ export default function EscapeHost() {
     getSocket().emit("escape:start");
   };
 
-  const endSession = (destination = "/game/escape/create") => {
-    getSocket().emit("escape:end");
-    setLocation(destination);
-  };
-
-  const stopGame = () => {
-    if (!window.confirm(ar ? "هل تريد إيقاف غرفة الهروب؟" : "Stop the escape room?")) return;
-    endSession();
-  };
-
   const exitGame = () => {
-    if (!window.confirm(ar ? "هل تريد الخروج وإنهاء غرفة الهروب؟" : "Exit and end the escape room?")) return;
-    endSession("/teacher/dashboard");
+    if (phase !== "playing") {
+      getSocket().emit("escape:end");
+      setLocation("/teacher/games");
+      return;
+    }
+    if (!window.confirm(ar ? "هل تريد إنهاء المسابقة وعرض النتائج؟" : "End the competition and show the results?")) return;
+    getSocket().emit("escape:end");
+    setPhase("results");
   };
 
   const escaped = players.filter(p => p.status === "won").length;
@@ -167,23 +161,11 @@ export default function EscapeHost() {
 
           {(phase === "lobby" || phase === "playing") && (
             <div className="mb-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/12 bg-black/35 p-2 backdrop-blur-md">
-              <button onClick={goBack}
-                className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 text-xs font-black text-amber-100 transition-colors hover:bg-amber-300/20"
-                aria-label={ar ? "رجوع" : "Back"}>
-                {ar ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
-                <span>{ar ? "رجوع" : "Back"}</span>
-              </button>
               <button onClick={toggleMute}
                 className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/8 px-3 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
                 aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}>
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 <span>{muted ? (ar ? "تشغيل الصوت" : "Sound on") : (ar ? "الصوت" : "Sound")}</span>
-              </button>
-              <button onClick={stopGame}
-                className="flex min-h-10 items-center gap-2 rounded-xl border border-orange-300/25 bg-orange-400/10 px-3 text-xs font-black text-orange-200 transition-colors hover:bg-orange-400/20"
-                aria-label={ar ? "إيقاف اللعبة" : "Stop game"}>
-                <Square className="h-4 w-4" fill="currentColor" />
-                <span>{ar ? "إيقاف" : "Stop"}</span>
               </button>
               <button onClick={exitGame}
                 className="flex min-h-10 items-center gap-2 rounded-xl border border-red-300/25 bg-red-500/10 px-3 text-xs font-black text-red-200 transition-colors hover:bg-red-500/20"
@@ -328,6 +310,49 @@ export default function EscapeHost() {
                 ))}
               </div>
 
+            </motion.div>
+          )}
+
+          {phase === "results" && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <div className="rounded-3xl border border-amber-300/25 bg-black/40 p-6 text-center backdrop-blur-md">
+                <div className="mb-2 text-5xl">🏁</div>
+                <h2 className="text-2xl font-black text-amber-200">
+                  {ar ? "انتهت المسابقة" : "Competition ended"}
+                </h2>
+                <p className="mt-1 text-sm font-bold text-white/55">
+                  {ar ? "النتائج والوقت المتبقي عند لحظة الإنهاء" : "Results and remaining time when the competition ended"}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {[...players].sort((a, b) => b.score - a.score).map((p, rank) => (
+                  <div key={p.name}
+                    className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-2xl border border-white/12 bg-white/5 px-4 py-3 backdrop-blur-md">
+                    <span className="w-7 text-center text-lg font-black" style={{ color: rank === 0 ? GOLD : "rgba(255,255,255,0.55)" }}>
+                      {rank + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black">{p.name}</p>
+                      <p className="text-[10px] font-bold text-white/45">✓ {p.correct} · ✗ {p.wrong}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] font-bold text-white/45">{ar ? "النتيجة" : "Score"}</p>
+                      <p className="font-black text-amber-200">{p.score}</p>
+                    </div>
+                    <div className="text-center" dir="ltr">
+                      <p className="text-[10px] font-bold text-white/45">{ar ? "الوقت" : "Time"}</p>
+                      <p className="font-black text-white">{Math.floor(p.timeLeft / 60)}:{(p.timeLeft % 60).toString().padStart(2, "0")}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={() => setLocation("/teacher/games")}
+                className="mx-auto flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-white/15">
+                <LogOut className="h-4 w-4" />
+                {ar ? "العودة إلى الألعاب" : "Back to games"}
+              </button>
             </motion.div>
           )}
         </div>
