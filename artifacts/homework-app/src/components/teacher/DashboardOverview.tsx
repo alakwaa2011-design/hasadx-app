@@ -196,6 +196,8 @@ const DASH_KEYFRAMES = `
 /* hero stat chip lift */
 .dashStat { transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease; }
 .dashStat:hover { transform: translateY(-2px); background: rgba(255,255,255,0.11); border-color: rgba(245,200,66,0.3); }
+.dashStat:active { transform: translateY(0) scale(0.98); }
+.dashStat:focus-visible { outline: 3px solid rgba(245,200,66,0.9); outline-offset: 3px; }
 /* quick link chip icon nudge */
 .dashLink .dashLinkIcon { transition: transform 0.18s ease; }
 .dashLink:hover .dashLinkIcon { transform: scale(1.08); }
@@ -539,6 +541,10 @@ export default function DashboardOverview({
           stats={stats}
           onCreate={() => setLocation("/teacher/new")}
           onLiveQuiz={() => setActiveTab("competitive")}
+          onShowStudents={() => setActiveTab("students")}
+          onShowClasses={() => setActiveTab("students")}
+          onShowActiveAssignments={() => setActiveTab("assignments")}
+          onShowSubmissions={() => setActiveTab("stats")}
         />
 
         {/* ══════════ ONBOARDING — full-width, right below hero ══════════ */}
@@ -957,6 +963,10 @@ function HeroPanel({
   stats,
   onCreate,
   onLiveQuiz,
+  onShowStudents,
+  onShowClasses,
+  onShowActiveAssignments,
+  onShowSubmissions,
 }: {
   isAr: boolean;
   isMobile: boolean;
@@ -973,6 +983,10 @@ function HeroPanel({
   };
   onCreate: () => void;
   onLiveQuiz: () => void;
+  onShowStudents: () => void;
+  onShowClasses: () => void;
+  onShowActiveAssignments: () => void;
+  onShowSubmissions: () => void;
 }) {
   return (
     <motion.section
@@ -1165,24 +1179,32 @@ function HeroPanel({
             icon={<GraduationCap style={{ width: 16, height: 16 }} />}
             label={isAr ? "الطلاب" : "Students"}
             value={stats.totalStudents}
+            onClick={onShowStudents}
+            actionLabel={isAr ? "عرض الطلاب" : "View students"}
           />
           <HeroStat
             isMobile={isMobile}
             icon={<Users style={{ width: 16, height: 16 }} />}
             label={isAr ? "الفصول" : "Classes"}
             value={stats.classes}
+            onClick={onShowClasses}
+            actionLabel={isAr ? "عرض الفصول" : "View classes"}
           />
           <HeroStat
             isMobile={isMobile}
             icon={<BookText style={{ width: 16, height: 16 }} />}
             label={isAr ? "واجبات نشطة" : "Active"}
             value={stats.active}
+            onClick={onShowActiveAssignments}
+            actionLabel={isAr ? "عرض الواجبات النشطة" : "View active assignments"}
           />
           <HeroStat
             isMobile={isMobile}
             icon={<CheckCircle2 style={{ width: 16, height: 16 }} />}
             label={isAr ? "التسليمات" : "Submissions"}
             value={stats.submissions}
+            onClick={onShowSubmissions}
+            actionLabel={isAr ? "عرض إحصاءات التسليمات" : "View submission statistics"}
           />
         </div>
 
@@ -1344,17 +1366,29 @@ function HeroStat({
   label,
   value,
   isMobile,
+  onClick,
+  actionLabel,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
   isMobile: boolean;
+  onClick: () => void;
+  actionLabel: string;
 }) {
   const animated = useCountUp(value);
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${actionLabel}: ${value}`}
+      title={actionLabel}
       className="dashStat"
       style={{
+        appearance: "none",
+        width: "100%",
+        cursor: "pointer",
+        textAlign: "start",
         display: "flex",
         alignItems: "center",
         gap: 10,
@@ -1407,7 +1441,7 @@ function HeroStat({
           {label}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
