@@ -7,8 +7,9 @@ import { useEffect, useReducer, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { LogOut, Maximize, Minimize, Square, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, ArrowRight, LogOut, Maximize, Minimize, Square, Volume2, VolumeX } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 import {
   createEscapeState, escapeReducer, escapeScore, ESCAPE_CLASS_SETUP_KEY,
   type EscapeQuestion, type EscapeState,
@@ -48,6 +49,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
   const { lang, t, dir } = useI18n();
   const ar = lang === "ar";
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/teacher/games");
   const [state, dispatch] = useReducer(
     escapeReducer,
     undefined,
@@ -130,6 +132,12 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
             🔐 {title}
           </p>
           <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5">
+            <button onClick={goBack}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/10 px-2.5 text-xs font-black text-amber-100 transition-colors hover:bg-amber-300/20"
+              aria-label={ar ? "رجوع" : "Back"}>
+              {ar ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+              <span>{ar ? "رجوع" : "Back"}</span>
+            </button>
             <button onClick={toggleMute}
               className="flex min-h-9 items-center gap-1.5 rounded-xl border border-white/15 bg-white/8 px-2.5 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
               aria-label={muted ? t.escapeClass.unmute : t.escapeClass.mute}>

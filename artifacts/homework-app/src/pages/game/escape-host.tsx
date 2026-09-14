@@ -10,10 +10,11 @@ import { useLocation, useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, LogOut, Loader2, Users, Square,
+  ArrowLeft, ArrowRight, Play, LogOut, Loader2, Users, Square,
   Volume2, VolumeX, Maximize, Minimize,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSmartBack } from "@/lib/nav-history";
 import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { HostJoinBar } from "@/components/host-join-bar";
@@ -36,6 +37,7 @@ export default function EscapeHost() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
+  const goBack = useSmartBack("/teacher/games");
   const [, params] = useRoute("/game/escape/host/:pin");
   const pin = params?.pin || "";
 
@@ -165,6 +167,12 @@ export default function EscapeHost() {
 
           {(phase === "lobby" || phase === "playing") && (
             <div className="mb-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/12 bg-black/35 p-2 backdrop-blur-md">
+              <button onClick={goBack}
+                className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 text-xs font-black text-amber-100 transition-colors hover:bg-amber-300/20"
+                aria-label={ar ? "رجوع" : "Back"}>
+                {ar ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+                <span>{ar ? "رجوع" : "Back"}</span>
+              </button>
               <button onClick={toggleMute}
                 className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/8 px-3 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
                 aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}>
