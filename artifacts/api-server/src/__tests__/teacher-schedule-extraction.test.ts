@@ -1,10 +1,40 @@
 import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 import {
   buildTeacherScheduleExtractionPrompt,
   parseExtractedTeacherSchedule,
 } from "../lib/teacher-schedule-extraction";
 
 describe("teacher schedule image extraction", () => {
+  it.skipIf(process.env.RUN_AI_INTEGRATION_TESTS !== "1")(
+    "reads distinct times for repeated lesson numbers from a real timetable image",
+    async () => {
+      const fixturePath = fileURLToPath(new URL("./fixtures/weekday-specific-times.svg", import.meta.url));
+      const png = await sharp(await readFile(fixturePath)).png().toBuffer();
+      const { runVisionCompletionMulti } = await import("../lib/file-upload");
+      const raw = await runVisionCompletionMulti({
+        tier: "standard",
+        prompt: buildTeacherScheduleExtractionPrompt("en"),
+        images: [{ base64: png.toString("base64"), mimeType: "image/png" }],
+        maxTokens: 3000,
+      });
+      const result = parseExtractedTeacherSchedule(raw);
+      const byDay = new Map(result.daySchedules.map((day) => [day.dayOfWeek, day]));
+
+      expect(byDay.get(0)?.lessons).toEqual(expect.arrayContaining([
+        expect.objectContaining({ lessonNumber: 1, startTime: "07:30", endTime: "08:10" }),
+        expect.objectContaining({ lessonNumber: 2, startTime: "08:20", endTime: "09:00" }),
+      ]));
+      expect(byDay.get(1)?.lessons).toEqual(expect.arrayContaining([
+        expect.objectContaining({ lessonNumber: 1, startTime: "09:15", endTime: "10:00" }),
+        expect.objectContaining({ lessonNumber: 2, startTime: "10:10", endTime: "10:55" }),
+      ]));
+    },
+    60_000,
+  );
+
   it("normalizes a valid extracted schedule without changing visible labels", () => {
     const result = parseExtractedTeacherSchedule(JSON.stringify({
       daySchedules: [

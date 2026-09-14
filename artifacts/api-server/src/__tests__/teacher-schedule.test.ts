@@ -586,6 +586,41 @@ describe("teacher schedule breaks", () => {
     ]));
   });
 
+  it("preserves each weekday's distinct imported times after save and reload", async () => {
+    const app = makeApp({ teacherId: 101 });
+    await request(app)
+      .post("/api/teacher/schedule/bulk")
+      .send({
+        daySchedules: [
+          {
+            dayOfWeek: 0,
+            lessons: [
+              { lessonNumber: 1, title: "رياضيات الأحد", startTime: "07:30", endTime: "08:10" },
+              { lessonNumber: 2, title: "علوم الأحد", startTime: "08:20", endTime: "09:00" },
+            ],
+          },
+          {
+            dayOfWeek: 1,
+            lessons: [
+              { lessonNumber: 1, title: "عربي الاثنين", startTime: "09:15", endTime: "10:00" },
+              { lessonNumber: 2, title: "إسلامية الاثنين", startTime: "10:10", endTime: "10:55" },
+            ],
+          },
+        ],
+      })
+      .expect(201);
+
+    const reloaded = (await request(app).get("/api/teacher/schedule").expect(200)).body;
+    expect(reloaded.map(({ dayOfWeek, lessonNumber, startTime, endTime }: ScheduleRow) => ({
+      dayOfWeek, lessonNumber, startTime, endTime,
+    }))).toEqual([
+      { dayOfWeek: 0, lessonNumber: 1, startTime: "07:30", endTime: "08:10" },
+      { dayOfWeek: 0, lessonNumber: 2, startTime: "08:20", endTime: "09:00" },
+      { dayOfWeek: 1, lessonNumber: 1, startTime: "09:15", endTime: "10:00" },
+      { dayOfWeek: 1, lessonNumber: 2, startTime: "10:10", endTime: "10:55" },
+    ]);
+  });
+
   it("saves a day containing only non-lesson periods", async () => {
     const app = makeApp({ teacherId: 101 });
     const response = await request(app)

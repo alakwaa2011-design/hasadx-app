@@ -13,7 +13,10 @@ let scheduleRows: Array<Record<string, unknown>> = [];
 let language = "ar";
 let scheduleIsError = false;
 let scheduleIsFetching = false;
-const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }));
+const { toastError, creditAwareFetch } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+  creditAwareFetch: vi.fn(),
+}));
 
 vi.mock("heic2any", () => ({
   default: heicConvert,
@@ -33,6 +36,11 @@ vi.mock("@/components/credits-chip", () => ({
 
 vi.mock("@/components/ui/sonner", () => ({
   toast: { success: vi.fn(), error: toastError },
+}));
+
+vi.mock("@/lib/credit-aware-fetch", () => ({
+  creditAwareFetch,
+  isInsufficientCreditsResponse: () => false,
 }));
 
 vi.mock("@workspace/api-client-react", () => ({
@@ -93,6 +101,7 @@ beforeEach(async () => {
   deleteAllMutate.mockReset();
   heicConvert.mockReset();
   scheduleRefetch.mockReset();
+  creditAwareFetch.mockReset();
   localStorage.clear();
   heicConvert.mockResolvedValue(new Blob(["jpeg-image"], { type: "image/jpeg" }));
   vi.stubGlobal("URL", {
@@ -694,5 +703,69 @@ describe("schedule management tool", () => {
         .toBe("blob:converted-image");
     });
     expect(button("button-confirm-extract-schedule").disabled).toBe(false);
+  });
+
+  it("shows each imported weekday's distinct times in review and saves them unchanged", async () => {
+    creditAwareFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        daySchedules: [
+          {
+            dayOfWeek: 0,
+            lessons: [
+              { lessonNumber: 1, title: "رياضيات الأحد", subject: null, className: null, startTime: "07:30", endTime: "08:10", confidence: "high" },
+              { lessonNumber: 2, title: "علوم الأحد", subject: null, className: null, startTime: "08:20", endTime: "09:00", confidence: "high" },
+            ],
+          },
+          {
+            dayOfWeek: 1,
+            lessons: [
+              { lessonNumber: 1, title: "عربي الاثنين", subject: null, className: null, startTime: "09:15", endTime: "10:00", confidence: "high" },
+              { lessonNumber: 2, title: "إسلامية الاثنين", subject: null, className: null, startTime: "10:10", endTime: "10:55", confidence: "high" },
+            ],
+          },
+        ],
+        warnings: [],
+      }),
+    });
+    bulkMutate.mockImplementation(({ data }, { onSuccess }) => {
+      expect(data.daySchedules).toEqual([
+        expect.objectContaining({
+          dayOfWeek: 0,
+          lessons: [
+            expect.objectContaining({ lessonNumber: 1, startTime: "07:30", endTime: "08:10" }),
+            expect.objectContaining({ lessonNumber: 2, startTime: "08:20", endTime: "09:00" }),
+          ],
+        }),
+        expect.objectContaining({
+          dayOfWeek: 1,
+          lessons: [
+            expect.objectContaining({ lessonNumber: 1, startTime: "09:15", endTime: "10:00" }),
+            expect.objectContaining({ lessonNumber: 2, startTime: "10:10", endTime: "10:55" }),
+          ],
+        }),
+      ]);
+      onSuccess([]);
+    });
+
+    const input = document.querySelector('[data-testid="input-import-schedule-image"]') as HTMLInputElement;
+    const file = new File(["timetable"], "weekday-specific-times.png", { type: "image/png" });
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+    await click("button-confirm-extract-schedule");
+    await vi.waitFor(() => {
+      expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
+        .toBe("رياضيات الأحد");
+    });
+
+    expect((document.querySelector('[data-testid="input-bulk-lesson-start-1"]') as HTMLInputElement).value).toBe("07:30");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-end-1"]') as HTMLInputElement).value).toBe("08:10");
+    await click("button-bulk-day-1");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value).toBe("عربي الاثنين");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-start-1"]') as HTMLInputElement).value).toBe("09:15");
+    expect((document.querySelector('[data-testid="input-bulk-lesson-end-1"]') as HTMLInputElement).value).toBe("10:00");
+
+    await click("button-save-bulk-schedule");
+    expect(bulkMutate).toHaveBeenCalledOnce();
   });
 });
