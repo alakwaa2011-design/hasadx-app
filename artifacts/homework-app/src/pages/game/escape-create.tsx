@@ -292,7 +292,7 @@ export default function EscapeCreate() {
           </div>
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "أنشئ غرفة الهروب" : "Create Escape Room"}
-            gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط القبو وابدأ التحدي." : "Prepare questions, configure the room, then start."}
+            gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط الغرفة وابدأ التحدي." : "Prepare questions, configure the room, then start."}
             gameIcon={<LockKeyhole className="h-8 w-8 text-[#8a6515]" />}
             accentColor="#8a6515"
             floatingAssignmentContinue
@@ -356,9 +356,9 @@ export default function EscapeCreate() {
 
           <div className="relative mx-auto max-w-[1100px] px-4 pt-8 pb-10 text-center sm:px-8">
             <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
-              className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.6rem] border-2 border-amber-300/40 text-5xl"
+              className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.6rem] border-2 border-amber-300/40 text-amber-300"
               style={{ background: "rgba(247,201,72,0.1)", boxShadow: "0 0 42px rgba(247,201,72,0.3)" }}>
-              🔐
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-10 w-10"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </motion.div>
             <motion.h1 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
               className="mb-1 text-3xl font-black text-white sm:text-4xl"
@@ -375,10 +375,10 @@ export default function EscapeCreate() {
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
               className="mt-4 flex flex-wrap items-center justify-center gap-2">
               {[
-                { icon: "🔢", t: ar ? "قفل الأرقام" : "Number Lock" },
-                { icon: "🔦", t: ar ? "شبكة الليزر" : "Laser Grid" },
-                { icon: "🔌", t: ar ? "لوحة الأسلاك" : "Wire Panel" },
-                { icon: "👑", t: ar ? "الخزنة الكبرى" : "Master Vault" },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M12 7h.01M17 7h.01M7 12h.01M12 12h.01M17 12h.01M7 17h.01M12 17h.01M17 17h.01"/></svg>, t: ar ? "قفل الأرقام" : "Number Lock" },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>, t: ar ? "شبكة الليزر" : "Laser Grid" },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M4 9a2 2 0 0 1-2-2V4h6v3a2 2 0 0 1-2 2Z"/><path d="M4 15a2 2 0 0 0-2 2v3h6v-3a2 2 0 0 0-2-2Z"/><path d="M18 9a2 2 0 0 0 2-2V4h-6v3a2 2 0 0 0 2 2Z"/><path d="M18 15a2 2 0 0 1 2 2v3h-6v-3a2 2 0 0 1 2-2Z"/><path d="M8 5.5h8"/><path d="M8 18.5h8"/><path d="M6 9v6"/><path d="M18 9v6"/></svg>, t: ar ? "لوحة الأسلاك" : "Wire Panel" },
+                { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M10 2h4M12 14v4M12 22v-2M18 20V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16Z"/><circle cx="12" cy="10" r="3"/></svg>, t: ar ? "بوابة الخروج" : "Exit Door" },
               ].map((l) => (
                 <span key={l.t} className="flex items-center gap-1.5 rounded-full border border-amber-200/25 bg-black/25 px-3 py-1.5 text-xs font-black text-amber-100/85 backdrop-blur-sm">
                   <span className="text-sm">{l.icon}</span>{l.t}
@@ -485,7 +485,9 @@ export default function EscapeCreate() {
               </div>
 
               <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-                <span className="mt-0.5 text-base">🚨</span>
+                <span className="mt-0.5 text-base">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 text-red-600"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </span>
                 <p className="text-xs font-bold leading-relaxed">{ar ? "كل إجابة خاطئة تُطلق الإنذار وتخصم 15 ثانية من وقت الهروب." : "Every wrong answer trips the alarm and burns 15 seconds of escape time."}</p>
               </div>
             </motion.section>
@@ -499,7 +501,7 @@ export default function EscapeCreate() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <motion.button type="button" whileTap={{ scale: 0.99 }} onClick={startClassMode} disabled={!ready}
                   className="group relative flex min-h-44 flex-col items-center justify-center overflow-hidden rounded-3xl bg-[#0B4B35] p-6 text-center text-white shadow-[0_12px_28px_rgba(11,75,53,0.25)] transition hover:bg-[#083d2c] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
-                  <span className="absolute -end-4 -top-5 text-8xl text-white/[0.08]">🏫</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="absolute -end-4 -top-5 h-24 w-24 text-white/[0.08]"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white"><Monitor className="h-5 w-5" /></span>
                   <span className="mt-3 max-w-xs">
                     <span className="block text-lg font-black">{ar ? "وضع الصف" : "Class mode"}</span>

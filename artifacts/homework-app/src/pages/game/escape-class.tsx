@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // «قبو حصاد» — CLASS MODE: one cooperative run on the classroom screen.
-// The whole class is ONE crew locked inside the vault; the teacher (or a
+// The whole class is ONE crew locked inside the escape room; the teacher (or a
 // nominated student) taps the agreed answer. No sockets — everything local.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useReducer, useRef, useState, useCallback } from "react";
@@ -15,7 +15,7 @@ import {
 } from "@/lib/escape-engine";
 import {
   EscapeSoundEngine, EscapeGameView, EscapeEndStats, VaultBackdrop,
-  TreasureBurst, ESCAPE_BG, GOLD,
+  EscapeBurst, ESCAPE_BG, GOLD,
 } from "@/components/game/escape-shared";
 
 export interface EscapeSetup {
@@ -116,15 +116,16 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
   return (
     <div className="relative flex min-h-screen flex-col select-none text-white" style={{ background: ESCAPE_BG }}>
       <VaultBackdrop danger={danger} />
-      {state.status === "won" && <TreasureBurst />}
+      {state.status === "won" && <EscapeBurst />}
 
       {/* In-game title and controls */}
       <div className="relative z-10 mx-auto w-full max-w-4xl px-3 pt-3" style={{ direction: dir }}>
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/12 bg-black/35 p-2.5 backdrop-blur-md sm:flex-row sm:justify-between">
-          <p className="max-w-full truncate rounded-xl border border-amber-300/30 bg-black/30 px-4 py-2 text-center text-sm font-black text-amber-100 sm:max-w-[48%] sm:text-base"
+          <p className="max-w-full flex items-center justify-center gap-2 truncate rounded-xl border border-amber-300/30 bg-black/30 px-4 py-2 text-center text-sm font-black text-amber-100 sm:max-w-[48%] sm:text-base"
             style={{ textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
             title={title}>
-            🔐 {title}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span className="truncate">{title}</span>
           </p>
           <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5">
             <button onClick={toggleMute}
@@ -164,9 +165,9 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
                 <motion.div
                   animate={{ y: [0, -8, 0], rotate: [-2, 2, -2] }}
                   transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                  className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/50 bg-white/10 text-6xl shadow-[0_0_48px_rgba(217,165,33,0.5)] backdrop-blur-md"
+                  className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/50 bg-white/10 text-amber-300 shadow-[0_0_48px_rgba(217,165,33,0.5)] backdrop-blur-md"
                 >
-                  🏆
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-12 w-12"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                 </motion.div>
                 <h2 className="mb-1 text-3xl font-black sm:text-4xl" style={{ color: GOLD, textShadow: "0 0 26px rgba(247,201,72,0.6)" }}>
                   {t.escapeClass.escapedTitle}
@@ -177,8 +178,8 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
               </>
             ) : state.status === "stopped" ? (
               <>
-                <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/35 bg-amber-300/10 text-5xl backdrop-blur-md">
-                  🏁
+                <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/35 bg-amber-300/10 text-amber-300 backdrop-blur-md">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-12 w-12"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
                 </div>
                 <h2 className="mb-1 text-3xl font-black text-amber-200 sm:text-4xl">
                   {ar ? "تم إنهاء المسابقة" : "Competition ended"}
@@ -189,8 +190,8 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
               </>
             ) : (
               <>
-                <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-white/20 bg-white/5 text-6xl backdrop-blur-md">
-                  ⛓️
+                <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-white/20 bg-white/5 text-red-300 backdrop-blur-md">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-12 w-12"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
                 <h2 className="mb-1 text-3xl font-black text-red-300 sm:text-4xl" style={{ textShadow: "0 0 22px rgba(248,113,113,0.5)" }}>
                   {t.escapeClass.timeUpTitle}
@@ -219,16 +220,18 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
                 animate={{ scale: [1, 1.015, 1] }}
                 transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
                 onClick={onReplay}
-                className="w-full rounded-2xl py-3.5 text-base font-black text-[#1a2e1a]"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 text-base font-black text-[#1a2e1a]"
                 style={{
                   background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
                   boxShadow: "0 14px 32px rgba(217,165,33,0.5), inset 0 2px 0 rgba(255,255,255,0.32)",
                 }}>
-                🔄 {state.status === "won" ? t.escapeClass.newVault : t.escapeClass.tryAgain}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                {state.status === "won" ? t.escapeClass.newVault : t.escapeClass.tryAgain}
               </motion.button>
               <button onClick={() => setLocation("/game/escape/create")}
-                className="w-full rounded-2xl border border-white/25 bg-white/8 py-3 text-sm font-black text-white/85 backdrop-blur-sm">
-                🛠 {t.escapeClass.backToSetup}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-white/25 bg-white/8 py-3 text-sm font-black text-white/85 backdrop-blur-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                {t.escapeClass.backToSetup}
               </button>
             </div>
           </motion.div>
@@ -241,16 +244,27 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
           <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-md rounded-3xl border border-white/15 bg-[#101c2b]/95 p-5 text-center shadow-2xl sm:p-6"
             style={{ direction: dir }}>
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B4B35] text-3xl shadow-lg">🏫</div>
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B4B35] text-white shadow-lg">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-7 w-7"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            </div>
             <p className="mb-1 text-sm font-black text-emerald-200">{t.escapeClass.classMode}</p>
             <h1 className="mb-2 text-2xl font-black text-white">{t.escapeClass.getReady}</h1>
             <p className="mx-auto mb-4 max-w-sm text-sm font-bold leading-relaxed text-white/70">
               {t.escapeClass.startDescription}
             </p>
             <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-xs font-black text-white/75">
-              <span className="rounded-full bg-white/10 px-3 py-1.5">📚 {setup.questions.length} {t.escapeClass.questions}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1.5">🔒 {setup.lockCount} {t.escapeClass.locks}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1.5">⏱ {minutes} {t.escapeClass.minutes}</span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                {setup.questions.length} {t.escapeClass.questions}
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                {setup.lockCount} {t.escapeClass.locks}
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {minutes} {t.escapeClass.minutes}
+              </span>
             </div>
             <motion.button whileTap={{ scale: 0.97 }}
               onClick={() => { getSound().playStart(); dispatch({ type: "start" }); }}
@@ -278,7 +292,9 @@ export default function EscapeClass() {
     return (
       <Layout>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
-          <div className="text-6xl">🔐</div>
+          <div className="text-amber-500">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-16 w-16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
           <h2 className="text-2xl font-black">{t.escapeClass.defaultTitle}</h2>
           <p className="max-w-sm text-muted-foreground">
             {t.escapeClass.setupRequiredDescription}

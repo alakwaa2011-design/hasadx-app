@@ -17,7 +17,7 @@ import {
 } from "@/lib/escape-engine";
 import {
   EscapeSoundEngine, EscapeGameView, EscapeEndStats, VaultBackdrop,
-  TreasureBurst, ESCAPE_BG, GOLD,
+  EscapeBurst, ESCAPE_BG, GOLD,
 } from "@/components/game/escape-shared";
 
 interface RoomConfig {
@@ -74,7 +74,7 @@ export default function EscapePlay() {
         if (!res?.ok) {
           setPhase("enter");
           toast.error(res?.error === "not-found"
-            ? (ar ? "لم نجد قبواً بهذا الرمز" : "No vault with this PIN")
+            ? (ar ? "لم نجد الغرفة بهذا الرمز" : "No room with this PIN")
             : (ar ? "أدخل اسمك أولاً" : "Enter your name first"));
           return;
         }
@@ -192,7 +192,7 @@ export default function EscapePlay() {
   return (
     <div className="relative flex min-h-screen flex-col select-none text-white" dir={dir} style={{ background: ESCAPE_BG }}>
       <VaultBackdrop danger={phase === "playing" && !!state && state.timeLeft <= 60} />
-      {phase === "done" && state?.status === "won" && <TreasureBurst />}
+      {phase === "done" && state?.status === "won" && <EscapeBurst />}
 
       {(phase === "playing" || phase === "done") && (
         <button onClick={toggleMute}
@@ -207,9 +207,9 @@ export default function EscapePlay() {
       {(phase === "enter" || phase === "joining") && (
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
           <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
-            className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] border-2 border-amber-300/40 text-5xl"
+            className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] border-2 border-amber-300/40 text-amber-300"
             style={{ background: "rgba(247,201,72,0.1)", boxShadow: "0 0 42px rgba(247,201,72,0.3)" }}>
-            🔐
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-10 w-10"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </motion.div>
           <h1 className="text-2xl font-black" style={{ textShadow: "0 0 22px rgba(247,201,72,0.35)" }}>
             {ar ? "غرفة الهروب" : "Escape Room"}
@@ -238,8 +238,10 @@ export default function EscapePlay() {
               background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
               boxShadow: "0 14px 32px rgba(217,165,33,0.45), inset 0 2px 0 rgba(255,255,255,0.32)",
             }}>
-            {phase === "joining" ? <Loader2 className="h-5 w-5 animate-spin" /> : "🚪"}
-            {ar ? "ادخل القبو" : "Enter the vault"}
+            {phase === "joining" ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><path d="M18 20V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16"/><path d="M2 20h20"/><path d="M14 12v.01"/></svg>
+            )}
+            {ar ? "ادخل الغرفة" : "Enter the room"}
           </motion.button>
         </div>
       )}
@@ -248,20 +250,25 @@ export default function EscapePlay() {
       {phase === "lobby" && (
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
           <motion.div animate={{ rotate: [0, -6, 6, 0] }} transition={{ repeat: Infinity, duration: 2.4 }}
-            className="text-6xl">🗝️</motion.div>
+            className="text-amber-300">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-16 w-16"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+          </motion.div>
           <h2 className="text-xl font-black">{ar ? `أهلاً ${name.trim()}!` : `Welcome, ${name.trim()}!`}</h2>
           <p className="mx-auto w-fit max-w-full truncate rounded-full border border-amber-300/30 bg-black/35 px-4 py-1 text-sm font-black text-amber-200">
-            📖 {displayTitle}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline h-4 w-4 me-1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            {displayTitle}
           </p>
           <p className="text-sm font-bold leading-relaxed text-white/60">
             {ar
-              ? "أنت داخل القبو الآن… بانتظار أن يغلق المعلم الأبواب ويبدأ الهروب."
-              : "You're inside the vault… waiting for the teacher to seal the doors and start."}
+              ? "أنت داخل غرفة الهروب الآن… بانتظار أن يغلق المعلم الأبواب ويبدأ التحدي."
+              : "You're inside the escape room… waiting for the teacher to seal the doors and start."}
           </p>
           <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-black">
-            <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}>🟢</motion.span>
+            <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 1.4 }} className="text-green-400">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><circle cx="12" cy="12" r="10"/></svg>
+            </motion.span>
             {lobbyCount > 0
-              ? (ar ? `${lobbyCount} داخل القبو` : `${lobbyCount} in the vault`)
+              ? (ar ? `${lobbyCount} بالداخل` : `${lobbyCount} inside`)
               : (ar ? "متصل" : "Connected")}
           </div>
         </div>
@@ -271,7 +278,9 @@ export default function EscapePlay() {
       {phase === "ready" && state && config && (
         <div className="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
           <motion.div initial={{ scale: 0.6 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 14 }}
-            className="text-6xl">🚨</motion.div>
+            className="text-red-400">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-16 w-16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </motion.div>
           <h2 className="text-2xl font-black text-amber-200">{ar ? "الأبواب أُغلقت!" : "The doors are sealed!"}</h2>
           <p className="text-sm font-bold leading-relaxed text-white/65">
             {ar
@@ -281,12 +290,13 @@ export default function EscapePlay() {
           <motion.button whileTap={{ scale: 0.96 }}
             animate={{ scale: [1, 1.04, 1] }} transition={{ repeat: Infinity, duration: 1.3 }}
             onClick={beginRun}
-            className="w-full rounded-2xl py-4 text-lg font-black text-[#1a2e1a]"
+            className="w-full flex justify-center items-center gap-2 rounded-2xl py-4 text-lg font-black text-[#1a2e1a]"
             style={{
               background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
               boxShadow: "0 14px 32px rgba(217,165,33,0.5), inset 0 2px 0 rgba(255,255,255,0.32)",
             }}>
-            🏃 {ar ? "ابدأ الهروب الآن!" : "Start escaping now!"}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            {ar ? "ابدأ الهروب الآن!" : "Start escaping now!"}
           </motion.button>
         </div>
       )}
@@ -295,9 +305,10 @@ export default function EscapePlay() {
       {phase === "playing" && state && state.status === "playing" && (
         <>
           <div className="relative z-10 flex justify-center pt-3">
-            <p className="w-fit max-w-[80vw] truncate rounded-full border border-amber-300/40 bg-black/50 px-5 py-1 text-center text-xs font-black text-amber-100 backdrop-blur-md sm:text-sm"
+            <p className="flex items-center justify-center gap-1.5 w-fit max-w-[80vw] truncate rounded-full border border-amber-300/40 bg-black/50 px-5 py-1 text-center text-xs font-black text-amber-100 backdrop-blur-md sm:text-sm"
               title={displayTitle}>
-              🔐 {displayTitle} — {name.trim()}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span className="truncate">{displayTitle} — {name.trim()}</span>
             </p>
           </div>
           <EscapeGameView state={state} dispatch={dispatch} sound={getSound()} ar={ar} variant="solo" />
@@ -311,17 +322,17 @@ export default function EscapePlay() {
             {state.status === "won" ? (
               <>
                 <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 2 }}
-                  className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-amber-300/50 bg-white/10 text-5xl shadow-[0_0_42px_rgba(217,165,33,0.5)]">
-                  🏆
+                  className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-amber-300/50 bg-white/10 text-amber-300 shadow-[0_0_42px_rgba(217,165,33,0.5)]">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                 </motion.div>
                 <h2 className="mb-1 text-3xl font-black" style={{ color: GOLD, textShadow: "0 0 24px rgba(247,201,72,0.6)" }}>
-                  {ar ? "هربت من القبو!" : "You escaped!"}
+                  {ar ? "هربت من الغرفة!" : "You escaped!"}
                 </h2>
               </>
             ) : state.status === "stopped" ? (
               <>
-                <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-amber-300/40 bg-amber-300/10 text-5xl">
-                  🏁
+                <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-amber-300/40 bg-amber-300/10 text-amber-300">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-10 w-10"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
                 </div>
                 <h2 className="mb-1 text-3xl font-black text-amber-200">
                   {ar ? "انتهت المسابقة" : "Competition ended"}
@@ -329,11 +340,11 @@ export default function EscapePlay() {
               </>
             ) : (
               <>
-                <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-white/20 bg-white/5 text-5xl">
-                  ⛓️
+                <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.8rem] border border-white/20 bg-white/5 text-red-300">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-10 w-10"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
                 <h2 className="mb-1 text-3xl font-black text-red-300">
-                  {ar ? "القبو أُغلق عليك!" : "The vault sealed you in!"}
+                  {ar ? "انتهى الوقت، الأبواب موصدة!" : "Time's up, doors sealed!"}
                 </h2>
               </>
             )}

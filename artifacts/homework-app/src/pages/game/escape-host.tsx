@@ -149,12 +149,14 @@ export default function EscapeHost() {
         <div className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6">
           {/* Header */}
           <div className="mb-5 text-center">
-            <h1 className="text-2xl font-black sm:text-3xl" style={{ textShadow: "0 0 22px rgba(247,201,72,0.35)" }}>
-              🔐 {ar ? "غرفة الهروب" : "Escape Room"}
+            <h1 className="flex items-center justify-center gap-2 text-2xl font-black sm:text-3xl" style={{ textShadow: "0 0 22px rgba(247,201,72,0.35)" }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              {ar ? "غرفة الهروب" : "Escape Room"}
             </h1>
             {title && (
-              <p className="mx-auto mt-1 w-fit max-w-[85vw] truncate rounded-full border border-amber-300/30 bg-black/35 px-4 py-1 text-sm font-black text-amber-200">
-                📖 {title}
+              <p className="mx-auto mt-1 flex w-fit max-w-[85vw] items-center justify-center gap-1.5 truncate rounded-full border border-amber-300/30 bg-black/35 px-4 py-1 text-sm font-black text-amber-200">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 shrink-0"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                <span className="truncate">{title}</span>
               </p>
             )}
           </div>
@@ -185,17 +187,19 @@ export default function EscapeHost() {
           {phase === "connecting" && (
             <div className="flex flex-col items-center gap-3 py-20">
               <Loader2 className="h-8 w-8 animate-spin text-amber-300" />
-              <p className="text-sm font-bold text-white/60">{ar ? "جاري الاتصال بالقبو..." : "Connecting to the vault..."}</p>
+              <p className="text-sm font-bold text-white/60">{ar ? "جاري الاتصال بالغرفة..." : "Connecting to the room..."}</p>
             </div>
           )}
 
           {phase === "error" && (
             <div className="flex flex-col items-center gap-4 py-20 text-center">
-              <div className="text-5xl">⛓️</div>
+              <div className="text-red-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-14 w-14"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
               <p className="font-black">{ar ? "الغرفة غير موجودة أو انتهت صلاحيتها" : "Room not found or expired"}</p>
               <button onClick={() => setLocation("/game/escape/create")}
                 className="rounded-xl bg-amber-600 px-6 py-3 font-bold text-white">
-                {ar ? "إنشاء قبو جديد" : "Create a new vault"}
+                {ar ? "إنشاء غرفة جديدة" : "Create a new room"}
               </button>
             </div>
           )}
@@ -204,7 +208,7 @@ export default function EscapeHost() {
           {phase === "lobby" && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div className="rounded-3xl border border-amber-300/25 bg-black/40 p-5 text-center backdrop-blur-md sm:p-6">
-                <p className="mb-1 text-xs font-black text-white/55">{ar ? "رمز الدخول للقبو" : "Vault entry PIN"}</p>
+                <p className="mb-1 text-xs font-black text-white/55">{ar ? "رمز الدخول للغرفة" : "Room entry PIN"}</p>
                 <p className="text-5xl font-black tracking-[0.28em] sm:text-6xl" dir="ltr"
                   style={{ color: GOLD, textShadow: "0 0 26px rgba(247,201,72,0.55)", fontVariantNumeric: "tabular-nums" }}>
                   {pin}
@@ -232,8 +236,9 @@ export default function EscapeHost() {
                       {players.map((p) => (
                         <motion.span key={p.name}
                           initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }}
-                          className="rounded-full border border-amber-200/25 bg-white/8 px-3.5 py-1.5 text-sm font-black">
-                          🧑‍🚀 {p.name}
+                          className="flex items-center gap-1.5 rounded-full border border-amber-200/25 bg-white/8 px-3.5 py-1.5 text-sm font-black">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 text-white/70"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          {p.name}
                         </motion.span>
                       ))}
                     </AnimatePresence>
@@ -261,11 +266,17 @@ export default function EscapeHost() {
 
               {/* Summary strip */}
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-black">
-                <span className="rounded-full bg-white/10 px-3.5 py-1.5">👥 {players.length} {ar ? "لاعباً" : "players"}</span>
-                <span className="rounded-full border border-green-400/40 bg-green-500/15 px-3.5 py-1.5 text-green-300">
-                  🏆 {escaped} {ar ? "هربوا" : "escaped"}
+                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5">
+                  <Users className="h-3 w-3" /> {players.length} {ar ? "لاعباً" : "players"}
                 </span>
-                <span className="rounded-full bg-white/10 px-3.5 py-1.5">🏁 {finished}/{players.length} {ar ? "أنهوا" : "done"}</span>
+                <span className="flex items-center gap-1.5 rounded-full border border-green-400/40 bg-green-500/15 px-3.5 py-1.5 text-green-300">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                  {escaped} {ar ? "هربوا" : "escaped"}
+                </span>
+                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                  {finished}/{players.length} {ar ? "أنهوا" : "done"}
+                </span>
               </div>
 
               <div className="space-y-2">
@@ -294,7 +305,11 @@ export default function EscapeHost() {
                               background: i < p.locksOpen ? "rgba(247,201,72,0.3)" : "rgba(255,255,255,0.08)",
                               border: `1px solid ${i < p.locksOpen ? "rgba(247,201,72,0.6)" : "rgba(255,255,255,0.12)"}`,
                             }}>
-                            {i < p.locksOpen ? "🔓" : "🔒"}
+                            {i < p.locksOpen ? (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5 text-amber-200"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-2.5 w-2.5 opacity-50"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            )}
                           </span>
                         ))}
                         <span className="ms-2 text-[10px] font-bold text-white/45">✓{p.correct} ✗{p.wrong}</span>
@@ -302,8 +317,14 @@ export default function EscapeHost() {
                     </div>
                     <div className="shrink-0 text-end">
                       <p className="text-base font-black" style={{ color: GOLD, fontVariantNumeric: "tabular-nums" }}>{p.score}</p>
-                      <p className="text-[10px] font-black">
-                        {p.status === "won" ? "🏆" : p.status === "lost" ? "⛓️" : "🏃"}
+                      <p className="text-[10px] font-black flex justify-end mt-0.5">
+                        {p.status === "won" ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 text-green-400"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                        ) : p.status === "lost" ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 text-red-400"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 text-amber-200"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        )}
                       </p>
                     </div>
                   </motion.div>
@@ -316,7 +337,9 @@ export default function EscapeHost() {
           {phase === "results" && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div className="rounded-3xl border border-amber-300/25 bg-black/40 p-6 text-center backdrop-blur-md">
-                <div className="mb-2 text-5xl">🏁</div>
+                <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400/20 text-amber-300">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-8 w-8"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                </div>
                 <h2 className="text-2xl font-black text-amber-200">
                   {ar ? "انتهت المسابقة" : "Competition ended"}
                 </h2>

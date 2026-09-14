@@ -302,11 +302,23 @@ export class EscapeSoundEngine {
 export const ESCAPE_BG = "radial-gradient(ellipse at 50% -10%, rgba(247,201,72,0.10) 0%, transparent 50%), linear-gradient(165deg, #0b1220 0%, #131c33 55%, #0b1220 100%)";
 export const GOLD = "#F7C948";
 
-export const LOCK_META: Record<LockType, { icon: string; ar: string; en: string; accent: string }> = {
-  digits: { icon: "🔢", ar: "قفل الأرقام",   en: "Number Lock", accent: "34,211,238" },   // cyan
-  laser:  { icon: "🔦", ar: "شبكة الليزر",   en: "Laser Grid",  accent: "248,113,113" },  // red
-  wires:  { icon: "🔌", ar: "لوحة الأسلاك",  en: "Wire Panel",  accent: "74,222,128" },   // green
-  vault:  { icon: "👑", ar: "الخزنة الكبرى", en: "Master Vault", accent: "247,201,72" },  // gold
+export const LOCK_META: Record<LockType, { icon: React.ReactNode; ar: string; en: string; accent: string }> = {
+  digits: {
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01M12 7h.01M17 7h.01M7 12h.01M12 12h.01M17 12h.01M7 17h.01M12 17h.01M17 17h.01"/></svg>,
+    ar: "قفل الأرقام", en: "Number Lock", accent: "34,211,238"
+  },
+  laser: {
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>,
+    ar: "شبكة الليزر", en: "Laser Grid", accent: "248,113,113"
+  },
+  wires: {
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><path d="M4 9a2 2 0 0 1-2-2V4h6v3a2 2 0 0 1-2 2Z"/><path d="M4 15a2 2 0 0 0-2 2v3h6v-3a2 2 0 0 0-2-2Z"/><path d="M18 9a2 2 0 0 0 2-2V4h-6v3a2 2 0 0 0 2 2Z"/><path d="M18 15a2 2 0 0 1 2 2v3h-6v-3a2 2 0 0 1 2-2Z"/><path d="M8 5.5h8"/><path d="M8 18.5h8"/><path d="M6 9v6"/><path d="M18 9v6"/></svg>,
+    ar: "لوحة الأسلاك", en: "Wire Panel", accent: "74,222,128"
+  },
+  vault: {
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><path d="M10 2h4M12 14v4M12 22v-2M18 20V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16Z"/><circle cx="12" cy="10" r="3"/></svg>,
+    ar: "بوابة الخروج", en: "Exit Door", accent: "247,201,72"
+  },
 };
 
 // ── Vault room backdrop: stone gradient, torch glows, drifting dust ──────────
@@ -380,7 +392,8 @@ export function EscapeTimer({ timeLeft, urgent, big }: { timeLeft: number; urgen
         textShadow: urgent ? "0 0 18px rgba(248,113,113,0.8)" : "0 0 14px rgba(247,201,72,0.55)",
       }}
     >
-      ⏱ {m}:{s.toString().padStart(2, "0")}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={big ? "h-6 w-6" : "h-5 w-5"}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      {m}:{s.toString().padStart(2, "0")}
     </motion.div>
   );
 }
@@ -413,7 +426,13 @@ export function LockChain({ locks, currentIndex, ar }: { locks: LockState[]; cur
               }}
               title={ar ? meta.ar : meta.en}
             >
-              {lock.open ? "🔓" : isCurrent ? meta.icon : "🔒"}
+              {lock.open ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 sm:h-5 sm:w-5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+              ) : isCurrent ? (
+                meta.icon
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 sm:h-5 sm:w-5 opacity-40"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              )}
               {lock.open && (
                 <span className="absolute -bottom-1.5 -end-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[9px] text-white">✓</span>
               )}
@@ -429,7 +448,9 @@ export function LockChain({ locks, currentIndex, ar }: { locks: LockState[]; cur
 export function CodeSlots({ locks, ar }: { locks: LockState[]; ar: boolean }) {
   return (
     <div className="flex items-center gap-1.5" style={{ direction: "ltr" }} title={ar ? "الرمز الأعظم" : "Master code"}>
-      <span className="me-0.5 text-xs">🗝️</span>
+      <span className="me-0.5 text-xs text-white/50">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+      </span>
       {locks.map((lock, i) => (
         <motion.span
           key={i}
@@ -457,57 +478,155 @@ export function CodeSlots({ locks, ar }: { locks: LockState[]; ar: boolean }) {
 
 function DigitsHero({ solved, total }: { solved: number; total: number }) {
   return (
-    <svg viewBox="0 0 200 110" className="h-full w-full">
-      <rect x="30" y="8" width="140" height="94" rx="12" fill="#101a2e" stroke="rgba(34,211,238,0.35)" strokeWidth="2" />
-      {/* Display strip: one glowing cell per question in this lock */}
+    <svg viewBox="0 0 200 110" className="h-full w-full" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.6))" }}>
+      <defs>
+        <linearGradient id="dh-case" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1e293b" />
+          <stop offset="100%" stopColor="#0f172a" />
+        </linearGradient>
+        <linearGradient id="dh-screen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#064e3b" />
+          <stop offset="100%" stopColor="#022c22" />
+        </linearGradient>
+        <filter id="dh-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <linearGradient id="dh-button" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#475569" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+      </defs>
+
+      {/* Outer Case */}
+      <rect x="20" y="5" width="160" height="100" rx="8" fill="url(#dh-case)" stroke="#334155" strokeWidth="2" />
+      {/* Inner shadow/bevel */}
+      <rect x="23" y="8" width="154" height="94" rx="5" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+
+      {/* Screws */}
+      <circle cx="28" cy="13" r="2" fill="#020617" />
+      <circle cx="172" cy="13" r="2" fill="#020617" />
+      <circle cx="28" cy="97" r="2" fill="#020617" />
+      <circle cx="172" cy="97" r="2" fill="#020617" />
+
+      {/* Screen Area Bevel */}
+      <rect x="35" y="15" width="130" height="38" rx="4" fill="#020617" />
+      {/* Actual Screen */}
+      <rect x="38" y="18" width="124" height="32" rx="2" fill="url(#dh-screen)" stroke="rgba(16,185,129,0.3)" strokeWidth="1" />
+
+      {/* Display strip */}
       {Array.from({ length: total }).map((_, i) => {
-        const w = Math.min(26, 120 / total);
-        const x = 100 - (total * (w + 6) - 6) / 2 + i * (w + 6);
+        const w = Math.min(24, 110 / total);
+        const gap = 4;
+        const x = 100 - (total * (w + gap) - gap) / 2 + i * (w + gap);
         const on = i < solved;
         return (
           <g key={i}>
-            <rect x={x} y={22} width={w} height={30} rx={5}
-              fill={on ? "rgba(34,211,238,0.25)" : "rgba(0,0,0,0.5)"}
-              stroke={on ? "#22d3ee" : "rgba(255,255,255,0.12)"} strokeWidth="1.6" />
-            {on && <text x={x + w / 2} y={42} textAnchor="middle" fill="#67e8f9" fontSize="16" fontWeight="900">✦</text>}
+            <rect x={x} y={23} width={w} height={22} rx="2"
+              fill={on ? "#10b981" : "rgba(4,47,46,0.8)"}
+              stroke={on ? "#34d399" : "rgba(6,78,59,0.5)"} strokeWidth="1"
+              style={on ? { filter: "url(#dh-glow)" } : {}} />
+            {on && (
+              <text x={x + w / 2} y={39} textAnchor="middle" fill="#ecfdf5" fontSize="16" fontFamily="monospace" fontWeight="900" style={{ filter: "drop-shadow(0 0 3px #fff)" }}>
+                *
+              </text>
+            )}
           </g>
         );
       })}
-      {/* Keypad */}
-      {[0, 1, 2].map((r) => [0, 1, 2].map((c) => (
-        <rect key={`${r}${c}`} x={70 + c * 22} y={60 + r * 13} width={18} height={10} rx={2.5}
-          fill="rgba(255,255,255,0.07)" stroke="rgba(34,211,238,0.2)" strokeWidth="0.8" />
-      )))}
-      <motion.circle cx={165} cy={16} r={3.4}
-        fill={solved >= total ? "#4ade80" : "#f87171"}
-        animate={{ opacity: [1, 0.35, 1] }} transition={{ repeat: Infinity, duration: 1.2 }} />
+
+      {/* Status LED */}
+      <motion.circle cx="170" cy="34" r="3"
+        fill={solved >= total ? "#4ade80" : "#ef4444"}
+        animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}
+        style={{ filter: `drop-shadow(0 0 4px ${solved >= total ? "#4ade80" : "#ef4444"})` }} />
+
+      {/* Keypad Grid */}
+      <g transform="translate(42, 60)">
+        {[0, 1].map((r) => [0, 1, 2, 3, 4].map((c) => {
+          const btnX = c * 24;
+          const btnY = r * 20;
+          return (
+            <g key={`${r}${c}`}>
+              {/* Button Shadow */}
+              <rect x={btnX} y={btnY + 2} width="20" height="14" rx="3" fill="#020617" />
+              {/* Button Surface */}
+              <rect x={btnX} y={btnY} width="20" height="14" rx="3" fill="url(#dh-button)" stroke="#64748b" strokeWidth="0.5" />
+              {/* Button Highlight */}
+              <line x1={btnX + 2} y1={btnY + 1} x2={btnX + 18} y2={btnY + 1} stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeLinecap="round" />
+            </g>
+          );
+        }))}
+      </g>
     </svg>
   );
 }
 
 function LaserHero({ solved, total }: { solved: number; total: number }) {
   return (
-    <svg viewBox="0 0 200 110" className="h-full w-full">
-      <rect x="14" y="6" width="8" height="98" rx="3" fill="#1e293b" />
-      <rect x="178" y="6" width="8" height="98" rx="3" fill="#1e293b" />
-      {/* Door behind the beams */}
-      <rect x="30" y="12" width="140" height="86" rx="8" fill="#0f172a" stroke="rgba(255,255,255,0.1)" />
-      <text x="100" y="60" textAnchor="middle" fontSize="24" opacity="0.5">🚪</text>
+    <svg viewBox="0 0 200 110" className="h-full w-full" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.6))" }}>
+      <defs>
+        <radialGradient id="lh-tunnel" cx="50%" cy="50%" r="70%">
+          <stop offset="0%" stopColor="#1e293b" />
+          <stop offset="60%" stopColor="#0f172a" />
+          <stop offset="100%" stopColor="#020617" />
+        </radialGradient>
+        <filter id="lh-glow" x="-50%" y="-100%" width="200%" height="300%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <filter id="lh-bright-glow" x="-50%" y="-100%" width="200%" height="300%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
+      {/* Deep perspective tunnel */}
+      <rect x="0" y="0" width="200" height="110" fill="url(#lh-tunnel)" />
+
+      {/* Floor and ceiling perspective lines */}
+      <path d="M 0 110 L 80 80 M 200 110 L 120 80 M 0 0 L 80 30 M 200 0 L 120 30" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+      {/* Back wall */}
+      <rect x="80" y="30" width="40" height="50" fill="#020617" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
+
+      {/* Left/Right metallic mounting frames */}
+      <rect x="10" y="5" width="20" height="100" rx="2" fill="#0f172a" stroke="#334155" strokeWidth="2" />
+      <rect x="170" y="5" width="20" height="100" rx="2" fill="#0f172a" stroke="#334155" strokeWidth="2" />
+      <rect x="20" y="5" width="10" height="100" fill="#1e293b" />
+      <rect x="170" y="5" width="10" height="100" fill="#1e293b" />
+
       {Array.from({ length: total }).map((_, i) => {
-        const y = 20 + (i * 76) / Math.max(1, total - 1 || 1);
+        const y = 20 + (i * 70) / Math.max(1, total - 1 || 1);
         const off = i < solved;
         return (
           <g key={i}>
-            <circle cx={20} cy={y} r={3} fill={off ? "#334155" : "#ef4444"} />
-            <circle cx={180} cy={y} r={3} fill={off ? "#334155" : "#ef4444"} />
+            {/* Emitters */}
+            <path d={`M 25 ${y-6} L 32 ${y-4} L 32 ${y+4} L 25 ${y+6} Z`} fill="#475569" stroke="#1e293b" strokeWidth="1" />
+            <path d={`M 175 ${y-6} L 168 ${y-4} L 168 ${y+4} L 175 ${y+6} Z`} fill="#475569" stroke="#1e293b" strokeWidth="1" />
+
+            {/* Emitting lenses */}
+            <ellipse cx="30" cy={y} rx="1.5" ry="3" fill={off ? "#1e293b" : "#fca5a5"} style={off ? {} : { filter: "url(#lh-glow)" }} />
+            <ellipse cx="170" cy={y} rx="1.5" ry="3" fill={off ? "#1e293b" : "#fca5a5"} style={off ? {} : { filter: "url(#lh-glow)" }} />
+
             {!off && (
-              <motion.line x1={23} y1={y} x2={177} y2={y}
-                stroke="#f87171" strokeWidth={2}
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ repeat: Infinity, duration: 0.9, delay: i * 0.18 }}
-                style={{ filter: "drop-shadow(0 0 4px rgba(248,113,113,0.9))" }} />
+              <>
+                <motion.line x1="32" y1={y} x2="168" y2={y}
+                  stroke="#ef4444" strokeWidth="3"
+                  animate={{ opacity: [0.7, 1, 0.7], strokeWidth: [2, 4, 2] }}
+                  transition={{ repeat: Infinity, duration: 2, delay: i * 0.2 }}
+                  style={{ filter: "url(#lh-bright-glow)" }} />
+                <motion.line x1="32" y1={y} x2="168" y2={y}
+                  stroke="#fca5a5" strokeWidth="1.5"
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.2 + 0.5 }}
+                  style={{ filter: "url(#lh-glow)" }} />
+                <line x1="32" y1={y} x2="168" y2={y} stroke="#ffffff" strokeWidth="0.8" opacity="0.9" />
+              </>
             )}
-            {off && <line x1={23} y1={y} x2={177} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="3 5" />}
+
+            {off && (
+              <line x1="32" y1={y} x2="168" y2={y} stroke="#475569" strokeWidth="1" strokeDasharray="2 6" opacity="0.4" />
+            )}
           </g>
         );
       })}
@@ -516,33 +635,90 @@ function LaserHero({ solved, total }: { solved: number; total: number }) {
 }
 
 function WiresHero({ solved, total }: { solved: number; total: number }) {
-  const colors = ["#f87171", "#60a5fa", "#4ade80", "#facc15", "#c084fc", "#fb923c"];
+  const colors = ["#ef4444", "#0ea5e9", "#22c55e", "#eab308", "#d946ef", "#f97316"];
   return (
-    <svg viewBox="0 0 200 110" className="h-full w-full">
-      <rect x="24" y="10" width="152" height="90" rx="10" fill="#101a2e" stroke="rgba(74,222,128,0.3)" strokeWidth="2" />
-      <rect x="34" y="18" width="20" height="74" rx="4" fill="rgba(255,255,255,0.06)" />
-      <rect x="146" y="18" width="20" height="74" rx="4" fill="rgba(255,255,255,0.06)" />
+    <svg viewBox="0 0 200 110" className="h-full w-full" style={{ filter: "drop-shadow(0 15px 25px rgba(0,0,0,0.6))" }}>
+      <defs>
+        <linearGradient id="wh-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1c1917" />
+          <stop offset="100%" stopColor="#0c0a09" />
+        </linearGradient>
+        <pattern id="wh-grid" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+        </pattern>
+        <filter id="wh-spark" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <linearGradient id="wh-terminal" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#334155" />
+          <stop offset="50%" stopColor="#64748b" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+      </defs>
+
+      {/* Box interior */}
+      <rect x="15" y="5" width="170" height="100" rx="4" fill="url(#wh-bg)" stroke="#292524" strokeWidth="2" />
+      <rect x="15" y="5" width="170" height="100" rx="4" fill="url(#wh-grid)" />
+
+      {/* Caution tape / details */}
+      <path d="M 15 5 L 45 5 L 15 35 Z" fill="#b45309" opacity="0.3" />
+      <path d="M 185 105 L 155 105 L 185 75 Z" fill="#b45309" opacity="0.3" />
+
+      {/* Side Terminals */}
+      <rect x="25" y="10" width="20" height="90" rx="2" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
+      <rect x="155" y="10" width="20" height="90" rx="2" fill="#1e293b" stroke="#0f172a" strokeWidth="2" />
+      <rect x="38" y="12" width="5" height="86" fill="url(#wh-terminal)" />
+      <rect x="157" y="12" width="5" height="86" fill="url(#wh-terminal)" />
+
       {Array.from({ length: total }).map((_, i) => {
-        const y = 26 + (i * 58) / Math.max(1, total - 1 || 1);
+        const y = 22 + (i * 66) / Math.max(1, total - 1 || 1);
         const cut = i < solved;
         const c = colors[i % colors.length];
         return (
           <g key={i}>
-            <circle cx={44} cy={y} r={3.4} fill={c} />
-            <circle cx={156} cy={y} r={3.4} fill={c} />
+            {/* Terminal Connectors */}
+            <circle cx="32" cy={y} r="3.5" fill="#0f172a" />
+            <circle cx="32" cy={y} r="2" fill="#cbd5e1" />
+            <line x1="30.5" y1={y} x2="33.5" y2={y} stroke="#334155" strokeWidth="0.8" />
+
+            <circle cx="168" cy={y} r="3.5" fill="#0f172a" />
+            <circle cx="168" cy={y} r="2" fill="#cbd5e1" />
+            <line x1="166.5" y1={y} x2="169.5" y2={y} stroke="#334155" strokeWidth="0.8" />
+
+            {/* Shadow for depth */}
+            {!cut && (
+              <path d={`M 45 ${y+3} Q 100 ${y+16} 155 ${y+3}`} stroke="rgba(0,0,0,0.6)" strokeWidth="6" fill="none" strokeLinecap="round" />
+            )}
+
             {cut ? (
               <>
-                <path d={`M47,${y} Q70,${y + 6} 88,${y + 10}`} stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" opacity={0.8} />
-                <path d={`M153,${y} Q130,${y + 6} 112,${y + 10}`} stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" opacity={0.8} />
-                <text x={100} y={y + 12} textAnchor="middle" fontSize="9" fill="#4ade80">✂</text>
+                {/* Cut wires drooping */}
+                <path d={`M 43 ${y} Q 60 ${y+12} 80 ${y+20}`} stroke={c} strokeWidth="5" fill="none" strokeLinecap="round" />
+                <path d={`M 43 ${y} Q 60 ${y+12} 80 ${y+20}`} stroke="rgba(255,255,255,0.2)" strokeWidth="2" fill="none" strokeLinecap="round" />
+                <path d={`M 157 ${y} Q 140 ${y+12} 120 ${y+20}`} stroke={c} strokeWidth="5" fill="none" strokeLinecap="round" />
+                <path d={`M 157 ${y} Q 140 ${y+12} 120 ${y+20}`} stroke="rgba(255,255,255,0.2)" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+                {/* Copper exposed ends */}
+                <circle cx="80" cy={y+20} r="2" fill="#fbbf24" />
+                <circle cx="120" cy={y+20} r="2" fill="#fbbf24" />
+
+                {/* Active sparks if just cut */}
+                {i === solved - 1 && (
+                  <motion.g style={{ filter: "url(#wh-spark)" }}
+                    animate={{ opacity: [0, 1, 0, 1, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5, times: [0, 0.1, 0.2, 0.3, 1] }}
+                  >
+                    <circle cx="80" cy={y+20} r="3" fill="#fef08a" />
+                    <circle cx="120" cy={y+20} r="3" fill="#fef08a" />
+                  </motion.g>
+                )}
               </>
             ) : (
-              <motion.path
-                d={`M47,${y} Q100,${y + 5} 153,${y}`}
-                stroke={c} strokeWidth={3} fill="none" strokeLinecap="round"
-                animate={{ opacity: [0.75, 1, 0.75] }}
-                transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.25 }}
-              />
+              <motion.g>
+                <path d={`M 43 ${y} Q 100 ${y+12} 157 ${y}`} stroke={c} strokeWidth="5" fill="none" strokeLinecap="round" />
+                <path d={`M 43 ${y-1} Q 100 ${y+10} 157 ${y-1}`} stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+              </motion.g>
             )}
           </g>
         );
@@ -554,45 +730,113 @@ function WiresHero({ solved, total }: { solved: number; total: number }) {
 function VaultHero({ solved, total, open }: { solved: number; total: number; open: boolean }) {
   const seg = total > 0 ? solved / total : 0;
   return (
-    <svg viewBox="0 0 200 110" className="h-full w-full">
-      {/* Vault door */}
-      <circle cx={100} cy={55} r={48} fill="#1a2338" stroke="rgba(247,201,72,0.5)" strokeWidth="3" />
-      <circle cx={100} cy={55} r={40} fill="none" stroke="rgba(247,201,72,0.2)" strokeWidth="1.4" strokeDasharray="4 5" />
-      {/* Progress ring */}
-      <motion.circle
-        cx={100} cy={55} r={44} fill="none"
-        stroke={GOLD} strokeWidth={4} strokeLinecap="round"
-        strokeDasharray={`${seg * 276} 276`}
-        transform="rotate(-90 100 55)"
-        style={{ filter: "drop-shadow(0 0 6px rgba(247,201,72,0.7))" }}
-        initial={false}
-        animate={{ strokeDasharray: `${seg * 276} 276` }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      />
-      {/* Spokes handle */}
-      <motion.g
-        style={{ transformOrigin: "100px 55px" }}
-        animate={open ? { rotate: 240 } : { rotate: seg * 120 }}
-        transition={{ duration: open ? 1.2 : 0.6, ease: "easeInOut" }}
-      >
-        {[0, 60, 120, 180, 240, 300].map((a) => (
-          <line key={a}
-            x1={100 + Math.cos((a * Math.PI) / 180) * 8} y1={55 + Math.sin((a * Math.PI) / 180) * 8}
-            x2={100 + Math.cos((a * Math.PI) / 180) * 30} y2={55 + Math.sin((a * Math.PI) / 180) * 30}
-            stroke="#e5b93e" strokeWidth={5} strokeLinecap="round" />
-        ))}
-        <circle cx={100} cy={55} r={10} fill="#F7C948" stroke="#9A6A08" strokeWidth={2} />
-      </motion.g>
-      {/* Golden light spilling out when open */}
+    <svg viewBox="0 0 200 110" className="h-full w-full" style={{ filter: "drop-shadow(0 15px 30px rgba(0,0,0,0.8))" }}>
+      <defs>
+        <linearGradient id="vh-frame" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#0f172a" />
+          <stop offset="50%" stopColor="#1e293b" />
+          <stop offset="100%" stopColor="#0f172a" />
+        </linearGradient>
+        <linearGradient id="vh-door" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1e293b" />
+          <stop offset="100%" stopColor="#020617" />
+        </linearGradient>
+        <filter id="vh-glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        <filter id="vh-door-shadow">
+          <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#000" floodOpacity="0.8" />
+        </filter>
+        <clipPath id="vh-door-clip">
+          <rect x="25" y="10" width="150" height="90" rx="4" />
+        </clipPath>
+      </defs>
+
+      {/* Frame Background (Dark corridor behind door) */}
+      <rect x="20" y="5" width="160" height="100" rx="8" fill="#020617" stroke="#334155" strokeWidth="2" />
+
+      {/* Light spilling out from behind when open */}
       {open && (
-        <motion.circle cx={100} cy={55} r={48}
-          fill="rgba(247,201,72,0.35)"
+        <motion.rect x="30" y="15" width="140" height="80"
+          fill="#cffafe"
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.9, 0.5] }}
-          transition={{ duration: 1.4 }}
-          style={{ filter: "blur(6px)" }}
+          animate={{ opacity: [0, 1, 0.9] }}
+          transition={{ duration: 1.2 }}
+          style={{ filter: "blur(12px)" }}
         />
       )}
+
+      {/* Split Doors */}
+      <g clipPath="url(#vh-door-clip)">
+        {/* Left Door */}
+        <motion.g
+          animate={open ? { x: -75 } : { x: 0 }}
+          transition={{ duration: 1.8, ease: "easeInOut", delay: 0.2 }}
+        >
+          <rect x="25" y="10" width="75" height="90" fill="url(#vh-door)" stroke="#334155" strokeWidth="1.5" />
+          {/* Tech Panel Details Left */}
+          <path d="M 35 25 L 85 25 M 35 35 L 85 35 M 35 85 L 85 85" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 85 45 L 65 45 L 55 55 L 55 75" fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="2" />
+          {/* Half ring track */}
+          <path d="M 100 30 A 25 25 0 0 0 100 80" fill="none" stroke="#0f172a" strokeWidth="6" />
+        </motion.g>
+
+        {/* Right Door */}
+        <motion.g
+          animate={open ? { x: 75 } : { x: 0 }}
+          transition={{ duration: 1.8, ease: "easeInOut", delay: 0.2 }}
+        >
+          <rect x="100" y="10" width="75" height="90" fill="url(#vh-door)" stroke="#334155" strokeWidth="1.5" />
+          {/* Tech Panel Details Right */}
+          <path d="M 165 25 L 115 25 M 165 35 L 115 35 M 165 85 L 115 85" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 115 45 L 135 45 L 145 55 L 145 75" fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="2" />
+          {/* Half ring track */}
+          <path d="M 100 80 A 25 25 0 0 0 100 30" fill="none" stroke="#0f172a" strokeWidth="6" />
+        </motion.g>
+
+        {/* Center Digital Status Ring (Overlays both doors, splits when open) */}
+        <motion.g
+          animate={open ? { x: -75, opacity: 0 } : { x: 0, opacity: 1 }}
+          transition={{ duration: open ? 1.8 : 0.4, ease: "easeInOut", delay: open ? 0.2 : 0 }}
+        >
+          <path d="M 100 30 A 25 25 0 0 0 100 80" fill="none"
+            stroke="#06b6d4" strokeWidth="4" strokeLinecap="round"
+            strokeDasharray="78.5"
+            strokeDashoffset={78.5 - (Math.min(0.5, seg) * 2 * 78.5)}
+            style={{ filter: "url(#vh-glow-cyan)" }}
+          />
+        </motion.g>
+
+        <motion.g
+          animate={open ? { x: 75, opacity: 0 } : { x: 0, opacity: 1 }}
+          transition={{ duration: open ? 1.8 : 0.4, ease: "easeInOut", delay: open ? 0.2 : 0 }}
+        >
+          <path d="M 100 80 A 25 25 0 0 0 100 30" fill="none"
+            stroke="#06b6d4" strokeWidth="4" strokeLinecap="round"
+            strokeDasharray="78.5"
+            strokeDashoffset={78.5 - (Math.max(0, seg - 0.5) * 2 * 78.5)}
+            style={{ filter: "url(#vh-glow-cyan)" }}
+          />
+        </motion.g>
+
+        {/* Center lock core that glows and fades when opening */}
+        <motion.circle cx="100" cy="55" r="14"
+          fill="#020617" stroke={open ? "#06b6d4" : "#334155"} strokeWidth="2"
+          animate={open ? { scale: 1.2, opacity: 0 } : { scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          style={open ? { filter: "url(#vh-glow-cyan)" } : {}}
+        />
+        <motion.circle cx="100" cy="55" r="6"
+          fill={open ? "#22d3ee" : (seg >= 1 ? "#06b6d4" : "#0f172a")}
+          animate={open ? { scale: 2, opacity: 0 } : { scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          style={seg >= 1 ? { filter: "url(#vh-glow-cyan)" } : {}}
+        />
+      </g>
+
+      {/* Outer Door Frame Rim */}
+      <rect x="20" y="5" width="160" height="100" rx="8" fill="none" stroke="url(#vh-frame)" strokeWidth="6" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.5))" }} />
     </svg>
   );
 }
@@ -618,9 +862,9 @@ export function AlarmFlash() {
       style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(220,38,38,0.55) 100%)" }}
     >
       <div className="absolute inset-x-0 top-6 flex justify-center">
-        <span className="rounded-full border-2 border-red-400/70 bg-black/70 px-5 py-1.5 text-lg font-black text-red-300"
-          style={{ textShadow: "0 0 16px rgba(248,113,113,0.9)" }}>
-          🚨
+        <span className="rounded-full border-2 border-red-400/70 bg-black/70 p-2 text-red-300"
+          style={{ textShadow: "0 0 16px rgba(248,113,113,0.9)", filter: "drop-shadow(0 0 10px rgba(248,113,113,0.8))" }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-6 w-6"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </span>
       </div>
     </motion.div>
@@ -791,12 +1035,12 @@ export function EscapeGameView({
           style={{ boxShadow: "0 0 40px rgba(247,201,72,0.2)" }}
         >
           <motion.span
-            className="text-5xl sm:text-6xl"
+            className="text-5xl sm:text-6xl text-amber-300"
             initial={{ rotate: -12, scale: 0.6 }}
             animate={{ rotate: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 12 }}
           >
-            🔓
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-16 w-16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
           </motion.span>
           <h3 className={`font-black text-white ${big ? "text-2xl sm:text-3xl" : "text-xl"}`}>
             {ar ? "القفل انفتح!" : "Lock opened!"}
@@ -818,13 +1062,23 @@ export function EscapeGameView({
             animate={reduce ? undefined : { scale: [1, 1.03, 1] }}
             transition={{ repeat: Infinity, duration: 1.4 }}
             onClick={() => dispatch({ type: "continue" })}
-            className={`rounded-2xl px-8 font-black text-[#1a2e1a] ${big ? "py-3.5 text-lg" : "py-3 text-base"}`}
+            className={`flex items-center gap-2 rounded-2xl px-8 font-black text-[#1a2e1a] ${big ? "py-3.5 text-lg" : "py-3 text-base"}`}
             style={{
               background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
               boxShadow: "0 12px 28px rgba(217,165,33,0.45), inset 0 2px 0 rgba(255,255,255,0.3)",
             }}
           >
-            {ar ? `⛓️ إلى ${LOCK_META[state.locks[state.lockIndex + 1]?.type ?? "vault"][ar ? "ar" : "en"]}` : "⛓️ Next lock"} ←
+            {ar ? (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 rotate-180"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                {`إلى ${LOCK_META[state.locks[state.lockIndex + 1]?.type ?? "vault"].ar}`}
+              </>
+            ) : (
+              <>
+                {`Next lock: ${LOCK_META[state.locks[state.lockIndex + 1]?.type ?? "vault"].en}`}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </>
+            )}
           </motion.button>
         </motion.div>
       ) : question && !lost && state.status === "playing" ? (
@@ -889,9 +1143,9 @@ export function EscapeGameView({
                   <span className={`flex-1 leading-snug ${big ? "text-base sm:text-lg" : "text-sm sm:text-base"} ${removedOpt ? "line-through" : ""}`}>
                     {opt}
                   </span>
-                  {isCorrectPick && <span className="text-lg">✓</span>}
-                  {isWrongPick && <span className="text-lg">✗</span>}
-                  {removedOpt && <span className="text-lg">🚫</span>}
+                  {isCorrectPick && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5 shrink-0"><path d="M20 6 9 17l-5-5"/></svg>}
+                  {isWrongPick && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5 shrink-0"><path d="M18 6 6 18M6 6l12 12"/></svg>}
+                  {removedOpt && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 shrink-0 text-white/50"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>}
                 </motion.button>
               );
             })}
@@ -910,20 +1164,30 @@ export function EscapeGameView({
                 color: GOLD,
               }}
             >
-              🗝️ {ar ? "مفتاح المساعدة" : "Hint key"} ×{state.hintsLeft}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+              {ar ? "مفتاح المساعدة" : "Hint key"} ×{state.hintsLeft}
             </motion.button>
             <div className="h-6 flex-1 text-center">
               {state.phase === "feedback" && (
                 <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                  className={`text-sm font-black sm:text-base ${state.correct ? "text-green-300" : "text-red-300"}`}>
-                  {state.correct
-                    ? (ar ? "✓ الآلية تتحرك…" : "✓ The mechanism turns…")
-                    : (ar ? `🚨 إنذار! خسرتم 15 ثانية` : "🚨 Alarm! −15 seconds")}
+                  className={`flex items-center justify-center gap-1.5 text-sm font-black sm:text-base ${state.correct ? "text-green-300" : "text-red-300"}`}>
+                  {state.correct ? (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4"><path d="M20 6 9 17l-5-5"/></svg>
+                      {ar ? "الآلية تتحرك…" : "The mechanism turns…"}
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      {ar ? "إنذار! خسرتم 15 ثانية" : "Alarm! −15 seconds"}
+                    </>
+                  )}
                 </motion.p>
               )}
             </div>
-            <span className="text-xs font-bold text-white/40" style={{ direction: "ltr" }}>
-              ✓{state.correctCount} ✗{state.wrongCount}
+            <span className="flex items-center gap-2 text-xs font-bold text-white/40" style={{ direction: "ltr" }}>
+              <span className="flex items-center gap-0.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3 text-green-400"><path d="M20 6 9 17l-5-5"/></svg> {state.correctCount}</span>
+              <span className="flex items-center gap-0.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3 text-red-400"><path d="M18 6 6 18M6 6l12 12"/></svg> {state.wrongCount}</span>
             </span>
           </div>
         </>
@@ -938,11 +1202,11 @@ export function EscapeGameView({
 export function EscapeEndStats({ state, ar }: { state: EscapeState; ar: boolean }) {
   const opened = state.locks.filter((l) => l.open).length;
   const items = [
-    { icon: "🔓", label: ar ? "أقفال فُتحت" : "Locks opened", value: `${opened} / ${state.locks.length}` },
-    { icon: "✅", label: ar ? "إجابات صحيحة" : "Correct", value: `${state.correctCount}` },
-    { icon: "🚨", label: ar ? "إنذارات" : "Alarms", value: `${state.wrongCount}` },
+    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, label: ar ? "أقفال فُتحت" : "Locks opened", value: `${opened} / ${state.locks.length}` },
+    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6 text-green-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>, label: ar ? "إجابات صحيحة" : "Correct", value: `${state.correctCount}` },
+    { icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6 text-red-400"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>, label: ar ? "إنذارات" : "Alarms", value: `${state.wrongCount}` },
     {
-      icon: "⏱", label: ar ? "الوقت المتبقي" : "Time left",
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, label: ar ? "الوقت المتبقي" : "Time left",
       value: `${Math.floor(state.timeLeft / 60)}:${(state.timeLeft % 60).toString().padStart(2, "0")}`,
     },
   ];
@@ -954,9 +1218,9 @@ export function EscapeEndStats({ state, ar }: { state: EscapeState; ar: boolean 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 + i * 0.12 }}
-          className="rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 text-center"
+          className="rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 text-center flex flex-col items-center"
         >
-          <p className="text-lg">{it.icon}</p>
+          <div className="mb-1">{it.icon}</div>
           <p className="text-[11px] font-bold text-white/55">{it.label}</p>
           <p className="text-lg font-black text-white" style={{ fontVariantNumeric: "tabular-nums", direction: "ltr" }}>{it.value}</p>
         </motion.div>
@@ -966,25 +1230,34 @@ export function EscapeEndStats({ state, ar }: { state: EscapeState; ar: boolean 
 }
 
 // ── Golden treasure burst for the win screen ─────────────────────────────────
-export function TreasureBurst() {
+export function EscapeBurst() {
   const reduce = useReducedMotion();
   if (reduce) return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
-      {Array.from({ length: 26 }).map((_, i) => {
-        const x = 8 + (i * 89) % 86;
-        const d = 2.6 + (i % 5) * 0.5;
-        const icons = ["🪙", "💎", "⭐", "🏆", "🪙"];
+      {Array.from({ length: 30 }).map((_, i) => {
+        const x = 5 + (i * 89) % 90;
+        const d = 2.0 + (i % 5) * 0.4;
+        const width = 4 + (i % 4) * 2;
+        const height = 12 + (i % 3) * 8;
+        const color = ["#fde047", "#facc15", "#38bdf8", "#4ade80", "#c084fc"][i % 5];
         return (
-          <motion.span
+          <motion.div
             key={i}
-            className="absolute text-xl sm:text-2xl"
-            style={{ left: `${x}%`, top: "-6%" }}
-            animate={{ y: ["0vh", "112vh"], rotate: [0, i % 2 === 0 ? 320 : -320], opacity: [1, 1, 0.4] }}
-            transition={{ repeat: Infinity, duration: d, delay: (i % 8) * 0.35, ease: "linear" }}
-          >
-            {icons[i % icons.length]}
-          </motion.span>
+            className="absolute rounded-full"
+            style={{
+              left: `${x}%`, top: "-10%",
+              width: `${width}px`, height: `${height}px`,
+              background: color,
+              boxShadow: `0 0 10px ${color}`
+            }}
+            animate={{
+              y: ["0vh", "120vh"],
+              rotate: [0, (i % 2 === 0 ? 1 : -1) * (180 + (i * 30) % 180)],
+              opacity: [1, 1, 0]
+            }}
+            transition={{ repeat: Infinity, duration: d, delay: (i % 8) * 0.25, ease: "linear" }}
+          />
         );
       })}
     </div>
