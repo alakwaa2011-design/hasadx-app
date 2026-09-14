@@ -10,7 +10,7 @@ import { useLocation, useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, LogOut, Loader2, Users,
+  Play, LogOut, Loader2, Users, Copy, Square,
   Volume2, VolumeX, Maximize, Minimize,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -127,9 +127,28 @@ export default function EscapeHost() {
     getSocket().emit("escape:start");
   };
 
-  const endSession = () => {
+  const endSession = (destination = "/game/escape/create") => {
     getSocket().emit("escape:end");
-    setLocation("/game/escape/create");
+    setLocation(destination);
+  };
+
+  const stopGame = () => {
+    if (!window.confirm(ar ? "هل تريد إيقاف غرفة الهروب؟" : "Stop the escape room?")) return;
+    endSession();
+  };
+
+  const exitGame = () => {
+    if (!window.confirm(ar ? "هل تريد الخروج وإنهاء غرفة الهروب؟" : "Exit and end the escape room?")) return;
+    endSession("/teacher/dashboard");
+  };
+
+  const copyJoinLink = async () => {
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      toast.success(ar ? "تم نسخ رابط الانضمام" : "Join link copied");
+    } catch {
+      toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
+    }
   };
 
   const escaped = players.filter(p => p.status === "won").length;
@@ -139,20 +158,6 @@ export default function EscapeHost() {
     <Layout>
       <div className="relative flex min-h-screen flex-col text-white" dir={dir} style={{ background: ESCAPE_BG }}>
         <VaultBackdrop danger={false} />
-
-        {/* Standard host controls: mute + fullscreen (Wameeth-style) */}
-        <div className="fixed top-3 z-50 flex gap-2" style={{ insetInlineEnd: 12 }}>
-          <button onClick={toggleMute}
-            className="rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/50"
-            aria-label={muted ? "unmute" : "mute"}>
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          <button onClick={toggleFullscreen}
-            className="rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/50"
-            aria-label={isFullscreen ? "exit fullscreen" : "fullscreen"}>
-            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-          </button>
-        </div>
 
         <div className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6">
           {/* Header */}
@@ -166,6 +171,41 @@ export default function EscapeHost() {
               </p>
             )}
           </div>
+
+          {(phase === "lobby" || phase === "playing") && (
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/12 bg-black/35 p-2 backdrop-blur-md">
+              <button onClick={toggleMute}
+                className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/8 px-3 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
+                aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}>
+                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                <span>{muted ? (ar ? "تشغيل الصوت" : "Sound on") : (ar ? "الصوت" : "Sound")}</span>
+              </button>
+              <button onClick={copyJoinLink}
+                className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 text-xs font-black text-amber-100 transition-colors hover:bg-amber-300/20"
+                aria-label={ar ? "نسخ الرابط" : "Copy link"}>
+                <Copy className="h-4 w-4" />
+                <span>{ar ? "نسخ الرابط" : "Copy link"}</span>
+              </button>
+              <button onClick={stopGame}
+                className="flex min-h-10 items-center gap-2 rounded-xl border border-orange-300/25 bg-orange-400/10 px-3 text-xs font-black text-orange-200 transition-colors hover:bg-orange-400/20"
+                aria-label={ar ? "إيقاف اللعبة" : "Stop game"}>
+                <Square className="h-4 w-4" fill="currentColor" />
+                <span>{ar ? "إيقاف" : "Stop"}</span>
+              </button>
+              <button onClick={exitGame}
+                className="flex min-h-10 items-center gap-2 rounded-xl border border-red-300/25 bg-red-500/10 px-3 text-xs font-black text-red-200 transition-colors hover:bg-red-500/20"
+                aria-label={ar ? "الخروج" : "Exit"}>
+                <LogOut className="h-4 w-4" />
+                <span>{ar ? "خروج" : "Exit"}</span>
+              </button>
+              <button onClick={toggleFullscreen}
+                className="flex min-h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/8 px-3 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
+                aria-label={isFullscreen ? (ar ? "إنهاء ملء الشاشة" : "Exit fullscreen") : (ar ? "ملء الشاشة" : "Fullscreen")}>
+                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                <span>{ar ? "الشاشة" : "Screen"}</span>
+              </button>
+            </div>
+          )}
 
           {phase === "connecting" && (
             <div className="flex flex-col items-center gap-3 py-20">
@@ -295,11 +335,6 @@ export default function EscapeHost() {
                 ))}
               </div>
 
-              <button onClick={endSession}
-                className="mx-auto flex items-center gap-2 rounded-xl border border-red-400/40 bg-red-500/12 px-5 py-2.5 text-sm font-black text-red-300 transition-colors hover:bg-red-500/20">
-                <LogOut className="h-4 w-4" />
-                {ar ? "إنهاء الجلسة للجميع" : "End session for everyone"}
-              </button>
             </motion.div>
           )}
         </div>
