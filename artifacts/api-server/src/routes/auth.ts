@@ -9,7 +9,7 @@ import {
   trustedDevicesTable,
   pushSubscriptionsTable,
 } from "@workspace/db";
-import { eq, ne, or, and, isNull, gt } from "drizzle-orm";
+import { eq, ne, or, and, isNull, gt, sql } from "drizzle-orm";
 import {
   RegisterTeacherBody,
   LoginTeacherBody,
@@ -19,6 +19,14 @@ import { removePushSubscriptionsForSession } from "../lib/web-push";
 
 const PHONE_REGEX = /^\+\d{7,15}$/;
 const LEGACY_PHONE_REGEX = /^\d{7,15}$/;
+
+function normalizeEmailAddress(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function teacherEmailEquals(email: string) {
+  return sql`lower(${teachersTable.email}) = ${normalizeEmailAddress(email)}`;
+}
 
 const UpdateProfileSchema = z
   .object({
@@ -348,7 +356,11 @@ const router: IRouter = Router();
 
 router.post("/auth/register", registerLimiter, async (req, res) => {
   try {
-    const body = RegisterTeacherBody.parse(req.body);
+    const body = RegisterTeacherBody.parse({
+      ...req.body,
+      email: typeof req.body?.email === "string" ? req.body.email.trim() : req.body?.email,
+    });
+    const email = body.email ? normalizeEmailAddress(body.email) : null;
 
     if (!body.email && !body.phone) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
@@ -362,7 +374,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     }
 
     const conditions = [];
-    if (body.email) conditions.push(eq(teachersTable.email, body.email));
+    if (email) conditions.push(teacherEmailEquals(email));
     if (body.phone) {
       conditions.push(eq(teachersTable.phone, body.phone));
       // Also check legacy 8-digit Kuwait format to prevent duplicate identities
@@ -394,13 +406,13 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     // Generate a one-click verification token for email accounts
-    const rawVerifyToken = body.email ? crypto.randomBytes(32).toString("hex") : null;
+    const rawVerifyToken = email ? crypto.randomBytes(32).toString("hex") : null;
 
     const [teacher] = await db
       .insert(teachersTable)
       .values({
         name: body.name,
-        email: body.email || null,
+        email,
         phone: body.phone || null,
         passwordHash,
         role: requestedRole,
@@ -418,14 +430,14 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     void detectAndSaveCountry(teacher.id, req);
 
     // Send OTP via email or SMS
-    const identifier = body.email || body.phone!;
-    const channel = body.email ? "email" : "sms";
+    const identifier = email || body.phone!;
+    const channel = email ? "email" : "sms";
 
     if (channel === "email") {
       const verifyLink = rawVerifyToken ? buildVerifyEmailUrl(req, rawVerifyToken) : undefined;
       const { html, text } = buildOtpEmail(teacher.name, otp, verifyLink);
       void sendEmail({
-        to: body.email!,
+        to: email!,
         subject: "تأكيد البريد الإلكتروني — منصة حصاد",
         html,
         text,
@@ -452,14 +464,17 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
 
 router.post("/auth/login", authLimiter, async (req, res) => {
   try {
-    const body = LoginTeacherBody.parse(req.body);
+    const body = LoginTeacherBody.parse({
+      ...req.body,
+      email: typeof req.body?.email === "string" ? req.body.email.trim() : req.body?.email,
+    });
 
     if (!body.email && !body.phone) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
       return;
     }
 
-    const identifier = body.email || body.phone!;
+    const identifier = body.email ? normalizeEmailAddress(body.email) : body.phone!;
 
     let teacher: typeof teachersTable.$inferSelect | undefined;
 
@@ -467,7 +482,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       const rows = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.email, identifier))
+        .where(teacherEmailEquals(identifier))
         .limit(1);
       teacher = rows[0];
     } else {
@@ -675,12 +690,13 @@ router.patch("/auth/profile", async (req, res) => {
       return;
     }
     const { name, email, phone } = parsed.data;
+    const normalizedEmail = email ? normalizeEmailAddress(email) : email;
 
-    if (email) {
+    if (normalizedEmail) {
       const [existing] = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.email, email))
+        .where(teacherEmailEquals(normalizedEmail))
         .limit(1);
       if (existing && existing.id !== req.session.teacherId) {
         res.status(409).json({ message: "البريد الإلكتروني مستخدم بالفعل" });
@@ -702,7 +718,7 @@ router.patch("/auth/profile", async (req, res) => {
 
     const updateData: Record<string, any> = {};
     if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email || null;
+    if (email !== undefined) updateData.email = normalizedEmail || null;
     if (phone !== undefined) updateData.phone = phone || null;
 
     const [updated] = await db
@@ -803,7 +819,7 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
       const rows = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.email, identifier.toLowerCase()))
+        .where(teacherEmailEquals(identifier))
         .limit(1);
       teacher = rows[0];
     } else {
@@ -1402,7 +1418,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       return;
     }
 
-    const email = profile.email.toLowerCase();
+    const email = normalizeEmailAddress(profile.email);
     const displayName = profile.name?.trim() || email.split("@")[0];
 
     let teacher: typeof teachersTable.$inferSelect | undefined;
@@ -1419,7 +1435,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       const byEmail = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.email, email))
+        .where(teacherEmailEquals(email))
         .limit(1);
       const existingByEmail = byEmail[0];
 
@@ -1599,11 +1615,14 @@ const VerifyOtpSchema = z.object({
 
 router.post("/auth/verify-otp", authLimiter, async (req, res) => {
   try {
-    const { identifier, otp } = VerifyOtpSchema.parse(req.body);
+    const { identifier: rawIdentifier, otp } = VerifyOtpSchema.parse(req.body);
+    const identifier = rawIdentifier.includes("@")
+      ? normalizeEmailAddress(rawIdentifier)
+      : rawIdentifier.trim();
 
     // Find teacher by email or phone
     const byEmail = identifier.includes("@")
-      ? await db.select().from(teachersTable).where(eq(teachersTable.email, identifier)).limit(1)
+      ? await db.select().from(teachersTable).where(teacherEmailEquals(identifier)).limit(1)
       : [];
     const byPhone = byEmail.length === 0
       ? await db.select().from(teachersTable).where(eq(teachersTable.phone, identifier)).limit(1)
@@ -1682,10 +1701,13 @@ const ResendOtpSchema = z.object({
 
 router.post("/auth/resend-otp", authLimiter, async (req, res) => {
   try {
-    const { identifier } = ResendOtpSchema.parse(req.body);
+    const { identifier: rawIdentifier } = ResendOtpSchema.parse(req.body);
+    const identifier = rawIdentifier.includes("@")
+      ? normalizeEmailAddress(rawIdentifier)
+      : rawIdentifier.trim();
 
     const byEmail = identifier.includes("@")
-      ? await db.select().from(teachersTable).where(eq(teachersTable.email, identifier)).limit(1)
+      ? await db.select().from(teachersTable).where(teacherEmailEquals(identifier)).limit(1)
       : [];
     const byPhone = byEmail.length === 0
       ? await db.select().from(teachersTable).where(eq(teachersTable.phone, identifier)).limit(1)

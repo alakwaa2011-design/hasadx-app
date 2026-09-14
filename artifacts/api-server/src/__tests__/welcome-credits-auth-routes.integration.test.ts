@@ -311,4 +311,44 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
     expect(sendEmailMock).toHaveBeenCalledOnce();
     expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ to: t.email }));
   });
+
+  it("AUTH5 — الدخول والتحقق لا يتأثران بحالة أحرف البريد أو المسافات الخارجية", async () => {
+    const t = await createUnverifiedTeacher("email_case", { otp: "515151" });
+    tids.push(t.id);
+    const storedMixedCase = t.email.replace(RUN_ID, RUN_ID.toUpperCase());
+    await db.execute(sql`UPDATE teachers SET email = ${storedMixedCase} WHERE id = ${t.id}`);
+
+    const verification = await request(app)
+      .post("/api/auth/verify-otp")
+      .send({ identifier: `  ${t.email.toUpperCase()}  `, otp: "515151" });
+    expect(verification.status).toBe(200);
+
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: `  ${t.email.toUpperCase()}  `, password: PASSWORD });
+    expect(login.status).toBe(200);
+    expect(login.body.teacher.id).toBe(t.id);
+  });
+
+  it("AUTH6 — التسجيل يحفظ البريد بصيغة موحّدة ويمنع تكراره باختلاف الأحرف", async () => {
+    const email = `${RUN_ID}_REGISTER_CASE@TEST.LOCAL`;
+    sendEmailMock.mockClear();
+    const registration = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Case Test", email: `  ${email}  `, password: PASSWORD });
+    expect(registration.status).toBe(201);
+
+    const row = await db.execute(sql`
+      SELECT id, email FROM teachers WHERE lower(email) = ${email.toLowerCase()} LIMIT 1
+    `);
+    const tid = Number((row.rows[0] as any).id);
+    tids.push(tid);
+    expect((row.rows[0] as any).email).toBe(email.toLowerCase());
+    expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ to: email.toLowerCase() }));
+
+    const duplicate = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Duplicate", email: email.toLowerCase(), password: PASSWORD });
+    expect(duplicate.status).toBe(409);
+  });
 });

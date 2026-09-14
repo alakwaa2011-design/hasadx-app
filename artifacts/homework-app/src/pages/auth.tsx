@@ -608,6 +608,8 @@ function LoginForm({
                 dir="ltr"
                 disabled={isLoading}
                 autoComplete="email"
+                 autoCapitalize="none"
+                 spellCheck={false}
               />
             </div>
           </div>
