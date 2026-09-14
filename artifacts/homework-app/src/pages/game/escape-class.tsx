@@ -7,7 +7,7 @@ import { useEffect, useReducer, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
-import { Volume2, VolumeX } from "lucide-react";
+import { LogOut, Maximize, Minimize, Square, Volume2, VolumeX } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import {
   createEscapeState, escapeReducer, escapeScore, ESCAPE_CLASS_SETUP_KEY,
@@ -59,6 +59,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
     }),
   );
   const [muted, setMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const soundRef = useRef<EscapeSoundEngine | null>(null);
   const getSound = useCallback((): EscapeSoundEngine => {
@@ -86,6 +87,31 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
     if (!s.muted && state.status === "playing") { s.startAmbient(); s.startMusic(); }
   };
 
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  };
+
+  const stopGame = () => {
+    if (!window.confirm(ar ? "هل تريد إيقاف الجولة الحالية والعودة إلى الإعداد؟" : "Stop this round and return to setup?")) return;
+    getSound().stopAmbient();
+    getSound().stopMusic();
+    setLocation("/game/escape/create");
+  };
+
+  const exitGame = () => {
+    if (!window.confirm(ar ? "هل تريد الخروج من غرفة الهروب؟" : "Exit the escape room?")) return;
+    getSound().stopAmbient();
+    getSound().stopMusic();
+    setLocation("/teacher/dashboard");
+  };
+
   const title = setup.title || t.escapeClass.defaultTitle;
   const minutes = Math.round(setup.totalTime / 60);
   const danger = state.status === "playing" && state.timeLeft <= 60;
@@ -95,21 +121,43 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
       <VaultBackdrop danger={danger} />
       {state.status === "won" && <TreasureBurst />}
 
-      {/* Mute */}
-      <button onClick={toggleMute}
-        className="fixed top-3 z-50 rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm"
-        style={{ insetInlineEnd: 12 }}
-        aria-label={muted ? t.escapeClass.unmute : t.escapeClass.mute}>
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-      </button>
-
-      {/* Title banner */}
-      <div className="relative z-10 flex justify-center pt-3">
-        <p className="w-fit max-w-[80vw] truncate rounded-full border border-amber-300/40 bg-black/50 px-6 py-1.5 text-center text-sm font-black text-amber-100 backdrop-blur-md sm:text-lg"
-          style={{ direction: dir, textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
-          title={title}>
-          🔐 {title}
-        </p>
+      {/* In-game title and controls */}
+      <div className="relative z-10 mx-auto w-full max-w-4xl px-3 pt-3" style={{ direction: dir }}>
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/12 bg-black/35 p-2.5 backdrop-blur-md sm:flex-row sm:justify-between">
+          <p className="max-w-full truncate rounded-xl border border-amber-300/30 bg-black/30 px-4 py-2 text-center text-sm font-black text-amber-100 sm:max-w-[48%] sm:text-base"
+            style={{ textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
+            title={title}>
+            🔐 {title}
+          </p>
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5">
+            <button onClick={toggleMute}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-white/15 bg-white/8 px-2.5 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
+              aria-label={muted ? t.escapeClass.unmute : t.escapeClass.mute}>
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              <span>{muted ? (ar ? "تشغيل الصوت" : "Sound on") : (ar ? "الصوت" : "Sound")}</span>
+            </button>
+            <button onClick={toggleFullscreen}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-white/15 bg-white/8 px-2.5 text-xs font-black text-white/85 transition-colors hover:bg-white/15"
+              aria-label={isFullscreen ? (ar ? "إنهاء ملء الشاشة" : "Exit fullscreen") : (ar ? "ملء الشاشة" : "Fullscreen")}>
+              {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              <span>{ar ? "ملء الشاشة" : "Fullscreen"}</span>
+            </button>
+            {state.status === "playing" && (
+              <button onClick={stopGame}
+                className="flex min-h-9 items-center gap-1.5 rounded-xl border border-orange-300/25 bg-orange-400/10 px-2.5 text-xs font-black text-orange-200 transition-colors hover:bg-orange-400/20"
+                aria-label={ar ? "إيقاف اللعبة" : "Stop game"}>
+                <Square className="h-4 w-4" fill="currentColor" />
+                <span>{ar ? "إيقاف" : "Stop"}</span>
+              </button>
+            )}
+            <button onClick={exitGame}
+              className="flex min-h-9 items-center gap-1.5 rounded-xl border border-red-300/25 bg-red-500/10 px-2.5 text-xs font-black text-red-200 transition-colors hover:bg-red-500/20"
+              aria-label={ar ? "الخروج" : "Exit"}>
+              <LogOut className="h-4 w-4" />
+              <span>{ar ? "خروج" : "Exit"}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {(state.status === "playing") && (

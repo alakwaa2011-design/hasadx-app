@@ -10,7 +10,7 @@ import { useLocation, useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, LogOut, Loader2, Users, Copy, Square,
+  Play, LogOut, Loader2, Users, Square,
   Volume2, VolumeX, Maximize, Minimize,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -142,15 +142,6 @@ export default function EscapeHost() {
     endSession("/teacher/dashboard");
   };
 
-  const copyJoinLink = async () => {
-    try {
-      await navigator.clipboard.writeText(joinUrl);
-      toast.success(ar ? "تم نسخ رابط الانضمام" : "Join link copied");
-    } catch {
-      toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
-    }
-  };
-
   const escaped = players.filter(p => p.status === "won").length;
   const finished = players.filter(p => p.status === "won" || p.status === "lost").length;
 
@@ -179,12 +170,6 @@ export default function EscapeHost() {
                 aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}>
                 {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 <span>{muted ? (ar ? "تشغيل الصوت" : "Sound on") : (ar ? "الصوت" : "Sound")}</span>
-              </button>
-              <button onClick={copyJoinLink}
-                className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 text-xs font-black text-amber-100 transition-colors hover:bg-amber-300/20"
-                aria-label={ar ? "نسخ الرابط" : "Copy link"}>
-                <Copy className="h-4 w-4" />
-                <span>{ar ? "نسخ الرابط" : "Copy link"}</span>
               </button>
               <button onClick={stopGame}
                 className="flex min-h-10 items-center gap-2 rounded-xl border border-orange-300/25 bg-orange-400/10 px-3 text-xs font-black text-orange-200 transition-colors hover:bg-orange-400/20"
