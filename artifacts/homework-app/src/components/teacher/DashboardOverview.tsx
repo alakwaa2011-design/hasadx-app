@@ -62,6 +62,7 @@ import {
   UploadCloud,
   FileWarning,
   RefreshCw,
+  BellRing,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
@@ -419,6 +420,24 @@ export default function DashboardOverview({
       .slice(0, 3);
   }, [assignments]);
 
+  const attentionCount = useMemo(() => {
+    const now = Date.now();
+    return (assignments || []).filter((assignment) => {
+      const deadline = assignment.deadline
+        ? new Date(assignment.deadline).getTime()
+        : null;
+      const isActive = !deadline || deadline >= now;
+      if (!isActive) return false;
+      const daysLeft = deadline
+        ? Math.ceil((deadline - now) / 86400000)
+        : null;
+      return (
+        (assignment.submissionCount === 0 && assignment.questionCount > 0) ||
+        (daysLeft !== null && daysLeft <= 3)
+      );
+    }).length;
+  }, [assignments]);
+
   const { data: topStudents = [] } = useQuery<TopStudent[]>({
     queryKey: ["dashboard-overview", "top-students"],
     enabled: !!user && !!assignments && assignments.length > 0,
@@ -539,9 +558,10 @@ export default function DashboardOverview({
           todayLabel={todayLabel}
           firstName={firstName}
           stats={stats}
+          attentionCount={attentionCount}
           onCreate={() => setLocation("/teacher/new")}
           onLiveQuiz={() => setActiveTab("competitive")}
-          onShowStudents={() => setActiveTab("students")}
+          onShowAttention={() => setActiveTab("assignments")}
           onShowClasses={() => setActiveTab("students")}
           onShowActiveAssignments={() => setActiveTab("assignments")}
           onShowSubmissions={() => setActiveTab("stats")}
@@ -961,9 +981,10 @@ function HeroPanel({
   todayLabel,
   firstName,
   stats,
+  attentionCount,
   onCreate,
   onLiveQuiz,
-  onShowStudents,
+  onShowAttention,
   onShowClasses,
   onShowActiveAssignments,
   onShowSubmissions,
@@ -981,9 +1002,10 @@ function HeroPanel({
     totalStudents: number;
     avgRate: number;
   };
+  attentionCount: number;
   onCreate: () => void;
   onLiveQuiz: () => void;
-  onShowStudents: () => void;
+  onShowAttention: () => void;
   onShowClasses: () => void;
   onShowActiveAssignments: () => void;
   onShowSubmissions: () => void;
@@ -1176,11 +1198,11 @@ function HeroPanel({
         >
           <HeroStat
             isMobile={isMobile}
-            icon={<GraduationCap style={{ width: 16, height: 16 }} />}
-            label={isAr ? "الطلاب" : "Students"}
-            value={stats.totalStudents}
-            onClick={onShowStudents}
-            actionLabel={isAr ? "عرض الطلاب" : "View students"}
+            icon={<BellRing style={{ width: 16, height: 16 }} />}
+            label={isAr ? "بحاجة للمتابعة" : "Needs attention"}
+            value={attentionCount}
+            onClick={onShowAttention}
+            actionLabel={isAr ? "عرض الواجبات التي تحتاج متابعة" : "View assignments needing attention"}
           />
           <HeroStat
             isMobile={isMobile}
