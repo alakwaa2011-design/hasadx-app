@@ -705,6 +705,34 @@ describe("schedule management tool", () => {
     expect(button("button-confirm-extract-schedule").disabled).toBe(false);
   });
 
+  it("keeps unreadable-image guidance clear and does not open a partial schedule review", async () => {
+    const guidance = "تعذّرت قراءة محاذاة الأيام والحصص بأمان. صوّر الصفحة كاملة من الأعلى مباشرة، بإضاءة متساوية ومن دون ظلال أو وهج.";
+    creditAwareFetch.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        message: guidance,
+        warnings: ["تعذر ربط عناوين الأيام بأعمدة الحصص"],
+      }),
+    });
+
+    const input = document.querySelector('[data-testid="input-import-schedule-image"]') as HTMLInputElement;
+    const file = new File(["unreadable-timetable"], "unreadable-timetable.png", { type: "image/png" });
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+
+    await click("button-confirm-extract-schedule");
+
+    await vi.waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith(guidance);
+    });
+    expect(document.body.textContent).toContain("استيراد جدول معلم");
+    expect(document.querySelector('img[alt="معاينة صورة الجدول"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="bulk-schedule-scroll-region"]')).toBeNull();
+    expect(document.querySelector('[data-testid^="input-bulk-lesson-title-"]')).toBeNull();
+    expect(bulkMutate).not.toHaveBeenCalled();
+  });
+
   it("shows each imported weekday's distinct times in review and saves them unchanged", async () => {
     creditAwareFetch.mockResolvedValue({
       ok: true,
