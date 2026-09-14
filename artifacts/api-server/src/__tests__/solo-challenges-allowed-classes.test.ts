@@ -64,6 +64,7 @@ vi.mock("../game/socket-handlers", () => ({
 import express from "express";
 import request from "supertest";
 import router from "../routes/solo-challenges";
+import { getGame } from "../game/manager";
 
 const ASSIGNMENT = {
   id: 17,
@@ -145,5 +146,79 @@ describe("solo challenge allowedClasses persistence", () => {
 
     expect(clearUpdate.status).toBe(200);
     expect(dbState.updatePayloads[1]).toEqual({ allowedClasses: null });
+  });
+
+  it("recovers a saved result after the temporary game has been deleted", async () => {
+    const challenge = { ...EXISTING_CHALLENGE, assignmentId: null, assignmentArchivedAt: null };
+    pushQueue(
+      [challenge],
+      [{
+        playerName: "طالب",
+        score: 640,
+        correctCount: 6,
+        timeTaken: 42,
+        totalQuestions: 8,
+      }],
+    );
+
+    const response = await request(makeApp())
+      .get("/api/solo-challenges/اختبار-الصفوف-ab12/result")
+      .query({
+        participantKey: "participant-key-123456",
+        scoreProof: "run-proof-123456",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      playerName: "طالب",
+      score: 640,
+      correctCount: 6,
+      totalQuestions: 8,
+    });
+  });
+
+  it("does not expose a result when the participant capability has no matching saved attempt", async () => {
+    const challenge = { ...EXISTING_CHALLENGE, assignmentId: null, assignmentArchivedAt: null };
+    pushQueue([challenge], []);
+
+    const response = await request(makeApp())
+      .get("/api/solo-challenges/اختبار-الصفوف-ab12/result")
+      .query({
+        participantKey: "different-device-123456",
+        scoreProof: "run-proof-123456",
+      });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("keeps score retries idempotent when the game no longer exists", async () => {
+    vi.mocked(getGame).mockReturnValue(undefined);
+    const challenge = { ...EXISTING_CHALLENGE, assignmentId: null, assignmentArchivedAt: null };
+    pushQueue(
+      [challenge],
+      [{
+        playerName: "طالب",
+        score: 640,
+        correctCount: 6,
+        timeTaken: 42,
+        totalQuestions: 8,
+        gameRunId: "run-proof-123456",
+      }],
+    );
+
+    const response = await request(makeApp())
+      .post("/api/solo-challenges/اختبار-الصفوف-ab12/score")
+      .send({
+        playerName: "طالب",
+        pin: "123456",
+        scoreProof: "run-proof-123456",
+        participantKey: "participant-key-123456",
+        points: 999999,
+        correctCount: 0,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ ok: true, result: "duplicate" });
   });
 });

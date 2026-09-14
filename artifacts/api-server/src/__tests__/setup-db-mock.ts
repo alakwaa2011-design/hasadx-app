@@ -59,6 +59,7 @@ function makeChain(result: unknown): unknown {
 // ---------------------------------------------------------------------------
 function makeDefaultDb() {
   const txMethods = () => ({
+    execute: () => makeChain([]),
     select: () => makeChain([]),
     insert: () => makeChain([]),
     update: () => makeChain([]),

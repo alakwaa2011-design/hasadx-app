@@ -183,6 +183,21 @@ export default function SoloPlayPage() {
       sessionStorage.setItem("solo_challenge_participant_key", participantKey);
       if (data.shortSlug) sessionStorage.setItem("solo_challenge_short_slug", data.shortSlug);
       if (data.leaderboardDisplay) sessionStorage.setItem("solo_leaderboard_display", data.leaderboardDisplay);
+      try {
+        localStorage.setItem("hasad_solo_recovery_latest", JSON.stringify({
+          slug,
+          pin: String(data.pin),
+          scoreProof: String(data.scoreProof || ""),
+          participantKey,
+          playerName: verifiedName,
+          title: info?.assignmentTitle ?? "",
+          shortSlug: data.shortSlug ?? "",
+          maxAttempts: info?.maxAttempts ?? 1,
+          leaderboardDisplay: data.leaderboardDisplay ?? "",
+        }));
+      } catch {
+        // The server remains the source of truth; storage is only a reload aid.
+      }
 
       // Skip the old /game/join screen entirely — solo has its own entry.
       // Go straight to /game/play/:pin with name + avatar in the query string

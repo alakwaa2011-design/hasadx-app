@@ -505,6 +505,23 @@ export declare const soloChallengeScoresTable: import("drizzle-orm/pg-core").PgT
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        totalQuestions: import("drizzle-orm/pg-core").PgColumn<{
+            name: "total_questions";
+            tableName: "solo_challenge_scores";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         playedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "played_at";
             tableName: "solo_challenge_scores";

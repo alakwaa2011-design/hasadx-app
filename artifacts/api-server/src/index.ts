@@ -1378,6 +1378,7 @@ async function runSchemaMigrations() {
         slug        TEXT NOT NULL,
         player_name TEXT NOT NULL,
         score       INTEGER NOT NULL DEFAULT 0,
+        total_questions INTEGER NOT NULL DEFAULT 0,
         played_at   TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
@@ -1385,6 +1386,7 @@ async function runSchemaMigrations() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)`);
     await db.execute(sql`ALTER TABLE solo_challenge_scores ADD COLUMN IF NOT EXISTS participant_key TEXT`);
     await db.execute(sql`ALTER TABLE solo_challenge_scores ADD COLUMN IF NOT EXISTS game_run_id TEXT`);
+    await db.execute(sql`ALTER TABLE solo_challenge_scores ADD COLUMN IF NOT EXISTS total_questions INTEGER NOT NULL DEFAULT 0`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS solo_challenge_scores_participant_idx ON solo_challenge_scores(slug, participant_key) WHERE participant_key IS NOT NULL`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS solo_challenge_scores_game_run_idx ON solo_challenge_scores(game_run_id) WHERE game_run_id IS NOT NULL`);
     await db.execute(sql`

@@ -62,6 +62,7 @@ import { resolveWameethStudentIdentity } from "../lib/wameeth-game-history";
 import { coordinateFullGameSave as sharedCoordinateFullGameSave, finalizeWameethGameForReplay, saveFullWameethGame } from "../lib/wameeth-full-save";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
+import { persistSoloChallengeResult } from "../lib/solo-challenge-results";
 
 interface CreateGameData {
   assignmentId: number;
@@ -686,6 +687,9 @@ function endHackGame(io: Server, game: Game) {
     totalQuestions: game.questions.length,
     hackTimeUp: true,
   });
+  void persistSoloChallengeResult(game).catch(err =>
+    logger.error({ err, pin: game.pin, gameRunId: game.gameRunId }, "Failed to persist solo challenge result"),
+  );
   void saveGameHistory(game).catch(err=>logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save timed-out hack game"));
   trackEvent({
     userRole: "teacher",
@@ -726,6 +730,9 @@ function doAutoAdvance(io: Server, pin: string) {
     emitLeaderboardData(io, currentGame, "game:finished", {
       totalQuestions: currentGame.questions.length,
     });
+    void persistSoloChallengeResult(currentGame).catch(err =>
+      logger.error({ err, pin: currentGame.pin, gameRunId: currentGame.gameRunId }, "Failed to persist solo challenge result"),
+    );
     void saveGameHistory(currentGame).catch(err=>logger.error({err,pin:currentGame.pin,gameRunId:currentGame.gameRunId},"Failed to save auto-finished game"));
     currentGame.finishDeleteTimerId = setTimeout(() => deleteGame(currentGame.pin), 60000);
     return;
@@ -880,6 +887,9 @@ function finishGiftRound(io: Server, game: Game) {
     emitLeaderboardData(io, game, "game:finished", {
       totalQuestions: game.questions.length,
     });
+    void persistSoloChallengeResult(game).catch(err =>
+      logger.error({ err, pin: game.pin, gameRunId: game.gameRunId }, "Failed to persist solo challenge result"),
+    );
     void saveGameHistory(game).catch(err=>logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save gift-round game"));
     game.finishDeleteTimerId = setTimeout(() => deleteGame(game.pin), 60000);
     return;
@@ -1933,6 +1943,9 @@ export function setupGameSocket(io: Server) {
         emitLeaderboardData(io, game, "game:finished", {
           totalQuestions: game.questions.length,
         });
+        void persistSoloChallengeResult(game).catch(err =>
+          logger.error({ err, pin: game.pin, gameRunId: game.gameRunId }, "Failed to persist solo challenge result"),
+        );
         callback?.(playStarted?{ok:true,saved:true}:{ok:true,saved:false,reason:"no_play"});
         game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
       },
@@ -2380,6 +2393,9 @@ export function setupGameSocket(io: Server) {
         emitLeaderboardData(io, game, "game:finished", {
           totalQuestions: game.questions.length,
         });
+        void persistSoloChallengeResult(game).catch(err =>
+          logger.error({ err, pin: game.pin, gameRunId: game.gameRunId }, "Failed to persist solo challenge result"),
+        );
         void saveGameHistory(game).catch(err=>logger.error({err,pin:game.pin,gameRunId:game.gameRunId},"Failed to save next-question completion"));
         game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
         return;
@@ -2803,6 +2819,9 @@ export function setupGameSocket(io: Server) {
       emitLeaderboardData(io, game, "game:finished", {
         totalQuestions: game.questions.length,
       });
+      void persistSoloChallengeResult(game).catch(err =>
+        logger.error({ err, pin: game.pin, gameRunId: game.gameRunId }, "Failed to persist solo challenge result"),
+      );
       callback?.(playStarted?{success:true,saved:true}:{success:true,saved:false,reason:"no_play"});
       game.finishDeleteTimerId = setTimeout(() => deleteGame(data.pin), 60000);
     });

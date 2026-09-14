@@ -69,6 +69,8 @@ export const soloChallengeScoresTable = pgTable("solo_challenge_scores", {
   correctCount: integer("correct_count").notNull().default(0),
   /** Total time taken in seconds (stored for leaderboard display). */
   timeTaken: integer("time_taken"),
+  /** Number of questions in the server-selected run, for result recovery. */
+  totalQuestions: integer("total_questions").notNull().default(0),
   playedAt: timestamp("played_at").notNull().defaultNow(),
 }, (t) => ({
   slugIdx: index("solo_challenge_scores_slug_idx").on(t.slug),

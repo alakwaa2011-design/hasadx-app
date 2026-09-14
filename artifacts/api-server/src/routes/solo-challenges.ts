@@ -18,6 +18,7 @@ import {
 } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { persistSoloChallengeResult } from "../lib/solo-challenge-results";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -1237,91 +1238,107 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
 
     const game = getGame(pin);
     if (
-      !game ||
-      game.gameRunId !== scoreProof ||
-      game.soloChallengeSlug !== slug ||
-      game.state !== "finished"
+      game &&
+      game.gameRunId === scoreProof &&
+      game.soloChallengeSlug === slug &&
+      game.state === "finished"
     ) {
-      return res.status(409).json({ message: "تعذر التحقق من نتيجة هذه المحاولة" });
+      const player = Array.from(game.players.values()).find((candidate) => candidate.name === playerName);
+      if (!player) return res.status(409).json({ message: "تعذر التحقق من اللاعب" });
+      const result = await persistSoloChallengeResult(game);
+      if (result === "missing_attempt") {
+        return res.status(409).json({ message: "تعذر التحقق من المحاولة" });
+      }
+      return res.json({ ok: true, result });
     }
 
-    const player = Array.from(game.players.values()).find((candidate) => candidate.name === playerName);
-    if (!player) return res.status(409).json({ message: "تعذر التحقق من اللاعب" });
-    const [attempt] = await db
-      .select({ id: soloChallengeAttemptsTable.id })
-      .from(soloChallengeAttemptsTable)
+    // The Socket.IO game is intentionally short-lived. Once it is deleted,
+    // only the server-saved result can answer a retry; never trust score
+    // values sent by the browser as a fallback.
+    const [storedScore] = await db
+      .select({
+        playerName: soloChallengeScoresTable.playerName,
+        score: soloChallengeScoresTable.score,
+        correctCount: soloChallengeScoresTable.correctCount,
+        timeTaken: soloChallengeScoresTable.timeTaken,
+        totalQuestions: soloChallengeScoresTable.totalQuestions,
+        gameRunId: soloChallengeScoresTable.gameRunId,
+      })
+      .from(soloChallengeScoresTable)
+      .innerJoin(
+        soloChallengeAttemptsTable,
+        and(
+          eq(soloChallengeAttemptsTable.slug, soloChallengeScoresTable.slug),
+          eq(soloChallengeAttemptsTable.participantKey, soloChallengeScoresTable.participantKey),
+          eq(soloChallengeAttemptsTable.gameRunId, scoreProof),
+        ),
+      )
       .where(and(
-        eq(soloChallengeAttemptsTable.slug, slug),
-        eq(soloChallengeAttemptsTable.participantKey, participantKey),
-        eq(soloChallengeAttemptsTable.gameRunId, scoreProof),
+        eq(soloChallengeScoresTable.slug, slug),
+        eq(soloChallengeScoresTable.participantKey, participantKey),
       ))
       .limit(1);
-    if (!attempt) return res.status(409).json({ message: "تعذر التحقق من المحاولة" });
-
-    const verifiedTimeTaken = Math.max(
-      0,
-      Math.round(Array.from(player.answers.values()).reduce((sum, answer) => sum + answer.time, 0) / 1000),
-    );
-    const nextScore = Math.max(0, Math.round(player.score));
-    const nextCorrectCount = Math.max(0, Math.round(player.totalCorrect));
-    const result = await db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${slug}:${participantKey}`}))`);
-      const [existingScore] = await tx
-        .select({
-          gameRunId: soloChallengeScoresTable.gameRunId,
-          score: soloChallengeScoresTable.score,
-          correctCount: soloChallengeScoresTable.correctCount,
-          timeTaken: soloChallengeScoresTable.timeTaken,
-        })
-        .from(soloChallengeScoresTable)
-        .where(and(
-          eq(soloChallengeScoresTable.slug, slug),
-          eq(soloChallengeScoresTable.participantKey, participantKey),
-        ))
-        .limit(1);
-
-      if (existingScore?.gameRunId === scoreProof) return "duplicate";
-      const isBetter = !existingScore ||
-        nextCorrectCount > existingScore.correctCount ||
-        (nextCorrectCount === existingScore.correctCount &&
-          (verifiedTimeTaken < (existingScore.timeTaken ?? Number.MAX_SAFE_INTEGER) ||
-            (verifiedTimeTaken === (existingScore.timeTaken ?? Number.MAX_SAFE_INTEGER) &&
-              nextScore > existingScore.score)));
-
-      if (!existingScore) {
-        await tx.insert(soloChallengeScoresTable).values({
-          slug,
-          participantKey,
-          gameRunId: scoreProof,
-          playerName: player.name,
-          score: nextScore,
-          correctCount: nextCorrectCount,
-          timeTaken: verifiedTimeTaken,
-        });
-        return "created";
-      }
-      if (!isBetter) return "kept";
-
-      await tx
-        .update(soloChallengeScoresTable)
-        .set({
-          gameRunId: scoreProof,
-          playerName: player.name,
-          score: nextScore,
-          correctCount: nextCorrectCount,
-          timeTaken: verifiedTimeTaken,
-          playedAt: new Date(),
-        })
-        .where(and(
-          eq(soloChallengeScoresTable.slug, slug),
-          eq(soloChallengeScoresTable.participantKey, participantKey),
-        ));
-      return "updated";
-    });
-    res.json({ ok: true, result });
+    if (!storedScore) {
+      return res.status(409).json({ message: "تعذر التحقق من نتيجة هذه المحاولة" });
+    }
+    res.json({ ok: true, result: storedScore.gameRunId === scoreProof ? "duplicate" : "kept" });
   } catch (err) {
     req.log.error(err, "Solo challenge score error");
     res.status(500).json({ message: "خطأ في تسجيل الدرجة" });
+  }
+});
+
+// ── GET /api/solo-challenges/:slug/result  (private recovery by attempt proof)
+router.get("/solo-challenges/:slug/result", async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const participantKey = String(req.query.participantKey || "").trim();
+    const scoreProof = String(req.query.scoreProof || "").trim();
+    if (!scoreProof || !/^[a-zA-Z0-9-]{16,80}$/.test(participantKey)) {
+      return res.status(400).json({ message: "بيانات استعادة النتيجة مطلوبة" });
+    }
+
+    const [challenge] = await db
+      .select({
+        assignmentId: soloChallengesTable.assignmentId,
+        assignmentArchivedAt: assignmentsTable.archivedAt,
+      })
+      .from(soloChallengesTable)
+      .leftJoin(assignmentsTable, eq(soloChallengesTable.assignmentId, assignmentsTable.id))
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+    if (!challenge || (challenge.assignmentId !== null && challenge.assignmentArchivedAt)) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+
+    const [score] = await db
+      .select({
+        playerName: soloChallengeScoresTable.playerName,
+        score: soloChallengeScoresTable.score,
+        correctCount: soloChallengeScoresTable.correctCount,
+        timeTaken: soloChallengeScoresTable.timeTaken,
+        totalQuestions: soloChallengeScoresTable.totalQuestions,
+      })
+      .from(soloChallengeScoresTable)
+      .innerJoin(
+        soloChallengeAttemptsTable,
+        and(
+          eq(soloChallengeAttemptsTable.slug, soloChallengeScoresTable.slug),
+          eq(soloChallengeAttemptsTable.participantKey, soloChallengeScoresTable.participantKey),
+          eq(soloChallengeAttemptsTable.gameRunId, scoreProof),
+        ),
+      )
+      .where(and(
+        eq(soloChallengeScoresTable.slug, slug),
+        eq(soloChallengeScoresTable.participantKey, participantKey),
+      ))
+      .limit(1);
+
+    if (!score) return res.status(404).json({ message: "لا توجد نتيجة محفوظة لهذه المحاولة" });
+    res.json({ ok: true, ...score });
+  } catch (err) {
+    req.log.error(err, "Solo challenge result recovery error");
+    res.status(500).json({ message: "تعذر استعادة النتيجة" });
   }
 });
 

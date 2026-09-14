@@ -92,6 +92,26 @@ import {
 } from "@/lib/independent-game-session";
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+function restoreSoloRecoveryContext(pin: string): void {
+  if (typeof window === "undefined" || sessionStorage.getItem("solo_challenge_slug")) return;
+  try {
+    const raw = localStorage.getItem("hasad_solo_recovery_latest");
+    const context = raw ? JSON.parse(raw) : null;
+    if (!context || context.pin !== pin || !context.slug || !context.scoreProof || !context.participantKey) return;
+    sessionStorage.setItem("solo_challenge_slug", context.slug);
+    sessionStorage.setItem("solo_challenge_player", context.playerName || "");
+    sessionStorage.setItem("solo_challenge_title", context.title || "");
+    sessionStorage.setItem("solo_challenge_game_pin", context.pin);
+    sessionStorage.setItem("solo_challenge_score_proof", context.scoreProof);
+    sessionStorage.setItem("solo_challenge_participant_key", context.participantKey);
+    sessionStorage.setItem("solo_challenge_max_attempts", String(context.maxAttempts ?? 1));
+    if (context.shortSlug) sessionStorage.setItem("solo_challenge_short_slug", context.shortSlug);
+    if (context.leaderboardDisplay) sessionStorage.setItem("solo_leaderboard_display", context.leaderboardDisplay);
+  } catch {
+    // A malformed local recovery record must never block normal game joining.
+  }
+}
+
 const WOOMEEZ_FLASH_STYLES = `
   @keyframes successFlash { 0% { box-shadow: 0 0 10px rgba(0,255,0,0); } 50% { box-shadow: 0 0 50px rgba(0,255,0,0.9); } 100% { box-shadow: 0 0 10px rgba(0,255,0,0); } }
   @keyframes errorFlash { 0% { box-shadow: 0 0 10px rgba(255,0,0,0); } 50% { box-shadow: 0 0 50px rgba(255,0,0,0.9); } 100% { box-shadow: 0 0 10px rgba(255,0,0,0); } }
@@ -1024,6 +1044,12 @@ function IndependentResults({
 export default function GamePlay() {
   const [, params] = useRoute("/game/play/:pin");
   const pin = params?.pin || "";
+  // If the result screen already cleared sessionStorage, restore only the
+  // matching run's capability so a delayed reload can still recover safely.
+  useState(() => {
+    restoreSoloRecoveryContext(pin);
+    return null;
+  });
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
   const nameParam = searchParams.get("name") || "";
@@ -1408,6 +1434,52 @@ export default function GamePlay() {
             const isMissingGameError =
               res.error === "كود اللعبة غير صحيح" ||
               res.error === "اللعبة انتهت بالفعل";
+            if (isSoloChallengeRef.current && isMissingGameError) {
+              const slug = typeof window !== "undefined"
+                ? sessionStorage.getItem("solo_challenge_slug")
+                : null;
+              const participantKey = typeof window !== "undefined"
+                ? sessionStorage.getItem("solo_challenge_participant_key")
+                : null;
+              const scoreProof = typeof window !== "undefined"
+                ? sessionStorage.getItem("solo_challenge_score_proof")
+                : null;
+              if (slug && participantKey && scoreProof) {
+                fetch(
+                  `${API_BASE}/api/solo-challenges/${encodeURIComponent(slug)}/result?participantKey=${encodeURIComponent(participantKey)}&scoreProof=${encodeURIComponent(scoreProof)}`,
+                  { credentials: "include" },
+                )
+                  .then(async (response) => {
+                    const data = await response.json().catch(() => null);
+                    if (!response.ok || !data?.ok) return false;
+                    setMyScore(Number(data.score) || 0);
+                    setSoloCorrectCount(Number(data.correctCount) || 0);
+                    if (Number(data.totalQuestions) > 0) {
+                      soloTotalQuestionsRef.current = Number(data.totalQuestions);
+                    }
+                    setGameMode("solo");
+                    setIsReconnecting(false);
+                    setPhase("finished");
+                    return true;
+                  })
+                  .then((recovered) => {
+                    if (recovered) return;
+                    const friendlyError =
+                      hasJoinedOnceRef.current && isMissingGameError
+                        ? t.gamePlay.gameEndedByTeacher
+                        : res.error;
+                    setError(friendlyError);
+                    setPhase("error");
+                    setIsReconnecting(false);
+                  })
+                  .catch(() => {
+                    setError(res.error);
+                    setPhase("error");
+                    setIsReconnecting(false);
+                  });
+                return;
+              }
+            }
             const friendlyError =
               hasJoinedOnceRef.current && isMissingGameError
                 ? t.gamePlay.gameEndedByTeacher
