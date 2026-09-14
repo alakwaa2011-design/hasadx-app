@@ -106,6 +106,8 @@ export type BulkScheduleFormValues = {
     title: string;
     subject: string;
     className: string;
+    location: string;
+    notes: string;
     color: string;
     startTime: string;
     endTime: string;
@@ -116,6 +118,8 @@ export type BulkScheduleFormValues = {
 export type BulkBreakDraft = {
   title: string;
   breakAfterLesson: number;
+  location?: string | null;
+  notes?: string | null;
   startTime: string;
   endTime: string | null;
   confidence: "high" | "medium" | "low";
@@ -128,6 +132,8 @@ export type ExtractedScheduleDay = {
     title: string;
     subject: string | null;
     className: string | null;
+    location?: string | null;
+    notes?: string | null;
     startTime: string;
     endTime: string | null;
     confidence: "high" | "medium" | "low";
@@ -147,6 +153,8 @@ export function emptyScheduleForm(): ScheduleFormValues {
     title: "",
     subject: "",
     className: "",
+    location: "",
+    notes: "",
     color: "",
     dayOfWeek: String(new Date().getDay()),
     lessonNumber: "1",
@@ -154,8 +162,6 @@ export function emptyScheduleForm(): ScheduleFormValues {
     appointmentDate: getLocalDateInput(),
     startTime: "08:00",
     endTime: "09:00",
-    location: "",
-    notes: "",
   };
 }
 
@@ -165,6 +171,8 @@ export function emptyBulkLessons(count = 5): BulkScheduleFormValues["lessons"] {
     title: "",
     subject: "",
     className: "",
+    location: "",
+    notes: "",
     color: "",
     startTime: "00:00",
     endTime: "00:00",
@@ -187,6 +195,8 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
         title: extracted.title || extracted.subject || extracted.className || "",
         subject: extracted.subject || "",
         className: extracted.className || "",
+        location: extracted.location || "",
+        notes: extracted.notes || "",
         color: "",
         startTime: extracted.startTime,
         endTime: extracted.endTime || "",
@@ -217,6 +227,8 @@ export function buildTeacherScheduleBulkInput(
             || (lesson.confidence ? "" : lessonNumberLabel(lesson.lessonNumber, isAr)),
           subject: lesson.subject.trim() || null,
           className: lesson.className.trim() || null,
+          location: lesson.location.trim() || null,
+          notes: lesson.notes.trim() || null,
           color: lesson.color || null,
           startTime: lesson.startTime,
           endTime: lesson.endTime || null,
@@ -224,6 +236,8 @@ export function buildTeacherScheduleBulkInput(
         breaks: (breaks[Number(day)] || []).map((entry) => ({
           title: entry.title.trim(),
           breakAfterLesson: entry.breakAfterLesson,
+          location: entry.location?.trim() || null,
+          notes: entry.notes?.trim() || null,
           startTime: entry.startTime,
           endTime: entry.endTime || null,
         })),

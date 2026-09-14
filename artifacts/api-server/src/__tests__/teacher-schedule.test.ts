@@ -594,6 +594,8 @@ describe("teacher schedule breaks", () => {
               {
                 lessonNumber: 1,
                 title: "رياضيات الأحد",
+                location: "مختبر 204",
+                notes: "المعلم أحمد — إحضار أدوات الهندسة",
                 startTime: "08:00",
                 endTime: "09:00",
               },
@@ -601,6 +603,8 @@ describe("teacher schedule breaks", () => {
             breaks: Array.from({ length: 4 }, (_, index) => ({
               title: index === 0 ? "سناك" : `استراحة ${index + 1}`,
               breakAfterLesson: index + 1,
+              location: index === 0 ? "الساحة" : null,
+              notes: index === 0 ? "مناوبة المعلم أحمد" : null,
               startTime: `09:${String(index * 10).padStart(2, "0")}`,
               endTime: `09:${String((index + 1) * 10).padStart(2, "0")}`,
             })),
@@ -634,12 +638,19 @@ describe("teacher schedule breaks", () => {
         title: "سناك",
         dayOfWeek: 0,
         breakAfterLesson: 1,
+        location: "الساحة",
+        notes: "مناوبة المعلم أحمد",
         startTime: "09:00",
         endTime: "09:10",
       }),
     ]));
     expect(response.body).toEqual(expect.arrayContaining([
-      expect.objectContaining({ dayOfWeek: 0, title: "رياضيات الأحد" }),
+      expect.objectContaining({
+        dayOfWeek: 0,
+        title: "رياضيات الأحد",
+        location: "مختبر 204",
+        notes: "المعلم أحمد — إحضار أدوات الهندسة",
+      }),
       expect.objectContaining({ dayOfWeek: 1, title: "علوم الاثنين" }),
       expect.objectContaining({ dayOfWeek: 1, title: "لغة عربية الاثنين" }),
     ]));

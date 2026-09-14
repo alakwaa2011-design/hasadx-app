@@ -53,4 +53,35 @@ describe("teacher schedule real-vision regression", () => {
       expect.objectContaining({ lessonNumber: 2, startTime: "10:10", endTime: "10:55" }),
     ]));
   }, 60_000);
+
+  it("splits a visually merged double period and keeps its printed details", async () => {
+    const fixturePath = fileURLToPath(
+      new URL("./fixtures/double-period-details.svg", import.meta.url),
+    );
+    const png = await sharp(await readFile(fixturePath)).png().toBuffer();
+    const { runVisionCompletionMulti } = await import("../lib/file-upload");
+    const raw = await runVisionCompletionMulti({
+      tier: "standard",
+      prompt: buildTeacherScheduleExtractionPrompt("en"),
+      images: [{ base64: png.toString("base64"), mimeType: "image/png" }],
+      maxTokens: 4000,
+    });
+    const result = parseExtractedTeacherSchedule(raw);
+    const sunday = result.daySchedules.find((day) => day.dayOfWeek === 0);
+    const first = sunday?.lessons.find((lesson) => lesson.lessonNumber === 1);
+    const second = sunday?.lessons.find((lesson) => lesson.lessonNumber === 2);
+
+    expect(first, "Merged cell lost lesson 1").toBeDefined();
+    expect(second, "Merged cell lost lesson 2").toBeDefined();
+    expect(first).toMatchObject({ startTime: "07:30", endTime: "08:10" });
+    expect(second).toMatchObject({ startTime: "08:10", endTime: "08:50" });
+    for (const lesson of [first, second]) {
+      expect(lesson?.title).toContain("MATHEMATICS LAB");
+      expect(lesson?.className).toContain("GRADE 5A");
+      expect(lesson?.className).toContain("GRADE 5B");
+      expect(lesson?.location).toContain("204");
+      expect(lesson?.notes).toContain("TEACHER AHMED");
+      expect(lesson?.notes).toContain("BRING GEOMETRY KIT");
+    }
+  }, 60_000);
 });

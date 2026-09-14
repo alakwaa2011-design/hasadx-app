@@ -367,6 +367,8 @@ const bulkLessonSchema = z.object({
   title: z.string().trim().min(1).max(160),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
+  location: z.string().trim().max(160).nullish(),
+  notes: z.string().trim().max(500).nullish(),
   color: z.string().regex(colorPattern).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
@@ -383,6 +385,8 @@ const bulkLessonSchema = z.object({
 const bulkBreakSchema = z.object({
   title: z.string().trim().min(1).max(160),
   breakAfterLesson: z.number().int().min(0).max(30),
+  location: z.string().trim().max(160).nullish(),
+  notes: z.string().trim().max(500).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
 }).superRefine((value, ctx) => {
@@ -505,8 +509,8 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         appointmentDate: null,
         startTime: lesson.startTime,
         endTime: lesson.endTime || null,
-        location: null,
-        notes: null,
+        location: lesson.location || null,
+        notes: lesson.notes || null,
       })),
       ...breaks.map((entry) => ({
         teacherId: req.session.teacherId,
@@ -521,8 +525,8 @@ router.post("/teacher/schedule/bulk", requireAuth, async (req: any, res): Promis
         appointmentDate: null,
         startTime: entry.startTime,
         endTime: entry.endTime || null,
-        location: null,
-        notes: null,
+        location: entry.location || null,
+        notes: entry.notes || null,
       })),
     ]);
   const existing = await db

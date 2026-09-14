@@ -75,6 +75,10 @@ export interface TeacherScheduleEntryInput {
   subject?: string | null;
   /** @maxLength 100 */
   className?: string | null;
+  /** @maxLength 160 */
+  location?: string | null;
+  /** @maxLength 500 */
+  notes?: string | null;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   color?: string | null;
   /**
@@ -98,10 +102,6 @@ export interface TeacherScheduleEntryInput {
   startTime: string;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
   endTime?: string | null;
-  /** @maxLength 160 */
-  location?: string | null;
-  /** @maxLength 500 */
-  notes?: string | null;
 }
 
 export interface TeacherScheduleBulkLessonInput {
@@ -119,6 +119,10 @@ export interface TeacherScheduleBulkLessonInput {
   subject?: string | null;
   /** @maxLength 100 */
   className?: string | null;
+  /** @maxLength 160 */
+  location?: string | null;
+  /** @maxLength 500 */
+  notes?: string | null;
   /** @pattern ^#[0-9A-Fa-f]{6}$ */
   color?: string | null;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
@@ -134,10 +138,14 @@ export interface TeacherScheduleBulkBreakInput {
      */
   title: string;
   /**
-     * @minimum 1
-     * @maximum 9
+     * @minimum 0
+     * @maximum 30
      */
   breakAfterLesson: number;
+  /** @maxLength 160 */
+  location?: string | null;
+  /** @maxLength 500 */
+  notes?: string | null;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
   startTime: string;
   /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */

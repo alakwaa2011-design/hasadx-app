@@ -13157,6 +13157,8 @@ export declare const createTeacherScheduleEntryBodyKindDefault = "weekly";
 export declare const createTeacherScheduleEntryBodyTitleMax = 160;
 export declare const createTeacherScheduleEntryBodySubjectMax = 100;
 export declare const createTeacherScheduleEntryBodyClassNameMax = 100;
+export declare const createTeacherScheduleEntryBodyLocationMax = 160;
+export declare const createTeacherScheduleEntryBodyNotesMax = 500;
 export declare const createTeacherScheduleEntryBodyColorRegExp: RegExp;
 export declare const createTeacherScheduleEntryBodyDayOfWeekMin = 0;
 export declare const createTeacherScheduleEntryBodyDayOfWeekMax = 6;
@@ -13166,13 +13168,13 @@ export declare const createTeacherScheduleEntryBodyBreakAfterLessonMax = 30;
 export declare const createTeacherScheduleEntryBodyAppointmentDateRegExp: RegExp;
 export declare const createTeacherScheduleEntryBodyStartTimeRegExp: RegExp;
 export declare const createTeacherScheduleEntryBodyEndTimeRegExp: RegExp;
-export declare const createTeacherScheduleEntryBodyLocationMax = 160;
-export declare const createTeacherScheduleEntryBodyNotesMax = 500;
 export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     kind: zodV3.ZodDefault<zodV3.ZodEnum<["weekly", "appointment", "break"]>>;
     title: zodV3.ZodString;
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     color: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
@@ -13180,8 +13182,6 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
-    location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
-    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     title: string;
     kind: "weekly" | "appointment" | "break";
@@ -13285,6 +13285,8 @@ export declare const bulkCreateTeacherScheduleBodyLessonsItemLessonNumberMax = 3
 export declare const bulkCreateTeacherScheduleBodyLessonsItemTitleMax = 160;
 export declare const bulkCreateTeacherScheduleBodyLessonsItemSubjectMax = 100;
 export declare const bulkCreateTeacherScheduleBodyLessonsItemClassNameMax = 100;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemLocationMax = 160;
+export declare const bulkCreateTeacherScheduleBodyLessonsItemNotesMax = 500;
 export declare const bulkCreateTeacherScheduleBodyLessonsItemColorRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyLessonsItemStartTimeRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyLessonsItemEndTimeRegExp: RegExp;
@@ -13295,12 +13297,17 @@ export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemLes
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemTitleMax = 160;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemSubjectMax = 100;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemClassNameMax = 100;
+export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemLocationMax = 160;
+export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemNotesMax = 500;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemColorRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemStartTimeRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemEndTimeRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsMax = 30;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemTitleMax = 160;
-export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMax = 9;
+export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMin = 0;
+export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMax = 30;
+export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemLocationMax = 160;
+export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemNotesMax = 500;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemStartTimeRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemEndTimeRegExp: RegExp;
 export declare const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksMax = 50;
@@ -13312,6 +13319,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: zodV3.ZodString;
         subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         color: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         startTime: zodV3.ZodString;
         endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13319,6 +13328,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        notes?: string | null | undefined;
+        location?: string | null | undefined;
         subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
@@ -13327,6 +13338,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        notes?: string | null | undefined;
+        location?: string | null | undefined;
         subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
@@ -13339,6 +13352,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: zodV3.ZodString;
             subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
             className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
             color: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
             startTime: zodV3.ZodString;
             endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -13346,6 +13361,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
@@ -13354,6 +13371,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
@@ -13362,17 +13381,23 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         breaks: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
             title: zodV3.ZodString;
             breakAfterLesson: zodV3.ZodNumber;
+            location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
             startTime: zodV3.ZodString;
             endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             title: string;
             startTime: string;
             breakAfterLesson: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             endTime?: string | null | undefined;
         }, {
             title: string;
             startTime: string;
             breakAfterLesson: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             endTime?: string | null | undefined;
         }>, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
@@ -13381,6 +13406,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
@@ -13390,6 +13417,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             breakAfterLesson: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             endTime?: string | null | undefined;
         }[] | undefined;
     }, {
@@ -13398,6 +13427,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
@@ -13407,6 +13438,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             breakAfterLesson: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             endTime?: string | null | undefined;
         }[] | undefined;
     }>, "many">>;
@@ -13416,6 +13449,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        notes?: string | null | undefined;
+        location?: string | null | undefined;
         subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
@@ -13427,6 +13462,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
@@ -13436,6 +13473,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             breakAfterLesson: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             endTime?: string | null | undefined;
         }[] | undefined;
     }[] | undefined;
@@ -13445,6 +13484,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        notes?: string | null | undefined;
+        location?: string | null | undefined;
         subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
@@ -13456,6 +13497,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
@@ -13465,6 +13508,8 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             breakAfterLesson: number;
+            notes?: string | null | undefined;
+            location?: string | null | undefined;
             endTime?: string | null | undefined;
         }[] | undefined;
     }[] | undefined;
@@ -13602,6 +13647,8 @@ export declare const updateTeacherScheduleEntryBodyOneKindDefault = "weekly";
 export declare const updateTeacherScheduleEntryBodyOneTitleMax = 160;
 export declare const updateTeacherScheduleEntryBodyOneSubjectMax = 100;
 export declare const updateTeacherScheduleEntryBodyOneClassNameMax = 100;
+export declare const updateTeacherScheduleEntryBodyOneLocationMax = 160;
+export declare const updateTeacherScheduleEntryBodyOneNotesMax = 500;
 export declare const updateTeacherScheduleEntryBodyOneColorRegExp: RegExp;
 export declare const updateTeacherScheduleEntryBodyOneDayOfWeekMin = 0;
 export declare const updateTeacherScheduleEntryBodyOneDayOfWeekMax = 6;
@@ -13611,8 +13658,6 @@ export declare const updateTeacherScheduleEntryBodyOneBreakAfterLessonMax = 30;
 export declare const updateTeacherScheduleEntryBodyOneAppointmentDateRegExp: RegExp;
 export declare const updateTeacherScheduleEntryBodyOneStartTimeRegExp: RegExp;
 export declare const updateTeacherScheduleEntryBodyOneEndTimeRegExp: RegExp;
-export declare const updateTeacherScheduleEntryBodyOneLocationMax = 160;
-export declare const updateTeacherScheduleEntryBodyOneNotesMax = 500;
 export declare const updateTeacherScheduleEntryBodyTwoTitleMax = 160;
 export declare const updateTeacherScheduleEntryBodyTwoStartTimeRegExp: RegExp;
 export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3.ZodObject<{
@@ -13620,6 +13665,8 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     title: zodV3.ZodString;
     subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     className: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     color: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     dayOfWeek: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     lessonNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
@@ -13627,8 +13674,6 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     appointmentDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
-    location: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
-    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     title: string;
     kind: "weekly" | "appointment" | "break";

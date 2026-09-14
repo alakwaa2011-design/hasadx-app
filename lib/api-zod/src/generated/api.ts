@@ -4130,6 +4130,10 @@ export const createTeacherScheduleEntryBodySubjectMax = 100;
 
 export const createTeacherScheduleEntryBodyClassNameMax = 100;
 
+export const createTeacherScheduleEntryBodyLocationMax = 160;
+
+export const createTeacherScheduleEntryBodyNotesMax = 500;
+
 export const createTeacherScheduleEntryBodyColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const createTeacherScheduleEntryBodyDayOfWeekMin = 0;
 export const createTeacherScheduleEntryBodyDayOfWeekMax = 6;
@@ -4142,10 +4146,6 @@ export const createTeacherScheduleEntryBodyBreakAfterLessonMax = 30;
 export const createTeacherScheduleEntryBodyAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const createTeacherScheduleEntryBodyStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const createTeacherScheduleEntryBodyEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
-export const createTeacherScheduleEntryBodyLocationMax = 160;
-
-export const createTeacherScheduleEntryBodyNotesMax = 500;
-
 
 
 export const CreateTeacherScheduleEntryBody = zod.object({
@@ -4153,15 +4153,15 @@ export const CreateTeacherScheduleEntryBody = zod.object({
   "title": zod.string().min(1).max(createTeacherScheduleEntryBodyTitleMax),
   "subject": zod.string().max(createTeacherScheduleEntryBodySubjectMax).nullish(),
   "className": zod.string().max(createTeacherScheduleEntryBodyClassNameMax).nullish(),
+  "location": zod.string().max(createTeacherScheduleEntryBodyLocationMax).nullish(),
+  "notes": zod.string().max(createTeacherScheduleEntryBodyNotesMax).nullish(),
   "color": zod.string().regex(createTeacherScheduleEntryBodyColorRegExp).nullish(),
   "dayOfWeek": zod.int().min(createTeacherScheduleEntryBodyDayOfWeekMin).max(createTeacherScheduleEntryBodyDayOfWeekMax).nullish(),
   "lessonNumber": zod.int().min(1).max(createTeacherScheduleEntryBodyLessonNumberMax).nullish(),
   "breakAfterLesson": zod.int().min(createTeacherScheduleEntryBodyBreakAfterLessonMin).max(createTeacherScheduleEntryBodyBreakAfterLessonMax).nullish(),
   "appointmentDate": zod.string().regex(createTeacherScheduleEntryBodyAppointmentDateRegExp).nullish(),
   "startTime": zod.string().regex(createTeacherScheduleEntryBodyStartTimeRegExp),
-  "endTime": zod.string().regex(createTeacherScheduleEntryBodyEndTimeRegExp).nullish(),
-  "location": zod.string().max(createTeacherScheduleEntryBodyLocationMax).nullish(),
-  "notes": zod.string().max(createTeacherScheduleEntryBodyNotesMax).nullish()
+  "endTime": zod.string().regex(createTeacherScheduleEntryBodyEndTimeRegExp).nullish()
 })
 
 export const createTeacherScheduleEntryResponseColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
@@ -4215,6 +4215,10 @@ export const bulkCreateTeacherScheduleBodyLessonsItemSubjectMax = 100;
 
 export const bulkCreateTeacherScheduleBodyLessonsItemClassNameMax = 100;
 
+export const bulkCreateTeacherScheduleBodyLessonsItemLocationMax = 160;
+
+export const bulkCreateTeacherScheduleBodyLessonsItemNotesMax = 500;
+
 export const bulkCreateTeacherScheduleBodyLessonsItemColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const bulkCreateTeacherScheduleBodyLessonsItemStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const bulkCreateTeacherScheduleBodyLessonsItemEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
@@ -4231,6 +4235,10 @@ export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemSubjectMax 
 
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemClassNameMax = 100;
 
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemLocationMax = 160;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemNotesMax = 500;
+
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
@@ -4238,7 +4246,12 @@ export const bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsMax = 30;
 
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemTitleMax = 160;
 
-export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMax = 9;
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMin = 0;
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMax = 30;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemLocationMax = 160;
+
+export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemNotesMax = 500;
 
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
@@ -4255,6 +4268,8 @@ export const BulkCreateTeacherScheduleBody = zod.object({
   "title": zod.string().min(1).max(bulkCreateTeacherScheduleBodyLessonsItemTitleMax),
   "subject": zod.string().max(bulkCreateTeacherScheduleBodyLessonsItemSubjectMax).nullish(),
   "className": zod.string().max(bulkCreateTeacherScheduleBodyLessonsItemClassNameMax).nullish(),
+  "location": zod.string().max(bulkCreateTeacherScheduleBodyLessonsItemLocationMax).nullish(),
+  "notes": zod.string().max(bulkCreateTeacherScheduleBodyLessonsItemNotesMax).nullish(),
   "color": zod.string().regex(bulkCreateTeacherScheduleBodyLessonsItemColorRegExp).nullish(),
   "startTime": zod.string().regex(bulkCreateTeacherScheduleBodyLessonsItemStartTimeRegExp),
   "endTime": zod.string().regex(bulkCreateTeacherScheduleBodyLessonsItemEndTimeRegExp).nullish()
@@ -4266,13 +4281,17 @@ export const BulkCreateTeacherScheduleBody = zod.object({
   "title": zod.string().min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemTitleMax),
   "subject": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemSubjectMax).nullish(),
   "className": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemClassNameMax).nullish(),
+  "location": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemLocationMax).nullish(),
+  "notes": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemNotesMax).nullish(),
   "color": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemColorRegExp).nullish(),
   "startTime": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemStartTimeRegExp),
   "endTime": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsItemEndTimeRegExp).nullish()
 })).max(bulkCreateTeacherScheduleBodyDaySchedulesItemLessonsMax),
   "breaks": zod.array(zod.object({
   "title": zod.string().min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemTitleMax),
-  "breakAfterLesson": zod.int().min(1).max(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMax),
+  "breakAfterLesson": zod.int().min(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMin).max(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemBreakAfterLessonMax),
+  "location": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemLocationMax).nullish(),
+  "notes": zod.string().max(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemNotesMax).nullish(),
   "startTime": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemStartTimeRegExp),
   "endTime": zod.string().regex(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksItemEndTimeRegExp).nullish()
 })).max(bulkCreateTeacherScheduleBodyDaySchedulesItemBreaksMax).optional()
@@ -4329,6 +4348,10 @@ export const updateTeacherScheduleEntryBodyOneSubjectMax = 100;
 
 export const updateTeacherScheduleEntryBodyOneClassNameMax = 100;
 
+export const updateTeacherScheduleEntryBodyOneLocationMax = 160;
+
+export const updateTeacherScheduleEntryBodyOneNotesMax = 500;
+
 export const updateTeacherScheduleEntryBodyOneColorRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
 export const updateTeacherScheduleEntryBodyOneDayOfWeekMin = 0;
 export const updateTeacherScheduleEntryBodyOneDayOfWeekMax = 6;
@@ -4341,10 +4364,6 @@ export const updateTeacherScheduleEntryBodyOneBreakAfterLessonMax = 30;
 export const updateTeacherScheduleEntryBodyOneAppointmentDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 export const updateTeacherScheduleEntryBodyOneStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
 export const updateTeacherScheduleEntryBodyOneEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
-export const updateTeacherScheduleEntryBodyOneLocationMax = 160;
-
-export const updateTeacherScheduleEntryBodyOneNotesMax = 500;
-
 export const updateTeacherScheduleEntryBodyTwoTitleMax = 160;
 
 export const updateTeacherScheduleEntryBodyTwoStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
@@ -4355,15 +4374,15 @@ export const UpdateTeacherScheduleEntryBody = zod.object({
   "title": zod.string().min(1).max(updateTeacherScheduleEntryBodyOneTitleMax),
   "subject": zod.string().max(updateTeacherScheduleEntryBodyOneSubjectMax).nullish(),
   "className": zod.string().max(updateTeacherScheduleEntryBodyOneClassNameMax).nullish(),
+  "location": zod.string().max(updateTeacherScheduleEntryBodyOneLocationMax).nullish(),
+  "notes": zod.string().max(updateTeacherScheduleEntryBodyOneNotesMax).nullish(),
   "color": zod.string().regex(updateTeacherScheduleEntryBodyOneColorRegExp).nullish(),
   "dayOfWeek": zod.int().min(updateTeacherScheduleEntryBodyOneDayOfWeekMin).max(updateTeacherScheduleEntryBodyOneDayOfWeekMax).nullish(),
   "lessonNumber": zod.int().min(1).max(updateTeacherScheduleEntryBodyOneLessonNumberMax).nullish(),
   "breakAfterLesson": zod.int().min(updateTeacherScheduleEntryBodyOneBreakAfterLessonMin).max(updateTeacherScheduleEntryBodyOneBreakAfterLessonMax).nullish(),
   "appointmentDate": zod.string().regex(updateTeacherScheduleEntryBodyOneAppointmentDateRegExp).nullish(),
   "startTime": zod.string().regex(updateTeacherScheduleEntryBodyOneStartTimeRegExp),
-  "endTime": zod.string().regex(updateTeacherScheduleEntryBodyOneEndTimeRegExp).nullish(),
-  "location": zod.string().max(updateTeacherScheduleEntryBodyOneLocationMax).nullish(),
-  "notes": zod.string().max(updateTeacherScheduleEntryBodyOneNotesMax).nullish()
+  "endTime": zod.string().regex(updateTeacherScheduleEntryBodyOneEndTimeRegExp).nullish()
 }).and(zod.object({
   "kind": zod.enum(['weekly', 'appointment', 'break']),
   "title": zod.string().min(1).max(updateTeacherScheduleEntryBodyTwoTitleMax),

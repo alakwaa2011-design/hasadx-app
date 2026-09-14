@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620">
+  <rect width="1500" height="620" fill="#ffffff"/>
+  <text x="750" y="58" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#173d2d">DETAILED TEACHER TIMETABLE</text>
+  <g font-family="Arial, sans-serif" text-anchor="middle" fill="#14251d">
+    <rect x="70" y="100" width="1360" height="430" fill="#fff" stroke="#173d2d" stroke-width="4"/>
+    <path d="M70 220H1430M70 530H1430M300 100V530M680 100V220M1060 100V530" fill="none" stroke="#173d2d" stroke-width="4"/>
+    <text x="185" y="170" font-size="27" font-weight="700">DAY</text>
+    <text x="490" y="145" font-size="27" font-weight="700">LESSON 1</text>
+    <text x="490" y="184" font-size="23">07:30 - 08:10</text>
+    <text x="870" y="145" font-size="27" font-weight="700">LESSON 2</text>
+    <text x="870" y="184" font-size="23">08:10 - 08:50</text>
+    <text x="1245" y="145" font-size="27" font-weight="700">LESSON 3</text>
+    <text x="1245" y="184" font-size="23">08:50 - 09:30</text>
+    <rect x="72" y="222" width="226" height="306" fill="#e8f5ee"/>
+    <text x="185" y="385" font-size="28" font-weight="700">SUNDAY</text>
+    <rect x="302" y="222" width="756" height="306" fill="#fff7d6"/>
+    <text x="680" y="292" font-size="30" font-weight="700">MATHEMATICS LAB</text>
+    <text x="680" y="344" font-size="25">GRADE 5A + GRADE 5B</text>
+    <text x="680" y="396" font-size="25">ROOM 204 • TEACHER AHMED</text>
+    <text x="680" y="448" font-size="23">DOUBLE PERIOD: LESSONS 1 + 2</text>
+    <text x="680" y="490" font-size="22">BRING GEOMETRY KIT</text>
+    <rect x="1062" y="222" width="366" height="306" fill="#edf3ff"/>
+    <text x="1245" y="330" font-size="29" font-weight="700">SCIENCE</text>
+    <text x="1245" y="382" font-size="25">GRADE 5A</text>
+    <text x="1245" y="434" font-size="24">LAB 3</text>
+  </g>
+</svg>

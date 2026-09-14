@@ -200,6 +200,56 @@ describe("teacher schedule image extraction", () => {
     });
   });
 
+  it("keeps a merged double period as two lessons and preserves every visible detail", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [
+          {
+            lessonNumber: 2,
+            title: "مختبر الرياضيات",
+            subject: "رياضيات",
+            className: "5/أ و5/ب",
+            location: "مختبر 204",
+            notes: "المعلم: أحمد — إحضار أدوات الهندسة",
+            startTime: "08:10",
+            endTime: "08:50",
+            confidence: "high",
+          },
+          {
+            lessonNumber: 3,
+            title: "مختبر الرياضيات",
+            subject: "رياضيات",
+            className: "5/أ و5/ب",
+            location: "مختبر 204",
+            notes: "المعلم: أحمد — إحضار أدوات الهندسة",
+            startTime: "08:50",
+            endTime: "09:30",
+            confidence: "high",
+          },
+        ],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons).toEqual([
+      expect.objectContaining({
+        lessonNumber: 2,
+        location: "مختبر 204",
+        notes: "المعلم: أحمد — إحضار أدوات الهندسة",
+        startTime: "08:10",
+        endTime: "08:50",
+      }),
+      expect.objectContaining({
+        lessonNumber: 3,
+        location: "مختبر 204",
+        notes: "المعلم: أحمد — إحضار أدوات الهندسة",
+        startTime: "08:50",
+        endTime: "09:30",
+      }),
+    ]);
+  });
+
   it("preserves more than three visible breaks", () => {
     const breaks = Array.from({ length: 4 }, (_, index) => ({
       title: `استراحة ${index + 1}`,
@@ -277,6 +327,10 @@ describe("teacher schedule image extraction", () => {
     expect(prompt).toContain("Read EACH weekday independently");
     expect(prompt).toContain("NEVER copy, propagate, standardize, or reuse");
     expect(prompt).toContain("Do not normalize different weekdays into one common bell schedule");
+    expect(prompt).toContain("return a separate lesson entry for EACH covered lesson number");
+    expect(prompt).toContain("Never combine them into one long lesson");
+    expect(prompt).toContain("Preserve ALL visible text and details");
+    expect(prompt).toContain("Copy every other visible detail or line into notes");
     expect(prompt).toContain('"readability":"unreadable"');
     expect(prompt).toContain("photographing straight above the full page with even lighting");
     expect(prompt).toContain("return no entries");

@@ -7,6 +7,8 @@ const extractedLessonSchema = z.object({
   title: z.string().trim().max(160).default(""),
   subject: z.string().trim().max(100).nullish(),
   className: z.string().trim().max(100).nullish(),
+  location: z.string().trim().max(160).nullish(),
+  notes: z.string().trim().max(500).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
   confidence: z.enum(["high", "medium", "low"]).default("medium"),
@@ -23,6 +25,8 @@ const extractedLessonSchema = z.object({
 const extractedBreakSchema = z.object({
   title: z.string().trim().min(1).max(160),
   breakAfterLesson: z.number().int().min(0).max(30),
+  location: z.string().trim().max(160).nullish(),
+  notes: z.string().trim().max(500).nullish(),
   startTime: z.string().regex(timePattern),
   endTime: z.string().regex(timePattern).nullish(),
   confidence: z.enum(["high", "medium", "low"]).default("medium"),
@@ -229,6 +233,8 @@ Return ONLY valid JSON with this exact shape:
           "title": "Grade 5 A - Mathematics",
           "subject": "Mathematics",
           "className": "Grade 5 A",
+          "location": "Room 204",
+          "notes": "Bring geometry kit",
           "startTime": "08:00",
           "endTime": "08:45",
           "confidence": "high"
@@ -238,6 +244,8 @@ Return ONLY valid JSON with this exact shape:
         {
           "title": "Morning assembly",
           "breakAfterLesson": 4,
+          "location": "Main hall",
+          "notes": null,
           "startTime": "10:45",
           "endTime": "11:05",
           "confidence": "high"
@@ -254,6 +262,7 @@ Rules:
 - For an unreadable image, do not reconstruct, standardize, or guess a timetable. The warning must tell the teacher what to fix, such as photographing straight above the full page with even lighting and no shadows.
 - dayOfWeek MUST use: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6.
 - Include every visible schedule cell, including classes and every other local label or phrase printed in the grid.
+- Preserve ALL visible text and details from every cell. Do not omit room/location, teacher name, group, section, activity code, assistant, equipment, instructions, annotations, or any other visible line.
 - A numbered row or column header is only a timetable position. It does NOT make the cell a lesson and must never replace the cell text.
 - Put a cell in lessons only when the cell itself clearly represents a taught class/course. Put every other cell in breaks, even when it appears under a numbered period header.
 - lessonNumber is allowed only for a clearly taught class/course. Any standalone label or phrase that is not clearly a taught class—whether it says ADVISE, RECESS, PD, prayer, duty, meeting, an activity name, a note, or an unfamiliar local term—is a non-lesson period.
@@ -261,14 +270,19 @@ Rules:
 - Treat the image as a fixed grid of cells. Determine each cell's column from its horizontal alignment with the visible header, not from its time, the nearest lesson, or a guessed school-day sequence.
 - Read EACH weekday independently from the image. A lesson number or slot number does not imply that its time matches the same slot on another weekday.
 - Every startTime and endTime belongs to the specific day cell being extracted. Copy the time aligned with that exact weekday and exact entry.
+- One numbered timetable slot must produce one entry. If one drawn or merged cell spans two or more numbered lesson columns/rows, return a separate lesson entry for EACH covered lesson number, even when the title, subject, class, location, and notes repeat.
+- For a merged double period spanning lessons 2 and 3, return lessonNumber 2 and lessonNumber 3 as two lessons. Never combine them into one long lesson and never skip the second number.
+- Each entry created from a merged cell uses the startTime and endTime printed for its own numbered slot. Do not use the combined outer time range for both entries.
 - NEVER copy, propagate, standardize, or reuse Monday's times for Tuesday, one weekday's times for another weekday, or the first visible day's times for all days.
 - When the same lessonNumber has different times on different days, preserve every day's distinct times exactly. Example: Sunday lesson 1 at 08:00 and Monday lesson 1 at 09:15 must remain different.
 - A time header may be shared only when the image visibly shows that the header spans those exact weekday cells. If each weekday has its own times, the per-day times always take precedence.
 - Before returning JSON, cross-check every entry against both coordinates in the source grid: (1) its weekday row/column and (2) its lesson or period row/column.
 - Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes it for that specific weekday entry; otherwise omit that entry and add a warning.
-- For every entry, copy the primary cell text into title EXACTLY as written in the image; title must not be empty when visible text exists.
+- For every entry, copy the primary cell heading into title EXACTLY as written in the image; title must not be empty when visible text exists.
 - Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
-- If one cell contains multiple classes, preserve its visible text in className rather than inventing separate lessons.
+- Copy a separately visible room or place into location. Copy every other visible detail or line into notes without summarizing, translating, or dropping text.
+- If a field does not fit subject, className, or location, it belongs in notes. Do not discard it.
+- If one cell lists multiple classes or groups, preserve the complete visible list in className and return one entry per numbered slot covered by that cell.
 - confidence must be high, medium, or low for each lesson. Use low when text is blurry, partially hidden, or inferred.
 - Extract every visible non-lesson label or phrase into breaks, including familiar and unfamiliar school-specific wording.
 - Preserve each period title EXACTLY as written in the image. Never replace it with a generic label such as Break or Snack.
@@ -305,6 +319,8 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
             title: lesson.title.trim() || lesson.subject?.trim() || lesson.className?.trim() || "",
             subject: lesson.subject?.trim() || null,
             className: lesson.className?.trim() || null,
+            location: lesson.location?.trim() || null,
+            notes: lesson.notes?.trim() || null,
             endTime: lesson.endTime || null,
           }));
         const correctedPeriods = normalizedLessons
@@ -314,6 +330,8 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
             breakAfterLesson: lesson.lessonNumber,
             startTime: lesson.startTime,
             endTime: lesson.endTime,
+            location: lesson.location,
+            notes: lesson.notes,
             confidence: lesson.confidence,
           }));
 
@@ -325,6 +343,8 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
             ...day.breaks.map((entry) => ({
               ...entry,
               title: entry.title.trim(),
+              location: entry.location?.trim() || null,
+              notes: entry.notes?.trim() || null,
               endTime: entry.endTime || null,
             })),
             ...correctedPeriods,

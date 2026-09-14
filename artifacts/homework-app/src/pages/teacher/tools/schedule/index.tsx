@@ -1456,6 +1456,8 @@ export default function ScheduleManagementPage() {
           breakAfterLesson: Math.min(afterLesson, 30),
           startTime: "",
           endTime: null,
+          location: null,
+          notes: null,
           confidence: "high",
         },
       ],
@@ -3267,6 +3269,24 @@ export default function ScheduleManagementPage() {
                             />
                           </div>
                         </div>
+                        <div className="grid grid-cols-1 gap-2 sm:col-span-12 sm:grid-cols-3">
+                          <div>
+                            <label className="mb-1 block text-xs font-bold">{isAr ? "المكان" : "Location"}</label>
+                            <input
+                              {...bulkForm.register(`lessons.${index}.location` as const)}
+                              style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
+                              data-testid={`input-bulk-lesson-location-${index + 1}`}
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="mb-1 block text-xs font-bold">{isAr ? "كل التفاصيل والملاحظات" : "All details and notes"}</label>
+                            <input
+                              {...bulkForm.register(`lessons.${index}.notes` as const)}
+                              style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
+                              data-testid={`input-bulk-lesson-notes-${index + 1}`}
+                            />
+                          </div>
+                        </div>
                         <div className="sm:col-span-12 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                           <span className="text-[10px] font-bold text-muted-foreground mr-2 ml-2 whitespace-nowrap">{isAr ? "لون البطاقة:" : "Color:"}</span>
                           <div className="flex gap-1.5">
@@ -3386,6 +3406,26 @@ export default function ScheduleManagementPage() {
                           >
                             {isAr ? "إزالة" : "Remove"}
                           </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 sm:col-span-12 sm:grid-cols-3">
+                          <div>
+                            <label className="mb-1 block text-xs font-bold">{isAr ? "المكان" : "Location"}</label>
+                            <input
+                              value={entry.location || ""}
+                              onChange={(event) => updateBulkBreak(index, { location: event.target.value || null })}
+                              style={{ ...fieldStyle, background: "#fff" }}
+                              data-testid={`input-bulk-period-location-${activeBulkDay}-${index}`}
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="mb-1 block text-xs font-bold">{isAr ? "كل التفاصيل والملاحظات" : "All details and notes"}</label>
+                            <input
+                              value={entry.notes || ""}
+                              onChange={(event) => updateBulkBreak(index, { notes: event.target.value || null })}
+                              style={{ ...fieldStyle, background: "#fff" }}
+                              data-testid={`input-bulk-period-notes-${activeBulkDay}-${index}`}
+                            />
+                          </div>
                         </div>
                       </div>
                     );

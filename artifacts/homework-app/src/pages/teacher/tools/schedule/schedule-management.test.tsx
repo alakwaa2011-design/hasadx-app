@@ -548,12 +548,12 @@ describe("schedule management tool", () => {
           expect.objectContaining({ lessonNumber: 1, title: "رياضيات", color: "#D1FAE5" }),
           expect.objectContaining({ lessonNumber: 3, title: "علوم" }),
         ],
-        breaks: [{
+        breaks: [expect.objectContaining({
           title: "نشاط صباحي",
           breakAfterLesson: 1,
           startTime: "09:00",
           endTime: "09:30",
-        }],
+        })],
       }]);
       scheduleRows = [
         { id: 1, kind: "weekly", title: "رياضيات", dayOfWeek: 5, lessonNumber: 1, startTime: "08:00", endTime: "09:00" },

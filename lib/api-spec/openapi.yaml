@@ -1754,6 +1754,14 @@ components:
           type: string
           maxLength: 100
           nullable: true
+        location:
+          type: string
+          maxLength: 160
+          nullable: true
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
         color:
           type: string
           pattern: "^#[0-9A-Fa-f]{6}$"
@@ -1784,14 +1792,6 @@ components:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
           nullable: true
-        location:
-          type: string
-          maxLength: 160
-          nullable: true
-        notes:
-          type: string
-          maxLength: 500
-          nullable: true
       required: [kind, title, startTime]
 
     TeacherScheduleBulkLessonInput:
@@ -1812,6 +1812,14 @@ components:
         className:
           type: string
           maxLength: 100
+          nullable: true
+        location:
+          type: string
+          maxLength: 160
+          nullable: true
+        notes:
+          type: string
+          maxLength: 500
           nullable: true
         color:
           type: string
@@ -1835,8 +1843,16 @@ components:
           maxLength: 160
         breakAfterLesson:
           type: integer
-          minimum: 1
-          maximum: 9
+          minimum: 0
+          maximum: 30
+        location:
+          type: string
+          maxLength: 160
+          nullable: true
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
         startTime:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
