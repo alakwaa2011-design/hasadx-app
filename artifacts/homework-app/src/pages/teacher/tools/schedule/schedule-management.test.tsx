@@ -733,6 +733,36 @@ describe("schedule management tool", () => {
     expect(bulkMutate).not.toHaveBeenCalled();
   });
 
+  it("keeps English retake guidance clear and leaves the import dialog open after a 422 response", async () => {
+    language = "en";
+    await renderPage();
+    const guidance = "The weekday and lesson alignment could not be read safely. Retake the full page straight from above with even lighting and no shadows or glare.";
+    creditAwareFetch.mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        message: guidance,
+        warnings: ["Could not align weekday headers with lesson columns"],
+      }),
+    });
+
+    const input = document.querySelector('[data-testid="input-import-schedule-image"]') as HTMLInputElement;
+    const file = new File(["unreadable-timetable"], "unreadable-timetable.png", { type: "image/png" });
+    Object.defineProperty(input, "files", { configurable: true, value: [file] });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+
+    await click("button-confirm-extract-schedule");
+
+    await vi.waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith(guidance);
+    });
+    expect(document.body.textContent).toContain("Import Teacher Schedule");
+    expect(document.querySelector('img[alt="Schedule image preview"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="bulk-schedule-scroll-region"]')).toBeNull();
+    expect(document.querySelector('[data-testid^="input-bulk-lesson-title-"]')).toBeNull();
+    expect(bulkMutate).not.toHaveBeenCalled();
+  });
+
   it("shows each imported weekday's distinct times in review and saves them unchanged", async () => {
     creditAwareFetch.mockResolvedValue({
       ok: true,
