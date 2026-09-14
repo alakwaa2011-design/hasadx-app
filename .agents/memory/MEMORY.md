@@ -2,6 +2,7 @@
 - [Wameeth motion identity](wameeth-motion-identity.md) — use Arabic wordmark and horizontal light trails, not stars, eye-like portals, agriculture, or childish mascots.
 - [Live-game no-class targeting](live-game-no-class-targeting.md) — “بدون صف” explicitly clears an assignment’s class; it is not the same as “كل الصفوف” or an omitted choice.
 - [Solo challenge data](solo-challenge-data.md) — وميض فردي results live ONLY in solo_challenge_scores (not game_history); a score-write bug = permanent loss. Distinct from gameMode='solo' live games.
+- [Solo challenge integration schema](solo-challenge-integration-schema.md) — integration DBs may lag behind runtime-only solo-challenge migrations; verify additive schema before persistence tests.
 - [Route shadowing from duplicate handlers](route-shadowing-duplicate-handlers.md) — a duplicate path handler in an earlier-mounted router silently shadows a newer one; typecheck won't catch it, only live curl will.
 - [drizzle-kit push TUI hang](drizzle-push-tui-hang.md) — interactive constraint-rename prompts hang forever in the agent shell; psql ALTER TABLE is a valid fallback for simple additive columns.
 - [Resend delivery failures](resend-connector-fetch.md) — fetch connector credentials unfiltered, and always inspect delivered=false because quota errors resolve without throwing.
