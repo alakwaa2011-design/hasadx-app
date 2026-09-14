@@ -395,16 +395,12 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!reason.trim()) {
-      toast.error(r("اكتب سبب تعديل الرصيد", "Enter a reason for the balance adjustment."));
-      return;
-    }
     if (points < 1 || points > currentBalance) {
       toast.error(r("اختر عددًا لا يتجاوز الرصيد الحالي", "Choose an amount no greater than the current balance."));
       return;
     }
     requestKeyRef.current ||= crypto.randomUUID();
-    mutation.mutate({ studentId, points, reason: reason.trim(), idempotencyKey: requestKeyRef.current }, {
+    mutation.mutate({ studentId, points, reason: reason.trim() || undefined, idempotencyKey: requestKeyRef.current }, {
       onSuccess: (result: any) => {
         toast.success(r(`تم تحديث رصيد ${studentName}. الرصيد الآن ${formatPoints(result.balance)} نقطة`, `Updated ${studentName}'s balance. New balance: ${formatPoints(result.balance)} points`));
         onOpenChange(false);
@@ -443,7 +439,7 @@ export function BalanceAdjustmentDialog({ open, onOpenChange, studentId, student
              <p className="mt-1.5 text-xs font-bold text-slate-500">{r("سيصبح الرصيد", "New balance")}: {formatPoints(Math.max(0, currentBalance - (Number.isFinite(points) ? points : 0)))} {r("نقطة", "points")}</p>
           </div>
           <div>
-             <label className="mb-2 block text-sm font-black text-emerald-950">{r("سبب الخصم", "Reason for deduction")}</label>
+             <label className="mb-2 block text-sm font-black text-emerald-950">{r("سبب الخصم (اختياري)", "Reason for deduction (optional)")}</label>
             <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200}
               placeholder={r("مثال: تصحيح رصيد أضيف بالخطأ", "Example: Correcting an incorrect balance addition")}
               className="w-full rounded-xl border-2 border-emerald-100 px-4 py-3 font-bold outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/15" />

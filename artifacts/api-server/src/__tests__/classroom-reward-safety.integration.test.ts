@@ -84,6 +84,11 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       "utf8",
     );
     await db.execute(sql.raw(goalsAndReversalsMigration));
+    const classBalanceMigration = readFileSync(
+      new URL("../../../../scripts/migrations/2026-09-14-classroom-reward-class-balance.sql", import.meta.url),
+      "utf8",
+    );
+    await db.execute(sql.raw(classBalanceMigration));
     const academicGoalsMigration = readFileSync(
       new URL("../../../../scripts/migrations/2026-09-09-classroom-reward-goals.sql", import.meta.url),
       "utf8",
@@ -1109,5 +1114,43 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
       await db.execute(sql.raw(`DROP FUNCTION IF EXISTS ${functionName}()`));
       deleteGame(pin);
     }
+  });
+
+  it("keeps class points separate and accepts deductions without reasons",async()=>{
+    const className="A";
+    const studentBalanceBefore=Number((await db.execute(sql`SELECT COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${studentId}`)).rows[0].balance);
+    const awardKey=`class-award:${nonce}`;
+    const award=await request(teacherApp())
+      .post(`/api/classroom-rewards/classes/${className}/class-balance/adjust`)
+      .send({operation:"award",points:9,reason:"تعاون جماعي",idempotencyKey:awardKey});
+    expect(award.status).toBe(201);
+    expect(award.body.balance).toBe(9);
+
+    const deductKey=`class-deduct:${nonce}`;
+    const deduction=await request(teacherApp())
+      .post(`/api/classroom-rewards/classes/${className}/class-balance/adjust`)
+      .send({operation:"deduct",points:4,idempotencyKey:deductKey});
+    expect(deduction.status).toBe(201);
+    expect(deduction.body.balance).toBe(5);
+    expect(deduction.body.transaction.reason).toBeNull();
+
+    const replay=await request(teacherApp())
+      .post(`/api/classroom-rewards/classes/${className}/class-balance/adjust`)
+      .send({operation:"deduct",points:4,idempotencyKey:deductKey});
+    expect(replay.status).toBe(200);
+    expect(replay.body.balance).toBe(5);
+    expect(replay.body.idempotent).toBe(true);
+
+    const tooLarge=await request(teacherApp())
+      .post(`/api/classroom-rewards/classes/${className}/class-balance/adjust`)
+      .send({operation:"deduct",points:6,idempotencyKey:`class-too-large:${nonce}`});
+    expect(tooLarge.status).toBe(409);
+
+    const view=await request(teacherApp()).get(`/api/classroom-rewards/classes/${className}/class-balance`);
+    expect(view.status).toBe(200);
+    expect(view.body.balance).toBe(5);
+    expect(view.body.history).toHaveLength(2);
+    const studentBalanceAfter=Number((await db.execute(sql`SELECT COALESCE(SUM(balance),0)::int balance FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${studentId}`)).rows[0].balance);
+    expect(studentBalanceAfter).toBe(studentBalanceBefore);
   });
 });

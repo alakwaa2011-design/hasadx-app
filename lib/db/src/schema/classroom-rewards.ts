@@ -69,6 +69,33 @@ export const classroomRewardGroupScoreReceiptsTable = pgTable("classroom_reward_
   groupIndex: index("classroom_reward_group_score_receipts_group_idx").on(t.teacherId, t.groupId),
 }));
 
+/** One aggregate balance per class. This never changes student or group balances. */
+export const classroomRewardClassBalancesTable = pgTable("classroom_reward_class_balances", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  teacherClassId: integer("teacher_class_id").notNull().references(() => teacherClassesTable.id, { onDelete: "cascade" }),
+  balance: integer("balance").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  classUnique: uniqueIndex("classroom_reward_class_balances_class_uq").on(t.teacherId, t.teacherClassId),
+}));
+
+/** Immutable class-balance history and idempotency receipts. */
+export const classroomRewardClassTransactionsTable = pgTable("classroom_reward_class_transactions", {
+  id: serial("id").primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  teacherClassId: integer("teacher_class_id").notNull().references(() => teacherClassesTable.id, { onDelete: "cascade" }),
+  idempotencyKey: text("idempotency_key").notNull(),
+  operation: text("operation").notNull(),
+  amount: integer("amount").notNull(),
+  resultingBalance: integer("resulting_balance").notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  ownerRequestUnique: uniqueIndex("classroom_reward_class_transactions_owner_request_uq").on(t.teacherId, t.idempotencyKey),
+  classCreatedIndex: index("classroom_reward_class_transactions_class_created_idx").on(t.teacherId, t.teacherClassId, t.createdAt),
+}));
+
 export const classroomRewardGroupMembersTable = pgTable("classroom_reward_group_members", {
   id: serial("id").primaryKey(),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),

@@ -47,7 +47,7 @@ const grantInput = z.object({
 }).refine((v) => (v.typeId !== undefined) !== (v.customReason !== undefined), "حدد سببًا واحدًا").refine((v) => !v.customReason || v.customPoints !== undefined, "نقاط السبب المخصص مطلوبة");
 const balanceAdjustmentInput = z.object({
   points: z.number().int().min(1).max(1000),
-  reason: z.string().trim().min(2).max(200),
+  reason: z.string().trim().min(1).max(200).optional(),
   idempotencyKey: requestKey,
 }).strict();
 const bulkBalanceAdjustmentInput = balanceAdjustmentInput.extend({
@@ -67,6 +67,12 @@ const groupMembersInput = z.object({
 }).strict();
 const groupScoreInput = z.object({ points: z.number().int().min(1).max(1000), idempotencyKey: requestKey }).strict();
 const groupResetInput = z.object({ idempotencyKey: requestKey }).strict();
+const classBalanceAdjustmentInput = z.object({
+  operation: z.enum(["award", "deduct"]),
+  points: z.number().int().min(1).max(1000),
+  reason: z.string().trim().min(1).max(200).optional(),
+  idempotencyKey: requestKey,
+}).strict();
 const ruleInput = z.object({
   name: z.string().trim().min(1).max(100),
   sourceType: z.enum(["assignment_submission", "kids_activity_completion", "game_history"]),
@@ -632,6 +638,69 @@ router.post("/classroom-rewards/classes/:className/groups/:groupId/reset", async
   catch (e:any) { res.status(e.message==="idempotency_conflict"?409:e.message==="group_not_found"||e.message==="class_not_found"?404:500).json({message:e.message==="idempotency_conflict"?"مفتاح التكرار مستخدم لطلب مختلف":e.message==="class_not_found"?"الصف غير موجود":e.message==="group_not_found"?"المجموعة غير موجودة":"تعذر تصفير نقاط المجموعة"}); }
 });
 
+router.get("/classroom-rewards/classes/:className/class-balance", async (req: any, res) => {
+  const teacherId=teacher(req,res); if (!teacherId) return;
+  const className=validateClassName(req.params.className); if (!className) return res.status(400).json({message:"اسم الصف غير صالح"});
+  const classRow=await ownedClass(teacherId,className); if (!classRow) return res.status(404).json({message:"الصف غير موجود"});
+  const balanceRow=resultRows(await db.execute(sql`SELECT balance,updated_at FROM classroom_reward_class_balances WHERE teacher_id=${teacherId} AND teacher_class_id=${classRow.id}`))[0];
+  const history=resultRows(await db.execute(sql`
+    SELECT id,operation,amount,resulting_balance,reason,created_at
+    FROM classroom_reward_class_transactions
+    WHERE teacher_id=${teacherId} AND teacher_class_id=${classRow.id}
+    ORDER BY created_at DESC,id DESC LIMIT 20
+  `));
+  res.json({
+    className,
+    balance:Number(balanceRow?.balance ?? 0),
+    updatedAt:balanceRow?.updated_at ?? null,
+    history:history.map((row)=>({
+      id:Number(row.id),operation:row.operation,amount:Number(row.amount),
+      resultingBalance:Number(row.resulting_balance),reason:row.reason,createdAt:row.created_at,
+    })),
+  });
+});
+
+router.post("/classroom-rewards/classes/:className/class-balance/adjust", async (req: any, res) => {
+  const teacherId=teacher(req,res); if (!teacherId) return;
+  const className=validateClassName(req.params.className); if (!className) return res.status(400).json({message:"اسم الصف غير صالح"});
+  const parsed=classBalanceAdjustmentInput.safeParse(req.body); if (!parsed.success) return res.status(400).json({message:"بيانات نقاط الصف غير صالحة"});
+  const d=parsed.data;
+  try {
+    const outcome=await db.transaction(async(tx)=>{
+      const classRow=resultRows(await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${className} FOR UPDATE`))[0];
+      if (!classRow) throw new Error("class_not_found");
+      await tx.execute(sql`INSERT INTO classroom_reward_class_balances(teacher_id,teacher_class_id,balance) VALUES (${teacherId},${classRow.id},0) ON CONFLICT (teacher_id,teacher_class_id) DO NOTHING`);
+      const balanceRow=resultRows(await tx.execute(sql`SELECT balance FROM classroom_reward_class_balances WHERE teacher_id=${teacherId} AND teacher_class_id=${classRow.id} FOR UPDATE`))[0];
+      const reason=d.reason?.trim() || null;
+      const prior=resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_class_transactions WHERE teacher_id=${teacherId} AND idempotency_key=${d.idempotencyKey}`))[0];
+      if (prior) {
+        if (Number(prior.teacher_class_id)!==Number(classRow.id) || prior.operation!==d.operation || Math.abs(Number(prior.amount))!==d.points || (prior.reason ?? null)!==reason) throw new Error("idempotency_conflict");
+        return {transaction:prior,balance:Number(prior.resulting_balance),idempotent:true};
+      }
+      const current=Number(balanceRow?.balance ?? 0);
+      if (d.operation==="deduct" && d.points>current) throw new Error("insufficient_balance");
+      const amount=d.operation==="award"?d.points:-d.points;
+      const balance=current+amount;
+      await tx.execute(sql`UPDATE classroom_reward_class_balances SET balance=${balance},updated_at=NOW() WHERE teacher_id=${teacherId} AND teacher_class_id=${classRow.id}`);
+      const transaction=resultRows(await tx.execute(sql`
+        INSERT INTO classroom_reward_class_transactions(teacher_id,teacher_class_id,idempotency_key,operation,amount,resulting_balance,reason)
+        VALUES (${teacherId},${classRow.id},${d.idempotencyKey},${d.operation},${amount},${balance},${reason}) RETURNING *
+      `))[0];
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs(teacher_id,action,entity_type,entity_id,idempotency_key,detail) VALUES (${teacherId},${d.operation==="award"?"award_class_balance":"deduct_class_balance"},'teacher_class',${classRow.id},${d.idempotencyKey},${reason})`);
+      return {transaction,balance,idempotent:false};
+    });
+    res.status(outcome.idempotent?200:201).json({
+      balance:outcome.balance,idempotent:outcome.idempotent,
+      transaction:{id:Number(outcome.transaction.id),operation:outcome.transaction.operation,amount:Number(outcome.transaction.amount),resultingBalance:Number(outcome.transaction.resulting_balance),reason:outcome.transaction.reason,createdAt:outcome.transaction.created_at},
+    });
+  } catch(error:any) {
+    if (error?.message==="class_not_found") return res.status(404).json({message:"الصف غير موجود"});
+    if (error?.message==="insufficient_balance") return res.status(409).json({message:"لا يمكن أن يتجاوز الخصم رصيد الصف الحالي"});
+    if (error?.message==="idempotency_conflict" || error?.code==="23505" || error?.cause?.code==="23505") return res.status(409).json({message:"مفتاح التكرار مستخدم لعملية مختلفة"});
+    res.status(500).json({message:"تعذر تعديل نقاط الصف"});
+  }
+});
+
 router.put("/classroom-rewards/classes/:className/groups/:groupId/members", async (req: any, res) => {
   const teacherId = teacher(req, res), groupId = numericId(req.params.groupId); if (!teacherId) return;
   if (!groupId) return res.status(400).json({ message: "معرف المجموعة غير صالح" });
@@ -749,8 +818,9 @@ router.post("/classroom-rewards/students/:studentId/balance-adjustments", async 
       if (!student) throw new Error("student_not_found");
 
       const prior = resultRows(await tx.execute(sql`SELECT * FROM classroom_reward_transactions WHERE teacher_id=${teacherId} AND student_id=${studentId} AND idempotency_key=${d.idempotencyKey} FOR UPDATE`))[0];
+      const displayReason = d.reason?.trim() || "خصم نقاط";
       if (prior) {
-        if (prior.kind !== "adjustment" || Number(prior.amount) !== -d.points || prior.reward_type_name_snapshot !== d.reason) {
+        if (prior.kind !== "adjustment" || Number(prior.amount) !== -d.points || prior.reward_type_name_snapshot !== displayReason) {
           throw new Error("idempotency_conflict");
         }
         const current = resultRows(await tx.execute(sql`SELECT COALESCE(SUM(balance),0)::int points FROM classroom_reward_balances WHERE teacher_id=${teacherId} AND student_id=${studentId}`))[0];
@@ -764,9 +834,9 @@ router.post("/classroom-rewards/students/:studentId/balance-adjustments", async 
       const type = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_types (teacher_id,name,category,default_amount,icon,color,sort_order,is_active) VALUES (${teacherId},'__balance_adjustment__','adjustment',1,'Target','#468064',10000,FALSE) ON CONFLICT (teacher_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id`))[0];
       const className = student.student_class || student.grade_level || null;
       const classRow = className ? resultRows(await tx.execute(sql`SELECT id FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${className}`))[0] : null;
-      const entry = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${studentId},${student.name},${type.id},${-d.points},'adjustment',${d.idempotencyKey},${className},${classRow?.id ?? null},${d.reason},'adjustment') RETURNING *`))[0];
+      const entry = resultRows(await tx.execute(sql`INSERT INTO classroom_reward_transactions (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot) VALUES (${teacherId},${studentId},${student.name},${type.id},${-d.points},'adjustment',${d.idempotencyKey},${className},${classRow?.id ?? null},${displayReason},'adjustment') RETURNING *`))[0];
       await tx.execute(sql`INSERT INTO classroom_reward_balances (teacher_id,student_id,reward_type_id,balance,updated_at) VALUES (${teacherId},${studentId},${type.id},${-d.points},NOW()) ON CONFLICT (teacher_id,student_id,reward_type_id) DO UPDATE SET balance=classroom_reward_balances.balance+EXCLUDED.balance,updated_at=NOW()`);
-      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key,detail) VALUES (${teacherId},'adjust_balance','student',${studentId},${d.idempotencyKey},${d.reason})`);
+      await tx.execute(sql`INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key,detail) VALUES (${teacherId},'adjust_balance','student',${studentId},${d.idempotencyKey},${d.reason ?? null})`);
       return { entry, balance: currentBalance - d.points, idempotent: false };
     });
     res.status(outcome.idempotent ? 200 : 201).json(outcome);
@@ -790,8 +860,9 @@ router.post("/classroom-rewards/balance-adjustments", async (req: any, res) => {
     className: d.className,
     studentIds: [...d.studentIds].sort((a, b) => a - b),
     points: d.points,
-    reason: d.reason,
+    reason: d.reason ?? null,
   });
+  const displayReason = d.reason?.trim() || "خصم نقاط";
   try {
     const outcome = await db.transaction(async (tx) => {
       const priorBatch = resultRows(await tx.execute(sql`
@@ -861,7 +932,7 @@ router.post("/classroom-rewards/balance-adjustments", async (req: any, res) => {
         INSERT INTO classroom_reward_batches
           (teacher_id,idempotency_key,class_name_snapshot,teacher_class_id,reward_type_id,reason_snapshot,points,target_count,request_fingerprint)
         VALUES
-          (${teacherId},${d.idempotencyKey},${d.className},${classRow.id},${type.id},${d.reason},${d.points},${d.studentIds.length},${fingerprint})
+          (${teacherId},${d.idempotencyKey},${d.className},${classRow.id},${type.id},${displayReason},${d.points},${d.studentIds.length},${fingerprint})
         ON CONFLICT (teacher_id,idempotency_key) DO NOTHING
         RETURNING id
       `))[0];
@@ -892,7 +963,7 @@ router.post("/classroom-rewards/balance-adjustments", async (req: any, res) => {
           INSERT INTO classroom_reward_transactions
             (teacher_id,student_id,student_name_snapshot,reward_type_id,amount,kind,idempotency_key,batch_id,batch_key,class_name_snapshot,teacher_class_id,reward_type_name_snapshot,category_snapshot)
           VALUES
-            (${teacherId},${student.id},${student.name},${type.id},${-d.points},'adjustment',${d.idempotencyKey},${batch.id},${d.idempotencyKey},${d.className},${classRow.id},${d.reason},'adjustment')
+            (${teacherId},${student.id},${student.name},${type.id},${-d.points},'adjustment',${d.idempotencyKey},${batch.id},${d.idempotencyKey},${d.className},${classRow.id},${displayReason},'adjustment')
         `);
         await tx.execute(sql`
           INSERT INTO classroom_reward_balances (teacher_id,student_id,reward_type_id,balance,updated_at)
@@ -904,7 +975,7 @@ router.post("/classroom-rewards/balance-adjustments", async (req: any, res) => {
       }
       await tx.execute(sql`
         INSERT INTO classroom_reward_audit_logs (teacher_id,action,entity_type,entity_id,idempotency_key,detail)
-        VALUES (${teacherId},'adjust_balance_batch','class',${classRow.id},${d.idempotencyKey},${d.reason})
+        VALUES (${teacherId},'adjust_balance_batch','class',${classRow.id},${d.idempotencyKey},${d.reason ?? null})
       `);
       return { adjusted, excluded, idempotent: false };
     });

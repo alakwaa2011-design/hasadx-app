@@ -310,7 +310,7 @@ export const useGrantRewards = () => {
 export const useAdjustStudentBalance = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ studentId, ...data }: { studentId: number; points: number; reason: string; idempotencyKey: string }) =>
+    mutationFn: ({ studentId, ...data }: { studentId: number; points: number; reason?: string; idempotencyKey: string }) =>
       fetcher(`/api/classroom-rewards/students/${studentId}/balance-adjustments`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -324,11 +324,46 @@ export const useAdjustStudentBalance = () => {
   });
 };
 
+export interface ClassRewardBalance {
+  className: string;
+  balance: number;
+  updatedAt?: string | null;
+  history: Array<{
+    id: number;
+    operation: "award" | "deduct";
+    amount: number;
+    resultingBalance: number;
+    reason?: string | null;
+    createdAt: string;
+  }>;
+}
+
+export const useGetClassRewardBalance = (className?: string) => useQuery<ClassRewardBalance>({
+  queryKey: ["classroom-rewards", "class-balance", className],
+  queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}/class-balance`),
+  enabled: !!className,
+});
+
+export const useAdjustClassRewardBalance = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ className, ...data }: { className: string; operation: "award" | "deduct"; points: number; reason?: string; idempotencyKey: string }) =>
+      fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className)}/class-balance/adjust`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "class-balance", variables.className] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+    },
+  });
+};
+
 export interface BulkBalanceAdjustmentInput {
   className: string;
   studentIds: number[];
   points: number;
-  reason: string;
+  reason?: string;
   idempotencyKey: string;
 }
 export const useReverseReward = () => {
