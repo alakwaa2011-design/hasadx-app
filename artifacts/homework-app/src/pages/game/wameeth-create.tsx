@@ -23,9 +23,9 @@ import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import { storeIndependentControlToken } from "@/lib/independent-game-session";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import {
-  canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
   getWameethSetupPath,
+  isOwnedWameethSource,
   requiresImportedCopyForLiveWameeth,
   type WameethSourceActivity,
 } from "@/lib/wameeth-entry";
@@ -165,15 +165,11 @@ export default function WameethCreate() {
     setAiSubject("");
   };
 
-  const wameethSourceAssignments = (assignments || []).filter((a: Assignment) =>
-    // The trusted assignments endpoint already excludes admin-hidden shared
-    // rows, but it does not serialize hiddenByAdmin in its list response.
-    // Normalize only that omitted field here so visibly published library
-    // activities remain available for the allowed Wameeth flows.
-    canUseActivityAsWameethSource(
-      { ...a, hiddenByAdmin: a.hiddenByAdmin ?? false },
-      user?.id ?? -1,
-    ),
+  // The in-page picker is a personal source picker: only show activities that
+  // belong to the signed-in teacher. Shared-library activities still use their
+  // explicit import flow, where a teacher-owned copy is created first.
+  const wameethSourceAssignments = (assignments || []).filter(
+    (a: Assignment) => !!user?.id && isOwnedWameethSource(a, user.id),
   );
 
   const filteredAssignments = wameethSourceAssignments.filter((a: Assignment) => {
@@ -605,7 +601,7 @@ export default function WameethCreate() {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir={dir} data-testid="wameeth-setup">
+    <div className="min-h-screen overflow-x-hidden bg-background" dir={dir} data-testid="wameeth-setup">
       <Dialog open={showImportPrompt} onOpenChange={setShowImportPrompt}>
         <DialogContent
           className="max-w-md rounded-2xl p-6 text-start"
@@ -650,7 +646,7 @@ export default function WameethCreate() {
       </Dialog>
       {/* Header */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
-        <div className="max-w-4xl lg:max-w-6xl mx-auto px-4 lg:px-8 py-4 lg:py-5 flex items-center gap-4">
+        <div className="mx-auto flex max-w-xl items-center gap-3 px-3 py-3 sm:px-4 lg:max-w-6xl lg:gap-4 lg:px-8 lg:py-5">
           <GameFlowBackButton
             onBack={() => step === "mode" ? setStep("prepare") : setLocation("/teacher")}
             label={ar ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
@@ -665,7 +661,7 @@ export default function WameethCreate() {
       </div>
 
       <div className={cn(
-        "max-w-4xl lg:max-w-6xl mx-auto px-3 sm:px-4 lg:px-8 lg:py-10",
+        "mx-auto w-full max-w-xl px-3 sm:px-4 lg:max-w-6xl lg:px-8 lg:py-10",
         step === "mode" ? "py-3 sm:py-6 space-y-3 sm:space-y-6" : "py-6 sm:py-8 space-y-6 lg:space-y-8",
       )}>
         {/* Step progress */}
@@ -761,9 +757,9 @@ export default function WameethCreate() {
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-[minmax(0,1fr)_360px] lg:grid-cols-[minmax(0,1fr)_420px] gap-6 lg:gap-8 items-start">
+                <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-8">
                   {/* Main content */}
-                  <div className="space-y-6 lg:space-y-7 order-2 md:order-1">
+                  <div className="order-2 min-w-0 space-y-5 lg:order-1 lg:space-y-7">
                     {source === "assignment" && (
                       <div className="bg-card rounded-3xl border border-border/60 shadow-sm overflow-hidden p-1">
                         <div className="p-4 lg:p-5 border-b border-border/40">
@@ -948,7 +944,7 @@ export default function WameethCreate() {
                   </div>
 
                   {/* Sidebar */}
-                  <div className="order-1 md:order-2 space-y-5 md:sticky md:top-24">
+                  <div className="order-1 min-w-0 space-y-4 lg:order-2 lg:sticky lg:top-24 lg:space-y-5">
                     <div className="bg-card rounded-3xl border border-border/60 shadow-sm p-5 lg:p-7 space-y-5 lg:space-y-6">
                       <div>
                         <label className="block text-sm lg:text-base font-bold text-foreground mb-2 lg:mb-2.5">{ar ? "عنوان (اختياري)" : "Title (optional)"}</label>

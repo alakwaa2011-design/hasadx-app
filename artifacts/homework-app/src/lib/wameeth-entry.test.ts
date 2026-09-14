@@ -3,11 +3,18 @@ import {
   canUseActivityAsWameethSource,
   getWameethSetupAssignmentId,
   getWameethSetupPath,
+  isOwnedWameethSource,
   requiresImportedCopyForLiveWameeth,
   WAMEETH_SETUP_PATH,
 } from "./wameeth-entry";
 
 describe("Wameeth teacher entry contract", () => {
+  it("shows only the current teacher's rows in personal activity pickers", () => {
+    expect(isOwnedWameethSource({ teacherId: 42, isShared: true }, 42)).toBe(true);
+    expect(isOwnedWameethSource({ teacherId: 7, isShared: true, hiddenByAdmin: false }, 42)).toBe(false);
+    expect(isOwnedWameethSource({ teacherId: null }, 42)).toBe(false);
+  });
+
   it.each([
     ["أنشطتي → لعبة مباشرة", 42],
     ["الألعاب التعليمية → وميض → اختيار واجب", 42],

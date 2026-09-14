@@ -7,6 +7,14 @@ export type WameethSourceActivity = {
   accessMode?: string | null;
 };
 
+/** Personal setup pickers must never mix public-library rows into "my activities". */
+export function isOwnedWameethSource(
+  activity: WameethSourceActivity,
+  currentTeacherId: number,
+): boolean {
+  return activity.teacherId === currentTeacherId;
+}
+
 /**
  * The setup screen accepts an owned activity or an activity that is visibly
  * published in the Activities Library. Keeping this guard client-side prevents

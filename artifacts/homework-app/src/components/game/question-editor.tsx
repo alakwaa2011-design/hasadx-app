@@ -78,12 +78,12 @@ export function QuestionCard({
 
   if (!editing) {
     return (
-      <div className="bg-card border border-border/60 rounded-2xl p-5 lg:p-6 hover:border-primary/30 transition-colors shadow-sm group" dir={dir}>
-        <div className="flex items-start justify-between gap-3 lg:gap-4">
+      <div className="group min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-card p-3.5 shadow-sm transition-colors hover:border-primary/30 sm:p-4 lg:p-6" dir={dir}>
+        <div className="flex min-w-0 items-start justify-between gap-2.5 lg:gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2 mb-3 lg:mb-3.5 flex-wrap">
               <span className="w-6 h-6 lg:w-7 lg:h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center text-xs lg:text-sm font-black shrink-0 mt-0.5 border border-primary/20">{index + 1}</span>
-              <span className="text-sm lg:text-base font-bold text-foreground leading-relaxed flex-1">{q.text}</span>
+              <span className="min-w-0 flex-1 break-words text-sm font-bold leading-relaxed text-foreground lg:text-base">{q.text}</span>
               {q.type === "fill_blank" && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 flex-shrink-0 flex items-center gap-1 mt-1">
                   <PenLine className="w-3 h-3" /> {copy.typeFillBlank}
@@ -142,7 +142,7 @@ export function QuestionCard({
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 lg:gap-3">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3">
                 {opts.filter(opt => !!q[`option${opt}` as keyof Question]).map((opt) => {
                   const oi = opts.indexOf(opt);
                   return (
@@ -159,7 +159,7 @@ export function QuestionCard({
                       "w-5 h-5 lg:w-6 lg:h-6 rounded-md flex items-center justify-center text-[10px] lg:text-xs shrink-0",
                       q.correctAnswer === opt ? "bg-emerald-500/20 text-emerald-700" : "bg-background border border-border/50"
                     )}>{labels[oi]}</span>
-                    <span className="truncate flex-1">{q[`option${opt}` as keyof Question]}</span>
+                    <span className="min-w-0 flex-1 break-words">{q[`option${opt}` as keyof Question]}</span>
                     {q.correctAnswer === opt && <Check className="w-3.5 h-3.5 shrink-0" />}
                   </div>
                   );
@@ -167,7 +167,7 @@ export function QuestionCard({
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-1.5 lg:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex shrink-0 flex-col gap-1.5 opacity-100 transition-opacity lg:gap-2 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
             <button type="button" onClick={() => setEditing(true)} aria-label={withNumber(copy.editQuestion)} className="p-2 lg:p-2.5 rounded-xl bg-muted/60 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors border border-transparent hover:border-primary/20">
               <Edit3 className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
@@ -181,7 +181,7 @@ export function QuestionCard({
   }
 
   return (
-    <div className="bg-card border-2 border-primary/40 rounded-2xl p-5 lg:p-7 shadow-sm relative overflow-hidden" dir={dir}>
+    <div className="relative min-w-0 overflow-hidden rounded-2xl border-2 border-primary/40 bg-card p-3.5 shadow-sm sm:p-4 lg:p-7" dir={dir}>
       <div className="absolute top-0 start-0 w-full h-1 bg-gradient-to-r from-primary/60 to-primary/20" />
       <div className="flex items-center justify-between mb-4 lg:mb-5">
         <span className="text-xs lg:text-sm font-black text-primary bg-primary/10 px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-md border border-primary/20">{withNumber(copy.question)}</span>
@@ -290,7 +290,7 @@ export function QuestionCard({
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 lg:gap-4 mb-4 lg:mb-5">
+        <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:mb-5 lg:gap-4">
           {opts.map((opt, oi) => (
             <div key={opt} className={cn(
               "flex items-center gap-2 p-1.5 lg:p-2 rounded-xl border-2 transition-all",
