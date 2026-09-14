@@ -318,7 +318,9 @@ export function isJoinMutationAllowed(input: {
   teamNames: string[];
   lockedTeams: string[];
 }): { valid: boolean; error?: string } {
-  if (input.state === "finished") return { valid: false, error: "اللعبة انتهت بالفعل" };
+  if (input.state === "finished" && !input.reconnecting) {
+    return { valid: false, error: "اللعبة انتهت بالفعل" };
+  }
   if (input.roomLocked && !input.reconnecting) return { valid: false, error: "الغرفة مقفلة من قبل المعلم — لا يمكن الانضمام الآن" };
   if (input.gameMode === "teams" && input.studentTeamChoiceEnabled) {
     if (!input.requestedTeam || !input.teamNames.includes(input.requestedTeam)) return { valid: false, error: "اختر فريقاً صحيحاً" };
@@ -1256,11 +1258,6 @@ export function setupGameSocket(io: Server) {
         eventCategory: "game",
         metadata: { pin, gameType: "wameedh" },
       });
-      if (game.state === "finished") {
-        callback?.({ error: "اللعبة انتهت بالفعل" });
-        return;
-      }
-
       const trimmedName = name.trim();
       if (!trimmedName) {
         callback?.({ error: "يرجى إدخال اسمك" });
@@ -1428,6 +1425,7 @@ export function setupGameSocket(io: Server) {
         myTeam: player.teamName,
         myScore: player.score,
         myStreak: player.streak,
+        myCorrectCount: player.totalCorrect,
         // Unforgeable per-player credential for the /api/tts/game endpoint.
         audioToken: player.audioToken,
       };
@@ -1469,6 +1467,14 @@ export function setupGameSocket(io: Server) {
         response.gameState = "leaderboard";
       } else if (game.state === "gift-round") {
         response.gameState = "gift-round";
+      } else if (game.state === "finished") {
+        // Finished games remain in memory briefly so a player who reconnects
+        // after the automatic final advance can recover the same results
+        // screen instead of being sent to the lobby/error state.
+        response.gameState = "finished";
+        response.leaderboard = getLeaderboard(game);
+        response.teamLeaderboard = getTeamLeaderboard(game);
+        response.totalQuestions = game.questions.length;
       }
 
       response.hackMode = game.hackMode;

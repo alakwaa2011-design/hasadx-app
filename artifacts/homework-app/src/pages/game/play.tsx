@@ -1427,6 +1427,12 @@ export default function GamePlay() {
           if (res.myTeam) setMyTeam(res.myTeam);
           if (res.myScore !== undefined) setMyScore(res.myScore);
           if (res.myStreak !== undefined) setMyStreak(res.myStreak);
+          if (isSoloRef.current && res.myCorrectCount !== undefined) {
+            setSoloCorrectCount(res.myCorrectCount);
+          }
+          if (isSoloRef.current && typeof res.questionCount === "number") {
+            soloTotalQuestionsRef.current = res.questionCount;
+          }
           if (res.hackMode) setHackMode(true);
           if (res.myPassword) setMyPassword(res.myPassword);
           if (res.hackMarathon) {
@@ -1484,6 +1490,20 @@ export default function GamePlay() {
             setGiftRoundChosen(false);
             setGiftStep("choose");
             setChosenGiftType(null);
+          } else if (res.gameState === "finished") {
+            // Reconnecting after the final automatic advance must rehydrate
+            // the terminal screen. Do not fall through to the lobby branch.
+            if (Array.isArray(res.leaderboard)) {
+              setLeaderboard(res.leaderboard);
+            }
+            if (Array.isArray(res.teamLeaderboard)) {
+              setTeamLeaderboard(res.teamLeaderboard);
+            }
+            setQuestion(null);
+            setAnswerResult(null);
+            setCorrectAnswer(null);
+            setPhase("finished");
+            stopBackgroundBeat();
           } else if (res.gameState === "leaderboard") {
             setPhase("lobby");
           } else {

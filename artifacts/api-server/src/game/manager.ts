@@ -673,7 +673,7 @@ export function movePlayerToTeam(pin: string, playerName: string, teamName: stri
 
 export function addPlayer(pin: string, socketId: string, name: string, avatar: string = "🦁", studentId?: number | null, studentAccountId?: number | null, requestedTeam?: string | null, explicitTeam = false): GamePlayer | null {
   const game = games.get(pin);
-  if (!game || game.state === "finished") return null;
+  if (!game) return null;
 
   const existingByName = Array.from(game.players.entries()).find(
     ([, p]) => p.name === name
@@ -696,6 +696,11 @@ export function addPlayer(pin: string, socketId: string, name: string, avatar: s
       return existingPlayer;
     }
   }
+
+  // A finished game can still be rejoined by an existing player for result
+  // rehydration. Never allow it to create a new player after the results are
+  // final.
+  if (game.state === "finished") return null;
 
   const teamName = game.gameMode === "teams"
     ? (requestedTeam && game.teamNames.includes(requestedTeam) ? requestedTeam : getSmallestTeam(game))

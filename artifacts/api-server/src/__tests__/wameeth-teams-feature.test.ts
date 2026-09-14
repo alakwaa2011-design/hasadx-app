@@ -109,6 +109,7 @@ describe("Wameeth teams pure validation", () => {
     expect(isJoinMutationAllowed({ ...base, lockedTeams: ["A"] }).valid).toBe(false);
     expect(isJoinMutationAllowed({ ...base, roomLocked: true }).valid).toBe(false);
     expect(isJoinMutationAllowed({ ...base, state: "finished" }).valid).toBe(false);
+    expect(isJoinMutationAllowed({ ...base, state: "finished", reconnecting: true }).valid).toBe(true);
   });
 });
 
