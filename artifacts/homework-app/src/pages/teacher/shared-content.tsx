@@ -49,7 +49,7 @@ const SUBJECT_ALIAS_GROUPS: string[][] = [
 ];
 
 /** Returns true if `subject` should show up when the teacher types `query`. */
-function subjectMatchesQuery(subject: string | null | undefined, query: string): boolean {
+export function subjectMatchesQuery(subject: string | null | undefined, query: string): boolean {
   if (!subject) return false;
   const q = query.trim().toLowerCase();
   const s = subject.toLowerCase();
@@ -61,6 +61,14 @@ function subjectMatchesQuery(subject: string | null | undefined, query: string):
     if (qMatch && sMatch) return true;
   }
   return false;
+}
+
+export function preferredSubjectScore(
+  subject: string | null | undefined,
+  preferredSubject: string | null | undefined,
+): number {
+  if (!preferredSubject || preferredSubject === "متعدد التخصصات" || preferredSubject === "فعاليات وتدريب") return 0;
+  return subjectMatchesQuery(subject, preferredSubject) ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -227,6 +235,7 @@ export default function SharedContentPage({
   const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
   const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
+  const [preferredSubject, setPreferredSubject] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   // Admin-only toggle: when ON, the page also fetches admin-hidden rows
   // so moderators can review and (un)hide them.
@@ -234,6 +243,17 @@ export default function SharedContentPage({
   const [subjectFilter, setSubjectFilter] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
+
+  const savePreferredSubject = async (value: string) => {
+    const res = await fetch(`${API_BASE}/api/auth/profile`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ primarySubject: value }),
+    });
+    if (!res.ok) throw new Error("Failed to save preferred subject");
+    setPreferredSubject(value);
+  };
 
   /** Sparse labels for مكتبة الأنشطة only — must run after `assignments` state exists. */
   const activitiesPopularIds = useMemo(() => {
@@ -275,6 +295,7 @@ export default function SharedContentPage({
         const meData = await meRes.json();
         setCurrentTeacherId(meData.id || null);
         setIsAdmin(!!meData.isAdmin);
+        setPreferredSubject(typeof meData.primarySubject === "string" ? meData.primarySubject : null);
         const params = new URLSearchParams();
         if (showHidden && meData.isAdmin) params.set("showHidden", "1");
         const qs = params.toString();
@@ -540,18 +561,26 @@ export default function SharedContentPage({
       (!gradeFilter || gradeMatchesQuery(a.targetClass, gradeFilter) ||
         (a.targetClasses || []).some(tc => gradeMatchesQuery(tc, gradeFilter)))
     )
-    .sort((a, b) => sortBy === "questions"
-      ? (b.questionCount - a.questionCount)
-      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => {
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      if (preferenceDelta) return preferenceDelta;
+      return sortBy === "questions"
+        ? b.questionCount - a.questionCount
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   const filteredQuestions = questions
     .filter(q =>
       (!search || (q.text || "").includes(search) || q.teacherName?.includes(search) || subjectMatchesQuery(q.subject, search)) &&
       matchesSubject(q.subject)
     )
-    .sort((a, b) => sortBy === "questions"
-      ? (b.points - a.points)
-      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => {
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      if (preferenceDelta) return preferenceDelta;
+      return sortBy === "questions"
+        ? b.points - a.points
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   const filteredVideos = videoLessons
     .filter(v =>
@@ -559,11 +588,13 @@ export default function SharedContentPage({
       matchesSubject(v.subject) &&
       (!gradeFilter || gradeMatchesQuery(v.targetClass, gradeFilter))
     )
-    .sort((a, b) =>
-      sortBy === "questions"
+    .sort((a, b) => {
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      if (preferenceDelta) return preferenceDelta;
+      return sortBy === "questions"
         ? b.questionCount - a.questionCount
-        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   const filteredGameActivities = gameActivities
     .filter(game =>
@@ -571,11 +602,13 @@ export default function SharedContentPage({
       matchesSubject(game.subject) &&
       (!gradeFilter || gradeMatchesQuery(game.targetClass, gradeFilter))
     )
-    .sort((a, b) =>
-      sortBy === "questions"
+    .sort((a, b) => {
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      if (preferenceDelta) return preferenceDelta;
+      return sortBy === "questions"
         ? b.questionCount - a.questionCount
-        : new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime(),
-    );
+        : new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime();
+    });
 
   const filteredPresentations = presentations
     .filter(presentation =>
@@ -611,6 +644,8 @@ export default function SharedContentPage({
         popularIds={activitiesPopularIds}
         newIds={activitiesNewIds}
         currentTeacherId={currentTeacherId}
+        preferredSubject={preferredSubject}
+        onPreferredSubjectChange={savePreferredSubject}
         isAdmin={isAdmin}
         showHidden={showHidden}
         onShowHiddenChange={setShowHidden}

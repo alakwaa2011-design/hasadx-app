@@ -509,6 +509,11 @@ export interface UpdateProfileBody {
     name?: string;
     email?: string;
     phone?: string;
+    /**
+       * Primary subject or professional field used to personalize the activities library.
+       * @maxLength 100
+       */
+    primarySubject?: string;
 }
 export type SubmitFeedbackBodyType = typeof SubmitFeedbackBodyType[keyof typeof SubmitFeedbackBodyType];
 export declare const SubmitFeedbackBodyType: {
@@ -538,6 +543,11 @@ export interface RegisterTeacherBody {
     password: string;
     /** Public registration role; admin role can only be granted internally. */
     role?: RegisterTeacherBodyRole;
+    /**
+       * Teacher's primary subject or professional field, used to personalize the activities library.
+       * @maxLength 100
+       */
+    primarySubject?: string;
     /** Traffic source (google, facebook, instagram, whatsapp, direct, referral, other) */
     acquisitionSource?: string;
     /** utm_medium or detected medium */
@@ -571,13 +581,30 @@ export interface TeacherProfile {
     isBlocked?: boolean;
     /** User role: teacher (classroom), organizer (events), or admin (super-admin). */
     role?: TeacherProfileRole;
+    /** Primary subject or professional field used to personalize the activities library. */
+    primarySubject?: string;
 }
 export interface AuthResponse {
     teacher: TeacherProfile;
 }
+/**
+ * Public registration role for a newly created Google account.
+ */
+export type GoogleLoginBodyRole = typeof GoogleLoginBodyRole[keyof typeof GoogleLoginBodyRole];
+export declare const GoogleLoginBodyRole: {
+    readonly teacher: "teacher";
+    readonly organizer: "organizer";
+};
 export interface GoogleLoginBody {
     /** Google ID token (credential) returned by the Google sign-in flow. */
     credential: string;
+    /**
+       * Primary subject selected during a new Google registration.
+       * @maxLength 100
+       */
+    primarySubject?: string;
+    /** Public registration role for a newly created Google account. */
+    role?: GoogleLoginBodyRole;
 }
 export type BriefPreferencesLanguage = typeof BriefPreferencesLanguage[keyof typeof BriefPreferencesLanguage];
 export declare const BriefPreferencesLanguage: {

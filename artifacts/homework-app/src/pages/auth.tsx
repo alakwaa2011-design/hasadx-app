@@ -470,6 +470,9 @@ interface LoginFormProps {
   dir: "rtl" | "ltr";
   onOptPhoneChange: (v: string) => void;
   onGoogleAuthenticated: (teacher: AuthResponse["teacher"]) => void;
+  primarySubject: string;
+  setPrimarySubject: (v: string) => void;
+  registerRole: "teacher" | "organizer" | null;
 }
 
 function LoginForm({
@@ -483,6 +486,7 @@ function LoginForm({
   gulfCountries, arabCountries, worldCountries, filteredCountries,
   t, lang, dir, onOptPhoneChange,
   onGoogleAuthenticated,
+  primarySubject, setPrimarySubject, registerRole,
 }: LoginFormProps) {
   const loginTeacherWithGoogleMutation = useLoginTeacherWithGoogle();
   return (
@@ -528,7 +532,13 @@ function LoginForm({
                 }
                 try {
                   const data: AuthResponse = await loginTeacherWithGoogleMutation.mutateAsync({
-                    data: { credential: resp.credential },
+                    data: {
+                      credential: resp.credential,
+                      ...(!isLogin && primarySubject ? {
+                        primarySubject,
+                        role: registerRole === "organizer" ? "organizer" : "teacher",
+                      } : {}),
+                    } as any,
                   });
                   if ((data as any).isNewTeacher === true && data.teacher?.id) {
                     trackMetaCompleteRegistration(data.teacher.id);
@@ -589,6 +599,43 @@ function LoginForm({
                   disabled={isLoading}
                 />
               </div>
+            </div>
+          )}
+
+          {!isLogin && (
+            <div>
+              <Label htmlFor="primarySubject">
+                {lang === "ar" ? "تخصصك أو مجالك" : "Your subject or field"}
+              </Label>
+              <div className="relative">
+                <BookOpen className={`absolute ${iconPositionClass} top-3.5 w-5 h-5 text-muted-foreground pointer-events-none`} />
+                <select
+                  id="primarySubject"
+                  value={primarySubject}
+                  onChange={(e) => setPrimarySubject(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className={`w-full h-12 rounded-xl border border-input bg-background text-sm ${inputPaddingClass} ${lang === "ar" ? "pl-4" : "pr-4"} focus:outline-none focus:ring-2 focus:ring-primary/30`}
+                >
+                  <option value="">{lang === "ar" ? "اختر التخصص" : "Choose a field"}</option>
+                  <option value="اللغة العربية">{lang === "ar" ? "اللغة العربية" : "Arabic"}</option>
+                  <option value="الرياضيات">{lang === "ar" ? "الرياضيات" : "Mathematics"}</option>
+                  <option value="العلوم">{lang === "ar" ? "العلوم" : "Science"}</option>
+                  <option value="اللغة الإنجليزية">{lang === "ar" ? "اللغة الإنجليزية" : "English"}</option>
+                  <option value="التربية الإسلامية">{lang === "ar" ? "التربية الإسلامية" : "Islamic studies"}</option>
+                  <option value="الدراسات الاجتماعية">{lang === "ar" ? "الدراسات الاجتماعية" : "Social studies"}</option>
+                  <option value="الحاسوب والتقنية">{lang === "ar" ? "الحاسوب والتقنية" : "Computing & technology"}</option>
+                  <option value="التربية الفنية">{lang === "ar" ? "التربية الفنية" : "Art"}</option>
+                  <option value="التربية الرياضية">{lang === "ar" ? "التربية الرياضية" : "Physical education"}</option>
+                  <option value="فعاليات وتدريب">{lang === "ar" ? "فعاليات وتدريب" : "Events & training"}</option>
+                  <option value="متعدد التخصصات">{lang === "ar" ? "متعدد التخصصات / مجال آخر" : "Multiple subjects / Other"}</option>
+                </select>
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {lang === "ar"
+                  ? "سنرتب مكتبة الأنشطة لتظهر المواد الأقرب إلى تخصصك أولًا."
+                  : "We will prioritize matching activities in your library."}
+              </p>
             </div>
           )}
 
@@ -989,6 +1036,7 @@ export default function Auth() {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const [password, setPassword] = useState("");
+  const [primarySubject, setPrimarySubject] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [usePhone, setUsePhone] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -1163,6 +1211,7 @@ export default function Auth() {
           email,
           password,
           role: registerRole === "organizer" ? "organizer" : "teacher",
+          primarySubject,
           // Optional contact phone (not used for auth)
           ...(optPhoneValue ? { phone: optPhoneValue } : {}),
           ...(acq ? {
@@ -1458,6 +1507,9 @@ export default function Auth() {
                 onGoogleAuthenticated={(teacher) =>
                   postAuthRedirect(teacher.role ?? null, teacher.isAdmin ?? null)
                 }
+                primarySubject={primarySubject}
+                setPrimarySubject={setPrimarySubject}
+                registerRole={registerRole}
               />
 
               {/* Register / Login switch — full-width outlined green button */}

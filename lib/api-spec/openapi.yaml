@@ -2215,6 +2215,10 @@ components:
           format: email
         phone:
           type: string
+        primarySubject:
+          type: string
+          maxLength: 100
+          description: "Primary subject or professional field used to personalize the activities library."
 
     SubmitFeedbackBody:
       type: object
@@ -2251,6 +2255,10 @@ components:
           enum: [teacher, organizer]
           default: teacher
           description: "Public registration role; admin role can only be granted internally."
+        primarySubject:
+          type: string
+          maxLength: 100
+          description: "Teacher's primary subject or professional field, used to personalize the activities library."
         acquisitionSource:
           type: string
           description: "Traffic source (google, facebook, instagram, whatsapp, direct, referral, other)"
@@ -2296,6 +2304,14 @@ components:
         credential:
           type: string
           description: Google ID token (credential) returned by the Google sign-in flow.
+        primarySubject:
+          type: string
+          maxLength: 100
+          description: Primary subject selected during a new Google registration.
+        role:
+          type: string
+          enum: [teacher, organizer]
+          description: Public registration role for a newly created Google account.
       required:
         - credential
 
@@ -2318,6 +2334,9 @@ components:
           type: string
           enum: [teacher, organizer, admin]
           description: "User role: teacher (classroom), organizer (events), or admin (super-admin)."
+        primarySubject:
+          type: string
+          description: "Primary subject or professional field used to personalize the activities library."
       required:
         - id
         - name

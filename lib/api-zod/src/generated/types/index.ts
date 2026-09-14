@@ -72,6 +72,7 @@ export * from './examSessionResponse';
 export * from './getPresentationLinkedActivity200';
 export * from './getPresentationLinkedActivity200Activity';
 export * from './googleLoginBody';
+export * from './googleLoginBodyRole';
 export * from './healthStatus';
 export * from './linkPresentationActivity200';
 export * from './linkPresentationActivityBody';

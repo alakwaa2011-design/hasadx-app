@@ -10,4 +10,9 @@ export interface UpdateProfileBody {
   name?: string;
   email?: string;
   phone?: string;
+  /**
+     * Primary subject or professional field used to personalize the activities library.
+     * @maxLength 100
+     */
+  primarySubject?: string;
 }

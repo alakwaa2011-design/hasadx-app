@@ -14,6 +14,11 @@ export interface RegisterTeacherBody {
     password: string;
     /** Public registration role; admin role can only be granted internally. */
     role?: RegisterTeacherBodyRole;
+    /**
+       * Teacher's primary subject or professional field, used to personalize the activities library.
+       * @maxLength 100
+       */
+    primarySubject?: string;
     /** Traffic source (google, facebook, instagram, whatsapp, direct, referral, other) */
     acquisitionSource?: string;
     /** utm_medium or detected medium */

@@ -5,8 +5,16 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { GoogleLoginBodyRole } from './googleLoginBodyRole';
 export interface GoogleLoginBody {
     /** Google ID token (credential) returned by the Google sign-in flow. */
     credential: string;
+    /**
+       * Primary subject selected during a new Google registration.
+       * @maxLength 100
+       */
+    primarySubject?: string;
+    /** Public registration role for a newly created Google account. */
+    role?: GoogleLoginBodyRole;
 }
 //# sourceMappingURL=googleLoginBody.d.ts.map

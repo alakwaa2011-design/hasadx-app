@@ -176,6 +176,8 @@ export interface ActivitiesLibraryMarketplaceProps {
   popularIds: Set<number>;
   newIds: Set<number>;
   currentTeacherId: number | null;
+  preferredSubject: string | null;
+  onPreferredSubjectChange: (value: string) => Promise<void>;
   isAdmin: boolean;
   showHidden: boolean;
   onShowHiddenChange: (v: boolean) => void;
@@ -239,7 +241,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     filteredAssignments, filteredQuestions, filteredVideos,
     filteredGameActivities, filteredPresentations,
     popularIds, newIds,
-    currentTeacherId, isAdmin, showHidden, onShowHiddenChange,
+    currentTeacherId, preferredSubject, onPreferredSubjectChange, isAdmin, showHidden, onShowHiddenChange,
     search, onSearchChange,
     subjectFilter, onSubjectFilterChange,
     gradeFilter, onGradeFilterChange,
@@ -256,6 +258,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   } = props;
 
   const isAr = lang === "ar";
+  const [savingSubject, setSavingSubject] = useState(false);
   const [categoryTab,   setCategoryTab]   = useState<CategoryTab>("all");
   const [typeChip,      setTypeChip]      = useState<TypeChip>("all");
   const [bookmarks,     setBookmarks]     = useState<Set<number>>(new Set());
@@ -849,6 +852,60 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 </button>
               )}
             </div>
+
+            {preferredSubject && preferredSubject !== "متعدد التخصصات" && preferredSubject !== "فعاليات وتدريب" && (
+              <div
+                className="flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-bold sm:text-xs"
+                style={{ borderColor: "#cfe3d5", background: C.soft, color: C.primary }}
+              >
+                <BookText className="h-4 w-4 shrink-0" />
+                <span>
+                  {isAr
+                    ? `أنشطة ${preferredSubject} تظهر أولًا، وبقية المواد ما زالت متاحة.`
+                    : `${preferredSubject} activities appear first; all other subjects remain available.`}
+                </span>
+              </div>
+            )}
+            {!preferredSubject && (
+              <div
+                className="flex flex-col gap-2 rounded-xl border px-3 py-2.5 sm:flex-row sm:items-center"
+                style={{ borderColor: "#cfe3d5", background: C.soft, color: C.primary }}
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2 text-[11px] font-bold sm:text-xs">
+                  <BookText className="h-4 w-4 shrink-0" />
+                  <span>{isAr ? "حدد تخصصك لنرتب لك الأنشطة المناسبة أولًا." : "Choose your field to prioritize matching activities."}</span>
+                </div>
+                <select
+                  aria-label={isAr ? "اختيار التخصص" : "Choose specialization"}
+                  defaultValue=""
+                  disabled={savingSubject}
+                  onChange={async (event) => {
+                    if (!event.target.value) return;
+                    setSavingSubject(true);
+                    try {
+                      await onPreferredSubjectChange(event.target.value);
+                    } finally {
+                      setSavingSubject(false);
+                    }
+                  }}
+                  className="h-9 rounded-lg border bg-white px-3 text-[11px] font-bold outline-none sm:text-xs"
+                  style={{ borderColor: C.border, color: C.text }}
+                >
+                  <option value="">{isAr ? "اختر التخصص" : "Choose field"}</option>
+                  <option value="اللغة العربية">{isAr ? "اللغة العربية" : "Arabic"}</option>
+                  <option value="الرياضيات">{isAr ? "الرياضيات" : "Mathematics"}</option>
+                  <option value="العلوم">{isAr ? "العلوم" : "Science"}</option>
+                  <option value="اللغة الإنجليزية">{isAr ? "اللغة الإنجليزية" : "English"}</option>
+                  <option value="التربية الإسلامية">{isAr ? "التربية الإسلامية" : "Islamic studies"}</option>
+                  <option value="الدراسات الاجتماعية">{isAr ? "الدراسات الاجتماعية" : "Social studies"}</option>
+                  <option value="الحاسوب والتقنية">{isAr ? "الحاسوب والتقنية" : "Computing & technology"}</option>
+                  <option value="التربية الفنية">{isAr ? "التربية الفنية" : "Art"}</option>
+                  <option value="التربية الرياضية">{isAr ? "التربية الرياضية" : "Physical education"}</option>
+                  <option value="فعاليات وتدريب">{isAr ? "فعاليات وتدريب" : "Events & training"}</option>
+                  <option value="متعدد التخصصات">{isAr ? "متعدد التخصصات / مجال آخر" : "Multiple subjects / Other"}</option>
+                </select>
+              </div>
+            )}
 
             <div className="space-y-1.5 rounded-2xl border border-[#e8e1d8]/70 bg-[#fcfbf8] p-1.5 sm:space-y-2 sm:p-2">
               <div className="library-horizontal-scroll flex max-w-full flex-nowrap gap-1.5 overflow-x-auto overscroll-x-contain scroll-smooth touch-pan-x sm:flex-wrap sm:overflow-visible">

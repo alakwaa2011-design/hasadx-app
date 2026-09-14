@@ -20,6 +20,12 @@ import { removePushSubscriptionsForSession } from "../lib/web-push";
 const PHONE_REGEX = /^\+\d{7,15}$/;
 const LEGACY_PHONE_REGEX = /^\d{7,15}$/;
 
+function normalizePrimarySubject(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().replace(/\s+/g, " ");
+  return normalized ? normalized.slice(0, 100) : null;
+}
+
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -38,6 +44,7 @@ const UpdateProfileSchema = z
       .regex(/^(\+\d{7,15}|\d{7,15})$/)
       .optional()
       .or(z.literal("")),
+    primarySubject: z.string().trim().min(1).max(100).optional(),
   })
   .strict();
 
@@ -401,6 +408,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     // Public registration only allows teacher|organizer roles. Admin must be granted internally.
     const requestedRole =
       body.role === "organizer" ? "organizer" : "teacher";
+    const primarySubject = normalizePrimarySubject(body.primarySubject);
 
     const otp = generateOtp();
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -416,6 +424,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         phone: body.phone || null,
         passwordHash,
         role: requestedRole,
+        preferences: primarySubject ? { primarySubject } : null,
         verificationOtp: otp,
         otpExpiresAt,
         emailVerifyToken: rawVerifyToken,
@@ -626,6 +635,7 @@ router.get("/auth/me", async (req, res) => {
     publicProfileEnabled: currentTeacher.publicProfileEnabled,
     showOnLeaderboard: currentTeacher.showOnLeaderboard,
     emailVerified: currentTeacher.emailVerified,
+    primarySubject: normalizePrimarySubject(currentTeacher.preferences?.primarySubject),
   });
 });
 
@@ -689,7 +699,7 @@ router.patch("/auth/profile", async (req, res) => {
       res.status(400).json({ message: "بيانات غير صحيحة" });
       return;
     }
-    const { name, email, phone } = parsed.data;
+    const { name, email, phone, primarySubject } = parsed.data;
     const normalizedEmail = email ? normalizeEmailAddress(email) : email;
 
     if (normalizedEmail) {
@@ -720,6 +730,17 @@ router.patch("/auth/profile", async (req, res) => {
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = normalizedEmail || null;
     if (phone !== undefined) updateData.phone = phone || null;
+    if (primarySubject !== undefined) {
+      const [current] = await db
+        .select({ preferences: teachersTable.preferences })
+        .from(teachersTable)
+        .where(eq(teachersTable.id, req.session.teacherId))
+        .limit(1);
+      updateData.preferences = {
+        ...(current?.preferences ?? {}),
+        primarySubject: normalizePrimarySubject(primarySubject),
+      };
+    }
 
     const [updated] = await db
       .update(teachersTable)
@@ -1398,6 +1419,8 @@ router.post("/auth/logout", async (req, res) => {
 router.post("/auth/google", authLimiter, async (req, res) => {
   try {
     const { credential } = req.body ?? {};
+    const primarySubject = normalizePrimarySubject(req.body?.primarySubject);
+    const requestedRole = req.body?.role === "organizer" ? "organizer" : "teacher";
     if (!credential || typeof credential !== "string") {
       res.status(400).json({ message: "بيانات Google ناقصة" });
       return;
@@ -1463,6 +1486,8 @@ router.post("/auth/google", authLimiter, async (req, res) => {
             googleId: profile.sub,
             verifiedAt: new Date(), // Google already verified the email
             emailVerified: true,
+            role: requestedRole,
+            preferences: primarySubject ? { primarySubject } : null,
           })
           .returning();
         teacher = created;

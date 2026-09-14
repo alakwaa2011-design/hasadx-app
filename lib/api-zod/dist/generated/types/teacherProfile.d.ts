@@ -15,5 +15,7 @@ export interface TeacherProfile {
     isBlocked?: boolean;
     /** User role: teacher (classroom), organizer (events), or admin (super-admin). */
     role?: TeacherProfileRole;
+    /** Primary subject or professional field used to personalize the activities library. */
+    primarySubject?: string;
 }
 //# sourceMappingURL=teacherProfile.d.ts.map
