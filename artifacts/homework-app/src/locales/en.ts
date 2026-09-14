@@ -2680,7 +2680,7 @@ export const en: typeof ar = {
     mute: "Mute sound",
     unmute: "Unmute sound",
     escapedTitle: "You escaped the room!",
-    escapedDescription: "One crew, working together — you broke the locks and opened the doors 🎉",
+    escapedDescription: "One crew, working together — you broke the locks and opened the doors",
     timeUpTitle: "Time's up — the doors sealed!",
     timeUpDescription: "So close! One more run and you'll make it 💪",
     crewScore: "Crew score",

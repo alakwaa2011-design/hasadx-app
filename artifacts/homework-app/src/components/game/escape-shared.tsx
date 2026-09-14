@@ -730,113 +730,48 @@ function WiresHero({ solved, total }: { solved: number; total: number }) {
 function VaultHero({ solved, total, open }: { solved: number; total: number; open: boolean }) {
   const seg = total > 0 ? solved / total : 0;
   return (
-    <svg viewBox="0 0 200 110" className="h-full w-full" style={{ filter: "drop-shadow(0 15px 30px rgba(0,0,0,0.8))" }}>
-      <defs>
-        <linearGradient id="vh-frame" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#0f172a" />
-          <stop offset="50%" stopColor="#1e293b" />
-          <stop offset="100%" stopColor="#0f172a" />
-        </linearGradient>
-        <linearGradient id="vh-door" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1e293b" />
-          <stop offset="100%" stopColor="#020617" />
-        </linearGradient>
-        <filter id="vh-glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-        <filter id="vh-door-shadow">
-          <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#000" floodOpacity="0.8" />
-        </filter>
-        <clipPath id="vh-door-clip">
-          <rect x="25" y="10" width="150" height="90" rx="4" />
-        </clipPath>
-      </defs>
-
-      {/* Frame Background (Dark corridor behind door) */}
-      <rect x="20" y="5" width="160" height="100" rx="8" fill="#020617" stroke="#334155" strokeWidth="2" />
-
-      {/* Light spilling out from behind when open */}
+    <svg viewBox="0 0 200 110" className="h-full w-full">
+      <circle cx={100} cy={55} r={48} fill="#1a2338" stroke="rgba(247,201,72,0.5)" strokeWidth="3" />
+      <circle cx={100} cy={55} r={40} fill="none" stroke="rgba(247,201,72,0.2)" strokeWidth="1.4" strokeDasharray="4 5" />
+      <motion.circle
+        cx={100} cy={55} r={44} fill="none"
+        stroke={GOLD} strokeWidth={4} strokeLinecap="round"
+        strokeDasharray={`${seg * 276} 276`}
+        transform="rotate(-90 100 55)"
+        style={{ filter: "drop-shadow(0 0 6px rgba(247,201,72,0.7))" }}
+        initial={false}
+        animate={{ strokeDasharray: `${seg * 276} 276` }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      />
+      <motion.g
+        style={{ transformOrigin: "100px 55px" }}
+        animate={open ? { rotate: 240 } : { rotate: seg * 120 }}
+        transition={{ duration: open ? 1.2 : 0.6, ease: "easeInOut" }}
+      >
+        {[0, 60, 120, 180, 240, 300].map((angle) => (
+          <line
+            key={angle}
+            x1={100 + Math.cos((angle * Math.PI) / 180) * 8}
+            y1={55 + Math.sin((angle * Math.PI) / 180) * 8}
+            x2={100 + Math.cos((angle * Math.PI) / 180) * 30}
+            y2={55 + Math.sin((angle * Math.PI) / 180) * 30}
+            stroke="#e5b93e"
+            strokeWidth={5}
+            strokeLinecap="round"
+          />
+        ))}
+        <circle cx={100} cy={55} r={10} fill="#F7C948" stroke="#9A6A08" strokeWidth={2} />
+      </motion.g>
       {open && (
-        <motion.rect x="30" y="15" width="140" height="80"
-          fill="#cffafe"
+        <motion.circle
+          cx={100} cy={55} r={48}
+          fill="rgba(247,201,72,0.35)"
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0.9] }}
-          transition={{ duration: 1.2 }}
-          style={{ filter: "blur(12px)" }}
+          animate={{ opacity: [0, 0.9, 0.5] }}
+          transition={{ duration: 1.4 }}
+          style={{ filter: "blur(6px)" }}
         />
       )}
-
-      {/* Split Doors */}
-      <g clipPath="url(#vh-door-clip)">
-        {/* Left Door */}
-        <motion.g
-          animate={open ? { x: -75 } : { x: 0 }}
-          transition={{ duration: 1.8, ease: "easeInOut", delay: 0.2 }}
-        >
-          <rect x="25" y="10" width="75" height="90" fill="url(#vh-door)" stroke="#334155" strokeWidth="1.5" />
-          {/* Tech Panel Details Left */}
-          <path d="M 35 25 L 85 25 M 35 35 L 85 35 M 35 85 L 85 85" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-          <path d="M 85 45 L 65 45 L 55 55 L 55 75" fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="2" />
-          {/* Half ring track */}
-          <path d="M 100 30 A 25 25 0 0 0 100 80" fill="none" stroke="#0f172a" strokeWidth="6" />
-        </motion.g>
-
-        {/* Right Door */}
-        <motion.g
-          animate={open ? { x: 75 } : { x: 0 }}
-          transition={{ duration: 1.8, ease: "easeInOut", delay: 0.2 }}
-        >
-          <rect x="100" y="10" width="75" height="90" fill="url(#vh-door)" stroke="#334155" strokeWidth="1.5" />
-          {/* Tech Panel Details Right */}
-          <path d="M 165 25 L 115 25 M 165 35 L 115 35 M 165 85 L 115 85" stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-          <path d="M 115 45 L 135 45 L 145 55 L 145 75" fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="2" />
-          {/* Half ring track */}
-          <path d="M 100 80 A 25 25 0 0 0 100 30" fill="none" stroke="#0f172a" strokeWidth="6" />
-        </motion.g>
-
-        {/* Center Digital Status Ring (Overlays both doors, splits when open) */}
-        <motion.g
-          animate={open ? { x: -75, opacity: 0 } : { x: 0, opacity: 1 }}
-          transition={{ duration: open ? 1.8 : 0.4, ease: "easeInOut", delay: open ? 0.2 : 0 }}
-        >
-          <path d="M 100 30 A 25 25 0 0 0 100 80" fill="none"
-            stroke="#06b6d4" strokeWidth="4" strokeLinecap="round"
-            strokeDasharray="78.5"
-            strokeDashoffset={78.5 - (Math.min(0.5, seg) * 2 * 78.5)}
-            style={{ filter: "url(#vh-glow-cyan)" }}
-          />
-        </motion.g>
-
-        <motion.g
-          animate={open ? { x: 75, opacity: 0 } : { x: 0, opacity: 1 }}
-          transition={{ duration: open ? 1.8 : 0.4, ease: "easeInOut", delay: open ? 0.2 : 0 }}
-        >
-          <path d="M 100 80 A 25 25 0 0 0 100 30" fill="none"
-            stroke="#06b6d4" strokeWidth="4" strokeLinecap="round"
-            strokeDasharray="78.5"
-            strokeDashoffset={78.5 - (Math.max(0, seg - 0.5) * 2 * 78.5)}
-            style={{ filter: "url(#vh-glow-cyan)" }}
-          />
-        </motion.g>
-
-        {/* Center lock core that glows and fades when opening */}
-        <motion.circle cx="100" cy="55" r="14"
-          fill="#020617" stroke={open ? "#06b6d4" : "#334155"} strokeWidth="2"
-          animate={open ? { scale: 1.2, opacity: 0 } : { scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          style={open ? { filter: "url(#vh-glow-cyan)" } : {}}
-        />
-        <motion.circle cx="100" cy="55" r="6"
-          fill={open ? "#22d3ee" : (seg >= 1 ? "#06b6d4" : "#0f172a")}
-          animate={open ? { scale: 2, opacity: 0 } : { scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          style={seg >= 1 ? { filter: "url(#vh-glow-cyan)" } : {}}
-        />
-      </g>
-
-      {/* Outer Door Frame Rim */}
-      <rect x="20" y="5" width="160" height="100" rx="8" fill="none" stroke="url(#vh-frame)" strokeWidth="6" style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.5))" }} />
     </svg>
   );
 }

@@ -2705,7 +2705,7 @@ export const ar = {
     mute: "كتم الصوت",
     unmute: "تشغيل الصوت",
     escapedTitle: "نجحتم في الهروب!",
-    escapedDescription: "فريق واحد… عمل مشترك… نجحتم في فتح الأبواب 🎉",
+    escapedDescription: "فريق واحد… عمل مشترك… نجحتم في فتح الأبواب",
     timeUpTitle: "انتهى الوقت — الأبواب موصدة!",
     timeUpDescription: "كنتم قريبين جداً… جولة أخرى وستهربون حتماً 💪",
     crewScore: "نقاط الفريق",

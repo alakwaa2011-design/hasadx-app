@@ -357,7 +357,7 @@ export default function EscapePlay() {
             )}
             <p className="mb-4 text-sm font-bold text-white/65">
               {state.status === "won"
-                ? (ar ? "أحسنت! نتيجتك وصلت للمعلم مباشرة 🎉" : "Well done! Your result is live on the teacher's board 🎉")
+                ? (ar ? "أحسنت! نتيجتك وصلت للمعلم مباشرة" : "Well done! Your result is live on the teacher's board")
                 : state.status === "stopped"
                   ? (ar ? "هذه نتيجتك والوقت المتبقي عند لحظة إنهاء المعلم للمسابقة." : "This is your result and remaining time when the teacher ended the competition.")
                   : (ar ? "لا بأس — نتيجتك وصلت للمعلم، والجولة القادمة لك 💪" : "Your result reached the teacher — next round is yours 💪")}
