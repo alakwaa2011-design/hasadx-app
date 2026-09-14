@@ -12,6 +12,7 @@ import { resolveTier } from "../lib/ai-tier";
 import {
   buildTeacherScheduleExtractionPrompt,
   parseExtractedTeacherSchedule,
+  UnreadableTeacherScheduleImageError,
 } from "../lib/teacher-schedule-extraction";
 
 const router: IRouter = Router();
@@ -329,6 +330,16 @@ router.post(
       if (err?.code === "LIMIT_FILE_SIZE") {
         res.status(413).json({
           message: language === "ar" ? "حجم الصورة يتجاوز الحد المسموح" : "The image exceeds the size limit",
+        });
+        return;
+      }
+      if (err instanceof UnreadableTeacherScheduleImageError) {
+        req.log.info({ warnings: err.warnings }, "Teacher schedule image alignment was unreadable");
+        res.status(422).json({
+          message: language === "ar"
+            ? "تعذّرت قراءة محاذاة الأيام والحصص بأمان. صوّر الصفحة كاملة من الأعلى مباشرة، بإضاءة متساوية ومن دون ظلال أو وهج."
+            : "The weekday and lesson alignment could not be read safely. Retake the full page straight from above with even lighting and no shadows or glare.",
+          warnings: err.warnings,
         });
         return;
       }

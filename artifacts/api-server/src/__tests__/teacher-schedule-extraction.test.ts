@@ -5,7 +5,15 @@ import sharp from "sharp";
 import {
   buildTeacherScheduleExtractionPrompt,
   parseExtractedTeacherSchedule,
+  UnreadableTeacherScheduleImageError,
 } from "../lib/teacher-schedule-extraction";
+
+const distortedFixtureNames = [
+  "weekday-specific-times-rotated.png",
+  "weekday-specific-times-perspective.png",
+  "weekday-specific-times-shadow.png",
+] as const;
+const unreadableFixtureName = "weekday-specific-times-unreadable.png";
 
 describe("teacher schedule image extraction", () => {
   it.skipIf(process.env.RUN_AI_INTEGRATION_TESTS !== "1")(
@@ -31,6 +39,51 @@ describe("teacher schedule image extraction", () => {
         expect.objectContaining({ lessonNumber: 1, startTime: "09:15", endTime: "10:00" }),
         expect.objectContaining({ lessonNumber: 2, startTime: "10:10", endTime: "10:55" }),
       ]));
+    },
+    60_000,
+  );
+
+  (process.env.RUN_AI_INTEGRATION_TESTS === "1" ? it : it.skip).each(distortedFixtureNames)(
+    "keeps weekday and lesson times attached in distorted fixture %s",
+    async (fixtureName) => {
+      const fixturePath = fileURLToPath(new URL(`./fixtures/${fixtureName}`, import.meta.url));
+      const png = await readFile(fixturePath);
+      const { runVisionCompletionMulti } = await import("../lib/file-upload");
+      const raw = await runVisionCompletionMulti({
+        tier: "standard",
+        prompt: buildTeacherScheduleExtractionPrompt("en"),
+        images: [{ base64: png.toString("base64"), mimeType: "image/png" }],
+        maxTokens: 3000,
+      });
+      const result = parseExtractedTeacherSchedule(raw);
+      const byDay = new Map(result.daySchedules.map((day) => [day.dayOfWeek, day]));
+
+      expect(byDay.get(0)?.lessons).toEqual(expect.arrayContaining([
+        expect.objectContaining({ lessonNumber: 1, startTime: "07:30", endTime: "08:10" }),
+        expect.objectContaining({ lessonNumber: 2, startTime: "08:20", endTime: "09:00" }),
+      ]));
+      expect(byDay.get(1)?.lessons).toEqual(expect.arrayContaining([
+        expect.objectContaining({ lessonNumber: 1, startTime: "09:15", endTime: "10:00" }),
+        expect.objectContaining({ lessonNumber: 2, startTime: "10:10", endTime: "10:55" }),
+      ]));
+    },
+    60_000,
+  );
+
+  it.skipIf(process.env.RUN_AI_INTEGRATION_TESTS !== "1")(
+    "rejects a timetable when perspective and cropping make grid alignment ambiguous",
+    async () => {
+      const fixturePath = fileURLToPath(new URL(`./fixtures/${unreadableFixtureName}`, import.meta.url));
+      const png = await readFile(fixturePath);
+      const { runVisionCompletionMulti } = await import("../lib/file-upload");
+      const raw = await runVisionCompletionMulti({
+        tier: "standard",
+        prompt: buildTeacherScheduleExtractionPrompt("en"),
+        images: [{ base64: png.toString("base64"), mimeType: "image/png" }],
+        maxTokens: 1000,
+      });
+
+      expect(() => parseExtractedTeacherSchedule(raw)).toThrow(UnreadableTeacherScheduleImageError);
     },
     60_000,
   );
@@ -252,6 +305,29 @@ describe("teacher schedule image extraction", () => {
     expect(prompt).toContain("Read EACH weekday independently");
     expect(prompt).toContain("NEVER copy, propagate, standardize, or reuse");
     expect(prompt).toContain("Do not normalize different weekdays into one common bell schedule");
+    expect(prompt).toContain('"readability":"unreadable"');
+    expect(prompt).toContain("photographing straight above the full page with even lighting");
+    expect(prompt).toContain("return no entries");
+    expect(prompt).not.toContain("keep the entry but set confidence to low");
+  });
+
+  it("rejects an unreadable image result instead of returning a guessed unified table", () => {
+    expect(() => parseExtractedTeacherSchedule(JSON.stringify({
+      readability: "unreadable",
+      daySchedules: [],
+      warnings: ["Retake the full page straight from above with even lighting and no shadows."],
+    }))).toThrow(UnreadableTeacherScheduleImageError);
+  });
+
+  it("does not accept schedule rows when the model declares the image unreadable", () => {
+    expect(() => parseExtractedTeacherSchedule(JSON.stringify({
+      readability: "unreadable",
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [{ lessonNumber: 1, title: "Mathematics", startTime: "08:00", endTime: "08:45", confidence: "low" }],
+      }],
+      warnings: ["The perspective is ambiguous."],
+    }))).toThrow();
   });
 
   it("corrects ADVISE from a numbered lesson into its visible non-lesson period", () => {

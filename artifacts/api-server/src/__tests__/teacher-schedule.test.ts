@@ -212,6 +212,12 @@ const mockState = vi.hoisted(() => {
   };
 });
 
+const extractionMocks = vi.hoisted(() => ({
+  rawVisionResult: "",
+  captureCredits: vi.fn(),
+  refundCredits: vi.fn(),
+}));
+
 vi.mock("drizzle-orm", () => ({
   and: (...conditions: Condition[]) => ({ kind: "and", conditions }),
   asc: (column: string) => ({ column, direction: "asc" }),
@@ -230,6 +236,31 @@ vi.mock("@workspace/db", () => ({
   teacherScheduleTable: mockState.table,
 }));
 
+vi.mock("../lib/check-credits", () => ({
+  checkCredits: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  captureCreditsOrThrow: extractionMocks.captureCredits,
+  refundCredits: extractionMocks.refundCredits,
+}));
+
+vi.mock("../lib/file-upload", () => ({
+  createUploadFilesMiddleware: () => (req: any, _res: unknown, next: () => void) => {
+    req.files = [{
+      mimetype: "image/png",
+      originalname: "schedule.png",
+      buffer: Buffer.from("fixture"),
+    }];
+    next();
+  },
+  processUploadedFiles: vi.fn().mockResolvedValue({
+    images: [{ base64: "Zml4dHVyZQ==", mimeType: "image/png" }],
+  }),
+  runVisionCompletionMulti: vi.fn(async () => extractionMocks.rawVisionResult),
+}));
+
+vi.mock("../lib/ai-tier", () => ({
+  resolveTier: vi.fn().mockResolvedValue("standard"),
+}));
+
 import express from "express";
 import request from "supertest";
 import router from "../routes/teacher-schedule";
@@ -241,6 +272,7 @@ function makeApp(session: Session | null) {
   app.use(express.json());
   app.use((req, _res, next) => {
     (req as unknown as { session: Session }).session = session ?? {};
+    (req as any).log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     next();
   });
   app.use("/api", router);
@@ -281,9 +313,36 @@ const breakEntry = (title = "استراحة") => ({
 
 beforeEach(() => {
   mockState.reset();
+  extractionMocks.rawVisionResult = "";
+  extractionMocks.captureCredits.mockReset();
+  extractionMocks.refundCredits.mockReset();
 });
 
 describe("teacher schedule breaks", () => {
+  it("returns an actionable 422 and refunds credits when grid alignment is unreadable", async () => {
+    extractionMocks.rawVisionResult = JSON.stringify({
+      readability: "unreadable",
+      daySchedules: [],
+      warnings: ["Retake the full page straight from above with even lighting and no shadows."],
+    });
+
+    const response = await request(makeApp({ teacherId: 101 }))
+      .post("/api/teacher/schedule/ai/extract")
+      .field("language", "ar")
+      .attach("files", Buffer.from("fixture"), {
+        filename: "schedule.png",
+        contentType: "image/png",
+      })
+      .expect(422);
+
+    expect(response.body.message).toContain("صوّر الصفحة كاملة من الأعلى مباشرة");
+    expect(response.body.warnings).toEqual([
+      "Retake the full page straight from above with even lighting and no shadows.",
+    ]);
+    expect(extractionMocks.refundCredits).toHaveBeenCalledOnce();
+    expect(extractionMocks.captureCredits).not.toHaveBeenCalled();
+  });
+
   it("requires an authenticated teacher session", async () => {
     const response = await request(makeApp(null)).get("/api/teacher/schedule");
 

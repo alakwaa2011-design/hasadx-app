@@ -37,13 +37,39 @@ const extractedBreakSchema = z.object({
 });
 
 const extractedScheduleSchema = z.object({
+  readability: z.enum(["readable", "unreadable"]).default("readable"),
   daySchedules: z.array(z.object({
     dayOfWeek: z.number().int().min(0).max(6),
     lessons: z.array(extractedLessonSchema).max(30).default([]),
     breaks: z.array(extractedBreakSchema).max(50).default([]),
-  })).min(1).max(7),
+  })).max(7),
   warnings: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
 }).superRefine((value, ctx) => {
+  if (value.readability === "unreadable") {
+    if (value.daySchedules.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["daySchedules"],
+        message: "لا يجوز إرجاع جدول عند تعذر قراءة محاذاة الخلايا",
+      });
+    }
+    if (value.warnings.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["warnings"],
+        message: "يجب توضيح سبب تعذر قراءة الصورة",
+      });
+    }
+    return;
+  }
+  if (value.daySchedules.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["daySchedules"],
+      message: "يجب أن يحتوي الجدول المقروء على يوم واحد على الأقل",
+    });
+    return;
+  }
   if (new Set(value.daySchedules.map((day) => day.dayOfWeek)).size !== value.daySchedules.length) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["daySchedules"], message: "تكرر اليوم في نتيجة الاستخراج" });
   }
@@ -66,6 +92,16 @@ const extractedScheduleSchema = z.object({
 });
 
 export type ExtractedTeacherSchedule = z.infer<typeof extractedScheduleSchema>;
+
+export class UnreadableTeacherScheduleImageError extends Error {
+  readonly warnings: string[];
+
+  constructor(warnings: string[]) {
+    super("Teacher schedule image alignment is unreadable");
+    this.name = "UnreadableTeacherScheduleImageError";
+    this.warnings = warnings;
+  }
+}
 
 function isClearlyNonLessonLabel(value: string): boolean {
   const normalized = value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
@@ -183,6 +219,7 @@ export function buildTeacherScheduleExtractionPrompt(language: "ar" | "en"): str
 
 Return ONLY valid JSON with this exact shape:
 {
+  "readability": "readable",
   "daySchedules": [
     {
       "dayOfWeek": 0,
@@ -212,6 +249,9 @@ Return ONLY valid JSON with this exact shape:
 }
 
 Rules:
+- Set readability to "readable" only when you can reliably align every returned time with BOTH its weekday and lesson/period position.
+- If camera angle, perspective distortion, blur, glare, shadow, cropping, or overlapping text makes either coordinate ambiguous, return exactly: {"readability":"unreadable","daySchedules":[],"warnings":["an actionable instruction to retake the photo"]}.
+- For an unreadable image, do not reconstruct, standardize, or guess a timetable. The warning must tell the teacher what to fix, such as photographing straight above the full page with even lighting and no shadows.
 - dayOfWeek MUST use: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6.
 - Include every visible schedule cell, including classes and every other local label or phrase printed in the grid.
 - A numbered row or column header is only a timetable position. It does NOT make the cell a lesson and must never replace the cell text.
@@ -235,7 +275,7 @@ Rules:
 - For any non-lesson entry, breakAfterLesson stores the visible timetable column/slot number itself. Any label under slot 3 must use 3 even if it is not a lesson. Use 0 ONLY when the cell is visibly under a separate unnumbered column such as "Other periods"; never use 0 merely because the model is unsure.
 - A visible period number never changes the entry type: RECESS in slot 7 remains a non-lesson entry titled RECESS, not lesson 7.
 - Multiple non-lesson periods may have the same visible period number. Keep all of them and preserve their chronological order through startTime.
-- If the horizontal column is ambiguous, keep the entry but set confidence to low and add a warning instead of assigning a guessed column.
+- If the weekday column or lesson/period position is ambiguous, the grid alignment is unreadable: return no entries and use the unreadable response described above.
 - Preserve the source order of days and entries. Do not sort cells by time or renumber them.
 - Do not force lesson numbers or non-lesson periods into a standard school order. Follow the source image exactly.
 - Do not normalize different weekdays into one common bell schedule. The output must retain the timetable printed for each individual day.
@@ -251,8 +291,12 @@ export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSch
   const candidate = fenced || trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
   const parsed = normalizeSchoolDayTimes(JSON.parse(candidate));
   const validated = extractedScheduleSchema.parse(parsed);
+  if (validated.readability === "unreadable") {
+    throw new UnreadableTeacherScheduleImageError(validated.warnings);
+  }
 
   return {
+    readability: validated.readability,
     daySchedules: validated.daySchedules
       .map((day) => {
         const normalizedLessons = day.lessons
