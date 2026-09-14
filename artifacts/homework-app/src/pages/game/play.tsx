@@ -3721,25 +3721,25 @@ export default function GamePlay() {
               initial={{ y: 80, opacity: 0, scale: 0.8 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -60, opacity: 0, scale: 0.8 }}
-              className="fixed bottom-7 left-1/2 -translate-x-1/2 z-50 w-[min(92vw,360px)] rounded-2xl border px-4 py-3.5 text-white shadow-2xl backdrop-blur-xl"
+              className="fixed bottom-7 left-1/2 z-50 w-fit max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-2xl border px-4 py-3.5 text-white shadow-2xl backdrop-blur-xl"
               style={{
-                background: `linear-gradient(135deg, ${encouragementMsg.color}26, rgba(8,24,17,0.94))`,
-                borderColor: `${encouragementMsg.color}70`,
-                boxShadow: `0 14px 40px rgba(0,0,0,0.35), 0 0 24px ${encouragementMsg.color}20`,
+                background: `linear-gradient(135deg, ${encouragementMsg.color}38, rgba(31,67,51,0.88))`,
+                borderColor: `${encouragementMsg.color}88`,
+                boxShadow: `0 14px 40px rgba(0,0,0,0.28), 0 0 24px ${encouragementMsg.color}28`,
               }}
             >
-              <div className="flex items-center gap-3" dir={dir}>
+              <div className="flex items-center justify-center gap-3 text-center" dir={dir}>
                 <div
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border"
                   style={{
                     color: encouragementMsg.color,
-                    borderColor: `${encouragementMsg.color}55`,
-                    background: `${encouragementMsg.color}18`,
+                    borderColor: `${encouragementMsg.color}70`,
+                    background: `${encouragementMsg.color}28`,
                   }}
                 >
                   <EncouragementIcon className="h-6 w-6" strokeWidth={2.4} />
                 </div>
-                <div className="min-w-0 text-start">
+                <div className="min-w-0 text-center">
                   <p className="text-base font-black leading-tight">
                     {encouragementMsg.title}
                   </p>
