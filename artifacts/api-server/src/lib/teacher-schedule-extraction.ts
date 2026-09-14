@@ -219,7 +219,13 @@ Rules:
 - lessonNumber is allowed only for a clearly taught class/course. Any standalone label or phrase that is not clearly a taught class—whether it says ADVISE, RECESS, PD, prayer, duty, meeting, an activity name, a note, or an unfamiliar local term—is a non-lesson period.
 - Use the full cell meaning, not keyword matching. Real course names such as "Assembly Language", "Software Development", and "Prayer Studies" remain lessons.
 - Treat the image as a fixed grid of cells. Determine each cell's column from its horizontal alignment with the visible header, not from its time, the nearest lesson, or a guessed school-day sequence.
-- Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes a shared period time; otherwise omit that lesson and add a warning.
+- Read EACH weekday independently from the image. A lesson number or slot number does not imply that its time matches the same slot on another weekday.
+- Every startTime and endTime belongs to the specific day cell being extracted. Copy the time aligned with that exact weekday and exact entry.
+- NEVER copy, propagate, standardize, or reuse Monday's times for Tuesday, one weekday's times for another weekday, or the first visible day's times for all days.
+- When the same lessonNumber has different times on different days, preserve every day's distinct times exactly. Example: Sunday lesson 1 at 08:00 and Monday lesson 1 at 09:15 must remain different.
+- A time header may be shared only when the image visibly shows that the header spans those exact weekday cells. If each weekday has its own times, the per-day times always take precedence.
+- Before returning JSON, cross-check every entry against both coordinates in the source grid: (1) its weekday row/column and (2) its lesson or period row/column.
+- Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes it for that specific weekday entry; otherwise omit that entry and add a warning.
 - For every entry, copy the primary cell text into title EXACTLY as written in the image; title must not be empty when visible text exists.
 - Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
 - If one cell contains multiple classes, preserve its visible text in className rather than inventing separate lessons.
@@ -232,6 +238,7 @@ Rules:
 - If the horizontal column is ambiguous, keep the entry but set confidence to low and add a warning instead of assigning a guessed column.
 - Preserve the source order of days and entries. Do not sort cells by time or renumber them.
 - Do not force lesson numbers or non-lesson periods into a standard school order. Follow the source image exactly.
+- Do not normalize different weekdays into one common bell schedule. The output must retain the timetable printed for each individual day.
 - Never invent missing days, lessons, subjects, classes, or times.
 - Preserve every visible schedule title, subject, class, and label in its original source language without translation.
 - Write only generated warnings in ${outputLanguage}.

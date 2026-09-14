@@ -112,6 +112,39 @@ describe("teacher schedule image extraction", () => {
     ]);
   });
 
+  it("preserves different times for the same lesson slot on different weekdays", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [
+        {
+          dayOfWeek: 0,
+          lessons: [
+            { lessonNumber: 1, title: "رياضيات", startTime: "07:30", endTime: "08:10", confidence: "high" },
+            { lessonNumber: 2, title: "علوم", startTime: "08:20", endTime: "09:00", confidence: "high" },
+          ],
+        },
+        {
+          dayOfWeek: 1,
+          lessons: [
+            { lessonNumber: 1, title: "لغة عربية", startTime: "09:15", endTime: "10:00", confidence: "high" },
+            { lessonNumber: 2, title: "تربية إسلامية", startTime: "10:10", endTime: "10:55", confidence: "high" },
+          ],
+        },
+      ],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons[0]).toMatchObject({
+      lessonNumber: 1,
+      startTime: "07:30",
+      endTime: "08:10",
+    });
+    expect(result.daySchedules[1].lessons[0]).toMatchObject({
+      lessonNumber: 1,
+      startTime: "09:15",
+      endTime: "10:00",
+    });
+  });
+
   it("preserves more than three visible breaks", () => {
     const breaks = Array.from({ length: 4 }, (_, index) => ({
       title: `استراحة ${index + 1}`,
@@ -186,6 +219,9 @@ describe("teacher schedule image extraction", () => {
     expect(prompt).toContain("A numbered row or column header is only a timetable position");
     expect(prompt).toContain("RECESS in slot 7 remains a non-lesson entry titled RECESS");
     expect(prompt).toContain('"Assembly Language", "Software Development", and "Prayer Studies" remain lessons');
+    expect(prompt).toContain("Read EACH weekday independently");
+    expect(prompt).toContain("NEVER copy, propagate, standardize, or reuse");
+    expect(prompt).toContain("Do not normalize different weekdays into one common bell schedule");
   });
 
   it("corrects ADVISE from a numbered lesson into its visible non-lesson period", () => {
