@@ -109,3 +109,4 @@
 - [Teacher library folders](teacher-library-folders.md) — teacher files use nested folders, and presentations stay embedded inside the library surface.
 - [Legacy assignment duplicate cleanup](legacy-assignment-duplicate-cleanup.md) — only surface exact source/content matches; archive untouched unused copies after teacher review.
 - [Presentation theme backgrounds](presentation-theme-backgrounds.md) — applying a deck theme must clear legacy per-slide solid backgrounds or the picker appears ineffective.
+- [Socket terminal recovery UI](socket-terminal-recovery.md) — terminal game screens must keep results and the reconnect affordance during browser offline and Socket.IO recovery.

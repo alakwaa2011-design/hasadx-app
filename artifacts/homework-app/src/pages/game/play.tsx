@@ -1529,6 +1529,13 @@ export default function GamePlay() {
 
     socket.on("disconnect", handleDisconnect);
     socket.io.on("reconnect_attempt", handleReconnect);
+    // Browser-level offline events can precede Socket.IO's transport
+    // disconnect, so surface the same recovery state immediately.
+    const handleBrowserOffline = () => {
+      if (hasJoinedOnceRef.current) setIsReconnecting(true);
+    };
+    window.addEventListener("offline", handleBrowserOffline);
+    window.addEventListener("online", handleReconnect);
 
     socket.on("game:players-updated", (data: any) => {
       setPlayers(data.players);
@@ -1945,7 +1952,11 @@ export default function GamePlay() {
       if (hackNotifTimerRef.current) clearTimeout(hackNotifTimerRef.current);
       setHackNotification(null);
       stopBackgroundBeat();
-      setPhase("lobby");
+      // A completed solo challenge already has its terminal UI mounted. Do
+      // not replace it with the lobby while the transport is recovering.
+      setPhase((currentPhase) =>
+        currentPhase === "finished" ? currentPhase : "lobby",
+      );
     });
 
     socket.on("game:hack-mode-toggled", (data: any) => {
@@ -2076,6 +2087,8 @@ export default function GamePlay() {
       socket.off("connect", doJoin);
       socket.off("disconnect", handleDisconnect);
       socket.io.off("reconnect_attempt", handleReconnect);
+      window.removeEventListener("offline", handleBrowserOffline);
+      window.removeEventListener("online", handleReconnect);
       socket.off("game:players-updated");
       socket.off("game:question");
       socket.off("game:answer-result");
@@ -5657,14 +5670,17 @@ export default function GamePlay() {
     // No podium, no "all players", no PIN-share, no "wait for teacher".
     if (isSoloChallengeRef.current) {
       return (
-        <SoloChallengeResults
-          myScore={myScore}
-          myName={myName}
-          lang={lang}
-          correctCount={soloCorrectCount}
-          totalQuestions={soloTotalQuestionsRef.current}
-          dir={dir}
-        />
+        <>
+          {reconnectBanner}
+          <SoloChallengeResults
+            myScore={myScore}
+            myName={myName}
+            lang={lang}
+            correctCount={soloCorrectCount}
+            totalQuestions={soloTotalQuestionsRef.current}
+            dir={dir}
+          />
+        </>
       );
     }
 

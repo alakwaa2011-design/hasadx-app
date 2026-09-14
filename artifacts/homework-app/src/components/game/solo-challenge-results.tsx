@@ -572,6 +572,7 @@ export function SoloChallengeResults({
           initial={{ opacity: 0, y: 24, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 130, damping: 18 }}
+          data-testid="solo-challenge-results"
           className="rounded-2xl sm:rounded-3xl text-center p-5 sm:p-8"
           style={{
             background: "rgba(255,255,255,0.06)",

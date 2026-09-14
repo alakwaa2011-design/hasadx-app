@@ -6,6 +6,7 @@ import {
   directPlayLinksTable,
   pool,
   questionsTable,
+  soloChallengesTable,
   teachersTable,
 } from "../../../../lib/db/src/index.ts";
 
@@ -14,6 +15,7 @@ type DirectPlayFixture = {
   classToken: string;
   soloToken: string;
   touchToken: string;
+  soloChallengeSlug: string;
 };
 
 let fixture: DirectPlayFixture | undefined;
@@ -140,6 +142,28 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
   const classToken = randomBytes(16).toString("hex");
   const soloToken = randomBytes(16).toString("hex");
   const touchToken = randomBytes(16).toString("hex");
+  const soloChallengeSlug = `e2e-reconnect-${suffix}`;
+  await db.insert(soloChallengesTable).values({
+    slug: soloChallengeSlug,
+    shortSlug: `e2e-reconnect-${suffix}`,
+    assignmentId: null,
+    teacherId: teacher.id,
+    assignmentTitle: `E2E reconnect challenge ${suffix}`,
+    questions: [
+      {
+        text: `سؤال إعادة الاتصال ${suffix}`,
+        questionType: "mcq",
+        optionA: "إجابة صحيحة",
+        optionB: "إجابة خاطئة",
+        optionC: "",
+        optionD: "",
+        correctAnswer: "A",
+      },
+    ],
+    timePerQuestion: 5,
+    leaderboardDisplay: "top20",
+    maxAttempts: 1,
+  });
   await db.insert(directPlayLinksTable).values([
     {
       token: classToken,
@@ -166,6 +190,7 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
     classToken,
     soloToken,
     touchToken,
+    soloChallengeSlug,
   };
 }
 
@@ -179,6 +204,7 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
 test.beforeAll(async () => {
   fixture = await createDirectPlayFixture();
 });
+
 
 
 test.afterAll(async () => {
@@ -377,5 +403,39 @@ test.describe("Public Wameeth direct links", () => {
     await expect(page.getByTestId("text-independent-result-title"))
       .toBeVisible({ timeout: 30_000 });
     expect(submittedAnswers).toBe(3);
+  });
+
+  test("solo challenge keeps its results screen across a reconnect", async ({
+    page,
+    context,
+  }) => {
+    if (!fixture) throw new Error("direct-play fixture is unavailable");
+
+    await page.goto(`/solo/${fixture.soloChallengeSlug}`);
+    await page.getByPlaceholder("اسمك هنا...").fill("اختبار انقطاع الاتصال");
+    await page.getByRole("button", { name: "ابدأ المسابقة", exact: true }).click();
+
+    // The self challenge starts immediately and the only question is allowed
+    // to expire. This exercises the real game:finished -> React results path.
+    await expect(page).toHaveURL(/\/game\/play\/[^?]+\?/, { timeout: 20_000 });
+    await expect(page.getByTestId("solo-challenge-results")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Simulate a real browser transport interruption after the final result
+    // has mounted. The banner proves the client observed the disconnect.
+    await context.setOffline(true);
+    await expect(page.getByRole("status")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("solo-challenge-results")).toBeVisible();
+    await expect(page.getByText(/بانتظار المعلم|Waiting for teacher/i)).toHaveCount(0);
+
+    await context.setOffline(false);
+    await expect(page.getByTestId("solo-challenge-results")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("status")).toHaveCount(0, { timeout: 15_000 });
+    await expect(page.getByText(/بانتظار المعلم|Waiting for teacher/i)).toHaveCount(0);
+    await expect(page.getByText(/اكتب اسمك للبدء|Enter your name to start/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "ابدأ المسابقة", exact: true })).toHaveCount(0);
   });
 });
