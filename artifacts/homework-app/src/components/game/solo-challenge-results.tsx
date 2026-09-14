@@ -377,7 +377,8 @@ export function SoloChallengeResults({
     );
   };
 
-  // Retry: navigate back to the solo entry page — starts fresh from name input.
+  // Retry: return to the entry page; the previously entered name is restored
+  // there and remains editable.
   const handleRetry = () => {
     window.location.href = `/solo/${soloSlug}`;
   };
@@ -833,21 +834,29 @@ export function SoloChallengeResults({
           }}
         >
           <img
-            src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-            alt=""
-            aria-hidden
-            className="w-9 h-9 rounded-lg object-cover opacity-90 shrink-0"
+            src={`${import.meta.env.BASE_URL}images/logo-mark-transparent.png`}
+            alt="حصاد"
+            className="w-10 h-10 object-contain shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-xs sm:text-sm leading-snug">
+            <div className="flex items-center gap-2 leading-none">
+              <span
+                className="font-extrabold text-base sm:text-lg"
+                style={{ color: "#C9A050" }}
+              >
+                حــصــاد
+              </span>
+              <span
+                className="font-black text-[9px] sm:text-[10px] tracking-[0.28em]"
+                style={{ color: "#C9A050" }}
+              >
+                HASAAD
+              </span>
+            </div>
+            <p className="text-white/60 text-[10px] sm:text-xs mt-1 truncate">
               {isAr
-                ? "أنشئ مسابقاتك وعروضك التفاعلية مع حصاد X"
-                : "Create interactive quizzes with HasadX"}
-            </p>
-            <p className="text-white/45 text-[10px] sm:text-xs mt-0.5 truncate">
-              {isAr
-                ? "الذكاء الاصطناعي • المسابقات • الواجبات • التفاعل المباشر"
-                : "AI · Quizzes · Homework · Live Interaction"}
+                ? "أنشئ مسابقاتك التفاعلية مع حصاد"
+                : "Create interactive quizzes with Hasaad"}
             </p>
           </div>
           <span
@@ -915,8 +924,8 @@ export function SoloChallengeResults({
               to stay subordinate to the primary green CTA above. */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <button
-              onClick={handleShare}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-all duration-200 active:scale-[0.97] hover:brightness-110"
+              onClick={handleRetry}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-all duration-200 active:scale-[0.97] hover:brightness-110 hover:-translate-y-[1px]"
               style={{
                 background:
                   "linear-gradient(135deg,#C9930A 0%,#E8B84B 50%,#C9930A 100%)",
@@ -925,12 +934,12 @@ export function SoloChallengeResults({
                   "0 6px 20px rgba(232,184,75,0.32), inset 0 1px 0 rgba(255,235,160,0.4)",
               }}
             >
-              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-              {isAr ? "شارك" : "Share"}
+              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+              {isAr ? "أعد المحاولة" : "Try again"}
             </button>
 
             <button
-              onClick={handleRetry}
+              onClick={handleShare}
               className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black text-white transition-all duration-200 active:scale-[0.97] hover:bg-white/[0.08]"
               style={{
                 background: "rgba(255,255,255,0.05)",
@@ -938,8 +947,8 @@ export function SoloChallengeResults({
                 backdropFilter: "blur(8px)",
               }}
             >
-              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-              {isAr ? "إعادة" : "Replay"}
+              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+              {isAr ? "شارك" : "Share"}
             </button>
           </div>
         </motion.div>

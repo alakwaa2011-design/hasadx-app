@@ -98,6 +98,8 @@ export default function SoloPlayPage() {
   useEffect(() => {
     if (!slug || typeof window === "undefined") return;
     try {
+      const savedName = localStorage.getItem(`hasad_solo_name_${slug}`);
+      if (savedName) setPlayerName(savedName);
       const finalRaw = localStorage.getItem(`hasad_solo_final_${slug}`) || localStorage.getItem(`hasad_solo_first_${slug}`);
       if (finalRaw && info?.maxAttempts !== 0) {
         const saved = JSON.parse(finalRaw) as { name?: string };
@@ -144,6 +146,7 @@ export default function SoloPlayPage() {
       return;
     }
     setNameError("");
+    localStorage.setItem(`hasad_solo_name_${slug}`, name);
     setStarting(true);
     try {
       const body: Record<string, unknown> = {};

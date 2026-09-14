@@ -4,9 +4,10 @@ import styles from "./wameeth-launch.module.css";
 interface WameethLaunchProps {
   status?: "idle" | "checking" | "found" | "error";
   variant?: "compact" | "large";
+  title?: string;
 }
 
-export function WameethLaunch({ status = "idle", variant = "compact" }: WameethLaunchProps) {
+export function WameethLaunch({ status = "idle", variant = "compact", title = "وميض" }: WameethLaunchProps) {
   return (
     <div
       className={`${styles.launchContainer} ${styles[`variant-${variant}`]} ${styles[`status-${status}`]}`}
@@ -33,7 +34,7 @@ export function WameethLaunch({ status = "idle", variant = "compact" }: WameethL
           transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className={styles.lightWash} />
-          <h2 className={styles.titleText}>وميض</h2>
+          <h2 className={styles.titleText}>{title}</h2>
         </motion.div>
 
         <div className={styles.speedCutsStart}><span /><span /></div>

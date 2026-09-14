@@ -2722,7 +2722,11 @@ export default function GamePlay() {
               </span>
             </motion.div>
           ) : (
-            <WameethLaunch status="checking" variant="large" />
+            <WameethLaunch
+              status="checking"
+              variant="large"
+              title={isSoloRef.current ? (lang === "ar" ? "مسابقة ذاتية" : "Self Challenge") : undefined}
+            />
           )}
         </div>
       </>
@@ -2803,7 +2807,11 @@ export default function GamePlay() {
           className="text-center max-w-md w-full"
         >
           <div className="mb-6 flex justify-center">
-            <WameethLaunch status="found" variant="large" />
+            <WameethLaunch
+              status="found"
+              variant="large"
+              title={isSoloRef.current ? (lang === "ar" ? "مسابقة ذاتية" : "Self Challenge") : undefined}
+            />
           </div>
           <h1 className="text-3xl font-black text-white mb-2">
             {lang === "ar" ? "استعد… التحدي على وشك البدء" : "Get ready... The challenge is about to begin"}
