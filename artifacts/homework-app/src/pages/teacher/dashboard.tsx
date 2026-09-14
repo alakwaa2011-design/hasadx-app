@@ -97,6 +97,7 @@ import {
   School,
   Orbit,
   QrCode,
+  AlertTriangle,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
@@ -294,6 +295,7 @@ function SidebarXpCard({
 
 type TabId =
   | "overview"
+  | "attention"
   | "credits"
   | "assignments"
   | "shared"
@@ -927,6 +929,14 @@ export default function TeacherDashboard() {
                   : (isAr ? "تمت استعادة الواجب" : "Assignment restored"));
               }).catch(() => toast.error(isAr ? "تعذر تحديث حالة الواجب" : "Could not update assignment"));
             }}
+          />
+        )}
+        {activeTab === "attention" && (
+          <AttentionAssignmentsTab
+            assignments={assignments || []}
+            lang={lang}
+            setLocation={setLocation}
+            onBack={() => setActiveTab("overview")}
           />
         )}
         {activeTab === "shared" && (
@@ -4239,6 +4249,113 @@ function StatsTab({
         </div>
       )}
     </div>
+  );
+}
+
+function AttentionAssignmentsTab({
+  assignments,
+  lang,
+  setLocation,
+  onBack,
+}: {
+  assignments: any[];
+  lang: "ar" | "en";
+  setLocation: (path: string) => void;
+  onBack: () => void;
+}) {
+  const isAr = lang === "ar";
+  const now = Date.now();
+  const items = assignments
+    .filter((assignment) => {
+      const deadline = assignment.deadline
+        ? new Date(assignment.deadline).getTime()
+        : null;
+      const isActive = !deadline || deadline >= now;
+      if (!isActive) return false;
+      const daysLeft = deadline
+        ? Math.ceil((deadline - now) / 86400000)
+        : null;
+      return (
+        (assignment.submissionCount === 0 && assignment.questionCount > 0) ||
+        (daysLeft !== null && daysLeft <= 3)
+      );
+    })
+    .sort((a, b) => {
+      const first = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const second = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return first - second;
+    });
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-black text-foreground sm:text-2xl">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            {isAr ? "واجبات بحاجة للمتابعة" : "Assignments needing attention"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isAr
+              ? "الواجبات التي لم تستقبل تسليمات أو اقترب موعدها النهائي."
+              : "Assignments with no submissions or an approaching deadline."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="min-h-10 shrink-0 rounded-xl border border-border bg-card px-4 text-sm font-bold text-foreground hover:bg-muted"
+        >
+          {isAr ? "العودة" : "Back"}
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 px-5 py-12 text-center">
+          <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-700" />
+          <h2 className="font-black text-emerald-950">
+            {isAr ? "كل شيء تحت المتابعة" : "Everything is on track"}
+          </h2>
+          <p className="mt-1 text-sm text-emerald-800/75">
+            {isAr ? "لا توجد واجبات تحتاج إلى تدخل الآن." : "No assignments need your attention right now."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {items.map((assignment) => {
+            const deadline = assignment.deadline
+              ? new Date(assignment.deadline)
+              : null;
+            const daysLeft = deadline
+              ? Math.max(0, Math.ceil((deadline.getTime() - now) / 86400000))
+              : null;
+            const noSubmissions = assignment.submissionCount === 0;
+            return (
+              <button
+                key={assignment.id}
+                type="button"
+                onClick={() => setLocation(`/teacher/assignment/${assignment.id}`)}
+                className="flex min-h-20 w-full items-center gap-3 rounded-2xl border border-amber-200/80 bg-card p-4 text-start shadow-sm transition hover:border-amber-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                  <BookText className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-black text-foreground">{assignment.title}</span>
+                  <span className="mt-1 block text-xs font-semibold text-amber-700">
+                    {noSubmissions
+                      ? (isAr ? "لم يستقبل أي تسليم بعد" : "No submissions yet")
+                      : (isAr ? `متبقٍ ${daysLeft} أيام على الموعد` : `${daysLeft} days until deadline`)}
+                  </span>
+                </span>
+                <span className="shrink-0 text-sm font-bold text-primary">
+                  {isAr ? "فتح الواجب" : "Open"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

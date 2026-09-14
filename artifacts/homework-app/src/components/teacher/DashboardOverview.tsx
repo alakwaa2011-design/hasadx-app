@@ -83,6 +83,7 @@ import {
 } from "@/lib/schedule-labels";
 type TabId =
   | "overview"
+  | "attention"
   | "assignments"
   | "shared"
   | "competitive"
@@ -561,7 +562,7 @@ export default function DashboardOverview({
           attentionCount={attentionCount}
           onCreate={() => setLocation("/teacher/new")}
           onLiveQuiz={() => setActiveTab("competitive")}
-          onShowAttention={() => setActiveTab("assignments")}
+          onShowAttention={() => setActiveTab("attention")}
           onShowClasses={() => setActiveTab("students")}
           onShowActiveAssignments={() => setActiveTab("assignments")}
           onShowSubmissions={() => setActiveTab("stats")}
@@ -825,6 +826,7 @@ export default function DashboardOverview({
             {/* Needs your attention */}
             {attentionItems.length > 0 && (
               <motion.section
+                id="dashboard-attention"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.18 }}
