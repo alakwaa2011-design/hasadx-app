@@ -1027,6 +1027,7 @@ function SettingsPanel({
                      ]).map(option => (
                        <button
                          key={option.value}
+                         data-testid={`selection-mode-${option.value}`}
                          onClick={() => onSelectionMode(option.value, maxQuestions)}
                          className={cn(
                            "rounded-xl border px-3 py-2.5 text-[11px] font-black transition-colors",
@@ -1067,7 +1068,7 @@ function SettingsPanel({
                        { key: "medium" as const, label: s.medium, color: "bg-amber-500" },
                        { key: "hard" as const, label: s.hard, color: "bg-red-500" },
                      ]).map(({ key, label, color }) => (
-                       <div key={key} className="flex items-center justify-between bg-card px-2 py-1.5 rounded-lg border shadow-sm">
+                       <div data-testid={`difficulty-row-${key}`} key={key} className="flex items-center justify-between bg-card px-2 py-1.5 rounded-lg border shadow-sm">
                          <span className={cn("text-[10px] font-black px-2 py-0.5 rounded text-white w-14 text-center", color)}>{label}</span>
                          <div className="flex items-center gap-1.5">
                            <button onClick={() => adjustDist(key, -1)} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center">−</button>
@@ -1079,11 +1080,11 @@ function SettingsPanel({
                    </div>
                    <div className="flex items-center justify-between border-t border-primary/10 pt-2 px-1">
                      <span className="text-[10px] font-bold text-primary">{s.total}</span>
-                     <span className={cn("text-xs font-black", maxQuestions !== undefined && distTotal > maxQuestions ? "text-destructive" : "text-primary")}>
+                     <span data-testid="difficulty-total" className={cn("text-xs font-black", maxQuestions !== undefined && distTotal > maxQuestions ? "text-destructive" : "text-primary")}>
                        {distTotal} {s.questions}
                      </span>
                    </div>
-                   <p className="text-[10px] font-medium text-muted-foreground">{s.classifyFirst}</p>
+                   <p data-testid="difficulty-classification-hint" className="text-[10px] font-medium text-muted-foreground">{s.classifyFirst}</p>
                  </div>
                )}
 

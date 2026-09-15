@@ -88,6 +88,7 @@
 - [PostgreSQL UPDATE RETURNING scope](postgres-update-returning-scope.md) — RETURNING may use the updated row, not aliases introduced through UPDATE FROM; mocks do not validate this SQL.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
+- [Browser test database schema lag](e2e-test-database-schema-lag.md) — the isolated Playwright database may lag behind Drizzle; verify fixture-table columns before diagnosing UI failures.
 - [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are the official reward-system identity; never expose emoji or legacy avatars as alternatives.
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Class reward balance](class-reward-balance.md) — class points use an independent balance and ledger; never distribute them to students or mix them with group scores.

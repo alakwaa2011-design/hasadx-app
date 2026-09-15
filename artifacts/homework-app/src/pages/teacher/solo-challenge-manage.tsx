@@ -622,6 +622,7 @@ export default function SoloChallengeManagePage() {
                            ]).map(option => (
                              <button
                                key={option.value}
+                               data-testid={`selection-mode-${option.value}`}
                                onClick={() => setSelectionMode(option.value)}
                                className={cn(
                                  "rounded-xl border px-3 py-2.5 text-xs font-black transition-colors",
@@ -646,7 +647,7 @@ export default function SoloChallengeManagePage() {
                            </div>
                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                              {(["easy", "medium", "hard"] as const).map(k => (
-                               <div key={k} className="bg-background rounded-xl p-3 border border-border/60 flex flex-col items-center gap-3 shadow-sm">
+                               <div data-testid={`difficulty-row-${k}`} key={k} className="bg-background rounded-xl p-3 border border-border/60 flex flex-col items-center gap-3 shadow-sm">
                                  <span className={cn("text-[11px] font-black px-3 py-1 rounded-md text-white w-full text-center", k === "easy" ? "bg-emerald-500" : k === "medium" ? "bg-amber-500" : "bg-red-500")}>
                                    {k === "easy" ? s.easy : k === "medium" ? s.medium : s.hard}
                                  </span>
@@ -660,11 +661,11 @@ export default function SoloChallengeManagePage() {
                            </div>
                            <div className="border-t border-border mt-4 pt-3 flex items-center justify-between px-2">
                              <span className="text-xs font-bold text-muted-foreground">{s.total}</span>
-                             <span className={cn("text-base font-black", editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard > challenge.questionCount ? "text-destructive" : "text-primary")}>
+                             <span data-testid="difficulty-total" className={cn("text-base font-black", editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard > challenge.questionCount ? "text-destructive" : "text-primary")}>
                                {editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard} {s.questions}
                              </span>
                            </div>
-                           <p className="text-[11px] font-medium text-muted-foreground mt-2">{s.classifyFirst}</p>
+                           <p data-testid="difficulty-classification-hint" className="text-[11px] font-medium text-muted-foreground mt-2">{s.classifyFirst}</p>
                          </div>
                        )}
 
