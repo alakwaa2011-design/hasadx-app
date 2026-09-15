@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n";
 import AudioPicker from "@/components/AudioPicker";
 import { QuestionImage } from "@/components/game/question-image";
 import { contentDirection } from "@/lib/content-direction";
+import { MathText, MathTextarea } from "@/components/math-text";
 
 export type Correct = "A" | "B" | "C" | "D";
 export type QuestionType = "mcq" | "tf" | "fill_blank";
@@ -84,12 +85,7 @@ export function QuestionCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2 mb-3 lg:mb-3.5 flex-wrap">
               <span className="w-6 h-6 lg:w-7 lg:h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center text-xs lg:text-sm font-black shrink-0 mt-0.5 border border-primary/20">{index + 1}</span>
-              <span
-                dir={contentDirection(q.text, dir)}
-                className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm font-bold leading-relaxed text-foreground lg:text-base"
-              >
-                {q.text}
-              </span>
+              <MathText text={q.text} fallbackDirection={dir} className="min-w-0 flex-1 text-sm font-bold leading-relaxed text-foreground lg:text-base" />
               {q.type === "fill_blank" && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/20 flex-shrink-0 flex items-center gap-1 mt-1">
                   <PenLine className="w-3 h-3" /> {copy.typeFillBlank}
@@ -207,12 +203,12 @@ export function QuestionCard({
           </button>
         </div>
       </div>
-      <textarea
+      <MathTextarea
         value={q.text}
-        onChange={e => onChange({ ...q, text: e.target.value })}
+        onValueChange={value => onChange({ ...q, text: value })}
         placeholder={copy.questionPlaceholder}
         aria-label={withNumber(copy.questionAria)}
-        dir={contentDirection(q.text, dir)}
+        language={dir === "rtl" ? "ar" : "en"}
         rows={2}
         className="w-full text-sm lg:text-base font-bold rounded-xl px-4 lg:px-5 py-3 lg:py-3.5 bg-muted/50 border border-border/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none mb-4 lg:mb-5 text-foreground placeholder:text-muted-foreground transition-all shadow-sm"
       />

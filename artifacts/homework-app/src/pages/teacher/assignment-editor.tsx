@@ -12,6 +12,7 @@ import { toast } from "@/components/ui/sonner";
 import { resolveImageUrl } from "@/lib/image-url";
 import { fileToBase64 } from "@/lib/utils";
 import { contentDirection } from "@/lib/content-direction";
+import { MathTextarea, MathText } from "@/components/math-text";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -251,7 +252,7 @@ function RevisionHistoryModal({
                  <h4 className="font-bold">{ar ? "الأسئلة" : "Questions"} ({previewData.questions?.length || 0})</h4>
                  {previewData.questions?.map((q: any, i: number) => (
                    <div key={q.id || i} className="p-3 border rounded-lg bg-card text-sm">
-                     <div className="font-bold mb-2">{i + 1}. {q.text}</div>
+                     <div className="font-bold mb-2">{i + 1}. <MathText text={q.text} fallbackDirection={ar ? "rtl" : "ltr"} /></div>
                      {q.questionType === "mcq" && (
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                          <div className={`p-2 rounded ${q.correctAnswer === "A" ? "bg-primary/20 text-primary border-primary border" : "bg-muted border border-border"}`}>A) {q.optionA}</div>
@@ -936,11 +937,11 @@ export function AssignmentEditor({ assignment, submissionsExist, onSave, onCance
                 <div className="space-y-4">
                   <div>
                     <Label className="text-xs mb-1">{ar ? "نص السؤال" : "Question Text"}</Label>
-                    <textarea
+                    <MathTextarea
                       value={q.text}
-                      onChange={(e) => updateQuestion(idx, "text", e.target.value)}
+                      onValueChange={(value) => updateQuestion(idx, "text", value)}
                       placeholder={ar ? "اكتب سؤالك هنا..." : "Type your question..."}
-                      dir={contentDirection(q.text, ar ? "rtl" : "ltr")}
+                      language={ar ? "ar" : "en"}
                       rows={2}
                       className="flex min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-bold leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />

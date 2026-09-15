@@ -18,6 +18,7 @@ import { ConfettiBurst } from "@/components/confetti-burst";
 import { feedbackOnSelect, feedbackOnCelebrate, isSolveSoundEnabled, setSolveSoundEnabled } from "@/lib/solve-feedback";
 import { resolveImageUrl } from "@/lib/image-url";
 import { contentDirection } from "@/lib/content-direction";
+import { MathText } from "@/components/math-text";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -869,12 +870,7 @@ export default function StudentSolve() {
                             {isAnswered ? <CheckCircle2 className="w-5 h-5" /> : i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p
-                              dir={contentDirection(q.text, dir)}
-                              className="whitespace-pre-wrap text-base font-bold leading-snug"
-                            >
-                              {q.text}
-                            </p>
+                            <MathText text={q.text} fallbackDirection={dir} className="text-base font-bold leading-snug" />
                           </div>
                           <span className="shrink-0 text-xs font-black bg-primary/15 text-primary dark:text-primary/80 px-2.5 py-1 rounded-lg">
                             {q.points} {t.solve.gradeUnit}
@@ -1183,7 +1179,10 @@ export default function StudentSolve() {
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${ans.isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                             {ans.isCorrect ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                           </div>
-                          <p className="font-bold text-sm flex-1">{t.solve.questionPrefix} {i + 1}: {ans.questionText}</p>
+                          <p className="font-bold text-sm flex-1">
+                            {t.solve.questionPrefix} {i + 1}:{" "}
+                            <MathText text={ans.questionText} fallbackDirection={dir} />
+                          </p>
                           <span className={`text-xs font-black px-2 py-0.5 rounded-lg shrink-0 ${ans.isCorrect ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'}`}>
                             {ans.earnedPoints} / {ans.points}
                           </span>
@@ -1688,12 +1687,7 @@ export default function StudentSolve() {
                               </AnimatePresence>
                             </motion.div>
                             <div className="flex-1 min-w-0">
-                              <p
-                                dir={contentDirection(q.text, dir)}
-                                className="whitespace-pre-wrap text-base md:text-lg font-bold leading-snug"
-                              >
-                                {q.text}
-                              </p>
+                              <MathText text={q.text} fallbackDirection={dir} className="text-base md:text-lg font-bold leading-snug" />
                             </div>
                             <span className="shrink-0 text-xs font-black bg-primary/8 text-primary px-2.5 py-1 rounded-lg">
                               {q.points} {t.solve.gradeUnit}
@@ -1942,12 +1936,9 @@ export default function StudentSolve() {
                   <div className="space-y-2">
                     {assignment.questions.map((q, i) => (
                       <div key={q.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-background border border-border">
-                        <span
-                          dir={contentDirection(q.text, dir)}
-                          className="whitespace-pre-wrap font-medium text-sm flex items-center gap-2"
-                        >
+                        <span className="font-medium text-sm flex items-center gap-2">
                           <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">{i + 1}</span>
-                          {q.text}
+                          <MathText text={q.text} fallbackDirection={dir} />
                         </span>
                         <span className="text-sm font-bold bg-secondary/10 text-secondary px-2 py-0.5 rounded-lg shrink-0 ms-2">
                           {q.points} {t.solve.gradeUnit}

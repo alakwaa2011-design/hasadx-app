@@ -36,6 +36,7 @@ import {
 } from "@/lib/credit-aware-fetch";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
 import { contentDirection } from "@/lib/content-direction";
+import { MathTextarea } from "@/components/math-text";
 import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
 import {
   getPublishBlockReason, hasAtLeastOneQuestion, DEFAULT_AI_QUESTION_COUNT,
@@ -2643,8 +2644,8 @@ export default function CreateAssignment() {
                                 </div>
 
                                 {/* Question text */}
-                                <textarea required value={q.text} onChange={e => handleQuestionChange(qIndex, 'text', e.target.value)} placeholder={t.createAssignment.questionPlaceholder}
-                                  dir={contentDirection(q.text, lang === "ar" ? "rtl" : "ltr")}
+                                <MathTextarea required value={q.text} onValueChange={value => handleQuestionChange(qIndex, 'text', value)} placeholder={t.createAssignment.questionPlaceholder}
+                                  language={lang === "ar" ? "ar" : "en"}
                                   rows={2}
                                   className="w-full resize-y bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-4 py-3 text-sm font-bold leading-relaxed text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all mb-2" />
 
@@ -2686,11 +2687,6 @@ export default function CreateAssignment() {
                                       </select>
                                     </div>
                                   </div>
-                                )}
-
-                                {/* Math toolbar (auto-open if math subject, or manually toggled) */}
-                                {(isMathSubject || mathToolbarFor === qIndex) && (
-                                  <MathPanel onInsert={sym => handleQuestionChange(qIndex, 'text', (q.text || "") + sym)} />
                                 )}
 
                                 {/* «أدوات السؤال» disclosure */}
