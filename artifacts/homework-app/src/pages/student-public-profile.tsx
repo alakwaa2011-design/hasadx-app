@@ -155,20 +155,6 @@ export default function StudentPublicProfile() {
           </div>
         </Card>
 
-        {/* Verification prompt — shown only to the profile owner when unverified */}
-        {isOwner && !student.isVerified && (
-          <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
-            <BadgeCheck className="w-4 h-4 shrink-0" />
-            <span>
-              {copy.unverifiedBefore}{" "}
-              <Link href="/student/login" className="font-semibold underline">
-                {copy.signInGoogle}
-              </Link>
-              {" "}{copy.unverifiedAfter}
-            </span>
-          </div>
-        )}
-
         {/* Owner link to dashboard */}
         {isOwner && (
           <p className="text-center text-xs text-gray-500">

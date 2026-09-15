@@ -32,7 +32,6 @@ import {
   X,
   CircleDot,
   DollarSign,
-  Route,
   Flame,
   ExternalLink,
   Gift,
@@ -533,12 +532,6 @@ export default function StudentDashboard() {
       icon: DollarSign,
       title: copy.million,
       color: "bg-amber-500/10 text-amber-600",
-    },
-    {
-      href: "/game/maraqui",
-      icon: Route,
-      title: copy.maraqui,
-      color: "bg-indigo-500/10 text-indigo-600",
     },
   ];
 
