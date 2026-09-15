@@ -51,6 +51,34 @@ describe("activity library subject preference", () => {
     expect(ordered).toHaveLength(activities.length);
   });
 
+  it("keeps legacy primarySubject preference when subjects is absent", () => {
+    const accountAfterReload = {
+      primarySubject: "الرياضيات",
+    };
+    const preferredSubjects = preferredSubjectsFromAccount(accountAfterReload);
+    const activities = [
+      { id: "newer-general", subject: "علوم", createdAt: "2026-09-15T10:00:00Z" },
+      { id: "legacy-subject", subject: "حساب وجبر", createdAt: "2026-09-10T10:00:00Z" },
+      { id: "other-subject", subject: "لغة عربية", createdAt: "2026-09-14T10:00:00Z" },
+    ];
+
+    const ordered = sortByPreferredSubject(
+      activities,
+      preferredSubjects,
+      (activity) => activity.subject,
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    expect(preferredSubjects).toEqual(["الرياضيات"]);
+    expect(preferredSubjectScore("حساب وجبر", preferredSubjects)).toBe(1);
+    expect(ordered.map((activity) => activity.id)).toEqual([
+      "legacy-subject",
+      "newer-general",
+      "other-subject",
+    ]);
+    expect(ordered).toHaveLength(activities.length);
+  });
+
   it.each([
     {
       label: "assignments",
@@ -95,7 +123,6 @@ describe("activity library subject preference", () => {
       item => item.subject,
       (a, b) => b.secondary - a.secondary,
     );
-
     expect(sorted.map(item => item.id)).toEqual([
       items[1].id,
       items[0].id,
