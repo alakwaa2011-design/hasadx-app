@@ -14,3 +14,9 @@ For browser-only visual checks with mocked API responses, block service workers 
 **Why:** Page-level interception alone appeared to match a mocked game request, yet the app still received a real unauthorized response. A fresh context with service workers blocked and context-level routes produced the intended isolated preview.
 
 **How to apply:** Use `browser.newContext({ serviceWorkers: "block" })` and `context.route(...)` for fixture-only screenshots; intercept all API calls and do not seed the shared database.
+
+An isolated test database can still be unusable when its schema predates the checked-in Drizzle schema; fixture inserts then fail before the browser flow starts.
+
+**Why:** E2E failures from missing columns can look like a product regression even though the app and test code never reach the route under test.
+
+**How to apply:** When E2E setup fails on a missing relation or column, report the stale test schema separately and do not alter product code or point fixtures at the shared database to bypass it.

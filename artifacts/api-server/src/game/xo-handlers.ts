@@ -8,7 +8,7 @@ import {
 
 interface XoPlayer { id: string; socketId: string; name: string; avatar: string; team: XoTeam; rejoinToken: string; }
 interface XoGame {
-  pin: string; teacherId: number; hostSocketId: string; questions: XoQuestion[]; state: XoState;
+  pin: string; teacherId: number; hostSocketId: string; questions: XoQuestion[]; state: XoState; title: string;
   /** Public direct-play rooms are controlled by this capability, not a
    * teacher session. It is never included in socket state. */
   publicHostControlToken?: string;
@@ -47,6 +47,7 @@ const publicState = (game: XoGame) => ({
   } : null,
   players: players(game),
   teamNames: game.teamNames,
+  title: game.title,
 });
 function socketControlToken(socket: { request: unknown }, suppliedToken?: unknown): string | undefined {
   if (typeof suppliedToken === "string" && suppliedToken.length > 0) return suppliedToken;
@@ -153,6 +154,12 @@ function safeTeamName(value: unknown, fallback: string): string {
     : fallback;
 }
 
+function safeTitle(value: unknown): string {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 160)
+    : "X O";
+}
+
 /**
  * Normalize a saved XO activity before exposing it to a public route or
  * creating a room. Unknown settings and question fields are deliberately
@@ -206,6 +213,7 @@ export function createXoGameFromRest(setup: XoRestSetup): XoRestRoom {
     publicHostControlToken: controlToken,
     questions: shuffledQuestions(questions),
     state: createXoState(),
+    title: safeTitle(setup.title),
     players: {},
     started: false,
     activeQuestion: questions[0],
@@ -240,7 +248,7 @@ export function setupXoSocket(io: Server) {
       const questions = shuffledQuestions(validatedQuestions);
       const pin = makePin();
       const game: XoGame = {
-        pin, teacherId, hostSocketId: socket.id, questions, state: createXoState(), players: {}, started: false,
+        pin, teacherId, hostSocketId: socket.id, questions, state: createXoState(), title: "X O", players: {}, started: false,
         activeQuestion: questions[0], lastCorrectSlot: -1,
         teamNames: {
           x: typeof data.teamX === "string" && data.teamX.trim() ? data.teamX.trim().slice(0, 40) : "X",

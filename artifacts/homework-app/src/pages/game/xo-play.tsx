@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 import { localizeXoError } from "@/lib/xo-error-messages";
 import { useSmartBack } from "@/lib/nav-history";
-import { XoName, normalizeXoTeamName } from "@/components/game/xo-display";
+import { XoName, XoTitle, normalizeXoTeamName } from "@/components/game/xo-display";
 import {
   getIsMuted,
   playCorrectSound,
@@ -36,7 +36,7 @@ type Question = {
   remainingSecs?: number;
 };
 type Player = { id: string; name: string; team: "x" | "o" };
-type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; timerRemainingSecs?: number; players?: Player[]; teamNames?: { x: string; o: string }; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
+type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; timerRemainingSecs?: number; players?: Player[]; teamNames?: { x: string; o: string }; title?: string; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
 
 function getWinningCells(board: Mark[]): number[] {
   const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
@@ -226,7 +226,7 @@ export default function XoPlay() {
             <Grid3X3 className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="font-black leading-tight text-foreground"><XoName /></h1>
+            <h1 className="font-black leading-tight text-foreground"><XoTitle title={snapshot.title} lang={ar ? "ar" : "en"} /></h1>
             <div className="text-xs font-bold tracking-widest text-muted-foreground flex items-center gap-1.5" dir="ltr">
               {ar ? "الرمز" : "PIN"}: <span className="font-mono text-primary">{pin}</span>
             </div>

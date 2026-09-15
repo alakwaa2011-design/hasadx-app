@@ -175,7 +175,7 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
   const [xoClassActivity] = await db.insert(savedGameActivitiesTable).values({
     teacherId: teacher.id,
     gameType: "xo",
-    title: `E2E XO Classroom ${suffix}`,
+    title: "XO Class",
     content: xoClassQuestions,
     settings: {
       duration: 10,
@@ -191,7 +191,7 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
   const [xoOnlineActivity] = await db.insert(savedGameActivitiesTable).values({
     teacherId: teacher.id,
     gameType: "xo",
-    title: `E2E XO Online ${suffix}`,
+    title: "إكس أو",
     content: xoOnlineQuestions,
     settings: {
       duration: 15,
@@ -523,6 +523,7 @@ test.describe("Public XO direct links", () => {
   }) => {
     if (!fixture) throw new Error("direct-play fixture is unavailable");
 
+    await page.addInitScript(() => localStorage.setItem("hw_lang", "ar"));
     await page.goto(`/play/${fixture.xoClassToken}`);
     await expect(page).toHaveURL(
       new RegExp(`/game/xo/class\\?token=${fixture.xoClassToken}`),
@@ -530,8 +531,13 @@ test.describe("Public XO direct links", () => {
     );
     await expect(page.getByText(/Class Blue/, { exact: false })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/Class Gold/, { exact: false })).toBeVisible();
-    await expect(page.getByText(/E2E XO Classroom/, { exact: false })).toBeVisible();
+    await expect(page.getByText("X O", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/إكس أو|XO Class/, { exact: false })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /نسخ الرابط|Copy link/i })).toHaveCount(1);
+
+    await page.getByRole("button", { name: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByText("X O", { exact: true }).first()).toBeVisible();
   });
 
   test("online link auto-starts persisted XO room without login or setup", async ({
@@ -539,12 +545,15 @@ test.describe("Public XO direct links", () => {
   }) => {
     if (!fixture) throw new Error("direct-play fixture is unavailable");
 
+    await page.addInitScript(() => localStorage.setItem("hw_lang", "en"));
     await page.goto(`/play/${fixture.xoOnlineToken}`);
     await expect(page).toHaveURL(/\/game\/xo\/play\/[^?]+\?creator=1.*token=/, {
       timeout: 20_000,
     });
     await expect(page.getByText(/Online Blue/, { exact: false })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/Online Gold/, { exact: false })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "X O", exact: true })).toBeVisible();
+    await expect(page.getByText("إكس أو", { exact: true })).toHaveCount(0);
     await expect(page.getByText(/اكتب اسمك للبدء|Enter your name to start/i)).toHaveCount(0);
   });
 });

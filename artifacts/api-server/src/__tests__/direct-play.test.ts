@@ -82,6 +82,7 @@ vi.mock("../game/rocket-handlers", () => ({
 import express from "express";
 import request from "supertest";
 import directPlayRouter, { canCreateDirectPlayLink } from "../routes/direct-play";
+import { createXoGameFromRest } from "../game/xo-handlers";
 
 function makeApp(session: { teacherId?: number } | null = null) {
   const app = express();
@@ -308,6 +309,41 @@ describe("AC-2  rocket_race — startRocketGameFromRest يُستدعى قبل ا
 });
 
 describe("XO saved direct play", () => {
+  it("keeps the normalized or custom title in the public room state", () => {
+    const customRoom = createXoGameFromRest({
+      questions: XO_CONTENT,
+      duration: 30,
+      teamX: "النمور",
+      teamO: "النسور",
+      title: "Teacher's XO tournament",
+    });
+    expect(customRoom.state.title).toBe("Teacher's XO tournament");
+
+    const defaultRoom = createXoGameFromRest({
+      questions: XO_CONTENT,
+      duration: 30,
+      title: "X O",
+    });
+    expect(defaultRoom.state.title).toBe("X O");
+  });
+
+  it("normalizes built-in public titles while preserving teacher titles", async () => {
+    push([{ ...LINK_ROW_XO_CLASS, savedTitle: "XO Class" }]);
+    const info = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/info`);
+    expect(info.status).toBe(200);
+    expect(info.body.title).toBe("X O");
+
+    push([{ ...LINK_ROW_XO_CLASS, title: "XO Class" }]);
+    const classroom = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/xo-class`);
+    expect(classroom.status).toBe(200);
+    expect(classroom.body.title).toBe("X O");
+
+    push([{ ...LINK_ROW_XO_CLASS, title: "Teacher's XO tournament" }]);
+    const custom = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/xo-class`);
+    expect(custom.status).toBe(200);
+    expect(custom.body.title).toBe("Teacher's XO tournament");
+  });
+
   it("returns only a sanitized classroom setup", async () => {
     push([LINK_ROW_XO_CLASS]);
     const res = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/xo-class`);

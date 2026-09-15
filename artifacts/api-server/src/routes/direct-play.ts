@@ -669,7 +669,7 @@ router.get("/play/:token/xo-class", async (req, res) => {
     const setup = sanitizeXoSetup(link.content, link.settings);
     if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية للعبة X O" });
     return res.json({
-      title: link.title,
+      title: normalizeXoTitle(link.title),
       duration: setup.duration,
       teamX: setup.teamX,
       teamO: setup.teamO,
