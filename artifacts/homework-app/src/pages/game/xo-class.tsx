@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 import { useLocation } from "wouter";
-import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, Clock, ArrowLeft, ArrowRight, Check, Copy, AlertCircle, X, Circle, Trophy, LogOut } from "lucide-react";
+import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, Clock, ArrowLeft, ArrowRight, Check, Copy, AlertCircle, X, Circle, Trophy } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Layout } from "@/components/layout";
 import { QuestionImage } from "@/components/game/question-image";
@@ -439,14 +439,24 @@ export default function XoClass() {
                       </h1>
                     </>
                   )}
-                  <button
-                    onClick={leaveGameSafely}
-                    className="mt-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-xl font-black text-primary-foreground shadow-xl transition-transform hover:scale-[1.02] hover:bg-primary/90"
-                    data-testid="button-xo-class-exit"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    {ar ? "خروج والرجوع" : "Exit and go back"}
-                  </button>
+                  <div className="mt-10 grid grid-cols-2 gap-3">
+                    <button
+                      onClick={leaveGameSafely}
+                      className="flex min-w-0 items-center justify-center gap-2 rounded-2xl border-2 border-border bg-background px-4 py-4 text-lg font-black text-foreground shadow-md transition hover:bg-muted"
+                      data-testid="button-xo-class-back"
+                    >
+                      {ar ? <ArrowRight className="h-5 w-5 shrink-0" /> : <ArrowLeft className="h-5 w-5 shrink-0" />}
+                      {ar ? "الرجوع" : "Go back"}
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: "restart" })}
+                      className="flex min-w-0 items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-4 text-lg font-black text-primary-foreground shadow-xl transition-transform hover:scale-[1.02] hover:bg-primary/90"
+                      data-testid="button-xo-class-replay"
+                    >
+                      <RotateCcw className="h-5 w-5 shrink-0" />
+                      {ar ? "إعادة اللعب" : "Play again"}
+                    </button>
+                  </div>
                 </div>
               )}
 
