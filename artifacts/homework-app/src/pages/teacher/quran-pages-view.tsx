@@ -52,6 +52,9 @@ export function QuranPagesView({
   startAyah,
   endAyah,
   mode,
+  readerBasePath = "/teacher/quran-reader",
+  backHref = "/teacher/quran-center?tab=dashboard",
+  backLabel,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -60,6 +63,9 @@ export function QuranPagesView({
   startAyah: number | null;
   endAyah: number | null;
   mode: string | null;
+  readerBasePath?: string;
+  backHref?: string;
+  backLabel?: { ar: string; en: string };
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -249,12 +255,14 @@ export function QuranPagesView({
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             <button
               type="button"
-               onClick={() => setLocation("/teacher/quran-center?tab=dashboard")}
+               onClick={() => setLocation(backHref)}
               className="flex items-center gap-1 text-sm font-bold text-emerald-700 hover:underline dark:text-emerald-400"
             >
               <ChevronLeft className="h-5 w-5 rtl:hidden" />
               <ChevronRight className="h-5 w-5 ltr:hidden" />
-               {lang === "ar" ? "العودة إلى مركز القرآن" : "Back to Quran Center"}
+                {backLabel
+                  ? (lang === "ar" ? backLabel.ar : backLabel.en)
+                  : (lang === "ar" ? "العودة إلى مركز القرآن" : "Back to Quran Center")}
             </button>
 
               <div className="order-3 flex w-full flex-wrap items-center justify-center gap-2 md:order-none md:w-auto md:flex-1">
@@ -262,7 +270,7 @@ export function QuranPagesView({
                  type="button"
                  onClick={() =>
                    setLocation(
-                     `/teacher/quran-reader/${activeChapterId}?ayah=${verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah}&view=reader`,
+                     `${readerBasePath}/${activeChapterId}?ayah=${verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah}&view=reader`,
                    )
                  }
                  className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"

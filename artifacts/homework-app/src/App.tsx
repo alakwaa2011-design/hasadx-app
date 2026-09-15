@@ -512,6 +512,7 @@ function Router() {
         <Route path="/student/login" component={StudentAuth} />
         <Route path="/student/register" component={StudentAuth} />
         <Route path="/student/quran-wards/:wardId" component={QuranReader} />
+        <Route path="/student/quran-practice/:surahNumber" component={QuranReader} />
         <Route path="/student/quran-journey" component={QuranJourneyPage} />
         <Route path="/student/dashboard" component={StudentDashboard} />
         

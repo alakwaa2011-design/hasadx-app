@@ -243,16 +243,16 @@ export default function QuranJourneyPage() {
                 </h2>
                 <p className="mt-3 max-w-lg text-sm font-medium leading-7 text-muted-foreground">
                   {lang === "ar"
-                    ? "لم يُسند لك معلمك وردًا بعد. ستظهر هنا مهامك وتقدمك عند إسناد أول ورد."
-                    : "Your teacher has not assigned a Quran ward yet. Your tasks and progress will appear here after your first assignment."}
+                    ? "ابدأ الآن بالقراءة والاستماع والتدرب على الحفظ. يمكنك التعلم بنفسك، وستظهر هنا أيضًا أي أوراد يسندها لك معلمك لاحقًا."
+                    : "Start reading, listening, and practicing memorization now. You can learn independently, and any future teacher assignments will also appear here."}
                 </p>
                 <Link
-                  href="/student/dashboard"
-                  className="mt-6 inline-flex items-center gap-2 rounded-xl border border-emerald-200 px-4 py-2.5 text-sm font-black text-emerald-800 transition-colors hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-                  data-testid="link-quran-empty-dashboard"
+                  href="/student/quran-practice/1?view=pages"
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-800"
+                  data-testid="link-quran-empty-practice"
                 >
-                  {lang === "ar" ? "العودة إلى لوحة الطالب" : "Back to dashboard"}
-                  {dir === "rtl" ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+                  {lang === "ar" ? "ابدأ القراءة والتدرب" : "Start reading and practicing"}
+                  {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
                 </Link>
               </CardContent>
             </Card>

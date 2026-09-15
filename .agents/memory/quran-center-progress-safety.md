@@ -80,3 +80,9 @@ Journey mastery counts unique approved ayahs, not the global ordinal of the furt
 **Why:** Non-contiguous assignments and overlapping review ranges otherwise inflate mastery and can count the same ayah more than once.
 
 **How to apply:** Derive mastery from the per-surah union of completed-recitation ranges; keep furthest Quran position and progress percentage as separate concepts.
+
+Student Quran reading and memorization practice is available independently of a teacher assignment, but self-study must remain distinct from teacher-approved mastery.
+
+**Why:** Students should be able to learn and practice from their own accounts without waiting for a teacher, while teacher-owned assessment data must remain trustworthy.
+
+**How to apply:** Keep the student practice reader accessible with no ward or roster link; if self-study history is persisted later, label it separately and never let it advance approved mastery without teacher review.

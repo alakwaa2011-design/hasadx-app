@@ -34,7 +34,6 @@ import {
   DollarSign,
   Route,
   Flame,
-  BadgeCheck,
   ExternalLink,
   Gift,
   Award,
@@ -80,7 +79,6 @@ interface StudentProfile {
   totalScore: number;
   gamesPlayed: number;
   rank: number;
-  isVerified?: boolean;
 }
 
 interface RecentScore {
@@ -135,7 +133,6 @@ export default function StudentDashboard() {
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [quranWards, setQuranWards] = useState<QuranWard[]>([]);
-  const [quranStudentProfileValid, setQuranStudentProfileValid] = useState(false);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [startingGameId, setStartingGameId] = useState<number | null>(null);
@@ -311,7 +308,6 @@ export default function StudentDashboard() {
       if (profileData) setStudent(profileData);
       setRecentScores(Array.isArray(scoresData) ? scoresData : []);
       setActivityDays(Array.isArray(daysData?.days) ? daysData.days : []);
-      setQuranStudentProfileValid(Array.isArray(quranWardsData));
       setQuranWards(Array.isArray(quranWardsData) ? quranWardsData : []);
     }).catch(() => setLocation("/student/login")).finally(() => setLoading(false));
   }, [setLocation]);
@@ -329,7 +325,6 @@ export default function StudentDashboard() {
 
         if (cancelled) return;
         if (response.status === 404) {
-          setQuranStudentProfileValid(false);
           setQuranWards([]);
           return;
         }
@@ -337,7 +332,6 @@ export default function StudentDashboard() {
 
         const data = await response.json();
         if (!Array.isArray(data)) return;
-        setQuranStudentProfileValid(true);
         setQuranWards(data);
       } catch {
         // Preserve the last successful Quran card during a temporary network failure.
@@ -810,7 +804,7 @@ export default function StudentDashboard() {
             </section>
           )}
 
-          {/* Public profile link + verification prompt */}
+          {/* Public profile link */}
           <div className="mb-6 animate-in fade-in duration-300 delay-75 space-y-2">
             <Link href={`/stu/${student.username}`}>
               <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer">
@@ -820,14 +814,6 @@ export default function StudentDashboard() {
                 <ExternalLink className="w-4 h-4 text-emerald-600 shrink-0" />
               </div>
             </Link>
-            {student.isVerified === false && (
-              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <BadgeCheck className="w-4 h-4 shrink-0" />
-                <span>
-                  {copy.unverified}
-                </span>
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8 animate-in fade-in duration-300 delay-100">
@@ -875,7 +861,7 @@ export default function StudentDashboard() {
             </Card>
           </div>
 
-          {student && quranStudentProfileValid && (
+          {student && (
             <section className="mb-8 animate-in fade-in duration-300 delay-100" aria-labelledby="student-quran-wards">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -949,13 +935,21 @@ export default function StudentDashboard() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-base font-black text-foreground">
-                        {lang === "ar" ? "لم يُسند لك ورد بعد" : "No Quran ward assigned yet"}
+                        {lang === "ar" ? "ابدأ رحلتك مع القرآن" : "Start your Quran journey"}
                       </h3>
                       <p className="mt-1 text-sm font-medium leading-6 text-muted-foreground">
                         {lang === "ar"
-                          ? "لم يسند لك معلمك وردًا بعد. ستظهر مهامك هنا عند إسنادها."
-                          : "Your teacher has not assigned a Quran ward yet. Your tasks will appear here when they do."}
+                          ? "اقرأ من مصحف الصفحات، استمع للآيات، وتدرّب على الحفظ في أي وقت. لا تحتاج إلى انتظار ورد من المعلم."
+                          : "Read the pages Mushaf, listen to ayahs, and practice memorization anytime. You do not need to wait for a teacher assignment."}
                       </p>
+                      <Link
+                        href="/student/quran-practice/1?view=pages"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-800"
+                        data-testid="link-student-quran-practice"
+                      >
+                        {lang === "ar" ? "ابدأ القراءة والتدرب" : "Start reading and practicing"}
+                        {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                      </Link>
                     </div>
                   </div>
                 </Card>

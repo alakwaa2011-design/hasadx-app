@@ -23,6 +23,8 @@ export default function QuranReader() {
   const params = useParams<{ surahNumber?: string; wardId?: string }>();
   const [, setLocation] = useLocation();
   const isStudentWard = window.location.pathname.includes('/student/quran-wards/');
+  const isStudentPractice = window.location.pathname.includes('/student/quran-practice/');
+  const readerBasePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
   const searchParams = new URLSearchParams(window.location.search);
   
   const queryStartAyah = searchParams.get('startAyah') ? parseInt(searchParams.get('startAyah')!, 10) : null;
@@ -94,11 +96,19 @@ export default function QuranReader() {
       <QuranPagesView
         initialSurah={surahNumber}
         initialAyah={requestedAyah ?? startAyah ?? 1}
-        onNavigate={(loc) => setLocation(`/teacher/quran-reader/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
+        onNavigate={(loc) => setLocation(`${readerBasePath}/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
         isTaskAyah={(sId, aNum) => sId === surahNumber && startAyah !== null && endAyah !== null && aNum >= startAyah && aNum <= endAyah}
         startAyah={startAyah}
         endAyah={endAyah}
         mode={mode}
+        readerBasePath={readerBasePath}
+        backHref={isStudentPractice ? "/student/dashboard" : undefined}
+        backLabel={isStudentPractice
+          ? {
+              ar: "العودة إلى لوحة الطالب",
+              en: "Back to student dashboard",
+            }
+          : undefined}
       />
     );
   }
@@ -110,6 +120,7 @@ export default function QuranReader() {
     mode={mode}
     requestedAyah={requestedAyah}
     isStudentWard={isStudentWard}
+    isStudentPractice={isStudentPractice}
     wardId={studentWard?.id}
   />;
 }
@@ -121,10 +132,11 @@ interface ReaderViewProps {
   mode: string | null;
   requestedAyah: number | null;
   isStudentWard: boolean;
+  isStudentPractice: boolean;
   wardId?: number;
 }
 
-function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isStudentWard, wardId }: ReaderViewProps) {
+function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isStudentWard, isStudentPractice, wardId }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
 
@@ -206,7 +218,8 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
 
   const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
     if (isStudentWard) return;
-    setLocation(`/teacher/quran-reader/${surah}?ayah=${ayah}&view=reader`);
+    const basePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
+    setLocation(`${basePath}/${surah}?ayah=${ayah}&view=reader`);
   };
 
   const isTaskAyah = (index: number) => {
@@ -311,12 +324,12 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             <button 
-              onClick={() => setLocation(isStudentWard ? '/student/dashboard' : '/teacher/quran-center?tab=dashboard')}
+              onClick={() => setLocation(isStudentWard || isStudentPractice ? '/student/dashboard' : '/teacher/quran-center?tab=dashboard')}
               className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
             >
               <ChevronLeft className="w-5 h-5 rtl:hidden" />
               <ChevronRight className="w-5 h-5 ltr:hidden" />
-              {isStudentWard
+              {isStudentWard || isStudentPractice
                 ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
                 : (lang === 'ar' ? 'العودة إلى مركز القرآن' : 'Back to Quran Center')}
             </button>
@@ -329,7 +342,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
                   {lang === 'ar' ? 'نص القرآن' : 'Quran Text'}
                 </span>
                 <a
-                  href={`/teacher/quran-reader/${surahNumber}?ayah=${activeAyahURL}&view=pages`}
+                  href={`${isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader'}/${surahNumber}?ayah=${activeAyahURL}&view=pages`}
                   className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
                 >
                   {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}

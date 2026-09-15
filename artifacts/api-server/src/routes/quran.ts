@@ -418,7 +418,22 @@ router.get("/quran/me/journey", async (req, res): Promise<void> => {
       id: studentsTable.id,
       teacherId: studentsTable.teacherId,
     }).from(studentsTable).where(eq(studentsTable.studentAccountId, studentAccountId));
-    if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+    if (!student) {
+      const emptyJourney = calculateQuranJourney({
+        profile: {
+          currentSurahNumber: null,
+          currentAyah: null,
+          progressPercent: 0,
+          masteredAyahCount: 0,
+          lastRecitedDate: null,
+        },
+        wards: [],
+        recitations: [],
+        submissions: [],
+      });
+      res.json(GetQuranJourneyResponse.parse(emptyJourney));
+      return;
+    }
 
     const [profile, wards, recitations, submissions] = await Promise.all([
       db.select({
