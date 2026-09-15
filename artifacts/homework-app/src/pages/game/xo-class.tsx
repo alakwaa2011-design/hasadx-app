@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 import { useLocation } from "wouter";
-import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, Clock, ArrowLeft, ArrowRight, Check, Copy, AlertCircle, X, Circle, Trophy } from "lucide-react";
+import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, Clock, ArrowLeft, ArrowRight, Check, Copy, AlertCircle, X, Circle, Trophy, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Layout } from "@/components/layout";
 import { QuestionImage } from "@/components/game/question-image";
@@ -12,6 +12,7 @@ import { decodeXoClassSetup, encodeXoClassSetup, type XoClassSetup } from "@/lib
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
+import { useSmartBack } from "@/lib/nav-history";
 
 export const XO_CLASS_SETUP_KEY = "xo-class-setup";
 type Setup = XoClassSetup;
@@ -188,6 +189,7 @@ export default function XoClass() {
   const { lang, dir } = useI18n();
   const ar = lang === "ar";
   const [, navigate] = useLocation();
+  const leaveGameSafely = useSmartBack("/game/xo/create");
   const setup = useRef<Setup | null>(null);
 
   if (!setup.current) {
@@ -438,10 +440,12 @@ export default function XoClass() {
                     </>
                   )}
                   <button
-                    onClick={() => dispatch({ type: "restart" })}
-                    className="mt-10 w-full rounded-2xl bg-primary px-6 py-4 text-xl font-black text-primary-foreground shadow-xl transition-transform hover:scale-105 hover:bg-primary/90"
+                    onClick={leaveGameSafely}
+                    className="mt-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-xl font-black text-primary-foreground shadow-xl transition-transform hover:scale-[1.02] hover:bg-primary/90"
+                    data-testid="button-xo-class-exit"
                   >
-                    {ar ? "لعبة جديدة" : "Play again"}
+                    <LogOut className="h-5 w-5" />
+                    {ar ? "خروج والرجوع" : "Exit and go back"}
                   </button>
                 </div>
               )}

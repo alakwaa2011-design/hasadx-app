@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
-import { Grid3X3, Volume2, VolumeX, Copy, Play, SkipForward, Square, Circle, X, CheckCircle, XCircle, Clock, RotateCcw, Trophy } from "lucide-react";
+import { Grid3X3, Volume2, VolumeX, Copy, Play, SkipForward, Square, Circle, X, CheckCircle, XCircle, Clock, Trophy, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getXoSocket } from "@/lib/xo-socket";
 import { QuestionImage } from "@/components/game/question-image";
@@ -10,6 +10,7 @@ import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 import { localizeXoError } from "@/lib/xo-error-messages";
+import { useSmartBack } from "@/lib/nav-history";
 import {
   getIsMuted,
   playCorrectSound,
@@ -49,6 +50,7 @@ export default function XoPlay() {
   const ar = lang === "ar";
   const creator = new URLSearchParams(search).get("creator") === "1";
   const name = new URLSearchParams(search).get("name") || "";
+  const leaveGameSafely = useSmartBack(creator ? "/game/xo/create" : "/game/xo/join");
 
   const [snapshot, setSnapshot] = useState<Snapshot>({ board: Array(9).fill(null), phase: "connecting" });
   const [selected, setSelected] = useState<number | null>(null);
@@ -111,15 +113,15 @@ export default function XoPlay() {
     });
 
     socket.on("xo:ended", () => {
-      toast.info(ar ? "أنهى المعلم اللعبة" : "The teacher ended the game");
-      navigate("/game/xo/join");
+      if (!creator) toast.info(ar ? "أنهى المعلم اللعبة" : "The teacher ended the game");
+      leaveGameSafely();
     });
     socket.on("xo:error", (d: { message?: string } | string) => {
       const message = typeof d === "string" ? d : d.message;
       toast.error(localizeXoError(message, ar, ar ? "خطأ في اللعبة" : "XO error"));
     });
     return () => { events.forEach(([e, h]) => socket.off(e, h)); socket.off("connect", initialise); socket.off("xo:answer-result"); socket.off("xo:ended"); socket.off("xo:error"); };
-  }, [ar, creator, merge, name, navigate, pin]);
+  }, [ar, creator, leaveGameSafely, merge, name, pin]);
 
   useEffect(() => {
     const q = snapshot.question;
@@ -434,13 +436,14 @@ export default function XoPlay() {
               </div>
             </div>
 
-            {isFinished && creator && (
+            {isFinished && (
               <button
-                onClick={() => emit("replay")}
+                onClick={() => creator ? emit("end") : leaveGameSafely()}
                 className="mt-10 flex w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 text-lg font-black text-primary-foreground shadow-lg hover:bg-primary/90"
+                data-testid="button-xo-exit"
               >
-                <RotateCcw className="h-5 w-5" />
-                {ar ? "لعبة جديدة" : "Play again"}
+                <LogOut className="h-5 w-5" />
+                {ar ? "خروج والرجوع" : "Exit and go back"}
               </button>
             )}
 
