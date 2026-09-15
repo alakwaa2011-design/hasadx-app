@@ -12,6 +12,7 @@ const RUN_INTEGRATION =
 
 describe.skipIf(!RUN_INTEGRATION)("library subjects and brief preferences", () => {
   let teacherId = 0;
+  const teacherIdsToCleanup = new Set<number>();
   const app = express();
 
   app.use(express.json());
@@ -37,11 +38,12 @@ describe.skipIf(!RUN_INTEGRATION)("library subjects and brief preferences", () =
       RETURNING id
     `);
     teacherId = Number((inserted.rows[0] as { id: number }).id);
+    teacherIdsToCleanup.add(teacherId);
   });
 
   afterAll(async () => {
-    if (teacherId) {
-      await db.execute(sql`DELETE FROM teachers WHERE id = ${teacherId}`);
+    for (const id of teacherIdsToCleanup) {
+      await db.execute(sql`DELETE FROM teachers WHERE id = ${id}`);
     }
   });
 
@@ -83,5 +85,48 @@ describe.skipIf(!RUN_INTEGRATION)("library subjects and brief preferences", () =
       primarySubject: subjects[0],
       subjects,
     });
+  });
+
+  it("keeps a custom subject from registration after saving settings and reopening the account", async () => {
+    const customSubject = "التصميم الصناعي";
+    const email = `custom_subject_${Date.now()}@test.local`;
+    const registration = await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "Custom subject test",
+        email,
+        password: "custom-subject-password",
+        subjects: [customSubject],
+      });
+
+    expect(registration.status).toBe(201);
+
+    const inserted = await db.execute(sql`
+      SELECT id, preferences
+      FROM teachers
+      WHERE email = ${email}
+      LIMIT 1
+    `);
+    const registeredTeacher = inserted.rows[0] as {
+      id: number;
+      preferences: { subjects?: string[] } | null;
+    };
+    expect(registeredTeacher).toBeDefined();
+    expect(registeredTeacher.preferences?.subjects).toEqual([customSubject]);
+
+    teacherId = Number(registeredTeacher.id);
+    teacherIdsToCleanup.add(teacherId);
+
+    const savedFromSettings = await request(app)
+      .patch("/api/auth/profile")
+      .send({ subjects: [customSubject, "العلوم"] });
+    expect(savedFromSettings.status).toBe(200);
+    expect(savedFromSettings.body.subjects).toEqual([customSubject, "العلوم"]);
+
+    // A fresh request represents reopening the account after the settings save.
+    const reopenedAccount = await request(app).get("/api/auth/me");
+    expect(reopenedAccount.status).toBe(200);
+    expect(reopenedAccount.body.subjects).toEqual([customSubject, "العلوم"]);
+    expect(reopenedAccount.body.primarySubject).toBe(customSubject);
   });
 });
