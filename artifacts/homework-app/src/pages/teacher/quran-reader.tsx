@@ -267,15 +267,32 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             <button 
-              onClick={() => setLocation(isStudentWard ? '/student/dashboard' : '/teacher/quran-center?tab=mushaf')}
+              onClick={() => setLocation(isStudentWard ? '/student/dashboard' : '/teacher/quran-center?tab=dashboard')}
               className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
             >
               <ChevronLeft className="w-5 h-5 rtl:hidden" />
               <ChevronRight className="w-5 h-5 ltr:hidden" />
               {isStudentWard
                 ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
-                : (lang === 'ar' ? 'العودة إلى المصحف' : 'Back to Mushaf')}
+                : (lang === 'ar' ? 'العودة إلى مركز القرآن' : 'Back to Quran Center')}
             </button>
+            {!isStudentWard && (
+              <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1">
+                <span
+                  aria-current="page"
+                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-emerald-800 shadow-sm dark:bg-card dark:text-emerald-200 md:text-sm"
+                >
+                  {lang === 'ar' ? 'نص القرآن' : 'Quran Text'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLocation(`/teacher/quran-reader/${surahNumber}?ayah=${activeAyahURL}&view=pages`)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
+                >
+                  {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
+                </button>
+              </div>
+            )}
             
             <div className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:w-auto md:flex-1">
               <select 

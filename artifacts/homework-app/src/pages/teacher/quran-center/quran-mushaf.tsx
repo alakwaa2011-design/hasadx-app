@@ -30,16 +30,16 @@ export function QuranMushafView() {
           </div>
           
           <h3 className="text-xl md:text-2xl font-black text-foreground mb-3">
-            {lang === "ar" ? "القارئ الإلكتروني" : "Electronic Reader"}
+            {lang === "ar" ? "نص القرآن" : "Quran Text"}
           </h3>
           <p className="text-muted-foreground text-sm md:text-base font-medium mb-8 flex-1">
             {lang === "ar"
-              ? "نص متدفق يمكن تكبيره بحرية. مناسب جداً للبحث السريع وإنجاز مهام الحفظ والمراجعة التي تتطلب التحديد بين آيتين."
-              : "Flowing text that can be freely scaled. Perfect for quick searches and completing memorization tasks spanning specific verses."}
+              ? "نص القرآن الإلكتروني للبحث والقراءة ومهام الحفظ والمراجعة."
+              : "Electronic Quran text for reading, searching, memorization, and review."}
           </p>
 
           <Link href="/teacher/quran-reader/1?view=reader" className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3.5 bg-emerald-600 text-white rounded-xl font-bold shadow hover:bg-emerald-700 active:scale-95 transition-all">
-            {lang === "ar" ? "فتح القارئ" : "Open Reader"}
+            {lang === "ar" ? "فتح نص القرآن" : "Open Quran Text"}
             <ArrowRight className="w-5 h-5 rtl:rotate-180" />
           </Link>
         </div>
