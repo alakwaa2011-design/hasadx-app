@@ -50,4 +50,57 @@ describe("activity library subject preference", () => {
     ]);
     expect(ordered).toHaveLength(activities.length);
   });
+
+  it.each([
+    {
+      label: "assignments",
+      items: [
+        { id: "assignment-matching-old", subject: "الروبوتات", secondary: 2 },
+        { id: "assignment-matching-new", subject: "الروبوتات", secondary: 4 },
+        { id: "assignment-other-new", subject: "العلوم", secondary: 5 },
+        { id: "assignment-other-old", subject: "العلوم", secondary: 1 },
+      ],
+    },
+    {
+      label: "questions",
+      items: [
+        { id: "question-matching-low", subject: "الروبوتات", secondary: 1 },
+        { id: "question-matching-high", subject: "الروبوتات", secondary: 3 },
+        { id: "question-other-high", subject: "العلوم", secondary: 4 },
+        { id: "question-other-low", subject: "العلوم", secondary: 2 },
+      ],
+    },
+    {
+      label: "videos",
+      items: [
+        { id: "video-matching-old", subject: "الروبوتات", secondary: 2 },
+        { id: "video-matching-new", subject: "الروبوتات", secondary: 5 },
+        { id: "video-other-new", subject: "العلوم", secondary: 6 },
+        { id: "video-other-old", subject: "العلوم", secondary: 1 },
+      ],
+    },
+    {
+      label: "live activities",
+      items: [
+        { id: "live-matching-low", subject: "الروبوتات", secondary: 2 },
+        { id: "live-matching-high", subject: "الروبوتات", secondary: 7 },
+        { id: "live-other-high", subject: "العلوم", secondary: 8 },
+        { id: "live-other-low", subject: "العلوم", secondary: 1 },
+      ],
+    },
+  ])("$label put saved custom-subject matches first without changing secondary order", ({ items }) => {
+    const sorted = sortByPreferredSubject(
+      items,
+      ["الروبوتات"],
+      item => item.subject,
+      (a, b) => b.secondary - a.secondary,
+    );
+
+    expect(sorted.map(item => item.id)).toEqual([
+      items[1].id,
+      items[0].id,
+      items[2].id,
+      items[3].id,
+    ]);
+  });
 });
