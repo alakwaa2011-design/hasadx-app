@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 import { localizeXoError } from "@/lib/xo-error-messages";
 import { useSmartBack } from "@/lib/nav-history";
+import { XoName, normalizeXoTeamName } from "@/components/game/xo-display";
 import {
   getIsMuted,
   playCorrectSound,
@@ -122,7 +123,7 @@ export default function XoPlay() {
     });
     socket.on("xo:error", (d: { message?: string } | string) => {
       const message = typeof d === "string" ? d : d.message;
-      toast.error(localizeXoError(message, ar, ar ? "خطأ في اللعبة" : "XO error"));
+      toast.error(localizeXoError(message, ar, ar ? "خطأ في اللعبة" : "X O error"));
     });
     return () => { events.forEach(([e, h]) => socket.off(e, h)); socket.off("connect", initialise); socket.off("xo:answer-result"); socket.off("xo:ended"); socket.off("xo:error"); };
   }, [ar, creator, leaveGameSafely, merge, name, pin]);
@@ -192,7 +193,8 @@ export default function XoPlay() {
   const permanentUrl = directToken
     ? `${window.location.origin}${import.meta.env.BASE_URL || "/"}play/${encodeURIComponent(directToken)}`
     : null;
-  const team = snapshot.teamNames?.[snapshot.turn ?? "x"] ?? snapshot.turn?.toUpperCase() ?? "X";
+  const turn = snapshot.turn ?? "x";
+  const team = normalizeXoTeamName(snapshot.teamNames?.[turn], turn, ar ? "ar" : "en");
   const myTeam = snapshot.players?.find(p => p.id === playerId)?.team;
   const isFinished = snapshot.phase === "finished" || snapshot.winner;
 
@@ -224,7 +226,7 @@ export default function XoPlay() {
             <Grid3X3 className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="font-black leading-tight text-foreground">{ar ? "إكس أو" : "XO"}</h1>
+            <h1 className="font-black leading-tight text-foreground"><XoName /></h1>
             <div className="text-xs font-bold tracking-widest text-muted-foreground flex items-center gap-1.5" dir="ltr">
               {ar ? "الرمز" : "PIN"}: <span className="font-mono text-primary">{pin}</span>
             </div>
@@ -440,7 +442,7 @@ export default function XoPlay() {
             <div className="relative mx-auto aspect-square w-full max-w-[340px] rounded-[2rem] bg-gradient-to-br from-[#367a58] via-[#225739] to-[#153b29] p-3 shadow-[0_24px_55px_rgba(15,60,40,0.28),inset_0_1px_0_rgba(255,255,255,0.28)] ring-4 ring-[#d6b65c]/30 sm:p-4">
               <div className="pointer-events-none absolute inset-2 rounded-[1.6rem] bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.18),transparent_55%)]" />
               {/* Interactive Cells */}
-              <div role="grid" aria-label={ar ? "لوحة إكس أو" : "XO board"} className="relative grid h-full grid-cols-3 grid-rows-3 gap-2.5 sm:gap-3">
+              <div role="grid" aria-label={ar ? "لوحة X O" : "X O board"} className="relative grid h-full grid-cols-3 grid-rows-3 gap-2.5 sm:gap-3">
                 {board.map((mark, i) => {
                   const isX = mark === "x";
                   const isO = mark === "o";
@@ -487,7 +489,7 @@ export default function XoPlay() {
                 <span className="text-muted-foreground">{ar ? "فريقك:" : "Your team:"}</span>
                 <span className={cn("flex items-center gap-1", myTeam === 'x' ? 'text-blue-600' : 'text-amber-500')}>
                   {myTeam === 'x' ? <X className="h-4 w-4" strokeWidth={3} /> : <Circle className="h-4 w-4" strokeWidth={3} />}
-                  {snapshot.teamNames?.[myTeam] || myTeam.toUpperCase()}
+                  {normalizeXoTeamName(snapshot.teamNames?.[myTeam], myTeam, ar ? "ar" : "en")}
                 </span>
               </div>
             )}

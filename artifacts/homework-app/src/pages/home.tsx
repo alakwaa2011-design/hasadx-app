@@ -62,6 +62,7 @@ import { hasSavedDraft } from "@/lib/guest-draft";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
 import { XoIcon, SelfChallengeIcon } from "@/components/game-icons";
+import { XoName } from "@/components/game/xo-display";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GUEST_COUNT_KEY = "guestUsageCount";
@@ -247,7 +248,7 @@ const QUICK_LIVE_GAMES: Array<{
 }> = [
   { key: "knowledge_race", icon: "⚡", titleAr: "وميض", titleEn: "Wameedh", descAr: "مسابقة حية سريعة للصف", descEn: "Fast live classroom quiz" },
   { key: "tug_of_war", icon: "🪢", titleAr: "شد الحبل", titleEn: "Tug of War", descAr: "فريقان يتنافسان بالإجابات", descEn: "Two teams battle with answers" },
-  { key: "xo", icon: <XoIcon size={28} />, titleAr: "إكس أو", titleEn: "XO", descAr: "أجب ثم ضع علامتك على اللوحة", descEn: "Answer, then place your mark" },
+  { key: "xo", icon: <XoIcon size={28} />, titleAr: "X O", titleEn: "X O", descAr: "أجب ثم ضع علامتك على اللوحة", descEn: "Answer, then place your mark" },
   { key: "escape_room", icon: "🔐", titleAr: "غرفة الهروب", titleEn: "Escape Room", descAr: "افتح الأقفال قبل انتهاء الوقت", descEn: "Unlock the room before time runs out" },
   { key: "rocket_race", icon: "🚀", titleAr: "سباق الصواريخ", titleEn: "Rocket Race", descAr: "السرعة والدقة ترفعان صاروخك", descEn: "Speed and accuracy launch your rocket" },
   { key: "wheel_of_fortune", icon: "🎡", titleAr: "عجلة التحدي", titleEn: "Wheel of Challenge", descAr: "أدر العجلة واختر السؤال", descEn: "Spin the wheel and pick a question" },
@@ -352,7 +353,7 @@ function WameethQuickStartModal({
                 >
                   <span className="text-xl leading-none block mb-2">{game.icon}</span>
                   <span className="block text-white text-xs font-black leading-tight">
-                    {lang === "ar" ? game.titleAr : game.titleEn}
+                    {game.key === "xo" ? <XoName /> : lang === "ar" ? game.titleAr : game.titleEn}
                   </span>
                   <span className="block text-white/45 text-[10px] leading-snug mt-1">
                     {lang === "ar" ? game.descAr : game.descEn}

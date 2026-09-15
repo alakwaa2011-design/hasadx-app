@@ -5,6 +5,7 @@
  */
 
 import { EVENTS, trackProjectAnalyticsEvent } from "@/lib/analytics";
+import { normalizeXoTitle } from "@/components/game/xo-display";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -119,11 +120,13 @@ function asActivity(value: unknown): SavedGameActivity {
   if ((typeof id !== "number" && typeof id !== "string") || !id) {
     throw new SavedGameActivitiesError("Invalid saved game response");
   }
+  const gameType = typeof item.gameType === "string" ? item.gameType : typeof item.type === "string" ? item.type : "";
+  const rawTitle = typeof item.title === "string" ? item.title : typeof item.gameTitle === "string" ? item.gameTitle : "";
   return {
     ...item,
     id,
-    title: typeof item.title === "string" ? item.title : typeof item.gameTitle === "string" ? item.gameTitle : "",
-    gameType: typeof item.gameType === "string" ? item.gameType : typeof item.type === "string" ? item.type : "",
+    title: gameType.toLowerCase().trim() === "xo" ? normalizeXoTitle(rawTitle, "en") : rawTitle,
+    gameType,
     questionCount: typeof item.questionCount === "number" ? item.questionCount : Array.isArray(item.questions) ? item.questions.length : Array.isArray(item.questionData) ? item.questionData.length : 0,
     lastUsedAt: typeof item.lastUsedAt === "string"
       ? item.lastUsedAt

@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { storeIndependentControlToken } from "@/lib/independent-game-session";
 import { Loader2, AlertCircle, Play, Target, User, Zap, Rocket } from "lucide-react";
+import { XoName, XoTitle, normalizeXoTitle } from "@/components/game/xo-display";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -216,8 +217,13 @@ export default function DirectPlayPage() {
   }
 
   const meta = GAME_META[info!.gameType === "rocket_race" ? "rocket_race" : info!.gameType.startsWith("xo_") ? "xo" : "wameeth"];
+  const isXoGame = info!.gameType.startsWith("xo_");
   const gameLabel = info!.gameType === "wameeth" ? t.directPlay.wameethName : info!.gameType === "rocket_race" ? t.directPlay.rocketRaceName : t.directPlay.xoName;
   const gameDesc = info!.gameType === "wameeth" ? t.directPlay.wameethDescription : info!.gameType === "rocket_race" ? t.directPlay.rocketRaceDescription : t.directPlay.xoDescription;
+  const displayTitle = isXoGame
+    ? normalizeXoTitle(info!.title, lang === "ar" ? "ar" : "en")
+    : info!.title;
+  const [xoDescriptionBefore, xoDescriptionAfter] = t.directPlay.xoDescription.split("X O");
 
   // ── Main ───────────────────────────────────────────────────────────────────
   return (
@@ -292,9 +298,11 @@ export default function DirectPlayPage() {
               {meta.icon}
             </motion.div>
             <h1 className="text-xl sm:text-2xl font-black text-white leading-tight mb-1">
-              {info!.title}
+            {isXoGame ? <XoTitle title={displayTitle} lang={lang === "ar" ? "ar" : "en"} /> : displayTitle}
             </h1>
-            <p className="text-xs text-white/50 mt-1">{gameDesc}</p>
+            <p className="text-xs text-white/50 mt-1">
+              {isXoGame ? <>{xoDescriptionBefore}<XoName />{xoDescriptionAfter}</> : gameDesc}
+            </p>
             <div className="flex items-center justify-center gap-5 mt-3">
               <span
                 className="flex items-center gap-1.5 text-sm font-bold"

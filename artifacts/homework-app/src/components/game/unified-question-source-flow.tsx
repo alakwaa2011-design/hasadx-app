@@ -24,8 +24,8 @@ import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export interface UnifiedQuestionSourceFlowProps {
-  gameTitle: string;
-  gameDescription: string;
+  gameTitle: React.ReactNode;
+  gameDescription: React.ReactNode;
   gameIcon: React.ReactNode;
   accentColor?: string;
   accentClass?: string;

@@ -81,6 +81,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
+import { XoName, XoTitle } from "@/components/game/xo-display";
 
 interface LibraryGroup {
   id: number;
@@ -2930,7 +2931,7 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
       tug: ["شد الحبل", "Tug of War"],
       "tug-of-war": ["شد الحبل", "Tug of War"],
       tug_of_war: ["شد الحبل", "Tug of War"],
-      xo: ["إكس أو", "XO"],
+      xo: ["X O", "X O"],
       escape: ["غرفة الهروب", "Escape Room"],
       escape_room: ["غرفة الهروب", "Escape Room"],
       "escape-room": ["غرفة الهروب", "Escape Room"],
@@ -3060,9 +3061,13 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="font-bold leading-tight truncate" data-testid={`saved-game-title-${game.id}`}>
-                      {game.title || (isAr ? "(بدون عنوان)" : "(untitled)")}
+                      {game.gameType.toLowerCase().trim() === "xo"
+                        ? <XoTitle title={game.title} lang={isAr ? "ar" : "en"} />
+                        : game.title || (isAr ? "(بدون عنوان)" : "(untitled)")}
                     </h3>
-                    <p className="text-xs font-semibold text-primary mt-1">{localGameType(game.gameType)}</p>
+                    <p className="text-xs font-semibold text-primary mt-1">
+                      {game.gameType.toLowerCase().trim() === "xo" ? <XoName /> : localGameType(game.gameType)}
+                    </p>
                     <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-2 gap-y-1">
                       <span>{T.questions(game.questionCount)}</span>
                       {count !== null && <span>· {T.plays(count)}</span>}

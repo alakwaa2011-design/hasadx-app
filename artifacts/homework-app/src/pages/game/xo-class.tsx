@@ -14,6 +14,11 @@ import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 import { useSmartBack } from "@/lib/nav-history";
+import {
+  XoName,
+  XoTitle,
+  normalizeXoTeamName,
+} from "@/components/game/xo-display";
 
 export const XO_CLASS_SETUP_KEY = "xo-class-setup";
 type Setup = XoClassSetup;
@@ -289,8 +294,8 @@ export default function XoClass() {
       }
       if (!shortUrl) {
         throw new Error(ar
-          ? "أنشئ اللعبة من صفحة إعداد إكس أو للحصول على رابط مختصر"
-          : "Create the game from XO setup to get a short link");
+          ? "أنشئ اللعبة من صفحة إعداد X O للحصول على رابط مختصر"
+          : "Create the game from X O setup to get a short link");
       }
       await navigator.clipboard.writeText(shortUrl);
       toast.success(ar ? "تم نسخ رابط وضع الصف" : "Classroom link copied");
@@ -336,8 +341,8 @@ export default function XoClass() {
   }
 
   const teamName = state.activeTeam === "x"
-    ? (setup!.teamX || (ar ? "فريق إكس" : "Team X"))
-    : (setup!.teamO || (ar ? "فريق أو" : "Team O"));
+    ? normalizeXoTeamName(setup!.teamX, "x", ar ? "ar" : "en")
+    : normalizeXoTeamName(setup!.teamO, "o", ar ? "ar" : "en");
   const isFinished = state.status === "finished";
   const winningCells = getWinningCells(state.board);
 
@@ -379,7 +384,7 @@ export default function XoClass() {
 
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 px-4 text-center">
               <Grid3X3 className="h-5 w-5 text-emerald-400" />
-               <span className="truncate font-black text-lg tracking-wide">{setup!.title || (ar ? "إكس أو الصف" : "XO Class")}</span>
+               <span className="truncate font-black text-lg tracking-wide"><XoTitle title={setup!.title} lang={ar ? "ar" : "en"} /></span>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -402,7 +407,7 @@ export default function XoClass() {
           </header>
 
           <div className="grid flex-1 items-center gap-4 py-1 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
-             <TeamPanel team="x" name={setup!.teamX || (ar ? "فريق إكس" : "Team X")} state={state} ar={ar} dispatch={dispatch} />
+             <TeamPanel team="x" name={normalizeXoTeamName(setup!.teamX, "x", ar ? "ar" : "en")} state={state} ar={ar} dispatch={dispatch} />
 
             <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-emerald-200/10 bg-gradient-to-b from-[#173b42]/90 via-[#0d2730]/90 to-[#091a25]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
               <div className="mb-8 w-full text-center">
@@ -416,7 +421,7 @@ export default function XoClass() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-2xl font-black text-slate-300 tracking-widest">{ar ? "إكس أو" : "XO"}</p>
+                  <p className="text-2xl font-black text-slate-300 tracking-widest"><XoName /></p>
                 )}
               </div>
 
@@ -452,7 +457,7 @@ export default function XoClass() {
               </div>
             </section>
 
-             <TeamPanel team="o" name={setup!.teamO || (ar ? "فريق أو" : "Team O")} state={state} ar={ar} dispatch={dispatch} />
+              <TeamPanel team="o" name={normalizeXoTeamName(setup!.teamO, "o", ar ? "ar" : "en")} state={state} ar={ar} dispatch={dispatch} />
           </div>
         </div>
 
@@ -539,7 +544,7 @@ export default function XoClass() {
                   <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                     <Grid3X3 className="h-10 w-10" />
                   </div>
-                  <h1 className="text-3xl font-black text-foreground">{ar ? "إكس أو الصف" : "XO Class"}</h1>
+                  <h1 className="text-3xl font-black text-foreground">{ar ? <><XoName /> الصف</> : <><XoName /> Class</>}</h1>
                   <p className="mt-3 text-lg font-medium text-muted-foreground">{ar ? "أجب بشكل صحيح لتحصل على مكان في اللوحة." : "Answer correctly to earn a place on the board."}</p>
 
                   <div className="mt-8 grid grid-cols-2 gap-4">

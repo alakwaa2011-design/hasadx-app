@@ -50,6 +50,7 @@ import {
 } from "@/lib/activity-cover";
 import { selectTrendingActivities } from "@/lib/activity-library-trending";
 import { SubjectMultiSelect } from "@/components/subject-multi-select";
+import { XoName, XoTitle, normalizeXoTitle } from "@/components/game/xo-display";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -608,7 +609,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     const labels: Record<string, [string, string]> = {
       wameeth: ["وميض", "Wameeth"],
       tug: ["شد الحبل", "Tug of War"],
-      xo: ["إكس أو", "XO"],
+      xo: ["X O", "X O"],
       escape: ["غرفة الهروب", "Escape Room"],
       rocket: ["سباق الصواريخ", "Rocket Race"],
       wheel: ["عجلة الحظ", "Wheel"],
@@ -622,6 +623,9 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     };
     const normalizedType = game.gameType.toLowerCase().trim();
     const gameLabel = labels[normalizedType]?.[isAr ? 0 : 1] || game.gameType;
+    const gameTitle = normalizedType === "xo"
+      ? normalizeXoTitle(game.title, isAr ? "ar" : "en")
+      : game.title;
     const isOwn = game.teacherId === currentTeacherId;
 
     return (
@@ -633,7 +637,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         className="group relative flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white transition-all duration-200 hover:border-[#225739]/25 hover:shadow-md sm:rounded-2xl"
         style={{ borderColor: C.border, boxShadow: "0 1px 5px rgba(31,45,36,0.045)" }}
       >
-        <ActivityCover className="aspect-[1.9/1]" kind="live" subject={game.subject} title={game.title} type={game.gameType} aspect="video" livePulse>
+        <ActivityCover className="aspect-[1.9/1]" kind="live" subject={game.subject} title={gameTitle} type={game.gameType} aspect="video" livePulse>
           <span className={cn("absolute top-2 z-10 rounded-md bg-[#225739]/90 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm sm:top-2.5 sm:rounded-lg sm:px-2 sm:text-[10px]", dir === "rtl" ? "right-2" : "left-2")}>
             {isAr ? "لعبة مباشرة" : "Live game"}
           </span>
@@ -642,8 +646,14 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </span>
         </ActivityCover>
         <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-          <p className="line-clamp-2 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>{game.title}</p>
-          <p className="mt-1 truncate text-[9px] font-semibold sm:text-[10px]" style={{ color: C.primary }}>{gameLabel}</p>
+          <p className="line-clamp-2 text-[12px] font-black leading-snug sm:text-[13px]" style={{ color: C.text }}>
+            {normalizedType === "xo"
+              ? <XoTitle title={gameTitle} lang={isAr ? "ar" : "en"} />
+              : gameTitle}
+          </p>
+          <p className="mt-1 truncate text-[9px] font-semibold sm:text-[10px]" style={{ color: C.primary }}>
+            {normalizedType === "xo" ? <XoName /> : gameLabel}
+          </p>
           <p className="mt-1 truncate text-[10px] font-semibold sm:text-[10px]" style={{ color: C.muted }}>
             {[game.subject, game.targetClass, `${game.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>

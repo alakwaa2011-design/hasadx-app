@@ -197,7 +197,7 @@ export function QuranStudentSubmissionPanel({ wardId }: Props) {
 
   if (isLoading) {
     return (
-      <div className="bg-white/80 dark:bg-card/80 backdrop-blur-sm border-t border-border p-4 flex justify-center w-full shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+      <div className="bg-white/80 dark:bg-card/80 backdrop-blur-sm border-t border-border p-4 flex justify-center sticky bottom-0 w-full z-40 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
         <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
       </div>
     );
@@ -207,7 +207,7 @@ export function QuranStudentSubmissionPanel({ wardId }: Props) {
   const showRecorder = !submission || needsResubmission || recordingStatus !== 'idle';
 
   return (
-    <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-border p-4 w-full shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] transition-colors">
+    <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-border p-4 sticky bottom-0 w-full z-40 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] shrink-0">
       <div className="max-w-4xl mx-auto flex flex-col gap-4">
         {submission && recordingStatus === 'idle' && (
           <div className={cn(

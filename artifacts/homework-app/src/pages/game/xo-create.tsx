@@ -12,6 +12,14 @@ import { toast } from "@/components/ui/sonner";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
 import { useSmartBack } from "@/lib/nav-history";
+import {
+  XoName,
+  XoTitle,
+  getDefaultXoTeamName,
+  getDefaultXoTitle,
+  normalizeXoTeamName,
+  normalizeXoTitle,
+} from "@/components/game/xo-display";
 
 type Question = {
   text: string;
@@ -52,8 +60,8 @@ export default function XoCreate() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionSource, setQuestionSource] = useState<QuestionSource>("manual");
   const [title, setTitle] = useState<string | null>(null);
-  const [teamX, setTeamX] = useState(ar ? "فريق إكس" : "Team X");
-  const [teamO, setTeamO] = useState(ar ? "فريق أو" : "Team O");
+  const [teamX, setTeamX] = useState(getDefaultXoTeamName("x", ar ? "ar" : "en"));
+  const [teamO, setTeamO] = useState(getDefaultXoTeamName("o", ar ? "ar" : "en"));
   const [playMode, setPlayMode] = useState<"online" | "classroom">("classroom");
   const [duration, setDuration] = useState(20);
   const [creating, setCreating] = useState(false);
@@ -75,8 +83,8 @@ export default function XoCreate() {
   };
 
   useEffect(() => {
-    setTeamX(current => current === "فريق إكس" || current === "Team X" ? (ar ? "فريق إكس" : "Team X") : current);
-    setTeamO(current => current === "فريق أو" || current === "Team O" ? (ar ? "فريق أو" : "Team O") : current);
+    setTeamX(current => normalizeXoTeamName(current, "x", ar ? "ar" : "en"));
+    setTeamO(current => normalizeXoTeamName(current, "o", ar ? "ar" : "en"));
   }, [ar]);
 
   useEffect(() => {
@@ -93,14 +101,14 @@ export default function XoCreate() {
       if (restored.length < 2) throw new Error("invalid-saved-game");
       setQuestions(restored);
       setSetupStep("settings");
-      setTitle(activity.title || null);
+       setTitle(normalizeXoTitle(activity.title, ar ? "ar" : "en") || null);
       setSavedActivityId(activity.id);
       savedActivityIdRef.current = activity.id;
       setIsShared(activity.isShared);
       if (activity.settings && typeof activity.settings === "object" && !Array.isArray(activity.settings)) {
         const settings = activity.settings as Record<string, unknown>;
-        if (typeof settings.teamX === "string" && settings.teamX.trim()) setTeamX(settings.teamX.slice(0, 40));
-        if (typeof settings.teamO === "string" && settings.teamO.trim()) setTeamO(settings.teamO.slice(0, 40));
+         if (typeof settings.teamX === "string" && settings.teamX.trim()) setTeamX(normalizeXoTeamName(settings.teamX.slice(0, 40), "x", ar ? "ar" : "en"));
+         if (typeof settings.teamO === "string" && settings.teamO.trim()) setTeamO(normalizeXoTeamName(settings.teamO.slice(0, 40), "o", ar ? "ar" : "en"));
         if (typeof settings.duration === "number" && durations.includes(settings.duration)) setDuration(settings.duration);
         if (settings.playMode === "online" || settings.playMode === "classroom") setPlayMode(settings.playMode);
       }
@@ -108,7 +116,7 @@ export default function XoCreate() {
   }, [ar]);
 
   const draftKey = JSON.stringify({
-    title: title || (ar ? "إكس أو" : "XO"),
+    title: title || getDefaultXoTitle(ar ? "ar" : "en"),
     questions,
     settings: { duration, teamX, teamO, playMode },
     source: questionSource,
@@ -123,7 +131,7 @@ export default function XoCreate() {
     try {
       const activity = await saveGameActivity({
         gameType: "xo",
-        title: title || (ar ? "إكس أو" : "XO"),
+        title: title || getDefaultXoTitle(ar ? "ar" : "en"),
         questions,
         settings: { duration, teamX, teamO, playMode },
         source: questionSource,
@@ -170,9 +178,9 @@ export default function XoCreate() {
         const setup: XoClassSetup = {
           questions,
           duration,
-          teamX: teamX.trim() || (ar ? "فريق إكس" : "Team X"),
-          teamO: teamO.trim() || (ar ? "فريق أو" : "Team O"),
-          title: title || (ar ? "إكس أو الصف" : "XO Class"),
+          teamX: teamX.trim() || getDefaultXoTeamName("x", ar ? "ar" : "en"),
+          teamO: teamO.trim() || getDefaultXoTeamName("o", ar ? "ar" : "en"),
+          title: title || getDefaultXoTitle(ar ? "ar" : "en", true),
           savedActivityId: savedActivityIdRef.current ?? undefined,
         };
         setCreating(false);
@@ -204,8 +212,8 @@ export default function XoCreate() {
       <Layout>
         <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
           <UnifiedQuestionSourceFlow
-            gameTitle={ar ? "إنشاء لعبة إكس أو" : "Create XO game"}
-            gameDescription={ar ? "اختر مصدر الأسئلة ثم جهّز تحدي الفريقين." : "Choose questions, then prepare a team challenge."}
+            gameTitle={ar ? <>إنشاء لعبة <XoName /></> : <>Create <XoName /> game</>}
+            gameDescription={ar ? <>اختر مصدر الأسئلة ثم جهّز تحدي <XoName />.</> : <>Choose questions, then prepare an <XoName /> team challenge.</>}
             gameIcon={<XoIcon size={40} />}
             accentClass="bg-primary hover:bg-primary/90 text-primary-foreground"
             floatingAssignmentContinue
@@ -238,8 +246,8 @@ export default function XoCreate() {
                 <XoIcon size={48} />
               </div>
               <div>
-                <h1 className="text-xl font-black text-foreground">{ar ? "إعداد إكس أو" : "XO setup"}</h1>
-                <p className="text-sm font-medium text-muted-foreground line-clamp-1">{title || (ar ? "إكس أو" : "XO")}</p>
+                <h1 className="text-xl font-black text-foreground">{ar ? <>إعداد <XoName /></> : <><XoName /> setup</>}</h1>
+                <p className="text-sm font-medium text-muted-foreground line-clamp-1"><XoTitle title={title} lang={ar ? "ar" : "en"} /></p>
               </div>
               <div className="ms-auto flex items-center gap-2">
                 <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
@@ -269,7 +277,7 @@ export default function XoCreate() {
                       <School className="h-6 w-6" />
                     </span>
                     <strong className="block text-base text-foreground">{ar ? "وضع الصف — على السبورة" : "Classroom — on the board"}</strong>
-                    <span className="mt-1 block text-sm font-medium text-muted-foreground">{ar ? "شاشتا إجابة ولوحة إكس أو واحدة" : "Two answer panels and one XO board"}</span>
+                    <span className="mt-1 block text-sm font-medium text-muted-foreground">{ar ? <>شاشتا إجابة ولوحة <XoName /> واحدة</> : <>Two answer panels and one <XoName /> board</>}</span>
                   </button>
 
                   <button

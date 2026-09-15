@@ -3,6 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { Grid3X3, Volume2, VolumeX, ArrowRight, ArrowLeft } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getIsMuted, toggleMute } from "@/lib/game-sounds";
+import { XoName } from "@/components/game/xo-display";
 
 export default function XoJoin() {
   const { pin: routePin } = useParams<{ pin?: string }>();
@@ -34,7 +35,7 @@ export default function XoJoin() {
               <Grid3X3 className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-foreground">{ar ? "انضم إلى إكس أو" : "Join XO"}</h1>
+              <h1 className="text-3xl font-black text-foreground">{ar ? <>انضم إلى <XoName /></> : <>Join <XoName /></>}</h1>
               <p className="mt-1 text-sm font-medium text-muted-foreground">
                 {ar ? "أدخل رمز الغرفة واسمك للبدء" : "Enter the room code and your name"}
               </p>

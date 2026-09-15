@@ -119,6 +119,24 @@ describe("normalizeSavedGameQuestions", () => {
     ]);
   });
 
+  it("shows the new X O title when restoring a legacy default saved game", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        id: 72,
+        title: "إكس أو",
+        gameType: "xo",
+        questions: [{ text: "Question" }],
+      }),
+    }));
+
+    await expect(getSavedGameActivity(72)).resolves.toMatchObject({
+      title: "X O",
+      gameType: "xo",
+    });
+  });
+
   it("does not track a save event when the saved-game request fails", async () => {
     const track = vi.fn();
     window.umami = { track };

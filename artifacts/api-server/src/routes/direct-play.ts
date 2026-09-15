@@ -34,6 +34,7 @@ import {
   type RocketQuestion,
 } from "../game/rocket-handlers";
 import { createXoGameFromRest, sanitizeXoSetup } from "../game/xo-handlers";
+import { normalizeXoTitle } from "../lib/xo-display";
 
 const router: IRouter = Router();
 
@@ -522,9 +523,9 @@ router.get("/play/:token/info", async (req, res) => {
         return res.status(404).json({ message: "الرابط غير موجود" });
       }
       const setup = sanitizeXoSetup(link.savedContent, link.savedSettings);
-      if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية لإكس أو" });
+      if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية للعبة X O" });
       return res.json({
-        title: link.savedTitle,
+        title: normalizeXoTitle(link.savedTitle),
         questionCount: setup.questions.length,
         gameType: link.gameType,
       });
@@ -666,7 +667,7 @@ router.get("/play/:token/xo-class", async (req, res) => {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
     const setup = sanitizeXoSetup(link.content, link.settings);
-    if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية لإكس أو" });
+    if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية للعبة X O" });
     return res.json({
       title: link.title,
       duration: setup.duration,
@@ -682,7 +683,7 @@ router.get("/play/:token/xo-class", async (req, res) => {
     });
   } catch (err) {
     req.log.error(err, "xo-class setup error");
-    return res.status(500).json({ message: "خطأ في تحميل إعداد إكس أو" });
+    return res.status(500).json({ message: "خطأ في تحميل إعداد لعبة X O" });
   }
 });
 
@@ -803,13 +804,13 @@ router.post("/play/:token/start", async (req, res) => {
         return res.status(404).json({ message: "الرابط غير موجود" });
       }
       const setup = sanitizeXoSetup(link.savedContent, link.savedSettings);
-      if (!setup) return res.status(400).json({ message: "لا توجد أسئلة كافية لإكس أو" });
+      if (!setup) return res.status(400).json({ message: "لا توجد أسئلة كافية للعبة X O" });
       const room = createXoGameFromRest({
         questions: setup.questions,
         duration: setup.duration,
         teamX: setup.teamX,
         teamO: setup.teamO,
-        title: link.savedTitle,
+        title: normalizeXoTitle(link.savedTitle),
       });
       return res.json({
         pin: room.pin,

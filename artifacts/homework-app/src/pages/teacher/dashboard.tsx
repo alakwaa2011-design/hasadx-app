@@ -23,6 +23,7 @@ import {
   SelfChallengeIcon,
   EscapeVaultIcon,
 } from "@/components/game-icons";
+import { XoName } from "@/components/game/xo-display";
 
 import { createPortal } from "react-dom";
 import {
@@ -1596,8 +1597,8 @@ export default function TeacherDashboard() {
                       key: "xo" as const,
                       icon: <XoIcon size={56} />,
                       svgIcon: true,
-                      titleAr: "إكس أو",
-                      titleEn: "XO",
+                      titleAr: "X O",
+                      titleEn: "X O",
                       descAr: "أجب ثم ضع علامتك للفوز بثلاثة مربعات.",
                       descEn: "Answer questions and make three in a row.",
                       gradient: "from-emerald-600 to-green-800",
@@ -1712,7 +1713,7 @@ export default function TeacherDashboard() {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-0.5">
                             <span className="font-black text-base text-foreground leading-tight">
-                              {lang === "ar" ? opt.titleAr : opt.titleEn}
+                              {opt.key === "xo" ? <XoName /> : lang === "ar" ? opt.titleAr : opt.titleEn}
                             </span>
                             {(opt as { defaultBadge?: boolean }).defaultBadge && (
                               <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
@@ -2524,7 +2525,7 @@ function CompetitiveTab({
     },
     {
       icon: <XoIcon size={56} />,
-      title: lang === "ar" ? "إكس أو" : "XO",
+      title: "X O",
       desc: lang === "ar" ? "أجب عن السؤال ثم ضع علامتك للفوز بثلاثة مربعات." : "Answer questions and place your mark to make three in a row.",
       color: "from-[#225739] to-[#4b7b5d]",
       type: "xo",
@@ -2785,7 +2786,7 @@ function CompetitiveTab({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h4 className="font-black text-base sm:text-lg text-foreground leading-snug">
-                      {game.title}
+                      {game.type === "xo" ? <XoName /> : game.title}
                     </h4>
                     {(game as any).pill && (
                       <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
@@ -5195,8 +5196,8 @@ function AssignmentsTabRender({
     },
     {
       type: "xo",
-      title: lang === "ar" ? "إكس أو" : "XO",
-      desc: lang === "ar" ? "تحدي الفريقين على لوحة إكس أو" : "A two-team XO board challenge",
+      title: "X O",
+      desc: lang === "ar" ? "تحدي الفريقين على لوحة X O" : "A two-team X O board challenge",
       icon: XoIcon,
       tag: "New",
     },
@@ -5538,7 +5539,7 @@ function AssignmentsTabRender({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-xs font-semibold text-foreground leading-tight">
-                        {game.title}
+                        {game.type === "xo" ? <XoName /> : game.title}
                       </p>
                       {game.tag && (
                         <span className="text-[9px] font-bold uppercase tracking-wide bg-[#D9A521]/12 text-amber-900/85 dark:text-amber-100/90 border border-[#D9A521]/25 px-1.5 py-0.5 rounded-md">

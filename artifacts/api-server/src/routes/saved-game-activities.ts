@@ -10,6 +10,7 @@ import {
   savedGameActivityUpsertSchema,
 } from "../lib/saved-game-activities";
 import { sanitizeXoSetup } from "../game/xo-handlers";
+import { normalizeXoTitle } from "../lib/xo-display";
 
 const router: IRouter = Router();
 
@@ -24,7 +25,7 @@ function activityResponse(activity: ActivityResponseInput) {
     id: activity.id,
     teacherId: activity.teacherId,
     gameType: activity.gameType,
-    title: activity.title,
+    title: activity.gameType === "xo" ? normalizeXoTitle(activity.title) : activity.title,
     content: activity.content,
     settings: activity.settings,
     source: activity.source,
