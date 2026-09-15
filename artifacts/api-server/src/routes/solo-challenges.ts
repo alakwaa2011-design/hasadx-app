@@ -200,6 +200,33 @@ interface DifficultyDistribution {
   hard: number;
 }
 
+interface DifficultyCounts extends DifficultyDistribution {
+  unclassified: number;
+}
+
+function countDifficultyBuckets(questions: Array<{ difficulty?: unknown }>): DifficultyCounts {
+  const counts: DifficultyCounts = { easy: 0, medium: 0, hard: 0, unclassified: 0 };
+  for (const question of questions) {
+    const difficulty = Number(question.difficulty);
+    if (difficulty === 1) counts.easy++;
+    else if (difficulty === 2) counts.medium++;
+    else if (difficulty === 3) counts.hard++;
+    else counts.unclassified++;
+  }
+  return counts;
+}
+
+async function getPlayableQuestionDifficultyCounts(assignmentId: number): Promise<DifficultyCounts> {
+  const questions = await db
+    .select({ difficulty: questionsTable.difficulty })
+    .from(questionsTable)
+    .where(and(
+      eq(questionsTable.assignmentId, assignmentId),
+      sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
+    ));
+  return countDifficultyBuckets(questions);
+}
+
 type ParsedDifficultyDistribution = {
   value: DifficultyDistribution | null;
   error: string | null;
@@ -610,6 +637,39 @@ router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
   }
 });
 
+// ── GET /api/solo-challenges/assignment/:assignmentId/difficulty-counts (teacher) ──
+router.get("/solo-challenges/assignment/:assignmentId/difficulty-counts", async (req, res) => {
+  try {
+    const teacherId = requireTeacher(req, res);
+    if (!teacherId) return;
+
+    const assignmentId = Number(req.params.assignmentId);
+    if (!Number.isInteger(assignmentId) || assignmentId < 1) {
+      return res.status(400).json({ message: "معرّف الواجب غير صالح" });
+    }
+
+    const [assignment] = await db
+      .select({ id: assignmentsTable.id, archivedAt: assignmentsTable.archivedAt })
+      .from(assignmentsTable)
+      .where(and(
+        eq(assignmentsTable.id, assignmentId),
+        eq(assignmentsTable.teacherId, teacherId),
+      ))
+      .limit(1);
+    if (!assignment || assignment.archivedAt) return res.status(404).json({ message: "الواجب غير موجود أو لا تملكه" });
+
+    const difficultyCounts = await getPlayableQuestionDifficultyCounts(assignmentId);
+    res.json({
+      assignmentId,
+      totalQuestionCount: difficultyCounts.easy + difficultyCounts.medium + difficultyCounts.hard + difficultyCounts.unclassified,
+      difficultyCounts,
+    });
+  } catch (err) {
+    req.log.error(err, "Get solo challenge difficulty counts error");
+    res.status(500).json({ message: "خطأ في جلب أعداد الأسئلة المصنفة" });
+  }
+});
+
 // ── GET /api/solo-challenges/:slug/teacher  (teacher: full challenge data) ──
 router.get("/solo-challenges/:slug/teacher", async (req, res) => {
   try {
@@ -653,8 +713,12 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
 
     let questionCount = 0;
     let resolvedQuestions = challenge.questions;
+    let difficultyCounts: DifficultyCounts;
     if (isStandalone) {
       questionCount = Array.isArray(challenge.questions) ? (challenge.questions as unknown[]).length : 0;
+      difficultyCounts = countDifficultyBuckets(
+        Array.isArray(challenge.questions) ? challenge.questions as Array<{ difficulty?: unknown }> : [],
+      );
     } else {
       const assignmentQuestions = await db
         .select({
@@ -676,6 +740,7 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
         ));
       resolvedQuestions = assignmentQuestions;
       questionCount = assignmentQuestions.length;
+      difficultyCounts = countDifficultyBuckets(assignmentQuestions);
     }
 
     const allowedClassesList = Array.isArray((challenge as any).allowedClasses)
@@ -688,6 +753,7 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
       isStandalone,
       isExpired,
       questionCount,
+      difficultyCounts,
       allowedClasses: allowedClassesList,
     });
   } catch (err) {

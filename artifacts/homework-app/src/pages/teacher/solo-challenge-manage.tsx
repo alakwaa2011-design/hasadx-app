@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Target, ChevronLeft, ChevronRight, Copy, Share2, ExternalLink, Users, Clock,
   Trophy, FileText, Calendar, CheckCircle, XCircle, Trash2,
-  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw, Volume2, VolumeX, Music, AlertCircle, Settings, Gamepad2, ShieldAlert, Search, Download
+  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw, Volume2, VolumeX, Music, AlertCircle, AlertTriangle, Settings, Gamepad2, ShieldAlert, Search, Download
 } from "lucide-react";
 import AudioPicker from "@/components/AudioPicker";
 import { QRModalButton } from "@/components/game-qr-code";
@@ -49,6 +49,7 @@ interface ChallengeTeacherData {
   isStandalone: boolean;
   isExpired: boolean;
   questionCount: number;
+  difficultyCounts?: DifficultyCounts | null;
   difficultyDistribution?: { easy: number; medium: number; hard: number } | null;
   isMultiLevel?: boolean;
   levels?: Array<{ name: string; questionCount: number; timePerQuestion: number }> | null;
@@ -57,6 +58,17 @@ interface ChallengeTeacherData {
 
 type QuestionSelectionMode = "all" | "random" | "difficulty";
 type DifficultyDistribution = { easy: number; medium: number; hard: number };
+type DifficultyCounts = DifficultyDistribution & { unclassified: number };
+
+function countQuestionDifficulties(questions: SoloQuestion[]): DifficultyCounts {
+  return questions.reduce<DifficultyCounts>((counts, question) => {
+    if (question.difficulty === 1) counts.easy++;
+    else if (question.difficulty === 2) counts.medium++;
+    else if (question.difficulty === 3) counts.hard++;
+    else counts.unclassified++;
+    return counts;
+  }, { easy: 0, medium: 0, hard: 0, unclassified: 0 });
+}
 
 function defaultDifficultyDistribution(maxQuestions: number): DifficultyDistribution {
   const total = Math.min(10, Math.max(0, maxQuestions));
@@ -290,6 +302,9 @@ export default function SoloChallengeManagePage() {
   const selectionMode: QuestionSelectionMode = editDiffDistribution
     ? "difficulty"
     : editQpp === "" ? "all" : "random";
+  const insufficientLevels = editDiffDistribution && challenge?.difficultyCounts
+    ? (["easy", "medium", "hard"] as const).filter(key => editDiffDistribution[key] > (challenge.difficultyCounts?.[key] ?? 0))
+    : [];
 
   const setSelectionMode = (mode: QuestionSelectionMode) => {
     if (mode === "difficulty") {
@@ -340,7 +355,12 @@ export default function SoloChallengeManagePage() {
       toast.success(s.questionsSaved);
       setQuestionsDirty(false);
       setExpandedAudio(null);
-      setChallenge(prev => prev ? { ...prev, questions: editQuestions, questionCount: editQuestions.length } : prev);
+      setChallenge(prev => prev ? {
+        ...prev,
+        questions: editQuestions,
+        questionCount: editQuestions.length,
+        difficultyCounts: countQuestionDifficulties(editQuestions),
+      } : prev);
     } catch (err: any) {
       toast.error(err.message || s.saveQuestionsFailed);
     } finally {
@@ -648,9 +668,14 @@ export default function SoloChallengeManagePage() {
                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                              {(["easy", "medium", "hard"] as const).map(k => (
                                <div data-testid={`difficulty-row-${k}`} key={k} className="bg-background rounded-xl p-3 border border-border/60 flex flex-col items-center gap-3 shadow-sm">
-                                 <span className={cn("text-[11px] font-black px-3 py-1 rounded-md text-white w-full text-center", k === "easy" ? "bg-emerald-500" : k === "medium" ? "bg-amber-500" : "bg-red-500")}>
-                                   {k === "easy" ? s.easy : k === "medium" ? s.medium : s.hard}
-                                 </span>
+                                 <div className="w-full text-center">
+                                   <span className={cn("text-[11px] font-black px-3 py-1 rounded-md text-white w-full text-center", k === "easy" ? "bg-emerald-500" : k === "medium" ? "bg-amber-500" : "bg-red-500")}>
+                                     {k === "easy" ? s.easy : k === "medium" ? s.medium : s.hard}
+                                   </span>
+                                   <span className="block mt-2 text-[10px] font-bold text-muted-foreground">
+                                     {s.classifiedAvailable.replace("{n}", String(challenge.difficultyCounts?.[k] ?? 0))}
+                                   </span>
+                                 </div>
                                  <div className="flex items-center gap-2 w-full justify-center">
                                    <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [k]: Math.max(0, d[k] - 1) } : null); mark(); }} className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center font-black text-lg transition-colors hover:bg-muted/80">−</button>
                                    <span className="w-10 text-center font-black text-base">{editDiffDistribution[k]}</span>
@@ -666,6 +691,12 @@ export default function SoloChallengeManagePage() {
                              </span>
                            </div>
                            <p data-testid="difficulty-classification-hint" className="text-[11px] font-medium text-muted-foreground mt-2">{s.classifyFirst}</p>
+                           {insufficientLevels.length > 0 && (
+                             <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 mt-3 text-[11px] font-bold leading-relaxed text-amber-800 dark:text-amber-200">
+                               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                               <span>{s.distributionFallbackWarning}</span>
+                             </div>
+                           )}
                          </div>
                        )}
 

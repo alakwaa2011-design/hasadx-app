@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Target, Sparkles, BookOpen, ChevronLeft, ChevronRight, Plus, Trash2, Check,
   Loader2, Search, Clock, Trophy, FileText, Calendar, ChevronDown,
-  X, Settings, Layers, PenLine, Users, XCircle, RotateCw
+  X, Settings, Layers, PenLine, Users, XCircle, RotateCw, AlertTriangle
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ interface ChallengeLevel {
 }
 
 type DiffDistribution = { easy: number; medium: number; hard: number };
+type DifficultyCounts = DiffDistribution & { unclassified: number };
 type QuestionSelectionMode = "all" | "random" | "difficulty";
 
 function defaultDifficultyDistribution(maxQuestions?: number): DiffDistribution {
@@ -51,7 +52,18 @@ interface Assignment {
   id: number;
   title: string;
   questionCount?: number;
+  difficultyCounts?: DifficultyCounts | null;
   createdAt?: string;
+}
+
+function countQuestionDifficulties(questions: Array<{ difficulty?: number | null }>): DifficultyCounts {
+  return questions.reduce<DifficultyCounts>((counts, question) => {
+    if (question.difficulty === 1) counts.easy++;
+    else if (question.difficulty === 2) counts.medium++;
+    else if (question.difficulty === 3) counts.hard++;
+    else counts.unclassified++;
+    return counts;
+  }, { easy: 0, medium: 0, hard: 0, unclassified: 0 });
 }
 
 export default function SoloChallengeCreatePage() {
@@ -100,6 +112,7 @@ export default function SoloChallengeCreatePage() {
     { name: "Level 1", questionCount: 5, timePerQuestion: 25 },
   ]);
   const [diffDistribution, setDiffDistribution] = useState<DiffDistribution | null>(null);
+  const [loadingAssignmentDifficultyCounts, setLoadingAssignmentDifficultyCounts] = useState(false);
   const loadedSavedGameRef = useRef(false);
 
   const setQuestionSelectionMode = (mode: QuestionSelectionMode, maxQuestions?: number) => {
@@ -234,6 +247,32 @@ export default function SoloChallengeCreatePage() {
       .catch(() => {})
       .finally(() => setLoadingAssignments(false));
   }, [source]);
+
+  useEffect(() => {
+    if (!selectedAssignment) return;
+    let cancelled = false;
+    setLoadingAssignmentDifficultyCounts(true);
+    fetch(`${API}/api/solo-challenges/assignment/${selectedAssignment.id}/difficulty-counts`, { credentials: "include" })
+      .then(async response => {
+        if (!response.ok) throw new Error("difficulty-counts");
+        return response.json();
+      })
+      .then(data => {
+        if (cancelled || !data?.difficultyCounts) return;
+        setSelectedAssignment(current => current && current.id === selectedAssignment.id
+          ? { ...current, difficultyCounts: data.difficultyCounts }
+          : current);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedAssignment(current => current && current.id === selectedAssignment.id
+          ? { ...current, difficultyCounts: null }
+          : current);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAssignmentDifficultyCounts(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedAssignment?.id]);
 
   const filteredAssignments = assignments.filter(a =>
     a.title.toLowerCase().includes(assignSearch.toLowerCase()) ||
@@ -525,6 +564,8 @@ export default function SoloChallengeCreatePage() {
                       expiresAt={expiresAt} onExpires={setExpiresAt}
                       questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                       maxQuestions={selectedAssignment?.questionCount}
+                      difficultyCounts={selectedAssignment?.difficultyCounts}
+                      difficultyCountsLoading={loadingAssignmentDifficultyCounts}
                       diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
                        onSelectionMode={setQuestionSelectionMode}
                       isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
@@ -702,6 +743,7 @@ export default function SoloChallengeCreatePage() {
                     expiresAt={expiresAt} onExpires={setExpiresAt}
                     questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                     maxQuestions={questions.filter(q => q.text.trim() && q.optionA && q.optionB && q.optionC && q.optionD).length}
+                    difficultyCounts={countQuestionDifficulties(questions.filter(isValidQ))}
                     diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
                      onSelectionMode={setQuestionSelectionMode}
                     isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
@@ -817,6 +859,7 @@ export default function SoloChallengeCreatePage() {
                     expiresAt={expiresAt} onExpires={setExpiresAt}
                     questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                     maxQuestions={questions.filter(isValidQ).length}
+                    difficultyCounts={countQuestionDifficulties(questions.filter(isValidQ))}
                     diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
                     onSelectionMode={setQuestionSelectionMode}
                     isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
@@ -854,6 +897,8 @@ function SettingsPanel({
   expiresAt, onExpires,
   questionsPerParticipant, onQpp,
   maxQuestions,
+  difficultyCounts,
+  difficultyCountsLoading,
   diffDistribution, onDiffDistribution,
   onSelectionMode,
   isMultiLevel, onIsMultiLevel,
@@ -868,6 +913,8 @@ function SettingsPanel({
   expiresAt: string; onExpires: (v: string) => void;
   questionsPerParticipant: number | ""; onQpp: (v: number | "") => void;
   maxQuestions?: number;
+  difficultyCounts?: DifficultyCounts | null;
+  difficultyCountsLoading?: boolean;
   diffDistribution: DiffDistribution | null; onDiffDistribution: (v: DiffDistribution | null) => void;
   onSelectionMode: (mode: QuestionSelectionMode, maxQuestions?: number) => void;
   isMultiLevel: boolean; onIsMultiLevel: (v: boolean) => void;
@@ -900,6 +947,9 @@ function SettingsPanel({
     onDiffDistribution({ ...diffDistribution, [key]: Math.max(0, diffDistribution[key] + delta) });
   };
   const distTotal = diffDistribution ? diffDistribution.easy + diffDistribution.medium + diffDistribution.hard : 0;
+  const insufficientLevels = diffDistribution && difficultyCounts
+    ? (["easy", "medium", "hard"] as const).filter(key => diffDistribution[key] > difficultyCounts[key])
+    : [];
   const selectionMode: QuestionSelectionMode = diffDistribution
     ? "difficulty"
     : questionsPerParticipant === "" ? "all" : "random";
@@ -1069,7 +1119,12 @@ function SettingsPanel({
                        { key: "hard" as const, label: s.hard, color: "bg-red-500" },
                      ]).map(({ key, label, color }) => (
                        <div data-testid={`difficulty-row-${key}`} key={key} className="flex items-center justify-between bg-card px-2 py-1.5 rounded-lg border shadow-sm">
-                         <span className={cn("text-[10px] font-black px-2 py-0.5 rounded text-white w-14 text-center", color)}>{label}</span>
+                         <div className="flex items-center gap-2">
+                           <span className={cn("text-[10px] font-black px-2 py-0.5 rounded text-white w-14 text-center", color)}>{label}</span>
+                           <span className="text-[10px] font-bold text-muted-foreground">
+                             {difficultyCountsLoading ? "…" : s.classifiedAvailable.replace("{n}", String(difficultyCounts?.[key] ?? 0))}
+                           </span>
+                         </div>
                          <div className="flex items-center gap-1.5">
                            <button onClick={() => adjustDist(key, -1)} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center">−</button>
                            <span className="w-6 text-center font-black text-xs">{diffDistribution[key]}</span>
@@ -1085,6 +1140,12 @@ function SettingsPanel({
                      </span>
                    </div>
                    <p data-testid="difficulty-classification-hint" className="text-[10px] font-medium text-muted-foreground">{s.classifyFirst}</p>
+                   {insufficientLevels.length > 0 && (
+                     <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-[10px] font-bold leading-relaxed text-amber-800 dark:text-amber-200">
+                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                       <span>{s.distributionFallbackWarning}</span>
+                     </div>
+                   )}
                  </div>
                )}
 
