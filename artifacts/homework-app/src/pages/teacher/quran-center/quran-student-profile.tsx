@@ -2,10 +2,11 @@ import { useState } from "react";
 import { 
   useGetQuranStudentSummary, 
   useUpdateQuranStudentProfile,
-  useCreateQuranWard,
+  useAssignQuranStudentTask,
   useCreateQuranRecitation,
   QuranSurah,
-   QuranWard
+   QuranWard,
+   QuranWardRangeInput
 } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { 
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetQuranStudentSummaryQueryKey } from "@workspace/api-client-react";
 import { quranDateLabel, quranModeLabel, quranStatusLabel } from "./quran-labels";
+import { QuranTaskAssignerModal } from "./quran-task-assigner";
 
 import { 
   Dialog,
@@ -186,7 +188,7 @@ export function QuranStudentProfileView({
       </div>
 
       {isAssigning && (
-        <AssignWardModal 
+        <AssignStudentTaskWrapper
           studentId={studentId} 
           surahs={surahs} 
           onClose={() => setIsAssigning(false)} 
@@ -263,65 +265,29 @@ function WardColumn({
   );
 }
 
-function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, surahs: QuranSurah[], onClose: () => void }) {
+
+function AssignStudentTaskWrapper({ studentId, surahs, onClose }: { studentId: number, surahs: QuranSurah[], onClose: () => void }) {
   const { lang } = useI18n();
   const queryClient = useQueryClient();
-  const createWard = useCreateQuranWard();
+  const assignTask = useAssignQuranStudentTask();
+  const [requestId] = useState(() => `assign-student-${studentId}-${Math.random().toString(36).slice(2)}`);
 
-  const now = new Date();
-  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-  const [memorizationEnabled, setMemorizationEnabled] = useState(true);
-  const [reviewEnabled, setReviewEnabled] = useState(true);
-  const [memorizationSurah, setMemorizationSurah] = useState(1);
-  const [memorizationStart, setMemorizationStart] = useState(1);
-  const [memorizationEnd, setMemorizationEnd] = useState(7);
-  const [reviewSurah, setReviewSurah] = useState(1);
-  const [reviewStart, setReviewStart] = useState(1);
-  const [reviewEnd, setReviewEnd] = useState(7);
-  const [dueDate, setDueDate] = useState<string>(todayStr);
-
-  const handleAssign = async () => {
-    if (!dueDate) {
-      toast.error(lang === "ar" ? "تاريخ الاستحقاق مطلوب" : "Due date is required");
-      return;
-    }
-    if (!memorizationEnabled && !reviewEnabled) {
-      toast.error(lang === "ar" ? "اختر الحفظ أو المراجعة على الأقل" : "Select memorization or review");
-      return;
-    }
-    const tasks = [
-      memorizationEnabled ? {
-        mode: "memorization" as const,
-        surahNumber: memorizationSurah,
-        startAyah: memorizationStart,
-        endAyah: memorizationEnd,
-      } : null,
-      reviewEnabled ? {
-        mode: "review" as const,
-        surahNumber: reviewSurah,
-        startAyah: reviewStart,
-        endAyah: reviewEnd,
-      } : null,
-    ].filter((task): task is NonNullable<typeof task> => task !== null);
+  const handleAssign = async (data: { memorization?: QuranWardRangeInput[], review?: QuranWardRangeInput[], dueDate: string, notes?: string }) => {
     try {
-      await Promise.all(tasks.map((task) => {
-        const surah = surahs.find((item) => item.number === task.surahNumber);
-        if (!surah) throw new Error("surah");
-        return createWard.mutateAsync({
-          data: {
-            studentId,
-            mode: task.mode,
-            surahNumber: task.surahNumber,
-            surahName: surah.arabicName,
-            startAyah: task.startAyah,
-            endAyah: task.endAyah,
-            assignedDate: todayStr,
-            dueDate,
-          },
-        });
-      }));
-      toast.success(lang === "ar" ? "تم تعيين الحفظ والمراجعة" : "Assignment saved");
+      const now = new Date();
+      const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      await assignTask.mutateAsync({
+        studentId,
+        data: {
+          requestId,
+          assignedDate: localDate,
+          dueDate: data.dueDate,
+          memorization: data.memorization,
+          review: data.review,
+          notes: data.notes || null,
+        }
+      });
+      toast.success(lang === "ar" ? "تم تعيين المهمة بنجاح" : "Assignment saved");
       queryClient.invalidateQueries({ queryKey: getGetQuranStudentSummaryQueryKey(studentId) });
       onClose();
     } catch {
@@ -330,163 +296,16 @@ function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, su
   };
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-border">
-        <DialogHeader className="p-6 border-b border-border/60 bg-muted/20">
-          <DialogTitle className="font-black text-xl text-foreground">
-            {lang === "ar" ? "تعيين مهمة جديدة" : "Assign New Ward"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="max-h-[65vh] space-y-4 overflow-y-auto p-5">
-          <WardRangeEditor
-            title={lang === "ar" ? "الحفظ الجديد" : "New memorization"}
-            enabled={memorizationEnabled}
-            onEnabledChange={setMemorizationEnabled}
-            surahs={surahs}
-            surahNumber={memorizationSurah}
-            onSurahChange={setMemorizationSurah}
-            startAyah={memorizationStart}
-            onStartChange={setMemorizationStart}
-            endAyah={memorizationEnd}
-            onEndChange={setMemorizationEnd}
-            isArabic={lang === "ar"}
-          />
-          <WardRangeEditor
-            title={lang === "ar" ? "المراجعة" : "Review"}
-            enabled={reviewEnabled}
-            onEnabledChange={setReviewEnabled}
-            surahs={surahs}
-            surahNumber={reviewSurah}
-            onSurahChange={setReviewSurah}
-            startAyah={reviewStart}
-            onStartChange={setReviewStart}
-            endAyah={reviewEnd}
-            onEndChange={setReviewEnd}
-            isArabic={lang === "ar"}
-          />
-          
-          <div>
-            <label className="block text-xs font-bold text-muted-foreground mb-1.5">{lang === "ar" ? "تاريخ الاستحقاق" : "Due Date"}</label>
-            <input 
-              type="date"
-              required
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-            />
-          </div>
-        </div>
-        <DialogFooter className="p-6 border-t border-border/60 bg-muted/20 sm:justify-end gap-3 flex-row justify-end">
-          <button 
-            onClick={onClose}
-            className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted rounded-xl transition-colors"
-          >
-            {lang === "ar" ? "إلغاء" : "Cancel"}
-          </button>
-          <button 
-            onClick={handleAssign}
-            disabled={createWard.isPending || !dueDate || (!memorizationEnabled && !reviewEnabled)}
-            className="px-5 py-2.5 text-sm font-bold bg-emerald-600 text-white rounded-xl shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {createWard.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {lang === "ar" ? "حفظ وتعيين" : "Save and Assign"}
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <QuranTaskAssignerModal
+      title={lang === "ar" ? "تعيين مهمة جديدة" : "Assign New Ward"}
+      surahs={surahs}
+      onClose={onClose}
+      onAssign={handleAssign}
+      isPending={assignTask.isPending}
+    />
   );
 }
 
-function WardRangeEditor({
-  title,
-  enabled,
-  onEnabledChange,
-  surahs,
-  surahNumber,
-  onSurahChange,
-  startAyah,
-  onStartChange,
-  endAyah,
-  onEndChange,
-  isArabic,
-}: {
-  title: string;
-  enabled: boolean;
-  onEnabledChange: (enabled: boolean) => void;
-  surahs: QuranSurah[];
-  surahNumber: number;
-  onSurahChange: (value: number) => void;
-  startAyah: number;
-  onStartChange: (value: number) => void;
-  endAyah: number;
-  onEndChange: (value: number) => void;
-  isArabic: boolean;
-}) {
-  const selectedSurah = surahs.find((surah) => surah.number === surahNumber);
-  const maxAyah = selectedSurah?.ayahCount ?? 1;
-  return (
-    <section className={cn("rounded-2xl border p-4", enabled ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20" : "border-border bg-muted/20 opacity-70")}>
-      <label className="mb-4 flex cursor-pointer items-center justify-between gap-3">
-        <span className="font-black text-foreground">{title}</span>
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(event) => onEnabledChange(event.target.checked)}
-          className="h-5 w-5 accent-emerald-600"
-        />
-      </label>
-      {enabled && (
-        <div className="space-y-3">
-          <select
-            value={surahNumber}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              onSurahChange(next);
-              const nextMax = surahs.find((surah) => surah.number === next)?.ayahCount ?? 1;
-              onStartChange(Math.min(startAyah, nextMax));
-              onEndChange(Math.min(endAyah, nextMax));
-            }}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-          >
-            {surahs.map((surah) => (
-              <option key={surah.number} value={surah.number}>
-                {surah.number}. {surah.arabicName} ({surah.ayahCount} {isArabic ? "آية" : "ayahs"})
-              </option>
-            ))}
-          </select>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs font-bold text-muted-foreground">
-              {isArabic ? "من آية" : "From ayah"}
-              <input
-                type="number"
-                min={1}
-                max={maxAyah}
-                value={startAyah}
-                onChange={(event) => {
-                  const next = Math.min(maxAyah, Math.max(1, Number(event.target.value)));
-                  onStartChange(next);
-                  if (endAyah < next) onEndChange(next);
-                }}
-                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500"
-              />
-            </label>
-            <label className="text-xs font-bold text-muted-foreground">
-              {isArabic ? "إلى آية" : "To ayah"}
-              <input
-                type="number"
-                min={startAyah}
-                max={maxAyah}
-                value={endAyah}
-                onChange={(event) => onEndChange(Math.min(maxAyah, Math.max(startAyah, Number(event.target.value))))}
-                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500"
-              />
-            </label>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
 export function RecordRecitationModal({ wardId, onClose }: { wardId: number, onClose: () => void }) {
   const { lang } = useI18n();
   const queryClient = useQueryClient();

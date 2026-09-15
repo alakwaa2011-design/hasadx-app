@@ -188,14 +188,14 @@ export interface QuranCircleTaskInput {
   dueDate: string;
   /**
      * @minItems 1
-     * @maxItems 20
+     * @maxItems 200
      */
-  memorization: QuranWardRangeInput[];
+  memorization?: QuranWardRangeInput[];
   /**
      * @minItems 1
-     * @maxItems 20
+     * @maxItems 200
      */
-  review: QuranWardRangeInput[];
+  review?: QuranWardRangeInput[];
   /** @nullable */
   notes?: string | null;
 }

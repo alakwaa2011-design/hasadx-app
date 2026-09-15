@@ -46,6 +46,9 @@ import {
   AssignQuranCircleTaskBody,
   AssignQuranCircleTaskParams,
   AssignQuranCircleTaskResponse,
+  AssignQuranStudentTaskBody,
+  AssignQuranStudentTaskParams,
+  AssignQuranStudentTaskResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -285,6 +288,71 @@ router.get("/quran/students/:studentId/wards", async (req, res): Promise<void> =
   res.json(ListQuranStudentWardsResponse.parse(wards));
 });
 
+router.post("/quran/students/:studentId/assign", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const params = AssignQuranStudentTaskParams.safeParse(req.params);
+  const parsed = AssignQuranStudentTaskBody.safeParse(req.body);
+  if (!params.success || !parsed.success) { parseError(res, "Invalid student task"); return; }
+  if (!await rosterStudent(teacherId, params.data.studentId)) {
+    res.status(404).json({ error: "Student not found" });
+    return;
+  }
+  const memorization = parsed.data.memorization ?? [];
+  const review = parsed.data.review ?? [];
+  if (memorization.length === 0 && review.length === 0) {
+    parseError(res, "Select memorization or review");
+    return;
+  }
+  const memorizationError = memorization.map(wardValidation).find(Boolean);
+  const reviewError = review.map(wardValidation).find(Boolean);
+  if (memorizationError || reviewError) {
+    parseError(res, memorizationError ?? reviewError ?? "Invalid range");
+    return;
+  }
+  const segmentRequestIds = [
+    ...memorization.map((_, index) => `${parsed.data.requestId}:ح:${index}`),
+    ...review.map((_, index) => `${parsed.data.requestId}:م:${index}`),
+  ];
+  try {
+    const rows = await db.transaction(async (tx) => {
+      await tx.insert(quranWardsTable).values([
+        ...memorization.map((range, index) => ({
+          teacherId,
+          studentId: params.data.studentId,
+          mode: "memorization",
+          ...range,
+          assignedDate: parsed.data.assignedDate,
+          dueDate: parsed.data.dueDate,
+          notes: parsed.data.notes ?? null,
+          status: "assigned",
+          assignmentRequestId: segmentRequestIds[index],
+        })),
+        ...review.map((range, index) => ({
+          teacherId,
+          studentId: params.data.studentId,
+          mode: "review",
+          ...range,
+          assignedDate: parsed.data.assignedDate,
+          dueDate: parsed.data.dueDate,
+          notes: parsed.data.notes ?? null,
+          status: "assigned",
+          assignmentRequestId: segmentRequestIds[memorization.length + index],
+        })),
+      ]).onConflictDoNothing();
+      return tx.select().from(quranWardsTable).where(and(
+        eq(quranWardsTable.teacherId, teacherId),
+        eq(quranWardsTable.studentId, params.data.studentId),
+        inArray(quranWardsTable.assignmentRequestId, segmentRequestIds),
+      )).orderBy(quranWardsTable.mode, quranWardsTable.surahNumber, quranWardsTable.startAyah);
+    });
+    res.status(201).json(AssignQuranStudentTaskResponse.parse(rows));
+  } catch (error) {
+    req.log?.error(error, "Assign Quran student task failed");
+    res.status(500).json({ error: "Unable to assign student task" });
+  }
+});
+
 router.patch("/quran/students/:studentId/profile", async (req, res): Promise<void> => {
   const teacherId = teacherIdOf(req);
   if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
@@ -335,20 +403,26 @@ router.post("/quran/circles/:id/assign", async (req, res): Promise<void> => {
   const params = AssignQuranCircleTaskParams.safeParse(req.params);
   const parsed = AssignQuranCircleTaskBody.safeParse(req.body);
   if (!params.success || !parsed.success) { parseError(res, "Invalid circle task"); return; }
-  const memorizationError = parsed.data.memorization.map(wardValidation).find(Boolean);
-  const reviewError = parsed.data.review.map(wardValidation).find(Boolean);
+  const memorization = parsed.data.memorization ?? [];
+  const review = parsed.data.review ?? [];
+  if (memorization.length === 0 && review.length === 0) {
+    parseError(res, "Select memorization or review");
+    return;
+  }
+  const memorizationError = memorization.map(wardValidation).find(Boolean);
+  const reviewError = review.map(wardValidation).find(Boolean);
   if (memorizationError || reviewError) { parseError(res, memorizationError ?? reviewError ?? "Invalid range"); return; }
   try {
     const existingCircle = await circleView(teacherId, params.data.id);
     if (!existingCircle) { res.status(404).json({ error: "Circle not found" }); return; }
     if (existingCircle.members.length === 0) { parseError(res, "Circle has no students"); return; }
     const segmentRequestIds = [
-      ...parsed.data.memorization.map((_, index) => `${parsed.data.requestId}:ح:${index}`),
-      ...parsed.data.review.map((_, index) => `${parsed.data.requestId}:م:${index}`),
+      ...memorization.map((_, index) => `${parsed.data.requestId}:ح:${index}`),
+      ...review.map((_, index) => `${parsed.data.requestId}:م:${index}`),
     ];
     const rows = await db.transaction(async (tx) => {
       await tx.insert(quranWardsTable).values(existingCircle.members.flatMap((student) => [
-        ...parsed.data.memorization.map((range, index) => ({
+        ...memorization.map((range, index) => ({
           teacherId,
           studentId: student.id,
           mode: "memorization",
@@ -359,7 +433,7 @@ router.post("/quran/circles/:id/assign", async (req, res): Promise<void> => {
           status: "assigned",
           assignmentRequestId: segmentRequestIds[index],
         })),
-        ...parsed.data.review.map((range, index) => ({
+        ...review.map((range, index) => ({
           teacherId,
           studentId: student.id,
           mode: "review",
@@ -368,7 +442,7 @@ router.post("/quran/circles/:id/assign", async (req, res): Promise<void> => {
           dueDate: parsed.data.dueDate,
           notes: parsed.data.notes ?? null,
           status: "assigned",
-          assignmentRequestId: segmentRequestIds[parsed.data.memorization.length + index],
+          assignmentRequestId: segmentRequestIds[memorization.length + index],
         })),
       ])).onConflictDoNothing();
       return tx.select().from(quranWardsTable).where(and(

@@ -6619,6 +6619,87 @@ export function useListQuranStudentWards<TData = Awaited<ReturnType<typeof listQ
 
 
 
+export const getAssignQuranStudentTaskUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/quran/students/${studentId}/assign`
+}
+
+/**
+ * @summary Assign multiple memorization and review ranges to one student
+ */
+export const assignQuranStudentTask = async (studentId: number,
+    quranCircleTaskInput: QuranCircleTaskInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranWard[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranWard[]>(getAssignQuranStudentTaskUrl(studentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranCircleTaskInput)
+  }
+);}
+
+
+
+
+
+export const getAssignQuranStudentTaskMutationKey = () => ['assignQuranStudentTask'] as const;
+
+export const getAssignQuranStudentTaskMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError,AssignQuranStudentTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError,AssignQuranStudentTaskMutationVariables, TContext> => {
+
+const mutationKey = getAssignQuranStudentTaskMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignQuranStudentTask>>, AssignQuranStudentTaskMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  assignQuranStudentTask(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignQuranStudentTaskMutationResult = NonNullable<Awaited<ReturnType<typeof assignQuranStudentTask>>>
+    export type AssignQuranStudentTaskMutationBody = BodyType<QuranCircleTaskInput>
+    export type AssignQuranStudentTaskMutationError = ErrorType<void>
+    export type AssignQuranStudentTaskMutationVariables = {studentId: number;data: BodyType<QuranCircleTaskInput>}
+
+    /**
+ * @summary Assign multiple memorization and review ranges to one student
+ */
+export const useAssignQuranStudentTask = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError,AssignQuranStudentTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignQuranStudentTask>>,
+        TError,
+        AssignQuranStudentTaskMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignQuranStudentTaskMutationOptions(options));
+    }
+
 export const getCreateQuranWardUrl = () => {
 
 

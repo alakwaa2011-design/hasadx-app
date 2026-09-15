@@ -50,3 +50,9 @@ Quran memorization and review assignments are lists of canonical ranges, not one
 **Why:** Real circle plans often span several surahs or mix complete surahs with partial ranges.
 
 **How to apply:** Let teachers add and remove segments, derive full-surah bounds from the trusted surah catalog, and preserve every segment through assignment and daily recitation.
+
+Individual and circle Quran assignments share one range model: surah intervals, juz intervals, or precise cross-surah ayah intervals.
+
+**Why:** Teachers describe real assignments in these three forms; forcing manual per-surah rows is slow and confusing.
+
+**How to apply:** Convert choices to canonical per-surah wards before submission, use reviewed juz boundaries, show the derived summary, and save all ranges atomically with stable request identity.

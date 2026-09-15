@@ -14567,6 +14567,179 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     assignmentRequestId: string | null;
 }>, "many">;
 /**
+ * @summary Assign multiple memorization and review ranges to one student
+ */
+export declare const AssignQuranStudentTaskParams: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    studentId: number;
+}, {
+    studentId: number;
+}>;
+export declare const assignQuranStudentTaskBodyRequestIdMin = 8;
+export declare const assignQuranStudentTaskBodyRequestIdMax = 100;
+export declare const assignQuranStudentTaskBodyAssignedDateRegExp: RegExp;
+export declare const assignQuranStudentTaskBodyDueDateRegExp: RegExp;
+export declare const assignQuranStudentTaskBodyMemorizationItemSurahNumberMax = 114;
+export declare const assignQuranStudentTaskBodyMemorizationMax = 200;
+export declare const assignQuranStudentTaskBodyReviewItemSurahNumberMax = 114;
+export declare const assignQuranStudentTaskBodyReviewMax = 200;
+export declare const AssignQuranStudentTaskBody: zodV3.ZodObject<{
+    requestId: zodV3.ZodString;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodString;
+    memorization: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
+        surahNumber: zodV3.ZodNumber;
+        surahName: zodV3.ZodString;
+        startAyah: zodV3.ZodNumber;
+        endAyah: zodV3.ZodNumber;
+    }, "strip", zodV3.ZodTypeAny, {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }, {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }>, "many">>;
+    review: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
+        surahNumber: zodV3.ZodNumber;
+        surahName: zodV3.ZodString;
+        startAyah: zodV3.ZodNumber;
+        endAyah: zodV3.ZodNumber;
+    }, "strip", zodV3.ZodTypeAny, {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }, {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }>, "many">>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+}, "strip", zodV3.ZodTypeAny, {
+    assignedDate: string;
+    dueDate: string;
+    requestId: string;
+    review?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
+    notes?: string | null | undefined;
+    memorization?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
+}, {
+    assignedDate: string;
+    dueDate: string;
+    requestId: string;
+    review?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
+    notes?: string | null | undefined;
+    memorization?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
+}>;
+export declare const assignQuranStudentTaskResponseSurahNumberMax = 114;
+export declare const assignQuranStudentTaskResponseAssignedDateRegExp: RegExp;
+export declare const assignQuranStudentTaskResponseDueDateRegExp: RegExp;
+export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+    assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+    assignmentRequestId: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+    assignmentRequestId: string | null;
+}>;
+export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+    assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+    assignmentRequestId: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+    assignmentRequestId: string | null;
+}>, "many">;
+/**
  * @summary Assign a Quran ward to a roster student
  */
 export declare const createQuranWardBodySurahNumberMax = 114;
@@ -14664,14 +14837,14 @@ export declare const assignQuranCircleTaskBodyRequestIdMax = 100;
 export declare const assignQuranCircleTaskBodyAssignedDateRegExp: RegExp;
 export declare const assignQuranCircleTaskBodyDueDateRegExp: RegExp;
 export declare const assignQuranCircleTaskBodyMemorizationItemSurahNumberMax = 114;
-export declare const assignQuranCircleTaskBodyMemorizationMax = 20;
+export declare const assignQuranCircleTaskBodyMemorizationMax = 200;
 export declare const assignQuranCircleTaskBodyReviewItemSurahNumberMax = 114;
-export declare const assignQuranCircleTaskBodyReviewMax = 20;
+export declare const assignQuranCircleTaskBodyReviewMax = 200;
 export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
     requestId: zodV3.ZodString;
     assignedDate: zodV3.ZodString;
     dueDate: zodV3.ZodString;
-    memorization: zodV3.ZodArray<zodV3.ZodObject<{
+    memorization: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
         surahNumber: zodV3.ZodNumber;
         surahName: zodV3.ZodString;
         startAyah: zodV3.ZodNumber;
@@ -14686,8 +14859,8 @@ export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
         surahName: string;
         startAyah: number;
         endAyah: number;
-    }>, "many">;
-    review: zodV3.ZodArray<zodV3.ZodObject<{
+    }>, "many">>;
+    review: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
         surahNumber: zodV3.ZodNumber;
         surahName: zodV3.ZodString;
         startAyah: zodV3.ZodNumber;
@@ -14702,42 +14875,42 @@ export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
         surahName: string;
         startAyah: number;
         endAyah: number;
-    }>, "many">;
+    }>, "many">>;
     notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
-    review: {
-        surahNumber: number;
-        surahName: string;
-        startAyah: number;
-        endAyah: number;
-    }[];
-    memorization: {
-        surahNumber: number;
-        surahName: string;
-        startAyah: number;
-        endAyah: number;
-    }[];
     assignedDate: string;
     dueDate: string;
     requestId: string;
+    review?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
     notes?: string | null | undefined;
+    memorization?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
 }, {
-    review: {
-        surahNumber: number;
-        surahName: string;
-        startAyah: number;
-        endAyah: number;
-    }[];
-    memorization: {
-        surahNumber: number;
-        surahName: string;
-        startAyah: number;
-        endAyah: number;
-    }[];
     assignedDate: string;
     dueDate: string;
     requestId: string;
+    review?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
     notes?: string | null | undefined;
+    memorization?: {
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+    }[] | undefined;
 }>;
 export declare const assignQuranCircleTaskResponseSurahNumberMax = 114;
 export declare const assignQuranCircleTaskResponseAssignedDateRegExp: RegExp;

@@ -1826,6 +1826,32 @@ paths:
                 items:
                   $ref: "#/components/schemas/QuranWard"
 
+  /quran/students/{studentId}/assign:
+    post:
+      operationId: assignQuranStudentTask
+      tags: [quran]
+      summary: Assign multiple memorization and review ranges to one student
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuranCircleTaskInput" }
+      responses:
+        "201":
+          description: Created or replayed student tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QuranWard" }
+        "400": { description: Invalid task }
+        "404": { description: Student not found }
+
   /quran/wards:
     post:
       operationId: createQuranWard
@@ -2092,15 +2118,15 @@ components:
         memorization:
           type: array
           minItems: 1
-          maxItems: 20
+          maxItems: 200
           items: { $ref: "#/components/schemas/QuranWardRangeInput" }
         review:
           type: array
           minItems: 1
-          maxItems: 20
+          maxItems: 200
           items: { $ref: "#/components/schemas/QuranWardRangeInput" }
         notes: { type: ["string", "null"] }
-      required: [requestId, assignedDate, dueDate, memorization, review]
+      required: [requestId, assignedDate, dueDate]
 
     QuranWardUpdate:
       type: object

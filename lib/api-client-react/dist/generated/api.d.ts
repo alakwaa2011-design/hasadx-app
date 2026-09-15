@@ -1922,6 +1922,30 @@ export declare function useListQuranStudentWards<TData = Awaited<ReturnType<type
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getAssignQuranStudentTaskUrl: (studentId: number) => string;
+/**
+ * @summary Assign multiple memorization and review ranges to one student
+ */
+export declare const assignQuranStudentTask: (studentId: number, quranCircleTaskInput: QuranCircleTaskInput, options?: Parameters<typeof customFetch>[1]) => Promise<QuranWard[]>;
+export declare const getAssignQuranStudentTaskMutationKey: () => readonly ["assignQuranStudentTask"];
+export declare const getAssignQuranStudentTaskMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError, AssignQuranStudentTaskMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError, AssignQuranStudentTaskMutationVariables, TContext>;
+export type AssignQuranStudentTaskMutationResult = NonNullable<Awaited<ReturnType<typeof assignQuranStudentTask>>>;
+export type AssignQuranStudentTaskMutationBody = BodyType<QuranCircleTaskInput>;
+export type AssignQuranStudentTaskMutationError = ErrorType<void>;
+export type AssignQuranStudentTaskMutationVariables = {
+    studentId: number;
+    data: BodyType<QuranCircleTaskInput>;
+};
+/**
+* @summary Assign multiple memorization and review ranges to one student
+*/
+export declare const useAssignQuranStudentTask: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError, AssignQuranStudentTaskMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof assignQuranStudentTask>>, TError, AssignQuranStudentTaskMutationVariables, TContext>;
 export declare const getCreateQuranWardUrl: () => string;
 /**
  * @summary Assign a Quran ward to a roster student

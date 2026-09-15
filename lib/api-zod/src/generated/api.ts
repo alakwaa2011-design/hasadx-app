@@ -4746,6 +4746,78 @@ export const ListQuranStudentWardsResponse = zod.array(ListQuranStudentWardsResp
 
 
 /**
+ * @summary Assign multiple memorization and review ranges to one student
+ */
+export const AssignQuranStudentTaskParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const assignQuranStudentTaskBodyRequestIdMin = 8;
+export const assignQuranStudentTaskBodyRequestIdMax = 100;
+
+export const assignQuranStudentTaskBodyAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const assignQuranStudentTaskBodyDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const assignQuranStudentTaskBodyMemorizationItemSurahNumberMax = 114;
+
+
+
+
+export const assignQuranStudentTaskBodyMemorizationMax = 200;
+
+export const assignQuranStudentTaskBodyReviewItemSurahNumberMax = 114;
+
+
+
+
+export const assignQuranStudentTaskBodyReviewMax = 200;
+
+
+
+export const AssignQuranStudentTaskBody = zod.object({
+  "requestId": zod.string().min(assignQuranStudentTaskBodyRequestIdMin).max(assignQuranStudentTaskBodyRequestIdMax),
+  "assignedDate": zod.string().regex(assignQuranStudentTaskBodyAssignedDateRegExp),
+  "dueDate": zod.string().regex(assignQuranStudentTaskBodyDueDateRegExp),
+  "memorization": zod.array(zod.object({
+  "surahNumber": zod.int().min(1).max(assignQuranStudentTaskBodyMemorizationItemSurahNumberMax),
+  "surahName": zod.string().min(1),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1)
+})).min(1).max(assignQuranStudentTaskBodyMemorizationMax).optional(),
+  "review": zod.array(zod.object({
+  "surahNumber": zod.int().min(1).max(assignQuranStudentTaskBodyReviewItemSurahNumberMax),
+  "surahName": zod.string().min(1),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1)
+})).min(1).max(assignQuranStudentTaskBodyReviewMax).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const assignQuranStudentTaskResponseSurahNumberMax = 114;
+
+
+
+export const assignQuranStudentTaskResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const assignQuranStudentTaskResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const AssignQuranStudentTaskResponseItem = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(assignQuranStudentTaskResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(assignQuranStudentTaskResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(assignQuranStudentTaskResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
+})
+export const AssignQuranStudentTaskResponse = zod.array(AssignQuranStudentTaskResponseItem)
+
+
+/**
  * @summary Assign a Quran ward to a roster student
  */
 export const createQuranWardBodySurahNumberMax = 114;
@@ -4811,14 +4883,14 @@ export const assignQuranCircleTaskBodyMemorizationItemSurahNumberMax = 114;
 
 
 
-export const assignQuranCircleTaskBodyMemorizationMax = 20;
+export const assignQuranCircleTaskBodyMemorizationMax = 200;
 
 export const assignQuranCircleTaskBodyReviewItemSurahNumberMax = 114;
 
 
 
 
-export const assignQuranCircleTaskBodyReviewMax = 20;
+export const assignQuranCircleTaskBodyReviewMax = 200;
 
 
 
@@ -4831,13 +4903,13 @@ export const AssignQuranCircleTaskBody = zod.object({
   "surahName": zod.string().min(1),
   "startAyah": zod.int().min(1),
   "endAyah": zod.int().min(1)
-})).min(1).max(assignQuranCircleTaskBodyMemorizationMax),
+})).min(1).max(assignQuranCircleTaskBodyMemorizationMax).optional(),
   "review": zod.array(zod.object({
   "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyReviewItemSurahNumberMax),
   "surahName": zod.string().min(1),
   "startAyah": zod.int().min(1),
   "endAyah": zod.int().min(1)
-})).min(1).max(assignQuranCircleTaskBodyReviewMax),
+})).min(1).max(assignQuranCircleTaskBodyReviewMax).optional(),
   "notes": zod.string().nullish()
 })
 
