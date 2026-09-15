@@ -85,6 +85,7 @@
 - [Educational video quality](educational-video-quality-contract.md) — true generated motion, no silent still-image fallback; phase-one acceptance requires the user's manual review.
 - [AI video character normalization](ai-video-character-normalization.md) — storyboard models may return teacher/student as a keyed object; normalize equivalent structure before strict validation.
 - [PostgreSQL parameter inference](postgres-parameter-inference.md) — each SQL interpolation has its own type; nullable predicates require real PostgreSQL coverage, not database mocks.
+- [PostgreSQL UPDATE RETURNING scope](postgres-update-returning-scope.md) — RETURNING may use the updated row, not aliases introduced through UPDATE FROM; mocks do not validate this SQL.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
 - [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are the official reward-system identity; never expose emoji or legacy avatars as alternatives.

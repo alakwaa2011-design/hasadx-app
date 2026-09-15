@@ -46,48 +46,33 @@ type StartLimitResult = { allowed: boolean; retryAfterSeconds: number };
 
 export async function consumeDirectPlayStart(token: string): Promise<StartLimitResult> {
   const result = await db.execute(sql`
-    WITH current AS (
-      SELECT id, start_window_started_at, start_count, NOW() AS checked_at
-      FROM direct_play_links
-      WHERE token = ${token}
-      FOR UPDATE
-    ),
-    updated AS (
-      UPDATE direct_play_links AS link
-      SET
-        start_window_started_at = CASE
-          WHEN current.start_window_started_at IS NULL
-            OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
-          THEN current.checked_at
-          ELSE current.start_window_started_at
-        END,
-        start_count = CASE
-          WHEN current.start_window_started_at IS NULL
-            OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
-          THEN 1
-          WHEN current.start_count < ${RL_MAX} THEN current.start_count + 1
-          ELSE current.start_count
-        END
-      FROM current
-      WHERE link.id = current.id
-      RETURNING
-        current.start_window_started_at IS NULL
-          OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
-          OR current.start_count < ${RL_MAX} AS allowed,
-        CASE
-          WHEN current.start_window_started_at IS NULL
-            OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
-            OR current.start_count < ${RL_MAX}
-          THEN 0
-          ELSE GREATEST(
-            1,
-            CEIL(EXTRACT(EPOCH FROM (
-              current.start_window_started_at + (${RL_WINDOW_SECONDS} * INTERVAL '1 second') - current.checked_at
-            )))::integer
-          )
-        END AS retry_after_seconds
-    )
-    SELECT allowed, retry_after_seconds FROM updated
+    UPDATE direct_play_links AS link
+    SET
+      start_window_started_at = CASE
+        WHEN link.start_window_started_at IS NULL
+          OR link.start_window_started_at <= NOW() - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
+        THEN NOW()
+        ELSE link.start_window_started_at
+      END,
+      start_count = CASE
+        WHEN link.start_window_started_at IS NULL
+          OR link.start_window_started_at <= NOW() - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
+        THEN 1
+        WHEN link.start_count < ${RL_MAX} THEN link.start_count + 1
+        ELSE ${RL_MAX + 1}
+      END
+    WHERE link.token = ${token}
+    RETURNING
+      link.start_count <= ${RL_MAX} AS allowed,
+      CASE
+        WHEN link.start_count <= ${RL_MAX} THEN 0
+        ELSE GREATEST(
+          1,
+          CEIL(EXTRACT(EPOCH FROM (
+            link.start_window_started_at + (${RL_WINDOW_SECONDS} * INTERVAL '1 second') - NOW()
+          )))::integer
+        )
+      END AS retry_after_seconds
   `);
   const row = result.rows[0] as { allowed?: unknown; retry_after_seconds?: unknown } | undefined;
   if (!row) throw new Error("Direct-play link disappeared while applying start limit");
