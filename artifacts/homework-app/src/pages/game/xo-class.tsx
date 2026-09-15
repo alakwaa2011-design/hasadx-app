@@ -8,8 +8,8 @@ import { getIsMuted, playCorrectSound, playGameStartSound, playTickSound, playVi
 import { createXoClassState, currentXoClassQuestionForTeam, xoClassReducer, type XoClassQuestion, type XoClassState } from "@/lib/xo-class-engine";
 import { QRModalButton } from "@/components/game-qr-code";
 import { toast } from "@/components/ui/sonner";
-import { decodeXoClassSetup, encodeXoClassSetup, type XoClassSetup } from "@/lib/xo-class-share";
-import { savedGamePlayUrl } from "@/lib/saved-game-activities";
+import { decodeXoClassSetup, type XoClassSetup } from "@/lib/xo-class-share";
+import { createSavedGamePlayLink, savedGamePlayUrl } from "@/lib/saved-game-activities";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
@@ -201,6 +201,9 @@ export default function XoClass() {
   });
   const [setupLoading, setSetupLoading] = useState(Boolean(initialToken));
   const [setupError, setSetupError] = useState("");
+  const [shareToken, setShareToken] = useState(initialToken);
+  const [shareLinkLoading, setShareLinkLoading] = useState(false);
+  const shareLinkAttempted = useRef(false);
   const [state, dispatch] = useReducer(xoClassReducer, setup, current =>
     createXoClassState(current?.questions ?? [], current?.duration || 20),
   );
@@ -229,6 +232,18 @@ export default function XoClass() {
       .finally(() => { if (!cancelled) setSetupLoading(false); });
     return () => { cancelled = true; };
   }, [ar, initialToken]);
+
+  useEffect(() => {
+    if (shareToken || shareLinkAttempted.current || !setup?.savedActivityId) return;
+    shareLinkAttempted.current = true;
+    setShareLinkLoading(true);
+    createSavedGamePlayLink(setup.savedActivityId)
+      .then(setShareToken)
+      .catch(() => {
+        shareLinkAttempted.current = false;
+      })
+      .finally(() => setShareLinkLoading(false));
+  }, [setup?.savedActivityId, shareToken]);
 
   useEffect(() => {
     if (paused || !["countdown", "playing"].includes(state.status)) return;
@@ -261,16 +276,28 @@ export default function XoClass() {
     result.current = state.lastResult;
   }, [state.lastResult]);
 
-  const shareUrl = initialToken
-    ? savedGamePlayUrl(initialToken)
-    : `${window.location.origin}${import.meta.env.BASE_URL}game/xo/class#setup=${encodeURIComponent(encodeXoClassSetup(setup!))}`;
+  const shareUrl = shareToken ? savedGamePlayUrl(shareToken) : "";
 
   const copyShareLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      let shortUrl = shareUrl;
+      if (!shortUrl && setup?.savedActivityId) {
+        setShareLinkLoading(true);
+        const token = await createSavedGamePlayLink(setup.savedActivityId);
+        setShareToken(token);
+        shortUrl = savedGamePlayUrl(token);
+      }
+      if (!shortUrl) {
+        throw new Error(ar
+          ? "أنشئ اللعبة من صفحة إعداد إكس أو للحصول على رابط مختصر"
+          : "Create the game from XO setup to get a short link");
+      }
+      await navigator.clipboard.writeText(shortUrl);
       toast.success(ar ? "تم نسخ رابط وضع الصف" : "Classroom link copied");
-    } catch {
-      toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (ar ? "تعذّر نسخ الرابط" : "Could not copy the link"));
+    } finally {
+      setShareLinkLoading(false);
     }
   };
 
@@ -356,8 +383,8 @@ export default function XoClass() {
             </div>
 
             <div className="flex items-center gap-1.5">
-               <QRModalButton url={shareUrl} pin="" label="QR" variant="dark" />
-              <button type="button" aria-label={ar ? "نسخ الرابط" : "Copy link"} onClick={copyShareLink} className="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white">
+              {shareUrl && <QRModalButton url={shareUrl} pin="" label="QR" variant="dark" />}
+              <button type="button" aria-label={ar ? "نسخ الرابط" : "Copy link"} onClick={copyShareLink} disabled={shareLinkLoading} className="hidden items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white disabled:cursor-wait disabled:opacity-50 sm:flex">
                 <Copy className="h-4 w-4" />
                 <span className="hidden xl:inline">{ar ? "نسخ" : "Copy"}</span>
               </button>
