@@ -461,6 +461,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
   const activeFilterCount = [subjectFilter, gradeFilter, typeChip !== "all"].filter(Boolean).length;
   const hasFilters = !!(search || subjectFilter || gradeFilter || typeChip !== "all" || categoryTab !== "all");
+  // Saved subjects can be custom and may not have a matching shared activity
+  // yet. Keep them visible in the filter alongside subjects from the catalog.
+  const subjectFilterOptions = useMemo(
+    () => Array.from(new Set([...preferredSubjects, ...allSubjects])).sort((a, b) => a.localeCompare(b)),
+    [preferredSubjects, allSubjects],
+  );
 
   /* ──────────────────────────────────── render helpers ──────────────────────── */
 
@@ -744,7 +750,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             style={{ background: C.bg, borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
           >
             <option value="">{isAr ? "كل المواد" : "All subjects"}</option>
-            {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+            {subjectFilterOptions.map(subject => <option key={subject} value={subject}>{subject}</option>)}
           </select>
           <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2", isAr ? "left-2.5" : "right-2.5")} style={{ color: C.muted }} />
         </div>
@@ -951,7 +957,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                     style={{ borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
                   >
                     <option value="">{isAr ? "المادة: الكل" : "Subject: All"}</option>
-                    {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                    {subjectFilterOptions.map(subject => <option key={subject} value={subject}>{subject}</option>)}
                   </select>
                   <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "left-3" : "right-3")} style={{ color: C.muted }} />
                 </label>
@@ -1002,7 +1008,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   style={{ borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
                 >
                   <option value="">{isAr ? "المادة: الكل" : "Subject: All"}</option>
-                  {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                  {subjectFilterOptions.map(subject => <option key={subject} value={subject}>{subject}</option>)}
                 </select>
                 <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2", isAr ? "left-2.5" : "right-2.5")} style={{ color: C.muted }} />
               </label>
@@ -1109,7 +1115,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       style={{ borderColor: subjectFilter ? C.primary : C.border, color: subjectFilter ? C.text : C.muted, fontFamily: "inherit" }}
                     >
                       <option value="">{isAr ? "كل المواد" : "All subjects"}</option>
-                      {allSubjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                      {subjectFilterOptions.map(subject => <option key={subject} value={subject}>{subject}</option>)}
                     </select>
                     <ChevronDown className={cn("pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2", isAr ? "left-3" : "right-3")} style={{ color: C.muted }} />
                   </div>

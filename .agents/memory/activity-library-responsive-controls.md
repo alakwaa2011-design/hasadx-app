@@ -3,7 +3,7 @@ name: Activity library responsive controls
 description: The responsive mobile library uses the same state-owning filter logic as the desktop marketplace.
 ---
 
-The Activity Library marketplace is a presentation layer. Its parent owns the search, subject, grade, sorting, and data-filtering state; responsive controls must always route through those callbacks rather than construct a second mobile filter pipeline.
+The Activity Library marketplace is a presentation layer. Its parent owns the search, subject, grade, sorting, and data-filtering state; responsive controls must always route through those callbacks rather than construct a second mobile filter pipeline. Subject options must also merge saved teacher subjects with subjects discovered in catalog data before rendering every desktop, toolbar, and sheet selector.
 
 **Why:** Separate mobile query or filtering logic can drift from the visibility, ownership, and sort rules already enforced by the parent view.
 

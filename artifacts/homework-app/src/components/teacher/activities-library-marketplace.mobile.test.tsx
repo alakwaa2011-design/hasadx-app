@@ -48,6 +48,8 @@ function makeProps(overrides: Partial<ActivitiesLibraryMarketplaceProps> = {}): 
     popularIds: new Set(),
     newIds: new Set(),
     currentTeacherId: 1,
+    preferredSubjects: [],
+    onPreferredSubjectsChange: vi.fn(async () => {}),
     isAdmin: false,
     showHidden: false,
     onShowHiddenChange: vi.fn(),
@@ -201,5 +203,18 @@ describe("ActivitiesLibraryMarketplace mobile controls", () => {
       grade.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(props.onGradeFilterChange).toHaveBeenCalledWith("السادس");
+  });
+
+  it("يعرض المادة المخصصة المحفوظة في فلتر المواد حتى دون نشاط مطابق", async () => {
+    const props = makeProps({
+      preferredSubjects: ["الفلك"],
+      allSubjects: ["علوم"],
+    });
+    await act(async () => {
+      root.render(<ActivitiesLibraryMarketplace {...props} />);
+    });
+
+    const subject = container.querySelector('select[aria-label="المادة الدراسية"]') as HTMLSelectElement;
+    expect(Array.from(subject.options).map(option => option.value)).toEqual(["", "الفلك", "علوم"]);
   });
 });

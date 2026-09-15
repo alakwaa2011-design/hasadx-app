@@ -529,6 +529,7 @@ export default function SharedContentPage({
   };
 
   const allSubjects = Array.from(new Set([
+    ...preferredSubjects,
     ...assignments.map(a => a.subject).filter(Boolean),
     ...questions.map(q => q.subject).filter(Boolean),
     ...videoLessons.map(v => v.subject).filter(Boolean),
