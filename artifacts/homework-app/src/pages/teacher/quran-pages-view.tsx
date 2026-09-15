@@ -74,6 +74,7 @@ export function QuranPagesView({
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -133,7 +134,10 @@ export function QuranPagesView({
   }, [activePage]);
 
   const goToPage = (page: number) => {
-    setActivePage(Math.min(Math.max(page, FIRST_PAGE), LAST_PAGE));
+    const nextPage = Math.min(Math.max(page, FIRST_PAGE), LAST_PAGE);
+    if (nextPage === activePage) return;
+    setTurnDirection(nextPage > activePage ? "next" : "previous");
+    setActivePage(nextPage);
   };
 
   const goToSurah = (chapterId: number) => {
@@ -356,8 +360,10 @@ export function QuranPagesView({
         onTouchEnd={handleTouchEnd}
       >
         <div
+          key={activePage}
           className={cn(
             "mx-auto grid grid-cols-1 items-start gap-3 transition-[width,max-width] duration-200 lg:grid-cols-2 lg:gap-3",
+            turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
           )}
           style={{
             width: `${zoom}%`,

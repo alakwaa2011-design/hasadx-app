@@ -3,6 +3,60 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes quran-page-turn-next {
+  0% {
+    opacity: 0.45;
+    transform: perspective(1400px) rotateY(-7deg) translateX(18px);
+    transform-origin: right center;
+    filter: brightness(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1400px) rotateY(0deg) translateX(0);
+    transform-origin: right center;
+    filter: brightness(1);
+  }
+}
+
+@keyframes quran-page-turn-previous {
+  0% {
+    opacity: 0.45;
+    transform: perspective(1400px) rotateY(7deg) translateX(-18px);
+    transform-origin: left center;
+    filter: brightness(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1400px) rotateY(0deg) translateX(0);
+    transform-origin: left center;
+    filter: brightness(1);
+  }
+}
+
+.quran-page-turn-next,
+.quran-page-turn-previous {
+  animation-duration: 360ms;
+  animation-timing-function: cubic-bezier(0.22, 0.75, 0.3, 1);
+  animation-fill-mode: both;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.quran-page-turn-next {
+  animation-name: quran-page-turn-next;
+}
+
+.quran-page-turn-previous {
+  animation-name: quran-page-turn-previous;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quran-page-turn-next,
+  .quran-page-turn-previous {
+    animation: none;
+  }
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
