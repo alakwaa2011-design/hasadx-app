@@ -4824,6 +4824,12 @@ export const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMax = 100
 
 export const getQuranJourneyResponseRecentActivitiesMax = 20;
 
+export const getQuranJourneyResponseIndependentPracticeDatesItemRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranJourneyResponseIndependentPracticeLatestPositionOneTextSurahNumberMax = 114;
+
+
+export const getQuranJourneyResponseIndependentPracticeLatestPositionOnePageNumberMax = 604;
+
 
 
 export const GetQuranJourneyResponse = zod.object({
@@ -4868,7 +4874,67 @@ export const GetQuranJourneyResponse = zod.object({
   "status": zod.string(),
   "memorizationScore": zod.number().min(getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMin).max(getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMax).nullable(),
   "recitationScore": zod.number().min(getQuranJourneyResponseRecentActivitiesItemRecitationScoreMin).max(getQuranJourneyResponseRecentActivitiesItemRecitationScoreMax).nullable()
-})).max(getQuranJourneyResponseRecentActivitiesMax)
+})).max(getQuranJourneyResponseRecentActivitiesMax),
+  "independentPractice": zod.object({
+  "dates": zod.array(zod.string().regex(getQuranJourneyResponseIndependentPracticeDatesItemRegExp)),
+  "latestPosition": zod.object({
+  "textSurahNumber": zod.int().min(1).max(getQuranJourneyResponseIndependentPracticeLatestPositionOneTextSurahNumberMax).nullable(),
+  "textAyah": zod.int().min(1).nullable(),
+  "pageNumber": zod.int().min(1).max(getQuranJourneyResponseIndependentPracticeLatestPositionOnePageNumberMax).nullable(),
+  "updatedAt": zod.coerce.date()
+}).nullable()
+})
+})
+
+
+/**
+ * @summary Save the signed-in student's latest independent Quran positions
+ */
+export const updateMyQuranIndependentPositionBodyTextSurahNumberMax = 114;
+
+
+export const updateMyQuranIndependentPositionBodyPageNumberMax = 604;
+
+
+
+export const UpdateMyQuranIndependentPositionBody = zod.object({
+  "textSurahNumber": zod.int().min(1).max(updateMyQuranIndependentPositionBodyTextSurahNumberMax).nullish(),
+  "textAyah": zod.int().min(1).nullish(),
+  "pageNumber": zod.int().min(1).max(updateMyQuranIndependentPositionBodyPageNumberMax).nullish()
+})
+
+export const updateMyQuranIndependentPositionResponseTextSurahNumberMax = 114;
+
+
+export const updateMyQuranIndependentPositionResponsePageNumberMax = 604;
+
+
+
+export const UpdateMyQuranIndependentPositionResponse = zod.object({
+  "textSurahNumber": zod.int().min(1).max(updateMyQuranIndependentPositionResponseTextSurahNumberMax).nullable(),
+  "textAyah": zod.int().min(1).nullable(),
+  "pageNumber": zod.int().min(1).max(updateMyQuranIndependentPositionResponsePageNumberMax).nullable(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record an explicitly completed independent Quran practice session
+ */
+export const recordMyQuranIndependentSessionBodyPracticedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const RecordMyQuranIndependentSessionBody = zod.object({
+  "practicedDate": zod.string().regex(recordMyQuranIndependentSessionBodyPracticedDateRegExp).nullish()
+})
+
+export const recordMyQuranIndependentSessionResponsePracticedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const RecordMyQuranIndependentSessionResponse = zod.object({
+  "id": zod.int(),
+  "practicedDate": zod.string().regex(recordMyQuranIndependentSessionResponsePracticedDateRegExp),
+  "createdAt": zod.coerce.date()
 })
 
 

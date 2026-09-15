@@ -107,4 +107,5 @@ export * from "./quran-profiles";
 export * from "./quran-wards";
 export * from "./quran-recitations";
 export * from "./quran-submissions";
+export * from "./quran-independent-practice";
 //# sourceMappingURL=index.d.ts.map

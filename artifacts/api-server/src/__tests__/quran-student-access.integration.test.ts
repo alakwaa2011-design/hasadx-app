@@ -33,6 +33,30 @@ function studentApp(studentAccountId?: number) {
 suite("student Quran ward ownership", () => {
   beforeAll(async () => {
     await db.execute(sql.raw(`
+      CREATE TABLE IF NOT EXISTS quran_independent_positions (
+        id SERIAL PRIMARY KEY,
+        student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,
+        text_surah_number INTEGER,
+        text_ayah INTEGER,
+        page_number INTEGER,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_independent_positions_account_uq
+        ON quran_independent_positions(student_account_id);
+      CREATE TABLE IF NOT EXISTS quran_independent_sessions (
+        id SERIAL PRIMARY KEY,
+        student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,
+        practiced_date DATE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_independent_sessions_account_date_uq
+        ON quran_independent_sessions(student_account_id, practiced_date);
+      DROP INDEX IF EXISTS quran_independent_positions_student_idx;
+      ALTER TABLE quran_independent_positions DROP COLUMN IF EXISTS student_id;
+      DROP INDEX IF EXISTS quran_independent_sessions_student_date_idx;
+      ALTER TABLE quran_independent_sessions DROP COLUMN IF EXISTS student_id;
+    `));
+    await db.execute(sql.raw(`
       CREATE TABLE IF NOT EXISTS quran_wards (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
@@ -117,5 +141,56 @@ suite("student Quran ward ownership", () => {
   it("does not expose Quran access to an account without a student profile", async () => {
     const response = await request(studentApp(unlinkedAccountId)).get("/api/quran/me/wards");
     expect(response.status).toBe(404);
+  });
+
+  it("persists independent positions for an unlinked account and supports partial updates", async () => {
+    const textResponse = await request(studentApp(unlinkedAccountId))
+      .patch("/api/quran/me/independent-position")
+      .send({ textSurahNumber: 2, textAyah: 10 });
+    expect(textResponse.status).toBe(200);
+    expect(textResponse.body.textSurahNumber).toBe(2);
+
+    const pageResponse = await request(studentApp(unlinkedAccountId))
+      .patch("/api/quran/me/independent-position")
+      .send({ pageNumber: 42 });
+    expect(pageResponse.status).toBe(200);
+    expect(pageResponse.body.textSurahNumber).toBe(2);
+    expect(pageResponse.body.pageNumber).toBe(42);
+
+    const journeyResponse = await request(studentApp(unlinkedAccountId))
+      .get("/api/quran/me/journey");
+    expect(journeyResponse.status).toBe(200);
+    expect(journeyResponse.body.independentPractice.latestPosition).toMatchObject({
+      textSurahNumber: 2,
+      textAyah: 10,
+      pageNumber: 42,
+    });
+  });
+
+  it("records a same-day independent session idempotently without a roster row", async () => {
+    const first = await request(studentApp(unlinkedAccountId))
+      .post("/api/quran/me/independent-sessions")
+      .send({ practicedDate: "2025-01-15" });
+    const replay = await request(studentApp(unlinkedAccountId))
+      .post("/api/quran/me/independent-sessions")
+      .send({ practicedDate: "2025-01-15" });
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(201);
+    expect(replay.body.id).toBe(first.body.id);
+  });
+
+  it("keeps account-owned independent data after its roster row is deleted", async () => {
+    const saved = await request(studentApp(accountId))
+      .patch("/api/quran/me/independent-position")
+      .send({ textSurahNumber: 3, textAyah: 4 });
+    expect(saved.status).toBe(200);
+    await db.execute(sql`DELETE FROM students WHERE id = ${studentId}`);
+
+    const journey = await request(studentApp(accountId)).get("/api/quran/me/journey");
+    expect(journey.status).toBe(200);
+    expect(journey.body.independentPractice.latestPosition).toMatchObject({
+      textSurahNumber: 3,
+      textAyah: 4,
+    });
   });
 });

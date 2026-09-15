@@ -195,4 +195,27 @@ describe("Quran journey calculation", () => {
     expect(result.profile.masteredAyahCount).toBe(0);
     expect(result.summary.masteredAyahCount).toBe(0);
   });
+
+  it("keeps independent practice dates and positions separate from teacher mastery", () => {
+    const result = calculateQuranJourney({
+      profile: { ...profile, masteredAyahCount: 99 },
+      wards: [],
+      recitations: [],
+      submissions: [],
+      independentPractice: {
+        dates: ["2025-01-04", "2025-01-04", "2025-01-05"],
+        latestPosition: {
+          textSurahNumber: 2,
+          textAyah: 10,
+          pageNumber: 42,
+          updatedAt: "2025-01-05T10:00:00.000Z",
+        },
+      },
+      today: "2025-01-05",
+    });
+    expect(result.independentPractice.dates).toEqual(["2025-01-04", "2025-01-05"]);
+    expect(result.independentPractice.latestPosition?.pageNumber).toBe(42);
+    expect(result.summary.masteredAyahCount).toBe(0);
+    expect(result.summary.completedWardCount).toBe(0);
+  });
 });

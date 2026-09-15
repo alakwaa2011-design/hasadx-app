@@ -14682,6 +14682,9 @@ export declare const getQuranJourneyResponseRecentActivitiesItemMemorizationScor
 export declare const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMin = 0;
 export declare const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMax = 100;
 export declare const getQuranJourneyResponseRecentActivitiesMax = 20;
+export declare const getQuranJourneyResponseIndependentPracticeDatesItemRegExp: RegExp;
+export declare const getQuranJourneyResponseIndependentPracticeLatestPositionOneTextSurahNumberMax = 114;
+export declare const getQuranJourneyResponseIndependentPracticeLatestPositionOnePageNumberMax = 604;
 export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     profile: zodV3.ZodObject<{
         currentSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
@@ -14797,6 +14800,41 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: number | null;
         recitationScore: number | null;
     }>, "many">;
+    independentPractice: zodV3.ZodObject<{
+        dates: zodV3.ZodArray<zodV3.ZodString, "many">;
+        latestPosition: zodV3.ZodNullable<zodV3.ZodObject<{
+            textSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+            textAyah: zodV3.ZodNullable<zodV3.ZodNumber>;
+            pageNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+            updatedAt: zodV3.ZodDate;
+        }, "strip", zodV3.ZodTypeAny, {
+            updatedAt: Date;
+            textSurahNumber: number | null;
+            textAyah: number | null;
+            pageNumber: number | null;
+        }, {
+            updatedAt: Date;
+            textSurahNumber: number | null;
+            textAyah: number | null;
+            pageNumber: number | null;
+        }>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        dates: string[];
+        latestPosition: {
+            updatedAt: Date;
+            textSurahNumber: number | null;
+            textAyah: number | null;
+            pageNumber: number | null;
+        } | null;
+    }, {
+        dates: string[];
+        latestPosition: {
+            updatedAt: Date;
+            textSurahNumber: number | null;
+            textAyah: number | null;
+            pageNumber: number | null;
+        } | null;
+    }>;
 }, "strip", zodV3.ZodTypeAny, {
     profile: {
         currentSurahNumber: number | null;
@@ -14840,6 +14878,15 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: number | null;
         recitationScore: number | null;
     }[];
+    independentPractice: {
+        dates: string[];
+        latestPosition: {
+            updatedAt: Date;
+            textSurahNumber: number | null;
+            textAyah: number | null;
+            pageNumber: number | null;
+        } | null;
+    };
 }, {
     profile: {
         currentSurahNumber: number | null;
@@ -14883,6 +14930,76 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: number | null;
         recitationScore: number | null;
     }[];
+    independentPractice: {
+        dates: string[];
+        latestPosition: {
+            updatedAt: Date;
+            textSurahNumber: number | null;
+            textAyah: number | null;
+            pageNumber: number | null;
+        } | null;
+    };
+}>;
+/**
+ * @summary Save the signed-in student's latest independent Quran positions
+ */
+export declare const updateMyQuranIndependentPositionBodyTextSurahNumberMax = 114;
+export declare const updateMyQuranIndependentPositionBodyPageNumberMax = 604;
+export declare const UpdateMyQuranIndependentPositionBody: zodV3.ZodObject<{
+    textSurahNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    textAyah: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    pageNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+}, "strip", zodV3.ZodTypeAny, {
+    textSurahNumber?: number | null | undefined;
+    textAyah?: number | null | undefined;
+    pageNumber?: number | null | undefined;
+}, {
+    textSurahNumber?: number | null | undefined;
+    textAyah?: number | null | undefined;
+    pageNumber?: number | null | undefined;
+}>;
+export declare const updateMyQuranIndependentPositionResponseTextSurahNumberMax = 114;
+export declare const updateMyQuranIndependentPositionResponsePageNumberMax = 604;
+export declare const UpdateMyQuranIndependentPositionResponse: zodV3.ZodObject<{
+    textSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+    textAyah: zodV3.ZodNullable<zodV3.ZodNumber>;
+    pageNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    updatedAt: Date;
+    textSurahNumber: number | null;
+    textAyah: number | null;
+    pageNumber: number | null;
+}, {
+    updatedAt: Date;
+    textSurahNumber: number | null;
+    textAyah: number | null;
+    pageNumber: number | null;
+}>;
+/**
+ * @summary Record an explicitly completed independent Quran practice session
+ */
+export declare const recordMyQuranIndependentSessionBodyPracticedDateRegExp: RegExp;
+export declare const RecordMyQuranIndependentSessionBody: zodV3.ZodObject<{
+    practicedDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+}, "strip", zodV3.ZodTypeAny, {
+    practicedDate?: string | null | undefined;
+}, {
+    practicedDate?: string | null | undefined;
+}>;
+export declare const recordMyQuranIndependentSessionResponsePracticedDateRegExp: RegExp;
+export declare const RecordMyQuranIndependentSessionResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    practicedDate: zodV3.ZodString;
+    createdAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    practicedDate: string;
+}, {
+    id: number;
+    createdAt: Date;
+    practicedDate: string;
 }>;
 /**
  * @summary Get one Quran ward owned by the signed-in student

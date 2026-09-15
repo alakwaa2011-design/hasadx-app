@@ -5,6 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { QuranIndependentPractice } from './quranIndependentPractice';
 import type { QuranJourneyActivity } from './quranJourneyActivity';
 import type { QuranJourneyProfile } from './quranJourneyProfile';
 import type { QuranJourneyStreak } from './quranJourneyStreak';
@@ -23,4 +24,5 @@ export interface QuranJourney {
   activeDates: string[];
   /** @maxItems 20 */
   recentActivities: QuranJourneyActivity[];
+  independentPractice: QuranIndependentPractice;
 }

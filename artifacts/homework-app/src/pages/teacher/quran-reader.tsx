@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
   getJuzStart,
@@ -15,8 +15,21 @@ import { useI18n } from '@/lib/i18n';
 import { QuranPagesView } from './quran-pages-view';
 import { QuranSearchDialog } from './quran-search-dialog';
 import type { QuranWard } from '@workspace/api-client-react';
+import {
+  useRecordMyQuranIndependentSession,
+  useUpdateMyQuranIndependentPosition,
+  useGetQuranJourney,
+  getGetQuranJourneyQueryKey,
+} from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { QuranStudentSubmissionPanel } from '../student/quran-student-submission';
 import { QuranAudioPlayer } from '@/components/quran/quran-audio-player';
+import {
+  clampQuranAyah,
+  quranNavigationKey,
+  reduceQuranReaderPosition,
+} from '@/lib/quran-reader-position';
 
 export default function QuranReader() {
   const { lang } = useI18n();
@@ -32,6 +45,13 @@ export default function QuranReader() {
   const queryMode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
   const view = searchParams.get('view') || 'reader';
+  const {
+    data: independentJourney,
+    isLoading: independentJourneyLoading,
+    isError: independentJourneyError,
+  } = useGetQuranJourney({
+    query: { enabled: isStudentPractice, queryKey: getGetQuranJourneyQueryKey() },
+  });
 
   const [studentWard, setStudentWard] = useState<QuranWard | null>(null);
   const [studentWardLoading, setStudentWardLoading] = useState(isStudentWard);
@@ -64,10 +84,24 @@ export default function QuranReader() {
       .finally(() => setStudentWardLoading(false));
   }, [isStudentWard, params.wardId, setLocation]);
 
-  if (studentWardLoading) {
+  if (studentWardLoading || (isStudentPractice && independentJourneyLoading)) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-[#fcfaf8] dark:bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-emerald-700" />
+      </div>
+    );
+  }
+
+  if (isStudentPractice && independentJourneyError) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#fcfaf8] px-6 text-center dark:bg-background">
+        <BookOpen className="h-10 w-10 text-emerald-700" />
+        <p className="font-bold text-foreground">
+          {lang === 'ar' ? 'تعذر استعادة موضعك المحفوظ' : 'Could not restore your saved position'}
+        </p>
+        <button onClick={() => setLocation('/student/dashboard')} className="rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white">
+          {lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard'}
+        </button>
       </div>
     );
   }
@@ -86,7 +120,12 @@ export default function QuranReader() {
     );
   }
 
-  const surahNumber = studentWard?.surahNumber ?? parseInt(params.surahNumber || '1', 10);
+  const independentPosition = independentJourney?.independentPractice.latestPosition;
+  const surahNumber = studentWard?.surahNumber ?? (
+    isStudentPractice && !requestedAyah
+      ? independentPosition?.textSurahNumber ?? parseInt(params.surahNumber || '1', 10)
+      : parseInt(params.surahNumber || '1', 10)
+  );
   const startAyah = studentWard?.startAyah ?? queryStartAyah;
   const endAyah = studentWard?.endAyah ?? queryEndAyah;
   const mode = studentWard?.mode ?? queryMode;
@@ -95,7 +134,8 @@ export default function QuranReader() {
     return (
       <QuranPagesView
         initialSurah={surahNumber}
-        initialAyah={requestedAyah ?? startAyah ?? 1}
+        initialAyah={requestedAyah ?? startAyah ?? (isStudentPractice ? independentPosition?.textAyah : null) ?? 1}
+        initialPage={independentPosition?.pageNumber ?? undefined}
         onNavigate={(loc) => setLocation(`${readerBasePath}/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
         isTaskAyah={(sId, aNum) => sId === surahNumber && startAyah !== null && endAyah !== null && aNum >= startAyah && aNum <= endAyah}
         startAyah={startAyah}
@@ -109,6 +149,7 @@ export default function QuranReader() {
               en: "Back to student dashboard",
             }
           : undefined}
+        isIndependentPractice={isStudentPractice}
       />
     );
   }
@@ -118,10 +159,11 @@ export default function QuranReader() {
     startAyah={startAyah}
     endAyah={endAyah}
     mode={mode}
-    requestedAyah={requestedAyah}
+    requestedAyah={requestedAyah ?? (isStudentPractice ? independentPosition?.textAyah ?? null : null)}
     isStudentWard={isStudentWard}
     isStudentPractice={isStudentPractice}
     wardId={studentWard?.id}
+    isIndependentPractice={isStudentPractice}
   />;
 }
 
@@ -137,6 +179,7 @@ interface ReaderViewProps {
   embedded?: boolean;
   onNavigate?: (location: { surah: number; ayah: number }) => void;
   onSwitchToPages?: (location: { surah: number; ayah: number }) => void;
+  isIndependentPractice?: boolean;
 }
 
 export function QuranTextReaderView({
@@ -151,9 +194,14 @@ export function QuranTextReaderView({
   embedded = false,
   onNavigate,
   onSwitchToPages,
+  isIndependentPractice = false,
 }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const savePosition = useUpdateMyQuranIndependentPosition();
+  const recordSession = useRecordMyQuranIndependentSession();
+  const lastSavedPositionRef = useRef<string | null>(null);
 
   const [surahs, setSurahs] = useState<QuranSurahParsed[] | null>(null);
   const [fontSize, setFontSize] = useState(28);
@@ -162,6 +210,17 @@ export function QuranTextReaderView({
   // Audio and Memorization State
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // This is the authoritative selection while the reader is mounted. The
+  // URL is only an initial/navigation hint; it must not overwrite a click.
+  const navigationKey = quranNavigationKey(surahNumber, requestedAyah, startAyah);
+  const [position, dispatchPosition] = useReducer(
+    reduceQuranReaderPosition,
+    {
+      ayah: clampQuranAyah(requestedAyah ?? startAyah ?? 1),
+      navigationKey,
+    },
+  );
+  const selectedAyah = position.ayah;
   const [memoView, setMemoView] = useState<'show' | 'hide' | 'progressive'>(
     mode === 'memorization' ? 'hide' : 'show'
   );
@@ -194,7 +253,15 @@ export function QuranTextReaderView({
   }, [surahNumber, mode]);
 
   useEffect(() => {
-    const ayahToReveal = playingAyah ?? requestedAyah ?? startAyah;
+    dispatchPosition({
+      type: "navigation",
+      key: navigationKey,
+      ayah: requestedAyah ?? startAyah ?? 1,
+    });
+  }, [navigationKey, requestedAyah, startAyah]);
+
+  useEffect(() => {
+    const ayahToReveal = playingAyah ?? selectedAyah;
     if (surahs && ayahToReveal) {
       setTimeout(() => {
         const el = document.getElementById(`ayah-${ayahToReveal}`);
@@ -207,7 +274,19 @@ export function QuranTextReaderView({
         }
       }, 100);
     }
-  }, [surahs, requestedAyah, startAyah, surahNumber, playingAyah]);
+  }, [surahs, selectedAyah, surahNumber, playingAyah]);
+
+  // Independent practice has its own text position. Keep this separate from
+  // teacher-assigned progress and persist it whenever the selected ayah changes.
+  useEffect(() => {
+    if (!isIndependentPractice || !surahNumber) return;
+    const positionKey = `${surahNumber}:${selectedAyah}`;
+    if (lastSavedPositionRef.current === positionKey) return;
+    lastSavedPositionRef.current = positionKey;
+    savePosition.mutate({
+      data: { textSurahNumber: surahNumber, textAyah: selectedAyah },
+    });
+  }, [isIndependentPractice, selectedAyah, savePosition, surahNumber]);
 
   if (!surahs) {
     return (
@@ -228,8 +307,18 @@ export function QuranTextReaderView({
     );
   }
 
-  const activeAyahURL = Math.min(Math.max(requestedAyah ?? startAyah ?? 1, 1), surah.ayahs.length);
+  const activeAyahURL = Math.min(Math.max(selectedAyah, 1), surah.ayahs.length);
   const activeLocation = getQuranLocation(surahNumber, activeAyahURL);
+
+  const recordIndependentPractice = async () => {
+    try {
+      await recordSession.mutateAsync({ data: {} });
+      await queryClient.invalidateQueries({ queryKey: getGetQuranJourneyQueryKey() });
+      toast.success(lang === 'ar' ? 'تم تسجيل جلسة التدريب' : 'Practice session recorded');
+    } catch {
+      toast.error(lang === 'ar' ? 'تعذر تسجيل الجلسة' : 'Could not record the session');
+    }
+  };
 
   const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
     if (isStudentWard) return;
@@ -265,6 +354,7 @@ export function QuranTextReaderView({
 
   const handleAyahClick = (ayahIndex: number) => {
     if (!isAyahPlayable(ayahIndex)) return;
+    dispatchPosition({ type: "click", ayah: ayahIndex });
     if (isAyahConcealed(ayahIndex)) {
       setRevealedAyahs(prev => new Set(prev).add(ayahIndex));
     } else {
@@ -441,6 +531,16 @@ export function QuranTextReaderView({
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
+              {isIndependentPractice && (
+                <button
+                  type="button"
+                  onClick={() => void recordIndependentPractice()}
+                  disabled={recordSession.isPending}
+                  className="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                >
+                  {lang === 'ar' ? 'سجلت جلسة تدريب' : 'Record practice'}
+                </button>
+              )}
               <div className="flex items-center bg-muted/40 rounded-lg p-1 mr-2 rtl:ml-2">
                 <button
                   onClick={() => setMemoView('show')}

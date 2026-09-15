@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranJourney, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1969,6 +1969,52 @@ export declare function useGetQuranJourney<TData = Awaited<ReturnType<typeof get
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getUpdateMyQuranIndependentPositionUrl: () => string;
+/**
+ * @summary Save the signed-in student's latest independent Quran positions
+ */
+export declare const updateMyQuranIndependentPosition: (quranIndependentPositionInput: QuranIndependentPositionInput, options?: Parameters<typeof customFetch>[1]) => Promise<QuranIndependentPosition>;
+export declare const getUpdateMyQuranIndependentPositionMutationKey: () => readonly ["updateMyQuranIndependentPosition"];
+export declare const getUpdateMyQuranIndependentPositionMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError, UpdateMyQuranIndependentPositionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError, UpdateMyQuranIndependentPositionMutationVariables, TContext>;
+export type UpdateMyQuranIndependentPositionMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>>;
+export type UpdateMyQuranIndependentPositionMutationBody = BodyType<QuranIndependentPositionInput>;
+export type UpdateMyQuranIndependentPositionMutationError = ErrorType<void>;
+export type UpdateMyQuranIndependentPositionMutationVariables = {
+    data: BodyType<QuranIndependentPositionInput>;
+};
+/**
+* @summary Save the signed-in student's latest independent Quran positions
+*/
+export declare const useUpdateMyQuranIndependentPosition: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError, UpdateMyQuranIndependentPositionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError, UpdateMyQuranIndependentPositionMutationVariables, TContext>;
+export declare const getRecordMyQuranIndependentSessionUrl: () => string;
+/**
+ * @summary Record an explicitly completed independent Quran practice session
+ */
+export declare const recordMyQuranIndependentSession: (quranIndependentSessionInput: QuranIndependentSessionInput, options?: Parameters<typeof customFetch>[1]) => Promise<QuranIndependentSession>;
+export declare const getRecordMyQuranIndependentSessionMutationKey: () => readonly ["recordMyQuranIndependentSession"];
+export declare const getRecordMyQuranIndependentSessionMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError, RecordMyQuranIndependentSessionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError, RecordMyQuranIndependentSessionMutationVariables, TContext>;
+export type RecordMyQuranIndependentSessionMutationResult = NonNullable<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>>;
+export type RecordMyQuranIndependentSessionMutationBody = BodyType<QuranIndependentSessionInput>;
+export type RecordMyQuranIndependentSessionMutationError = ErrorType<void>;
+export type RecordMyQuranIndependentSessionMutationVariables = {
+    data: BodyType<QuranIndependentSessionInput>;
+};
+/**
+* @summary Record an explicitly completed independent Quran practice session
+*/
+export declare const useRecordMyQuranIndependentSession: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError, RecordMyQuranIndependentSessionMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError, RecordMyQuranIndependentSessionMutationVariables, TContext>;
 export declare const getGetMyQuranWardUrl: (id: number) => string;
 /**
  * @summary Get one Quran ward owned by the signed-in student

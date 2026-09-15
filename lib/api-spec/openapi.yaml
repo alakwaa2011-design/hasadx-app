@@ -1857,6 +1857,48 @@ paths:
                 $ref: "#/components/schemas/QuranJourney"
         "401": { description: Student not authenticated }
 
+  /quran/me/independent-position:
+    patch:
+      operationId: updateMyQuranIndependentPosition
+      tags: [quran]
+      summary: Save the signed-in student's latest independent Quran positions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranIndependentPositionInput"
+      responses:
+        "200":
+          description: Saved independent Quran positions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranIndependentPosition"
+        "400": { description: Invalid position }
+        "401": { description: Student not authenticated }
+
+  /quran/me/independent-sessions:
+    post:
+      operationId: recordMyQuranIndependentSession
+      tags: [quran]
+      summary: Record an explicitly completed independent Quran practice session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranIndependentSessionInput"
+      responses:
+        "201":
+          description: Recorded independent practice session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranIndependentSession"
+        "400": { description: Invalid practice date }
+        "401": { description: Student not authenticated }
+
   /quran/me/wards/{id}:
     get:
       operationId: getMyQuranWard
@@ -2532,6 +2574,48 @@ components:
         longest: { type: integer, minimum: 0 }
       required: [current, longest]
 
+    QuranIndependentPosition:
+      type: object
+      properties:
+        textSurahNumber: { type: ["integer", "null"], minimum: 1, maximum: 114 }
+        textAyah: { type: ["integer", "null"], minimum: 1 }
+        pageNumber: { type: ["integer", "null"], minimum: 1, maximum: 604 }
+        updatedAt: { type: string, format: date-time }
+      required: [textSurahNumber, textAyah, pageNumber, updatedAt]
+
+    QuranIndependentPositionInput:
+      type: object
+      properties:
+        textSurahNumber: { type: ["integer", "null"], minimum: 1, maximum: 114 }
+        textAyah: { type: ["integer", "null"], minimum: 1 }
+        pageNumber: { type: ["integer", "null"], minimum: 1, maximum: 604 }
+      minProperties: 1
+
+    QuranIndependentSession:
+      type: object
+      properties:
+        id: { type: integer }
+        practicedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        createdAt: { type: string, format: date-time }
+      required: [id, practicedDate, createdAt]
+
+    QuranIndependentSessionInput:
+      type: object
+      properties:
+        practicedDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+
+    QuranIndependentPractice:
+      type: object
+      properties:
+        dates:
+          type: array
+          items: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        latestPosition:
+          allOf:
+            - $ref: "#/components/schemas/QuranIndependentPosition"
+          nullable: true
+      required: [dates, latestPosition]
+
     QuranJourneyActivity:
       type: object
       properties:
@@ -2570,7 +2654,9 @@ components:
           maxItems: 20
           items:
             $ref: "#/components/schemas/QuranJourneyActivity"
-      required: [profile, nextWard, summary, streak, activeDates, recentActivities]
+        independentPractice:
+          $ref: "#/components/schemas/QuranIndependentPractice"
+      required: [profile, nextWard, summary, streak, activeDates, recentActivities, independentPractice]
 
     TeacherScheduleDeleteResult:
       type: object

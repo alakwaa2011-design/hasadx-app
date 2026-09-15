@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ChevronLeft,
@@ -13,6 +13,13 @@ import {
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { QuranSearchDialog } from "./quran-search-dialog";
+import {
+  getGetQuranJourneyQueryKey,
+  useRecordMyQuranIndependentSession,
+  useUpdateMyQuranIndependentPosition,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface QComplexChapter {
   id: number;
@@ -55,6 +62,7 @@ function plainArabicSurahName(name: string) {
 export function QuranPagesView({
   initialSurah,
   initialAyah,
+  initialPage,
   startAyah,
   endAyah,
   mode,
@@ -63,9 +71,11 @@ export function QuranPagesView({
   backLabel,
   embedded = false,
   onSwitchToText,
+  isIndependentPractice = false,
 }: {
   initialSurah: number;
   initialAyah: number;
+  initialPage?: number;
   onNavigate: (location: { surah: number; ayah: number }) => void;
   isTaskAyah: (surah: number, ayah: number) => boolean;
   startAyah: number | null;
@@ -76,9 +86,14 @@ export function QuranPagesView({
   backLabel?: { ar: string; en: string };
   embedded?: boolean;
   onSwitchToText?: (location: { surah: number; ayah: number }) => void;
+  isIndependentPractice?: boolean;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const savePosition = useUpdateMyQuranIndependentPosition();
+  const recordSession = useRecordMyQuranIndependentSession();
+  const lastSavedPositionRef = useRef<number | null>(null);
   const [chapters, setChapters] = useState<QComplexChapter[]>([]);
   const [pages, setPages] = useState<QComplexPage[]>([]);
   const [verses, setVerses] = useState<QComplexVerse[]>([]);
@@ -113,14 +128,14 @@ export function QuranPagesView({
         (verse) =>
           verse.chapter_id === initialSurah && verse.number === initialAyah,
       );
-      setActivePage(initialVerse?.page_id ?? FIRST_PAGE);
+      setActivePage(initialPage ?? initialVerse?.page_id ?? FIRST_PAGE);
       setLoading(false);
     });
 
     return () => {
       mounted = false;
     };
-  }, [initialAyah, initialSurah]);
+  }, [initialAyah, initialPage, initialSurah]);
 
   useEffect(() => {
     if (loading) return;
@@ -131,6 +146,23 @@ export function QuranPagesView({
       image.src = pageImageUrl(page);
     }
   }, [activePage, loading]);
+
+  useEffect(() => {
+    if (!isIndependentPractice || loading) return;
+    if (lastSavedPositionRef.current === activePage) return;
+    lastSavedPositionRef.current = activePage;
+    savePosition.mutate({ data: { pageNumber: activePage } });
+  }, [activePage, isIndependentPractice, loading, savePosition]);
+
+  const recordIndependentPractice = async () => {
+    try {
+      await recordSession.mutateAsync({ data: {} });
+      await queryClient.invalidateQueries({ queryKey: getGetQuranJourneyQueryKey() });
+      toast.success(lang === "ar" ? "تم تسجيل جلسة التدريب" : "Practice session recorded");
+    } catch {
+      toast.error(lang === "ar" ? "تعذر تسجيل الجلسة" : "Could not record the session");
+    }
+  };
 
   const activePageMeta = pages.find((page) => page.id === activePage);
   const activeChapterId = activePageMeta?.chapter_id ?? FIRST_PAGE;
@@ -281,6 +313,16 @@ export function QuranPagesView({
             )}
 
               <div className="order-3 flex w-full flex-wrap items-center justify-center gap-2 md:order-none md:w-auto md:flex-1">
+                {isIndependentPractice && (
+                  <button
+                    type="button"
+                    onClick={() => void recordIndependentPractice()}
+                    disabled={recordSession.isPending}
+                    className="shrink-0 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                  >
+                    {lang === "ar" ? "سجلت جلسة تدريب" : "Record practice"}
+                  </button>
+                )}
                <button
                  type="button"
                  onClick={() => {
@@ -290,6 +332,8 @@ export function QuranPagesView({
                    };
                    if (embedded && onSwitchToText) {
                      onSwitchToText(location);
+                    } else if (isIndependentPractice) {
+                      setLocation(`${readerBasePath}/${activeChapterId}?view=reader`);
                    } else {
                      setLocation(`${readerBasePath}/${location.surah}?ayah=${location.ayah}&view=reader`);
                    }

@@ -61,6 +61,10 @@ import type {
   QuranCircleInput,
   QuranCircleTaskInput,
   QuranCircleUpdate,
+  QuranIndependentPosition,
+  QuranIndependentPositionInput,
+  QuranIndependentSession,
+  QuranIndependentSessionInput,
   QuranJourney,
   QuranProfileUpdate,
   QuranRecitation,
@@ -6781,6 +6785,166 @@ export function useGetQuranJourney<TData = Awaited<ReturnType<typeof getQuranJou
 
 
 
+
+export const getUpdateMyQuranIndependentPositionUrl = () => {
+
+
+
+
+  return `/api/quran/me/independent-position`
+}
+
+/**
+ * @summary Save the signed-in student's latest independent Quran positions
+ */
+export const updateMyQuranIndependentPosition = async (quranIndependentPositionInput: QuranIndependentPositionInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranIndependentPosition> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranIndependentPosition>(getUpdateMyQuranIndependentPositionUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranIndependentPositionInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyQuranIndependentPositionMutationKey = () => ['updateMyQuranIndependentPosition'] as const;
+
+export const getUpdateMyQuranIndependentPositionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError,UpdateMyQuranIndependentPositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError,UpdateMyQuranIndependentPositionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMyQuranIndependentPositionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, UpdateMyQuranIndependentPositionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMyQuranIndependentPosition(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyQuranIndependentPositionMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>>
+    export type UpdateMyQuranIndependentPositionMutationBody = BodyType<QuranIndependentPositionInput>
+    export type UpdateMyQuranIndependentPositionMutationError = ErrorType<void>
+    export type UpdateMyQuranIndependentPositionMutationVariables = {data: BodyType<QuranIndependentPositionInput>}
+
+    /**
+ * @summary Save the signed-in student's latest independent Quran positions
+ */
+export const useUpdateMyQuranIndependentPosition = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>, TError,UpdateMyQuranIndependentPositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyQuranIndependentPosition>>,
+        TError,
+        UpdateMyQuranIndependentPositionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMyQuranIndependentPositionMutationOptions(options));
+    }
+
+export const getRecordMyQuranIndependentSessionUrl = () => {
+
+
+
+
+  return `/api/quran/me/independent-sessions`
+}
+
+/**
+ * @summary Record an explicitly completed independent Quran practice session
+ */
+export const recordMyQuranIndependentSession = async (quranIndependentSessionInput: QuranIndependentSessionInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranIndependentSession> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranIndependentSession>(getRecordMyQuranIndependentSessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranIndependentSessionInput)
+  }
+);}
+
+
+
+
+
+export const getRecordMyQuranIndependentSessionMutationKey = () => ['recordMyQuranIndependentSession'] as const;
+
+export const getRecordMyQuranIndependentSessionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError,RecordMyQuranIndependentSessionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError,RecordMyQuranIndependentSessionMutationVariables, TContext> => {
+
+const mutationKey = getRecordMyQuranIndependentSessionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, RecordMyQuranIndependentSessionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordMyQuranIndependentSession(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordMyQuranIndependentSessionMutationResult = NonNullable<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>>
+    export type RecordMyQuranIndependentSessionMutationBody = BodyType<QuranIndependentSessionInput>
+    export type RecordMyQuranIndependentSessionMutationError = ErrorType<void>
+    export type RecordMyQuranIndependentSessionMutationVariables = {data: BodyType<QuranIndependentSessionInput>}
+
+    /**
+ * @summary Record an explicitly completed independent Quran practice session
+ */
+export const useRecordMyQuranIndependentSession = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMyQuranIndependentSession>>, TError,RecordMyQuranIndependentSessionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordMyQuranIndependentSession>>,
+        TError,
+        RecordMyQuranIndependentSessionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordMyQuranIndependentSessionMutationOptions(options));
+    }
 
 export const getGetMyQuranWardUrl = (id: number,) => {
 

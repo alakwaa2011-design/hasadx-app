@@ -49,6 +49,18 @@ export type QuranJourneyActivity = {
   recitationScore: number | null;
 };
 
+export type QuranJourneyIndependentPosition = {
+  textSurahNumber: number | null;
+  textAyah: number | null;
+  pageNumber: number | null;
+  updatedAt: Date | string;
+};
+
+export type QuranJourneyIndependentPractice = {
+  dates: readonly string[];
+  latestPosition: QuranJourneyIndependentPosition | null;
+};
+
 export type QuranJourneyResult = {
   profile: QuranJourneyProfile;
   nextWard: QuranJourneyWard | null;
@@ -66,6 +78,7 @@ export type QuranJourneyResult = {
   };
   activeDates: string[];
   recentActivities: QuranJourneyActivity[];
+  independentPractice: QuranJourneyIndependentPractice;
 };
 
 type JourneyInput = {
@@ -73,6 +86,7 @@ type JourneyInput = {
   wards: readonly QuranJourneyWard[];
   recitations: readonly QuranJourneyRecitation[];
   submissions: readonly QuranJourneySubmission[];
+  independentPractice?: QuranJourneyIndependentPractice;
   today?: string;
 };
 
@@ -331,5 +345,9 @@ export function calculateQuranJourney(input: JourneyInput): QuranJourneyResult {
     streak: streaks(completedRecitations.map((row) => row.recitedDate), today),
     activeDates,
     recentActivities: activities.slice(0, 20).map(({ sortDate: _sortDate, sortId: _sortId, ...activity }) => activity),
+    independentPractice: {
+      dates: [...new Set(input.independentPractice?.dates ?? [])].sort(),
+      latestPosition: input.independentPractice?.latestPosition ?? null,
+    },
   };
 }

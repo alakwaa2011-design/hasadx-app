@@ -181,7 +181,7 @@ export default function QuranJourneyPage() {
     );
   }
 
-  const { profile, streak, nextWard, summary, activeDates, recentActivities } = journey;
+  const { profile, streak, nextWard, summary, activeDates, recentActivities, independentPractice } = journey;
   const hasJourneyData = Boolean(
     nextWard ||
       profile.currentSurahNumber ||
@@ -193,6 +193,8 @@ export default function QuranJourneyPage() {
       summary.needsReviewCount > 0 ||
       summary.averageMemorizationScore !== null ||
       summary.averageRecitationScore !== null ||
+      independentPractice.dates.length > 0 ||
+      Boolean(independentPractice.latestPosition) ||
       streak.current > 0 ||
       streak.longest > 0 ||
       recentActivities.length > 0,
@@ -336,6 +338,67 @@ export default function QuranJourneyPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="mb-8 border-sky-100 bg-sky-50/40 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/10">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg text-sky-900 dark:text-sky-100">
+                <BookOpen className="h-5 w-5 text-sky-600" />
+                {lang === "ar" ? "تدريبي الذاتي" : "Independent practice"}
+              </CardTitle>
+              <p className="text-xs font-semibold text-muted-foreground">
+                {lang === "ar"
+                  ? "منفصل عن أوراد المعلم والتقييمات والإتقان المعتمد"
+                  : "Separate from teacher wards, evaluations, and approved mastery"}
+              </p>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl bg-background/70 p-4">
+                <p className="text-xs font-bold text-muted-foreground">
+                  {lang === "ar" ? "آخر موضع محفوظ" : "Latest saved position"}
+                </p>
+                {independentPractice.latestPosition ? (
+                  <div className="mt-2 space-y-1 text-sm font-bold">
+                    {independentPractice.latestPosition.textSurahNumber && (
+                      <p>
+                        {lang === "ar"
+                          ? `النص: سورة ${independentPractice.latestPosition.textSurahNumber}، آية ${independentPractice.latestPosition.textAyah ?? "-"}`
+                          : `Text: Surah ${independentPractice.latestPosition.textSurahNumber}, ayah ${independentPractice.latestPosition.textAyah ?? "-"}`}
+                      </p>
+                    )}
+                    {independentPractice.latestPosition.pageNumber && (
+                      <p>
+                        {lang === "ar"
+                          ? `الصفحات: صفحة ${independentPractice.latestPosition.pageNumber}`
+                          : `Pages: page ${independentPractice.latestPosition.pageNumber}`}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                    {lang === "ar" ? "لم يحفظ موضع بعد" : "No position saved yet"}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl bg-background/70 p-4">
+                <p className="text-xs font-bold text-muted-foreground">
+                  {lang === "ar" ? "أيام التدريب الذاتي" : "Independent practice dates"}
+                </p>
+                {independentPractice.dates.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {independentPractice.dates.slice(-12).reverse().map((date) => (
+                      <span key={date} className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-800 dark:bg-sky-900/50 dark:text-sky-100">
+                        {formatActivityDate(date, lang)}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                    {lang === "ar" ? "لم تسجل جلسة بعد" : "No session recorded yet"}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {nextWard && (
             <div className="mb-8">

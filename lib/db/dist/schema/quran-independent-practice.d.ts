@@ -1,0 +1,206 @@
+import { z } from "zod/v4";
+export declare const quranIndependentPositionsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "quran_independent_positions";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "quran_independent_positions";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        studentAccountId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "student_account_id";
+            tableName: "quran_independent_positions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        textSurahNumber: import("drizzle-orm/pg-core").PgColumn<{
+            name: "text_surah_number";
+            tableName: "quran_independent_positions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        textAyah: import("drizzle-orm/pg-core").PgColumn<{
+            name: "text_ayah";
+            tableName: "quran_independent_positions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        pageNumber: import("drizzle-orm/pg-core").PgColumn<{
+            name: "page_number";
+            tableName: "quran_independent_positions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
+            tableName: "quran_independent_positions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const quranIndependentSessionsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "quran_independent_sessions";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "quran_independent_sessions";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        studentAccountId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "student_account_id";
+            tableName: "quran_independent_sessions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        practicedDate: import("drizzle-orm/pg-core").PgColumn<{
+            name: "practiced_date";
+            tableName: "quran_independent_sessions";
+            dataType: "string";
+            columnType: "PgDateString";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "quran_independent_sessions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const insertQuranIndependentPositionSchema: z.ZodObject<{
+    studentAccountId: z.ZodInt;
+    textSurahNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    textAyah: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    pageNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+}, {
+    out: {};
+    in: {};
+}>;
+export declare const insertQuranIndependentSessionSchema: z.ZodObject<{
+    studentAccountId: z.ZodInt;
+    practicedDate: z.ZodString;
+}, {
+    out: {};
+    in: {};
+}>;
+export type InsertQuranIndependentPosition = z.infer<typeof insertQuranIndependentPositionSchema>;
+export type InsertQuranIndependentSession = z.infer<typeof insertQuranIndependentSessionSchema>;
+export type QuranIndependentPosition = typeof quranIndependentPositionsTable.$inferSelect;
+export type QuranIndependentSession = typeof quranIndependentSessionsTable.$inferSelect;
+//# sourceMappingURL=quran-independent-practice.d.ts.map

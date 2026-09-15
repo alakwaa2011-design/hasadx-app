@@ -517,6 +517,63 @@ export interface QuranJourneyStreak {
     /** @minimum 0 */
     longest: number;
 }
+export interface QuranIndependentPosition {
+    /**
+       * @minimum 1
+       * @maximum 114
+       * @nullable
+       */
+    textSurahNumber: number | null;
+    /**
+       * @minimum 1
+       * @nullable
+       */
+    textAyah: number | null;
+    /**
+       * @minimum 1
+       * @maximum 604
+       * @nullable
+       */
+    pageNumber: number | null;
+    updatedAt: string;
+}
+export interface QuranIndependentPositionInput {
+    /**
+       * @minimum 1
+       * @maximum 114
+       * @nullable
+       */
+    textSurahNumber?: number | null;
+    /**
+       * @minimum 1
+       * @nullable
+       */
+    textAyah?: number | null;
+    /**
+       * @minimum 1
+       * @maximum 604
+       * @nullable
+       */
+    pageNumber?: number | null;
+}
+export interface QuranIndependentSession {
+    id: number;
+    /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+    practicedDate: string;
+    createdAt: string;
+}
+export interface QuranIndependentSessionInput {
+    /**
+       * @nullable
+       * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+       */
+    practicedDate?: string | null;
+}
+export interface QuranIndependentPractice {
+    /** @items.pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+    dates: string[];
+    latestPosition: QuranIndependentPosition | null;
+}
 export type QuranJourneyActivityType = typeof QuranJourneyActivityType[keyof typeof QuranJourneyActivityType];
 export declare const QuranJourneyActivityType: {
     readonly recitation: "recitation";
@@ -558,6 +615,7 @@ export interface QuranJourney {
     activeDates: string[];
     /** @maxItems 20 */
     recentActivities: QuranJourneyActivity[];
+    independentPractice: QuranIndependentPractice;
 }
 export interface TeacherScheduleDeleteResult {
     /** @minimum 0 */

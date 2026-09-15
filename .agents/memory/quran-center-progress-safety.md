@@ -85,4 +85,4 @@ Student Quran reading and memorization practice is available independently of a 
 
 **Why:** Students should be able to learn and practice from their own accounts without waiting for a teacher, while teacher-owned assessment data must remain trustworthy.
 
-**How to apply:** Keep the student practice reader accessible with no ward or roster link; if self-study history is persisted later, label it separately and never let it advance approved mastery without teacher review.
+**How to apply:** Keep the student practice reader and its account-owned position/session history accessible with no ward or roster link. Label self-study data separately and never let it advance approved mastery without teacher review.

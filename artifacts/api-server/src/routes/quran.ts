@@ -11,6 +11,8 @@ import {
   quranProfilesTable,
   quranRecitationsTable,
   quranSubmissionsTable,
+  quranIndependentPositionsTable,
+  quranIndependentSessionsTable,
   quranWardsTable,
   studentsTable,
   teacherClassesTable,
@@ -67,6 +69,10 @@ import {
   ReviewQuranSubmissionBody,
   ReviewQuranSubmissionResponse,
   GetQuranJourneyResponse,
+  UpdateMyQuranIndependentPositionBody,
+  UpdateMyQuranIndependentPositionResponse,
+  RecordMyQuranIndependentSessionBody,
+  RecordMyQuranIndependentSessionResponse,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
@@ -409,11 +415,103 @@ router.get("/quran/me/wards", async (req, res): Promise<void> => {
   res.json(ListMyQuranWardsResponse.parse(wards));
 });
 
+router.patch("/quran/me/independent-position", async (req, res): Promise<void> => {
+  res.set("Cache-Control", "private, no-store");
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const parsed = UpdateMyQuranIndependentPositionBody.safeParse(req.body);
+  if (!parsed.success) { parseError(res, parsed.error.message); return; }
+  if (Object.keys(parsed.data).length === 0) { parseError(res, "At least one position is required"); return; }
+  try {
+    const has = (key: string): boolean => Object.prototype.hasOwnProperty.call(parsed.data, key);
+    const update = {
+      ...(has("textSurahNumber") ? { textSurahNumber: parsed.data.textSurahNumber ?? null } : {}),
+      ...(has("textAyah") ? { textAyah: parsed.data.textAyah ?? null } : {}),
+      ...(has("pageNumber") ? { pageNumber: parsed.data.pageNumber ?? null } : {}),
+      updatedAt: new Date(),
+    };
+    const [position] = await db.insert(quranIndependentPositionsTable).values({
+      studentAccountId,
+      textSurahNumber: parsed.data.textSurahNumber ?? null,
+      textAyah: parsed.data.textAyah ?? null,
+      pageNumber: parsed.data.pageNumber ?? null,
+      updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: quranIndependentPositionsTable.studentAccountId,
+      set: update,
+    }).returning({
+      textSurahNumber: quranIndependentPositionsTable.textSurahNumber,
+      textAyah: quranIndependentPositionsTable.textAyah,
+      pageNumber: quranIndependentPositionsTable.pageNumber,
+      updatedAt: quranIndependentPositionsTable.updatedAt,
+    });
+    res.json(UpdateMyQuranIndependentPositionResponse.parse(position));
+  } catch (error) {
+    req.log?.error(error, "Save independent Quran position failed");
+    res.status(500).json({ error: "Unable to save independent Quran position" });
+  }
+});
+
+router.post("/quran/me/independent-sessions", async (req, res): Promise<void> => {
+  res.set("Cache-Control", "private, no-store");
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const parsed = RecordMyQuranIndependentSessionBody.safeParse(req.body);
+  if (!parsed.success) { parseError(res, parsed.error.message); return; }
+  try {
+    const practicedDate = parsed.data.practicedDate ?? today();
+    const [session] = await db.insert(quranIndependentSessionsTable).values({
+      studentAccountId,
+      practicedDate,
+    }).onConflictDoNothing({
+      target: [quranIndependentSessionsTable.studentAccountId, quranIndependentSessionsTable.practicedDate],
+    }).returning({
+      id: quranIndependentSessionsTable.id,
+      practicedDate: quranIndependentSessionsTable.practicedDate,
+      createdAt: quranIndependentSessionsTable.createdAt,
+    });
+    if (session) {
+      res.status(201).json(RecordMyQuranIndependentSessionResponse.parse(session));
+      return;
+    }
+    const [existing] = await db.select({
+      id: quranIndependentSessionsTable.id,
+      practicedDate: quranIndependentSessionsTable.practicedDate,
+      createdAt: quranIndependentSessionsTable.createdAt,
+    }).from(quranIndependentSessionsTable).where(and(
+      eq(quranIndependentSessionsTable.studentAccountId, studentAccountId),
+      eq(quranIndependentSessionsTable.practicedDate, practicedDate),
+    )).limit(1);
+    res.status(201).json(RecordMyQuranIndependentSessionResponse.parse(existing));
+  } catch (error) {
+    req.log?.error(error, "Record independent Quran session failed");
+    res.status(500).json({ error: "Unable to record independent Quran session" });
+  }
+});
+
 router.get("/quran/me/journey", async (req, res): Promise<void> => {
   const studentAccountId = studentAccountIdOf(req);
   if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
 
   try {
+    // Independent practice belongs to the login account, not to a roster row.
+    // Load it before looking up the optional teacher-linked student so
+    // unlinked accounts retain their self-study history.
+    const [independentPositions, independentSessions] = await Promise.all([
+      db.select({
+        textSurahNumber: quranIndependentPositionsTable.textSurahNumber,
+        textAyah: quranIndependentPositionsTable.textAyah,
+        pageNumber: quranIndependentPositionsTable.pageNumber,
+        updatedAt: quranIndependentPositionsTable.updatedAt,
+      }).from(quranIndependentPositionsTable).where(eq(
+        quranIndependentPositionsTable.studentAccountId, studentAccountId,
+      )).orderBy(desc(quranIndependentPositionsTable.updatedAt)).limit(1),
+      db.select({
+        practicedDate: quranIndependentSessionsTable.practicedDate,
+      }).from(quranIndependentSessionsTable).where(eq(
+        quranIndependentSessionsTable.studentAccountId, studentAccountId,
+      )),
+    ]);
     const [student] = await db.select({
       id: studentsTable.id,
       teacherId: studentsTable.teacherId,
@@ -430,6 +528,10 @@ router.get("/quran/me/journey", async (req, res): Promise<void> => {
         wards: [],
         recitations: [],
         submissions: [],
+        independentPractice: {
+          dates: independentSessions.map((session) => session.practicedDate),
+          latestPosition: independentPositions[0] ?? null,
+        },
       });
       res.json(GetQuranJourneyResponse.parse(emptyJourney));
       return;
@@ -506,6 +608,10 @@ router.get("/quran/me/journey", async (req, res): Promise<void> => {
       wards,
       recitations,
       submissions,
+      independentPractice: {
+        dates: independentSessions.map((session) => session.practicedDate),
+        latestPosition: independentPositions[0] ?? null,
+      },
     });
     res.json(GetQuranJourneyResponse.parse(journey));
   } catch (error) {
