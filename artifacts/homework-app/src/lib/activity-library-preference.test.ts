@@ -8,12 +8,13 @@ describe("activity library subject preference", () => {
   });
 
   it("prioritizes only matching specialist content", () => {
-    expect(preferredSubjectScore("رياضيات", "الرياضيات")).toBe(1);
-    expect(preferredSubjectScore("علوم", "الرياضيات")).toBe(0);
+    expect(preferredSubjectScore("رياضيات", ["الرياضيات", "العلوم"])).toBe(1);
+    expect(preferredSubjectScore("علوم", ["الرياضيات", "العلوم"])).toBe(1);
+    expect(preferredSubjectScore("لغة عربية", ["الرياضيات", "العلوم"])).toBe(0);
   });
 
   it("does not narrow general or event organizers", () => {
-    expect(preferredSubjectScore("علوم", "متعدد التخصصات")).toBe(0);
-    expect(preferredSubjectScore("رياضيات", "فعاليات وتدريب")).toBe(0);
+    expect(preferredSubjectScore("علوم", [])).toBe(0);
+    expect(preferredSubjectScore("رياضيات", ["فعاليات وتدريب"])).toBe(0);
   });
 });

@@ -572,6 +572,12 @@ export interface UpdateProfileBody {
      * @maxLength 100
      */
   primarySubject?: string;
+  /**
+     * Subjects used to personalize the activities library.
+     * @maxItems 10
+     * @items.maxLength 100
+     */
+  subjects?: string[];
 }
 
 export type SubmitFeedbackBodyType = typeof SubmitFeedbackBodyType[keyof typeof SubmitFeedbackBodyType];
@@ -614,6 +620,12 @@ export interface RegisterTeacherBody {
      * @maxLength 100
      */
   primarySubject?: string;
+  /**
+     * Subjects taught by the teacher, used to personalize the activities library.
+     * @maxItems 10
+     * @items.maxLength 100
+     */
+  subjects?: string[];
   /** Traffic source (google, facebook, instagram, whatsapp, direct, referral, other) */
   acquisitionSource?: string;
   /** utm_medium or detected medium */
@@ -654,6 +666,8 @@ export interface TeacherProfile {
   role?: TeacherProfileRole;
   /** Primary subject or professional field used to personalize the activities library. */
   primarySubject?: string;
+  /** Subjects used to personalize the activities library. */
+  subjects?: string[];
 }
 
 export interface AuthResponse {
@@ -679,6 +693,12 @@ export interface GoogleLoginBody {
      * @maxLength 100
      */
   primarySubject?: string;
+  /**
+     * Subjects selected during a new Google registration.
+     * @maxItems 10
+     * @items.maxLength 100
+     */
+  subjects?: string[];
   /** Public registration role for a newly created Google account. */
   role?: GoogleLoginBodyRole;
 }

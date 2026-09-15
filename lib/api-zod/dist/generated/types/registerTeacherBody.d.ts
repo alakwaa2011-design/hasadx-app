@@ -19,6 +19,12 @@ export interface RegisterTeacherBody {
        * @maxLength 100
        */
     primarySubject?: string;
+    /**
+       * Subjects taught by the teacher, used to personalize the activities library.
+       * @maxItems 10
+       * @items.maxLength 100
+       */
+    subjects?: string[];
     /** Traffic source (google, facebook, instagram, whatsapp, direct, referral, other) */
     acquisitionSource?: string;
     /** utm_medium or detected medium */

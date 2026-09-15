@@ -31,6 +31,10 @@ export const registerTeacherBodyPasswordMin = 6;
 export const registerTeacherBodyRoleDefault = `teacher`;
 export const registerTeacherBodyPrimarySubjectMax = 100;
 
+export const registerTeacherBodySubjectsItemMax = 100;
+
+export const registerTeacherBodySubjectsMax = 10;
+
 
 
 export const RegisterTeacherBody = zod.object({
@@ -40,6 +44,7 @@ export const RegisterTeacherBody = zod.object({
   "password": zod.string().min(registerTeacherBodyPasswordMin),
   "role": zod.enum(['teacher', 'organizer']).default(registerTeacherBodyRoleDefault).describe('Public registration role; admin role can only be granted internally.'),
   "primarySubject": zod.string().max(registerTeacherBodyPrimarySubjectMax).optional().describe('Teacher\'s primary subject or professional field, used to personalize the activities library.'),
+  "subjects": zod.array(zod.string().max(registerTeacherBodySubjectsItemMax)).max(registerTeacherBodySubjectsMax).optional().describe('Subjects taught by the teacher, used to personalize the activities library.'),
   "acquisitionSource": zod.string().optional().describe('Traffic source (google, facebook, instagram, whatsapp, direct, referral, other)'),
   "acquisitionMedium": zod.string().optional().describe('utm_medium or detected medium'),
   "acquisitionCampaign": zod.string().optional().describe('utm_campaign value'),
@@ -55,7 +60,8 @@ export const RegisterTeacherResponse = zod.object({
   "isAdmin": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "role": zod.enum(['teacher', 'organizer', 'admin']).optional().describe('User role: teacher (classroom), organizer (events), or admin (super-admin).'),
-  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string()).optional().describe('Subjects used to personalize the activities library.')
 })
 })
 
@@ -79,7 +85,8 @@ export const LoginTeacherResponse = zod.object({
   "isAdmin": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "role": zod.enum(['teacher', 'organizer', 'admin']).optional().describe('User role: teacher (classroom), organizer (events), or admin (super-admin).'),
-  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string()).optional().describe('Subjects used to personalize the activities library.')
 })
 })
 
@@ -95,7 +102,8 @@ export const GetCurrentTeacherResponse = zod.object({
   "isAdmin": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "role": zod.enum(['teacher', 'organizer', 'admin']).optional().describe('User role: teacher (classroom), organizer (events), or admin (super-admin).'),
-  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string()).optional().describe('Subjects used to personalize the activities library.')
 })
 
 
@@ -104,13 +112,18 @@ export const GetCurrentTeacherResponse = zod.object({
  */
 export const updateTeacherProfileBodyPrimarySubjectMax = 100;
 
+export const updateTeacherProfileBodySubjectsItemMax = 100;
+
+export const updateTeacherProfileBodySubjectsMax = 10;
+
 
 
 export const UpdateTeacherProfileBody = zod.object({
   "name": zod.string().optional(),
   "email": zod.email().optional(),
   "phone": zod.string().optional(),
-  "primarySubject": zod.string().max(updateTeacherProfileBodyPrimarySubjectMax).optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().max(updateTeacherProfileBodyPrimarySubjectMax).optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string().max(updateTeacherProfileBodySubjectsItemMax)).max(updateTeacherProfileBodySubjectsMax).optional().describe('Subjects used to personalize the activities library.')
 })
 
 export const UpdateTeacherProfileResponse = zod.object({
@@ -121,7 +134,8 @@ export const UpdateTeacherProfileResponse = zod.object({
   "isAdmin": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "role": zod.enum(['teacher', 'organizer', 'admin']).optional().describe('User role: teacher (classroom), organizer (events), or admin (super-admin).'),
-  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string()).optional().describe('Subjects used to personalize the activities library.')
 })
 
 
@@ -140,7 +154,8 @@ export const UpdateTeacherRoleResponse = zod.object({
   "isAdmin": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "role": zod.enum(['teacher', 'organizer', 'admin']).optional().describe('User role: teacher (classroom), organizer (events), or admin (super-admin).'),
-  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string()).optional().describe('Subjects used to personalize the activities library.')
 })
 
 
@@ -157,11 +172,16 @@ export const LogoutTeacherResponse = zod.object({
  */
 export const loginTeacherWithGoogleBodyPrimarySubjectMax = 100;
 
+export const loginTeacherWithGoogleBodySubjectsItemMax = 100;
+
+export const loginTeacherWithGoogleBodySubjectsMax = 10;
+
 
 
 export const LoginTeacherWithGoogleBody = zod.object({
   "credential": zod.string().describe('Google ID token (credential) returned by the Google sign-in flow.'),
   "primarySubject": zod.string().max(loginTeacherWithGoogleBodyPrimarySubjectMax).optional().describe('Primary subject selected during a new Google registration.'),
+  "subjects": zod.array(zod.string().max(loginTeacherWithGoogleBodySubjectsItemMax)).max(loginTeacherWithGoogleBodySubjectsMax).optional().describe('Subjects selected during a new Google registration.'),
   "role": zod.enum(['teacher', 'organizer']).optional().describe('Public registration role for a newly created Google account.')
 })
 
@@ -174,7 +194,8 @@ export const LoginTeacherWithGoogleResponse = zod.object({
   "isAdmin": zod.boolean().optional(),
   "isBlocked": zod.boolean().optional(),
   "role": zod.enum(['teacher', 'organizer', 'admin']).optional().describe('User role: teacher (classroom), organizer (events), or admin (super-admin).'),
-  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.')
+  "primarySubject": zod.string().optional().describe('Primary subject or professional field used to personalize the activities library.'),
+  "subjects": zod.array(zod.string()).optional().describe('Subjects used to personalize the activities library.')
 })
 })
 

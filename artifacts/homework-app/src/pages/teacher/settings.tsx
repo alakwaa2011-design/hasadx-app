@@ -23,6 +23,7 @@ import { useDarkMode, type ColorScheme } from "@/lib/dark-mode";
 import { cn } from "@/lib/utils";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PushNotificationSettings } from "@/components/push-notifications";
+import { SubjectMultiSelect } from "@/components/subject-multi-select";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -40,6 +41,7 @@ export default function TeacherSettings() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [subjects, setSubjects] = useState<string[]>([]);
   // Phone stored as local digits only; phoneCountry holds the dial prefix
   const [phone, setPhone] = useState("");
   const [phoneCountry, setPhoneCountry] = useState<Country>(KUWAIT);
@@ -180,6 +182,9 @@ export default function TeacherSettings() {
     if (user) {
       setName(user.name || "");
       setEmail(user.email || "");
+      setSubjects(Array.isArray(user.subjects)
+        ? user.subjects
+        : user.primarySubject ? [user.primarySubject] : []);
       // Parse stored phone into country + local digits
       const { country, digits } = parseStoredPhone(user.phone || "");
       setPhoneCountry(country);
@@ -287,6 +292,7 @@ export default function TeacherSettings() {
         email: email || undefined,
         // Send full international format, or empty string to clear
         phone: phone ? `${phoneCountry.code}${phone}` : "",
+        subjects,
       },
     });
   };
@@ -745,6 +751,20 @@ export default function TeacherSettings() {
               {lang === "ar" ? "الحساب" : "Account"}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <Label>{lang === "ar" ? "المواد التي تدرّسها" : "Subjects you teach"}</Label>
+                <SubjectMultiSelect
+                  value={subjects}
+                  onChange={setSubjects}
+                  lang={lang}
+                  disabled={updateMutation.isPending}
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {lang === "ar"
+                    ? "تظهر الأنشطة المطابقة لهذه المواد أولًا في المكتبة دون إخفاء بقية المحتوى."
+                    : "Matching activities appear first in the library without hiding other content."}
+                </p>
+              </div>
               <div>
                 <Label htmlFor="settings-name">{t.profile.name}</Label>
                 <div className="relative">

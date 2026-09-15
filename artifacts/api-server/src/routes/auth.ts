@@ -26,6 +26,14 @@ function normalizePrimarySubject(value: unknown): string | null {
   return normalized ? normalized.slice(0, 100) : null;
 }
 
+function normalizeSubjects(value: unknown, legacyPrimarySubject?: unknown): string[] {
+  const candidates = Array.isArray(value) ? value : [legacyPrimarySubject];
+  return [...new Set(candidates
+    .map(normalizePrimarySubject)
+    .filter((subject): subject is string => Boolean(subject)))]
+    .slice(0, 10);
+}
+
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -45,6 +53,7 @@ const UpdateProfileSchema = z
       .optional()
       .or(z.literal("")),
     primarySubject: z.string().trim().min(1).max(100).optional(),
+    subjects: z.array(z.string().trim().min(1).max(100)).max(10).optional(),
   })
   .strict();
 
@@ -408,7 +417,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     // Public registration only allows teacher|organizer roles. Admin must be granted internally.
     const requestedRole =
       body.role === "organizer" ? "organizer" : "teacher";
-    const primarySubject = normalizePrimarySubject(body.primarySubject);
+    const subjects = normalizeSubjects((body as any).subjects, body.primarySubject);
 
     const otp = generateOtp();
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -424,7 +433,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         phone: body.phone || null,
         passwordHash,
         role: requestedRole,
-        preferences: primarySubject ? { primarySubject } : null,
+        preferences: subjects.length ? { primarySubject: subjects[0], subjects } : null,
         verificationOtp: otp,
         otpExpiresAt,
         emailVerifyToken: rawVerifyToken,
@@ -635,7 +644,8 @@ router.get("/auth/me", async (req, res) => {
     publicProfileEnabled: currentTeacher.publicProfileEnabled,
     showOnLeaderboard: currentTeacher.showOnLeaderboard,
     emailVerified: currentTeacher.emailVerified,
-    primarySubject: normalizePrimarySubject(currentTeacher.preferences?.primarySubject),
+    primarySubject: normalizeSubjects(currentTeacher.preferences?.subjects, currentTeacher.preferences?.primarySubject)[0] ?? null,
+    subjects: normalizeSubjects(currentTeacher.preferences?.subjects, currentTeacher.preferences?.primarySubject),
   });
 });
 
@@ -699,7 +709,7 @@ router.patch("/auth/profile", async (req, res) => {
       res.status(400).json({ message: "بيانات غير صحيحة" });
       return;
     }
-    const { name, email, phone, primarySubject } = parsed.data;
+    const { name, email, phone, primarySubject, subjects } = parsed.data;
     const normalizedEmail = email ? normalizeEmailAddress(email) : email;
 
     if (normalizedEmail) {
@@ -730,16 +740,16 @@ router.patch("/auth/profile", async (req, res) => {
     if (name !== undefined) updateData.name = name;
     if (email !== undefined) updateData.email = normalizedEmail || null;
     if (phone !== undefined) updateData.phone = phone || null;
-    if (primarySubject !== undefined) {
-      const [current] = await db
-        .select({ preferences: teachersTable.preferences })
-        .from(teachersTable)
-        .where(eq(teachersTable.id, req.session.teacherId))
-        .limit(1);
-      updateData.preferences = {
-        ...(current?.preferences ?? {}),
-        primarySubject: normalizePrimarySubject(primarySubject),
-      };
+    if (primarySubject !== undefined || subjects !== undefined) {
+      const normalizedSubjects = normalizeSubjects(subjects, primarySubject);
+      const libraryPreferences = JSON.stringify({
+        primarySubject: normalizedSubjects[0] ?? null,
+        subjects: normalizedSubjects,
+      });
+      updateData.preferences = sql`
+        coalesce(${teachersTable.preferences}, '{}'::jsonb)
+        || ${libraryPreferences}::jsonb
+      `;
     }
 
     const [updated] = await db
@@ -753,6 +763,8 @@ router.patch("/auth/profile", async (req, res) => {
       name: updated.name,
       email: updated.email,
       phone: updated.phone,
+      primarySubject: normalizeSubjects(updated.preferences?.subjects, updated.preferences?.primarySubject)[0] ?? null,
+      subjects: normalizeSubjects(updated.preferences?.subjects, updated.preferences?.primarySubject),
     });
   } catch (error: any) {
     req.log.error({ err: error }, "Profile update error");
@@ -1383,9 +1395,28 @@ router.put("/auth/preferences", async (req, res) => {
     return;
   }
   try {
+    const briefPreferences = JSON.stringify(parsed.data);
     await db
       .update(teachersTable)
-      .set({ preferences: parsed.data as Record<string, unknown> })
+      .set({
+        preferences: sql`
+          (
+            coalesce(${teachersTable.preferences}, '{}'::jsonb)
+            - 'language'
+            - 'presentationKind'
+            - 'slideCount'
+            - 'durationMinutes'
+            - 'languageLevel'
+            - 'density'
+            - 'activities'
+            - 'questions'
+            - 'poll'
+            - 'quiz'
+            - 'notes'
+          )
+          || ${briefPreferences}::jsonb
+        `,
+      })
       .where(eq(teachersTable.id, req.session.teacherId));
     res.json(parsed.data);
   } catch (error: any) {
@@ -1419,7 +1450,7 @@ router.post("/auth/logout", async (req, res) => {
 router.post("/auth/google", authLimiter, async (req, res) => {
   try {
     const { credential } = req.body ?? {};
-    const primarySubject = normalizePrimarySubject(req.body?.primarySubject);
+    const subjects = normalizeSubjects(req.body?.subjects, req.body?.primarySubject);
     const requestedRole = req.body?.role === "organizer" ? "organizer" : "teacher";
     if (!credential || typeof credential !== "string") {
       res.status(400).json({ message: "بيانات Google ناقصة" });
@@ -1487,7 +1518,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
             verifiedAt: new Date(), // Google already verified the email
             emailVerified: true,
             role: requestedRole,
-            preferences: primarySubject ? { primarySubject } : null,
+            preferences: subjects.length ? { primarySubject: subjects[0], subjects } : null,
           })
           .returning();
         teacher = created;

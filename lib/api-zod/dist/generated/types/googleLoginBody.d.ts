@@ -14,6 +14,12 @@ export interface GoogleLoginBody {
        * @maxLength 100
        */
     primarySubject?: string;
+    /**
+       * Subjects selected during a new Google registration.
+       * @maxItems 10
+       * @items.maxLength 100
+       */
+    subjects?: string[];
     /** Public registration role for a newly created Google account. */
     role?: GoogleLoginBodyRole;
 }

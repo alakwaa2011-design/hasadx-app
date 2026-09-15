@@ -18,4 +18,6 @@ export interface TeacherProfile {
   role?: TeacherProfileRole;
   /** Primary subject or professional field used to personalize the activities library. */
   primarySubject?: string;
+  /** Subjects used to personalize the activities library. */
+  subjects?: string[];
 }

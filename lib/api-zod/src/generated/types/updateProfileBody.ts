@@ -15,4 +15,10 @@ export interface UpdateProfileBody {
      * @maxLength 100
      */
   primarySubject?: string;
+  /**
+     * Subjects used to personalize the activities library.
+     * @maxItems 10
+     * @items.maxLength 100
+     */
+  subjects?: string[];
 }

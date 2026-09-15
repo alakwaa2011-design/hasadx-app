@@ -2219,6 +2219,13 @@ components:
           type: string
           maxLength: 100
           description: "Primary subject or professional field used to personalize the activities library."
+        subjects:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 100
+          description: "Subjects used to personalize the activities library."
 
     SubmitFeedbackBody:
       type: object
@@ -2259,6 +2266,13 @@ components:
           type: string
           maxLength: 100
           description: "Teacher's primary subject or professional field, used to personalize the activities library."
+        subjects:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 100
+          description: "Subjects taught by the teacher, used to personalize the activities library."
         acquisitionSource:
           type: string
           description: "Traffic source (google, facebook, instagram, whatsapp, direct, referral, other)"
@@ -2308,6 +2322,13 @@ components:
           type: string
           maxLength: 100
           description: Primary subject selected during a new Google registration.
+        subjects:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 100
+          description: Subjects selected during a new Google registration.
         role:
           type: string
           enum: [teacher, organizer]
@@ -2337,6 +2358,11 @@ components:
         primarySubject:
           type: string
           description: "Primary subject or professional field used to personalize the activities library."
+        subjects:
+          type: array
+          items:
+            type: string
+          description: "Subjects used to personalize the activities library."
       required:
         - id
         - name

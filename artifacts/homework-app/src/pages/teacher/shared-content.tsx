@@ -65,10 +65,11 @@ export function subjectMatchesQuery(subject: string | null | undefined, query: s
 
 export function preferredSubjectScore(
   subject: string | null | undefined,
-  preferredSubject: string | null | undefined,
+  preferredSubjects: string[],
 ): number {
-  if (!preferredSubject || preferredSubject === "متعدد التخصصات" || preferredSubject === "فعاليات وتدريب") return 0;
-  return subjectMatchesQuery(subject, preferredSubject) ? 1 : 0;
+  return preferredSubjects.some((preferredSubject) =>
+    preferredSubject !== "فعاليات وتدريب" && subjectMatchesQuery(subject, preferredSubject)
+  ) ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +236,7 @@ export default function SharedContentPage({
   const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
   const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
-  const [preferredSubject, setPreferredSubject] = useState<string | null>(null);
+  const [preferredSubjects, setPreferredSubjects] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   // Admin-only toggle: when ON, the page also fetches admin-hidden rows
   // so moderators can review and (un)hide them.
@@ -244,15 +245,15 @@ export default function SharedContentPage({
   const [gradeFilter, setGradeFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
 
-  const savePreferredSubject = async (value: string) => {
+  const savePreferredSubjects = async (value: string[]) => {
     const res = await fetch(`${API_BASE}/api/auth/profile`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ primarySubject: value }),
+      body: JSON.stringify({ subjects: value }),
     });
     if (!res.ok) throw new Error("Failed to save preferred subject");
-    setPreferredSubject(value);
+    setPreferredSubjects(value);
   };
 
   /** Sparse labels for مكتبة الأنشطة only — must run after `assignments` state exists. */
@@ -295,7 +296,9 @@ export default function SharedContentPage({
         const meData = await meRes.json();
         setCurrentTeacherId(meData.id || null);
         setIsAdmin(!!meData.isAdmin);
-        setPreferredSubject(typeof meData.primarySubject === "string" ? meData.primarySubject : null);
+        setPreferredSubjects(Array.isArray(meData.subjects)
+          ? meData.subjects.filter((subject: unknown): subject is string => typeof subject === "string")
+          : typeof meData.primarySubject === "string" ? [meData.primarySubject] : []);
         const params = new URLSearchParams();
         if (showHidden && meData.isAdmin) params.set("showHidden", "1");
         const qs = params.toString();
@@ -562,7 +565,7 @@ export default function SharedContentPage({
         (a.targetClasses || []).some(tc => gradeMatchesQuery(tc, gradeFilter)))
     )
     .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
       if (preferenceDelta) return preferenceDelta;
       return sortBy === "questions"
         ? b.questionCount - a.questionCount
@@ -575,7 +578,7 @@ export default function SharedContentPage({
       matchesSubject(q.subject)
     )
     .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
       if (preferenceDelta) return preferenceDelta;
       return sortBy === "questions"
         ? b.points - a.points
@@ -589,7 +592,7 @@ export default function SharedContentPage({
       (!gradeFilter || gradeMatchesQuery(v.targetClass, gradeFilter))
     )
     .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
       if (preferenceDelta) return preferenceDelta;
       return sortBy === "questions"
         ? b.questionCount - a.questionCount
@@ -603,7 +606,7 @@ export default function SharedContentPage({
       (!gradeFilter || gradeMatchesQuery(game.targetClass, gradeFilter))
     )
     .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubject) - preferredSubjectScore(a.subject, preferredSubject);
+      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
       if (preferenceDelta) return preferenceDelta;
       return sortBy === "questions"
         ? b.questionCount - a.questionCount
@@ -644,8 +647,8 @@ export default function SharedContentPage({
         popularIds={activitiesPopularIds}
         newIds={activitiesNewIds}
         currentTeacherId={currentTeacherId}
-        preferredSubject={preferredSubject}
-        onPreferredSubjectChange={savePreferredSubject}
+        preferredSubjects={preferredSubjects}
+        onPreferredSubjectsChange={savePreferredSubjects}
         isAdmin={isAdmin}
         showHidden={showHidden}
         onShowHiddenChange={setShowHidden}

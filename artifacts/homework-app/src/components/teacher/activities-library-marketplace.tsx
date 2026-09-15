@@ -49,6 +49,7 @@ import {
   resolveCoverKind,
 } from "@/lib/activity-cover";
 import { selectTrendingActivities } from "@/lib/activity-library-trending";
+import { SubjectMultiSelect } from "@/components/subject-multi-select";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -176,8 +177,8 @@ export interface ActivitiesLibraryMarketplaceProps {
   popularIds: Set<number>;
   newIds: Set<number>;
   currentTeacherId: number | null;
-  preferredSubject: string | null;
-  onPreferredSubjectChange: (value: string) => Promise<void>;
+  preferredSubjects: string[];
+  onPreferredSubjectsChange: (value: string[]) => Promise<void>;
   isAdmin: boolean;
   showHidden: boolean;
   onShowHiddenChange: (v: boolean) => void;
@@ -241,7 +242,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     filteredAssignments, filteredQuestions, filteredVideos,
     filteredGameActivities, filteredPresentations,
     popularIds, newIds,
-    currentTeacherId, preferredSubject, onPreferredSubjectChange, isAdmin, showHidden, onShowHiddenChange,
+    currentTeacherId, preferredSubjects, onPreferredSubjectsChange, isAdmin, showHidden, onShowHiddenChange,
     search, onSearchChange,
     subjectFilter, onSubjectFilterChange,
     gradeFilter, onGradeFilterChange,
@@ -259,6 +260,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
   const isAr = lang === "ar";
   const [savingSubject, setSavingSubject] = useState(false);
+  const [editingSubjects, setEditingSubjects] = useState(false);
   const [categoryTab,   setCategoryTab]   = useState<CategoryTab>("all");
   const [typeChip,      setTypeChip]      = useState<TypeChip>("all");
   const [bookmarks,     setBookmarks]     = useState<Set<number>>(new Set());
@@ -853,20 +855,28 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               )}
             </div>
 
-            {preferredSubject && preferredSubject !== "متعدد التخصصات" && preferredSubject !== "فعاليات وتدريب" && (
+            {preferredSubjects.length > 0 && !editingSubjects && (
               <div
                 className="flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px] font-bold sm:text-xs"
                 style={{ borderColor: "#cfe3d5", background: C.soft, color: C.primary }}
               >
                 <BookText className="h-4 w-4 shrink-0" />
-                <span>
+                <span className="min-w-0 flex-1">
                   {isAr
-                    ? `أنشطة ${preferredSubject} تظهر أولًا، وبقية المواد ما زالت متاحة.`
-                    : `${preferredSubject} activities appear first; all other subjects remain available.`}
+                    ? `أنشطة موادك المختارة تظهر أولًا، وبقية المواد ما زالت متاحة.`
+                    : `Activities for your selected subjects appear first; all other subjects remain available.`}
                 </span>
+                <button
+                  type="button"
+                  data-testid="button-edit-library-subjects"
+                  onClick={() => setEditingSubjects(true)}
+                  className="shrink-0 rounded-lg border border-primary/20 bg-white px-2.5 py-1.5 text-[10px] font-black hover:bg-primary/5 sm:text-[11px]"
+                >
+                  {isAr ? "تعديل المواد" : "Edit subjects"}
+                </button>
               </div>
             )}
-            {!preferredSubject && (
+            {(preferredSubjects.length === 0 || editingSubjects) && (
               <div
                 className="flex flex-col gap-2 rounded-xl border px-3 py-2.5 sm:flex-row sm:items-center"
                 style={{ borderColor: "#cfe3d5", background: C.soft, color: C.primary }}
@@ -875,35 +885,33 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   <BookText className="h-4 w-4 shrink-0" />
                   <span>{isAr ? "حدد تخصصك لنرتب لك الأنشطة المناسبة أولًا." : "Choose your field to prioritize matching activities."}</span>
                 </div>
-                <select
-                  aria-label={isAr ? "اختيار التخصص" : "Choose specialization"}
-                  defaultValue=""
-                  disabled={savingSubject}
-                  onChange={async (event) => {
-                    if (!event.target.value) return;
-                    setSavingSubject(true);
-                    try {
-                      await onPreferredSubjectChange(event.target.value);
-                    } finally {
-                      setSavingSubject(false);
-                    }
-                  }}
-                  className="h-9 rounded-lg border bg-white px-3 text-[11px] font-bold outline-none sm:text-xs"
-                  style={{ borderColor: C.border, color: C.text }}
-                >
-                  <option value="">{isAr ? "اختر التخصص" : "Choose field"}</option>
-                  <option value="اللغة العربية">{isAr ? "اللغة العربية" : "Arabic"}</option>
-                  <option value="الرياضيات">{isAr ? "الرياضيات" : "Mathematics"}</option>
-                  <option value="العلوم">{isAr ? "العلوم" : "Science"}</option>
-                  <option value="اللغة الإنجليزية">{isAr ? "اللغة الإنجليزية" : "English"}</option>
-                  <option value="التربية الإسلامية">{isAr ? "التربية الإسلامية" : "Islamic studies"}</option>
-                  <option value="الدراسات الاجتماعية">{isAr ? "الدراسات الاجتماعية" : "Social studies"}</option>
-                  <option value="الحاسوب والتقنية">{isAr ? "الحاسوب والتقنية" : "Computing & technology"}</option>
-                  <option value="التربية الفنية">{isAr ? "التربية الفنية" : "Art"}</option>
-                  <option value="التربية الرياضية">{isAr ? "التربية الرياضية" : "Physical education"}</option>
-                  <option value="فعاليات وتدريب">{isAr ? "فعاليات وتدريب" : "Events & training"}</option>
-                  <option value="متعدد التخصصات">{isAr ? "متعدد التخصصات / مجال آخر" : "Multiple subjects / Other"}</option>
-                </select>
+                <div className="w-full sm:w-auto sm:min-w-[28rem]">
+                  <SubjectMultiSelect
+                    value={preferredSubjects}
+                    lang={lang}
+                    disabled={savingSubject}
+                    onChange={async (next) => {
+                      setEditingSubjects(true);
+                      setSavingSubject(true);
+                      try {
+                        await onPreferredSubjectsChange(next);
+                      } finally {
+                        setSavingSubject(false);
+                      }
+                    }}
+                  />
+                  {preferredSubjects.length > 0 && (
+                    <button
+                      type="button"
+                      data-testid="button-finish-library-subjects"
+                      onClick={() => setEditingSubjects(false)}
+                      disabled={savingSubject}
+                      className="mt-2 w-full rounded-lg bg-primary px-3 py-2 text-[11px] font-black text-primary-foreground disabled:opacity-50"
+                    >
+                      {isAr ? "تم" : "Done"}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 

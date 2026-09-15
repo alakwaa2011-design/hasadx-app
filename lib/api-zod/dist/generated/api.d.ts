@@ -22,6 +22,8 @@ export declare const HealthCheckResponse: zodV3.ZodObject<{
 export declare const registerTeacherBodyPasswordMin = 6;
 export declare const registerTeacherBodyRoleDefault = "teacher";
 export declare const registerTeacherBodyPrimarySubjectMax = 100;
+export declare const registerTeacherBodySubjectsItemMax = 100;
+export declare const registerTeacherBodySubjectsMax = 10;
 export declare const RegisterTeacherBody: zodV3.ZodObject<{
     name: zodV3.ZodString;
     email: zodV3.ZodOptional<zodV3.ZodString>;
@@ -29,6 +31,7 @@ export declare const RegisterTeacherBody: zodV3.ZodObject<{
     password: zodV3.ZodString;
     role: zodV3.ZodDefault<zodV3.ZodEnum<["teacher", "organizer"]>>;
     primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+    subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
     acquisitionSource: zodV3.ZodOptional<zodV3.ZodString>;
     acquisitionMedium: zodV3.ZodOptional<zodV3.ZodString>;
     acquisitionCampaign: zodV3.ZodOptional<zodV3.ZodString>;
@@ -40,6 +43,7 @@ export declare const RegisterTeacherBody: zodV3.ZodObject<{
     email?: string | undefined;
     phone?: string | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     acquisitionSource?: string | undefined;
     acquisitionMedium?: string | undefined;
     acquisitionCampaign?: string | undefined;
@@ -51,6 +55,7 @@ export declare const RegisterTeacherBody: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     acquisitionSource?: string | undefined;
     acquisitionMedium?: string | undefined;
     acquisitionCampaign?: string | undefined;
@@ -66,6 +71,7 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
         isBlocked: zodV3.ZodOptional<zodV3.ZodBoolean>;
         role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer", "admin"]>>;
         primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+        subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
         name: string;
         id: number;
@@ -73,6 +79,7 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }, {
@@ -82,6 +89,7 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }>;
@@ -93,6 +101,7 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -104,6 +113,7 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -137,6 +147,7 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
         isBlocked: zodV3.ZodOptional<zodV3.ZodBoolean>;
         role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer", "admin"]>>;
         primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+        subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
         name: string;
         id: number;
@@ -144,6 +155,7 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }, {
@@ -153,6 +165,7 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }>;
@@ -164,6 +177,7 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -175,6 +189,7 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -191,6 +206,7 @@ export declare const GetCurrentTeacherResponse: zodV3.ZodObject<{
     isBlocked: zodV3.ZodOptional<zodV3.ZodBoolean>;
     role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer", "admin"]>>;
     primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+    subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
     name: string;
     id: number;
@@ -198,6 +214,7 @@ export declare const GetCurrentTeacherResponse: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }, {
@@ -207,6 +224,7 @@ export declare const GetCurrentTeacherResponse: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }>;
@@ -214,21 +232,26 @@ export declare const GetCurrentTeacherResponse: zodV3.ZodObject<{
  * @summary Update teacher profile
  */
 export declare const updateTeacherProfileBodyPrimarySubjectMax = 100;
+export declare const updateTeacherProfileBodySubjectsItemMax = 100;
+export declare const updateTeacherProfileBodySubjectsMax = 10;
 export declare const UpdateTeacherProfileBody: zodV3.ZodObject<{
     name: zodV3.ZodOptional<zodV3.ZodString>;
     email: zodV3.ZodOptional<zodV3.ZodString>;
     phone: zodV3.ZodOptional<zodV3.ZodString>;
     primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+    subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
     name?: string | undefined;
     email?: string | undefined;
     phone?: string | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
 }, {
     name?: string | undefined;
     email?: string | undefined;
     phone?: string | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
 }>;
 export declare const UpdateTeacherProfileResponse: zodV3.ZodObject<{
     id: zodV3.ZodNumber;
@@ -239,6 +262,7 @@ export declare const UpdateTeacherProfileResponse: zodV3.ZodObject<{
     isBlocked: zodV3.ZodOptional<zodV3.ZodBoolean>;
     role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer", "admin"]>>;
     primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+    subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
     name: string;
     id: number;
@@ -246,6 +270,7 @@ export declare const UpdateTeacherProfileResponse: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }, {
@@ -255,6 +280,7 @@ export declare const UpdateTeacherProfileResponse: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }>;
@@ -277,6 +303,7 @@ export declare const UpdateTeacherRoleResponse: zodV3.ZodObject<{
     isBlocked: zodV3.ZodOptional<zodV3.ZodBoolean>;
     role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer", "admin"]>>;
     primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+    subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
     name: string;
     id: number;
@@ -284,6 +311,7 @@ export declare const UpdateTeacherRoleResponse: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }, {
@@ -293,6 +321,7 @@ export declare const UpdateTeacherRoleResponse: zodV3.ZodObject<{
     phone?: string | undefined;
     role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }>;
@@ -310,18 +339,23 @@ export declare const LogoutTeacherResponse: zodV3.ZodObject<{
  * @summary Login or register a teacher using a Google ID token
  */
 export declare const loginTeacherWithGoogleBodyPrimarySubjectMax = 100;
+export declare const loginTeacherWithGoogleBodySubjectsItemMax = 100;
+export declare const loginTeacherWithGoogleBodySubjectsMax = 10;
 export declare const LoginTeacherWithGoogleBody: zodV3.ZodObject<{
     credential: zodV3.ZodString;
     primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+    subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
     role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer"]>>;
 }, "strip", zodV3.ZodTypeAny, {
     credential: string;
     role?: "teacher" | "organizer" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
 }, {
     credential: string;
     role?: "teacher" | "organizer" | undefined;
     primarySubject?: string | undefined;
+    subjects?: string[] | undefined;
 }>;
 export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
     teacher: zodV3.ZodObject<{
@@ -333,6 +367,7 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
         isBlocked: zodV3.ZodOptional<zodV3.ZodBoolean>;
         role: zodV3.ZodOptional<zodV3.ZodEnum<["teacher", "organizer", "admin"]>>;
         primarySubject: zodV3.ZodOptional<zodV3.ZodString>;
+        subjects: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
         name: string;
         id: number;
@@ -340,6 +375,7 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }, {
@@ -349,6 +385,7 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }>;
@@ -360,6 +397,7 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -371,6 +409,7 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
         phone?: string | undefined;
         role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
+        subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
