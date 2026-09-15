@@ -29,6 +29,13 @@ vi.mock("@workspace/db", () => {
   return {
     db: {
       select: () => dbState.makeChain(dbState.queue.shift()),
+      transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({
+        execute: () => Promise.resolve(),
+        select: () => dbState.makeChain(dbState.queue.shift()),
+        insert: () => ({
+          values: () => dbState.makeChain(dbState.queue.shift()),
+        }),
+      }),
       insert: () => ({
         values: (payload: unknown) => {
           dbState.insertPayloads.push(payload);
@@ -64,7 +71,7 @@ vi.mock("../game/socket-handlers", () => ({
 import express from "express";
 import request from "supertest";
 import router from "../routes/solo-challenges";
-import { getGame } from "../game/manager";
+import { createGame, getGame } from "../game/manager";
 
 const ASSIGNMENT = {
   id: 17,
@@ -101,6 +108,8 @@ beforeEach(() => {
   dbState.queue.length = 0;
   dbState.insertPayloads.length = 0;
   dbState.updatePayloads.length = 0;
+  vi.mocked(createGame).mockReset();
+  vi.mocked(getGame).mockReset();
 });
 
 describe("solo challenge allowedClasses persistence", () => {
@@ -220,5 +229,137 @@ describe("solo challenge allowedClasses persistence", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ ok: true, result: "duplicate" });
+  });
+});
+
+describe("solo challenge question selection modes", () => {
+  const validQuestions = [
+    { text: "سهل", questionType: "mcq", optionA: "أ", optionB: "ب", optionC: "ج", optionD: "د", correctAnswer: "A", difficulty: 1 },
+    { text: "متوسط", questionType: "mcq", optionA: "أ", optionB: "ب", optionC: "ج", optionD: "د", correctAnswer: "B", difficulty: 2 },
+    { text: "صعب", questionType: "mcq", optionA: "أ", optionB: "ب", optionC: "ج", optionD: "د", correctAnswer: "C", difficulty: 3 },
+  ];
+
+  it("rejects an empty or oversized distribution during standalone creation", async () => {
+    const empty = await request(makeApp())
+      .post("/api/solo-challenges/standalone")
+      .send({ title: "توزيع", questions: validQuestions, difficultyDistribution: { easy: 0, medium: 0, hard: 0 } });
+    expect(empty.status).toBe(400);
+    expect(empty.body.message).toContain("سؤال واحد");
+
+    const oversized = await request(makeApp())
+      .post("/api/solo-challenges/standalone")
+      .send({ title: "توزيع", questions: validQuestions, difficultyDistribution: { easy: 2, medium: 2, hard: 0 } });
+    expect(oversized.status).toBe(400);
+    expect(oversized.body.message).toContain("يتجاوز");
+  });
+
+  it("saves distribution instead of questions-per-participant when creating from an assignment", async () => {
+    pushQueue(
+      [ASSIGNMENT],
+      [],
+      [{ count: 8 }],
+      [{ slug: "توزيع-ab12", shortSlug: "tawzea-ab12" }],
+    );
+
+    const response = await request(makeApp())
+      .post("/api/solo-challenges")
+      .send({
+        assignmentId: ASSIGNMENT.id,
+        questionsPerParticipant: null,
+        difficultyDistribution: { easy: 2, medium: 3, hard: 1 },
+      });
+
+    expect(response.status).toBe(200);
+    expect(dbState.insertPayloads[0]).toMatchObject({
+      questionsPerParticipant: null,
+      difficultyDistribution: { easy: 2, medium: 3, hard: 1 },
+    });
+  });
+
+  it("clears a saved distribution when an old challenge is changed to random count", async () => {
+    pushQueue(
+      [{ ...EXISTING_CHALLENGE, assignmentId: ASSIGNMENT.id }],
+      [{ ...EXISTING_CHALLENGE, assignmentId: ASSIGNMENT.id }],
+      [{ count: 8 }],
+      undefined,
+    );
+
+    const response = await request(makeApp())
+      .post("/api/solo-challenges")
+      .send({
+        assignmentId: ASSIGNMENT.id,
+        questionsPerParticipant: 4,
+        difficultyDistribution: null,
+      });
+
+    expect(response.status).toBe(200);
+    expect(dbState.updatePayloads[0]).toMatchObject({
+      questionsPerParticipant: 4,
+      difficultyDistribution: null,
+    });
+  });
+
+  it("lets the manage-settings endpoint enable distribution for an old challenge", async () => {
+    pushQueue(
+      [{ id: 88, teacherId: 42, assignmentId: ASSIGNMENT.id, questions: null }],
+      [{ count: 8 }],
+      undefined,
+    );
+
+    const response = await request(makeApp())
+      .patch("/api/solo-challenges/اختبار-الصفوف-ab12/settings")
+      .send({
+        questionsPerParticipant: null,
+        difficultyDistribution: { easy: 2, medium: 2, hard: 1 },
+      });
+
+    expect(response.status).toBe(200);
+    expect(dbState.updatePayloads[0]).toMatchObject({
+      questionsPerParticipant: null,
+      difficultyDistribution: { easy: 2, medium: 2, hard: 1 },
+    });
+  });
+
+  it("rejects a request that activates random count and distribution together", async () => {
+    pushQueue(
+      [{ id: 88, teacherId: 42, assignmentId: ASSIGNMENT.id, questions: null }],
+    );
+
+    const response = await request(makeApp())
+      .patch("/api/solo-challenges/اختبار-الصفوف-ab12/settings")
+      .send({
+        questionsPerParticipant: 3,
+        difficultyDistribution: { easy: 1, medium: 1, hard: 1 },
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain("وضعاً واحداً");
+  });
+
+  it("starts with the requested questions from each saved difficulty bucket", async () => {
+    const challenge = {
+      ...EXISTING_CHALLENGE,
+      assignmentId: null,
+      assignmentArchivedAt: null,
+      questions: validQuestions,
+      questionsPerParticipant: null,
+      difficultyDistribution: { easy: 1, medium: 1, hard: 1 },
+      maxAttempts: 1,
+      timePerQuestion: 20,
+      isMultiLevel: false,
+      levels: null,
+    };
+    const game = { pin: "1234", gameRunId: "run-difficulty-123456" } as any;
+    vi.mocked(createGame).mockReturnValue(game);
+    pushQueue([challenge], [{ count: 0 }]);
+
+    const response = await request(makeApp())
+      .post("/api/solo-challenges/اختبار-الصفوف-ab12/start")
+      .send({ participantKey: "participant-key-123456" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.questionCount).toBe(3);
+    const selected = vi.mocked(createGame).mock.calls[0][4] as Array<{ difficulty?: number }>;
+    expect(selected.map(question => question.difficulty).sort()).toEqual([1, 2, 3]);
   });
 });

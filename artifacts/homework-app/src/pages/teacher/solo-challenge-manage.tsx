@@ -55,6 +55,16 @@ interface ChallengeTeacherData {
   allowedClasses?: string[];
 }
 
+type QuestionSelectionMode = "all" | "random" | "difficulty";
+type DifficultyDistribution = { easy: number; medium: number; hard: number };
+
+function defaultDifficultyDistribution(maxQuestions: number): DifficultyDistribution {
+  const total = Math.min(10, Math.max(0, maxQuestions));
+  const easy = Math.ceil(total * 0.4);
+  const medium = Math.floor(total * 0.4);
+  return { easy, medium, hard: Math.max(0, total - easy - medium) };
+}
+
 interface Participant {
   id: number;
   playerName: string;
@@ -90,7 +100,8 @@ export default function SoloChallengeManagePage() {
   const [editLd, setEditLd] = useState<"top3" | "top20" | "all">("top20");
   const [editQpp, setEditQpp] = useState<number | "">("");
   const [editMaxAttempts, setEditMaxAttempts] = useState(1);
-  const [editDiffDistribution, setEditDiffDistribution] = useState<{ easy: number; medium: number; hard: number } | null>(null);
+  const [editDiffDistribution, setEditDiffDistribution] = useState<DifficultyDistribution | null>(null);
+  const [editQppBeforeDistribution, setEditQppBeforeDistribution] = useState<number | "">("");
   const [editAllowedClasses, setEditAllowedClasses] = useState<string[]>([]);
   const [teacherClasses, setTeacherClasses] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -132,6 +143,7 @@ export default function SoloChallengeManagePage() {
       setEditDiffDistribution(rawDist && typeof rawDist === "object" && (rawDist.easy + rawDist.medium + rawDist.hard) > 0
         ? { easy: Math.max(0, Number(rawDist.easy) || 0), medium: Math.max(0, Number(rawDist.medium) || 0), hard: Math.max(0, Number(rawDist.hard) || 0) }
         : null);
+      setEditQppBeforeDistribution("");
       setEditExpires(
         chal.expiresAt ? new Date(chal.expiresAt).toISOString().slice(0, 16) : ""
       );
@@ -175,6 +187,17 @@ export default function SoloChallengeManagePage() {
 
   const saveSettings = async () => {
     if (!challenge) return;
+    if (editDiffDistribution) {
+      const distributionTotal = editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard;
+      if (distributionTotal < 1) {
+        toast.error(lang === "ar" ? "يجب اختيار سؤال واحد على الأقل في التوزيع" : "Choose at least one question in the distribution");
+        return;
+      }
+      if (distributionTotal > challenge.questionCount) {
+        toast.error(lang === "ar" ? "إجمالي التوزيع أكبر من عدد أسئلة بنك الأسئلة" : "The distribution exceeds the available question bank");
+        return;
+      }
+    }
     setSaving(true);
     try {
       const res = await fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug!)}/settings`, {
@@ -203,8 +226,10 @@ export default function SoloChallengeManagePage() {
         leaderboardDisplay: editLd,
         questionsPerParticipant: editQpp === "" ? null : editQpp,
         maxAttempts: editMaxAttempts,
+         difficultyDistribution: editDiffDistribution,
         isExpired: editExpires ? new Date(editExpires) < new Date() : false,
       } : prev);
+       setEditQppBeforeDistribution("");
     } catch (err: any) {
       toast.error(err.message || t.common.error);
     } finally {
@@ -261,6 +286,45 @@ export default function SoloChallengeManagePage() {
   };
 
   const mark = () => setSettingsDirty(true);
+
+  const selectionMode: QuestionSelectionMode = editDiffDistribution
+    ? "difficulty"
+    : editQpp === "" ? "all" : "random";
+
+  const setSelectionMode = (mode: QuestionSelectionMode) => {
+    if (mode === "difficulty") {
+      if (editDiffDistribution) return;
+      if (!challenge || challenge.questionCount < 1) {
+        toast.error(lang === "ar" ? "لا توجد أسئلة متاحة للتوزيع" : "There are no questions available for distribution");
+        return;
+      }
+      setEditQppBeforeDistribution(editQpp);
+      setEditQpp("");
+      setEditDiffDistribution(defaultDifficultyDistribution(challenge.questionCount));
+      mark();
+      return;
+    }
+
+    if (mode === "all") {
+      setEditDiffDistribution(null);
+      setEditQpp("");
+      setEditQppBeforeDistribution("");
+      mark();
+      return;
+    }
+
+    const nextQpp = editDiffDistribution
+      ? (editQppBeforeDistribution === "" ? Math.min(10, challenge?.questionCount ?? 10) : editQppBeforeDistribution)
+      : (editQpp === "" ? Math.min(10, challenge?.questionCount ?? 10) : editQpp);
+    if (!nextQpp || nextQpp < 1) {
+      toast.error(lang === "ar" ? "لا توجد أسئلة متاحة للاختيار العشوائي" : "There are no questions available for random selection");
+      return;
+    }
+    setEditDiffDistribution(null);
+    setEditQpp(Math.min(nextQpp, challenge?.questionCount ?? nextQpp));
+    setEditQppBeforeDistribution("");
+    mark();
+  };
 
   const saveQuestions = async () => {
     if (!challenge) return;
@@ -542,48 +606,81 @@ export default function SoloChallengeManagePage() {
                          </div>
                       </div>
 
-                      {/* Difficulty Distribution OR QPP */}
-                      {editDiffDistribution ? (
-                        <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
-                           <div className="flex items-center justify-between mb-4">
-                             <div>
-                               <div className="flex items-center gap-2 font-black text-sm text-foreground"><Target className="w-4 h-4 text-primary" /> توزيع الصعوبة</div>
-                               <p className="text-xs font-medium text-muted-foreground mt-1">{s.distributionHint}</p>
+                       {/* Question selection mode */}
+                       <div className="p-4 rounded-2xl border border-primary/20 bg-primary/5">
+                         <div className="mb-3">
+                           <div className="flex items-center gap-2 font-black text-sm text-foreground">
+                             <Target className="w-4 h-4 text-primary" /> {s.questionSelectionMode}
+                           </div>
+                           <p className="text-xs font-medium text-muted-foreground mt-1">{s.questionSelectionModeHint}</p>
+                         </div>
+                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                           {([
+                             { value: "all" as const, label: s.allQuestionsMode },
+                             { value: "random" as const, label: s.randomQuestionsMode },
+                             { value: "difficulty" as const, label: s.difficultyQuestionsMode },
+                           ]).map(option => (
+                             <button
+                               key={option.value}
+                               onClick={() => setSelectionMode(option.value)}
+                               className={cn(
+                                 "rounded-xl border px-3 py-2.5 text-xs font-black transition-colors",
+                                 selectionMode === option.value
+                                   ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                                   : "border-border/60 bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                               )}
+                             >
+                               {option.label}
+                             </button>
+                           ))}
+                         </div>
+                       </div>
+
+                       {selectionMode === "difficulty" && editDiffDistribution && (
+                         <div className="p-4 rounded-2xl border border-border/60 bg-muted/20">
+                           <div className="mb-4">
+                             <div className="flex items-center gap-2 font-black text-sm text-foreground">
+                               <Target className="w-4 h-4 text-primary" /> {s.difficultyDistribution}
                              </div>
-                             <button onClick={() => { setEditDiffDistribution(null); mark(); }} className="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-muted text-muted-foreground transition-colors shrink-0">إلغاء التوزيع</button>
+                             <p className="text-xs font-medium text-muted-foreground mt-1">{s.distributionHint}</p>
                            </div>
                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                             {(['easy', 'medium', 'hard'] as const).map(k => (
-                                <div key={k} className="bg-background rounded-xl p-3 border border-border/60 flex flex-col items-center gap-3 shadow-sm">
-                                   <span className={cn("text-[11px] font-black px-3 py-1 rounded-md text-white w-full text-center", k === 'easy' ? 'bg-emerald-500' : k === 'medium' ? 'bg-amber-500' : 'bg-red-500')}>
-                                      {k === 'easy' ? s.easy : k === 'medium' ? s.medium : s.hard}
-                                   </span>
-                                   <div className="flex items-center gap-2 w-full justify-center">
-                                      <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [k]: Math.max(0, d[k] - 1) } : null); mark(); }} className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center font-black text-lg transition-colors hover:bg-muted/80">−</button>
-                                      <span className="w-10 text-center font-black text-base">{editDiffDistribution[k]}</span>
-                                      <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [k]: d[k] + 1 } : null); mark(); }} className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center font-black text-lg transition-colors hover:bg-muted/80">+</button>
-                                   </div>
-                                </div>
+                             {(["easy", "medium", "hard"] as const).map(k => (
+                               <div key={k} className="bg-background rounded-xl p-3 border border-border/60 flex flex-col items-center gap-3 shadow-sm">
+                                 <span className={cn("text-[11px] font-black px-3 py-1 rounded-md text-white w-full text-center", k === "easy" ? "bg-emerald-500" : k === "medium" ? "bg-amber-500" : "bg-red-500")}>
+                                   {k === "easy" ? s.easy : k === "medium" ? s.medium : s.hard}
+                                 </span>
+                                 <div className="flex items-center gap-2 w-full justify-center">
+                                   <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [k]: Math.max(0, d[k] - 1) } : null); mark(); }} className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center font-black text-lg transition-colors hover:bg-muted/80">−</button>
+                                   <span className="w-10 text-center font-black text-base">{editDiffDistribution[k]}</span>
+                                   <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [k]: d[k] + 1 } : null); mark(); }} className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center font-black text-lg transition-colors hover:bg-muted/80">+</button>
+                                 </div>
+                               </div>
                              ))}
                            </div>
                            <div className="border-t border-border mt-4 pt-3 flex items-center justify-between px-2">
                              <span className="text-xs font-bold text-muted-foreground">{s.total}</span>
-                             <span className="text-base font-black text-primary">{editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard} أسئلة</span>
+                             <span className={cn("text-base font-black", editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard > challenge.questionCount ? "text-destructive" : "text-primary")}>
+                               {editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard} {s.questions}
+                             </span>
                            </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-border/60 bg-muted/20 gap-4">
+                           <p className="text-[11px] font-medium text-muted-foreground mt-2">{s.classifyFirst}</p>
+                         </div>
+                       )}
+
+                       {selectionMode === "random" && (
+                         <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-border/60 bg-muted/20 gap-4">
                            <div>
-                             <div className="flex items-center gap-2 font-black text-sm text-foreground"><Target className="w-4 h-4 text-emerald-500" /> أسئلة لكل متسابق</div>
-                             <p className="text-xs font-medium text-muted-foreground mt-1">عدد الأسئلة العشوائية التي ستظهر لكل طالب (اتركه فارغاً لعرض الكل)</p>
+                             <div className="flex items-center gap-2 font-black text-sm text-foreground"><Target className="w-4 h-4 text-emerald-500" /> {s.questionsPerParticipant}</div>
+                             <p className="text-xs font-medium text-muted-foreground mt-1">{s.randomQuestionsHint}</p>
                            </div>
                            <div className="flex items-center gap-1 bg-background rounded-xl border border-border/60 p-1 shadow-sm shrink-0">
-                              <button onClick={() => { if (editQpp === "" || (editQpp as number) <= 1) { setEditQpp(""); mark(); } else { setEditQpp((editQpp as number) - 1); mark(); } }} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-muted font-black text-lg transition-colors">−</button>
-                              <span className="w-16 text-center text-sm font-black tabular-nums">{editQpp === "" ? s.all : String(editQpp)}</span>
-                              <button onClick={() => { const next = (editQpp === "" ? 0 : (editQpp as number)) + 1; if (challenge.questionCount > 0 && next > challenge.questionCount) return; setEditQpp(next); mark(); }} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-muted font-black text-lg transition-colors">+</button>
+                             <button onClick={() => { if (editQpp === "" || editQpp <= 1) { setEditQpp(""); mark(); } else { setEditQpp(editQpp - 1); mark(); } }} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-muted font-black text-lg transition-colors">−</button>
+                             <span className="w-16 text-center text-sm font-black tabular-nums">{editQpp === "" ? "—" : String(editQpp)}</span>
+                             <button onClick={() => { const next = (editQpp === "" ? 0 : editQpp) + 1; if (challenge.questionCount > 0 && next > challenge.questionCount) return; setEditQpp(next); mark(); }} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-muted font-black text-lg transition-colors">+</button>
                            </div>
-                        </div>
-                      )}
+                         </div>
+                       )}
                     </div>
                   </section>
 

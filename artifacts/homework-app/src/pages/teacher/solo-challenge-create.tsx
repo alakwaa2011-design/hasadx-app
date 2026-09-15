@@ -38,6 +38,14 @@ interface ChallengeLevel {
 }
 
 type DiffDistribution = { easy: number; medium: number; hard: number };
+type QuestionSelectionMode = "all" | "random" | "difficulty";
+
+function defaultDifficultyDistribution(maxQuestions?: number): DiffDistribution {
+  const total = maxQuestions === undefined ? 10 : Math.min(10, Math.max(0, maxQuestions));
+  const easy = Math.ceil(total * 0.4);
+  const medium = Math.floor(total * 0.4);
+  return { easy, medium, hard: Math.max(0, total - easy - medium) };
+}
 
 interface Assignment {
   id: number;
@@ -93,6 +101,47 @@ export default function SoloChallengeCreatePage() {
   ]);
   const [diffDistribution, setDiffDistribution] = useState<DiffDistribution | null>(null);
   const loadedSavedGameRef = useRef(false);
+
+  const setQuestionSelectionMode = (mode: QuestionSelectionMode, maxQuestions?: number) => {
+    if (mode === "all") {
+      setDiffDistribution(null);
+      setQuestionsPerParticipant("");
+      return;
+    }
+    if (mode === "random") {
+      const available = maxQuestions === undefined ? 10 : maxQuestions;
+      if (available < 1) {
+        toast.error(lang === "ar" ? "أضف سؤالاً واحداً على الأقل أولاً" : "Add at least one question first");
+        return;
+      }
+      setDiffDistribution(null);
+      setQuestionsPerParticipant(current =>
+        current === "" ? Math.min(10, available) : Math.min(current, available),
+      );
+      return;
+    }
+    const available = maxQuestions === undefined ? undefined : maxQuestions;
+    if (available !== undefined && available < 1) {
+      toast.error(lang === "ar" ? "أضف سؤالاً واحداً على الأقل أولاً" : "Add at least one question first");
+      return;
+    }
+    setQuestionsPerParticipant("");
+    setDiffDistribution(defaultDifficultyDistribution(available));
+  };
+
+  const validateDifficultySelection = (availableQuestions?: number): boolean => {
+    if (!diffDistribution) return true;
+    const total = diffDistribution.easy + diffDistribution.medium + diffDistribution.hard;
+    if (total < 1) {
+      toast.error(lang === "ar" ? "يجب اختيار سؤال واحد على الأقل في التوزيع" : "Choose at least one question in the distribution");
+      return false;
+    }
+    if (availableQuestions !== undefined && total > availableQuestions) {
+      toast.error(lang === "ar" ? "إجمالي التوزيع أكبر من عدد أسئلة بنك الأسئلة" : "The distribution exceeds the available question bank");
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
@@ -238,6 +287,7 @@ export default function SoloChallengeCreatePage() {
 
   const createFromAssignment = async () => {
     if (!selectedAssignment) { toast.error(s.chooseAssignment); return; }
+    if (!validateDifficultySelection(selectedAssignment.questionCount)) return;
     setSaving(true);
     try {
       const res = await fetch(`${API}/api/solo-challenges`, {
@@ -274,6 +324,7 @@ export default function SoloChallengeCreatePage() {
     if (!title.trim()) { toast.error(s.enterTitle); return; }
     const validQs = questions.filter(isValidQ);
     if (validQs.length === 0) { toast.error(s.addQuestion); return; }
+    if (!validateDifficultySelection(validQs.length)) return;
 
     const sendQs = validQs.map(q => {
       if (q.type === "fill_blank") {
@@ -475,6 +526,7 @@ export default function SoloChallengeCreatePage() {
                       questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                       maxQuestions={selectedAssignment?.questionCount}
                       diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
+                       onSelectionMode={setQuestionSelectionMode}
                       isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
                       challengeLevels={challengeLevels} onChallengeLevels={setChallengeLevels}
                       allowedClasses={allowedClasses} onAllowedClasses={setAllowedClasses}
@@ -651,6 +703,7 @@ export default function SoloChallengeCreatePage() {
                     questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                     maxQuestions={questions.filter(q => q.text.trim() && q.optionA && q.optionB && q.optionC && q.optionD).length}
                     diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
+                     onSelectionMode={setQuestionSelectionMode}
                     isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
                     challengeLevels={challengeLevels} onChallengeLevels={setChallengeLevels}
                     allowedClasses={allowedClasses} onAllowedClasses={setAllowedClasses}
@@ -765,6 +818,7 @@ export default function SoloChallengeCreatePage() {
                     questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
                     maxQuestions={questions.filter(isValidQ).length}
                     diffDistribution={diffDistribution} onDiffDistribution={setDiffDistribution}
+                    onSelectionMode={setQuestionSelectionMode}
                     isMultiLevel={isMultiLevel} onIsMultiLevel={setIsMultiLevel}
                     challengeLevels={challengeLevels} onChallengeLevels={setChallengeLevels}
                     allowedClasses={allowedClasses} onAllowedClasses={setAllowedClasses}
@@ -801,6 +855,7 @@ function SettingsPanel({
   questionsPerParticipant, onQpp,
   maxQuestions,
   diffDistribution, onDiffDistribution,
+  onSelectionMode,
   isMultiLevel, onIsMultiLevel,
   challengeLevels, onChallengeLevels,
   allowedClasses, onAllowedClasses,
@@ -814,6 +869,7 @@ function SettingsPanel({
   questionsPerParticipant: number | ""; onQpp: (v: number | "") => void;
   maxQuestions?: number;
   diffDistribution: DiffDistribution | null; onDiffDistribution: (v: DiffDistribution | null) => void;
+  onSelectionMode: (mode: QuestionSelectionMode, maxQuestions?: number) => void;
   isMultiLevel: boolean; onIsMultiLevel: (v: boolean) => void;
   challengeLevels: ChallengeLevel[]; onChallengeLevels: (v: ChallengeLevel[]) => void;
   allowedClasses: string[]; onAllowedClasses: (v: string[]) => void;
@@ -844,6 +900,9 @@ function SettingsPanel({
     onDiffDistribution({ ...diffDistribution, [key]: Math.max(0, diffDistribution[key] + delta) });
   };
   const distTotal = diffDistribution ? diffDistribution.easy + diffDistribution.medium + diffDistribution.hard : 0;
+  const selectionMode: QuestionSelectionMode = diffDistribution
+    ? "difficulty"
+    : questionsPerParticipant === "" ? "all" : "random";
 
   return (
     <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
@@ -950,7 +1009,40 @@ function SettingsPanel({
                 </div>
               )}
 
-              {/* ── Time per question ── */}
+               {/* ── Question selection mode ── */}
+               {!isMultiLevel && (
+                 <div className="px-4 py-4 bg-primary/5 border-y border-primary/10">
+                   <div className="mb-3">
+                     <div className="flex items-center gap-2 text-xs font-black text-foreground">
+                       <Target className="w-4 h-4 text-primary" />
+                       {s.questionSelectionMode}
+                     </div>
+                     <p className="text-[10px] font-medium text-muted-foreground mt-1">{s.questionSelectionModeHint}</p>
+                   </div>
+                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                     {([
+                       { value: "all" as const, label: s.allQuestionsMode },
+                       { value: "random" as const, label: s.randomQuestionsMode },
+                       { value: "difficulty" as const, label: s.difficultyQuestionsMode },
+                     ]).map(option => (
+                       <button
+                         key={option.value}
+                         onClick={() => onSelectionMode(option.value, maxQuestions)}
+                         className={cn(
+                           "rounded-xl border px-3 py-2.5 text-[11px] font-black transition-colors",
+                           selectionMode === option.value
+                             ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                             : "border-border/60 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                         )}
+                       >
+                         {option.label}
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
+               {/* ── Time per question ── */}
               {!isMultiLevel && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground">
@@ -965,51 +1057,37 @@ function SettingsPanel({
                 </div>
               )}
 
-              {/* ── Difficulty distribution ── */}
-              {!isMultiLevel && (
-                <>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2 hover:bg-muted/10 transition-colors">
-                    <label className="flex items-center gap-2 text-xs font-bold text-foreground">
-                      <Target className="w-4 h-4 text-primary" />
-                       {s.difficultyDistribution}
-                    </label>
-                    <button
-                      onClick={() => onDiffDistribution(diffDistribution ? null : { easy: 4, medium: 4, hard: 2 })}
-                      className={cn("relative w-10 h-6 rounded-full transition-colors flex-shrink-0 border-2 self-start sm:self-auto", diffDistribution ? "bg-primary border-primary" : "bg-muted border-transparent")}
-                    >
-                      <span className={cn("absolute top-[2px] w-4 h-4 bg-white rounded-full shadow transition-all", diffDistribution ? "start-[18px]" : "start-[2px]")} />
-                    </button>
-                  </div>
-                  {diffDistribution && (
-                    <div className="px-4 py-4 bg-primary/5 space-y-3 mx-2 mb-2 rounded-xl border border-primary/10">
-                      <p className="text-[10px] font-bold text-primary/80">{s.distributionHint}</p>
-                      <div className="grid gap-2">
-                        {([
-                          { key: "easy" as const, label: s.easy, color: "bg-emerald-500" },
-                          { key: "medium" as const, label: s.medium, color: "bg-amber-500" },
-                          { key: "hard" as const, label: s.hard, color: "bg-red-500" },
-                        ]).map(({ key, label, color }) => (
-                          <div key={key} className="flex items-center justify-between bg-card px-2 py-1.5 rounded-lg border shadow-sm">
-                            <span className={cn("text-[10px] font-black px-2 py-0.5 rounded text-white w-14 text-center", color)}>{label}</span>
-                            <div className="flex items-center gap-1.5">
-                              <button onClick={() => adjustDist(key, -1)} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center">−</button>
-                              <span className="w-6 text-center font-black text-xs">{diffDistribution[key]}</span>
-                              <button onClick={() => adjustDist(key, +1)} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center">+</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between border-t border-primary/10 pt-2 px-1">
-                        <span className="text-[10px] font-bold text-primary">{s.total}</span>
-                        <span className="text-xs font-black text-primary">{distTotal}</span>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+               {/* ── Selected question count ── */}
+               {!isMultiLevel && selectionMode === "difficulty" && diffDistribution && (
+                 <div className="px-4 py-4 bg-primary/5 space-y-3 mx-2 mb-2 rounded-xl border border-primary/10">
+                   <p className="text-[10px] font-bold text-primary/80">{s.distributionHint}</p>
+                   <div className="grid gap-2">
+                     {([
+                       { key: "easy" as const, label: s.easy, color: "bg-emerald-500" },
+                       { key: "medium" as const, label: s.medium, color: "bg-amber-500" },
+                       { key: "hard" as const, label: s.hard, color: "bg-red-500" },
+                     ]).map(({ key, label, color }) => (
+                       <div key={key} className="flex items-center justify-between bg-card px-2 py-1.5 rounded-lg border shadow-sm">
+                         <span className={cn("text-[10px] font-black px-2 py-0.5 rounded text-white w-14 text-center", color)}>{label}</span>
+                         <div className="flex items-center gap-1.5">
+                           <button onClick={() => adjustDist(key, -1)} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center">−</button>
+                           <span className="w-6 text-center font-black text-xs">{diffDistribution[key]}</span>
+                           <button onClick={() => adjustDist(key, +1)} className="w-6 h-6 rounded-md bg-muted hover:bg-muted/80 font-black text-sm flex items-center justify-center">+</button>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                   <div className="flex items-center justify-between border-t border-primary/10 pt-2 px-1">
+                     <span className="text-[10px] font-bold text-primary">{s.total}</span>
+                     <span className={cn("text-xs font-black", maxQuestions !== undefined && distTotal > maxQuestions ? "text-destructive" : "text-primary")}>
+                       {distTotal} {s.questions}
+                     </span>
+                   </div>
+                   <p className="text-[10px] font-medium text-muted-foreground">{s.classifyFirst}</p>
+                 </div>
+               )}
 
-              {/* ── Questions per participant ── */}
-              {!isMultiLevel && !diffDistribution && (
+               {!isMultiLevel && selectionMode === "random" && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3 hover:bg-muted/10 transition-colors">
                   <label className="flex items-center gap-2 text-xs font-bold text-foreground">
                     <Target className="w-4 h-4 text-emerald-500" />

@@ -200,14 +200,66 @@ interface DifficultyDistribution {
   hard: number;
 }
 
-function validateDifficultyDistribution(raw: unknown): DifficultyDistribution | null {
-  if (!raw || typeof raw !== "object") return null;
+type ParsedDifficultyDistribution = {
+  value: DifficultyDistribution | null;
+  error: string | null;
+};
+
+function parseDifficultyDistribution(raw: unknown): ParsedDifficultyDistribution {
+  if (raw === null || raw === undefined) return { value: null, error: null };
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return { value: null, error: "توزيع الصعوبة غير صالح" };
+  }
+
   const obj = raw as Record<string, unknown>;
-  const easy   = Math.max(0, Math.floor(Number(obj.easy   ?? 0)));
-  const medium = Math.max(0, Math.floor(Number(obj.medium ?? 0)));
-  const hard   = Math.max(0, Math.floor(Number(obj.hard   ?? 0)));
-  if (easy + medium + hard === 0) return null;
-  return { easy, medium, hard };
+  const values = ["easy", "medium", "hard"].map(key => Number(obj[key] ?? 0));
+  if (values.some(value => !Number.isInteger(value) || value < 0)) {
+    return { value: null, error: "يجب أن تكون أعداد توزيع الصعوبة أعداداً صحيحة غير سالبة" };
+  }
+
+  const [easy, medium, hard] = values;
+  if (easy + medium + hard === 0) {
+    return { value: null, error: "يجب أن يحتوي توزيع الصعوبة على سؤال واحد على الأقل" };
+  }
+  return { value: { easy, medium, hard }, error: null };
+}
+
+function validateDifficultyDistribution(raw: unknown): DifficultyDistribution | null {
+  return parseDifficultyDistribution(raw).value;
+}
+
+function distributionTotal(distribution: DifficultyDistribution): number {
+  return distribution.easy + distribution.medium + distribution.hard;
+}
+
+function validateDistributionCapacity(
+  distribution: DifficultyDistribution,
+  totalQuestions: number,
+): string | null {
+  if (distributionTotal(distribution) > totalQuestions) {
+    return "إجمالي توزيع الصعوبة يجب ألا يتجاوز عدد الأسئلة المتاح";
+  }
+  return null;
+}
+
+function parseQuestionsPerParticipant(raw: unknown): { value: number | null; error: string | null } {
+  if (raw === null || raw === undefined || raw === "") return { value: null, error: null };
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) {
+    return { value: null, error: "عدد الأسئلة لكل متسابق غير صالح" };
+  }
+  return { value, error: null };
+}
+
+async function getPlayableQuestionCount(assignmentId: number): Promise<number> {
+  const [count] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(questionsTable)
+    .where(and(
+      eq(questionsTable.assignmentId, assignmentId),
+      sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
+    ));
+  return count?.count ?? 0;
 }
 
 function validateLevels(raw: unknown): ChallengeLevel[] | null {
@@ -315,15 +367,44 @@ router.post("/solo-challenges", async (req, res) => {
       if ("leaderboardDisplay" in req.body && ["top3", "top20", "all"].includes(req.body.leaderboardDisplay)) {
         update.leaderboardDisplay = req.body.leaderboardDisplay;
       }
-      if ("questionsPerParticipant" in req.body) {
-        update.questionsPerParticipant = req.body.questionsPerParticipant === null || req.body.questionsPerParticipant === ""
-          ? null
-          : Math.max(1, Number(req.body.questionsPerParticipant) || 1);
-      }
-      if ("difficultyDistribution" in req.body) {
-        const distribution = validateDifficultyDistribution(req.body.difficultyDistribution);
-        update.difficultyDistribution = distribution;
-        if (distribution) update.questionsPerParticipant = null;
+      const hasQpp = "questionsPerParticipant" in req.body;
+      const hasDistribution = "difficultyDistribution" in req.body;
+      if (hasQpp || hasDistribution) {
+        const parsedQpp = hasQpp
+          ? parseQuestionsPerParticipant(req.body.questionsPerParticipant)
+          : { value: null, error: null };
+        if (parsedQpp.error) return res.status(400).json({ message: parsedQpp.error });
+
+        const parsedDistribution = hasDistribution
+          ? parseDifficultyDistribution(req.body.difficultyDistribution)
+          : { value: null, error: null };
+        if (parsedDistribution.error) return res.status(400).json({ message: parsedDistribution.error });
+        if (hasQpp && hasDistribution && parsedQpp.value !== null && parsedDistribution.value !== null) {
+          return res.status(400).json({ message: "اختر وضعاً واحداً: العدد العشوائي أو توزيع الصعوبة" });
+        }
+
+        const totalQuestions = (hasDistribution && parsedDistribution.value) || (hasQpp && parsedQpp.value !== null)
+          ? await getPlayableQuestionCount(assignmentId)
+          : 0;
+        if (parsedQpp.value !== null && parsedQpp.value > totalQuestions) {
+          return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب ألا يتجاوز عدد الأسئلة الكلي" });
+        }
+        if (parsedDistribution.value) {
+          const capacityError = validateDistributionCapacity(parsedDistribution.value, totalQuestions);
+          if (capacityError) return res.status(400).json({ message: capacityError });
+        }
+
+        if (hasDistribution) update.difficultyDistribution = parsedDistribution.value;
+        if (hasQpp) {
+          update.questionsPerParticipant = parsedQpp.value;
+          // A question-count update explicitly selects all/random mode unless
+          // the request also carries a valid distribution mode.
+          if (!hasDistribution || parsedDistribution.value === null) {
+            update.difficultyDistribution = null;
+          }
+        } else if (parsedDistribution.value) {
+          update.questionsPerParticipant = null;
+        }
       }
       if ("isMultiLevel" in req.body) update.isMultiLevel = Boolean(req.body.isMultiLevel);
       if ("levels" in req.body) update.levels = req.body.levels === null ? null : validateLevels(req.body.levels);
@@ -373,8 +454,27 @@ router.post("/solo-challenges", async (req, res) => {
     }
     const isMultiLevel = Boolean(req.body?.isMultiLevel);
     const levels = req.body?.levels != null ? (validateLevels(req.body.levels) ?? null) : null;
-    const difficultyDistribution = validateDifficultyDistribution(req.body?.difficultyDistribution);
-    const questionsPerParticipant = req.body?.questionsPerParticipant ? Number(req.body.questionsPerParticipant) || null : null;
+    const hasQpp = "questionsPerParticipant" in req.body;
+    const hasDistribution = "difficultyDistribution" in req.body;
+    const parsedQpp = parseQuestionsPerParticipant(req.body?.questionsPerParticipant);
+    if (parsedQpp.error) return res.status(400).json({ message: parsedQpp.error });
+    const parsedDistribution = parseDifficultyDistribution(req.body?.difficultyDistribution);
+    if (parsedDistribution.error) return res.status(400).json({ message: parsedDistribution.error });
+    if (hasQpp && hasDistribution && parsedQpp.value !== null && parsedDistribution.value !== null) {
+      return res.status(400).json({ message: "اختر وضعاً واحداً: العدد العشوائي أو توزيع الصعوبة" });
+    }
+    const totalQuestions = (hasQpp && parsedQpp.value !== null) || parsedDistribution.value
+      ? await getPlayableQuestionCount(assignmentId)
+      : 0;
+    if (parsedQpp.value !== null && parsedQpp.value > totalQuestions) {
+      return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب ألا يتجاوز عدد الأسئلة الكلي" });
+    }
+    if (parsedDistribution.value) {
+      const capacityError = validateDistributionCapacity(parsedDistribution.value, totalQuestions);
+      if (capacityError) return res.status(400).json({ message: capacityError });
+    }
+    const difficultyDistribution = parsedDistribution.value;
+    const questionsPerParticipant = parsedQpp.value;
     const allowedClasses = Array.isArray(req.body?.allowedClasses)
       ? req.body.allowedClasses.map((value: unknown) => String(value).trim()).filter(Boolean).slice(0, 50)
       : [];
@@ -437,17 +537,27 @@ router.post("/solo-challenges/standalone", async (req, res) => {
     const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
     if (expiresAt && isNaN(expiresAt.getTime())) return res.status(400).json({ message: "تاريخ الانتهاء غير صالح" });
 
-    let questionsPerParticipant: number | null = null;
-    if (req.body?.questionsPerParticipant != null && req.body?.questionsPerParticipant !== "") {
-        const n = Number(req.body.questionsPerParticipant);
-      if (isNaN(n) || !Number.isInteger(n)) return res.status(400).json({ message: "عدد الأسئلة لكل متسابق غير صالح" });
-      if (n < 1 || n > questions.length) return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب أن يكون بين 1 وعدد الأسئلة الكلي" });
-      questionsPerParticipant = n;
+    const hasQpp = "questionsPerParticipant" in req.body;
+    const hasDistribution = "difficultyDistribution" in req.body;
+    const parsedQpp = parseQuestionsPerParticipant(req.body?.questionsPerParticipant);
+    if (parsedQpp.error) return res.status(400).json({ message: parsedQpp.error });
+    if (parsedQpp.value !== null && parsedQpp.value > questions.length) {
+      return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب أن يكون بين 1 وعدد الأسئلة الكلي" });
     }
 
     const isMultiLevel = Boolean(req.body?.isMultiLevel);
     const levels = req.body?.levels != null ? (validateLevels(req.body.levels) ?? null) : null;
-    const difficultyDistribution = validateDifficultyDistribution(req.body?.difficultyDistribution);
+    const parsedDistribution = parseDifficultyDistribution(req.body?.difficultyDistribution);
+    if (parsedDistribution.error) return res.status(400).json({ message: parsedDistribution.error });
+    if (hasQpp && hasDistribution && parsedQpp.value !== null && parsedDistribution.value !== null) {
+      return res.status(400).json({ message: "اختر وضعاً واحداً: العدد العشوائي أو توزيع الصعوبة" });
+    }
+    if (parsedDistribution.value) {
+      const capacityError = validateDistributionCapacity(parsedDistribution.value, questions.length);
+      if (capacityError) return res.status(400).json({ message: capacityError });
+    }
+    const difficultyDistribution = parsedDistribution.value;
+    const questionsPerParticipant = parsedQpp.value;
 
     const slug = `${titleToSlug(title)}-${randomSuffix()}`;
     const shortSlug = `${arabicToLatinSlug(title)}-${randomSuffix()}`;
@@ -725,42 +835,47 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       if (qs.length > 100) return res.status(400).json({ message: "الحد الأقصى 100 سؤال" });
       update.questions = qs;
     }
-    if ("questionsPerParticipant" in req.body) {
-      if (req.body.questionsPerParticipant === null || req.body.questionsPerParticipant === "") {
-        update.questionsPerParticipant = null;
-      } else {
-        const n = Number(req.body.questionsPerParticipant);
-        if (isNaN(n) || !Number.isInteger(n) || n < 1) {
-          return res.status(400).json({ message: "عدد الأسئلة لكل متسابق غير صالح" });
-        }
-        let totalQuestions: number;
-        if (challenge.assignmentId === null) {
-          totalQuestions = Array.isArray(update.questions)
-            ? (update.questions as unknown[]).length
-            : (Array.isArray(challenge.questions) ? (challenge.questions as unknown[]).length : 0);
-        } else {
-      const [cnt] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(questionsTable)
-        .where(and(
-          eq(questionsTable.assignmentId, challenge.assignmentId!),
-          sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
-        ));
-          totalQuestions = cnt?.count ?? 0;
-        }
-        if (n > totalQuestions) {
-          return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب ألا يتجاوز عدد الأسئلة الكلي" });
-        }
-        update.questionsPerParticipant = n;
-      }
-    }
+    const hasQpp = "questionsPerParticipant" in req.body;
+    const hasDistribution = "difficultyDistribution" in req.body;
+    if (hasQpp || hasDistribution) {
+      const parsedQpp = hasQpp
+        ? parseQuestionsPerParticipant(req.body.questionsPerParticipant)
+        : { value: null, error: null };
+      if (parsedQpp.error) return res.status(400).json({ message: parsedQpp.error });
 
-    // Multi-level + difficulty distribution settings
-    if ("difficultyDistribution" in req.body) {
-      const dist = validateDifficultyDistribution(req.body.difficultyDistribution);
-      update.difficultyDistribution = dist;
-      // When distribution is active, clear questionsPerParticipant unless also being updated
-      if (dist && !("questionsPerParticipant" in req.body)) {
+      const parsedDistribution = hasDistribution
+        ? parseDifficultyDistribution(req.body.difficultyDistribution)
+        : { value: null, error: null };
+      if (parsedDistribution.error) return res.status(400).json({ message: parsedDistribution.error });
+      if (hasQpp && hasDistribution && parsedQpp.value !== null && parsedDistribution.value !== null) {
+        return res.status(400).json({ message: "اختر وضعاً واحداً: العدد العشوائي أو توزيع الصعوبة" });
+      }
+
+      let totalQuestions: number | null = null;
+      if (parsedQpp.value !== null || parsedDistribution.value) {
+        totalQuestions = challenge.assignmentId === null
+          ? (Array.isArray(update.questions)
+            ? (update.questions as unknown[]).length
+            : (Array.isArray(challenge.questions) ? (challenge.questions as unknown[]).length : 0))
+          : await getPlayableQuestionCount(challenge.assignmentId);
+      }
+      if (parsedQpp.value !== null && parsedQpp.value > (totalQuestions ?? 0)) {
+        return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب ألا يتجاوز عدد الأسئلة الكلي" });
+      }
+      if (parsedDistribution.value) {
+        const capacityError = validateDistributionCapacity(parsedDistribution.value, totalQuestions ?? 0);
+        if (capacityError) return res.status(400).json({ message: capacityError });
+      }
+
+      if (hasDistribution) update.difficultyDistribution = parsedDistribution.value;
+      if (hasQpp) {
+        update.questionsPerParticipant = parsedQpp.value;
+        // Selecting all/random explicitly disables any saved distribution,
+        // unless this request also carries a valid distribution mode.
+        if (!hasDistribution || parsedDistribution.value === null) {
+          update.difficultyDistribution = null;
+        }
+      } else if (parsedDistribution.value) {
         update.questionsPerParticipant = null;
       }
     }
@@ -872,10 +987,16 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       questionCount = cnt?.count ?? 0;
     }
 
+    const savedDistribution = validateDifficultyDistribution(challenge.difficultyDistribution);
+    const distributionQuestionCount = savedDistribution
+      ? Math.min(distributionTotal(savedDistribution), questionCount)
+      : questionCount;
     const effectiveQuestionCount =
-      challenge.questionsPerParticipant != null && challenge.questionsPerParticipant < questionCount
-        ? challenge.questionsPerParticipant
-        : questionCount;
+      savedDistribution
+        ? distributionQuestionCount
+        : challenge.questionsPerParticipant != null && challenge.questionsPerParticipant < questionCount
+          ? challenge.questionsPerParticipant
+          : questionCount;
 
     const allowedClassesList = Array.isArray((challenge as any).allowedClasses)
       ? ((challenge as any).allowedClasses as string[]).filter(c => typeof c === "string" && c.trim())
@@ -891,6 +1012,7 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       questionCount: effectiveQuestionCount,
       totalQuestionCount: questionCount,
       questionsPerParticipant: challenge.questionsPerParticipant ?? null,
+      difficultyDistribution: savedDistribution,
       timePerQuestion: challenge.timePerQuestion ?? 20,
       leaderboardDisplay: challenge.leaderboardDisplay ?? "top20",
       maxAttempts: challenge.maxAttempts ?? 1,
