@@ -1,0 +1,66 @@
+App profile
+These public details are shared by Prelive and Production. Saving once updates every linked Hydra client without changing credentials, permissions, redirect URIs, or OAuth behavior.
+
+App name
+Hasaad Quran Server
+Logo URL
+https://example.com/logo.png
+Homepage URL
+https://example.com
+Privacy policy URL
+https://example.com/privacy
+Terms of service URL
+https://example.com/terms
+Save app profile
+Profile synchronization
+Each linked environment is updated independently. Any environment not confirmed as synchronized can be retried without changing its Client ID or configuration.
+
+Prelive
+Last synchronized 15‏/9‏/2026، 11:51:57 م
+Synced
+Production
+Last synchronized 15‏/9‏/2026، 11:51:58 م
+Synced
+App settings
+Owner
+alakwaa2011@gmail.com
+single developer
+App capability
+User login has not been enabled for this app.
+API access without user login
+Enable user login
+This lets users sign in with Quran.Foundation and return to your app through redirect URIs. If this app already has Client IDs, Developer Console keeps those IDs and uses their existing credential type.
+
+Where will login be handled?
+Both options support user login. Choose frontend/mobile if there is no backend. Choose backend/server if your backend will store the Client Secret and exchange tokens.
+
+
+Frontend or mobile app
+No client secret
+Use when code runs on a user's device and cannot safely hide a secret.
+
+Backend/server app
+One-time client secret
+Use when login is completed on your backend and the secret can be stored securely.
+browser_public
+Redirect URIs
+Required
+Where Quran.Foundation sends users after login. Add every redirect URI your app can use.
+
+http://localhost:3000/callback
+Remove
+Add URI
+Post-logout redirect URIs
+Optional
+Optional redirect URIs users can return to after sign-out. Leave blank if your app does not handle logout redirects.
+
+http://localhost:3000/
+Remove
+Add URI
+Privacy policy URL
+https://example.com/privacy
+Public page explaining how your app handles user data.
+Terms of service URL
+https://example.com/terms
+Public terms that apply when users connect their account.
+Enable user login
