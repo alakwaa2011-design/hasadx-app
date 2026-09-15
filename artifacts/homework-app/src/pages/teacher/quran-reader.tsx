@@ -8,27 +8,85 @@ import {
   QuranSurahParsed,
 } from '@/lib/quran-parser';
 import { MADANI_MUSHAF_METADATA } from '@/data/quran/madani-mushaf-metadata';
-import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { QuranPagesView } from './quran-pages-view';
 import { QuranSearchDialog } from './quran-search-dialog';
+import type { QuranWard } from '@workspace/api-client-react';
 
 export default function QuranReader() {
-  const { lang, dir } = useI18n();
-  const params = useParams<{ surahNumber: string }>();
+  const { lang } = useI18n();
+  const params = useParams<{ surahNumber?: string; wardId?: string }>();
   const [, setLocation] = useLocation();
+  const isStudentWard = window.location.pathname.includes('/student/quran-wards/');
   const searchParams = new URLSearchParams(window.location.search);
   
-  const startAyah = searchParams.get('startAyah') ? parseInt(searchParams.get('startAyah')!, 10) : null;
-  const endAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
-  const mode = searchParams.get('mode');
+  const queryStartAyah = searchParams.get('startAyah') ? parseInt(searchParams.get('startAyah')!, 10) : null;
+  const queryEndAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
+  const queryMode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
   const view = searchParams.get('view') || 'reader';
 
-  const surahNumber = parseInt(params.surahNumber || '1', 10);
+  const [studentWard, setStudentWard] = useState<QuranWard | null>(null);
+  const [studentWardLoading, setStudentWardLoading] = useState(isStudentWard);
+  const [studentWardMissing, setStudentWardMissing] = useState(false);
+
+  useEffect(() => {
+    if (!isStudentWard) return;
+    const wardId = Number(params.wardId);
+    if (!Number.isInteger(wardId) || wardId < 1) {
+      setStudentWardMissing(true);
+      setStudentWardLoading(false);
+      return;
+    }
+    fetch(`/api/quran/me/wards/${wardId}`, { credentials: 'include', cache: 'no-store' })
+      .then(async response => {
+        if (response.status === 401) {
+          setLocation('/student/login');
+          return null;
+        }
+        if (!response.ok) {
+          setStudentWardMissing(true);
+          return null;
+        }
+        return response.json() as Promise<QuranWard>;
+      })
+      .then(ward => {
+        if (ward) setStudentWard(ward);
+      })
+      .catch(() => setStudentWardMissing(true))
+      .finally(() => setStudentWardLoading(false));
+  }, [isStudentWard, params.wardId, setLocation]);
+
+  if (studentWardLoading) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#fcfaf8] dark:bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-700" />
+      </div>
+    );
+  }
+
+  if (isStudentWard && (studentWardMissing || !studentWard)) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#fcfaf8] px-6 text-center dark:bg-background">
+        <BookOpen className="h-10 w-10 text-emerald-700" />
+        <p className="font-bold text-foreground">
+          {lang === 'ar' ? 'هذا الورد غير موجود أو لا يخص حسابك' : 'This Quran task was not found for your account'}
+        </p>
+        <button onClick={() => setLocation('/student/dashboard')} className="rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white">
+          {lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard'}
+        </button>
+      </div>
+    );
+  }
+
+  const surahNumber = studentWard?.surahNumber ?? parseInt(params.surahNumber || '1', 10);
+  const startAyah = studentWard?.startAyah ?? queryStartAyah;
+  const endAyah = studentWard?.endAyah ?? queryEndAyah;
+  const mode = studentWard?.mode ?? queryMode;
   
-  if (view === 'pages') {
+  if (!isStudentWard && view === 'pages') {
     return (
       <QuranPagesView
         initialSurah={surahNumber}
@@ -48,6 +106,7 @@ export default function QuranReader() {
     endAyah={endAyah}
     mode={mode}
     requestedAyah={requestedAyah}
+    isStudentWard={isStudentWard}
   />;
 }
 
@@ -57,9 +116,10 @@ interface ReaderViewProps {
   endAyah: number | null;
   mode: string | null;
   requestedAyah: number | null;
+  isStudentWard: boolean;
 }
 
-function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: ReaderViewProps) {
+function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isStudentWard }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
 
@@ -116,6 +176,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
   const activeLocation = getQuranLocation(surahNumber, activeAyah);
 
   const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
+    if (isStudentWard) return;
     setLocation(`/teacher/quran-reader/${surah}?ayah=${ayah}&view=reader`);
   };
 
@@ -153,17 +214,20 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             <button 
-              onClick={() => setLocation('/teacher/quran-center?tab=mushaf')}
+              onClick={() => setLocation(isStudentWard ? '/student/dashboard' : '/teacher/quran-center?tab=mushaf')}
               className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
             >
               <ChevronLeft className="w-5 h-5 rtl:hidden" />
               <ChevronRight className="w-5 h-5 ltr:hidden" />
-              {lang === 'ar' ? 'العودة إلى المصحف' : 'Back to Mushaf'}
+              {isStudentWard
+                ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
+                : (lang === 'ar' ? 'العودة إلى المصحف' : 'Back to Mushaf')}
             </button>
             
             <div className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:w-auto md:flex-1">
               <select 
                 value={surahNumber} 
+                disabled={isStudentWard}
                 onChange={e => navigateTo({ surah: Number(e.target.value), ayah: 1 })}
                 aria-label={lang === 'ar' ? 'السورة' : 'Surah'}
                 className="min-w-32 bg-muted/40 text-sm md:text-base font-black text-center text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg transition-colors"
@@ -176,6 +240,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
               </select>
               <select
                 value={activeAyah}
+                disabled={isStudentWard}
                 onChange={e => navigateTo({ surah: surahNumber, ayah: Number(e.target.value) })}
                 aria-label={lang === 'ar' ? 'الآية' : 'Ayah'}
                 className="bg-muted/40 text-sm font-bold text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg"
@@ -188,6 +253,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
               </select>
               <select
                 value={activeLocation.juz}
+                disabled={isStudentWard}
                 onChange={e => navigateTo(getJuzStart(Number(e.target.value)))}
                 aria-label={lang === 'ar' ? 'الجزء' : 'Juz'}
                 className="bg-muted/40 text-sm font-bold text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg"
@@ -200,6 +266,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
               </select>
               <select
                 value={activeLocation.page}
+                disabled={isStudentWard}
                 onChange={e => navigateTo(getPageStart(Number(e.target.value)))}
                 aria-label={lang === 'ar' ? 'صفحة المصحف' : 'Mushaf page'}
                 className="bg-muted/40 text-sm font-bold text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg"
@@ -213,11 +280,13 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
-              <QuranSearchDialog
-                onSelect={({ chapterId, ayah }) =>
-                  navigateTo({ surah: chapterId, ayah })
-                }
-              />
+              {!isStudentWard && (
+                <QuranSearchDialog
+                  onSelect={({ chapterId, ayah }) =>
+                    navigateTo({ surah: chapterId, ayah })
+                  }
+                />
+              )}
               <button onClick={() => setFontSize(f => Math.max(16, f - 2))} className="p-2 hover:bg-muted rounded-xl transition-colors"><ZoomOut className="w-5 h-5" /></button>
               <button onClick={() => setFontSize(f => Math.min(60, f + 2))} className="p-2 hover:bg-muted rounded-xl transition-colors"><ZoomIn className="w-5 h-5" /></button>
               <button onClick={() => setIsQuietMode(true)} className="p-2 hover:bg-muted rounded-xl transition-colors hidden md:block"><EyeOff className="w-5 h-5" /></button>
@@ -278,7 +347,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: Re
           ))}
         </div>
 
-        {!isQuietMode && (
+        {!isQuietMode && !isStudentWard && (
           <div className="mt-20 flex flex-col sm:flex-row items-center justify-between border-t border-border/40 pt-8 gap-4">
             <button 
               onClick={handlePrev}

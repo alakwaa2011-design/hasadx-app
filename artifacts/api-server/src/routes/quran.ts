@@ -32,6 +32,9 @@ import {
   ListQuranRecitationsResponse,
   ListQuranStudentWardsParams,
   ListQuranStudentWardsResponse,
+  ListMyQuranWardsResponse,
+  GetMyQuranWardParams,
+  GetMyQuranWardResponse,
   ListQuranStudentsResponse,
   ListQuranSurahsResponse,
   UpdateQuranCircleBody,
@@ -52,7 +55,7 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
-type TeacherRequest = { session?: { teacherId?: number }; log?: { error: (error: unknown, message: string) => void } };
+type TeacherRequest = { session?: { teacherId?: number; studentAccountId?: number }; log?: { error: (error: unknown, message: string) => void } };
 
 // Canonical metadata only. No verse text is stored or returned by this API.
 const SURAH_NAMES = [
@@ -87,6 +90,10 @@ const QURAN_SURAHS = SURAH_NAMES.map((arabicName, index) => ({
 
 function teacherIdOf(req: TeacherRequest): number | null {
   return typeof req.session?.teacherId === "number" ? req.session.teacherId : null;
+}
+
+function studentAccountIdOf(req: TeacherRequest): number | null {
+  return typeof req.session?.studentAccountId === "number" ? req.session.studentAccountId : null;
 }
 
 function today(): string {
@@ -286,6 +293,57 @@ router.get("/quran/students/:studentId/wards", async (req, res): Promise<void> =
     .where(and(eq(quranWardsTable.teacherId, teacherId), eq(quranWardsTable.studentId, params.data.studentId)))
     .orderBy(desc(quranWardsTable.createdAt));
   res.json(ListQuranStudentWardsResponse.parse(wards));
+});
+
+router.get("/quran/me/wards", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const wards = await db.select({
+    id: quranWardsTable.id,
+    studentId: quranWardsTable.studentId,
+    mode: quranWardsTable.mode,
+    surahNumber: quranWardsTable.surahNumber,
+    surahName: quranWardsTable.surahName,
+    startAyah: quranWardsTable.startAyah,
+    endAyah: quranWardsTable.endAyah,
+    assignedDate: quranWardsTable.assignedDate,
+    dueDate: quranWardsTable.dueDate,
+    notes: quranWardsTable.notes,
+    status: quranWardsTable.status,
+    assignmentRequestId: quranWardsTable.assignmentRequestId,
+  }).from(quranWardsTable)
+    .innerJoin(studentsTable, eq(studentsTable.id, quranWardsTable.studentId))
+    .where(eq(studentsTable.studentAccountId, studentAccountId))
+    .orderBy(desc(quranWardsTable.assignedDate), desc(quranWardsTable.createdAt));
+  res.json(ListMyQuranWardsResponse.parse(wards));
+});
+
+router.get("/quran/me/wards/:id", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const params = GetMyQuranWardParams.safeParse(req.params);
+  if (!params.success) { parseError(res, params.error.message); return; }
+  const [ward] = await db.select({
+    id: quranWardsTable.id,
+    studentId: quranWardsTable.studentId,
+    mode: quranWardsTable.mode,
+    surahNumber: quranWardsTable.surahNumber,
+    surahName: quranWardsTable.surahName,
+    startAyah: quranWardsTable.startAyah,
+    endAyah: quranWardsTable.endAyah,
+    assignedDate: quranWardsTable.assignedDate,
+    dueDate: quranWardsTable.dueDate,
+    notes: quranWardsTable.notes,
+    status: quranWardsTable.status,
+    assignmentRequestId: quranWardsTable.assignmentRequestId,
+  }).from(quranWardsTable)
+    .innerJoin(studentsTable, eq(studentsTable.id, quranWardsTable.studentId))
+    .where(and(
+      eq(quranWardsTable.id, params.data.id),
+      eq(studentsTable.studentAccountId, studentAccountId),
+    ));
+  if (!ward) { res.status(404).json({ error: "Ward not found" }); return; }
+  res.json(GetMyQuranWardResponse.parse(ward));
 });
 
 router.post("/quran/students/:studentId/assign", async (req, res): Promise<void> => {

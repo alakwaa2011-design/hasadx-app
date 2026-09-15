@@ -4746,6 +4746,65 @@ export const ListQuranStudentWardsResponse = zod.array(ListQuranStudentWardsResp
 
 
 /**
+ * @summary List Quran wards assigned to the signed-in student
+ */
+export const listMyQuranWardsResponseSurahNumberMax = 114;
+
+
+
+export const listMyQuranWardsResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const listMyQuranWardsResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const ListMyQuranWardsResponseItem = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(listMyQuranWardsResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(listMyQuranWardsResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(listMyQuranWardsResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
+})
+export const ListMyQuranWardsResponse = zod.array(ListMyQuranWardsResponseItem)
+
+
+/**
+ * @summary Get one Quran ward owned by the signed-in student
+ */
+export const GetMyQuranWardParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const getMyQuranWardResponseSurahNumberMax = 114;
+
+
+
+export const getMyQuranWardResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getMyQuranWardResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const GetMyQuranWardResponse = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(getMyQuranWardResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(getMyQuranWardResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(getMyQuranWardResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
+})
+
+
+/**
  * @summary Assign multiple memorization and review ranges to one student
  */
 export const AssignQuranStudentTaskParams = zod.object({

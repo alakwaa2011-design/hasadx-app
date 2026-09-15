@@ -1826,6 +1826,39 @@ paths:
                 items:
                   $ref: "#/components/schemas/QuranWard"
 
+  /quran/me/wards:
+    get:
+      operationId: listMyQuranWards
+      tags: [quran]
+      summary: List Quran wards assigned to the signed-in student
+      responses:
+        "200":
+          description: The signed-in student's Quran wards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranWard"
+        "401": { description: Student not authenticated }
+
+  /quran/me/wards/{id}:
+    get:
+      operationId: getMyQuranWard
+      tags: [quran]
+      summary: Get one Quran ward owned by the signed-in student
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      responses:
+        "200":
+          description: Owned Quran ward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranWard"
+        "401": { description: Student not authenticated }
+        "404": { description: Ward not found }
+
   /quran/students/{studentId}/assign:
     post:
       operationId: assignQuranStudentTask

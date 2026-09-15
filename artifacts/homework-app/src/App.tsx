@@ -510,6 +510,7 @@ function Router() {
         {/* Student Account Routes */}
         <Route path="/student/login" component={StudentAuth} />
         <Route path="/student/register" component={StudentAuth} />
+        <Route path="/student/quran-wards/:wardId" component={QuranReader} />
         <Route path="/student/dashboard" component={StudentDashboard} />
         
         {/* Teacher Smart Board */}

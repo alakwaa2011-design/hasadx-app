@@ -1922,6 +1922,52 @@ export declare function useListQuranStudentWards<TData = Awaited<ReturnType<type
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getListMyQuranWardsUrl: () => string;
+/**
+ * @summary List Quran wards assigned to the signed-in student
+ */
+export declare const listMyQuranWards: (options?: Parameters<typeof customFetch>[1]) => Promise<QuranWard[]>;
+export declare const getListMyQuranWardsQueryKey: () => readonly ["/api/quran/me/wards"];
+export declare const getListMyQuranWardsQueryOptions: <TData = Awaited<ReturnType<typeof listMyQuranWards>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listMyQuranWards>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listMyQuranWards>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListMyQuranWardsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyQuranWards>>>;
+export type ListMyQuranWardsQueryError = ErrorType<void>;
+/**
+ * @summary List Quran wards assigned to the signed-in student
+ */
+export declare function useListMyQuranWards<TData = Awaited<ReturnType<typeof listMyQuranWards>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listMyQuranWards>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getGetMyQuranWardUrl: (id: number) => string;
+/**
+ * @summary Get one Quran ward owned by the signed-in student
+ */
+export declare const getMyQuranWard: (id: number, options?: Parameters<typeof customFetch>[1]) => Promise<QuranWard>;
+export declare const getGetMyQuranWardQueryKey: (id: number) => readonly [`/api/quran/me/wards/${number}`];
+export declare const getGetMyQuranWardQueryOptions: <TData = Awaited<ReturnType<typeof getMyQuranWard>>, TError = ErrorType<void>>(id: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getMyQuranWard>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getMyQuranWard>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetMyQuranWardQueryResult = NonNullable<Awaited<ReturnType<typeof getMyQuranWard>>>;
+export type GetMyQuranWardQueryError = ErrorType<void>;
+/**
+ * @summary Get one Quran ward owned by the signed-in student
+ */
+export declare function useGetMyQuranWard<TData = Awaited<ReturnType<typeof getMyQuranWard>>, TError = ErrorType<void>>(id: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getMyQuranWard>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
 export declare const getAssignQuranStudentTaskUrl: (studentId: number) => string;
 /**
  * @summary Assign multiple memorization and review ranges to one student

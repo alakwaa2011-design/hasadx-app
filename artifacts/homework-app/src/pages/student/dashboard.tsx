@@ -55,6 +55,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { AvatarDisplay } from "@/components/avatar-display";
+import type { QuranWard } from "@workspace/api-client-react";
 
 interface PublicAssignment {
   id: number;
@@ -133,6 +134,7 @@ export default function StudentDashboard() {
   const previousGoalRef = useRef<StudentRewardGoal | null | undefined>(undefined);
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
+  const [quranWards, setQuranWards] = useState<QuranWard[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [startingGameId, setStartingGameId] = useState<number | null>(null);
@@ -296,10 +298,15 @@ export default function StudentDashboard() {
         if (!r.ok) return { days: [] };
         return r.json();
       }).catch(() => ({ days: [] })),
-    ]).then(([profileData, scoresData, daysData]) => {
+      fetch(`${API_BASE}/api/quran/me/wards`, { credentials: "include" }).then(async (r) => {
+        if (!r.ok) return [];
+        return r.json();
+      }).catch(() => []),
+    ]).then(([profileData, scoresData, daysData, quranWardsData]) => {
       if (profileData) setStudent(profileData);
       setRecentScores(Array.isArray(scoresData) ? scoresData : []);
       setActivityDays(Array.isArray(daysData?.days) ? daysData.days : []);
+      setQuranWards(Array.isArray(quranWardsData) ? quranWardsData : []);
     }).catch(() => setLocation("/student/login")).finally(() => setLoading(false));
   }, [setLocation]);
 
@@ -821,6 +828,61 @@ export default function StudentDashboard() {
               </p>
             </Card>
           </div>
+
+          {quranWards.length > 0 && (
+            <section className="mb-8 animate-in fade-in duration-300 delay-100" aria-labelledby="student-quran-wards">
+              <div className="mb-4 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-emerald-700" />
+                <h2 id="student-quran-wards" className="text-xl font-bold text-foreground">
+                  {lang === "ar" ? "مهامي في القرآن" : "My Quran tasks"}
+                </h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {quranWards.map((ward) => (
+                  <Link key={ward.id} href={`/student/quran-wards/${ward.id}`}>
+                    <Card
+                      className="group h-full cursor-pointer border-emerald-100 p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900/50"
+                      data-testid={`student-quran-ward-${ward.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${
+                            ward.mode === "memorization"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                          }`}>
+                            {ward.mode === "memorization"
+                              ? (lang === "ar" ? "حفظ" : "Memorization")
+                              : (lang === "ar" ? "مراجعة" : "Review")}
+                          </span>
+                          <h3 className="mt-3 truncate text-lg font-black">
+                            {lang === "ar" ? `سورة ${ward.surahName}` : `Surah ${ward.surahName}`}
+                          </h3>
+                          <p className="mt-1 text-sm font-bold text-muted-foreground">
+                            {lang === "ar"
+                              ? `الآيات ${arDigit(ward.startAyah)}–${arDigit(ward.endAyah)}`
+                              : `Ayahs ${ward.startAyah}–${ward.endAyah}`}
+                          </p>
+                          {ward.dueDate && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {lang === "ar" ? "الموعد: " : "Due: "}
+                              {new Intl.DateTimeFormat(lang === "ar" ? "ar-SA" : "en", {
+                                day: "numeric",
+                                month: "short",
+                              }).format(new Date(`${ward.dueDate}T00:00:00`))}
+                            </p>
+                          )}
+                        </div>
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 transition-colors group-hover:bg-emerald-700 group-hover:text-white dark:bg-emerald-950">
+                          {dir === "rtl" ? <ArrowLeft className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
+                        </span>
+                      </div>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Motivation & Rewards Section */}
           <div className="mb-8 animate-in fade-in duration-300 delay-100">

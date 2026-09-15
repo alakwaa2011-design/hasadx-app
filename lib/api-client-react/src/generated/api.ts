@@ -6619,6 +6619,160 @@ export function useListQuranStudentWards<TData = Awaited<ReturnType<typeof listQ
 
 
 
+export const getListMyQuranWardsUrl = () => {
+
+
+
+
+  return `/api/quran/me/wards`
+}
+
+/**
+ * @summary List Quran wards assigned to the signed-in student
+ */
+export const listMyQuranWards = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranWard[]> => {
+
+  return customFetch<QuranWard[]>(getListMyQuranWardsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyQuranWardsQueryKey = () => {
+    return [
+    `/api/quran/me/wards`
+    ] as const;
+    }
+
+
+export const getListMyQuranWardsQueryOptions = <TData = Awaited<ReturnType<typeof listMyQuranWards>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyQuranWards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyQuranWardsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyQuranWards>>> = ({ signal }) => listMyQuranWards({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyQuranWards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyQuranWardsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyQuranWards>>>
+export type ListMyQuranWardsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List Quran wards assigned to the signed-in student
+ */
+
+export function useListMyQuranWards<TData = Awaited<ReturnType<typeof listMyQuranWards>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyQuranWards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyQuranWardsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyQuranWardUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/me/wards/${id}`
+}
+
+/**
+ * @summary Get one Quran ward owned by the signed-in student
+ */
+export const getMyQuranWard = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranWard> => {
+
+  return customFetch<QuranWard>(getGetMyQuranWardUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyQuranWardQueryKey = (id: number,) => {
+    return [
+    `/api/quran/me/wards/${id}`
+    ] as const;
+    }
+
+
+export const getGetMyQuranWardQueryOptions = <TData = Awaited<ReturnType<typeof getMyQuranWard>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyQuranWard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyQuranWardQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyQuranWard>>> = ({ signal }) => getMyQuranWard(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyQuranWard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyQuranWardQueryResult = NonNullable<Awaited<ReturnType<typeof getMyQuranWard>>>
+export type GetMyQuranWardQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get one Quran ward owned by the signed-in student
+ */
+
+export function useGetMyQuranWard<TData = Awaited<ReturnType<typeof getMyQuranWard>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyQuranWard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyQuranWardQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getAssignQuranStudentTaskUrl = (studentId: number,) => {
 
 
