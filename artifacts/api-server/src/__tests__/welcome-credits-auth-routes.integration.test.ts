@@ -228,6 +228,33 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
     expect(await getWelcomeBatches(tid)).toHaveLength(1);
   });
 
+  it("AUTH7 — تسجيل Google يحفظ المادة المخصصة عند إعادة تحميل الملف الشخصي", async () => {
+    googleProfile.sub = `g_${RUN_ID}_custom_subject`;
+    googleProfile.email = `${RUN_ID}_google_custom_subject@test.local`;
+    const customSubject = "التصميم الصناعي";
+    const agent = request.agent(app);
+
+    const registration = await agent
+      .post("/api/auth/google")
+      .send({
+        credential: "mock-token",
+        primarySubject: customSubject,
+        subjects: [customSubject],
+      });
+    expect(registration.status).toBe(200);
+    const tid = Number(registration.body.teacher.id);
+    tids.push(tid);
+
+    // A fresh authenticated request represents reopening the profile after Google registration.
+    const profile = await agent.get("/api/auth/me");
+    expect(profile.status).toBe(200);
+    expect(profile.body).toMatchObject({
+      id: tid,
+      primarySubject: customSubject,
+      subjects: [customSubject],
+    });
+  });
+
   it("AUTH1 — معلم موثّق مع OTP قديم يستطيع الدخول من عملاء جدد ويحفظ جلساتهم", async () => {
     const t = await createUnverifiedTeacher("verified_stale", { otp: "111111", token: "old-token" });
     tids.push(t.id);
