@@ -33,6 +33,12 @@ The Mushaf uses the verbatim Tanzil Uthmani text under CC BY 3.0, with visible a
 
 **How to apply:** Never normalize or rewrite verse strings; any intentional source update must be reviewed against Tanzil changes, then update the pinned hash and golden counts together.
 
+Madinah page, juz, surah, and verse indexes come from the official Q-Complex quran-db dataset; page indexes are not page images or printed line-layout coordinates.
+
+**Why:** The official dataset reliably maps 6236 verses to 604 pages, but claiming pixel-identical printed pages would be inaccurate without licensed page images or line geometry.
+
+**How to apply:** Use it for electronic page grouping and navigation, retain its license and source manifest, and label exact facsimile rendering separately if official visual assets are later licensed.
+
 The Arabic Quran Center must never expose raw English enum values. A student's daily task is presented as one focused card containing memorization and review sections.
 
 **Why:** Teachers need an immediately understandable Quran workflow without technical labels or separate cards that make one daily task look fragmented.
