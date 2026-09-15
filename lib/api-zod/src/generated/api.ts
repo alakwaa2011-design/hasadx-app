@@ -4806,15 +4806,19 @@ export const assignQuranCircleTaskBodyRequestIdMax = 100;
 
 export const assignQuranCircleTaskBodyAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
 export const assignQuranCircleTaskBodyDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
-export const assignQuranCircleTaskBodyMemorizationSurahNumberMax = 114;
+export const assignQuranCircleTaskBodyMemorizationItemSurahNumberMax = 114;
 
 
 
 
-export const assignQuranCircleTaskBodyReviewSurahNumberMax = 114;
+export const assignQuranCircleTaskBodyMemorizationMax = 20;
+
+export const assignQuranCircleTaskBodyReviewItemSurahNumberMax = 114;
 
 
 
+
+export const assignQuranCircleTaskBodyReviewMax = 20;
 
 
 
@@ -4822,18 +4826,18 @@ export const AssignQuranCircleTaskBody = zod.object({
   "requestId": zod.string().min(assignQuranCircleTaskBodyRequestIdMin).max(assignQuranCircleTaskBodyRequestIdMax),
   "assignedDate": zod.string().regex(assignQuranCircleTaskBodyAssignedDateRegExp),
   "dueDate": zod.string().regex(assignQuranCircleTaskBodyDueDateRegExp),
-  "memorization": zod.object({
-  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyMemorizationSurahNumberMax),
+  "memorization": zod.array(zod.object({
+  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyMemorizationItemSurahNumberMax),
   "surahName": zod.string().min(1),
   "startAyah": zod.int().min(1),
   "endAyah": zod.int().min(1)
-}),
-  "review": zod.object({
-  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyReviewSurahNumberMax),
+})).min(1).max(assignQuranCircleTaskBodyMemorizationMax),
+  "review": zod.array(zod.object({
+  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyReviewItemSurahNumberMax),
   "surahName": zod.string().min(1),
   "startAyah": zod.int().min(1),
   "endAyah": zod.int().min(1)
-}),
+})).min(1).max(assignQuranCircleTaskBodyReviewMax),
   "notes": zod.string().nullish()
 })
 

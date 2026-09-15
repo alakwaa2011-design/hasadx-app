@@ -17,8 +17,16 @@ export interface QuranCircleTaskInput {
   assignedDate: string;
   /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
   dueDate: string;
-  memorization: QuranWardRangeInput;
-  review: QuranWardRangeInput;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  memorization: QuranWardRangeInput[];
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  review: QuranWardRangeInput[];
   /** @nullable */
   notes?: string | null;
 }

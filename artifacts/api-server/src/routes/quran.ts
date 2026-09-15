@@ -335,41 +335,45 @@ router.post("/quran/circles/:id/assign", async (req, res): Promise<void> => {
   const params = AssignQuranCircleTaskParams.safeParse(req.params);
   const parsed = AssignQuranCircleTaskBody.safeParse(req.body);
   if (!params.success || !parsed.success) { parseError(res, "Invalid circle task"); return; }
-  const memorizationError = wardValidation(parsed.data.memorization);
-  const reviewError = wardValidation(parsed.data.review);
+  const memorizationError = parsed.data.memorization.map(wardValidation).find(Boolean);
+  const reviewError = parsed.data.review.map(wardValidation).find(Boolean);
   if (memorizationError || reviewError) { parseError(res, memorizationError ?? reviewError ?? "Invalid range"); return; }
   try {
     const existingCircle = await circleView(teacherId, params.data.id);
     if (!existingCircle) { res.status(404).json({ error: "Circle not found" }); return; }
     if (existingCircle.members.length === 0) { parseError(res, "Circle has no students"); return; }
+    const segmentRequestIds = [
+      ...parsed.data.memorization.map((_, index) => `${parsed.data.requestId}:ح:${index}`),
+      ...parsed.data.review.map((_, index) => `${parsed.data.requestId}:م:${index}`),
+    ];
     const rows = await db.transaction(async (tx) => {
       await tx.insert(quranWardsTable).values(existingCircle.members.flatMap((student) => [
-        {
+        ...parsed.data.memorization.map((range, index) => ({
           teacherId,
           studentId: student.id,
           mode: "memorization",
-          ...parsed.data.memorization,
+          ...range,
           assignedDate: parsed.data.assignedDate,
           dueDate: parsed.data.dueDate,
           notes: parsed.data.notes ?? null,
           status: "assigned",
-          assignmentRequestId: parsed.data.requestId,
-        },
-        {
+          assignmentRequestId: segmentRequestIds[index],
+        })),
+        ...parsed.data.review.map((range, index) => ({
           teacherId,
           studentId: student.id,
           mode: "review",
-          ...parsed.data.review,
+          ...range,
           assignedDate: parsed.data.assignedDate,
           dueDate: parsed.data.dueDate,
           notes: parsed.data.notes ?? null,
           status: "assigned",
-          assignmentRequestId: parsed.data.requestId,
-        },
+          assignmentRequestId: segmentRequestIds[parsed.data.memorization.length + index],
+        })),
       ])).onConflictDoNothing();
       return tx.select().from(quranWardsTable).where(and(
         eq(quranWardsTable.teacherId, teacherId),
-        eq(quranWardsTable.assignmentRequestId, parsed.data.requestId),
+        inArray(quranWardsTable.assignmentRequestId, segmentRequestIds),
       )).orderBy(quranWardsTable.studentId, quranWardsTable.mode);
     });
     res.status(201).json(AssignQuranCircleTaskResponse.parse(rows));

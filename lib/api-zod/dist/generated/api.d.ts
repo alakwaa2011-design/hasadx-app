@@ -14663,13 +14663,15 @@ export declare const assignQuranCircleTaskBodyRequestIdMin = 8;
 export declare const assignQuranCircleTaskBodyRequestIdMax = 100;
 export declare const assignQuranCircleTaskBodyAssignedDateRegExp: RegExp;
 export declare const assignQuranCircleTaskBodyDueDateRegExp: RegExp;
-export declare const assignQuranCircleTaskBodyMemorizationSurahNumberMax = 114;
-export declare const assignQuranCircleTaskBodyReviewSurahNumberMax = 114;
+export declare const assignQuranCircleTaskBodyMemorizationItemSurahNumberMax = 114;
+export declare const assignQuranCircleTaskBodyMemorizationMax = 20;
+export declare const assignQuranCircleTaskBodyReviewItemSurahNumberMax = 114;
+export declare const assignQuranCircleTaskBodyReviewMax = 20;
 export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
     requestId: zodV3.ZodString;
     assignedDate: zodV3.ZodString;
     dueDate: zodV3.ZodString;
-    memorization: zodV3.ZodObject<{
+    memorization: zodV3.ZodArray<zodV3.ZodObject<{
         surahNumber: zodV3.ZodNumber;
         surahName: zodV3.ZodString;
         startAyah: zodV3.ZodNumber;
@@ -14684,8 +14686,8 @@ export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
         surahName: string;
         startAyah: number;
         endAyah: number;
-    }>;
-    review: zodV3.ZodObject<{
+    }>, "many">;
+    review: zodV3.ZodArray<zodV3.ZodObject<{
         surahNumber: zodV3.ZodNumber;
         surahName: zodV3.ZodString;
         startAyah: zodV3.ZodNumber;
@@ -14700,7 +14702,7 @@ export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
         surahName: string;
         startAyah: number;
         endAyah: number;
-    }>;
+    }>, "many">;
     notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     review: {
@@ -14708,13 +14710,13 @@ export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
         surahName: string;
         startAyah: number;
         endAyah: number;
-    };
+    }[];
     memorization: {
         surahNumber: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
-    };
+    }[];
     assignedDate: string;
     dueDate: string;
     requestId: string;
@@ -14725,13 +14727,13 @@ export declare const AssignQuranCircleTaskBody: zodV3.ZodObject<{
         surahName: string;
         startAyah: number;
         endAyah: number;
-    };
+    }[];
     memorization: {
         surahNumber: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
-    };
+    }[];
     assignedDate: string;
     dueDate: string;
     requestId: string;

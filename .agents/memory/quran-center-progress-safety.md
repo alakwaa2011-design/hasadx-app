@@ -44,3 +44,9 @@ Circle-wide Quran assignments use one server transaction and a stable request id
 **Why:** A network retry must not create duplicate memorization and review wards, and a failed member insert must not leave only part of the circle assigned.
 
 **How to apply:** Submit both ranges in one circle-level request, enforce request identity at the database boundary, and create all member wards inside one transaction.
+
+Quran memorization and review assignments are lists of canonical ranges, not one range per mode; a range may represent an entire surah.
+
+**Why:** Real circle plans often span several surahs or mix complete surahs with partial ranges.
+
+**How to apply:** Let teachers add and remove segments, derive full-surah bounds from the trusted surah catalog, and preserve every segment through assignment and daily recitation.

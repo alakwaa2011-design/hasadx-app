@@ -2089,8 +2089,16 @@ components:
         requestId: { type: string, minLength: 8, maxLength: 100 }
         assignedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
         dueDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
-        memorization: { $ref: "#/components/schemas/QuranWardRangeInput" }
-        review: { $ref: "#/components/schemas/QuranWardRangeInput" }
+        memorization:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/QuranWardRangeInput" }
+        review:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/QuranWardRangeInput" }
         notes: { type: ["string", "null"] }
       required: [requestId, assignedDate, dueDate, memorization, review]
 

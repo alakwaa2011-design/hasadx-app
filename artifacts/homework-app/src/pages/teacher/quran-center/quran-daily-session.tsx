@@ -31,10 +31,9 @@ export function QuranDailySession({
     }
   });
   
-  const unfinishedWards = summary?.wards.filter((ward) => ward.status !== "completed") ?? [];
-  const activeWards = (["memorization", "review"] as const)
-    .map((mode) => unfinishedWards.find((ward) => ward.mode === mode))
-    .filter((ward): ward is QuranWard => Boolean(ward));
+  const activeWards = summary?.wards.filter((ward) =>
+    ward.status !== "completed" && (ward.mode === "memorization" || ward.mode === "review")
+  ) ?? [];
   
   const [recordedWardIds, setRecordedWardIds] = useState<Set<number>>(new Set());
 
