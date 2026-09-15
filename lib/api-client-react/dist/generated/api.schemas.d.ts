@@ -1678,6 +1678,10 @@ export interface Submission {
     durationSeconds?: number | null;
     submittedAt: string;
 }
+export interface DeletedSubmissionsResult {
+    /** @minimum 0 */
+    deletedCount: number;
+}
 export interface UpdateSubmissionBody {
     teacherAdjustedPoints?: number | null;
     teacherNote?: string | null;

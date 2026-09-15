@@ -29,14 +29,17 @@ const mockState = vi.hoisted(() => {
 
 vi.mock("@workspace/db", () => {
   const stub = new Proxy({}, { get: () => "stub" });
+  const db: Record<string, unknown> = {};
+  Object.assign(db, {
+    execute: () => mockState.makeChain(mockState.queue.shift()),
+    select: () => mockState.makeChain(mockState.queue.shift()),
+    insert: () => mockState.makeChain(mockState.queue.shift()),
+    update: () => mockState.makeChain(mockState.queue.shift()),
+    delete: () => mockState.makeChain(mockState.queue.shift()),
+    transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn(db),
+  });
   return {
-    db: {
-      select: () => mockState.makeChain(mockState.queue.shift()),
-      insert: () => mockState.makeChain(mockState.queue.shift()),
-      update: () => mockState.makeChain(mockState.queue.shift()),
-      delete: () => mockState.makeChain(mockState.queue.shift()),
-      transaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({}),
-    },
+    db,
     worksheetsTable: stub,
     teachersTable: stub,
     assignmentsTable: stub,
@@ -57,6 +60,11 @@ vi.mock("../lib/xp/socket", () => ({
   awardXpInTxAndNotifyAfterCommit: async () => ({ runAfterCommit: async () => {} }),
 }));
 vi.mock("../lib/xp/engine", () => ({ reverseXpIfWithinWindow: async () => {} }));
+vi.mock("../lib/classroom-reward-evaluator", () => ({
+  evaluateClassroomRewardEvidence: async () => [],
+  lockAssignmentRewardEvidence: async () => {},
+  hasActiveAutomaticAssignmentGrant: async () => false,
+}));
 vi.mock("../lib/check-credits", () => ({
   checkCredits: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   captureCredits: async () => {},
@@ -176,5 +184,33 @@ describe("GET /assignments/:id/submissions — worksheet-internal assignments", 
       .get("/api/assignments/200/submissions");
     expect(res.status).toBe(200);
     expect(res.body[0].studentName).toBe("طالب");
+  });
+});
+
+describe("DELETE /assignments/:id/submissions", () => {
+  it("requires an authenticated teacher", async () => {
+    const res = await request(makeApp(submissionsRouter, null))
+      .delete("/api/assignments/200/submissions");
+    expect(res.status).toBe(401);
+  });
+
+  it("does not let another teacher delete the submissions", async () => {
+    mockState.queue.push({ rows: [{ id: 200, teacher_id: 1 }] });
+    const res = await request(makeApp(submissionsRouter, { teacherId: 7 }))
+      .delete("/api/assignments/200/submissions");
+    expect(res.status).toBe(403);
+  });
+
+  it("deletes every submission for the owner and returns the count", async () => {
+    mockState.queue.push(
+      { rows: [{ id: 200, teacher_id: 7 }] },
+      { rows: [{ id: 10 }, { id: 11 }] },
+      { rows: [] },
+      [{ id: 10 }, { id: 11 }],
+    );
+    const res = await request(makeApp(submissionsRouter, { teacherId: 7 }))
+      .delete("/api/assignments/200/submissions");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deletedCount: 2 });
   });
 });

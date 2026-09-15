@@ -54,6 +54,7 @@ export type * from "./types/createAssignmentBodyResultsReleaseMode";
 export type * from "./types/createAssignmentBodySubmissionMode";
 export type * from "./types/createQuestionBody";
 export type * from "./types/createQuestionBodyQuestionType";
+export type * from "./types/deletedSubmissionsResult";
 export type * from "./types/errorResponse";
 export type * from "./types/examSessionResponse";
 export type * from "./types/getPresentationLinkedActivity200";

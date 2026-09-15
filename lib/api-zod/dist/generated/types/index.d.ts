@@ -66,6 +66,7 @@ export * from './createAssignmentBodySubmissionMode';
 export * from './createPresentationBody';
 export * from './createQuestionBody';
 export * from './createQuestionBodyQuestionType';
+export * from './deletedSubmissionsResult';
 export * from './errorResponse';
 export * from './examSessionResponse';
 export * from './getPresentationLinkedActivity200';

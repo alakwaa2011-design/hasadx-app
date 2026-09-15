@@ -10,6 +10,7 @@ import {
   SubmitAssignmentImageParams,
   SubmitAssignmentImageBody,
   ListSubmissionsParams,
+  DeleteAssignmentSubmissionsParams,
   UpdateSubmissionBody,
   UpdateAnswerGradeBody,
   StartExamSessionBody,
@@ -1572,6 +1573,83 @@ router.get("/assignments/:id/submissions", async (req, res) => {
   } catch (error: any) {
     req.log.error({ err: error }, "List submissions error");
     res.status(500).json({ message: "خطأ في جلب النتائج" });
+  }
+});
+
+router.delete("/assignments/:id/submissions", async (req, res): Promise<void> => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
+    return;
+  }
+
+  try {
+    const { id } = DeleteAssignmentSubmissionsParams.parse(req.params);
+    const teacherId = req.session.teacherId;
+    const deletedCount = await db.transaction(async (tx) => {
+      const assignmentRows = (await tx.execute(sql`
+        SELECT id, teacher_id
+        FROM assignments
+        WHERE id = ${id}
+        FOR UPDATE
+      `)).rows as Array<{ id: number; teacher_id: number }>;
+      const assignment = assignmentRows[0];
+
+      if (!assignment) throw new Error("assignment_not_found");
+      if (Number(assignment.teacher_id) !== teacherId) throw new Error("not_allowed");
+
+      const submissionRows = (await tx.execute(sql`
+        SELECT id
+        FROM submissions
+        WHERE assignment_id = ${id}
+        FOR UPDATE
+      `)).rows as Array<{ id: number }>;
+      const submissionIds = submissionRows.map((row) => Number(row.id));
+
+      for (const submissionId of submissionIds) {
+        await lockAssignmentRewardEvidence(tx, teacherId, submissionId);
+        if (await hasActiveAutomaticAssignmentGrant(tx, teacherId, submissionId)) {
+          throw new Error("active_automatic_reward");
+        }
+      }
+
+      if (submissionIds.length === 0) return 0;
+
+      await tx.execute(sql`
+        UPDATE adaptive_sessions
+        SET submission_id = NULL
+        WHERE assignment_id = ${id}
+          AND submission_id IS NOT NULL
+      `);
+      const deleted = await tx
+        .delete(submissionsTable)
+        .where(eq(submissionsTable.assignmentId, id))
+        .returning({ id: submissionsTable.id });
+
+      return deleted.length;
+    });
+
+    res.json({ deletedCount });
+  } catch (error: any) {
+    if (error?.message === "assignment_not_found") {
+      res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+    if (error?.message === "not_allowed") {
+      res.status(403).json({ message: "غير مصرح لك بحذف تسليمات هذا الواجب" });
+      return;
+    }
+    if (error?.message === "active_automatic_reward") {
+      res.status(409).json({
+        message: "لا يمكن حذف التسليمات لوجود مكافأة تلقائية نشطة مرتبطة بها. اعكس المكافأة من سجل المكافآت أولًا ثم أعد المحاولة.",
+      });
+      return;
+    }
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: "معرّف الواجب غير صالح" });
+      return;
+    }
+    req.log.error({ err: error }, "Delete assignment submissions error");
+    res.status(500).json({ message: "تعذر حذف تسليمات الواجب" });
   }
 });
 

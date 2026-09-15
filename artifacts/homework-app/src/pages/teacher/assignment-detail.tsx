@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoute, useLocation } from "wouter";
-import { useGetAssignment, useListSubmissions, useDeleteAssignment, useUpdateSubmission, useGetSubmissionDetails, useUpdateAnswerGrade } from "@workspace/api-client-react";
+import { useGetAssignment, useListSubmissions, useDeleteAssignment, useDeleteAssignmentSubmissions, useUpdateSubmission, useGetSubmissionDetails, useUpdateAnswerGrade } from "@workspace/api-client-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw, ChevronDown, MoreHorizontal, Activity } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail, RotateCcw, ChevronDown, MoreHorizontal, Activity, ListX } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const BASE = import.meta.env.VITE_API_URL || "";
 
@@ -81,6 +81,8 @@ export default function TeacherAssignmentDetail() {
   const [resultsScoreFilter, setResultsScoreFilter] = useState<"all" | "below50" | "50to69" | "70to84" | "85to100">("all");
   const [assignmentShared, setAssignmentShared] = useState(false);
   const [showLifecycleDialog, setShowLifecycleDialog] = useState(false);
+  const [showDeleteSubmissionsDialog, setShowDeleteSubmissionsDialog] = useState(false);
+  const [deleteSubmissionsConfirmation, setDeleteSubmissionsConfirmation] = useState("");
   const [adaptiveReport, setAdaptiveReport] = useState<Record<string, unknown> | null>(null);
   const [adaptiveLoading, setAdaptiveLoading] = useState(false);
   const [questionStats, setQuestionStats] = useState<{ totalSubmissions: number; questions: Array<{ id: number; text: string; questionType: string; totalAnswers: number; correctCount: number; correctRate: number }> } | null>(null);
@@ -391,6 +393,32 @@ export default function TeacherAssignmentDetail() {
     mutation: {
       onSuccess: () => setLocation("/teacher")
     }
+  });
+  const deleteSubmissionsMutation = useDeleteAssignmentSubmissions({
+    mutation: {
+      onSuccess: (result) => {
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}/submissions`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+        setDetailSubId(null);
+        setEditingSubId(null);
+        setQuestionStats(null);
+        setAdaptiveReport(null);
+        setShowDeleteSubmissionsDialog(false);
+        setDeleteSubmissionsConfirmation("");
+        toast.success(
+          lang === "ar"
+            ? `تم حذف ${result.deletedCount} من تسليمات الطلاب`
+            : `${result.deletedCount} student submissions deleted`,
+        );
+      },
+      onError: (error: any) => {
+        toast.error(
+          error?.data?.message
+          || (lang === "ar" ? "تعذر حذف تسليمات الواجب" : "Could not delete assignment submissions"),
+        );
+      },
+    },
   });
   const updateSubmission = useUpdateSubmission({
     mutation: {
@@ -1349,6 +1377,15 @@ export default function TeacherAssignmentDetail() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
+                      onSelect={() => setShowDeleteSubmissionsDialog(true)}
+                      disabled={deleteSubmissionsMutation.isPending || !submissions?.length}
+                      className="gap-2.5 py-2.5 cursor-pointer text-destructive focus:text-destructive"
+                      data-testid="menu-delete-assignment-submissions"
+                    >
+                      <ListX className="w-4 h-4" />
+                      {lang === "ar" ? "حذف جميع التسليمات" : "Delete all submissions"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       onSelect={() => { if (confirm(t.assignmentDetail.confirmDelete)) deleteMutation.mutate({ id }); }}
                       disabled={deleteMutation.isPending}
                       className="gap-2.5 py-2.5 cursor-pointer text-destructive focus:text-destructive"
@@ -1361,6 +1398,68 @@ export default function TeacherAssignmentDetail() {
                 </DropdownMenu>
               </div>
             </motion.div>
+
+            <Dialog
+              open={showDeleteSubmissionsDialog}
+              onOpenChange={(open) => {
+                if (deleteSubmissionsMutation.isPending) return;
+                setShowDeleteSubmissionsDialog(open);
+                if (!open) setDeleteSubmissionsConfirmation("");
+              }}
+            >
+              <DialogContent dir={dir} className="max-w-lg rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-destructive">
+                    <ListX className="w-5 h-5" />
+                    {lang === "ar" ? "حذف جميع تسليمات الطلاب" : "Delete all student submissions"}
+                  </DialogTitle>
+                  <DialogDescription className="text-start leading-relaxed">
+                    {lang === "ar"
+                      ? `سيتم حذف ${submissions?.length || 0} تسليمًا مع الإجابات والدرجات وملاحظات التصحيح. سيبقى الواجب وأسئلته ورابطه كما هي، ويمكن للطلاب التسليم من جديد. لا يمكن التراجع عن هذا الإجراء.`
+                      : `${submissions?.length || 0} submissions, answers, grades, and grading notes will be permanently deleted. The assignment, questions, and link will remain, and students can submit again.`}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-2">
+                  <label htmlFor="delete-submissions-confirmation" className="text-sm font-bold">
+                    {lang === "ar"
+                      ? "للتأكيد، اكتب: حذف التسليمات"
+                      : "To confirm, type: DELETE SUBMISSIONS"}
+                  </label>
+                  <input
+                    id="delete-submissions-confirmation"
+                    data-testid="input-delete-submissions-confirmation"
+                    value={deleteSubmissionsConfirmation}
+                    onChange={(event) => setDeleteSubmissionsConfirmation(event.target.value)}
+                    autoComplete="off"
+                    className="h-11 w-full rounded-xl border-2 border-border bg-background px-3 text-sm font-bold outline-none focus:border-destructive focus:ring-2 focus:ring-destructive/15"
+                    placeholder={lang === "ar" ? "حذف التسليمات" : "DELETE SUBMISSIONS"}
+                  />
+                </div>
+
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteSubmissionsDialog(false)}
+                    disabled={deleteSubmissionsMutation.isPending}
+                  >
+                    {lang === "ar" ? "إلغاء" : "Cancel"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    data-testid="button-confirm-delete-assignment-submissions"
+                    disabled={
+                      deleteSubmissionsMutation.isPending
+                      || deleteSubmissionsConfirmation.trim() !== (lang === "ar" ? "حذف التسليمات" : "DELETE SUBMISSIONS")
+                    }
+                    onClick={() => deleteSubmissionsMutation.mutate({ id })}
+                  >
+                    {deleteSubmissionsMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                    {lang === "ar" ? "حذف التسليمات نهائيًا" : "Permanently delete submissions"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <Dialog open={showLifecycleDialog} onOpenChange={setShowLifecycleDialog}>
               <DialogContent dir={dir} className="max-w-4xl rounded-2xl">

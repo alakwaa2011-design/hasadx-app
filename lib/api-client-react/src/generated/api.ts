@@ -37,6 +37,7 @@ import type {
   CancelBuildResponse,
   CreateAssignmentBody,
   CreatePresentationBody,
+  DeletedSubmissionsResult,
   ErrorResponse,
   ExamSessionResponse,
   GetPresentationLinkedActivity200,
@@ -2411,6 +2412,80 @@ export function useListSubmissions<TData = Awaited<ReturnType<typeof listSubmiss
 
 
 
+
+export const getDeleteAssignmentSubmissionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/assignments/${id}/submissions`
+}
+
+/**
+ * @summary Delete every submission for an assignment while keeping the assignment
+ */
+export const deleteAssignmentSubmissions = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DeletedSubmissionsResult> => {
+
+  return customFetch<DeletedSubmissionsResult>(getDeleteAssignmentSubmissionsUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAssignmentSubmissionsMutationKey = () => ['deleteAssignmentSubmissions'] as const;
+
+export const getDeleteAssignmentSubmissionsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAssignmentSubmissions>>, TError,DeleteAssignmentSubmissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAssignmentSubmissions>>, TError,DeleteAssignmentSubmissionsMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAssignmentSubmissionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAssignmentSubmissions>>, DeleteAssignmentSubmissionsMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAssignmentSubmissions(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAssignmentSubmissionsMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAssignmentSubmissions>>>
+
+    export type DeleteAssignmentSubmissionsMutationError = ErrorType<ErrorResponse>
+    export type DeleteAssignmentSubmissionsMutationVariables = {id: number}
+
+    /**
+ * @summary Delete every submission for an assignment while keeping the assignment
+ */
+export const useDeleteAssignmentSubmissions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAssignmentSubmissions>>, TError,DeleteAssignmentSubmissionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAssignmentSubmissions>>,
+        TError,
+        DeleteAssignmentSubmissionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAssignmentSubmissionsMutationOptions(options));
+    }
 
 export const getExportSubmissionsCsvUrl = (id: number,) => {
 

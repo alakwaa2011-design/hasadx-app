@@ -2025,6 +2025,24 @@ export declare const ListSubmissionsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     teacherNote?: string | null | undefined;
 }>, "many">;
 /**
+ * @summary Delete every submission for an assignment while keeping the assignment
+ */
+export declare const DeleteAssignmentSubmissionsParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const deleteAssignmentSubmissionsResponseDeletedCountMin = 0;
+export declare const DeleteAssignmentSubmissionsResponse: zodV3.ZodObject<{
+    deletedCount: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    deletedCount: number;
+}, {
+    deletedCount: number;
+}>;
+/**
  * @summary Export submissions as CSV
  */
 export declare const ExportSubmissionsCsvParams: zodV3.ZodObject<{

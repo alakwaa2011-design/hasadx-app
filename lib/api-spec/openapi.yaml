@@ -653,6 +653,29 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Submission"
+    delete:
+      operationId: deleteAssignmentSubmissions
+      tags: [submissions]
+      summary: Delete every submission for an assignment while keeping the assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Submissions deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletedSubmissionsResult"
+        "409":
+          description: Active automatic rewards must be reversed before deletion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /assignments/{id}/export-csv:
     get:
@@ -4089,6 +4112,15 @@ components:
         - earnedPoints
         - totalPoints
         - submittedAt
+
+    DeletedSubmissionsResult:
+      type: object
+      properties:
+        deletedCount:
+          type: integer
+          minimum: 0
+      required:
+        - deletedCount
 
     UpdateSubmissionBody:
       type: object

@@ -807,6 +807,22 @@ export const ListSubmissionsResponse = zod.array(ListSubmissionsResponseItem)
 
 
 /**
+ * @summary Delete every submission for an assignment while keeping the assignment
+ */
+export const DeleteAssignmentSubmissionsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const deleteAssignmentSubmissionsResponseDeletedCountMin = 0;
+
+
+
+export const DeleteAssignmentSubmissionsResponse = zod.object({
+  "deletedCount": zod.int().min(deleteAssignmentSubmissionsResponseDeletedCountMin)
+})
+
+
+/**
  * @summary Export submissions as CSV
  */
 export const ExportSubmissionsCsvParams = zod.object({
