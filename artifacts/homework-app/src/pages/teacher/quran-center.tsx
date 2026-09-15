@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { QuranDashboard } from "./quran-center/quran-dashboard";
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
-import { QuranMushafView } from "./quran-center/quran-mushaf";
+import { QuranPagesView } from "./quran-pages-view";
 
 type Tab = "dashboard" | "circles" | "queue" | "mushaf";
 
@@ -131,7 +131,18 @@ export default function QuranCenter() {
               className="absolute inset-0 overflow-y-auto"
             >
               {activeTab === "dashboard" && <QuranDashboard surahs={surahs || []} onNavigate={handleTabChange} />}
-              {activeTab === "mushaf" && <QuranMushafView />}
+              {activeTab === "mushaf" && (
+                <QuranPagesView
+                  initialSurah={1}
+                  initialAyah={1}
+                  onNavigate={() => {}}
+                  isTaskAyah={() => false}
+                  startAyah={null}
+                  endAyah={null}
+                  mode={null}
+                  embedded
+                />
+              )}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}
             </motion.div>

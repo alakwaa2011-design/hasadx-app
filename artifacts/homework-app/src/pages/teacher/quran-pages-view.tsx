@@ -55,6 +55,7 @@ export function QuranPagesView({
   readerBasePath = "/teacher/quran-reader",
   backHref = "/teacher/quran-center?tab=dashboard",
   backLabel,
+  embedded = false,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -66,6 +67,7 @@ export function QuranPagesView({
   readerBasePath?: string;
   backHref?: string;
   backLabel?: { ar: string; en: string };
+  embedded?: boolean;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -236,7 +238,10 @@ export function QuranPagesView({
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]"
+      className={cn(
+        "flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
+        embedded ? "min-h-full" : "min-h-[100dvh]",
+      )}
       dir={dir}
     >
       {quietMode && (
@@ -253,36 +258,42 @@ export function QuranPagesView({
       {!quietMode && (
         <header className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-white/95 shadow-sm backdrop-blur-md dark:bg-card/95">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
-            <button
-              type="button"
-               onClick={() => setLocation(backHref)}
-              className="flex items-center gap-1 text-sm font-bold text-emerald-700 hover:underline dark:text-emerald-400"
-            >
-              <ChevronLeft className="h-5 w-5 rtl:hidden" />
-              <ChevronRight className="h-5 w-5 ltr:hidden" />
+            {!embedded && (
+              <button
+                type="button"
+                onClick={() => setLocation(backHref)}
+                className="flex items-center gap-1 text-sm font-bold text-emerald-700 hover:underline dark:text-emerald-400"
+              >
+                <ChevronLeft className="h-5 w-5 rtl:hidden" />
+                <ChevronRight className="h-5 w-5 ltr:hidden" />
                 {backLabel
                   ? (lang === "ar" ? backLabel.ar : backLabel.en)
                   : (lang === "ar" ? "العودة إلى مركز القرآن" : "Back to Quran Center")}
-            </button>
+              </button>
+            )}
 
               <div className="order-3 flex w-full flex-wrap items-center justify-center gap-2 md:order-none md:w-auto md:flex-1">
-               <button
-                 type="button"
-                 onClick={() =>
-                   setLocation(
-                     `${readerBasePath}/${activeChapterId}?ayah=${verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah}&view=reader`,
-                   )
-                 }
-                 className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"
-               >
-                 {lang === "ar" ? "نص القرآن" : "Quran Text"}
-               </button>
-               <span
-                 aria-current="page"
-                 className="shrink-0 rounded-xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-900 dark:bg-amber-900/50 dark:text-amber-100 md:text-sm"
-               >
-                 {lang === "ar" ? "مصحف الصفحات" : "Pages Mushaf"}
-               </span>
+               {!embedded && (
+                 <>
+                   <button
+                     type="button"
+                     onClick={() =>
+                       setLocation(
+                         `${readerBasePath}/${activeChapterId}?ayah=${verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah}&view=reader`,
+                       )
+                     }
+                     className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"
+                   >
+                     {lang === "ar" ? "نص القرآن" : "Quran Text"}
+                   </button>
+                   <span
+                     aria-current="page"
+                     className="shrink-0 rounded-xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-900 dark:bg-amber-900/50 dark:text-amber-100 md:text-sm"
+                   >
+                     {lang === "ar" ? "مصحف الصفحات" : "Pages Mushaf"}
+                   </span>
+                 </>
+               )}
               <select
                 value={activeChapterId}
                 onChange={(event) => goToSurah(Number(event.target.value))}
