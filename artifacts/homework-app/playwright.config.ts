@@ -99,6 +99,17 @@ export default defineConfig({
       },
     },
     {
+      name: "desktop-xo-rtl",
+      testMatch: /xo-rtl-display\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
       name: "iphone-webkit-direct-play",
       testMatch: /direct-play\.spec\.ts/,
       grep: /independent answers commit only after a completed activation/,

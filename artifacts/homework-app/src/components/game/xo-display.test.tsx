@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   XoName,
   XoTitle,
+  XoTeamName,
   getDefaultXoTeamName,
   normalizeXoTeamName,
   normalizeXoTitle,
@@ -29,5 +30,21 @@ describe("X O display helpers", () => {
     expect(markup).toContain("X O");
     expect(markup).toContain('dir="ltr"');
     expect(normalizeXoTitle("Teacher's XO tournament", "en")).toBe("Teacher's XO tournament");
+  });
+
+  it("isolates the marker in default team names without changing custom names", () => {
+    const markup = renderToStaticMarkup(
+      <p dir="rtl">
+        <XoTeamName name="فريق X" team="x" lang="ar" /> و{" "}
+        <XoTeamName name="فريق O" team="o" lang="ar" />
+      </p>,
+    );
+    expect(markup.match(/dir="ltr"/g)).toHaveLength(2);
+    expect(markup).toContain("فريق <span");
+    expect(markup).toContain(">X</span>");
+    expect(markup).toContain(">O</span>");
+    expect(renderToStaticMarkup(
+      <XoTeamName name="الفريق الأزرق" team="x" lang="ar" />,
+    )).toContain("الفريق الأزرق");
   });
 });

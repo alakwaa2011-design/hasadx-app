@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, type Dispatch } from "react";
+import { useEffect, useReducer, useRef, useState, type Dispatch, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Grid3X3, Pause, Play, RotateCcw, Volume2, VolumeX, Clock, ArrowLeft, ArrowRight, Check, Copy, AlertCircle, X, Circle, Trophy } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -17,6 +17,7 @@ import { useSmartBack } from "@/lib/nav-history";
 import {
   XoName,
   XoTitle,
+  XoTeamName,
   normalizeXoTeamName,
 } from "@/components/game/xo-display";
 
@@ -29,7 +30,7 @@ function getWinningCells(board: XoClassState["board"]): number[] {
   return lines.find(([a, b, c]) => board[a] && board[a] === board[b] && board[a] === board[c]) ?? [];
 }
 
-function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name: string; state: XoClassState; ar: boolean; dispatch: Dispatch<any> }) {
+function TeamPanel({ team, name, state, ar, dispatch }: { team: "x" | "o"; name: ReactNode; state: XoClassState; ar: boolean; dispatch: Dispatch<any> }) {
   const answering = state.status === "playing" && state.phase === "question";
   const alreadyAnswered = state.answeredTeams.includes(team);
   const question = answering ? currentXoClassQuestionForTeam(state, team) : null;
@@ -407,7 +408,13 @@ export default function XoClass() {
           </header>
 
           <div className="grid flex-1 items-center gap-4 py-1 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
-             <TeamPanel team="x" name={normalizeXoTeamName(setup!.teamX, "x", ar ? "ar" : "en")} state={state} ar={ar} dispatch={dispatch} />
+            <TeamPanel
+              team="x"
+              name={<XoTeamName name={setup!.teamX} team="x" lang={ar ? "ar" : "en"} />}
+              state={state}
+              ar={ar}
+              dispatch={dispatch}
+            />
 
             <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-emerald-200/10 bg-gradient-to-b from-[#173b42]/90 via-[#0d2730]/90 to-[#091a25]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
               <div className="mb-8 w-full text-center">
@@ -457,7 +464,13 @@ export default function XoClass() {
               </div>
             </section>
 
-              <TeamPanel team="o" name={normalizeXoTeamName(setup!.teamO, "o", ar ? "ar" : "en")} state={state} ar={ar} dispatch={dispatch} />
+            <TeamPanel
+              team="o"
+              name={<XoTeamName name={setup!.teamO} team="o" lang={ar ? "ar" : "en"} />}
+              state={state}
+              ar={ar}
+              dispatch={dispatch}
+            />
           </div>
         </div>
 
@@ -550,11 +563,15 @@ export default function XoClass() {
                   <div className="mt-8 grid grid-cols-2 gap-4">
                     <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
                       <X className="mx-auto mb-2 h-6 w-6 text-blue-500" strokeWidth={3} />
-                       <div className="font-bold text-foreground line-clamp-1">{setup!.teamX}</div>
+                      <div className="font-bold text-foreground line-clamp-1">
+                        <XoTeamName name={setup!.teamX} team="x" lang={ar ? "ar" : "en"} />
+                      </div>
                     </div>
                     <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                       <Circle className="mx-auto mb-2 h-6 w-6 text-amber-500" strokeWidth={3} />
-                       <div className="font-bold text-foreground line-clamp-1">{setup!.teamO}</div>
+                      <div className="font-bold text-foreground line-clamp-1">
+                        <XoTeamName name={setup!.teamO} team="o" lang={ar ? "ar" : "en"} />
+                      </div>
                     </div>
                   </div>
 

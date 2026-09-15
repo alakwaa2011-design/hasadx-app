@@ -19,6 +19,7 @@ export function getDefaultXoTeamName(team: "x" | "o", lang: XoLanguage): string 
   return lang === "ar" ? `فريق ${team.toUpperCase()}` : `Team ${team.toUpperCase()}`;
 }
 
+
 export function getDefaultXoTitle(lang: XoLanguage, classroom = false): string {
   if (!classroom) return XO_DISPLAY_NAME;
   return lang === "ar" ? `${XO_DISPLAY_NAME} الصف` : `${XO_DISPLAY_NAME} Class`;
@@ -75,6 +76,33 @@ export function XoName({
       style={{ unicodeBidi: "isolate", ...props.style }}
     >
       {XO_DISPLAY_NAME}
+    </span>
+  );
+}
+
+export function XoTeamName({
+  name,
+  team,
+  lang,
+  className,
+}: {
+  name: string | null | undefined;
+  team: "x" | "o";
+  lang: XoLanguage;
+  className?: string;
+}) {
+  const displayName = normalizeXoTeamName(name, team, lang);
+  const defaultName = getDefaultXoTeamName(team, lang);
+  if (displayName !== defaultName) {
+    return <span className={className}>{displayName}</span>;
+  }
+
+  return (
+    <span className={className}>
+      {lang === "ar" ? "فريق " : "Team "}
+      <span dir="ltr" style={{ unicodeBidi: "isolate" }}>
+        {team.toUpperCase()}
+      </span>
     </span>
   );
 }
