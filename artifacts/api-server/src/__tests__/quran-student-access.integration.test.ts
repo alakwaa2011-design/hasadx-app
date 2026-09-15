@@ -12,6 +12,7 @@ const nonce = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 let teacherId = 0;
 let accountId = 0;
 let otherAccountId = 0;
+let unlinkedAccountId = 0;
 let studentId = 0;
 let otherStudentId = 0;
 let wardId = 0;
@@ -63,6 +64,10 @@ suite("student Quran ward ownership", () => {
       INSERT INTO student_accounts(username,display_name,password_hash)
       VALUES (${`quran_other_${nonce}`}, 'طالب آخر', 'x') RETURNING id
     `)).rows[0].id);
+    unlinkedAccountId = Number((await db.execute(sql`
+      INSERT INTO student_accounts(username,display_name,password_hash)
+      VALUES (${`quran_unlinked_${nonce}`}, 'طالب غير مرتبط', 'x') RETURNING id
+    `)).rows[0].id);
     studentId = Number((await db.execute(sql`
       INSERT INTO students(name,teacher_id,student_account_id,student_class)
       VALUES ('طالب', ${teacherId}, ${accountId}, 'A') RETURNING id
@@ -85,8 +90,8 @@ suite("student Quran ward ownership", () => {
 
   afterAll(async () => {
     if (teacherId) await db.execute(sql`DELETE FROM teachers WHERE id = ${teacherId}`);
-    if (accountId || otherAccountId) {
-      await db.execute(sql`DELETE FROM student_accounts WHERE id IN (${accountId}, ${otherAccountId})`);
+    if (accountId || otherAccountId || unlinkedAccountId) {
+      await db.execute(sql`DELETE FROM student_accounts WHERE id IN (${accountId}, ${otherAccountId}, ${unlinkedAccountId})`);
     }
   });
 
@@ -106,5 +111,10 @@ suite("student Quran ward ownership", () => {
   it("requires a student session", async () => {
     const response = await request(studentApp()).get("/api/quran/me/wards");
     expect(response.status).toBe(401);
+  });
+
+  it("does not expose Quran access to an account without a student profile", async () => {
+    const response = await request(studentApp(unlinkedAccountId)).get("/api/quran/me/wards");
+    expect(response.status).toBe(404);
   });
 });

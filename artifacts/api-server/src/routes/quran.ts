@@ -380,6 +380,11 @@ router.get("/quran/students/:studentId/wards", async (req, res): Promise<void> =
 router.get("/quran/me/wards", async (req, res): Promise<void> => {
   const studentAccountId = studentAccountIdOf(req);
   if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const [student] = await db.select({ id: studentsTable.id })
+    .from(studentsTable)
+    .where(eq(studentsTable.studentAccountId, studentAccountId))
+    .limit(1);
+  if (!student) { res.status(404).json({ error: "Student profile not found" }); return; }
   const wards = await db.select({
     id: quranWardsTable.id,
     studentId: quranWardsTable.studentId,
@@ -395,7 +400,10 @@ router.get("/quran/me/wards", async (req, res): Promise<void> => {
     assignmentRequestId: quranWardsTable.assignmentRequestId,
   }).from(quranWardsTable)
     .innerJoin(studentsTable, eq(studentsTable.id, quranWardsTable.studentId))
-    .where(eq(studentsTable.studentAccountId, studentAccountId))
+    .where(and(
+      eq(studentsTable.studentAccountId, studentAccountId),
+      eq(quranWardsTable.studentId, student.id),
+    ))
     .orderBy(desc(quranWardsTable.assignedDate), desc(quranWardsTable.createdAt));
   res.json(ListMyQuranWardsResponse.parse(wards));
 });

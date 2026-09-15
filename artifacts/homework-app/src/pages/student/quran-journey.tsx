@@ -182,6 +182,21 @@ export default function QuranJourneyPage() {
   }
 
   const { profile, streak, nextWard, summary, activeDates, recentActivities } = journey;
+  const hasJourneyData = Boolean(
+    nextWard ||
+      profile.currentSurahNumber ||
+      profile.currentAyah ||
+      profile.progressPercent > 0 ||
+      summary.completedWardCount > 0 ||
+      summary.masteredAyahCount > 0 ||
+      summary.pendingSubmissionCount > 0 ||
+      summary.needsReviewCount > 0 ||
+      summary.averageMemorizationScore !== null ||
+      summary.averageRecitationScore !== null ||
+      streak.current > 0 ||
+      streak.longest > 0 ||
+      recentActivities.length > 0,
+  );
 
   return (
     <Layout>
@@ -214,6 +229,35 @@ export default function QuranJourneyPage() {
             </div>
           </div>
 
+          {!hasJourneyData ? (
+            <Card
+              className="border-emerald-100 bg-white/70 shadow-sm dark:border-emerald-900/40 dark:bg-background/70"
+              data-testid="card-quran-journey-empty"
+            >
+              <CardContent className="flex flex-col items-center p-8 text-center sm:p-12">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                  <BookOpen className="h-8 w-8" />
+                </div>
+                <h2 className="text-xl font-black text-foreground sm:text-2xl">
+                  {lang === "ar" ? "لم تبدأ رحلتك القرآنية بعد" : "Your Quran journey has not started yet"}
+                </h2>
+                <p className="mt-3 max-w-lg text-sm font-medium leading-7 text-muted-foreground">
+                  {lang === "ar"
+                    ? "لم يُسند لك معلمك وردًا بعد. ستظهر هنا مهامك وتقدمك عند إسناد أول ورد."
+                    : "Your teacher has not assigned a Quran ward yet. Your tasks and progress will appear here after your first assignment."}
+                </p>
+                <Link
+                  href="/student/dashboard"
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl border border-emerald-200 px-4 py-2.5 text-sm font-black text-emerald-800 transition-colors hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                  data-testid="link-quran-empty-dashboard"
+                >
+                  {lang === "ar" ? "العودة إلى لوحة الطالب" : "Back to dashboard"}
+                  {dir === "rtl" ? <ArrowRight className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+          <>
           <div className="mb-8 grid gap-6 md:grid-cols-3">
             {/* Main Progress Panel */}
             <Card className="border-emerald-100 bg-white/60 shadow-sm backdrop-blur-sm dark:border-emerald-900/40 dark:bg-background/60 md:col-span-2">
@@ -456,6 +500,8 @@ export default function QuranJourneyPage() {
               </CardContent>
             </Card>
           </div>
+          </>
+          )}
         </div>
       </div>
     </Layout>
