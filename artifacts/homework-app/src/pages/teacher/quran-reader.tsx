@@ -11,6 +11,8 @@ import { MADANI_MUSHAF_METADATA } from '@/data/quran/madani-mushaf-metadata';
 import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
+import { QuranPagesView } from './quran-pages-view';
+import { QuranSearchDialog } from './quran-search-dialog';
 
 export default function QuranReader() {
   const { lang, dir } = useI18n();
@@ -22,9 +24,45 @@ export default function QuranReader() {
   const endAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
   const mode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
+  const view = searchParams.get('view') || 'reader';
 
   const surahNumber = parseInt(params.surahNumber || '1', 10);
   
+  if (view === 'pages') {
+    return (
+      <QuranPagesView
+        initialSurah={surahNumber}
+        initialAyah={requestedAyah ?? startAyah ?? 1}
+        onNavigate={(loc) => setLocation(`/teacher/quran-reader/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
+        isTaskAyah={(sId, aNum) => sId === surahNumber && startAyah !== null && endAyah !== null && aNum >= startAyah && aNum <= endAyah}
+        startAyah={startAyah}
+        endAyah={endAyah}
+        mode={mode}
+      />
+    );
+  }
+
+  return <ReaderView
+    surahNumber={surahNumber}
+    startAyah={startAyah}
+    endAyah={endAyah}
+    mode={mode}
+    requestedAyah={requestedAyah}
+  />;
+}
+
+interface ReaderViewProps {
+  surahNumber: number;
+  startAyah: number | null;
+  endAyah: number | null;
+  mode: string | null;
+  requestedAyah: number | null;
+}
+
+function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah }: ReaderViewProps) {
+  const { lang, dir } = useI18n();
+  const [, setLocation] = useLocation();
+
   const [surahs, setSurahs] = useState<QuranSurahParsed[] | null>(null);
   const [fontSize, setFontSize] = useState(28);
   const [isQuietMode, setIsQuietMode] = useState(false);
@@ -78,7 +116,7 @@ export default function QuranReader() {
   const activeLocation = getQuranLocation(surahNumber, activeAyah);
 
   const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
-    setLocation(`/teacher/quran-reader/${surah}?ayah=${ayah}`);
+    setLocation(`/teacher/quran-reader/${surah}?ayah=${ayah}&view=reader`);
   };
 
   const isTaskAyah = (index: number) => {
@@ -115,12 +153,12 @@ export default function QuranReader() {
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             <button 
-              onClick={() => setLocation('/teacher/quran-center')}
+              onClick={() => setLocation('/teacher/quran-center?tab=mushaf')}
               className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
             >
               <ChevronLeft className="w-5 h-5 rtl:hidden" />
               <ChevronRight className="w-5 h-5 ltr:hidden" />
-              {lang === 'ar' ? 'العودة إلى حصاد القرآن' : 'Back to Hasaad Quran'}
+              {lang === 'ar' ? 'العودة إلى المصحف' : 'Back to Mushaf'}
             </button>
             
             <div className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:w-auto md:flex-1">
@@ -175,6 +213,11 @@ export default function QuranReader() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
+              <QuranSearchDialog
+                onSelect={({ chapterId, ayah }) =>
+                  navigateTo({ surah: chapterId, ayah })
+                }
+              />
               <button onClick={() => setFontSize(f => Math.max(16, f - 2))} className="p-2 hover:bg-muted rounded-xl transition-colors"><ZoomOut className="w-5 h-5" /></button>
               <button onClick={() => setFontSize(f => Math.min(60, f + 2))} className="p-2 hover:bg-muted rounded-xl transition-colors"><ZoomIn className="w-5 h-5" /></button>
               <button onClick={() => setIsQuietMode(true)} className="p-2 hover:bg-muted rounded-xl transition-colors hidden md:block"><EyeOff className="w-5 h-5" /></button>

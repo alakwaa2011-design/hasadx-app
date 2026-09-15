@@ -92,3 +92,25 @@ export function getQuranLocation(surah: number, ayah: number): QuranLocation {
     juz: boundaryNumber(position, QURAN_JUZ_STARTS),
   };
 }
+
+export interface MinimalVerse {
+  chapter_id: number;
+}
+
+/**
+ * Groups an array of verses by their chapter_id.
+ * Preserves the order of verses.
+ */
+export function groupVersesByChapter<T extends MinimalVerse>(verses: T[]): { chapterId: number; verses: T[] }[] {
+  const grouped: { chapterId: number; verses: T[] }[] = [];
+  let currentGroup: { chapterId: number; verses: T[] } | null = null;
+
+  for (const v of verses) {
+    if (!currentGroup || currentGroup.chapterId !== v.chapter_id) {
+      currentGroup = { chapterId: v.chapter_id, verses: [] };
+      grouped.push(currentGroup);
+    }
+    currentGroup.verses.push(v);
+  }
+  return grouped;
+}

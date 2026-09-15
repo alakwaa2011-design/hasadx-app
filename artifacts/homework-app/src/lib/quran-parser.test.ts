@@ -79,3 +79,26 @@ describe('Madani Mushaf navigation metadata', () => {
     });
   });
 });
+
+import { groupVersesByChapter } from './quran-parser';
+
+describe('groupVersesByChapter utility', () => {
+  it('groups consecutive verses of the same chapter', () => {
+    const verses = [
+      { id: 1, chapter_id: 1, content: 'a' },
+      { id: 2, chapter_id: 1, content: 'b' },
+      { id: 3, chapter_id: 2, content: 'c' },
+      { id: 4, chapter_id: 2, content: 'd' },
+    ];
+    const grouped = groupVersesByChapter(verses);
+    expect(grouped).toHaveLength(2);
+    expect(grouped[0].chapterId).toBe(1);
+    expect(grouped[0].verses).toHaveLength(2);
+    expect(grouped[1].chapterId).toBe(2);
+    expect(grouped[1].verses).toHaveLength(2);
+  });
+
+  it('handles empty arrays', () => {
+    expect(groupVersesByChapter([])).toHaveLength(0);
+  });
+});

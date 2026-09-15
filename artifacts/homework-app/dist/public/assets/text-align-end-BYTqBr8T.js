@@ -1,1 +1,0 @@
-import{bb as e}from"./index-CHUgX-7t.js";const t=[["path",{d:"M21 5H3",key:"1fi0y6"}],["path",{d:"M17 12H7",key:"16if0g"}],["path",{d:"M19 19H5",key:"vjpgq2"}]],d=e("text-align-center",t);const n=[["path",{d:"M21 5H3",key:"1fi0y6"}],["path",{d:"M21 12H9",key:"dn1m92"}],["path",{d:"M21 19H7",key:"4cu937"}]],o=e("text-align-end",n);export{d as T,o as a};

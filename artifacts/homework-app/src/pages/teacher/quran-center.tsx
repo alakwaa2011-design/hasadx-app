@@ -13,13 +13,32 @@ import { cn } from "@/lib/utils";
 import { QuranDashboard } from "./quran-center/quran-dashboard";
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
+import { QuranMushafView } from "./quran-center/quran-mushaf";
 
-type Tab = "dashboard" | "circles" | "queue";
+type Tab = "dashboard" | "circles" | "queue" | "mushaf";
 
 export default function QuranCenter() {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const requestedTab = searchParams.get("tab");
+  const tabFromQuery: Tab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "mushaf"
+    ? requestedTab
+    : "dashboard";
+  const [activeTab, setActiveTab] = useState<Tab>(tabFromQuery);
+
+  useEffect(() => {
+    if (tabFromQuery !== activeTab) {
+      setActiveTab(tabFromQuery);
+    }
+  }, [tabFromQuery]);
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setLocation(`/teacher/quran-center?tab=${tab}`);
+  };
+
   const { data: teacher, isLoading: authLoading } = useGetCurrentTeacher({
     query: { retry: false } as any,
   });
@@ -49,6 +68,7 @@ export default function QuranCenter() {
 
   const TABS = [
     { id: "dashboard", label: lang === "ar" ? "الرئيسية" : "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: "mushaf", label: lang === "ar" ? "المصحف" : "Mushaf", icon: <BookOpen className="w-5 h-5" /> },
     { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="w-5 h-5" /> },
     { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> }
   ] as const;
@@ -80,7 +100,7 @@ export default function QuranCenter() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id as Tab)}
                   className={cn(
                     "flex items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all relative overflow-hidden shrink-0",
                     isActive 
@@ -110,7 +130,8 @@ export default function QuranCenter() {
               transition={{ duration: 0.2 }}
               className="absolute inset-0 overflow-y-auto"
             >
-              {activeTab === "dashboard" && <QuranDashboard surahs={surahs || []} onNavigate={setActiveTab} />}
+              {activeTab === "dashboard" && <QuranDashboard surahs={surahs || []} onNavigate={handleTabChange} />}
+              {activeTab === "mushaf" && <QuranMushafView />}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}
             </motion.div>

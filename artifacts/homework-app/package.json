@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "node scripts/generate-image-sitemap.mjs && vite build --config vite.config.ts && pnpm run prerender",
+    "build": "pnpm run validate:mushaf && node scripts/generate-image-sitemap.mjs && vite build --config vite.config.ts && pnpm run prerender",
     "prerender": "tsx scripts/prerender.ts",
     "serve": "node serve.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "validate:mushaf": "node scripts/validate-mushaf-assets.mjs",
     "test:e2e": "playwright test",
     "test:smoke": "playwright test tests/e2e/production-smoke.spec.ts"
   },

@@ -85,7 +85,7 @@ export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], o
             {pendingWards.map(ward => {
               const surah = surahs.find(s => s.arabicName === ward.surahName);
               const surahNum = surah ? surah.number : 1;
-              const readerUrl = `/teacher/quran-reader/${surahNum}?startAyah=${ward.startAyah}&endAyah=${ward.endAyah}&wardId=${ward.id}&mode=${ward.mode}`;
+              const readerUrl = `/teacher/quran-reader/${surahNum}?startAyah=${ward.startAyah}&endAyah=${ward.endAyah}&wardId=${ward.id}&mode=${ward.mode}&view=reader`;
 
               return (
               <div key={ward.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/30 transition-colors">
