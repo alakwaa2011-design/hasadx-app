@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'wouter';
-import { parseQuranXml, QuranSurahParsed } from '@/lib/quran-parser';
+import {
+  getJuzStart,
+  getPageStart,
+  getQuranLocation,
+  parseQuranXml,
+  QuranSurahParsed,
+} from '@/lib/quran-parser';
+import { MADANI_MUSHAF_METADATA } from '@/data/quran/madani-mushaf-metadata';
 import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -14,6 +21,7 @@ export default function QuranReader() {
   const startAyah = searchParams.get('startAyah') ? parseInt(searchParams.get('startAyah')!, 10) : null;
   const endAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
   const mode = searchParams.get('mode');
+  const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
 
   const surahNumber = parseInt(params.surahNumber || '1', 10);
   
@@ -36,15 +44,16 @@ export default function QuranReader() {
   }, [surahNumber, startAyah]);
 
   useEffect(() => {
-    if (surahs && startAyah) {
+    const ayahToReveal = requestedAyah ?? startAyah;
+    if (surahs && ayahToReveal) {
       setTimeout(() => {
-        const el = document.getElementById(`ayah-${startAyah}`);
+        const el = document.getElementById(`ayah-${ayahToReveal}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 400);
     }
-  }, [surahs, startAyah, surahNumber]);
+  }, [surahs, requestedAyah, startAyah, surahNumber]);
 
   if (!surahs) {
     return (
@@ -65,6 +74,13 @@ export default function QuranReader() {
     );
   }
 
+  const activeAyah = Math.min(Math.max(requestedAyah ?? startAyah ?? 1, 1), surah.ayahs.length);
+  const activeLocation = getQuranLocation(surahNumber, activeAyah);
+
+  const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
+    setLocation(`/teacher/quran-reader/${surah}?ayah=${ayah}`);
+  };
+
   const isTaskAyah = (index: number) => {
     if (startAyah && endAyah) {
       return index >= startAyah && index <= endAyah;
@@ -73,11 +89,11 @@ export default function QuranReader() {
   };
 
   const handleNext = () => {
-    if (surahNumber < 114) setLocation(`/teacher/quran-reader/${surahNumber + 1}`);
+    if (surahNumber < 114) navigateTo({ surah: surahNumber + 1, ayah: 1 });
   };
   
   const handlePrev = () => {
-    if (surahNumber > 1) setLocation(`/teacher/quran-reader/${surahNumber - 1}`);
+    if (surahNumber > 1) navigateTo({ surah: surahNumber - 1, ayah: 1 });
   };
 
   const bismillah = surah.ayahs[0]?.bismillah;
@@ -97,7 +113,7 @@ export default function QuranReader() {
 
       {!isQuietMode && (
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
-          <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             <button 
               onClick={() => setLocation('/teacher/quran-center')}
               className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
@@ -107,15 +123,52 @@ export default function QuranReader() {
               {lang === 'ar' ? 'العودة إلى حصاد القرآن' : 'Back to Hasaad Quran'}
             </button>
             
-            <div className="flex-1 flex justify-center">
+            <div className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:w-auto md:flex-1">
               <select 
                 value={surahNumber} 
-                onChange={e => setLocation(`/teacher/quran-reader/${e.target.value}`)}
-                className="bg-transparent text-lg md:text-xl font-black text-center text-foreground outline-none appearance-none px-4 py-1 cursor-pointer hover:bg-muted/50 rounded-lg transition-colors"
+                onChange={e => navigateTo({ surah: Number(e.target.value), ayah: 1 })}
+                aria-label={lang === 'ar' ? 'السورة' : 'Surah'}
+                className="min-w-32 bg-muted/40 text-sm md:text-base font-black text-center text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg transition-colors"
               >
                 {surahs.map(s => (
                   <option key={s.index} value={s.index}>
                     {s.index}. {lang === 'ar' ? `سورة ${s.name}` : `Surah ${s.name}`}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={activeAyah}
+                onChange={e => navigateTo({ surah: surahNumber, ayah: Number(e.target.value) })}
+                aria-label={lang === 'ar' ? 'الآية' : 'Ayah'}
+                className="bg-muted/40 text-sm font-bold text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg"
+              >
+                {surah.ayahs.map(ayah => (
+                  <option key={ayah.index} value={ayah.index}>
+                    {lang === 'ar' ? `آية ${ayah.index}` : `Ayah ${ayah.index}`}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={activeLocation.juz}
+                onChange={e => navigateTo(getJuzStart(Number(e.target.value)))}
+                aria-label={lang === 'ar' ? 'الجزء' : 'Juz'}
+                className="bg-muted/40 text-sm font-bold text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg"
+              >
+                {Array.from({ length: MADANI_MUSHAF_METADATA.juzCount }, (_, index) => index + 1).map(juz => (
+                  <option key={juz} value={juz}>
+                    {lang === 'ar' ? `الجزء ${juz}` : `Juz ${juz}`}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={activeLocation.page}
+                onChange={e => navigateTo(getPageStart(Number(e.target.value)))}
+                aria-label={lang === 'ar' ? 'صفحة المصحف' : 'Mushaf page'}
+                className="bg-muted/40 text-sm font-bold text-foreground outline-none px-2 py-2 cursor-pointer hover:bg-muted rounded-lg"
+              >
+                {Array.from({ length: MADANI_MUSHAF_METADATA.pageCount }, (_, index) => index + 1).map(page => (
+                  <option key={page} value={page}>
+                    {lang === 'ar' ? `صفحة ${page}` : `Page ${page}`}
                   </option>
                 ))}
               </select>

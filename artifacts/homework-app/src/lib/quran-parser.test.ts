@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
-import { parseQuranXml } from './quran-parser';
+import {
+  getJuzStart,
+  getPageStart,
+  getQuranLocation,
+  parseQuranXml,
+} from './quran-parser';
+import {
+  MADANI_MUSHAF_METADATA,
+  MADANI_PAGE_STARTS,
+  QURAN_JUZ_STARTS,
+} from '../data/quran/madani-mushaf-metadata';
 import quranXml from '../data/quran/tanzil-uthmani.xml?raw';
 
 describe('Quran XML Parser', () => {
@@ -35,5 +45,37 @@ describe('Quran XML Parser', () => {
     expect(fatiha?.ayahs[0].text.trim().length).toBeGreaterThan(0);
     // check last text is not empty
     expect(nas?.ayahs[5].text.trim().length).toBeGreaterThan(0);
+  });
+});
+
+describe('Madani Mushaf navigation metadata', () => {
+  it('has exactly 604 pages and 30 juz boundaries', () => {
+    expect(MADANI_MUSHAF_METADATA.pageCount).toBe(604);
+    expect(MADANI_PAGE_STARTS).toHaveLength(604);
+    expect(QURAN_JUZ_STARTS).toHaveLength(30);
+    expect(getPageStart(1)).toEqual({ surah: 1, ayah: 1 });
+    expect(getPageStart(604)).toEqual({ surah: 112, ayah: 1 });
+    expect(getJuzStart(30)).toEqual({ surah: 78, ayah: 1 });
+  });
+
+  it.each([
+    [1, 1, 1, 1],
+    [2, 141, 21, 1],
+    [2, 142, 22, 2],
+    [2, 252, 41, 2],
+    [2, 253, 42, 3],
+    [78, 1, 582, 30],
+    [114, 6, 604, 30],
+  ])('maps %i:%i to page %i and juz %i', (surah, ayah, page, juz) => {
+    expect(getQuranLocation(surah, ayah)).toMatchObject({ page, juz });
+  });
+
+  it('round-trips every page and juz start boundary', () => {
+    MADANI_PAGE_STARTS.forEach((start, index) => {
+      expect(getQuranLocation(start.surah, start.ayah).page).toBe(index + 1);
+    });
+    QURAN_JUZ_STARTS.forEach((start, index) => {
+      expect(getQuranLocation(start.surah, start.ayah).juz).toBe(index + 1);
+    });
   });
 });
