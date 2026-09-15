@@ -22,6 +22,7 @@ import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   deleteSavedGameActivity,
   createSavedGamePlayLink,
+  revokeSavedGamePlayLink,
   listSavedGameActivities,
   savedGamePlayUrl,
   trackSavedGameEvent,
@@ -76,6 +77,7 @@ import {
   Gamepad2,
   MessageSquarePlus,
   Users,
+  Unlink,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
@@ -2871,6 +2873,8 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SavedGameActivity | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<SavedGameActivity | null>(null);
+  const [revoking, setRevoking] = useState(false);
 
   const T = {
     empty: isAr ? "لا توجد ألعاب محفوظة بعد." : "No saved games yet.",
@@ -2892,6 +2896,13 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
     copyLink: isAr ? "نسخ رابط اللعب" : "Copy play link",
     linkCopied: isAr ? "تم نسخ رابط اللعب الدائم" : "Permanent play link copied",
     linkFailed: isAr ? "تعذّر إنشاء رابط اللعب" : "Unable to create play link",
+    revokeLink: isAr ? "إلغاء الرابط" : "Revoke link",
+    revokeConfirm: isAr ? "إلغاء رابط اللعب الدائم؟" : "Revoke permanent play link?",
+    revokeHint: isAr
+      ? "سيتوقف الرابط الحالي فورًا. يمكنك بعد ذلك نسخ رابط جديد برمز مختلف."
+      : "The current link will stop working immediately. You can then copy a new link with a different token.",
+    revoked: isAr ? "تم إلغاء الرابط الحالي" : "Current link revoked",
+    revokeFailed: isAr ? "تعذّر إلغاء رابط اللعب" : "Unable to revoke play link",
   };
 
   const refresh = async () => {
@@ -2973,6 +2984,20 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
     }
   };
 
+  async function handleRevokeLink() {
+    if (!revokeTarget) return;
+    setRevoking(true);
+    try {
+      await revokeSavedGamePlayLink(revokeTarget.id);
+      setRevokeTarget(null);
+      toast.success(T.revoked);
+    } catch (cause) {
+      toast.error(cause instanceof Error && cause.message ? cause.message : T.revokeFailed);
+    } finally {
+      setRevoking(false);
+    }
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -3045,21 +3070,33 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-border/60">
+                <div className="flex flex-wrap items-center justify-end gap-2 mt-4 pt-3 border-t border-border/60">
                   <Button size="sm" onClick={() => runAgain(game)} data-testid={`btn-run-saved-game-${game.id}`}>
                     <Play className="w-3.5 h-3.5 me-1.5" />
                     {T.runAgain}
                   </Button>
                   {game.gameType.toLowerCase().trim() === "xo" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void copyPlayLink(game)}
-                      data-testid={`btn-copy-saved-game-link-${game.id}`}
-                    >
-                      <Copy className="w-3.5 h-3.5 me-1.5" />
-                      {T.copyLink}
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void copyPlayLink(game)}
+                        data-testid={`btn-copy-saved-game-link-${game.id}`}
+                      >
+                        <Copy className="w-3.5 h-3.5 me-1.5" />
+                        {T.copyLink}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setRevokeTarget(game)}
+                        className="text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                        data-testid={`btn-revoke-saved-game-link-${game.id}`}
+                      >
+                        <Unlink className="w-3.5 h-3.5 me-1.5" />
+                        {T.revokeLink}
+                      </Button>
+                    </>
                   )}
                   <Button
                     size="sm"
@@ -3094,6 +3131,27 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} data-testid="btn-confirm-delete-saved-game">
               {deleting && <Loader2 className="w-4 h-4 me-1.5 animate-spin" />}
               {T.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => !open && !revoking && setRevokeTarget(null)}>
+        <DialogContent dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{T.revokeConfirm}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">{revokeTarget?.title}</p>
+            <p className="text-sm text-muted-foreground">{T.revokeHint}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)} disabled={revoking}>
+              {T.cancel}
+            </Button>
+            <Button variant="destructive" onClick={handleRevokeLink} disabled={revoking} data-testid="btn-confirm-revoke-saved-game-link">
+              {revoking && <Loader2 className="w-4 h-4 me-1.5 animate-spin" />}
+              {T.revokeLink}
             </Button>
           </DialogFooter>
         </DialogContent>

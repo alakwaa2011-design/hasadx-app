@@ -185,6 +185,10 @@ export async function createSavedGamePlayLink(id: SavedGameActivity["id"]): Prom
   return (response as { token: string }).token;
 }
 
+export async function revokeSavedGamePlayLink(id: SavedGameActivity["id"]): Promise<void> {
+  await request<unknown>(`/${encodeURIComponent(String(id))}/play-links`, { method: "DELETE" });
+}
+
 /** Build the stable public URL for a saved activity's direct-play token. */
 export function savedGamePlayUrl(token: string): string {
   return `${window.location.origin}${import.meta.env.BASE_URL || "/"}play/${encodeURIComponent(token)}`;

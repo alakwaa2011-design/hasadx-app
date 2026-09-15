@@ -241,6 +241,36 @@ router.post("/game-activities/:id/play-links", async (req, res): Promise<void> =
   }
 });
 
+router.delete("/game-activities/:id/play-links", async (req, res): Promise<void> => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = activityId(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid activity id" }); return; }
+  try {
+    const [activity] = await db.select({ id: savedGameActivitiesTable.id })
+      .from(savedGameActivitiesTable)
+      .where(and(
+        eq(savedGameActivitiesTable.id, id),
+        eq(savedGameActivitiesTable.teacherId, teacherId),
+        eq(savedGameActivitiesTable.gameType, "xo"),
+      ))
+      .limit(1);
+    if (!activity) {
+      res.status(404).json({ error: "Saved game activity not found" }); return;
+    }
+
+    await db.delete(directPlayLinksTable).where(and(
+      eq(directPlayLinksTable.savedGameActivityId, id),
+      eq(directPlayLinksTable.teacherId, teacherId),
+      sql`${directPlayLinksTable.gameType} IN ('xo_class', 'xo_online')`,
+    ));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Revoke saved-game play link failed");
+    res.status(500).json({ error: "Unable to revoke game link" });
+  }
+});
+
 router.delete("/game-activities/:id", async (req, res): Promise<void> => {
   const teacherId = req.session.teacherId;
   if (!teacherId) { res.status(401).json({ error: "Unauthorized" }); return; }
