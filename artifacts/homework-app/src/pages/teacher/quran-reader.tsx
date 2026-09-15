@@ -249,6 +249,60 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
   };
 
   const bismillah = surah.ayahs[0]?.bismillah;
+  const textPageGroups: Array<{ page: number; ayahs: QuranSurahParsed['ayahs'] }> = [];
+
+  for (const ayah of surah.ayahs) {
+    const page = getQuranLocation(surahNumber, ayah.index).page;
+    const currentGroup = textPageGroups[textPageGroups.length - 1];
+
+    if (!currentGroup || currentGroup.page !== page) {
+      textPageGroups.push({ page, ayahs: [ayah] });
+    } else {
+      currentGroup.ayahs.push(ayah);
+    }
+  }
+
+  const renderAyah = (ayah: QuranSurahParsed['ayahs'][number]) => {
+    const concealed = isAyahConcealed(ayah.index);
+    const isPlayingThis = playingAyah === ayah.index;
+    const inTask = isTaskAyah(ayah.index);
+    const playable = isAyahPlayable(ayah.index);
+
+    return (
+      <span
+        key={ayah.index}
+        id={`ayah-${ayah.index}`}
+        role={playable ? "button" : undefined}
+        tabIndex={playable ? 0 : undefined}
+        onClick={() => handleAyahClick(ayah.index)}
+        onKeyDown={(e) => {
+          if (!playable) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleAyahClick(ayah.index);
+          }
+        }}
+        className={cn(
+          "inline transition-all duration-300 rounded-lg px-1 relative select-none md:select-auto",
+          playable ? "cursor-pointer" : "opacity-60 grayscale",
+          inTask && !concealed ? "bg-amber-100/60 dark:bg-amber-900/30 text-amber-950 dark:text-amber-100" : "text-foreground",
+          isPlayingThis ? "bg-emerald-100/80 dark:bg-emerald-900/50 ring-2 ring-emerald-500/50 shadow-sm" : "",
+          concealed ? "blur-[5px] opacity-40 hover:blur-[3px] hover:opacity-60 bg-foreground/5" : ""
+        )}
+        title={!playable ? (lang === 'ar' ? 'خارج النطاق المخصص' : 'Outside assigned range') : concealed ? (lang === 'ar' ? 'انقر للكشف' : 'Tap to reveal') : (lang === 'ar' ? 'انقر للاستماع' : 'Tap to listen')}
+        style={concealed ? { userSelect: 'none' } : {}}
+      >
+        <span className="mx-1">{ayah.text}</span>
+        <span className={cn(
+          "inline-flex items-center justify-center relative w-[1.8em] h-[1.8em] rounded-full border border-current mx-[0.2em] font-sans align-middle",
+          isPlayingThis ? "text-emerald-600 dark:text-emerald-400" : "text-emerald-700/40 dark:text-emerald-400/40"
+        )}>
+          <span className="absolute inset-[2px] border border-dashed border-current rounded-full opacity-40"></span>
+          <span className="absolute inset-0 flex items-center justify-center text-[0.45em] font-bold text-foreground/70">{ayah.index}</span>
+        </span>
+      </span>
+    );
+  };
 
   return (
     <div className={cn("min-h-[100dvh] flex flex-col font-sans transition-colors duration-300", isQuietMode ? "bg-[#fcfaf8] dark:bg-[#111]" : "bg-[#fcfaf8] dark:bg-background")} dir={dir}>
@@ -402,64 +456,48 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
           </div>
         </div>
 
-        {bismillah && (
-          <div className="text-center mb-10">
-            <span className="text-2xl md:text-4xl text-foreground/90 font-bold" style={{ fontFamily: "'KFGQPC Uthman Taha Naskh', 'Amiri', 'Traditional Arabic', serif", lineHeight: 2.2 }}>
-              {bismillah}
-            </span>
-          </div>
-        )}
-
-        <div 
-          className="text-center md:text-justify rtl"
-          style={{ 
-            fontSize: `${fontSize}px`, 
-            lineHeight: 2.4,
-            fontFamily: "'KFGQPC Uthman Taha Naskh', 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif",
-            direction: 'rtl'
-          }}
-        >
-          {surah.ayahs.map(ayah => {
-            const concealed = isAyahConcealed(ayah.index);
-            const isPlayingThis = playingAyah === ayah.index;
-            const inTask = isTaskAyah(ayah.index);
-            const playable = isAyahPlayable(ayah.index);
-
-            return (
-              <span
-                key={ayah.index}
-                id={`ayah-${ayah.index}`}
-                role={playable ? "button" : undefined}
-                tabIndex={playable ? 0 : undefined}
-                onClick={() => handleAyahClick(ayah.index)}
-                onKeyDown={(e) => {
-                  if (!playable) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleAyahClick(ayah.index);
-                  }
-                }}
-                className={cn(
-                  "inline transition-all duration-300 rounded-lg px-1 relative select-none md:select-auto",
-                  playable ? "cursor-pointer" : "opacity-60 grayscale",
-                  inTask && !concealed ? "bg-amber-100/60 dark:bg-amber-900/30 text-amber-950 dark:text-amber-100" : "text-foreground",
-                  isPlayingThis ? "bg-emerald-100/80 dark:bg-emerald-900/50 ring-2 ring-emerald-500/50 shadow-sm" : "",
-                  concealed ? "blur-[5px] opacity-40 hover:blur-[3px] hover:opacity-60 bg-foreground/5" : ""
-                )}
-                title={!playable ? (lang === 'ar' ? 'خارج النطاق المخصص' : 'Outside assigned range') : concealed ? (lang === 'ar' ? 'انقر للكشف' : 'Tap to reveal') : (lang === 'ar' ? 'انقر للاستماع' : 'Tap to listen')}
-                style={concealed ? { userSelect: 'none' } : {}}
-              >
-                <span className="mx-1">{ayah.text}</span>
-                <span className={cn(
-                  "inline-flex items-center justify-center relative w-[1.8em] h-[1.8em] rounded-full border border-current mx-[0.2em] font-sans align-middle",
-                  isPlayingThis ? "text-emerald-600 dark:text-emerald-400" : "text-emerald-700/40 dark:text-emerald-400/40"
-                )}>
-                  <span className="absolute inset-[2px] border border-dashed border-current rounded-full opacity-40"></span>
-                  <span className="absolute inset-0 flex items-center justify-center text-[0.45em] font-bold text-foreground/70">{ayah.index}</span>
+        <div className="space-y-7">
+          {textPageGroups.map(({ page, ayahs }, pageIndex) => (
+            <section
+              key={page}
+              aria-label={lang === 'ar' ? `صفحة ${page}` : `Page ${page}`}
+              className="overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-white px-4 py-6 shadow-[0_16px_45px_rgba(34,87,57,0.10)] dark:border-emerald-500/10 dark:bg-card md:px-10 md:py-9"
+            >
+              <div className="mb-6 flex items-center justify-center gap-3">
+                <span className="h-px flex-1 bg-emerald-900/10 dark:bg-white/10" />
+                <span className="rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-black text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  {lang === 'ar' ? `صفحة ${page}` : `Page ${page}`}
                 </span>
-              </span>
-            );
-          })}
+                <span className="h-px flex-1 bg-emerald-900/10 dark:bg-white/10" />
+              </div>
+
+              {pageIndex === 0 && bismillah && (
+                <div className="mb-7 text-center">
+                  <span
+                    className="text-2xl font-bold text-foreground/90 md:text-4xl"
+                    style={{
+                      fontFamily: "'KFGQPC Uthman Taha Naskh', 'Amiri', 'Traditional Arabic', serif",
+                      lineHeight: 2.2,
+                    }}
+                  >
+                    {bismillah}
+                  </span>
+                </div>
+              )}
+
+              <div
+                className="text-center md:text-justify rtl"
+                style={{
+                  fontSize: `${fontSize}px`,
+                  lineHeight: 2.4,
+                  fontFamily: "'KFGQPC Uthman Taha Naskh', 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif",
+                  direction: 'rtl',
+                }}
+              >
+                {ayahs.map(renderAyah)}
+              </div>
+            </section>
+          ))}
         </div>
 
         {!isQuietMode && !isStudentWard && (
