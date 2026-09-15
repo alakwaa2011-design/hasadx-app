@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
-import { CalendarClock, ChevronDown, ChevronUp, Coffee, Pause, Play, Timer, X } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronUp, Coffee, Timer, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListTeacherSchedule, getListTeacherScheduleQueryKey, type TeacherScheduleEntry } from "@workspace/api-client-react";
 import { lessonNumberLabel } from "@/lib/schedule-labels";
@@ -76,20 +76,16 @@ function ActiveLessonPanel({
   entry,
   remainingMs,
   durationMs,
-  isPaused,
   isBeforeStart,
   isAr,
-  onTogglePause,
   onHide,
   onDragStart,
 }: {
   entry: TeacherScheduleEntry;
   remainingMs: number;
   durationMs: number;
-  isPaused: boolean;
   isBeforeStart: boolean;
   isAr: boolean;
-  onTogglePause: () => void;
   onHide: () => void;
   onDragStart: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
@@ -185,27 +181,6 @@ function ActiveLessonPanel({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: isAr ? 0 : 8, marginRight: isAr ? 8 : 0 }}>
-          {!isBeforeStart && <button
-            type="button"
-            onClick={onTogglePause}
-            title={isPaused ? (isAr ? "متابعة العد" : "Resume") : (isAr ? "إيقاف العد" : "Pause")}
-            aria-label={isPaused ? (isAr ? "متابعة العد" : "Resume countdown") : (isAr ? "إيقاف العد" : "Pause countdown")}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              border: 0,
-              display: "grid",
-              placeItems: "center",
-              cursor: "pointer",
-              background: isPaused ? brandColor : "transparent",
-              color: isPaused ? "#fff" : brandColor,
-              transition: "all 0.2s",
-            }}
-          >
-            {isPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} fill="currentColor" />}
-          </button>}
-
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
@@ -301,9 +276,7 @@ function ActiveLessonPanel({
               : isBreak
                 ? (isAr ? "تبدأ الفترة بعد" : "Period starts in")
                 : (isAr ? "تبدأ الحصة بعد" : "Lesson starts in")
-            : isPaused
-              ? (isAr ? "متوقف مؤقتًا" : "Paused")
-              : (isAr ? "المتبقي على النهاية" : "Time until end")}
+            : (isAr ? "المتبقي على النهاية" : "Time until end")}
         </div>
         <div
           style={{
@@ -323,33 +296,6 @@ function ActiveLessonPanel({
 
       {/* Bottom Controls & Progress */}
       <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16 }}>
-          {!isBeforeStart && <button
-            type="button"
-            onClick={onTogglePause}
-            title={isPaused ? (isAr ? "متابعة العد" : "Resume countdown") : (isAr ? "إيقاف العد" : "Pause countdown")}
-            aria-label={isPaused ? (isAr ? "متابعة العد" : "Resume countdown") : (isAr ? "إيقاف العد" : "Pause countdown")}
-            style={{
-              height: 44,
-              padding: "0 24px",
-              borderRadius: 14,
-              border: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              cursor: "pointer",
-              background: isPaused ? brandColor : brandBg,
-              color: isPaused ? "#fff" : brandColor,
-              fontWeight: 800,
-              fontSize: 14,
-              transition: "all 0.2s",
-            }}
-          >
-            {isPaused ? <Play size={18} fill="currentColor" /> : <Pause size={18} fill="currentColor" />}
-            <span>{isPaused ? (isAr ? "متابعة" : "Resume") : (isAr ? "إيقاف" : "Pause")}</span>
-          </button>}
-        </div>
-
         <div style={{ height: 8, borderRadius: 99, background: "#E7EEE9", overflow: "hidden" }}>
           <div
             style={{
@@ -387,8 +333,6 @@ export function GlobalActiveLessonCountdown() {
   });
   const [now, setNow] = useState(() => Date.now());
   const [hiddenKey, setHiddenKey] = useState<string | null>(null);
-  const [pausedKey, setPausedKey] = useState<string | null>(null);
-  const [pausedRemainingMs, setPausedRemainingMs] = useState(0);
   const { preferences, setPreferences, updatePreferences } = useScheduleCountdownPreferences(user?.id, lang);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const soundedKeyRef = useRef<string | null>(null);
@@ -418,18 +362,14 @@ export function GlobalActiveLessonCountdown() {
   const liveRemainingMs = visibleEntry
     ? Math.max(0, (isBeforeStart ? entryStart(visibleEntry) : (entryEnd(visibleEntry) || 0)) - currentTimeMs)
     : 0;
-  const isPaused = activeKey != null && pausedKey === activeKey;
-  const remainingMs = isPaused ? pausedRemainingMs : liveRemainingMs;
+  const remainingMs = liveRemainingMs;
 
   useEffect(() => {
     if (!activeKey) {
       setHiddenKey(null);
-      setPausedKey(null);
-      setPausedRemainingMs(0);
       return;
     }
     setHiddenKey((previous) => previous === activeKey ? previous : null);
-    setPausedKey((previous) => previous === activeKey ? previous : null);
   }, [activeKey]);
 
   useEffect(() => {
@@ -506,17 +446,6 @@ export function GlobalActiveLessonCountdown() {
     window.addEventListener("pointerup", finish, { once: true });
   }
 
-  function togglePause() {
-    if (!activeKey) return;
-    if (isPaused) {
-      setPausedKey(null);
-      setPausedRemainingMs(0);
-    } else {
-      setPausedKey(activeKey);
-      setPausedRemainingMs(liveRemainingMs);
-    }
-  }
-
   if (!preferences.enabled || userLoading || !user || !visibleEntry || !activeKey || hiddenKey === activeKey || isSchedulePage) return null;
 
   const panel = (
@@ -524,10 +453,8 @@ export function GlobalActiveLessonCountdown() {
       entry={visibleEntry}
       remainingMs={remainingMs}
       durationMs={durationMs}
-      isPaused={isPaused}
       isBeforeStart={isBeforeStart}
       isAr={isAr}
-      onTogglePause={togglePause}
       onHide={() => {
         setHiddenKey(activeKey);
       }}
