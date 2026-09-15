@@ -49,6 +49,7 @@ vi.mock("@workspace/db", () => {
     questionsTable:      stub,
     directPlayLinksTable: stub,
     wheelTemplatesTable: stub,
+    savedGameActivitiesTable: stub,
   };
 });
 
@@ -106,6 +107,27 @@ const SHARED_LIBRARY_ASSIGNMENT = {
 const LINK_ROW_WAMEETH   = { assignmentId: 1, gameType: "wameeth", title: "نشاط تجريبي", assignmentTitle: "نشاط تجريبي" };
 const LINK_ROW_CLASS     = { assignmentId: 1, gameType: "wameeth_class", title: "نشاط تجريبي" };
 const LINK_ROW_ROCKET    = { assignmentId: 1, gameType: "rocket_race", title: "نشاط تجريبي" };
+const XO_CONTENT = [
+  { text: "XO 1", options: ["A", "B"], correct: 0, imageUrl: "https://example.test/q.png", secret: "drop-me" },
+  { text: "XO 2", options: ["C", "D"], correct: 1, type: "true_false", imageUrl: null },
+];
+const LINK_ROW_XO_CLASS = {
+  savedGameActivityId: 12,
+  gameType: "xo_class",
+  savedTitle: "إكس أو محفوظ",
+  savedContent: XO_CONTENT,
+  savedSettings: { playMode: "classroom", duration: 30, teamX: "النمور", teamO: "النسور", secret: "drop-me" },
+  title: "إكس أو محفوظ",
+  content: XO_CONTENT,
+  settings: { playMode: "classroom", duration: 30, teamX: "النمور", teamO: "النسور", secret: "drop-me" },
+};
+const LINK_ROW_XO_ONLINE = {
+  savedGameActivityId: 12,
+  gameType: "xo_online",
+  savedTitle: "إكس أو محفوظ",
+  savedContent: XO_CONTENT,
+  savedSettings: { playMode: "online", duration: 30, teamX: "النمور", teamO: "النسور" },
+};
 const WHEEL_TEMPLATE_ROW = {
   id: 9,
   teacherId: 42,
@@ -277,6 +299,43 @@ describe("AC-2  rocket_race — startRocketGameFromRest يُستدعى قبل ا
     push([LINK_ROW_ROCKET], ROCKET_QS);
     await request(makeApp()).post(`/api/play/${VALID_TOKEN}/start`);
     expect(gameMocks.startGameFromRest).not.toHaveBeenCalled();
+  });
+});
+
+describe("XO saved direct play", () => {
+  it("returns only a sanitized classroom setup", async () => {
+    push([LINK_ROW_XO_CLASS]);
+    const res = await request(makeApp()).get(`/api/play/${VALID_TOKEN}/xo-class`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      title: "إكس أو محفوظ",
+      duration: 30,
+      teamX: "النمور",
+      teamO: "النسور",
+      questions: [
+        { text: "XO 1", options: ["A", "B"], correct: 0, imageUrl: "https://example.test/q.png" },
+        { text: "XO 2", options: ["C", "D"], correct: 1, type: "true_false", imageUrl: null },
+      ],
+    });
+    expect(res.body.questions[0]).not.toHaveProperty("secret");
+  });
+
+  it("creates a fresh anonymous-host room for xo_online", async () => {
+    push([LINK_ROW_XO_ONLINE]);
+    const res = await request(makeApp()).post(`/api/play/${VALID_TOKEN}/start`);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      gameType: "xo_online",
+      playRoute: expect.stringMatching(/^\/game\/xo\/play\/\d{6}$/),
+      questionCount: 2,
+      controlToken: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+  });
+
+  it("rejects malformed XO setup tokens before querying the database", async () => {
+    const res = await request(makeApp()).get(`/api/play/${"z".repeat(32)}/xo-class`);
+    expect(res.status).toBe(404);
+    expect(dbState.queue.length).toBe(0);
   });
 });
 

@@ -4,6 +4,7 @@ import {
   assignmentsTable,
   db,
   directPlayLinksTable,
+  savedGameActivitiesTable,
   pool,
   questionsTable,
   soloChallengesTable,
@@ -15,6 +16,8 @@ type DirectPlayFixture = {
   classToken: string;
   soloToken: string;
   touchToken: string;
+  xoClassToken: string;
+  xoOnlineToken: string;
   soloChallengeSlug: string;
 };
 
@@ -142,7 +145,65 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
   const classToken = randomBytes(16).toString("hex");
   const soloToken = randomBytes(16).toString("hex");
   const touchToken = randomBytes(16).toString("hex");
+  const xoClassToken = randomBytes(16).toString("hex");
+  const xoOnlineToken = randomBytes(16).toString("hex");
   const soloChallengeSlug = `e2e-reconnect-${suffix}`;
+  const xoClassQuestions = [
+    {
+      text: `XO classroom question one ${suffix}`,
+      options: ["Class answer", "Class distractor"],
+      correct: 0,
+    },
+    {
+      text: `XO classroom question two ${suffix}`,
+      options: ["Another answer", "Another distractor"],
+      correct: 1,
+    },
+  ];
+  const xoOnlineQuestions = [
+    {
+      text: `XO online question one ${suffix}`,
+      options: ["Online answer", "Online distractor"],
+      correct: 0,
+    },
+    {
+      text: `XO online question two ${suffix}`,
+      options: ["Second answer", "Second distractor"],
+      correct: 1,
+    },
+  ];
+  const [xoClassActivity] = await db.insert(savedGameActivitiesTable).values({
+    teacherId: teacher.id,
+    gameType: "xo",
+    title: `E2E XO Classroom ${suffix}`,
+    content: xoClassQuestions,
+    settings: {
+      duration: 10,
+      teamX: `Class Blue ${suffix}`,
+      teamO: `Class Gold ${suffix}`,
+      playMode: "classroom",
+    },
+    source: "e2e",
+    isShared: false,
+    contentFingerprint: `e2e-xo-class-${suffix}`,
+    questionCount: xoClassQuestions.length,
+  }).returning({ id: savedGameActivitiesTable.id });
+  const [xoOnlineActivity] = await db.insert(savedGameActivitiesTable).values({
+    teacherId: teacher.id,
+    gameType: "xo",
+    title: `E2E XO Online ${suffix}`,
+    content: xoOnlineQuestions,
+    settings: {
+      duration: 15,
+      teamX: `Online Blue ${suffix}`,
+      teamO: `Online Gold ${suffix}`,
+      playMode: "online",
+    },
+    source: "e2e",
+    isShared: false,
+    contentFingerprint: `e2e-xo-online-${suffix}`,
+    questionCount: xoOnlineQuestions.length,
+  }).returning({ id: savedGameActivitiesTable.id });
   await db.insert(soloChallengesTable).values({
     slug: soloChallengeSlug,
     shortSlug: `e2e-reconnect-${suffix}`,
@@ -183,6 +244,18 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
       teacherId: teacher.id,
       gameType: "wameeth",
     },
+    {
+      token: xoClassToken,
+      savedGameActivityId: xoClassActivity.id,
+      teacherId: teacher.id,
+      gameType: "xo_class",
+    },
+    {
+      token: xoOnlineToken,
+      savedGameActivityId: xoOnlineActivity.id,
+      teacherId: teacher.id,
+      gameType: "xo_online",
+    },
   ]);
 
   return {
@@ -190,6 +263,8 @@ async function createDirectPlayFixture(): Promise<DirectPlayFixture> {
     classToken,
     soloToken,
     touchToken,
+    xoClassToken,
+    xoOnlineToken,
     soloChallengeSlug,
   };
 }
@@ -437,5 +512,39 @@ test.describe("Public Wameeth direct links", () => {
     await expect(page.getByText(/بانتظار المعلم|Waiting for teacher/i)).toHaveCount(0);
     await expect(page.getByText(/اكتب اسمك للبدء|Enter your name to start/i)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "ابدأ المسابقة", exact: true })).toHaveCount(0);
+  });
+});
+
+test.describe("Public XO direct links", () => {
+  test.describe.configure({ retries: 2 });
+
+  test("classroom link loads persisted XO setup without login or hash state", async ({
+    page,
+  }) => {
+    if (!fixture) throw new Error("direct-play fixture is unavailable");
+
+    await page.goto(`/play/${fixture.xoClassToken}`);
+    await expect(page).toHaveURL(
+      new RegExp(`/game/xo/class\\?token=${fixture.xoClassToken}`),
+      { timeout: 20_000 },
+    );
+    await expect(page.getByText(/Class Blue/, { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Class Gold/, { exact: false })).toBeVisible();
+    await expect(page.getByText(/E2E XO Classroom/, { exact: false })).toBeVisible();
+    await expect(page.getByRole("button", { name: /نسخ الرابط|Copy link/i })).toHaveCount(1);
+  });
+
+  test("online link auto-starts persisted XO room without login or setup", async ({
+    page,
+  }) => {
+    if (!fixture) throw new Error("direct-play fixture is unavailable");
+
+    await page.goto(`/play/${fixture.xoOnlineToken}`);
+    await expect(page).toHaveURL(/\/game\/xo\/play\/[^?]+\?creator=1.*token=/, {
+      timeout: 20_000,
+    });
+    await expect(page.getByText(/Online Blue/, { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Online Gold/, { exact: false })).toBeVisible();
+    await expect(page.getByText(/اكتب اسمك للبدء|Enter your name to start/i)).toHaveCount(0);
   });
 });

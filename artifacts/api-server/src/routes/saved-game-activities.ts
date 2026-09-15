@@ -9,6 +9,7 @@ import {
   questionCountForContent,
   savedGameActivityUpsertSchema,
 } from "../lib/saved-game-activities";
+import { sanitizeXoSetup } from "../game/xo-handlers";
 
 const router: IRouter = Router();
 
@@ -175,15 +176,35 @@ router.post("/game-activities/:id/play-links", async (req, res): Promise<void> =
     const [activity] = await db.select({
       id: savedGameActivitiesTable.id,
       gameType: savedGameActivitiesTable.gameType,
+      title: savedGameActivitiesTable.title,
+      content: savedGameActivitiesTable.content,
+      settings: savedGameActivitiesTable.settings,
       questionCount: savedGameActivitiesTable.questionCount,
     }).from(savedGameActivitiesTable).where(and(
       eq(savedGameActivitiesTable.id, id),
       eq(savedGameActivitiesTable.teacherId, teacherId),
     )).limit(1);
-    if (!activity || activity.gameType !== "tug") {
-      res.status(404).json({ error: "Saved tug game not found" }); return;
+    if (!activity) {
+      res.status(404).json({ error: "Saved game activity not found" }); return;
     }
-    if (activity.questionCount < 2) {
+
+    let linkGameType = "tug_class";
+    if (activity.gameType === "xo") {
+      // XO links are owner-only and derive their public mode from the
+      // sanitized persisted settings, never from a caller-supplied type.
+      const setup = sanitizeXoSetup(activity.content, activity.settings);
+      if (!setup) {
+        res.status(400).json({ error: "At least two supported XO questions are required" }); return;
+      }
+      const settings = activity.settings && typeof activity.settings === "object" && !Array.isArray(activity.settings)
+        ? activity.settings as Record<string, unknown>
+        : {};
+      linkGameType = settings.playMode === "online" || settings.playMode === "xo_online"
+        ? "xo_online"
+        : "xo_class";
+    } else if (activity.gameType !== "tug") {
+      res.status(404).json({ error: "Saved game activity not found" }); return;
+    } else if (activity.questionCount < 2) {
       res.status(400).json({ error: "At least two questions are required" }); return;
     }
 
@@ -191,7 +212,7 @@ router.post("/game-activities/:id/play-links", async (req, res): Promise<void> =
       .from(directPlayLinksTable)
       .where(and(
         eq(directPlayLinksTable.savedGameActivityId, id),
-        eq(directPlayLinksTable.gameType, "tug_class"),
+        eq(directPlayLinksTable.gameType, linkGameType),
       ))
       .limit(1);
     if (existing) { res.json(existing); return; }
@@ -200,7 +221,7 @@ router.post("/game-activities/:id/play-links", async (req, res): Promise<void> =
     const [created] = await db.insert(directPlayLinksTable).values({
       token,
       savedGameActivityId: id,
-      gameType: "tug_class",
+      gameType: linkGameType,
       teacherId,
     }).onConflictDoNothing().returning({ token: directPlayLinksTable.token });
     if (created) { res.status(201).json(created); return; }
@@ -209,7 +230,7 @@ router.post("/game-activities/:id/play-links", async (req, res): Promise<void> =
       .from(directPlayLinksTable)
       .where(and(
         eq(directPlayLinksTable.savedGameActivityId, id),
-        eq(directPlayLinksTable.gameType, "tug_class"),
+        eq(directPlayLinksTable.gameType, linkGameType),
       ))
       .limit(1);
     if (!raced) throw new Error("Direct-play link conflict could not be recovered");

@@ -1348,6 +1348,8 @@ export const en: typeof ar = {
     wameethDescription: "Quick fire questions — answer fast to score",
     rocketRaceName: "Rocket Race",
     rocketRaceDescription: "Your rocket rises with every correct answer",
+    xoName: "XO",
+    xoDescription: "A team question challenge on the XO board",
   },
   install: {
     seoTitle: "Install Hasad | Hasad Platform", seoDescription: "Install Hasad on your device for quick access.",

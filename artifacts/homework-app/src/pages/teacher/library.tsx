@@ -21,7 +21,9 @@ import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import {
   deleteSavedGameActivity,
+  createSavedGamePlayLink,
   listSavedGameActivities,
+  savedGamePlayUrl,
   trackSavedGameEvent,
   type SavedGameActivity,
 } from "@/lib/saved-game-activities";
@@ -2887,6 +2889,9 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
     cancel: isAr ? "إلغاء" : "Cancel",
     deleted: isAr ? "تم حذف اللعبة المحفوظة" : "Saved game deleted",
     deleteFailed: isAr ? "تعذّر حذف اللعبة المحفوظة" : "Unable to delete saved game",
+    copyLink: isAr ? "نسخ رابط اللعب" : "Copy play link",
+    linkCopied: isAr ? "تم نسخ رابط اللعب الدائم" : "Permanent play link copied",
+    linkFailed: isAr ? "تعذّر إنشاء رابط اللعب" : "Unable to create play link",
   };
 
   const refresh = async () => {
@@ -2955,6 +2960,17 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
       return;
     }
     setLocation(`${path}?savedGameId=${encodeURIComponent(String(game.id))}`);
+  };
+
+  const copyPlayLink = async (game: SavedGameActivity) => {
+    if (game.gameType.toLowerCase().trim() !== "xo") return;
+    try {
+      const token = await createSavedGamePlayLink(game.id);
+      await navigator.clipboard.writeText(savedGamePlayUrl(token));
+      toast.success(T.linkCopied);
+    } catch (cause) {
+      toast.error(cause instanceof Error && cause.message ? cause.message : T.linkFailed);
+    }
   };
 
   async function handleDelete() {
@@ -3034,6 +3050,17 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
                     <Play className="w-3.5 h-3.5 me-1.5" />
                     {T.runAgain}
                   </Button>
+                  {game.gameType.toLowerCase().trim() === "xo" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void copyPlayLink(game)}
+                      data-testid={`btn-copy-saved-game-link-${game.id}`}
+                    >
+                      <Copy className="w-3.5 h-3.5 me-1.5" />
+                      {T.copyLink}
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

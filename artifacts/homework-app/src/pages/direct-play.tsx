@@ -17,7 +17,7 @@ const API = import.meta.env.VITE_API_URL || "";
 interface PlayInfo {
   title: string;
   questionCount: number;
-  gameType: "wameeth" | "wameeth_class" | "rocket_race" | "wheel";
+  gameType: "wameeth" | "wameeth_class" | "rocket_race" | "wheel" | "xo_class" | "xo_online";
 }
 
 const GAME_META = {
@@ -36,6 +36,12 @@ const GAME_META = {
     gradient: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
     glow: "rgba(59,130,246,0.55)",
     borderColor: "rgba(96,165,250,0.35)",
+  },
+  xo: {
+    icon: <Target className="w-7 h-7 text-violet-300" />,
+    gradient: "linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%)",
+    glow: "rgba(139,92,246,0.55)",
+    borderColor: "rgba(196,181,253,0.35)",
   },
 } as const;
 
@@ -73,6 +79,35 @@ export default function DirectPlayPage() {
       setLocation(`/play/wheel/${encodeURIComponent(token)}`, { replace: true });
     }
   }, [info?.gameType, setLocation, token]);
+
+  useEffect(() => {
+    if (token && info?.gameType === "xo_class") {
+      setLocation(`/game/xo/class?token=${encodeURIComponent(token)}`, { replace: true });
+    }
+  }, [info?.gameType, setLocation, token]);
+
+  useEffect(() => {
+    if (!token || info?.gameType !== "xo_online" || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    setStarting(true);
+    fetch(`${API}/api/play/${encodeURIComponent(token)}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.playRoute || !data.pin) {
+          throw new Error(data.message || t.directPlay.genericError);
+        }
+        if (data.creatorToken) sessionStorage.setItem(`xo-creator-${data.pin}`, String(data.creatorToken));
+        if (data.controlToken) sessionStorage.setItem(`xo-control-${data.pin}`, String(data.controlToken));
+        setLocation(`${data.playRoute}?creator=1&token=${encodeURIComponent(token)}`, { replace: true });
+      })
+      .catch((err: unknown) => {
+        setLoadError(err instanceof Error ? err.message : t.directPlay.startError);
+        setStarting(false);
+      });
+  }, [info?.gameType, setLocation, t.directPlay.genericError, t.directPlay.startError, token]);
 
   const handleStart = async () => {
     const name = playerName.trim();
@@ -139,7 +174,7 @@ export default function DirectPlayPage() {
   // ── Loading ────────────────────────────────────────────────────────────────
   if (
     (!info && !loadError)
-    || ((info?.gameType === "wameeth" || info?.gameType === "wheel") && !loadError)
+    || ((info?.gameType === "wameeth" || info?.gameType === "wheel" || info?.gameType === "xo_class" || info?.gameType === "xo_online") && !loadError)
   ) {
     return (
       <div
@@ -180,9 +215,9 @@ export default function DirectPlayPage() {
     );
   }
 
-  const meta = GAME_META[info!.gameType === "rocket_race" ? "rocket_race" : "wameeth"];
-  const gameLabel = info!.gameType === "wameeth" ? t.directPlay.wameethName : t.directPlay.rocketRaceName;
-  const gameDesc = info!.gameType === "wameeth" ? t.directPlay.wameethDescription : t.directPlay.rocketRaceDescription;
+  const meta = GAME_META[info!.gameType === "rocket_race" ? "rocket_race" : info!.gameType.startsWith("xo_") ? "xo" : "wameeth"];
+  const gameLabel = info!.gameType === "wameeth" ? t.directPlay.wameethName : info!.gameType === "rocket_race" ? t.directPlay.rocketRaceName : t.directPlay.xoName;
+  const gameDesc = info!.gameType === "wameeth" ? t.directPlay.wameethDescription : info!.gameType === "rocket_race" ? t.directPlay.rocketRaceDescription : t.directPlay.xoDescription;
 
   // ── Main ───────────────────────────────────────────────────────────────────
   return (

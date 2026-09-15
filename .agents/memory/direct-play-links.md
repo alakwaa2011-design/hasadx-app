@@ -1,10 +1,10 @@
 ---
 name: Direct play links architecture
-description: Token-based solo play links for teachers — design decisions and supported game types
+description: Opaque public links for assignments, saved games, and classroom displays
 ---
 
 ## What it is
-`/play/:token` — shareable URL that lets anyone play a solo game with no login, PIN, or teacher present.
+`/play/:token` — shareable URL that lets anyone open a supported game with no login and without exposing an internal activity or teacher ID.
 Token is a 32-char random hex (not the assignmentId) to prevent enumeration.
 
 ## DB table: direct_play_links
@@ -12,9 +12,15 @@ Token is a 32-char random hex (not the assignmentId) to prevent enumeration.
 - UNIQUE index on (assignment_id, game_type, teacher_id) prevents duplicates
 - Token is UNIQUE indexed for fast lookup
 
-## Supported game types
+## Supported patterns
 - **wameeth**: uses `createGame()` + `startGameFromRest()` — long-standing solo path, works perfectly
 - **rocket_race**: uses `createRocketGameDirectly()` + `startRocketGameFromRest()` — headless exports added to rocket-handlers.ts
+- **Saved classroom games**: load a sanitized persisted setup directly from the opaque token.
+- **Saved live-room games**: each link opening creates a fresh in-memory room and returns an opaque host-control capability; the permanent link never depends on an old room.
+
+**Why:** A permanent game link must survive server restarts and teacher-session closure while preserving the selected mode. Persist the source configuration, not the transient room.
+
+**How to apply:** Derive public configuration from the current saved source, reject deleted/malformed sources uniformly, and keep room IDs and control capabilities out of the permanent URL.
 
 ## Rocket late-join pattern
 The rocket game is created AND started (via `startRace(_rocketNs, game)`) BEFORE the player connects.
@@ -22,11 +28,6 @@ The player navigates to `/game/rocket/play/:pin?name=...` and emits `rocket:join
 The join handler already handles `state === "racing"` (late-join path, lines 616–643 in rocket-handlers.ts):
 it sends `rocket:race-start` directly to the joining socket with remaining time.
 This works cleanly — no modification to the join handler was needed.
-
-## Unsupported game types (documented reasons)
-- **tug_of_war**: inherently 2-team game; one player = meaningless rope
-- **escape_room**: join flow requires separate socket handshake, not URL params
-- **million / wheel / hack**: require live teacher interaction
 
 ## _rocketNs module-level variable
 `_rocketNs` is set inside `setupRocketSocket` when the server starts.

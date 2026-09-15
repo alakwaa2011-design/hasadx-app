@@ -6,6 +6,7 @@ export type XoClassSetup = {
   teamX?: string;
   teamO?: string;
   title?: string;
+  savedActivityId?: number | string;
 };
 
 export function encodeXoClassSetup(setup: XoClassSetup): string {

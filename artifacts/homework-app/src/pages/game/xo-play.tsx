@@ -49,6 +49,10 @@ export default function XoPlay() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const creator = new URLSearchParams(search).get("creator") === "1";
+  const directToken = new URLSearchParams(search).get("token");
+  const controlToken = creator && typeof sessionStorage !== "undefined"
+    ? sessionStorage.getItem(`xo-control-${pin}`) || undefined
+    : undefined;
   const name = new URLSearchParams(search).get("name") || "";
   const leaveGameSafely = useSmartBack(creator ? "/game/xo/create" : "/game/xo/join");
 
@@ -80,7 +84,7 @@ export default function XoPlay() {
   useEffect(() => {
     const socket = socketRef.current;
     const initialise = () => {
-      if (creator) socket.emit("xo:reclaim-host", { pin }, (r: Snapshot & { error?: string }) =>
+      if (creator) socket.emit("xo:reclaim-host", { pin, controlToken }, (r: Snapshot & { error?: string }) =>
         r.error
           ? toast.error(localizeXoError(r.error, ar, ar ? "تعذر استعادة غرفة المعلم" : "Could not restore the teacher room"))
           : merge(r)
@@ -167,7 +171,11 @@ export default function XoPlay() {
     previousBoard.current = [...nextBoard];
   }, [snapshot.board]);
 
-  const emit = (event: string, data: object = {}) => socketRef.current.emit(`xo:${event}`, { pin, ...data });
+  const emit = (event: string, data: object = {}) => socketRef.current.emit(`xo:${event}`, {
+    pin,
+    ...(creator && controlToken ? { controlToken } : {}),
+    ...data,
+  });
   const toggleMute = () => {
     const nextMuted = toggleGameMute();
     setMuted(nextMuted);
@@ -181,6 +189,9 @@ export default function XoPlay() {
   const winningCells = getWinningCells(board);
   const canPlace = snapshot.phase === "placement" && snapshot.placementPlayerId === playerId;
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/xo/join/${pin}`;
+  const permanentUrl = directToken
+    ? `${window.location.origin}${import.meta.env.BASE_URL || "/"}play/${encodeURIComponent(directToken)}`
+    : null;
   const team = snapshot.teamNames?.[snapshot.turn ?? "x"] ?? snapshot.turn?.toUpperCase() ?? "X";
   const myTeam = snapshot.players?.find(p => p.id === playerId)?.team;
   const isFinished = snapshot.phase === "finished" || snapshot.winner;
@@ -220,14 +231,37 @@ export default function XoPlay() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {creator && <QRModalButton url={joinUrl} pin={pin} label="QR" variant="light" />}
+           {creator && <QRModalButton url={joinUrl} pin={pin} label="QR" variant="light" />}
           <button
-            onClick={() => { navigator.clipboard?.writeText(joinUrl); toast.success(ar ? "تم نسخ الرابط" : "Link copied"); }}
-            aria-label={ar ? "نسخ رابط الانضمام" : "Copy join link"}
+             onClick={async () => {
+               try {
+                 await navigator.clipboard?.writeText(permanentUrl || joinUrl);
+                 toast.success(permanentUrl ? (ar ? "تم نسخ الرابط الدائم" : "Permanent link copied") : (ar ? "تم نسخ الرابط" : "Link copied"));
+               } catch {
+                 toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
+               }
+             }}
+             aria-label={permanentUrl ? (ar ? "نسخ الرابط الدائم" : "Copy permanent link") : (ar ? "نسخ رابط الانضمام" : "Copy join link")}
             className="rounded-lg border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Copy className="h-5 w-5" />
           </button>
+           {creator && permanentUrl && (
+             <button
+               type="button"
+               onClick={async () => {
+                 try {
+                   await navigator.clipboard?.writeText(joinUrl);
+                   toast.success(ar ? "تم نسخ رابط الانضمام المؤقت" : "Temporary join link copied");
+                 } catch {
+                   toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
+                 }
+               }}
+               className="hidden rounded-lg border bg-card px-2 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted hover:text-foreground sm:block"
+             >
+               {ar ? "رابط الغرفة" : "Room link"}
+             </button>
+           )}
           <button
             onClick={toggleMute}
             aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}

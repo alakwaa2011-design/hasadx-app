@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { Clock, Play, Users, Wifi, School, QrCode } from "lucide-react";
+import { Clock, Play, Users, Wifi, School, QrCode, Copy } from "lucide-react";
 import { XoIcon } from "@/components/game-icons";
 import { useI18n } from "@/lib/i18n";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
-import { getSavedGameActivity, normalizeSavedGameQuestions, saveGameActivity } from "@/lib/saved-game-activities";
-import { getXoSocket } from "@/lib/xo-socket";
+import { createSavedGamePlayLink, getSavedGameActivity, normalizeSavedGameQuestions, savedGamePlayUrl, saveGameActivity } from "@/lib/saved-game-activities";
 import { toast } from "@/components/ui/sonner";
-import { XO_CLASS_SETUP_KEY } from "@/pages/game/xo-class";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
-import { localizeXoError } from "@/lib/xo-error-messages";
 import { useSmartBack } from "@/lib/nav-history";
 
 type Question = {
@@ -60,9 +57,14 @@ export default function XoCreate() {
   const [playMode, setPlayMode] = useState<"online" | "classroom">("classroom");
   const [duration, setDuration] = useState(20);
   const [creating, setCreating] = useState(false);
+  const [linkCreating, setLinkCreating] = useState(false);
+  const [savedActivityId, setSavedActivityId] = useState<number | string | null>(null);
+  const [permanentToken, setPermanentToken] = useState<string | null>(null);
+  const [savedDraftKey, setSavedDraftKey] = useState<string | null>(null);
   const [isShared, setIsShared] = useState(false);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
   const loadedSavedGameRef = useRef(false);
+  const savedActivityIdRef = useRef<number | string | null>(null);
 
   const handleFlowBack = () => {
     if (setupStep === "settings") {
@@ -92,6 +94,8 @@ export default function XoCreate() {
       setQuestions(restored);
       setSetupStep("settings");
       setTitle(activity.title || null);
+      setSavedActivityId(activity.id);
+      savedActivityIdRef.current = activity.id;
       setIsShared(activity.isShared);
       if (activity.settings && typeof activity.settings === "object" && !Array.isArray(activity.settings)) {
         const settings = activity.settings as Record<string, unknown>;
@@ -103,6 +107,54 @@ export default function XoCreate() {
     }).catch(() => toast.error(ar ? "تعذر فتح اللعبة المحفوظة" : "Could not open the saved game"));
   }, [ar]);
 
+  const draftKey = JSON.stringify({
+    title: title || (ar ? "إكس أو" : "XO"),
+    questions,
+    settings: { duration, teamX, teamO, playMode },
+    source: questionSource,
+    isShared,
+  });
+
+  const ensurePermanentLink = async (): Promise<string> => {
+    if (savedActivityIdRef.current != null && permanentToken && savedDraftKey === draftKey) {
+      return permanentToken;
+    }
+    setLinkCreating(true);
+    try {
+      const activity = await saveGameActivity({
+        gameType: "xo",
+        title: title || (ar ? "إكس أو" : "XO"),
+        questions,
+        settings: { duration, teamX, teamO, playMode },
+        source: questionSource,
+        isShared,
+      });
+      const token = await createSavedGamePlayLink(activity.id);
+      setSavedActivityId(activity.id);
+      savedActivityIdRef.current = activity.id;
+      setPermanentToken(token);
+      setSavedDraftKey(draftKey);
+      return token;
+    } finally {
+      setLinkCreating(false);
+    }
+  };
+
+  const copyPermanentLink = async () => {
+    setLinkCreating(true);
+    try {
+      const token = await ensurePermanentLink();
+      await navigator.clipboard.writeText(savedGamePlayUrl(token));
+      toast.success(ar ? "تم نسخ الرابط الدائم" : "Permanent link copied");
+    } catch (error) {
+      toast.error(error instanceof Error && error.message
+        ? error.message
+        : (ar ? "تعذّر إنشاء أو نسخ الرابط الدائم" : "Could not create or copy the permanent link"));
+    } finally {
+      setLinkCreating(false);
+    }
+  };
+
   const create = async () => {
     if (questions.length < 2) {
       toast.error(ar ? "أضف سؤالين على الأقل" : "Add at least two questions");
@@ -110,7 +162,10 @@ export default function XoCreate() {
     }
     setCreating(true);
     try {
-      await saveGameActivity({ gameType: "xo", title: title || (ar ? "إكس أو" : "XO"), questions, settings: { duration, teamX, teamO, playMode }, source: questionSource, isShared });
+      // The settings copy action may already have persisted this exact draft.
+      // Reuse its activity and token rather than issuing another upsert/link
+      // request when the teacher starts immediately afterwards.
+      const token = await ensurePermanentLink();
       if (playMode === "classroom") {
         const setup: XoClassSetup = {
           questions,
@@ -118,24 +173,29 @@ export default function XoCreate() {
           teamX: teamX.trim() || (ar ? "فريق إكس" : "Team X"),
           teamO: teamO.trim() || (ar ? "فريق أو" : "Team O"),
           title: title || (ar ? "إكس أو الصف" : "XO Class"),
+          savedActivityId: savedActivityIdRef.current ?? undefined,
         };
-        sessionStorage.setItem(XO_CLASS_SETUP_KEY, JSON.stringify(setup));
         setCreating(false);
-        navigate("/game/xo/class");
+        navigate(`/game/xo/class?token=${encodeURIComponent(token)}`);
         return;
       }
-      getXoSocket().emit("xo:create", { questions, duration, teamX: teamX.trim() || "X", teamO: teamO.trim() || "O" }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
-        setCreating(false);
-        if (res.error || !res.pin) {
-          toast.error(localizeXoError(res.error, ar, ar ? "تعذر إنشاء الغرفة" : "Could not create room"));
-          return;
-        }
-        if (res.creatorToken) sessionStorage.setItem(`xo-creator-${res.pin}`, res.creatorToken);
-        navigate(`/game/xo/play/${res.pin}?creator=1`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/play/${encodeURIComponent(token)}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
-    } catch {
+      const result = await response.json();
+      if (!response.ok || !result.pin || !result.playRoute) {
+        throw new Error(result.message || (ar ? "تعذر إنشاء غرفة الدخول" : "Could not create the join room"));
+      }
+      if (result.creatorToken) sessionStorage.setItem(`xo-creator-${result.pin}`, String(result.creatorToken));
+      if (result.controlToken) sessionStorage.setItem(`xo-control-${result.pin}`, String(result.controlToken));
       setCreating(false);
-      toast.error(ar ? "تعذر حفظ اللعبة تلقائياً" : "Could not auto-save the game");
+      navigate(`${result.playRoute}?creator=1&token=${encodeURIComponent(token)}`);
+    } catch (error) {
+      setCreating(false);
+      toast.error(error instanceof Error && error.message
+        ? error.message
+        : (ar ? "تعذر حفظ اللعبة أو إنشاء رابطها" : "Could not save the game or create its link"));
     }
   };
 
@@ -311,7 +371,7 @@ export default function XoCreate() {
               </button>
               <button
                 onClick={create}
-                disabled={creating}
+                disabled={creating || linkCreating}
                 data-testid="button-start-game"
                 className="group flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3.5 px-6 font-black text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
               >
@@ -326,6 +386,22 @@ export default function XoCreate() {
                     {playMode === "classroom" ? (ar ? "ابدأ وضع الصف" : "Start classroom mode") : (ar ? "إنشاء غرفة الدخول" : "Create join room")}
                   </>
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyPermanentLink()}
+                disabled={creating || linkCreating}
+                data-testid="button-copy-permanent-link"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 py-3.5 px-5 font-black text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {linkCreating ? (
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                ) : (
+                  <Copy className="h-5 w-5" />
+                )}
+                {linkCreating
+                  ? (ar ? "جارٍ إنشاء الرابط..." : "Creating link...")
+                  : (ar ? "نسخ الرابط الدائم" : "Copy permanent link")}
               </button>
               </div>
             </footer>

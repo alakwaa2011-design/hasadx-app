@@ -36,7 +36,7 @@
 - [Drizzle correlated subqueries](drizzle-correlated-subquery-qualification.md) — qualify outer-table columns explicitly; direct column interpolation can render an unqualified `"id"`.
 - [Meta Pixel purchase proof](meta-pixel-purchase-proof.md) — emit Purchase only after a unique server-confirmed payment status, not a subscription return URL or balance change.
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
-- [Direct play links architecture](direct-play-links.md) — token-based share URLs for solo play; wameeth+rocket_race only; rocket uses late-join pattern.
+- [Direct play links architecture](direct-play-links.md) — opaque public links support assignments, saved games, and display modes; session-backed games create fresh rooms per open.
 - [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
 - [Browser E2E database isolation](browser-e2e-db-isolation.md) — fixture-writing browser tests must run app and API together on a dedicated test database.
 - [Teacher E2E session setup](teacher-e2e-session-setup.md) — registration now returns a pending OTP; browser fixtures need a verified DB teacher plus /auth/verify-otp before attaching a session.

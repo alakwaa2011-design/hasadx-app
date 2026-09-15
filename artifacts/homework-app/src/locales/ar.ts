@@ -1346,6 +1346,8 @@ export const ar = {
     wameethDescription: "أسئلة سريعة — كل إجابة صحيحة تكسبك نقاطاً",
     rocketRaceName: "سباق الصواريخ",
     rocketRaceDescription: "صاروخك يرتفع مع كل إجابة صحيحة",
+    xoName: "إكس أو",
+    xoDescription: "تحدي أسئلة جماعي على لوحة إكس أو",
   },
   install: {
     seoTitle: "تثبيت تطبيق حصاد | منصة حصاد", seoDescription: "ثبّت منصة حصاد على جهازك للوصول السريع.",

@@ -27,6 +27,7 @@ export interface XoClassState {
 
 export type XoClassAction =
   | { type: "start" }
+  | { type: "load"; questions: XoClassQuestion[]; duration: number }
   | { type: "restart" }
   | { type: "tick" }
   | { type: "answer"; team: XoTeam; index: number }
@@ -116,6 +117,8 @@ function nextQuestion(state: XoClassState, team = other(state.activeTeam), resul
 
 export function xoClassReducer(state: XoClassState, action: XoClassAction): XoClassState {
   switch (action.type) {
+    case "load":
+      return createXoClassState(action.questions, action.duration);
     case "restart":
       return createXoClassState(state.questions, state.duration);
     case "start":

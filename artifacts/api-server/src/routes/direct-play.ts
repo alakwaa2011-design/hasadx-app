@@ -33,6 +33,7 @@ import {
   startRocketGameFromRest,
   type RocketQuestion,
 } from "../game/rocket-handlers";
+import { createXoGameFromRest, sanitizeXoSetup } from "../game/xo-handlers";
 
 const router: IRouter = Router();
 
@@ -465,15 +466,20 @@ router.get("/play/:token/info", async (req, res) => {
       .select({
         assignmentId: directPlayLinksTable.assignmentId,
         wheelTemplateId: directPlayLinksTable.wheelTemplateId,
+        savedGameActivityId: directPlayLinksTable.savedGameActivityId,
         gameType: directPlayLinksTable.gameType,
         assignmentTitle: assignmentsTable.title,
         wheelTitle: wheelTemplatesTable.title,
         wheelSegments: wheelTemplatesTable.segments,
+        savedTitle: savedGameActivitiesTable.title,
+        savedContent: savedGameActivitiesTable.content,
+        savedSettings: savedGameActivitiesTable.settings,
         assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(directPlayLinksTable)
       .leftJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
       .leftJoin(wheelTemplatesTable, eq(directPlayLinksTable.wheelTemplateId, wheelTemplatesTable.id))
+      .leftJoin(savedGameActivitiesTable, eq(directPlayLinksTable.savedGameActivityId, savedGameActivitiesTable.id))
       .where(eq(directPlayLinksTable.token, token))
       .limit(1);
 
@@ -488,6 +494,18 @@ router.get("/play/:token/info", async (req, res) => {
         return res.status(404).json({ message: "رابط العجلة لم يعد متاحاً" });
       }
       return res.json({ title: link.wheelTitle, questionCount, gameType: WHEEL_GAME_TYPE });
+    }
+    if (link.gameType === "xo_class" || link.gameType === "xo_online") {
+      if (!link.savedGameActivityId || !link.savedTitle) {
+        return res.status(404).json({ message: "الرابط غير موجود" });
+      }
+      const setup = sanitizeXoSetup(link.savedContent, link.savedSettings);
+      if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية لإكس أو" });
+      return res.json({
+        title: link.savedTitle,
+        questionCount: setup.questions.length,
+        gameType: link.gameType,
+      });
     }
     if (!link.assignmentId || !link.assignmentTitle) {
       return res.status(404).json({ message: "الرابط غير موجود" });
@@ -566,12 +584,17 @@ router.get("/play/:token/wameeth-class", async (req, res) => {
     const [link] = await db
       .select({
         assignmentId: directPlayLinksTable.assignmentId,
+        savedGameActivityId: directPlayLinksTable.savedGameActivityId,
         gameType: directPlayLinksTable.gameType,
         title: assignmentsTable.title,
+        savedTitle: savedGameActivitiesTable.title,
+        savedContent: savedGameActivitiesTable.content,
+        savedSettings: savedGameActivitiesTable.settings,
         assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(directPlayLinksTable)
-      .innerJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .leftJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .leftJoin(savedGameActivitiesTable, eq(directPlayLinksTable.savedGameActivityId, savedGameActivitiesTable.id))
       .where(eq(directPlayLinksTable.token, token))
       .limit(1);
 
@@ -595,6 +618,49 @@ router.get("/play/:token/wameeth-class", async (req, res) => {
   } catch (err) {
     req.log.error(err, "wameeth-class setup error");
     return res.status(500).json({ message: "خطأ في تحميل وميض الصف" });
+  }
+});
+
+// ── GET /api/play/:token/xo-class (public, no auth) ──────────────────────────
+// XO classroom links return only the sanitized setup consumed by the local
+// classroom engine. The token is the sole public identifier.
+router.get("/play/:token/xo-class", async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!isValidDirectToken(token)) {
+      return res.status(404).json({ message: "الرابط غير صالح" });
+    }
+    const [link] = await db.select({
+      gameType: directPlayLinksTable.gameType,
+      savedGameActivityId: directPlayLinksTable.savedGameActivityId,
+      title: savedGameActivitiesTable.title,
+      content: savedGameActivitiesTable.content,
+      settings: savedGameActivitiesTable.settings,
+    }).from(directPlayLinksTable)
+      .innerJoin(savedGameActivitiesTable, eq(directPlayLinksTable.savedGameActivityId, savedGameActivitiesTable.id))
+      .where(eq(directPlayLinksTable.token, token))
+      .limit(1);
+    if (!link || link.gameType !== "xo_class" || !link.savedGameActivityId) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    const setup = sanitizeXoSetup(link.content, link.settings);
+    if (!setup) return res.status(404).json({ message: "لا توجد أسئلة كافية لإكس أو" });
+    return res.json({
+      title: link.title,
+      duration: setup.duration,
+      teamX: setup.teamX,
+      teamO: setup.teamO,
+      questions: setup.questions.map((question) => ({
+        text: question.text,
+        options: [...question.options],
+        correct: question.correct,
+        ...(question.type ? { type: question.type } : {}),
+        imageUrl: question.imageUrl ?? null,
+      })),
+    });
+  } catch (err) {
+    req.log.error(err, "xo-class setup error");
+    return res.status(500).json({ message: "خطأ في تحميل إعداد إكس أو" });
   }
 });
 
@@ -676,19 +742,24 @@ router.post("/play/:token/start", async (req, res) => {
     const [link] = await db
       .select({
         assignmentId: directPlayLinksTable.assignmentId,
+        savedGameActivityId: directPlayLinksTable.savedGameActivityId,
         gameType: directPlayLinksTable.gameType,
         title: assignmentsTable.title,
+        savedTitle: savedGameActivitiesTable.title,
+        savedContent: savedGameActivitiesTable.content,
+        savedSettings: savedGameActivitiesTable.settings,
         assignmentArchivedAt: assignmentsTable.archivedAt,
       })
       .from(directPlayLinksTable)
-      .innerJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .leftJoin(assignmentsTable, eq(directPlayLinksTable.assignmentId, assignmentsTable.id))
+      .leftJoin(savedGameActivitiesTable, eq(directPlayLinksTable.savedGameActivityId, savedGameActivitiesTable.id))
       .where(eq(directPlayLinksTable.token, token))
       .limit(1);
 
-    if (!link || link.assignmentId === null) {
+    if (!link) {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
-    if (link.assignmentArchivedAt) {
+    if (link.assignmentId !== null && link.assignmentArchivedAt) {
       return res.status(404).json({ message: "الرابط غير موجود" });
     }
 
@@ -700,6 +771,36 @@ router.post("/play/:token/start", async (req, res) => {
 
     const { assignmentId, gameType, title } = link;
 
+    if (gameType === "xo_online") {
+      if (!link.savedGameActivityId || !link.savedTitle) {
+        return res.status(404).json({ message: "الرابط غير موجود" });
+      }
+      const setup = sanitizeXoSetup(link.savedContent, link.savedSettings);
+      if (!setup) return res.status(400).json({ message: "لا توجد أسئلة كافية لإكس أو" });
+      const room = createXoGameFromRest({
+        questions: setup.questions,
+        duration: setup.duration,
+        teamX: setup.teamX,
+        teamO: setup.teamO,
+        title: link.savedTitle,
+      });
+      return res.json({
+        pin: room.pin,
+        gameType: "xo_online",
+        playRoute: `/game/xo/play/${room.pin}`,
+        questionCount: setup.questions.length,
+        controlToken: room.controlToken,
+      });
+    }
+
+    if (assignmentId === null) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    if (!title) {
+      return res.status(404).json({ message: "الرابط غير موجود" });
+    }
+    const assignmentTitle = title;
+
     if (gameType === "wameeth") {
       // ── Wameeth solo game ────────────────────────────────────────────────
       const questions = await loadGameQuestions(assignmentId);
@@ -707,7 +808,7 @@ router.post("/play/:token/start", async (req, res) => {
         return res.status(400).json({ message: "لا توجد أسئلة" });
       }
       const game = createGame(
-        assignmentId, title, "guest", 0,
+        assignmentId, assignmentTitle, "guest", 0,
         questions, 20, true, "solo", 2,
         undefined, null, false, null, false,
       );
@@ -744,7 +845,7 @@ router.post("/play/:token/start", async (req, res) => {
         const j = Math.floor(Math.random() * (i + 1));
         [rqQuestions[i], rqQuestions[j]] = [rqQuestions[j], rqQuestions[i]];
       }
-      const { pin } = createRocketGameDirectly(rqQuestions, { title, totalDurationSecs: 600 });
+      const { pin } = createRocketGameDirectly(rqQuestions, { title: assignmentTitle, totalDurationSecs: 600 });
       startRocketGameFromRest(pin); // game enters countdown → racing; player joins via late-join
       return res.json({
         pin,

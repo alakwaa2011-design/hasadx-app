@@ -9,6 +9,7 @@ import { createXoClassState, currentXoClassQuestionForTeam, xoClassReducer, type
 import { QRModalButton } from "@/components/game-qr-code";
 import { toast } from "@/components/ui/sonner";
 import { decodeXoClassSetup, encodeXoClassSetup, type XoClassSetup } from "@/lib/xo-class-share";
+import { savedGamePlayUrl } from "@/lib/saved-game-activities";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
@@ -190,21 +191,44 @@ export default function XoClass() {
   const ar = lang === "ar";
   const [, navigate] = useLocation();
   const leaveGameSafely = useSmartBack("/game/xo/create");
-  const setup = useRef<Setup | null>(null);
-
-  if (!setup.current) {
+  const initialToken = new URLSearchParams(window.location.search).get("token");
+  const [setup, setSetup] = useState<Setup | null>(() => {
+    if (initialToken) return null;
     const sharedSetup = new URLSearchParams(window.location.hash.slice(1)).get("setup")
       || new URLSearchParams(window.location.search).get("setup");
-    setup.current = sharedSetup
-      ? decodeXoClassSetup(sharedSetup)
-      : (() => { try { return JSON.parse(sessionStorage.getItem(XO_CLASS_SETUP_KEY) || "null"); } catch { return null; } })();
-  }
-
-  const valid = setup.current && Array.isArray(setup.current.questions) && setup.current.questions.length > 0;
-  const [state, dispatch] = useReducer(xoClassReducer, createXoClassState(valid ? setup.current!.questions : [], setup.current?.duration || 20));
+    if (sharedSetup) return decodeXoClassSetup(sharedSetup);
+    try { return JSON.parse(sessionStorage.getItem(XO_CLASS_SETUP_KEY) || "null"); } catch { return null; }
+  });
+  const [setupLoading, setSetupLoading] = useState(Boolean(initialToken));
+  const [setupError, setSetupError] = useState("");
+  const [state, dispatch] = useReducer(xoClassReducer, setup, current =>
+    createXoClassState(current?.questions ?? [], current?.duration || 20),
+  );
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(getIsMuted);
   const previous = useRef(state.status);
+
+  useEffect(() => {
+    if (!initialToken) return;
+    let cancelled = false;
+    fetch(`${import.meta.env.VITE_API_URL || ""}/api/play/${encodeURIComponent(initialToken)}/xo-class`)
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || (ar ? "تعذّر تحميل إعداد اللعبة" : "Could not load the classroom game"));
+        if (!Array.isArray(data.questions) || data.questions.length < 1) {
+          throw new Error(ar ? "إعداد اللعبة غير صالح" : "The classroom setup is invalid");
+        }
+        if (!cancelled) {
+          setSetup(data as Setup);
+          dispatch({ type: "load", questions: data.questions, duration: Number(data.duration) || 20 });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setSetupError(error instanceof Error ? error.message : (ar ? "تعذّر فتح الرابط" : "Could not open the link"));
+      })
+      .finally(() => { if (!cancelled) setSetupLoading(false); });
+    return () => { cancelled = true; };
+  }, [ar, initialToken]);
 
   useEffect(() => {
     if (paused || !["countdown", "playing"].includes(state.status)) return;
@@ -237,7 +261,9 @@ export default function XoClass() {
     result.current = state.lastResult;
   }, [state.lastResult]);
 
-  const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/xo/class#setup=${encodeURIComponent(encodeXoClassSetup(setup.current!))}`;
+  const shareUrl = initialToken
+    ? savedGamePlayUrl(initialToken)
+    : `${window.location.origin}${import.meta.env.BASE_URL}game/xo/class#setup=${encodeURIComponent(encodeXoClassSetup(setup!))}`;
 
   const copyShareLink = async () => {
     try {
@@ -248,12 +274,18 @@ export default function XoClass() {
     }
   };
 
+
   const handleToggleMute = () => {
     const nextMuted = toggleMute();
     setMuted(nextMuted);
     if (!nextMuted && state.status === "playing" && !paused) startBackgroundBeat();
   };
 
+  if (setupLoading) {
+    return <Layout><main className="grid min-h-[calc(100dvh-3.5rem)] place-items-center bg-slate-950 p-6" dir={dir}><div className="text-center text-white"><div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-primary" /><p>{ar ? "جارٍ تحميل اللعبة..." : "Loading game..."}</p></div></main></Layout>;
+  }
+
+  const valid = setup && Array.isArray(setup.questions) && setup.questions.length > 0 && !setupError;
   if (!valid) {
     return (
       <Layout>
@@ -262,7 +294,7 @@ export default function XoClass() {
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
               <Grid3X3 className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-black text-foreground">{ar ? "لا يوجد إعداد للعبة" : "No classroom game setup"}</h1>
+            <h1 className="text-2xl font-black text-foreground">{setupError || (ar ? "لا يوجد إعداد للعبة" : "No classroom game setup")}</h1>
             <p className="mt-2 text-muted-foreground">{ar ? "الرجاء العودة وتجهيز اللعبة أولاً." : "Please go back and configure the game first."}</p>
             <button
               onClick={() => navigate("/game/xo/create")}
@@ -277,8 +309,8 @@ export default function XoClass() {
   }
 
   const teamName = state.activeTeam === "x"
-    ? (setup.current!.teamX || (ar ? "فريق إكس" : "Team X"))
-    : (setup.current!.teamO || (ar ? "فريق أو" : "Team O"));
+    ? (setup!.teamX || (ar ? "فريق إكس" : "Team X"))
+    : (setup!.teamO || (ar ? "فريق أو" : "Team O"));
   const isFinished = state.status === "finished";
   const winningCells = getWinningCells(state.board);
 
@@ -320,11 +352,11 @@ export default function XoClass() {
 
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 px-4 text-center">
               <Grid3X3 className="h-5 w-5 text-emerald-400" />
-              <span className="truncate font-black text-lg tracking-wide">{setup.current!.title || (ar ? "إكس أو الصف" : "XO Class")}</span>
+               <span className="truncate font-black text-lg tracking-wide">{setup!.title || (ar ? "إكس أو الصف" : "XO Class")}</span>
             </div>
 
             <div className="flex items-center gap-1.5">
-              <QRModalButton url={shareUrl} pin="" label="QR" variant="dark" />
+               <QRModalButton url={shareUrl} pin="" label="QR" variant="dark" />
               <button type="button" aria-label={ar ? "نسخ الرابط" : "Copy link"} onClick={copyShareLink} className="hidden sm:flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white">
                 <Copy className="h-4 w-4" />
                 <span className="hidden xl:inline">{ar ? "نسخ" : "Copy"}</span>
@@ -343,7 +375,7 @@ export default function XoClass() {
           </header>
 
           <div className="grid flex-1 items-center gap-4 py-1 lg:grid-cols-[1fr_minmax(320px,460px)_1fr] lg:gap-8">
-            <TeamPanel team="x" name={setup.current!.teamX || (ar ? "فريق إكس" : "Team X")} state={state} ar={ar} dispatch={dispatch} />
+             <TeamPanel team="x" name={setup!.teamX || (ar ? "فريق إكس" : "Team X")} state={state} ar={ar} dispatch={dispatch} />
 
             <section className="flex flex-col items-center justify-center overflow-hidden rounded-[2rem] border border-emerald-200/10 bg-gradient-to-b from-[#173b42]/90 via-[#0d2730]/90 to-[#091a25]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] ring-1 ring-white/10 backdrop-blur-sm sm:p-6">
               <div className="mb-8 w-full text-center">
@@ -393,7 +425,7 @@ export default function XoClass() {
               </div>
             </section>
 
-            <TeamPanel team="o" name={setup.current!.teamO || (ar ? "فريق أو" : "Team O")} state={state} ar={ar} dispatch={dispatch} />
+             <TeamPanel team="o" name={setup!.teamO || (ar ? "فريق أو" : "Team O")} state={state} ar={ar} dispatch={dispatch} />
           </div>
         </div>
 
@@ -434,7 +466,7 @@ export default function XoClass() {
                         {state.winner === "x" ? <X className="h-12 w-12 text-white" strokeWidth={3} /> : <Circle className="h-12 w-12 text-white" strokeWidth={3} />}
                       </div>
                       <h1 className="text-4xl font-black text-foreground">
-                        {state.winner === "x" ? setup.current!.teamX : setup.current!.teamO}
+                         {state.winner === "x" ? setup!.teamX : setup!.teamO}
                         <span className="block mt-2 text-2xl text-muted-foreground">{ar ? "يفوز!" : "wins!"}</span>
                       </h1>
                     </>
@@ -486,11 +518,11 @@ export default function XoClass() {
                   <div className="mt-8 grid grid-cols-2 gap-4">
                     <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
                       <X className="mx-auto mb-2 h-6 w-6 text-blue-500" strokeWidth={3} />
-                      <div className="font-bold text-foreground line-clamp-1">{setup.current!.teamX}</div>
+                       <div className="font-bold text-foreground line-clamp-1">{setup!.teamX}</div>
                     </div>
                     <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                       <Circle className="mx-auto mb-2 h-6 w-6 text-amber-500" strokeWidth={3} />
-                      <div className="font-bold text-foreground line-clamp-1">{setup.current!.teamO}</div>
+                       <div className="font-bold text-foreground line-clamp-1">{setup!.teamO}</div>
                     </div>
                   </div>
 

@@ -9,6 +9,9 @@ import {
 interface XoPlayer { id: string; socketId: string; name: string; avatar: string; team: XoTeam; rejoinToken: string; }
 interface XoGame {
   pin: string; teacherId: number; hostSocketId: string; questions: XoQuestion[]; state: XoState;
+  /** Public direct-play rooms are controlled by this capability, not a
+   * teacher session. It is never included in socket state. */
+  publicHostControlToken?: string;
   players: Record<string, XoPlayer>; started: boolean; timer?: ReturnType<typeof setTimeout>;
   questionStartedAt?: number; placementStartedAt?: number;
   activeQuestion: XoQuestion; lastCorrectSlot: number;
@@ -45,8 +48,27 @@ const publicState = (game: XoGame) => ({
   players: players(game),
   teamNames: game.teamNames,
 });
-const isHost = (socket: { id: string; request: unknown }, game: XoGame) =>
-  game.hostSocketId === socket.id && (socket.request as any).session?.teacherId === game.teacherId;
+function socketControlToken(socket: { request: unknown }, suppliedToken?: unknown): string | undefined {
+  if (typeof suppliedToken === "string" && suppliedToken.length > 0) return suppliedToken;
+  const request = socket.request as any;
+  const handshake = request?.handshake;
+  const authToken = handshake?.auth?.controlToken;
+  if (typeof authToken === "string") return authToken;
+  const queryToken = handshake?.query?.controlToken;
+  return typeof queryToken === "string" ? queryToken : undefined;
+}
+
+const isHost = (
+  socket: { id: string; request: unknown },
+  game: XoGame,
+  suppliedToken?: unknown,
+) => {
+  const teacherId = (socket.request as any).session?.teacherId;
+  if (game.publicHostControlToken && socketControlToken(socket, suppliedToken) === game.publicHostControlToken) {
+    return true;
+  }
+  return game.hostSocketId === socket.id && teacherId === game.teacherId;
+};
 
 function clearTimer(game: XoGame) { if (game.timer) clearTimeout(game.timer); game.timer = undefined; }
 function emitState(ns: ReturnType<Server["of"]>, game: XoGame) { ns.to(room(game.pin)).emit("xo:state", publicState(game)); }
@@ -103,6 +125,110 @@ function setState(ns: ReturnType<Server["of"]>, game: XoGame) {
   else if (game.state.phase === "placement") schedulePlacement(ns, game);
 }
 
+export interface XoRestSetup {
+  questions: unknown;
+  duration?: unknown;
+  teamX?: unknown;
+  teamO?: unknown;
+  title?: unknown;
+}
+
+export interface XoRestRoom {
+  pin: string;
+  controlToken: string;
+  state: ReturnType<typeof publicState>;
+}
+
+function savedQuestions(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object" && Array.isArray((value as { questions?: unknown }).questions)) {
+    return (value as { questions: unknown[] }).questions;
+  }
+  return [];
+}
+
+function safeTeamName(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 40)
+    : fallback;
+}
+
+/**
+ * Normalize a saved XO activity before exposing it to a public route or
+ * creating a room. Unknown settings and question fields are deliberately
+ * dropped; the answer index is retained because XO class mode runs its
+ * answer checking in the browser.
+ */
+export function sanitizeXoSetup(content: unknown, settings: unknown): {
+  questions: XoQuestion[];
+  duration: number;
+  teamX: string;
+  teamO: string;
+} | null {
+  const config = settings && typeof settings === "object" && !Array.isArray(settings)
+    ? settings as Record<string, unknown>
+    : {};
+  const requestedDuration = typeof config.duration === "number" ? config.duration : 20;
+  const duration = [10, 15, 20, 30, 45].includes(requestedDuration)
+    ? requestedDuration
+    : 20;
+  const questions = validateXoQuestions(savedQuestions(content), duration);
+  if (!questions || questions.length < 2) return null;
+  return {
+    questions,
+    duration,
+    teamX: safeTeamName(config.teamX, "X"),
+    teamO: safeTeamName(config.teamO, "O"),
+  };
+}
+
+/**
+ * Create a public XO room without a teacher session. The returned token is a
+ * capability for the caller that created the room and is accepted by host
+ * control events; it is never broadcast in public state.
+ */
+export function createXoGameFromRest(setup: XoRestSetup): XoRestRoom {
+  const questions = validateXoQuestions(savedQuestions(setup.questions), typeof setup.duration === "number" ? setup.duration : 20);
+  if (!questions || questions.length < 2) {
+    throw new Error("XO requires at least two supported questions");
+  }
+  const duration = typeof setup.duration === "number" && Number.isFinite(setup.duration)
+    ? Math.max(5, Math.min(120, Math.floor(setup.duration)))
+    : 20;
+  const pin = makePin();
+  const controlToken = randomBytes(32).toString("hex");
+  const game: XoGame = {
+    pin,
+    // Anonymous rooms have no teacher identity. Keep the numeric field for
+    // compatibility with existing game state and teacher-only reclaim checks.
+    teacherId: 0,
+    hostSocketId: "",
+    publicHostControlToken: controlToken,
+    questions: shuffledQuestions(questions),
+    state: createXoState(),
+    players: {},
+    started: false,
+    activeQuestion: questions[0],
+    lastCorrectSlot: -1,
+    teamNames: {
+      x: safeTeamName(setup.teamX, "X"),
+      o: safeTeamName(setup.teamO, "O"),
+    },
+  };
+  games.set(pin, game);
+  setTimeout(() => {
+    const current = games.get(pin);
+    if (current === game) {
+      clearTimer(game);
+      games.delete(pin);
+    }
+  }, 3 * 60 * 60 * 1000).unref?.();
+  return { pin, controlToken, state: publicState(game) };
+}
+
+// Alias kept intentionally small and descriptive for REST callers.
+export const createXoRoomFromRest = createXoGameFromRest;
+
 export function setupXoSocket(io: Server) {
   const ns = io.of("/xo");
   ns.on("connection", (socket) => {
@@ -126,10 +252,14 @@ export function setupXoSocket(io: Server) {
       cb({ success: true, pin, state: publicState(game) });
     });
 
-    socket.on("xo:reclaim-host", (data: { pin: string }, cb: (result: object) => void = () => {}) => {
+    socket.on("xo:reclaim-host", (data: { pin: string; controlToken?: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
       const teacherId = (socket.request as any).session?.teacherId as number | undefined;
-      if (!game || !teacherId || teacherId !== game.teacherId) return cb({ error: "تعذر استعادة غرفة المعلم." });
+      const publicHost = !!game?.publicHostControlToken
+        && socketControlToken(socket, data?.controlToken) === game.publicHostControlToken;
+      if (!game || (!publicHost && (!teacherId || teacherId !== game.teacherId))) {
+        return cb({ error: "تعذر استعادة غرفة المعلم." });
+      }
       game.hostSocketId = socket.id;
       socket.join(room(game.pin));
       cb({ success: true, ...publicState(game) });
@@ -158,10 +288,10 @@ export function setupXoSocket(io: Server) {
       cb({ success: true, pin: game.pin, player: { id: player.id, team: player.team, rejoinToken: player.rejoinToken }, state: publicState(game) });
     });
 
-    socket.on("xo:start", (data: { pin: string }, cb: (result: object) => void = () => {}) => {
+    socket.on("xo:start", (data: { pin: string; controlToken?: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
       if (!game) return cb({ error: "الغرفة غير موجودة." });
-      if (!isHost(socket, game)) return cb({ error: "فقط المعلم المنشئ يمكنه البدء." });
+      if (!isHost(socket, game, data?.controlToken)) return cb({ error: "فقط المعلم المنشئ يمكنه البدء." });
       const joinedTeams = new Set(players(game).map((player) => player.team));
       if (!joinedTeams.has("x") || !joinedTeams.has("o")) return cb({ error: "يجب أن ينضم لاعب واحد على الأقل لكل فريق." });
       if (game.started || game.state.phase === "finished") return cb({ error: "بدأت اللعبة بالفعل." });
@@ -191,9 +321,9 @@ export function setupXoSocket(io: Server) {
       setState(ns, game); cb({ success: true, winner: result.winner });
     });
 
-    socket.on("xo:skip", (data: { pin: string }, cb: (result: object) => void = () => {}) => {
+    socket.on("xo:skip", (data: { pin: string; controlToken?: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
-      if (!game || !isHost(socket, game)) return cb({ error: "فقط المعلم يمكنه التخطي." });
+      if (!game || !isHost(socket, game, data?.controlToken)) return cb({ error: "فقط المعلم يمكنه التخطي." });
       if (!game.started) return cb({ error: "لم تبدأ اللعبة بعد." });
       if (game.state.phase === "placement") {
         game.state = { ...game.state, turn: game.state.turn === "x" ? "o" : "x", phase: "question", placementPlayerId: null, questionIndex: (game.state.questionIndex + 1) % game.questions.length };
@@ -204,16 +334,16 @@ export function setupXoSocket(io: Server) {
       }
       setState(ns, game); cb({ success: true });
     });
-    const endGame = (data: { pin: string }, cb: (result: object) => void = () => {}) => {
+    const endGame = (data: { pin: string; controlToken?: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
-      if (!game || !isHost(socket, game)) return cb({ error: "فقط المعلم يمكنه الإنهاء." });
+      if (!game || !isHost(socket, game, data?.controlToken)) return cb({ error: "فقط المعلم يمكنه الإنهاء." });
       clearTimer(game); games.delete(game.pin); ns.to(room(game.pin)).emit("xo:ended"); cb({ success: true });
     };
     socket.on("xo:end", endGame);
     socket.on("xo:end-early", endGame);
-    socket.on("xo:replay", (data: { pin: string }, cb: (result: object) => void = () => {}) => {
+    socket.on("xo:replay", (data: { pin: string; controlToken?: string }, cb: (result: object) => void = () => {}) => {
       const game = games.get(data?.pin);
-      if (!game || !isHost(socket, game)) return cb({ error: "فقط المعلم يمكنه إعادة اللعب." });
+      if (!game || !isHost(socket, game, data?.controlToken)) return cb({ error: "فقط المعلم يمكنه إعادة اللعب." });
       clearTimer(game); game.questions = shuffledQuestions(game.questions); game.state = createXoState(); game.questionStartedAt = undefined; game.placementStartedAt = undefined; game.started = true; setState(ns, game); cb({ success: true });
     });
     socket.on("disconnect", () => logger.debug({ socketId: socket.id }, "XO socket disconnected"));
