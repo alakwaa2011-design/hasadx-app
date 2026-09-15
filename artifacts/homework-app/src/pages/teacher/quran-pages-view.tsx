@@ -241,12 +241,12 @@ export function QuranPagesView({
                {lang === "ar" ? "العودة إلى مركز القرآن" : "Back to Quran Center"}
             </button>
 
-             <div className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:w-auto md:flex-1">
+              <div className="order-3 flex w-full flex-wrap items-center justify-center gap-2 md:order-none md:w-auto md:flex-1">
                <button
                  type="button"
                  onClick={() =>
                    setLocation(
-                     `/teacher/quran-reader/${initialSurah}?ayah=${activePageMeta ? verses.find((verse) => verse.page_id === activePage)?.number ?? initialAyah : initialAyah}&view=reader`,
+                     `/teacher/quran-reader/${activeChapterId}?ayah=${verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah}&view=reader`,
                    )
                  }
                  className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"
