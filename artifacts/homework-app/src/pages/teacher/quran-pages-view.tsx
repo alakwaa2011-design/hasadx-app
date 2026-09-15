@@ -356,7 +356,10 @@ export function QuranPagesView({
       </main>
 
       {!quietMode && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-8 z-30 flex justify-between px-4 md:px-12">
+        <div
+          dir="ltr"
+          className="pointer-events-none fixed inset-x-0 bottom-8 z-30 flex justify-between px-4 md:px-12"
+        >
           <button
             type="button"
             onClick={() => goToPage(activePage + 1)}
@@ -364,8 +367,7 @@ export function QuranPagesView({
             className="pointer-events-auto flex items-center justify-center rounded-full border border-border bg-white/90 p-4 shadow-lg backdrop-blur-sm transition-all hover:bg-muted disabled:opacity-0 dark:bg-card/90"
             aria-label={lang === "ar" ? "الصفحة التالية" : "Next page"}
           >
-            <ChevronRight className="h-6 w-6 rtl:hidden" />
-            <ChevronLeft className="h-6 w-6 ltr:hidden" />
+            <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             type="button"
@@ -374,8 +376,7 @@ export function QuranPagesView({
             className="pointer-events-auto flex items-center justify-center rounded-full border border-border bg-white/90 p-4 shadow-lg backdrop-blur-sm transition-all hover:bg-muted disabled:opacity-0 dark:bg-card/90"
             aria-label={lang === "ar" ? "الصفحة السابقة" : "Previous page"}
           >
-            <ChevronLeft className="h-6 w-6 rtl:hidden" />
-            <ChevronRight className="h-6 w-6 ltr:hidden" />
+            <ChevronRight className="h-6 w-6" />
           </button>
         </div>
       )}
