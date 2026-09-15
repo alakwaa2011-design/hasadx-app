@@ -1,0 +1,1 @@
+{"version":3,"file":"quranTodayDashboard.d.ts","sourceRoot":"","sources":["../../../src/generated/types/quranTodayDashboard.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,mBAAmB,CAAC;AACzD,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,mBAAmB,CAAC;AAEzD,MAAM,WAAW,mBAAmB;IAClC,QAAQ,EAAE,eAAe,EAAE,CAAC;IAC5B,gBAAgB,EAAE,eAAe,EAAE,CAAC;CACrC"}

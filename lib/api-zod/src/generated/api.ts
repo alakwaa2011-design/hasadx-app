@@ -4474,3 +4474,531 @@ export const DeleteTeacherScheduleEntryParams = zod.object({
 })
 
 export const DeleteTeacherScheduleEntryResponse = zod.void()
+
+
+/**
+ * @summary List canonical Quran surah metadata
+ */
+export const listQuranSurahsResponseNumberMax = 114;
+
+
+
+
+export const ListQuranSurahsResponseItem = zod.object({
+  "number": zod.int().min(1).max(listQuranSurahsResponseNumberMax),
+  "arabicName": zod.string(),
+  "ayahCount": zod.int().min(1)
+})
+export const ListQuranSurahsResponse = zod.array(ListQuranSurahsResponseItem)
+
+
+/**
+ * @summary List the current teacher's Quran circles and members
+ */
+export const ListQuranCirclesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "teacherClassId": zod.int().nullable(),
+  "notes": zod.string().nullable(),
+  "members": zod.array(zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable()
+}))
+})
+export const ListQuranCirclesResponse = zod.array(ListQuranCirclesResponseItem)
+
+
+/**
+ * @summary Create a Quran circle
+ */
+
+
+
+export const CreateQuranCircleBody = zod.object({
+  "name": zod.string().min(1),
+  "teacherClassId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "studentIds": zod.array(zod.int())
+})
+
+export const CreateQuranCircleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "teacherClassId": zod.int().nullable(),
+  "notes": zod.string().nullable(),
+  "members": zod.array(zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Get a Quran circle with members
+ */
+export const GetQuranCircleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetQuranCircleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "teacherClassId": zod.int().nullable(),
+  "notes": zod.string().nullable(),
+  "members": zod.array(zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Update a Quran circle and its selected members
+ */
+export const UpdateQuranCircleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const UpdateQuranCircleBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "teacherClassId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "studentIds": zod.array(zod.int()).optional()
+})
+
+export const UpdateQuranCircleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "teacherClassId": zod.int().nullable(),
+  "notes": zod.string().nullable(),
+  "members": zod.array(zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary List the current teacher's roster students for Quran
+ */
+export const ListQuranStudentsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable()
+})
+export const ListQuranStudentsResponse = zod.array(ListQuranStudentsResponseItem)
+
+
+/**
+ * @summary Get a Quran student profile and progress summary
+ */
+export const GetQuranStudentSummaryParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const getQuranStudentSummaryResponseProfileProgressPercentMin = 0;
+export const getQuranStudentSummaryResponseProfileProgressPercentMax = 100;
+
+export const getQuranStudentSummaryResponseProfileMasteredAyahCountMin = 0;
+
+export const getQuranStudentSummaryResponseProfileLastRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranStudentSummaryResponseWardsItemSurahNumberMax = 114;
+
+
+
+export const getQuranStudentSummaryResponseWardsItemAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranStudentSummaryResponseWardsItemDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranStudentSummaryResponseRecentRecitationsItemMemorizationScoreMin = 0;
+export const getQuranStudentSummaryResponseRecentRecitationsItemMemorizationScoreMax = 100;
+
+export const getQuranStudentSummaryResponseRecentRecitationsItemRecitationScoreMin = 0;
+export const getQuranStudentSummaryResponseRecentRecitationsItemRecitationScoreMax = 100;
+
+export const getQuranStudentSummaryResponseRecentRecitationsItemMistakeCountsOneMinOne = 0;
+
+export const getQuranStudentSummaryResponseRecentRecitationsItemRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const GetQuranStudentSummaryResponse = zod.object({
+  "student": zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable()
+}),
+  "profile": zod.object({
+  "currentSurahNumber": zod.int().nullable(),
+  "currentAyah": zod.int().nullable(),
+  "progressPercent": zod.int().min(getQuranStudentSummaryResponseProfileProgressPercentMin).max(getQuranStudentSummaryResponseProfileProgressPercentMax),
+  "masteredAyahCount": zod.int().min(getQuranStudentSummaryResponseProfileMasteredAyahCountMin),
+  "lastRecitedDate": zod.string().regex(getQuranStudentSummaryResponseProfileLastRecitedDateRegExp).nullable()
+}),
+  "wards": zod.array(zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(getQuranStudentSummaryResponseWardsItemSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(getQuranStudentSummaryResponseWardsItemAssignedDateRegExp),
+  "dueDate": zod.string().regex(getQuranStudentSummaryResponseWardsItemDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+})),
+  "recentRecitations": zod.array(zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['completed', 'needs_review', 'absent', 'not_recited']),
+  "memorizationScore": zod.int().min(getQuranStudentSummaryResponseRecentRecitationsItemMemorizationScoreMin).max(getQuranStudentSummaryResponseRecentRecitationsItemMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(getQuranStudentSummaryResponseRecentRecitationsItemRecitationScoreMin).max(getQuranStudentSummaryResponseRecentRecitationsItemRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(getQuranStudentSummaryResponseRecentRecitationsItemMistakeCountsOneMinOne)).nullable(),
+  "teacherNote": zod.string().nullable(),
+  "recitedDate": zod.string().regex(getQuranStudentSummaryResponseRecentRecitationsItemRecitedDateRegExp)
+}))
+})
+
+
+/**
+ * @summary Update a Quran student's current position and progress
+ */
+export const UpdateQuranStudentProfileParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const updateQuranStudentProfileBodyCurrentSurahNumberMax = 114;
+
+
+export const updateQuranStudentProfileBodyProgressPercentMin = 0;
+export const updateQuranStudentProfileBodyProgressPercentMax = 100;
+
+export const updateQuranStudentProfileBodyLastRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const UpdateQuranStudentProfileBody = zod.object({
+  "currentSurahNumber": zod.int().min(1).max(updateQuranStudentProfileBodyCurrentSurahNumberMax).nullish(),
+  "currentAyah": zod.int().min(1).nullish(),
+  "progressPercent": zod.int().min(updateQuranStudentProfileBodyProgressPercentMin).max(updateQuranStudentProfileBodyProgressPercentMax).optional(),
+  "lastRecitedDate": zod.string().regex(updateQuranStudentProfileBodyLastRecitedDateRegExp).nullish()
+})
+
+export const updateQuranStudentProfileResponseProgressPercentMin = 0;
+export const updateQuranStudentProfileResponseProgressPercentMax = 100;
+
+export const updateQuranStudentProfileResponseMasteredAyahCountMin = 0;
+
+export const updateQuranStudentProfileResponseLastRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const UpdateQuranStudentProfileResponse = zod.object({
+  "currentSurahNumber": zod.int().nullable(),
+  "currentAyah": zod.int().nullable(),
+  "progressPercent": zod.int().min(updateQuranStudentProfileResponseProgressPercentMin).max(updateQuranStudentProfileResponseProgressPercentMax),
+  "masteredAyahCount": zod.int().min(updateQuranStudentProfileResponseMasteredAyahCountMin),
+  "lastRecitedDate": zod.string().regex(updateQuranStudentProfileResponseLastRecitedDateRegExp).nullable()
+})
+
+
+/**
+ * @summary List wards for one Quran student
+ */
+export const ListQuranStudentWardsParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const listQuranStudentWardsResponseSurahNumberMax = 114;
+
+
+
+export const listQuranStudentWardsResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const listQuranStudentWardsResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const ListQuranStudentWardsResponseItem = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(listQuranStudentWardsResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(listQuranStudentWardsResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(listQuranStudentWardsResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+})
+export const ListQuranStudentWardsResponse = zod.array(ListQuranStudentWardsResponseItem)
+
+
+/**
+ * @summary Assign a Quran ward to a roster student
+ */
+export const createQuranWardBodySurahNumberMax = 114;
+
+
+
+
+export const createQuranWardBodyAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const createQuranWardBodyDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const CreateQuranWardBody = zod.object({
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(createQuranWardBodySurahNumberMax),
+  "surahName": zod.string().min(1),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(createQuranWardBodyAssignedDateRegExp),
+  "dueDate": zod.string().regex(createQuranWardBodyDueDateRegExp).nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']).optional()
+})
+
+export const createQuranWardResponseSurahNumberMax = 114;
+
+
+
+export const createQuranWardResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const createQuranWardResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const CreateQuranWardResponse = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(createQuranWardResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(createQuranWardResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(createQuranWardResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+})
+
+
+/**
+ * @summary Update a Quran ward
+ */
+export const UpdateQuranWardParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateQuranWardBodySurahNumberMax = 114;
+
+
+
+
+export const updateQuranWardBodyAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const updateQuranWardBodyDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const UpdateQuranWardBody = zod.object({
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']).optional(),
+  "surahNumber": zod.int().min(1).max(updateQuranWardBodySurahNumberMax).optional(),
+  "surahName": zod.string().min(1).optional(),
+  "startAyah": zod.int().min(1).optional(),
+  "endAyah": zod.int().min(1).optional(),
+  "assignedDate": zod.string().regex(updateQuranWardBodyAssignedDateRegExp).optional(),
+  "dueDate": zod.string().regex(updateQuranWardBodyDueDateRegExp).nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']).optional()
+})
+
+export const updateQuranWardResponseSurahNumberMax = 114;
+
+
+
+export const updateQuranWardResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const updateQuranWardResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const UpdateQuranWardResponse = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(updateQuranWardResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(updateQuranWardResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(updateQuranWardResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+})
+
+
+/**
+ * @summary List recitation records for a ward
+ */
+export const ListQuranRecitationsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const listQuranRecitationsResponseMemorizationScoreMin = 0;
+export const listQuranRecitationsResponseMemorizationScoreMax = 100;
+
+export const listQuranRecitationsResponseRecitationScoreMin = 0;
+export const listQuranRecitationsResponseRecitationScoreMax = 100;
+
+export const listQuranRecitationsResponseMistakeCountsOneMinOne = 0;
+
+export const listQuranRecitationsResponseRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const ListQuranRecitationsResponseItem = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['completed', 'needs_review', 'absent', 'not_recited']),
+  "memorizationScore": zod.int().min(listQuranRecitationsResponseMemorizationScoreMin).max(listQuranRecitationsResponseMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(listQuranRecitationsResponseRecitationScoreMin).max(listQuranRecitationsResponseRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(listQuranRecitationsResponseMistakeCountsOneMinOne)).nullable(),
+  "teacherNote": zod.string().nullable(),
+  "recitedDate": zod.string().regex(listQuranRecitationsResponseRecitedDateRegExp)
+})
+export const ListQuranRecitationsResponse = zod.array(ListQuranRecitationsResponseItem)
+
+
+/**
+ * @summary Save a recitation and update progress transactionally
+ */
+export const CreateQuranRecitationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createQuranRecitationBodyMemorizationScoreMin = 0;
+export const createQuranRecitationBodyMemorizationScoreMax = 100;
+
+export const createQuranRecitationBodyRecitationScoreMin = 0;
+export const createQuranRecitationBodyRecitationScoreMax = 100;
+
+export const createQuranRecitationBodyMistakeCountsOneMinOne = 0;
+
+export const createQuranRecitationBodyRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const CreateQuranRecitationBody = zod.object({
+  "status": zod.enum(['completed', 'needs_review', 'absent', 'not_recited']),
+  "memorizationScore": zod.int().min(createQuranRecitationBodyMemorizationScoreMin).max(createQuranRecitationBodyMemorizationScoreMax).nullish(),
+  "recitationScore": zod.int().min(createQuranRecitationBodyRecitationScoreMin).max(createQuranRecitationBodyRecitationScoreMax).nullish(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(createQuranRecitationBodyMistakeCountsOneMinOne)).nullish(),
+  "teacherNote": zod.string().nullish(),
+  "recitedDate": zod.string().regex(createQuranRecitationBodyRecitedDateRegExp)
+})
+
+export const createQuranRecitationResponseMemorizationScoreMin = 0;
+export const createQuranRecitationResponseMemorizationScoreMax = 100;
+
+export const createQuranRecitationResponseRecitationScoreMin = 0;
+export const createQuranRecitationResponseRecitationScoreMax = 100;
+
+export const createQuranRecitationResponseMistakeCountsOneMinOne = 0;
+
+export const createQuranRecitationResponseRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const CreateQuranRecitationResponse = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['completed', 'needs_review', 'absent', 'not_recited']),
+  "memorizationScore": zod.int().min(createQuranRecitationResponseMemorizationScoreMin).max(createQuranRecitationResponseMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(createQuranRecitationResponseRecitationScoreMin).max(createQuranRecitationResponseRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(createQuranRecitationResponseMistakeCountsOneMinOne)).nullable(),
+  "teacherNote": zod.string().nullable(),
+  "recitedDate": zod.string().regex(createQuranRecitationResponseRecitedDateRegExp)
+})
+
+
+/**
+ * @summary List due and review wards
+ */
+export const getQuranReviewQueueResponseOneSurahNumberMax = 114;
+
+
+
+export const getQuranReviewQueueResponseOneAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranReviewQueueResponseOneDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const GetQuranReviewQueueResponseItem = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(getQuranReviewQueueResponseOneSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(getQuranReviewQueueResponseOneAssignedDateRegExp),
+  "dueDate": zod.string().regex(getQuranReviewQueueResponseOneDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+}).and(zod.object({
+  "studentName": zod.string()
+}))
+export const GetQuranReviewQueueResponse = zod.array(GetQuranReviewQueueResponseItem)
+
+
+/**
+ * @summary Get today's Quran recitation and review queue
+ */
+export const getQuranTodayDashboardResponseDueWardsItemOneSurahNumberMax = 114;
+
+
+
+export const getQuranTodayDashboardResponseDueWardsItemOneAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranTodayDashboardResponseDueWardsItemOneDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranTodayDashboardResponseTodayRecitationsItemMemorizationScoreMin = 0;
+export const getQuranTodayDashboardResponseTodayRecitationsItemMemorizationScoreMax = 100;
+
+export const getQuranTodayDashboardResponseTodayRecitationsItemRecitationScoreMin = 0;
+export const getQuranTodayDashboardResponseTodayRecitationsItemRecitationScoreMax = 100;
+
+export const getQuranTodayDashboardResponseTodayRecitationsItemMistakeCountsOneMinOne = 0;
+
+export const getQuranTodayDashboardResponseTodayRecitationsItemRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const GetQuranTodayDashboardResponse = zod.object({
+  "dueWards": zod.array(zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(getQuranTodayDashboardResponseDueWardsItemOneSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(getQuranTodayDashboardResponseDueWardsItemOneAssignedDateRegExp),
+  "dueDate": zod.string().regex(getQuranTodayDashboardResponseDueWardsItemOneDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+}).and(zod.object({
+  "studentName": zod.string()
+}))),
+  "todayRecitations": zod.array(zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['completed', 'needs_review', 'absent', 'not_recited']),
+  "memorizationScore": zod.int().min(getQuranTodayDashboardResponseTodayRecitationsItemMemorizationScoreMin).max(getQuranTodayDashboardResponseTodayRecitationsItemMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(getQuranTodayDashboardResponseTodayRecitationsItemRecitationScoreMin).max(getQuranTodayDashboardResponseTodayRecitationsItemRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(getQuranTodayDashboardResponseTodayRecitationsItemMistakeCountsOneMinOne)).nullable(),
+  "teacherNote": zod.string().nullable(),
+  "recitedDate": zod.string().regex(getQuranTodayDashboardResponseTodayRecitationsItemRecitedDateRegExp)
+}))
+})

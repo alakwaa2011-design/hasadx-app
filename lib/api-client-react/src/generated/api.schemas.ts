@@ -5,6 +5,328 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface QuranSurah {
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  number: number;
+  arabicName: string;
+  /** @minimum 1 */
+  ayahCount: number;
+}
+
+export interface QuranStudent {
+  id: number;
+  name: string;
+  /** @nullable */
+  gradeLevel: string | null;
+  /** @nullable */
+  studentClass: string | null;
+}
+
+export interface QuranCircleMember {
+  id: number;
+  name: string;
+  /** @nullable */
+  gradeLevel: string | null;
+  /** @nullable */
+  studentClass: string | null;
+}
+
+export interface QuranCircle {
+  id: number;
+  name: string;
+  /** @nullable */
+  teacherClassId: number | null;
+  /** @nullable */
+  notes: string | null;
+  members: QuranCircleMember[];
+}
+
+export interface QuranCircleInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  teacherClassId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  studentIds: number[];
+}
+
+export interface QuranCircleUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @nullable */
+  teacherClassId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  studentIds?: number[];
+}
+
+export type QuranWardMode = typeof QuranWardMode[keyof typeof QuranWardMode];
+
+
+export const QuranWardMode = {
+  memorization: 'memorization',
+  review: 'review',
+  recitation: 'recitation',
+  assessment: 'assessment',
+} as const;
+
+export type QuranWardStatus = typeof QuranWardStatus[keyof typeof QuranWardStatus];
+
+
+export const QuranWardStatus = {
+  assigned: 'assigned',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  needs_review: 'needs_review',
+} as const;
+
+export interface QuranWard {
+  id: number;
+  studentId: number;
+  mode: QuranWardMode;
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  surahNumber: number;
+  surahName: string;
+  /** @minimum 1 */
+  startAyah: number;
+  /** @minimum 1 */
+  endAyah: number;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  assignedDate: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  dueDate: string | null;
+  /** @nullable */
+  notes: string | null;
+  status: QuranWardStatus;
+}
+
+export type QuranReviewWard = QuranWard & {
+  studentName: string;
+};
+
+export type QuranWardInputMode = typeof QuranWardInputMode[keyof typeof QuranWardInputMode];
+
+
+export const QuranWardInputMode = {
+  memorization: 'memorization',
+  review: 'review',
+  recitation: 'recitation',
+  assessment: 'assessment',
+} as const;
+
+export type QuranWardInputStatus = typeof QuranWardInputStatus[keyof typeof QuranWardInputStatus];
+
+
+export const QuranWardInputStatus = {
+  assigned: 'assigned',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  needs_review: 'needs_review',
+} as const;
+
+export interface QuranWardInput {
+  studentId: number;
+  mode: QuranWardInputMode;
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  surahNumber: number;
+  /** @minLength 1 */
+  surahName: string;
+  /** @minimum 1 */
+  startAyah: number;
+  /** @minimum 1 */
+  endAyah: number;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  assignedDate: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  dueDate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  status?: QuranWardInputStatus;
+}
+
+export type QuranWardUpdateMode = typeof QuranWardUpdateMode[keyof typeof QuranWardUpdateMode];
+
+
+export const QuranWardUpdateMode = {
+  memorization: 'memorization',
+  review: 'review',
+  recitation: 'recitation',
+  assessment: 'assessment',
+} as const;
+
+export type QuranWardUpdateStatus = typeof QuranWardUpdateStatus[keyof typeof QuranWardUpdateStatus];
+
+
+export const QuranWardUpdateStatus = {
+  assigned: 'assigned',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  needs_review: 'needs_review',
+} as const;
+
+export interface QuranWardUpdate {
+  mode?: QuranWardUpdateMode;
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  surahNumber?: number;
+  /** @minLength 1 */
+  surahName?: string;
+  /** @minimum 1 */
+  startAyah?: number;
+  /** @minimum 1 */
+  endAyah?: number;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  assignedDate?: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  dueDate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  status?: QuranWardUpdateStatus;
+}
+
+export interface QuranMistakeCounts {[key: string]: number}
+
+export type QuranRecitationStatus = typeof QuranRecitationStatus[keyof typeof QuranRecitationStatus];
+
+
+export const QuranRecitationStatus = {
+  completed: 'completed',
+  needs_review: 'needs_review',
+  absent: 'absent',
+  not_recited: 'not_recited',
+} as const;
+
+export interface QuranRecitation {
+  id: number;
+  wardId: number;
+  studentId: number;
+  status: QuranRecitationStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  memorizationScore: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  recitationScore: number | null;
+  mistakeCounts: QuranMistakeCounts | null;
+  /** @nullable */
+  teacherNote: string | null;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  recitedDate: string;
+}
+
+export type QuranRecitationInputStatus = typeof QuranRecitationInputStatus[keyof typeof QuranRecitationInputStatus];
+
+
+export const QuranRecitationInputStatus = {
+  completed: 'completed',
+  needs_review: 'needs_review',
+  absent: 'absent',
+  not_recited: 'not_recited',
+} as const;
+
+export interface QuranRecitationInput {
+  status: QuranRecitationInputStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  memorizationScore?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  recitationScore?: number | null;
+  mistakeCounts?: QuranMistakeCounts | null;
+  /** @nullable */
+  teacherNote?: string | null;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  recitedDate: string;
+}
+
+export interface QuranStudentProfile {
+  /** @nullable */
+  currentSurahNumber: number | null;
+  /** @nullable */
+  currentAyah: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  progressPercent: number;
+  /** @minimum 0 */
+  masteredAyahCount: number;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  lastRecitedDate: string | null;
+}
+
+export interface QuranProfileUpdate {
+  /**
+     * @minimum 1
+     * @maximum 114
+     * @nullable
+     */
+  currentSurahNumber?: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  currentAyah?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  progressPercent?: number;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  lastRecitedDate?: string | null;
+}
+
+export interface QuranStudentSummary {
+  student: QuranStudent;
+  profile: QuranStudentProfile;
+  wards: QuranWard[];
+  recentRecitations: QuranRecitation[];
+}
+
+export interface QuranTodayDashboard {
+  dueWards: QuranReviewWard[];
+  todayRecitations: QuranRecitation[];
+}
+
 export interface TeacherScheduleDeleteResult {
   /** @minimum 0 */
   deletedCount: number;

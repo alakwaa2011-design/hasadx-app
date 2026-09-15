@@ -80,6 +80,7 @@ import classroomRewardsRouter from "./classroom-rewards";
 import teacherScheduleRouter from "./teacher-schedule";
 import listeningScriptRouter from "./listening-script";
 import teacherTimerRouter from "./teacher-timer";
+import quranRouter from "./quran";
 
 const router: IRouter = Router();
 
@@ -92,6 +93,7 @@ router.use(directPlayRouter);
 router.use(submissionsRouter);
 router.use(notificationsRouter);
 router.use(teacherTimerRouter);
+router.use(quranRouter);
 router.use(aiQuestionsRouter);
 router.use(aiMindmapRouter);
 router.use("/ai-chat", aiChatRouter);

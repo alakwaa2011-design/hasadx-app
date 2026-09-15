@@ -57,6 +57,21 @@ import type {
   PresentationSummary,
   PresentationTier,
   PresentationTierWithUsage,
+  QuranCircle,
+  QuranCircleInput,
+  QuranCircleUpdate,
+  QuranProfileUpdate,
+  QuranRecitation,
+  QuranRecitationInput,
+  QuranReviewWard,
+  QuranStudent,
+  QuranStudentProfile,
+  QuranStudentSummary,
+  QuranSurah,
+  QuranTodayDashboard,
+  QuranWard,
+  QuranWardInput,
+  QuranWardUpdate,
   RegisterAssetBody,
   RegisterTeacherBody,
   RevokeSessionResponse,
@@ -5898,3 +5913,1174 @@ export const useDeleteTeacherScheduleEntry = <TError = ErrorType<void>,
       > => {
       return useMutation(getDeleteTeacherScheduleEntryMutationOptions(options));
     }
+
+export const getListQuranSurahsUrl = () => {
+
+
+
+
+  return `/api/quran/surahs`
+}
+
+/**
+ * @summary List canonical Quran surah metadata
+ */
+export const listQuranSurahs = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranSurah[]> => {
+
+  return customFetch<QuranSurah[]>(getListQuranSurahsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQuranSurahsQueryKey = () => {
+    return [
+    `/api/quran/surahs`
+    ] as const;
+    }
+
+
+export const getListQuranSurahsQueryOptions = <TData = Awaited<ReturnType<typeof listQuranSurahs>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranSurahs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQuranSurahsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuranSurahs>>> = ({ signal }) => listQuranSurahs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuranSurahs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListQuranSurahsQueryResult = NonNullable<Awaited<ReturnType<typeof listQuranSurahs>>>
+export type ListQuranSurahsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List canonical Quran surah metadata
+ */
+
+export function useListQuranSurahs<TData = Awaited<ReturnType<typeof listQuranSurahs>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranSurahs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListQuranSurahsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListQuranCirclesUrl = () => {
+
+
+
+
+  return `/api/quran/circles`
+}
+
+/**
+ * @summary List the current teacher's Quran circles and members
+ */
+export const listQuranCircles = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranCircle[]> => {
+
+  return customFetch<QuranCircle[]>(getListQuranCirclesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQuranCirclesQueryKey = () => {
+    return [
+    `/api/quran/circles`
+    ] as const;
+    }
+
+
+export const getListQuranCirclesQueryOptions = <TData = Awaited<ReturnType<typeof listQuranCircles>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranCircles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQuranCirclesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuranCircles>>> = ({ signal }) => listQuranCircles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuranCircles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListQuranCirclesQueryResult = NonNullable<Awaited<ReturnType<typeof listQuranCircles>>>
+export type ListQuranCirclesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the current teacher's Quran circles and members
+ */
+
+export function useListQuranCircles<TData = Awaited<ReturnType<typeof listQuranCircles>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranCircles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListQuranCirclesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateQuranCircleUrl = () => {
+
+
+
+
+  return `/api/quran/circles`
+}
+
+/**
+ * @summary Create a Quran circle
+ */
+export const createQuranCircle = async (quranCircleInput: QuranCircleInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranCircle> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranCircle>(getCreateQuranCircleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranCircleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateQuranCircleMutationKey = () => ['createQuranCircle'] as const;
+
+export const getCreateQuranCircleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuranCircle>>, TError,CreateQuranCircleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createQuranCircle>>, TError,CreateQuranCircleMutationVariables, TContext> => {
+
+const mutationKey = getCreateQuranCircleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createQuranCircle>>, CreateQuranCircleMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createQuranCircle(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateQuranCircleMutationResult = NonNullable<Awaited<ReturnType<typeof createQuranCircle>>>
+    export type CreateQuranCircleMutationBody = BodyType<QuranCircleInput>
+    export type CreateQuranCircleMutationError = ErrorType<void>
+    export type CreateQuranCircleMutationVariables = {data: BodyType<QuranCircleInput>}
+
+    /**
+ * @summary Create a Quran circle
+ */
+export const useCreateQuranCircle = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuranCircle>>, TError,CreateQuranCircleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createQuranCircle>>,
+        TError,
+        CreateQuranCircleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateQuranCircleMutationOptions(options));
+    }
+
+export const getGetQuranCircleUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/circles/${id}`
+}
+
+/**
+ * @summary Get a Quran circle with members
+ */
+export const getQuranCircle = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranCircle> => {
+
+  return customFetch<QuranCircle>(getGetQuranCircleUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranCircleQueryKey = (id: number,) => {
+    return [
+    `/api/quran/circles/${id}`
+    ] as const;
+    }
+
+
+export const getGetQuranCircleQueryOptions = <TData = Awaited<ReturnType<typeof getQuranCircle>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranCircle>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranCircleQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranCircle>>> = ({ signal }) => getQuranCircle(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranCircle>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranCircleQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranCircle>>>
+export type GetQuranCircleQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a Quran circle with members
+ */
+
+export function useGetQuranCircle<TData = Awaited<ReturnType<typeof getQuranCircle>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranCircle>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranCircleQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateQuranCircleUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/circles/${id}`
+}
+
+/**
+ * @summary Update a Quran circle and its selected members
+ */
+export const updateQuranCircle = async (id: number,
+    quranCircleUpdate: QuranCircleUpdate, options?: Parameters<typeof customFetch>[1]): Promise<QuranCircle> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranCircle>(getUpdateQuranCircleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranCircleUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateQuranCircleMutationKey = () => ['updateQuranCircle'] as const;
+
+export const getUpdateQuranCircleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranCircle>>, TError,UpdateQuranCircleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateQuranCircle>>, TError,UpdateQuranCircleMutationVariables, TContext> => {
+
+const mutationKey = getUpdateQuranCircleMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateQuranCircle>>, UpdateQuranCircleMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateQuranCircle(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateQuranCircleMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuranCircle>>>
+    export type UpdateQuranCircleMutationBody = BodyType<QuranCircleUpdate>
+    export type UpdateQuranCircleMutationError = ErrorType<void>
+    export type UpdateQuranCircleMutationVariables = {id: number;data: BodyType<QuranCircleUpdate>}
+
+    /**
+ * @summary Update a Quran circle and its selected members
+ */
+export const useUpdateQuranCircle = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranCircle>>, TError,UpdateQuranCircleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateQuranCircle>>,
+        TError,
+        UpdateQuranCircleMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateQuranCircleMutationOptions(options));
+    }
+
+export const getListQuranStudentsUrl = () => {
+
+
+
+
+  return `/api/quran/students`
+}
+
+/**
+ * @summary List the current teacher's roster students for Quran
+ */
+export const listQuranStudents = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranStudent[]> => {
+
+  return customFetch<QuranStudent[]>(getListQuranStudentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQuranStudentsQueryKey = () => {
+    return [
+    `/api/quran/students`
+    ] as const;
+    }
+
+
+export const getListQuranStudentsQueryOptions = <TData = Awaited<ReturnType<typeof listQuranStudents>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQuranStudentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuranStudents>>> = ({ signal }) => listQuranStudents({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuranStudents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListQuranStudentsQueryResult = NonNullable<Awaited<ReturnType<typeof listQuranStudents>>>
+export type ListQuranStudentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the current teacher's roster students for Quran
+ */
+
+export function useListQuranStudents<TData = Awaited<ReturnType<typeof listQuranStudents>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranStudents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListQuranStudentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranStudentSummaryUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/quran/students/${studentId}`
+}
+
+/**
+ * @summary Get a Quran student profile and progress summary
+ */
+export const getQuranStudentSummary = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranStudentSummary> => {
+
+  return customFetch<QuranStudentSummary>(getGetQuranStudentSummaryUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranStudentSummaryQueryKey = (studentId: number,) => {
+    return [
+    `/api/quran/students/${studentId}`
+    ] as const;
+    }
+
+
+export const getGetQuranStudentSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getQuranStudentSummary>>, TError = ErrorType<void>>(studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranStudentSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranStudentSummaryQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranStudentSummary>>> = ({ signal }) => getQuranStudentSummary(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranStudentSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranStudentSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranStudentSummary>>>
+export type GetQuranStudentSummaryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a Quran student profile and progress summary
+ */
+
+export function useGetQuranStudentSummary<TData = Awaited<ReturnType<typeof getQuranStudentSummary>>, TError = ErrorType<void>>(
+ studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranStudentSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranStudentSummaryQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateQuranStudentProfileUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/quran/students/${studentId}/profile`
+}
+
+/**
+ * @summary Update a Quran student's current position and progress
+ */
+export const updateQuranStudentProfile = async (studentId: number,
+    quranProfileUpdate: QuranProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<QuranStudentProfile> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranStudentProfile>(getUpdateQuranStudentProfileUrl(studentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranProfileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateQuranStudentProfileMutationKey = () => ['updateQuranStudentProfile'] as const;
+
+export const getUpdateQuranStudentProfileMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranStudentProfile>>, TError,UpdateQuranStudentProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateQuranStudentProfile>>, TError,UpdateQuranStudentProfileMutationVariables, TContext> => {
+
+const mutationKey = getUpdateQuranStudentProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateQuranStudentProfile>>, UpdateQuranStudentProfileMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  updateQuranStudentProfile(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateQuranStudentProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuranStudentProfile>>>
+    export type UpdateQuranStudentProfileMutationBody = BodyType<QuranProfileUpdate>
+    export type UpdateQuranStudentProfileMutationError = ErrorType<void>
+    export type UpdateQuranStudentProfileMutationVariables = {studentId: number;data: BodyType<QuranProfileUpdate>}
+
+    /**
+ * @summary Update a Quran student's current position and progress
+ */
+export const useUpdateQuranStudentProfile = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranStudentProfile>>, TError,UpdateQuranStudentProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateQuranStudentProfile>>,
+        TError,
+        UpdateQuranStudentProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateQuranStudentProfileMutationOptions(options));
+    }
+
+export const getListQuranStudentWardsUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/quran/students/${studentId}/wards`
+}
+
+/**
+ * @summary List wards for one Quran student
+ */
+export const listQuranStudentWards = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranWard[]> => {
+
+  return customFetch<QuranWard[]>(getListQuranStudentWardsUrl(studentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQuranStudentWardsQueryKey = (studentId: number,) => {
+    return [
+    `/api/quran/students/${studentId}/wards`
+    ] as const;
+    }
+
+
+export const getListQuranStudentWardsQueryOptions = <TData = Awaited<ReturnType<typeof listQuranStudentWards>>, TError = ErrorType<unknown>>(studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranStudentWards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQuranStudentWardsQueryKey(studentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuranStudentWards>>> = ({ signal }) => listQuranStudentWards(studentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: studentId !== null && studentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuranStudentWards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListQuranStudentWardsQueryResult = NonNullable<Awaited<ReturnType<typeof listQuranStudentWards>>>
+export type ListQuranStudentWardsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List wards for one Quran student
+ */
+
+export function useListQuranStudentWards<TData = Awaited<ReturnType<typeof listQuranStudentWards>>, TError = ErrorType<unknown>>(
+ studentId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranStudentWards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListQuranStudentWardsQueryOptions(studentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateQuranWardUrl = () => {
+
+
+
+
+  return `/api/quran/wards`
+}
+
+/**
+ * @summary Assign a Quran ward to a roster student
+ */
+export const createQuranWard = async (quranWardInput: QuranWardInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranWard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranWard>(getCreateQuranWardUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranWardInput)
+  }
+);}
+
+
+
+
+
+export const getCreateQuranWardMutationKey = () => ['createQuranWard'] as const;
+
+export const getCreateQuranWardMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuranWard>>, TError,CreateQuranWardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createQuranWard>>, TError,CreateQuranWardMutationVariables, TContext> => {
+
+const mutationKey = getCreateQuranWardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createQuranWard>>, CreateQuranWardMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createQuranWard(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateQuranWardMutationResult = NonNullable<Awaited<ReturnType<typeof createQuranWard>>>
+    export type CreateQuranWardMutationBody = BodyType<QuranWardInput>
+    export type CreateQuranWardMutationError = ErrorType<void>
+    export type CreateQuranWardMutationVariables = {data: BodyType<QuranWardInput>}
+
+    /**
+ * @summary Assign a Quran ward to a roster student
+ */
+export const useCreateQuranWard = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuranWard>>, TError,CreateQuranWardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createQuranWard>>,
+        TError,
+        CreateQuranWardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateQuranWardMutationOptions(options));
+    }
+
+export const getUpdateQuranWardUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/wards/${id}`
+}
+
+/**
+ * @summary Update a Quran ward
+ */
+export const updateQuranWard = async (id: number,
+    quranWardUpdate: QuranWardUpdate, options?: Parameters<typeof customFetch>[1]): Promise<QuranWard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranWard>(getUpdateQuranWardUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranWardUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateQuranWardMutationKey = () => ['updateQuranWard'] as const;
+
+export const getUpdateQuranWardMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranWard>>, TError,UpdateQuranWardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateQuranWard>>, TError,UpdateQuranWardMutationVariables, TContext> => {
+
+const mutationKey = getUpdateQuranWardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateQuranWard>>, UpdateQuranWardMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateQuranWard(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateQuranWardMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuranWard>>>
+    export type UpdateQuranWardMutationBody = BodyType<QuranWardUpdate>
+    export type UpdateQuranWardMutationError = ErrorType<void>
+    export type UpdateQuranWardMutationVariables = {id: number;data: BodyType<QuranWardUpdate>}
+
+    /**
+ * @summary Update a Quran ward
+ */
+export const useUpdateQuranWard = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranWard>>, TError,UpdateQuranWardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateQuranWard>>,
+        TError,
+        UpdateQuranWardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateQuranWardMutationOptions(options));
+    }
+
+export const getListQuranRecitationsUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/wards/${id}/recitations`
+}
+
+/**
+ * @summary List recitation records for a ward
+ */
+export const listQuranRecitations = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranRecitation[]> => {
+
+  return customFetch<QuranRecitation[]>(getListQuranRecitationsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQuranRecitationsQueryKey = (id: number,) => {
+    return [
+    `/api/quran/wards/${id}/recitations`
+    ] as const;
+    }
+
+
+export const getListQuranRecitationsQueryOptions = <TData = Awaited<ReturnType<typeof listQuranRecitations>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranRecitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQuranRecitationsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuranRecitations>>> = ({ signal }) => listQuranRecitations(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuranRecitations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListQuranRecitationsQueryResult = NonNullable<Awaited<ReturnType<typeof listQuranRecitations>>>
+export type ListQuranRecitationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List recitation records for a ward
+ */
+
+export function useListQuranRecitations<TData = Awaited<ReturnType<typeof listQuranRecitations>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranRecitations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListQuranRecitationsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateQuranRecitationUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/wards/${id}/recitations`
+}
+
+/**
+ * @summary Save a recitation and update progress transactionally
+ */
+export const createQuranRecitation = async (id: number,
+    quranRecitationInput: QuranRecitationInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranRecitation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranRecitation>(getCreateQuranRecitationUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranRecitationInput)
+  }
+);}
+
+
+
+
+
+export const getCreateQuranRecitationMutationKey = () => ['createQuranRecitation'] as const;
+
+export const getCreateQuranRecitationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuranRecitation>>, TError,CreateQuranRecitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createQuranRecitation>>, TError,CreateQuranRecitationMutationVariables, TContext> => {
+
+const mutationKey = getCreateQuranRecitationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createQuranRecitation>>, CreateQuranRecitationMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createQuranRecitation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateQuranRecitationMutationResult = NonNullable<Awaited<ReturnType<typeof createQuranRecitation>>>
+    export type CreateQuranRecitationMutationBody = BodyType<QuranRecitationInput>
+    export type CreateQuranRecitationMutationError = ErrorType<void>
+    export type CreateQuranRecitationMutationVariables = {id: number;data: BodyType<QuranRecitationInput>}
+
+    /**
+ * @summary Save a recitation and update progress transactionally
+ */
+export const useCreateQuranRecitation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuranRecitation>>, TError,CreateQuranRecitationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createQuranRecitation>>,
+        TError,
+        CreateQuranRecitationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateQuranRecitationMutationOptions(options));
+    }
+
+export const getGetQuranReviewQueueUrl = () => {
+
+
+
+
+  return `/api/quran/review-queue`
+}
+
+/**
+ * @summary List due and review wards
+ */
+export const getQuranReviewQueue = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranReviewWard[]> => {
+
+  return customFetch<QuranReviewWard[]>(getGetQuranReviewQueueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranReviewQueueQueryKey = () => {
+    return [
+    `/api/quran/review-queue`
+    ] as const;
+    }
+
+
+export const getGetQuranReviewQueueQueryOptions = <TData = Awaited<ReturnType<typeof getQuranReviewQueue>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranReviewQueueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranReviewQueue>>> = ({ signal }) => getQuranReviewQueue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranReviewQueue>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranReviewQueueQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranReviewQueue>>>
+export type GetQuranReviewQueueQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List due and review wards
+ */
+
+export function useGetQuranReviewQueue<TData = Awaited<ReturnType<typeof getQuranReviewQueue>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranReviewQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranTodayDashboardUrl = () => {
+
+
+
+
+  return `/api/quran/today`
+}
+
+/**
+ * @summary Get today's Quran recitation and review queue
+ */
+export const getQuranTodayDashboard = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranTodayDashboard> => {
+
+  return customFetch<QuranTodayDashboard>(getGetQuranTodayDashboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranTodayDashboardQueryKey = () => {
+    return [
+    `/api/quran/today`
+    ] as const;
+    }
+
+
+export const getGetQuranTodayDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getQuranTodayDashboard>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranTodayDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranTodayDashboardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranTodayDashboard>>> = ({ signal }) => getQuranTodayDashboard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranTodayDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranTodayDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranTodayDashboard>>>
+export type GetQuranTodayDashboardQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get today's Quran recitation and review queue
+ */
+
+export function useGetQuranTodayDashboard<TData = Awaited<ReturnType<typeof getQuranTodayDashboard>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranTodayDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranTodayDashboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

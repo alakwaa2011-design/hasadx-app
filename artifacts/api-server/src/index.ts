@@ -2179,6 +2179,116 @@ async function runSchemaMigrations() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quran_circles (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        teacher_class_id INTEGER REFERENCES teacher_classes(id) ON DELETE SET NULL,
+        name TEXT NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS quran_circles_teacher_idx ON quran_circles(teacher_id);
+      CREATE TABLE IF NOT EXISTS quran_circle_members (
+        id SERIAL PRIMARY KEY,
+        circle_id INTEGER NOT NULL REFERENCES quran_circles(id) ON DELETE CASCADE,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_circle_members_circle_student_uq
+        ON quran_circle_members(circle_id, student_id);
+      CREATE INDEX IF NOT EXISTS quran_circle_members_student_idx ON quran_circle_members(student_id);
+      CREATE TABLE IF NOT EXISTS quran_profiles (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        current_surah_number INTEGER,
+        current_ayah INTEGER,
+        progress_percent INTEGER NOT NULL DEFAULT 0,
+        mastered_ayah_count INTEGER NOT NULL DEFAULT 0,
+        last_recited_date DATE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT quran_profiles_progress_range CHECK (progress_percent BETWEEN 0 AND 100),
+        CONSTRAINT quran_profiles_mastered_nonnegative CHECK (mastered_ayah_count >= 0)
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_profiles_teacher_student_uq
+        ON quran_profiles(teacher_id, student_id);
+      CREATE INDEX IF NOT EXISTS quran_profiles_student_idx ON quran_profiles(student_id);
+      CREATE TABLE IF NOT EXISTS quran_wards (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        mode TEXT NOT NULL,
+        surah_number INTEGER NOT NULL,
+        surah_name TEXT NOT NULL,
+        start_ayah INTEGER NOT NULL,
+        end_ayah INTEGER NOT NULL,
+        assigned_date DATE NOT NULL,
+        due_date DATE,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'assigned',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT quran_wards_mode_valid CHECK (mode IN ('memorization','review','recitation','assessment')),
+        CONSTRAINT quran_wards_status_valid CHECK (status IN ('assigned','in_progress','completed','needs_review')),
+        CONSTRAINT quran_wards_ayah_range_valid CHECK (start_ayah > 0 AND end_ayah >= start_ayah)
+      );
+      CREATE INDEX IF NOT EXISTS quran_wards_teacher_student_idx
+        ON quran_wards(teacher_id, student_id);
+      CREATE INDEX IF NOT EXISTS quran_wards_teacher_due_idx ON quran_wards(teacher_id, due_date);
+      CREATE TABLE IF NOT EXISTS quran_recitations (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        ward_id INTEGER NOT NULL REFERENCES quran_wards(id) ON DELETE CASCADE,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        status TEXT NOT NULL,
+        memorization_score INTEGER,
+        recitation_score INTEGER,
+        mistake_counts JSONB,
+        teacher_note TEXT,
+        recited_date DATE NOT NULL,
+        progress_applied BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT quran_recitations_status_valid CHECK (status IN ('completed','needs_review','absent','not_recited')),
+        CONSTRAINT quran_recitations_memorization_score_valid CHECK (memorization_score IS NULL OR memorization_score BETWEEN 0 AND 100),
+        CONSTRAINT quran_recitations_recitation_score_valid CHECK (recitation_score IS NULL OR recitation_score BETWEEN 0 AND 100)
+      );
+      CREATE INDEX IF NOT EXISTS quran_recitations_ward_idx ON quran_recitations(teacher_id, ward_id);
+      CREATE INDEX IF NOT EXISTS quran_recitations_student_date_idx
+        ON quran_recitations(teacher_id, student_id, recited_date);
+      ALTER TABLE quran_profiles ADD COLUMN IF NOT EXISTS mastered_ayah_count INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE quran_recitations ADD COLUMN IF NOT EXISTS progress_applied BOOLEAN NOT NULL DEFAULT FALSE;
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_profiles_progress_range') THEN
+          ALTER TABLE quran_profiles ADD CONSTRAINT quran_profiles_progress_range CHECK (progress_percent BETWEEN 0 AND 100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_profiles_mastered_nonnegative') THEN
+          ALTER TABLE quran_profiles ADD CONSTRAINT quran_profiles_mastered_nonnegative CHECK (mastered_ayah_count >= 0);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_wards_mode_valid') THEN
+          ALTER TABLE quran_wards ADD CONSTRAINT quran_wards_mode_valid CHECK (mode IN ('memorization','review','recitation','assessment'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_wards_status_valid') THEN
+          ALTER TABLE quran_wards ADD CONSTRAINT quran_wards_status_valid CHECK (status IN ('assigned','in_progress','completed','needs_review'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_wards_ayah_range_valid') THEN
+          ALTER TABLE quran_wards ADD CONSTRAINT quran_wards_ayah_range_valid CHECK (start_ayah > 0 AND end_ayah >= start_ayah);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_recitations_status_valid') THEN
+          ALTER TABLE quran_recitations ADD CONSTRAINT quran_recitations_status_valid CHECK (status IN ('completed','needs_review','absent','not_recited'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_recitations_memorization_score_valid') THEN
+          ALTER TABLE quran_recitations ADD CONSTRAINT quran_recitations_memorization_score_valid CHECK (memorization_score IS NULL OR memorization_score BETWEEN 0 AND 100);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'quran_recitations_recitation_score_valid') THEN
+          ALTER TABLE quran_recitations ADD CONSTRAINT quran_recitations_recitation_score_valid CHECK (recitation_score IS NULL OR recitation_score BETWEEN 0 AND 100);
+        END IF;
+      END $$;
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_recitations_teacher_ward_date_uq
+        ON quran_recitations(teacher_id, ward_id, recited_date);
+    `);
     logger.info("Web Push schema and notification trigger migrated");
   } catch (err) {
     logger.error(err, "Web Push schema migration failed");

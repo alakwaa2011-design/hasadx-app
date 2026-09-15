@@ -13868,4 +13868,1242 @@ export declare const DeleteTeacherScheduleEntryParams: zodV3.ZodObject<{
     id: number;
 }>;
 export declare const DeleteTeacherScheduleEntryResponse: zodV3.ZodVoid;
+/**
+ * @summary List canonical Quran surah metadata
+ */
+export declare const listQuranSurahsResponseNumberMax = 114;
+export declare const ListQuranSurahsResponseItem: zodV3.ZodObject<{
+    number: zodV3.ZodNumber;
+    arabicName: zodV3.ZodString;
+    ayahCount: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    number: number;
+    arabicName: string;
+    ayahCount: number;
+}, {
+    number: number;
+    arabicName: string;
+    ayahCount: number;
+}>;
+export declare const ListQuranSurahsResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    number: zodV3.ZodNumber;
+    arabicName: zodV3.ZodString;
+    ayahCount: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    number: number;
+    arabicName: string;
+    ayahCount: number;
+}, {
+    number: number;
+    arabicName: string;
+    ayahCount: number;
+}>, "many">;
+/**
+ * @summary List the current teacher's Quran circles and members
+ */
+export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    teacherClassId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    members: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}>;
+export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    teacherClassId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    members: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}>, "many">;
+/**
+ * @summary Create a Quran circle
+ */
+export declare const CreateQuranCircleBody: zodV3.ZodObject<{
+    name: zodV3.ZodString;
+    teacherClassId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    studentIds: zodV3.ZodArray<zodV3.ZodNumber, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    studentIds: number[];
+    notes?: string | null | undefined;
+    teacherClassId?: number | null | undefined;
+}, {
+    name: string;
+    studentIds: number[];
+    notes?: string | null | undefined;
+    teacherClassId?: number | null | undefined;
+}>;
+export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    teacherClassId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    members: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}>;
+/**
+ * @summary Get a Quran circle with members
+ */
+export declare const GetQuranCircleParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const GetQuranCircleResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    teacherClassId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    members: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}>;
+/**
+ * @summary Update a Quran circle and its selected members
+ */
+export declare const UpdateQuranCircleParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const UpdateQuranCircleBody: zodV3.ZodObject<{
+    name: zodV3.ZodOptional<zodV3.ZodString>;
+    teacherClassId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    studentIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
+}, "strip", zodV3.ZodTypeAny, {
+    name?: string | undefined;
+    notes?: string | null | undefined;
+    teacherClassId?: number | null | undefined;
+    studentIds?: number[] | undefined;
+}, {
+    name?: string | undefined;
+    notes?: string | null | undefined;
+    teacherClassId?: number | null | undefined;
+    studentIds?: number[] | undefined;
+}>;
+export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    teacherClassId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    members: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}, {
+    name: string;
+    id: number;
+    notes: string | null;
+    teacherClassId: number | null;
+    members: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }[];
+}>;
+/**
+ * @summary List the current teacher's roster students for Quran
+ */
+export declare const ListQuranStudentsResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+    studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    studentClass: string | null;
+    gradeLevel: string | null;
+}, {
+    name: string;
+    id: number;
+    studentClass: string | null;
+    gradeLevel: string | null;
+}>;
+export declare const ListQuranStudentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+    studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    id: number;
+    studentClass: string | null;
+    gradeLevel: string | null;
+}, {
+    name: string;
+    id: number;
+    studentClass: string | null;
+    gradeLevel: string | null;
+}>, "many">;
+/**
+ * @summary Get a Quran student profile and progress summary
+ */
+export declare const GetQuranStudentSummaryParams: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    studentId: number;
+}, {
+    studentId: number;
+}>;
+export declare const getQuranStudentSummaryResponseProfileProgressPercentMin = 0;
+export declare const getQuranStudentSummaryResponseProfileProgressPercentMax = 100;
+export declare const getQuranStudentSummaryResponseProfileMasteredAyahCountMin = 0;
+export declare const getQuranStudentSummaryResponseProfileLastRecitedDateRegExp: RegExp;
+export declare const getQuranStudentSummaryResponseWardsItemSurahNumberMax = 114;
+export declare const getQuranStudentSummaryResponseWardsItemAssignedDateRegExp: RegExp;
+export declare const getQuranStudentSummaryResponseWardsItemDueDateRegExp: RegExp;
+export declare const getQuranStudentSummaryResponseRecentRecitationsItemMemorizationScoreMin = 0;
+export declare const getQuranStudentSummaryResponseRecentRecitationsItemMemorizationScoreMax = 100;
+export declare const getQuranStudentSummaryResponseRecentRecitationsItemRecitationScoreMin = 0;
+export declare const getQuranStudentSummaryResponseRecentRecitationsItemRecitationScoreMax = 100;
+export declare const getQuranStudentSummaryResponseRecentRecitationsItemMistakeCountsOneMinOne = 0;
+export declare const getQuranStudentSummaryResponseRecentRecitationsItemRecitedDateRegExp: RegExp;
+export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
+    student: zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }, {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    }>;
+    profile: zodV3.ZodObject<{
+        currentSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+        currentAyah: zodV3.ZodNullable<zodV3.ZodNumber>;
+        progressPercent: zodV3.ZodNumber;
+        masteredAyahCount: zodV3.ZodNumber;
+        lastRecitedDate: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    }, {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    }>;
+    wards: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        studentId: zodV3.ZodNumber;
+        mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+        surahNumber: zodV3.ZodNumber;
+        surahName: zodV3.ZodString;
+        startAyah: zodV3.ZodNumber;
+        endAyah: zodV3.ZodNumber;
+        assignedDate: zodV3.ZodString;
+        dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+        notes: zodV3.ZodNullable<zodV3.ZodString>;
+        status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }, {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }>, "many">;
+    recentRecitations: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        wardId: zodV3.ZodNumber;
+        studentId: zodV3.ZodNumber;
+        status: zodV3.ZodEnum<["completed", "needs_review", "absent", "not_recited"]>;
+        memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+        recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+        mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+        teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
+        recitedDate: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }, {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    student: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    };
+    profile: {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    };
+    wards: {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }[];
+    recentRecitations: {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }[];
+}, {
+    student: {
+        name: string;
+        id: number;
+        studentClass: string | null;
+        gradeLevel: string | null;
+    };
+    profile: {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    };
+    wards: {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }[];
+    recentRecitations: {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }[];
+}>;
+/**
+ * @summary Update a Quran student's current position and progress
+ */
+export declare const UpdateQuranStudentProfileParams: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    studentId: number;
+}, {
+    studentId: number;
+}>;
+export declare const updateQuranStudentProfileBodyCurrentSurahNumberMax = 114;
+export declare const updateQuranStudentProfileBodyProgressPercentMin = 0;
+export declare const updateQuranStudentProfileBodyProgressPercentMax = 100;
+export declare const updateQuranStudentProfileBodyLastRecitedDateRegExp: RegExp;
+export declare const UpdateQuranStudentProfileBody: zodV3.ZodObject<{
+    currentSurahNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    currentAyah: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    progressPercent: zodV3.ZodOptional<zodV3.ZodNumber>;
+    lastRecitedDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+}, "strip", zodV3.ZodTypeAny, {
+    currentSurahNumber?: number | null | undefined;
+    currentAyah?: number | null | undefined;
+    progressPercent?: number | undefined;
+    lastRecitedDate?: string | null | undefined;
+}, {
+    currentSurahNumber?: number | null | undefined;
+    currentAyah?: number | null | undefined;
+    progressPercent?: number | undefined;
+    lastRecitedDate?: string | null | undefined;
+}>;
+export declare const updateQuranStudentProfileResponseProgressPercentMin = 0;
+export declare const updateQuranStudentProfileResponseProgressPercentMax = 100;
+export declare const updateQuranStudentProfileResponseMasteredAyahCountMin = 0;
+export declare const updateQuranStudentProfileResponseLastRecitedDateRegExp: RegExp;
+export declare const UpdateQuranStudentProfileResponse: zodV3.ZodObject<{
+    currentSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+    currentAyah: zodV3.ZodNullable<zodV3.ZodNumber>;
+    progressPercent: zodV3.ZodNumber;
+    masteredAyahCount: zodV3.ZodNumber;
+    lastRecitedDate: zodV3.ZodNullable<zodV3.ZodString>;
+}, "strip", zodV3.ZodTypeAny, {
+    currentSurahNumber: number | null;
+    currentAyah: number | null;
+    progressPercent: number;
+    masteredAyahCount: number;
+    lastRecitedDate: string | null;
+}, {
+    currentSurahNumber: number | null;
+    currentAyah: number | null;
+    progressPercent: number;
+    masteredAyahCount: number;
+    lastRecitedDate: string | null;
+}>;
+/**
+ * @summary List wards for one Quran student
+ */
+export declare const ListQuranStudentWardsParams: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    studentId: number;
+}, {
+    studentId: number;
+}>;
+export declare const listQuranStudentWardsResponseSurahNumberMax = 114;
+export declare const listQuranStudentWardsResponseAssignedDateRegExp: RegExp;
+export declare const listQuranStudentWardsResponseDueDateRegExp: RegExp;
+export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}>;
+export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}>, "many">;
+/**
+ * @summary Assign a Quran ward to a roster student
+ */
+export declare const createQuranWardBodySurahNumberMax = 114;
+export declare const createQuranWardBodyAssignedDateRegExp: RegExp;
+export declare const createQuranWardBodyDueDateRegExp: RegExp;
+export declare const CreateQuranWardBody: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    status: zodV3.ZodOptional<zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>>;
+}, "strip", zodV3.ZodTypeAny, {
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    notes?: string | null | undefined;
+    dueDate?: string | null | undefined;
+}, {
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    notes?: string | null | undefined;
+    dueDate?: string | null | undefined;
+}>;
+export declare const createQuranWardResponseSurahNumberMax = 114;
+export declare const createQuranWardResponseAssignedDateRegExp: RegExp;
+export declare const createQuranWardResponseDueDateRegExp: RegExp;
+export declare const CreateQuranWardResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}>;
+/**
+ * @summary Update a Quran ward
+ */
+export declare const UpdateQuranWardParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const updateQuranWardBodySurahNumberMax = 114;
+export declare const updateQuranWardBodyAssignedDateRegExp: RegExp;
+export declare const updateQuranWardBodyDueDateRegExp: RegExp;
+export declare const UpdateQuranWardBody: zodV3.ZodObject<{
+    mode: zodV3.ZodOptional<zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>>;
+    surahNumber: zodV3.ZodOptional<zodV3.ZodNumber>;
+    surahName: zodV3.ZodOptional<zodV3.ZodString>;
+    startAyah: zodV3.ZodOptional<zodV3.ZodNumber>;
+    endAyah: zodV3.ZodOptional<zodV3.ZodNumber>;
+    assignedDate: zodV3.ZodOptional<zodV3.ZodString>;
+    dueDate: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    status: zodV3.ZodOptional<zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>>;
+}, "strip", zodV3.ZodTypeAny, {
+    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    notes?: string | null | undefined;
+    mode?: "review" | "memorization" | "recitation" | "assessment" | undefined;
+    surahNumber?: number | undefined;
+    surahName?: string | undefined;
+    startAyah?: number | undefined;
+    endAyah?: number | undefined;
+    assignedDate?: string | undefined;
+    dueDate?: string | null | undefined;
+}, {
+    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    notes?: string | null | undefined;
+    mode?: "review" | "memorization" | "recitation" | "assessment" | undefined;
+    surahNumber?: number | undefined;
+    surahName?: string | undefined;
+    startAyah?: number | undefined;
+    endAyah?: number | undefined;
+    assignedDate?: string | undefined;
+    dueDate?: string | null | undefined;
+}>;
+export declare const updateQuranWardResponseSurahNumberMax = 114;
+export declare const updateQuranWardResponseAssignedDateRegExp: RegExp;
+export declare const updateQuranWardResponseDueDateRegExp: RegExp;
+export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}>;
+/**
+ * @summary List recitation records for a ward
+ */
+export declare const ListQuranRecitationsParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const listQuranRecitationsResponseMemorizationScoreMin = 0;
+export declare const listQuranRecitationsResponseMemorizationScoreMax = 100;
+export declare const listQuranRecitationsResponseRecitationScoreMin = 0;
+export declare const listQuranRecitationsResponseRecitationScoreMax = 100;
+export declare const listQuranRecitationsResponseMistakeCountsOneMinOne = 0;
+export declare const listQuranRecitationsResponseRecitedDateRegExp: RegExp;
+export declare const ListQuranRecitationsResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["completed", "needs_review", "absent", "not_recited"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
+    recitedDate: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    id: number;
+    teacherNote: string | null;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    recitedDate: string;
+}, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    id: number;
+    teacherNote: string | null;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    recitedDate: string;
+}>;
+export declare const ListQuranRecitationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["completed", "needs_review", "absent", "not_recited"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
+    recitedDate: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    id: number;
+    teacherNote: string | null;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    recitedDate: string;
+}, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    id: number;
+    teacherNote: string | null;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    recitedDate: string;
+}>, "many">;
+/**
+ * @summary Save a recitation and update progress transactionally
+ */
+export declare const CreateQuranRecitationParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const createQuranRecitationBodyMemorizationScoreMin = 0;
+export declare const createQuranRecitationBodyMemorizationScoreMax = 100;
+export declare const createQuranRecitationBodyRecitationScoreMin = 0;
+export declare const createQuranRecitationBodyRecitationScoreMax = 100;
+export declare const createQuranRecitationBodyMistakeCountsOneMinOne = 0;
+export declare const createQuranRecitationBodyRecitedDateRegExp: RegExp;
+export declare const CreateQuranRecitationBody: zodV3.ZodObject<{
+    status: zodV3.ZodEnum<["completed", "needs_review", "absent", "not_recited"]>;
+    memorizationScore: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    recitationScore: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    mistakeCounts: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>>;
+    teacherNote: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    recitedDate: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    recitedDate: string;
+    teacherNote?: string | null | undefined;
+    memorizationScore?: number | null | undefined;
+    recitationScore?: number | null | undefined;
+    mistakeCounts?: Record<string, number> | null | undefined;
+}, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    recitedDate: string;
+    teacherNote?: string | null | undefined;
+    memorizationScore?: number | null | undefined;
+    recitationScore?: number | null | undefined;
+    mistakeCounts?: Record<string, number> | null | undefined;
+}>;
+export declare const createQuranRecitationResponseMemorizationScoreMin = 0;
+export declare const createQuranRecitationResponseMemorizationScoreMax = 100;
+export declare const createQuranRecitationResponseRecitationScoreMin = 0;
+export declare const createQuranRecitationResponseRecitationScoreMax = 100;
+export declare const createQuranRecitationResponseMistakeCountsOneMinOne = 0;
+export declare const createQuranRecitationResponseRecitedDateRegExp: RegExp;
+export declare const CreateQuranRecitationResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["completed", "needs_review", "absent", "not_recited"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
+    recitedDate: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    id: number;
+    teacherNote: string | null;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    recitedDate: string;
+}, {
+    status: "completed" | "needs_review" | "absent" | "not_recited";
+    id: number;
+    teacherNote: string | null;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    recitedDate: string;
+}>;
+/**
+ * @summary List due and review wards
+ */
+export declare const getQuranReviewQueueResponseOneSurahNumberMax = 114;
+export declare const getQuranReviewQueueResponseOneAssignedDateRegExp: RegExp;
+export declare const getQuranReviewQueueResponseOneDueDateRegExp: RegExp;
+export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}>, zodV3.ZodObject<{
+    studentName: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    studentName: string;
+}, {
+    studentName: string;
+}>>;
+export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodIntersection<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+    surahNumber: zodV3.ZodNumber;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    assignedDate: zodV3.ZodString;
+    dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+    notes: zodV3.ZodNullable<zodV3.ZodString>;
+    status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}, {
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    id: number;
+    notes: string | null;
+    mode: "review" | "memorization" | "recitation" | "assessment";
+    studentId: number;
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    assignedDate: string;
+    dueDate: string | null;
+}>, zodV3.ZodObject<{
+    studentName: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    studentName: string;
+}, {
+    studentName: string;
+}>>, "many">;
+/**
+ * @summary Get today's Quran recitation and review queue
+ */
+export declare const getQuranTodayDashboardResponseDueWardsItemOneSurahNumberMax = 114;
+export declare const getQuranTodayDashboardResponseDueWardsItemOneAssignedDateRegExp: RegExp;
+export declare const getQuranTodayDashboardResponseDueWardsItemOneDueDateRegExp: RegExp;
+export declare const getQuranTodayDashboardResponseTodayRecitationsItemMemorizationScoreMin = 0;
+export declare const getQuranTodayDashboardResponseTodayRecitationsItemMemorizationScoreMax = 100;
+export declare const getQuranTodayDashboardResponseTodayRecitationsItemRecitationScoreMin = 0;
+export declare const getQuranTodayDashboardResponseTodayRecitationsItemRecitationScoreMax = 100;
+export declare const getQuranTodayDashboardResponseTodayRecitationsItemMistakeCountsOneMinOne = 0;
+export declare const getQuranTodayDashboardResponseTodayRecitationsItemRecitedDateRegExp: RegExp;
+export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
+    dueWards: zodV3.ZodArray<zodV3.ZodIntersection<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        studentId: zodV3.ZodNumber;
+        mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+        surahNumber: zodV3.ZodNumber;
+        surahName: zodV3.ZodString;
+        startAyah: zodV3.ZodNumber;
+        endAyah: zodV3.ZodNumber;
+        assignedDate: zodV3.ZodString;
+        dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+        notes: zodV3.ZodNullable<zodV3.ZodString>;
+        status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }, {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }>, zodV3.ZodObject<{
+        studentName: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        studentName: string;
+    }, {
+        studentName: string;
+    }>>, "many">;
+    todayRecitations: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        wardId: zodV3.ZodNumber;
+        studentId: zodV3.ZodNumber;
+        status: zodV3.ZodEnum<["completed", "needs_review", "absent", "not_recited"]>;
+        memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+        recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+        mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+        teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
+        recitedDate: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }, {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    dueWards: ({
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    } & {
+        studentName: string;
+    })[];
+    todayRecitations: {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }[];
+}, {
+    dueWards: ({
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        notes: string | null;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        studentId: number;
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    } & {
+        studentName: string;
+    })[];
+    todayRecitations: {
+        status: "completed" | "needs_review" | "absent" | "not_recited";
+        id: number;
+        teacherNote: string | null;
+        studentId: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+        mistakeCounts: Record<string, number> | null;
+        recitedDate: string;
+    }[];
+}>;
 //# sourceMappingURL=api.d.ts.map

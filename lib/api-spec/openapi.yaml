@@ -1663,8 +1663,485 @@ paths:
         "401": { description: Not authenticated }
         "404": { description: Schedule entry not found }
 
+  /quran/surahs:
+    get:
+      operationId: listQuranSurahs
+      tags: [quran]
+      summary: List canonical Quran surah metadata
+      responses:
+        "200":
+          description: Trusted surah metadata without verse text
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranSurah"
+
+  /quran/circles:
+    get:
+      operationId: listQuranCircles
+      tags: [quran]
+      summary: List the current teacher's Quran circles and members
+      responses:
+        "200":
+          description: Quran circles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranCircle"
+    post:
+      operationId: createQuranCircle
+      tags: [quran]
+      summary: Create a Quran circle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranCircleInput"
+      responses:
+        "201":
+          description: Created circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranCircle"
+        "400": { description: Invalid circle or roster member }
+
+  /quran/circles/{id}:
+    get:
+      operationId: getQuranCircle
+      tags: [quran]
+      summary: Get a Quran circle with members
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      responses:
+        "200":
+          description: Circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranCircle"
+        "404": { description: Circle not found }
+    patch:
+      operationId: updateQuranCircle
+      tags: [quran]
+      summary: Update a Quran circle and its selected members
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranCircleUpdate"
+      responses:
+        "200":
+          description: Updated circle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranCircle"
+        "404": { description: Circle not found }
+
+  /quran/students:
+    get:
+      operationId: listQuranStudents
+      tags: [quran]
+      summary: List the current teacher's roster students for Quran
+      responses:
+        "200":
+          description: Roster students without parent contact information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranStudent"
+
+  /quran/students/{studentId}:
+    get:
+      operationId: getQuranStudentSummary
+      tags: [quran]
+      summary: Get a Quran student profile and progress summary
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Student summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranStudentSummary"
+        "404": { description: Student not found }
+
+  /quran/students/{studentId}/profile:
+    patch:
+      operationId: updateQuranStudentProfile
+      tags: [quran]
+      summary: Update a Quran student's current position and progress
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranProfileUpdate"
+      responses:
+        "200":
+          description: Updated Quran profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranStudentProfile"
+        "404": { description: Student not found }
+
+  /quran/students/{studentId}/wards:
+    get:
+      operationId: listQuranStudentWards
+      tags: [quran]
+      summary: List wards for one Quran student
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Student wards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranWard"
+
+  /quran/wards:
+    post:
+      operationId: createQuranWard
+      tags: [quran]
+      summary: Assign a Quran ward to a roster student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranWardInput"
+      responses:
+        "201":
+          description: Created ward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranWard"
+        "400": { description: Invalid ward }
+        "404": { description: Student not found }
+
+  /quran/wards/{id}:
+    patch:
+      operationId: updateQuranWard
+      tags: [quran]
+      summary: Update a Quran ward
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranWardUpdate"
+      responses:
+        "200":
+          description: Updated ward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranWard"
+        "404": { description: Ward not found }
+
+  /quran/wards/{id}/recitations:
+    get:
+      operationId: listQuranRecitations
+      tags: [quran]
+      summary: List recitation records for a ward
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      responses:
+        "200":
+          description: Recitation records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranRecitation"
+    post:
+      operationId: createQuranRecitation
+      tags: [quran]
+      summary: Save a recitation and update progress transactionally
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranRecitationInput"
+      responses:
+        "201":
+          description: Saved recitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranRecitation"
+        "400": { description: Invalid recitation }
+        "404": { description: Ward not found }
+
+  /quran/review-queue:
+    get:
+      operationId: getQuranReviewQueue
+      tags: [quran]
+      summary: List due and review wards
+      responses:
+        "200":
+          description: Review queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranReviewWard"
+
+  /quran/today:
+    get:
+      operationId: getQuranTodayDashboard
+      tags: [quran]
+      summary: Get today's Quran recitation and review queue
+      responses:
+        "200":
+          description: Today's Quran dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranTodayDashboard"
+
 components:
+  parameters:
+    QuranId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
   schemas:
+    QuranSurah:
+      type: object
+      properties:
+        number: { type: integer, minimum: 1, maximum: 114 }
+        arabicName: { type: string }
+        ayahCount: { type: integer, minimum: 1 }
+      required: [number, arabicName, ayahCount]
+
+    QuranStudent:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        gradeLevel: { type: ["string", "null"] }
+        studentClass: { type: ["string", "null"] }
+      required: [id, name, gradeLevel, studentClass]
+
+    QuranCircleMember:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        gradeLevel: { type: ["string", "null"] }
+        studentClass: { type: ["string", "null"] }
+      required: [id, name, gradeLevel, studentClass]
+
+    QuranCircle:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        teacherClassId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/QuranCircleMember" }
+      required: [id, name, teacherClassId, notes, members]
+
+    QuranCircleInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        teacherClassId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        studentIds:
+          type: array
+          items: { type: integer }
+      required: [name, studentIds]
+
+    QuranCircleUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        teacherClassId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        studentIds:
+          type: array
+          items: { type: integer }
+
+    QuranWard:
+      type: object
+      properties:
+        id: { type: integer }
+        studentId: { type: integer }
+        mode:
+          type: string
+          enum: [memorization, review, recitation, assessment]
+        surahNumber: { type: integer, minimum: 1, maximum: 114 }
+        surahName: { type: string }
+        startAyah: { type: integer, minimum: 1 }
+        endAyah: { type: integer, minimum: 1 }
+        assignedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        dueDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        notes: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [assigned, in_progress, completed, needs_review]
+      required: [id, studentId, mode, surahNumber, surahName, startAyah, endAyah, assignedDate, dueDate, notes, status]
+
+    QuranReviewWard:
+      allOf:
+        - $ref: "#/components/schemas/QuranWard"
+        - type: object
+          properties:
+            studentName: { type: string }
+          required: [studentName]
+
+    QuranWardInput:
+      type: object
+      properties:
+        studentId: { type: integer }
+        mode:
+          type: string
+          enum: [memorization, review, recitation, assessment]
+        surahNumber: { type: integer, minimum: 1, maximum: 114 }
+        surahName: { type: string, minLength: 1 }
+        startAyah: { type: integer, minimum: 1 }
+        endAyah: { type: integer, minimum: 1 }
+        assignedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        dueDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        notes: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [assigned, in_progress, completed, needs_review]
+      required: [studentId, mode, surahNumber, surahName, startAyah, endAyah, assignedDate]
+
+    QuranWardUpdate:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [memorization, review, recitation, assessment]
+        surahNumber: { type: integer, minimum: 1, maximum: 114 }
+        surahName: { type: string, minLength: 1 }
+        startAyah: { type: integer, minimum: 1 }
+        endAyah: { type: integer, minimum: 1 }
+        assignedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        dueDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        notes: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [assigned, in_progress, completed, needs_review]
+
+    QuranMistakeCounts:
+      type: object
+      additionalProperties: { type: integer, minimum: 0 }
+
+    QuranRecitation:
+      type: object
+      properties:
+        id: { type: integer }
+        wardId: { type: integer }
+        studentId: { type: integer }
+        status:
+          type: string
+          enum: [completed, needs_review, absent, not_recited]
+        memorizationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        recitationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        mistakeCounts: { allOf: [{ $ref: "#/components/schemas/QuranMistakeCounts" }], nullable: true }
+        teacherNote: { type: ["string", "null"] }
+        recitedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      required: [id, wardId, studentId, status, memorizationScore, recitationScore, mistakeCounts, teacherNote, recitedDate]
+
+    QuranRecitationInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [completed, needs_review, absent, not_recited]
+        memorizationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        recitationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        mistakeCounts: { allOf: [{ $ref: "#/components/schemas/QuranMistakeCounts" }], nullable: true }
+        teacherNote: { type: ["string", "null"] }
+        recitedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      required: [status, recitedDate]
+
+    QuranStudentProfile:
+      type: object
+      properties:
+        currentSurahNumber: { type: ["integer", "null"] }
+        currentAyah: { type: ["integer", "null"] }
+        progressPercent: { type: integer, minimum: 0, maximum: 100 }
+        masteredAyahCount: { type: integer, minimum: 0 }
+        lastRecitedDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      required: [currentSurahNumber, currentAyah, progressPercent, masteredAyahCount, lastRecitedDate]
+
+    QuranProfileUpdate:
+      type: object
+      properties:
+        currentSurahNumber: { type: ["integer", "null"], minimum: 1, maximum: 114 }
+        currentAyah: { type: ["integer", "null"], minimum: 1 }
+        progressPercent: { type: integer, minimum: 0, maximum: 100 }
+        lastRecitedDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+
+    QuranStudentSummary:
+      type: object
+      properties:
+        student:
+          $ref: "#/components/schemas/QuranStudent"
+        profile:
+          $ref: "#/components/schemas/QuranStudentProfile"
+        wards:
+          type: array
+          items: { $ref: "#/components/schemas/QuranWard" }
+        recentRecitations:
+          type: array
+          items: { $ref: "#/components/schemas/QuranRecitation" }
+      required: [student, profile, wards, recentRecitations]
+
+    QuranTodayDashboard:
+      type: object
+      properties:
+        dueWards:
+          type: array
+          items: { $ref: "#/components/schemas/QuranReviewWard" }
+        todayRecitations:
+          type: array
+          items: { $ref: "#/components/schemas/QuranRecitation" }
+      required: [dueWards, todayRecitations]
     TeacherScheduleDeleteResult:
       type: object
       required: [deletedCount]

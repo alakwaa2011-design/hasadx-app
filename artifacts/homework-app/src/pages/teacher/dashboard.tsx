@@ -3400,6 +3400,13 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
           accent: BRAND.green,
           href: "/teacher/tools/url-qr",
         },
+        {
+          icon: <BookOpen className="w-6 h-6" />,
+          title: isAr ? "مركز القرآن الكريم" : "Quran Center",
+          desc: isAr ? "نظّم حلقات التحفيظ والمراجعة وسجل الحفظ اليومي لطلابك" : "Organize memorization circles and daily recitation logs",
+          accent: BRAND.green,
+          href: "/teacher/quran-center",
+        },
       ],
     },
     {
@@ -3539,6 +3546,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       tools: [
         selectTool("/teacher/library", { searchText: "مكتبة المعلم teacher library resources" }),
         selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
+        selectTool("/teacher/quran-center", { searchText: "مركز القرآن الكريم quran center memorization" }),
       ],
     },
     {
