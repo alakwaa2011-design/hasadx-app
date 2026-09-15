@@ -46,6 +46,12 @@ function pageImageUrl(page: number) {
   return `${import.meta.env.BASE_URL}quran/mushaf-hafs-1441/${String(page).padStart(3, "0")}.webp`;
 }
 
+function plainArabicSurahName(name: string) {
+  return name
+    .replace(/\u0671/g, "ا")
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "");
+}
+
 export function QuranPagesView({
   initialSurah,
   initialAyah,
@@ -56,6 +62,7 @@ export function QuranPagesView({
   backHref = "/teacher/quran-center?tab=dashboard",
   backLabel,
   embedded = false,
+  onSwitchToText,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -68,6 +75,7 @@ export function QuranPagesView({
   backHref?: string;
   backLabel?: { ar: string; en: string };
   embedded?: boolean;
+  onSwitchToText?: (location: { surah: number; ayah: number }) => void;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -273,27 +281,29 @@ export function QuranPagesView({
             )}
 
               <div className="order-3 flex w-full flex-wrap items-center justify-center gap-2 md:order-none md:w-auto md:flex-1">
-               {!embedded && (
-                 <>
-                   <button
-                     type="button"
-                     onClick={() =>
-                       setLocation(
-                         `${readerBasePath}/${activeChapterId}?ayah=${verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah}&view=reader`,
-                       )
-                     }
-                     className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"
-                   >
-                     {lang === "ar" ? "نص القرآن" : "Quran Text"}
-                   </button>
-                   <span
-                     aria-current="page"
-                     className="shrink-0 rounded-xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-900 dark:bg-amber-900/50 dark:text-amber-100 md:text-sm"
-                   >
-                     {lang === "ar" ? "مصحف الصفحات" : "Pages Mushaf"}
-                   </span>
-                 </>
-               )}
+               <button
+                 type="button"
+                 onClick={() => {
+                   const location = {
+                     surah: activeChapterId,
+                     ayah: verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah,
+                   };
+                   if (embedded && onSwitchToText) {
+                     onSwitchToText(location);
+                   } else {
+                     setLocation(`${readerBasePath}/${location.surah}?ayah=${location.ayah}&view=reader`);
+                   }
+                 }}
+                 className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"
+               >
+                 {lang === "ar" ? "نص القرآن" : "Quran Text"}
+               </button>
+               <span
+                 aria-current="page"
+                 className="shrink-0 rounded-xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-900 dark:bg-amber-900/50 dark:text-amber-100 md:text-sm"
+               >
+                 {lang === "ar" ? "مصحف الصفحات" : "Pages Mushaf"}
+               </span>
               <select
                 value={activeChapterId}
                 onChange={(event) => goToSurah(Number(event.target.value))}
@@ -302,7 +312,7 @@ export function QuranPagesView({
               >
                 {chapters.map((chapter) => (
                   <option key={chapter.id} value={chapter.id}>
-                     {chapter.id}. {chapter.name}
+                    {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.name) : chapter.name}
                   </option>
                 ))}
               </select>

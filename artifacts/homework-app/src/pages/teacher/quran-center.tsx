@@ -14,6 +14,7 @@ import { QuranDashboard } from "./quran-center/quran-dashboard";
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
 import { QuranPagesView } from "./quran-pages-view";
+import { QuranTextReaderView } from "./quran-reader";
 
 type Tab = "dashboard" | "circles" | "queue" | "mushaf";
 
@@ -27,6 +28,8 @@ export default function QuranCenter() {
     ? requestedTab
     : "dashboard";
   const [activeTab, setActiveTab] = useState<Tab>(tabFromQuery);
+  const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
+  const [mushafLocation, setMushafLocation] = useState({ surah: 1, ayah: 1 });
 
   useEffect(() => {
     if (tabFromQuery !== activeTab) {
@@ -132,16 +135,38 @@ export default function QuranCenter() {
             >
               {activeTab === "dashboard" && <QuranDashboard surahs={surahs || []} onNavigate={handleTabChange} />}
               {activeTab === "mushaf" && (
-                <QuranPagesView
-                  initialSurah={1}
-                  initialAyah={1}
-                  onNavigate={() => {}}
-                  isTaskAyah={() => false}
-                  startAyah={null}
-                  endAyah={null}
-                  mode={null}
-                  embedded
-                />
+                mushafView === "pages" ? (
+                  <QuranPagesView
+                    initialSurah={mushafLocation.surah}
+                    initialAyah={mushafLocation.ayah}
+                    onNavigate={setMushafLocation}
+                    isTaskAyah={() => false}
+                    startAyah={null}
+                    endAyah={null}
+                    mode={null}
+                    embedded
+                    onSwitchToText={(location) => {
+                      setMushafLocation(location);
+                      setMushafView("reader");
+                    }}
+                  />
+                ) : (
+                  <QuranTextReaderView
+                    surahNumber={mushafLocation.surah}
+                    requestedAyah={mushafLocation.ayah}
+                    startAyah={null}
+                    endAyah={null}
+                    mode={null}
+                    isStudentWard={false}
+                    isStudentPractice={false}
+                    embedded
+                    onNavigate={setMushafLocation}
+                    onSwitchToPages={(location) => {
+                      setMushafLocation(location);
+                      setMushafView("pages");
+                    }}
+                  />
+                )
               )}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}

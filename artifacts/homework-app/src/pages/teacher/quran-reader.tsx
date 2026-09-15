@@ -113,7 +113,7 @@ export default function QuranReader() {
     );
   }
 
-  return <ReaderView
+  return <QuranTextReaderView
     surahNumber={surahNumber}
     startAyah={startAyah}
     endAyah={endAyah}
@@ -134,9 +134,24 @@ interface ReaderViewProps {
   isStudentWard: boolean;
   isStudentPractice: boolean;
   wardId?: number;
+  embedded?: boolean;
+  onNavigate?: (location: { surah: number; ayah: number }) => void;
+  onSwitchToPages?: (location: { surah: number; ayah: number }) => void;
 }
 
-function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isStudentWard, isStudentPractice, wardId }: ReaderViewProps) {
+export function QuranTextReaderView({
+  surahNumber,
+  startAyah,
+  endAyah,
+  mode,
+  requestedAyah,
+  isStudentWard,
+  isStudentPractice,
+  wardId,
+  embedded = false,
+  onNavigate,
+  onSwitchToPages,
+}: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
 
@@ -218,6 +233,10 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
 
   const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
     if (isStudentWard) return;
+    if (embedded && onNavigate) {
+      onNavigate({ surah, ayah });
+      return;
+    }
     const basePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
     setLocation(`${basePath}/${surah}?ayah=${ayah}&view=reader`);
   };
@@ -308,7 +327,11 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
   };
 
   return (
-    <div className={cn("min-h-[100dvh] flex flex-col font-sans transition-colors duration-300", isQuietMode ? "bg-[#fcfaf8] dark:bg-[#111]" : "bg-[#fcfaf8] dark:bg-background")} dir={dir}>
+    <div className={cn(
+      "flex flex-col font-sans transition-colors duration-300",
+      embedded ? "min-h-full" : "min-h-[100dvh]",
+      isQuietMode ? "bg-[#fcfaf8] dark:bg-[#111]" : "bg-[#fcfaf8] dark:bg-background",
+    )} dir={dir}>
       {/* Quiet Mode Exit Button */}
       {isQuietMode && (
         <button 
@@ -323,16 +346,18 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
       {!isQuietMode && (
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
-            <button 
-              onClick={() => setLocation(isStudentWard || isStudentPractice ? '/student/dashboard' : '/teacher/quran-center?tab=dashboard')}
-              className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
-            >
-              <ChevronLeft className="w-5 h-5 rtl:hidden" />
-              <ChevronRight className="w-5 h-5 ltr:hidden" />
-              {isStudentWard || isStudentPractice
-                ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
-                : (lang === 'ar' ? 'العودة إلى مركز القرآن' : 'Back to Quran Center')}
-            </button>
+            {!embedded && (
+              <button
+                onClick={() => setLocation(isStudentWard || isStudentPractice ? '/student/dashboard' : '/teacher/quran-center?tab=dashboard')}
+                className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
+              >
+                <ChevronLeft className="w-5 h-5 rtl:hidden" />
+                <ChevronRight className="w-5 h-5 ltr:hidden" />
+                {isStudentWard || isStudentPractice
+                  ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
+                  : (lang === 'ar' ? 'العودة إلى مركز القرآن' : 'Back to Quran Center')}
+              </button>
+            )}
             {!isStudentWard && (
               <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1">
                 <span
@@ -341,12 +366,22 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
                 >
                   {lang === 'ar' ? 'نص القرآن' : 'Quran Text'}
                 </span>
-                <a
-                  href={`${isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader'}/${surahNumber}?ayah=${activeAyahURL}&view=pages`}
-                  className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
-                >
-                  {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
-                </a>
+                {embedded ? (
+                  <button
+                    type="button"
+                    onClick={() => onSwitchToPages?.({ surah: surahNumber, ayah: activeAyahURL })}
+                    className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
+                  >
+                    {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
+                  </button>
+                ) : (
+                  <a
+                    href={`${isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader'}/${surahNumber}?ayah=${activeAyahURL}&view=pages`}
+                    className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
+                  >
+                    {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
+                  </a>
+                )}
               </div>
             )}
             
@@ -360,7 +395,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
               >
                 {surahs.map(s => (
                   <option key={s.index} value={s.index}>
-                    {s.index}. {lang === 'ar' ? `سورة ${s.name}` : `Surah ${s.name}`}
+                    {s.index}. {lang === 'ar' ? s.name : `Surah ${s.name}`}
                   </option>
                 ))}
               </select>
