@@ -110,11 +110,12 @@ export type ClassAction =
   | { type: "pick-mystery"; team: TeamId; idx: number }
   | { type: "dismiss-mystery"; team: TeamId };
 
-// Tuning
-const ROPE_STEP = 5;        // rope pull per correct answer
-const ROPE_SPEED_BONUS = 2; // extra pull when answered in the fastest 25%
-const SCORE_BASE = 10;
-const SCORE_SPEED_BONUS = 5;
+// Match Wameeth scoring: every correct answer is worth 300–1000 points
+// depending continuously on the remaining time, plus a streak bonus.
+const SCORE_BASE = 1000;
+const SCORE_MIN_FACTOR = 0.3;
+const SCORE_STREAK_BONUS = 100;
+const ROPE_PULL_AT_1000_POINTS = 5;
 const FEEDBACK_SECS = 2;    // how long each panel shows its own feedback
 const MAX_BOXES = 2;
 const GIFT_CHOICES: readonly MysteryGift[] = ["power-pull", "freeze", "time-boost", "shield"];
@@ -200,6 +201,11 @@ export function currentQuestion(state: ClassState, team: TeamId): ClassQuestion 
 const clampRope = (r: number) => Math.max(0, Math.min(100, r));
 const clampSetting = (value: number | undefined, fallback: number, min: number, max: number) =>
   Math.max(min, Math.min(max, Number.isFinite(value) ? Math.floor(value as number) : fallback));
+
+export function calcTugPoints(timeLeft: number, duration: number, streak: number): number {
+  const speed = Math.max(SCORE_MIN_FACTOR, Math.min(1, timeLeft / Math.max(1, duration)));
+  return Math.round(SCORE_BASE * speed) + Math.max(0, streak) * SCORE_STREAK_BONUS;
+}
 
 /** Rope-wall win beats everything; otherwise both teams must be exhausted. */
 function resolveEnd(state: ClassState): ClassState {
@@ -288,13 +294,12 @@ export function classReducer(state: ClassState, action: ClassAction): ClassState
       if (!q || action.index < 0 || action.index >= q.options.length) return state;
 
       const correct = action.index === q.correct;
-      const fast = t.timeLeft >= state.duration * 0.75;
-      const normalPull = ROPE_STEP + (fast ? ROPE_SPEED_BONUS : 0);
+      const gain = correct ? calcTugPoints(t.timeLeft, state.duration, t.streak) : 0;
+      const normalPull = ROPE_PULL_AT_1000_POINTS * (gain / SCORE_BASE);
       const pull = correct ? normalPull * (t.powerPullReady ? 2 : 1) : 0;
       // Blue pulls the rope toward 0, red toward 100.
       const rope = clampRope(state.rope + (action.team === "blue" ? -pull : pull));
 
-      const gain = correct ? SCORE_BASE + (fast ? SCORE_SPEED_BONUS : 0) : 0;
       const progress = correct && state.giftsEnabled ? t.correctSinceGift + 1 : t.correctSinceGift;
       const hitsGiftCadence = state.giftsEnabled && correct && progress >= state.giftEveryCorrect;
       const earnsBox = hitsGiftCadence && t.boxes < MAX_BOXES;

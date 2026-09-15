@@ -20,3 +20,9 @@ After a gift is selected, show the activation result briefly and dismiss the loc
 **Why:** The gift should feel like an uninterrupted game event, not a second confirmation step that pauses the classroom round.
 
 **How to apply:** Apply the effect immediately on selection, then close the owning team's picker automatically after its short reveal animation.
+
+Tug of War uses the same continuous speed scoring as Wameeth: a correct answer earns 300–1000 base points from remaining time, plus the established streak bonus. Wrong answers always earn zero and exert no pull.
+
+**Why:** Binary fast/slow bonuses made equally correct teams look tied and did not reliably reward the faster team.
+
+**How to apply:** Keep board and device modes aligned. Derive rope pull from the speed-weighted correct-answer score, while preserving server authority in device mode and existing power-pull multipliers.

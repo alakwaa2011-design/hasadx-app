@@ -99,6 +99,20 @@ function getPlayerList(game: TugGame) {
   }));
 }
 
+const TUG_SCORE_BASE = 1000;
+const TUG_SCORE_MIN_FACTOR = 0.3;
+const TUG_STREAK_BONUS = 100;
+const TUG_ROPE_SCALE = 0.005;
+
+export function calcTugAnswerPoints(timeMs: number, questionDuration: number, streak: number): number {
+  const durationMs = Math.max(1, questionDuration * 1000);
+  const remainingFactor = Math.max(
+    TUG_SCORE_MIN_FACTOR,
+    Math.min(1, 1 - Math.max(0, timeMs) / durationMs),
+  );
+  return Math.round(TUG_SCORE_BASE * remainingFactor) + Math.max(0, streak) * TUG_STREAK_BONUS;
+}
+
 function calcCurrentRopePosition(
   game: TugGame,
   questionDuration: number
@@ -115,9 +129,9 @@ function calcCurrentRopePosition(
   for (const [socketId, answer] of Object.entries(game.roundAnswers)) {
     const player = game.players[socketId];
     if (!player) continue;
-    const speedBonus = 1 + Math.max(0, 1 - answer.timeMs / (questionDuration * 1000));
-    const streakBonus = player.streak >= 3 ? 0.5 : 0;
-    const pts = answer.correct ? (speedBonus + streakBonus) * multiplier * (answer.pullMultiplier ?? 1) : -0.5;
+    const pts = answer.correct
+      ? calcTugAnswerPoints(answer.timeMs, questionDuration, player.streak) * multiplier * (answer.pullMultiplier ?? 1)
+      : 0;
     if (player.team === "blue") blueScore += pts;
     else redScore += pts;
   }
@@ -125,7 +139,7 @@ function calcCurrentRopePosition(
   const blueNorm = blueScore / Math.max(bluePlayers.length, 1);
   const redNorm = redScore / Math.max(redPlayers.length, 1);
 
-  const delta = (redNorm - blueNorm) * 4;
+  const delta = (redNorm - blueNorm) * TUG_ROPE_SCALE;
   const newPosition = Math.max(5, Math.min(95, game.ropePosition + delta));
 
   return {
@@ -274,9 +288,6 @@ function scheduleBotAnswers(tugNs: ReturnType<Server["of"]>, game: TugGame) {
       game.roundAnswers[botId] = { correct, timeMs, pullMultiplier };
       if (correct) awardCorrectGift(tugNs, game, bot.team);
 
-      const newStreak = correct ? bot.streak + 1 : 0;
-      bot.streak = newStreak;
-
       const { ropePosition, blueScore, redScore } = calcCurrentRopePosition(game, q.duration);
       tugNs.to(`tug:${game.pin}`).emit("tug:rope-update", {
         ropePosition,
@@ -306,12 +317,10 @@ function endRound(tugNs: ReturnType<Server["of"]>, game: TugGame) {
     const player = game.players[socketId];
     if (!player) continue;
     if (answer.correct) {
-      player.streak += 1;
-      const timeBonus = Math.floor((1 - answer.timeMs / (q.duration * 1000)) * 50);
-      let pts = 100 + Math.max(0, timeBonus);
+      let pts = calcTugAnswerPoints(answer.timeMs, q.duration, player.streak);
       if (power) pts *= 2;
-      if (player.streak >= 3) pts += 50;
       player.score += pts;
+      player.streak += 1;
     } else {
       player.streak = 0;
     }

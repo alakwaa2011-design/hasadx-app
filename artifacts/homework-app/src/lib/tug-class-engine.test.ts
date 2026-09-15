@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildQuestionOrders,
   classReducer,
+  calcTugPoints,
   createClassState,
   currentQuestion,
   type ClassQuestion,
@@ -55,6 +56,35 @@ describe("buildQuestionOrders", () => {
 });
 
 describe("class mode — independent question routes", () => {
+  it("awards continuously higher points and rope pull to faster correct answers", () => {
+    expect(calcTugPoints(20, 20, 0)).toBe(1000);
+    expect(calcTugPoints(10, 20, 0)).toBe(500);
+    expect(calcTugPoints(1, 20, 0)).toBe(300);
+
+    const initial = startPlaying(createClassState(makeQuestions(10), 20, seededRng()));
+    const question = currentQuestion(initial, "blue")!;
+    const fast = classReducer(initial, { type: "answer", team: "blue", index: question.correct });
+    const slowState = {
+      ...initial,
+      teams: { ...initial.teams, blue: { ...initial.teams.blue, timeLeft: 10 } },
+    };
+    const slow = classReducer(slowState, { type: "answer", team: "blue", index: question.correct });
+
+    expect(fast.teams.blue.lastGain).toBeGreaterThan(slow.teams.blue.lastGain);
+    expect(50 - fast.rope).toBeGreaterThan(50 - slow.rope);
+  });
+
+  it("awards zero points and no pull for a wrong answer regardless of speed", () => {
+    const initial = startPlaying(createClassState(makeQuestions(10), 20, seededRng()));
+    const question = currentQuestion(initial, "blue")!;
+    const wrong = (question.correct + 1) % question.options.length;
+    const answered = classReducer(initial, { type: "answer", team: "blue", index: wrong });
+
+    expect(answered.teams.blue.lastGain).toBe(0);
+    expect(answered.teams.blue.score).toBe(0);
+    expect(answered.rope).toBe(50);
+  });
+
   it("teams open the game on different questions", () => {
     const s = startPlaying(createClassState(makeQuestions(10), 20, seededRng()));
     expect(currentQuestion(s, "blue")!.text).not.toBe(currentQuestion(s, "red")!.text);
@@ -181,7 +211,7 @@ describe("class mode — team mystery boxes", () => {
     expect(s.teams.blue.powerPullReady).toBe(true);
     const q = currentQuestion(s, "blue")!;
     s = classReducer(s, { type: "answer", team: "blue", index: q.correct });
-    expect(s.rope).toBe(36); // fast normal pull is 7, doubled to 14
+    expect(s.rope).toBe(40); // 1000-point answer pulls 5, doubled to 10
     expect(s.teams.blue.powerPullReady).toBe(false);
   });
 
