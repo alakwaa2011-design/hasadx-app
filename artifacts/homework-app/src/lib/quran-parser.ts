@@ -21,6 +21,11 @@ export interface QuranLocation extends QuranPosition {
   juz: number;
 }
 
+export interface QuranPageGroup<T> {
+  page: number;
+  ayahs: T[];
+}
+
 function parseAttributes(tagStr: string) {
   const attrRegex = /([a-zA-Z0-9_]+)="([^"]*)"/g;
   const attrs: Record<string, string> = {};
@@ -91,6 +96,33 @@ export function getQuranLocation(surah: number, ayah: number): QuranLocation {
     page: boundaryNumber(position, MADANI_PAGE_STARTS),
     juz: boundaryNumber(position, QURAN_JUZ_STARTS),
   };
+}
+
+/**
+ * Groups a surah's verses by their Madani mushaf page.
+ *
+ * The source XML is already ordered by ayah. Keeping that order while
+ * creating groups means the boundary between cards cannot silently duplicate
+ * or omit a verse.
+ */
+export function groupAyahsByMushafPage<T extends { index: number }>(
+  surah: number,
+  ayahs: readonly T[],
+): QuranPageGroup<T>[] {
+  const groups: QuranPageGroup<T>[] = [];
+
+  for (const ayah of ayahs) {
+    const page = getQuranLocation(surah, ayah.index).page;
+    const currentGroup = groups[groups.length - 1];
+
+    if (!currentGroup || currentGroup.page !== page) {
+      groups.push({ page, ayahs: [ayah] });
+    } else {
+      currentGroup.ayahs.push(ayah);
+    }
+  }
+
+  return groups;
 }
 
 export function getGlobalAyahNumber(surahs: QuranSurahParsed[], surahNumber: number, ayahNumber: number): number {

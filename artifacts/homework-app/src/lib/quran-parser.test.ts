@@ -4,6 +4,7 @@ import {
   getJuzStart,
   getPageStart,
   getQuranLocation,
+  groupAyahsByMushafPage,
   parseQuranXml,
 } from './quran-parser';
 import {
@@ -77,6 +78,74 @@ describe('Madani Mushaf navigation metadata', () => {
     QURAN_JUZ_STARTS.forEach((start, index) => {
       expect(getQuranLocation(start.surah, start.ayah).juz).toBe(index + 1);
     });
+  });
+
+  it('keeps every ayah of a short surah in the correct ordered page card', () => {
+    const surah = parseQuranXml(quranXml).find((entry) => entry.index === 1);
+    expect(surah).toBeDefined();
+
+    const groups = groupAyahsByMushafPage(1, surah!.ayahs);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      page: 1,
+      ayahs: expect.arrayContaining([
+        expect.objectContaining({ index: 1 }),
+        expect.objectContaining({ index: 7 }),
+      ]),
+    });
+    expect(groups[0].ayahs[0].index).toBe(1);
+    expect(groups[0].ayahs.at(-1)?.index).toBe(7);
+    expect(groups.flatMap((group) => group.ayahs.map((ayah) => ayah.index))).toEqual(
+      surah!.ayahs.map((ayah) => ayah.index),
+    );
+  });
+
+  it('preserves every first and last ayah when a surah crosses mushaf pages', () => {
+    const surah = parseQuranXml(quranXml).find((entry) => entry.index === 2);
+    expect(surah).toBeDefined();
+
+    const groups = groupAyahsByMushafPage(2, surah!.ayahs);
+    const expectedBoundaries = MADANI_PAGE_STARTS
+      .map((start, index) => ({ ...start, page: index + 1 }))
+      .filter((start) => start.surah === 2)
+      .map((start, index, starts) => ({
+        page: start.page,
+        first: start.ayah,
+        last: starts[index + 1]?.ayah - 1 || surah!.ayahs.length,
+      }));
+
+    expect(groups.map((group) => ({
+      page: group.page,
+      first: group.ayahs[0].index,
+      last: group.ayahs.at(-1)?.index,
+    }))).toEqual(expectedBoundaries);
+
+    const flattenedIndexes = groups.flatMap((group) => group.ayahs.map((ayah) => ayah.index));
+    expect(flattenedIndexes).toEqual(surah!.ayahs.map((ayah) => ayah.index));
+    expect(new Set(flattenedIndexes).size).toBe(surah!.ayahs.length);
+  });
+
+  it.each([
+    [2, 5, 2],
+    [2, 6, 3],
+    [2, 16, 3],
+    [2, 17, 4],
+    [2, 141, 21],
+    [2, 142, 22],
+    [2, 252, 41],
+    [2, 253, 42],
+  ])('routes a verse target to the card containing %i:%i', (surah, ayah, page) => {
+    const groups = groupAyahsByMushafPage(
+      surah,
+      parseQuranXml(quranXml).find((entry) => entry.index === surah)!.ayahs,
+    );
+    const targetGroup = groups.find((group) =>
+      group.ayahs.some((candidate) => candidate.index === ayah),
+    );
+
+    expect(getQuranLocation(surah, ayah).page).toBe(page);
+    expect(targetGroup?.page).toBe(page);
   });
 });
 
