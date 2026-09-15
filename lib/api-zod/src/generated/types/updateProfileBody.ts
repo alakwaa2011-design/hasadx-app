@@ -12,12 +12,14 @@ export interface UpdateProfileBody {
   phone?: string;
   /**
      * Primary subject or professional field used to personalize the activities library.
+     * @minLength 1
      * @maxLength 100
      */
   primarySubject?: string;
   /**
      * Subjects used to personalize the activities library.
      * @maxItems 10
+     * @items.minLength 1
      * @items.maxLength 100
      */
   subjects?: string[];

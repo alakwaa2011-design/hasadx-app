@@ -12,12 +12,14 @@ export interface GoogleLoginBody {
   credential: string;
   /**
      * Primary subject selected during a new Google registration.
+     * @minLength 1
      * @maxLength 100
      */
   primarySubject?: string;
   /**
      * Subjects selected during a new Google registration.
      * @maxItems 10
+     * @items.minLength 1
      * @items.maxLength 100
      */
   subjects?: string[];

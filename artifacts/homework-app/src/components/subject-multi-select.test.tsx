@@ -4,6 +4,15 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SubjectMultiSelect } from "./subject-multi-select";
 
+function setInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 describe("SubjectMultiSelect", () => {
   const roots: ReturnType<typeof createRoot>[] = [];
 
@@ -45,5 +54,51 @@ describe("SubjectMultiSelect", () => {
     expect(onChange).toHaveBeenLastCalledWith(["اللغة العربية", "العلوم"]);
     expect(arabic.getAttribute("aria-pressed")).toBe("true");
     expect(science.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("adds a trimmed custom subject and keeps it selected", async () => {
+    const onChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(
+        <SubjectMultiSelect value={[]} lang="ar" onChange={onChange} />,
+      );
+    });
+
+    const input = container.querySelector('[data-testid="input-custom-subject"]') as HTMLInputElement;
+    const add = container.querySelector('[data-testid="button-add-custom-subject"]') as HTMLButtonElement;
+    await act(async () => {
+      setInputValue(input, "  التصميم الصناعي  ");
+    });
+    await act(async () => add.click());
+
+    expect(onChange).toHaveBeenCalledWith(["التصميم الصناعي"]);
+  });
+
+  it("does not add a duplicate subject after whitespace and case normalization", async () => {
+    const onChange = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(
+        <SubjectMultiSelect value={["Physics"]} lang="en" onChange={onChange} />,
+      );
+    });
+
+    const input = container.querySelector('[data-testid="input-custom-subject"]') as HTMLInputElement;
+    await act(async () => {
+      setInputValue(input, "  physics ");
+    });
+
+    const add = container.querySelector('[data-testid="button-add-custom-subject"]') as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

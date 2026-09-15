@@ -569,12 +569,14 @@ export interface UpdateProfileBody {
   phone?: string;
   /**
      * Primary subject or professional field used to personalize the activities library.
+     * @minLength 1
      * @maxLength 100
      */
   primarySubject?: string;
   /**
      * Subjects used to personalize the activities library.
      * @maxItems 10
+     * @items.minLength 1
      * @items.maxLength 100
      */
   subjects?: string[];
@@ -617,12 +619,14 @@ export interface RegisterTeacherBody {
   role?: RegisterTeacherBodyRole;
   /**
      * Teacher's primary subject or professional field, used to personalize the activities library.
+     * @minLength 1
      * @maxLength 100
      */
   primarySubject?: string;
   /**
      * Subjects taught by the teacher, used to personalize the activities library.
      * @maxItems 10
+     * @items.minLength 1
      * @items.maxLength 100
      */
   subjects?: string[];
@@ -690,12 +694,14 @@ export interface GoogleLoginBody {
   credential: string;
   /**
      * Primary subject selected during a new Google registration.
+     * @minLength 1
      * @maxLength 100
      */
   primarySubject?: string;
   /**
      * Subjects selected during a new Google registration.
      * @maxItems 10
+     * @items.minLength 1
      * @items.maxLength 100
      */
   subjects?: string[];

@@ -19,19 +19,32 @@ import { removePushSubscriptionsForSession } from "../lib/web-push";
 
 const PHONE_REGEX = /^\+\d{7,15}$/;
 const LEGACY_PHONE_REGEX = /^\d{7,15}$/;
+const SUBJECT_MAX_LENGTH = 100;
+const MAX_TEACHER_SUBJECTS = 10;
+const SubjectSchema = z.string().trim().min(1).max(SUBJECT_MAX_LENGTH);
+const SubjectInputSchema = z.object({
+  primarySubject: SubjectSchema.optional(),
+  subjects: z.array(SubjectSchema).max(MAX_TEACHER_SUBJECTS).optional(),
+});
 
 function normalizePrimarySubject(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().replace(/\s+/g, " ");
-  return normalized ? normalized.slice(0, 100) : null;
+  return normalized && normalized.length <= SUBJECT_MAX_LENGTH ? normalized : null;
 }
 
 function normalizeSubjects(value: unknown, legacyPrimarySubject?: unknown): string[] {
   const candidates = Array.isArray(value) ? value : [legacyPrimarySubject];
-  return [...new Set(candidates
-    .map(normalizePrimarySubject)
-    .filter((subject): subject is string => Boolean(subject)))]
-    .slice(0, 10);
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const candidate of candidates) {
+    const subject = normalizePrimarySubject(candidate);
+    const key = subject?.toLocaleLowerCase();
+    if (!subject || !key || seen.has(key)) continue;
+    seen.add(key);
+    normalized.push(subject);
+  }
+  return normalized.slice(0, MAX_TEACHER_SUBJECTS);
 }
 
 function normalizeEmailAddress(email: string): string {
@@ -52,8 +65,8 @@ const UpdateProfileSchema = z
       .regex(/^(\+\d{7,15}|\d{7,15})$/)
       .optional()
       .or(z.literal("")),
-    primarySubject: z.string().trim().min(1).max(100).optional(),
-    subjects: z.array(z.string().trim().min(1).max(100)).max(10).optional(),
+    primarySubject: SubjectSchema.optional(),
+    subjects: z.array(SubjectSchema).max(MAX_TEACHER_SUBJECTS).optional(),
   })
   .strict();
 
@@ -1450,7 +1463,18 @@ router.post("/auth/logout", async (req, res) => {
 router.post("/auth/google", authLimiter, async (req, res) => {
   try {
     const { credential } = req.body ?? {};
-    const subjects = normalizeSubjects(req.body?.subjects, req.body?.primarySubject);
+    const parsedSubjects = SubjectInputSchema.safeParse({
+      primarySubject: req.body?.primarySubject,
+      subjects: req.body?.subjects,
+    });
+    if (!parsedSubjects.success) {
+      res.status(400).json({ message: "بيانات المواد غير صحيحة" });
+      return;
+    }
+    const subjects = normalizeSubjects(
+      parsedSubjects.data.subjects,
+      parsedSubjects.data.primarySubject,
+    );
     const requestedRole = req.body?.role === "organizer" ? "organizer" : "teacher";
     if (!credential || typeof credential !== "string") {
       res.status(400).json({ message: "بيانات Google ناقصة" });

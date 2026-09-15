@@ -2217,6 +2217,7 @@ components:
           type: string
         primarySubject:
           type: string
+          minLength: 1
           maxLength: 100
           description: "Primary subject or professional field used to personalize the activities library."
         subjects:
@@ -2224,6 +2225,7 @@ components:
           maxItems: 10
           items:
             type: string
+            minLength: 1
             maxLength: 100
           description: "Subjects used to personalize the activities library."
 
@@ -2264,6 +2266,7 @@ components:
           description: "Public registration role; admin role can only be granted internally."
         primarySubject:
           type: string
+          minLength: 1
           maxLength: 100
           description: "Teacher's primary subject or professional field, used to personalize the activities library."
         subjects:
@@ -2271,6 +2274,7 @@ components:
           maxItems: 10
           items:
             type: string
+            minLength: 1
             maxLength: 100
           description: "Subjects taught by the teacher, used to personalize the activities library."
         acquisitionSource:
@@ -2320,6 +2324,7 @@ components:
           description: Google ID token (credential) returned by the Google sign-in flow.
         primarySubject:
           type: string
+          minLength: 1
           maxLength: 100
           description: Primary subject selected during a new Google registration.
         subjects:
@@ -2327,6 +2332,7 @@ components:
           maxItems: 10
           items:
             type: string
+            minLength: 1
             maxLength: 100
           description: Subjects selected during a new Google registration.
         role:
