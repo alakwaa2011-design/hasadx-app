@@ -14653,6 +14653,238 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     assignmentRequestId: string | null;
 }>, "many">;
 /**
+ * Returns only Quran records owned by the signed-in student account. Recitations are canonical when a reviewed submission also exists.
+ * @summary Get the signed-in student's personal Quran journey
+ */
+export declare const getQuranJourneyResponseProfileCurrentSurahNumberMax = 114;
+export declare const getQuranJourneyResponseProfileProgressPercentMin = 0;
+export declare const getQuranJourneyResponseProfileProgressPercentMax = 100;
+export declare const getQuranJourneyResponseProfileMasteredAyahCountMin = 0;
+export declare const getQuranJourneyResponseProfileLastRecitedDateRegExp: RegExp;
+export declare const getQuranJourneyResponseNextWardOneSurahNumberMax = 114;
+export declare const getQuranJourneyResponseNextWardOneAssignedDateRegExp: RegExp;
+export declare const getQuranJourneyResponseNextWardOneDueDateRegExp: RegExp;
+export declare const getQuranJourneyResponseSummaryCompletedWardCountMin = 0;
+export declare const getQuranJourneyResponseSummaryMasteredAyahCountMin = 0;
+export declare const getQuranJourneyResponseSummaryNeedsReviewCountMin = 0;
+export declare const getQuranJourneyResponseSummaryPendingSubmissionCountMin = 0;
+export declare const getQuranJourneyResponseSummaryAverageMemorizationScoreMin = 0;
+export declare const getQuranJourneyResponseSummaryAverageMemorizationScoreMax = 100;
+export declare const getQuranJourneyResponseSummaryAverageRecitationScoreMin = 0;
+export declare const getQuranJourneyResponseSummaryAverageRecitationScoreMax = 100;
+export declare const getQuranJourneyResponseStreakCurrentMin = 0;
+export declare const getQuranJourneyResponseStreakLongestMin = 0;
+export declare const getQuranJourneyResponseActiveDatesItemRegExp: RegExp;
+export declare const getQuranJourneyResponseActiveDatesMax = 90;
+export declare const getQuranJourneyResponseRecentActivitiesItemDateRegExp: RegExp;
+export declare const getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMin = 0;
+export declare const getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMax = 100;
+export declare const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMin = 0;
+export declare const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMax = 100;
+export declare const getQuranJourneyResponseRecentActivitiesMax = 20;
+export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
+    profile: zodV3.ZodObject<{
+        currentSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
+        currentAyah: zodV3.ZodNullable<zodV3.ZodNumber>;
+        progressPercent: zodV3.ZodNumber;
+        masteredAyahCount: zodV3.ZodNumber;
+        lastRecitedDate: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    }, {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    }>;
+    nextWard: zodV3.ZodNullable<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        mode: zodV3.ZodEnum<["memorization", "review", "recitation", "assessment"]>;
+        surahNumber: zodV3.ZodNumber;
+        surahName: zodV3.ZodString;
+        startAyah: zodV3.ZodNumber;
+        endAyah: zodV3.ZodNumber;
+        assignedDate: zodV3.ZodString;
+        dueDate: zodV3.ZodNullable<zodV3.ZodString>;
+        status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }, {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    }>>;
+    summary: zodV3.ZodObject<{
+        completedWardCount: zodV3.ZodNumber;
+        masteredAyahCount: zodV3.ZodNumber;
+        needsReviewCount: zodV3.ZodNumber;
+        pendingSubmissionCount: zodV3.ZodNumber;
+        averageMemorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+        averageRecitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    }, "strip", zodV3.ZodTypeAny, {
+        masteredAyahCount: number;
+        completedWardCount: number;
+        needsReviewCount: number;
+        pendingSubmissionCount: number;
+        averageMemorizationScore: number | null;
+        averageRecitationScore: number | null;
+    }, {
+        masteredAyahCount: number;
+        completedWardCount: number;
+        needsReviewCount: number;
+        pendingSubmissionCount: number;
+        averageMemorizationScore: number | null;
+        averageRecitationScore: number | null;
+    }>;
+    streak: zodV3.ZodObject<{
+        current: zodV3.ZodNumber;
+        longest: zodV3.ZodNumber;
+    }, "strip", zodV3.ZodTypeAny, {
+        current: number;
+        longest: number;
+    }, {
+        current: number;
+        longest: number;
+    }>;
+    activeDates: zodV3.ZodArray<zodV3.ZodString, "many">;
+    recentActivities: zodV3.ZodArray<zodV3.ZodObject<{
+        type: zodV3.ZodEnum<["recitation", "submission"]>;
+        wardId: zodV3.ZodNumber;
+        date: zodV3.ZodString;
+        surahName: zodV3.ZodString;
+        startAyah: zodV3.ZodNumber;
+        endAyah: zodV3.ZodNumber;
+        status: zodV3.ZodString;
+        memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+        recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: string;
+        type: "submission" | "recitation";
+        date: string;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+    }, {
+        status: string;
+        type: "submission" | "recitation";
+        date: string;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    profile: {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    };
+    nextWard: {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    } | null;
+    summary: {
+        masteredAyahCount: number;
+        completedWardCount: number;
+        needsReviewCount: number;
+        pendingSubmissionCount: number;
+        averageMemorizationScore: number | null;
+        averageRecitationScore: number | null;
+    };
+    streak: {
+        current: number;
+        longest: number;
+    };
+    activeDates: string[];
+    recentActivities: {
+        status: string;
+        type: "submission" | "recitation";
+        date: string;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+    }[];
+}, {
+    profile: {
+        currentSurahNumber: number | null;
+        currentAyah: number | null;
+        progressPercent: number;
+        masteredAyahCount: number;
+        lastRecitedDate: string | null;
+    };
+    nextWard: {
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        id: number;
+        mode: "review" | "memorization" | "recitation" | "assessment";
+        surahNumber: number;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        assignedDate: string;
+        dueDate: string | null;
+    } | null;
+    summary: {
+        masteredAyahCount: number;
+        completedWardCount: number;
+        needsReviewCount: number;
+        pendingSubmissionCount: number;
+        averageMemorizationScore: number | null;
+        averageRecitationScore: number | null;
+    };
+    streak: {
+        current: number;
+        longest: number;
+    };
+    activeDates: string[];
+    recentActivities: {
+        status: string;
+        type: "submission" | "recitation";
+        date: string;
+        surahName: string;
+        startAyah: number;
+        endAyah: number;
+        wardId: number;
+        memorizationScore: number | null;
+        recitationScore: number | null;
+    }[];
+}>;
+/**
  * @summary Get one Quran ward owned by the signed-in student
  */
 export declare const GetMyQuranWardParams: zodV3.ZodObject<{
@@ -15472,6 +15704,468 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
 }, {
     studentName: string;
 }>>, "many">;
+/**
+ * @summary Prepare a private Quran audio upload for the signed-in student
+ */
+export declare const prepareQuranSubmissionUploadBodyFileSizeMax = 31457280;
+export declare const PrepareQuranSubmissionUploadBody: zodV3.ZodObject<{
+    wardId: zodV3.ZodNumber;
+    contentType: zodV3.ZodEnum<["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg"]>;
+    fileSize: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    contentType: "audio/webm" | "audio/mp4" | "audio/mpeg" | "audio/ogg";
+    wardId: number;
+    fileSize: number;
+}, {
+    contentType: "audio/webm" | "audio/mp4" | "audio/mpeg" | "audio/ogg";
+    wardId: number;
+    fileSize: number;
+}>;
+export declare const prepareQuranSubmissionUploadResponseObjectPathRegExp: RegExp;
+export declare const PrepareQuranSubmissionUploadResponse: zodV3.ZodObject<{
+    uploadURL: zodV3.ZodString;
+    objectPath: zodV3.ZodString;
+    expiresIn: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    objectPath: string;
+    uploadURL: string;
+    expiresIn: number;
+}, {
+    objectPath: string;
+    uploadURL: string;
+    expiresIn: number;
+}>;
+/**
+ * @summary List Quran audio submissions owned by the signed-in student
+ */
+export declare const listMyQuranSubmissionsResponseMemorizationScoreMin = 0;
+export declare const listMyQuranSubmissionsResponseMemorizationScoreMax = 100;
+export declare const listMyQuranSubmissionsResponseRecitationScoreMin = 0;
+export declare const listMyQuranSubmissionsResponseRecitationScoreMax = 100;
+export declare const listMyQuranSubmissionsResponseMistakeCountsOneMinOne = 0;
+export declare const ListMyQuranSubmissionsResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>;
+export declare const ListMyQuranSubmissionsResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>, "many">;
+/**
+ * @summary Finalize an uploaded Quran audio submission
+ */
+export declare const finalizeQuranSubmissionBodyObjectPathRegExp: RegExp;
+export declare const finalizeQuranSubmissionBodyClientRequestIdMin = 8;
+export declare const finalizeQuranSubmissionBodyClientRequestIdMax = 120;
+export declare const FinalizeQuranSubmissionBody: zodV3.ZodObject<{
+    wardId: zodV3.ZodNumber;
+    objectPath: zodV3.ZodString;
+    clientRequestId: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    objectPath: string;
+    wardId: number;
+    clientRequestId: string;
+}, {
+    objectPath: string;
+    wardId: number;
+    clientRequestId: string;
+}>;
+export declare const finalizeQuranSubmissionResponseMemorizationScoreMin = 0;
+export declare const finalizeQuranSubmissionResponseMemorizationScoreMax = 100;
+export declare const finalizeQuranSubmissionResponseRecitationScoreMin = 0;
+export declare const finalizeQuranSubmissionResponseRecitationScoreMax = 100;
+export declare const finalizeQuranSubmissionResponseMistakeCountsOneMinOne = 0;
+export declare const FinalizeQuranSubmissionResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>;
+/**
+ * @summary Get one Quran submission owned by the signed-in student
+ */
+export declare const GetMyQuranSubmissionParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const getMyQuranSubmissionResponseMemorizationScoreMin = 0;
+export declare const getMyQuranSubmissionResponseMemorizationScoreMax = 100;
+export declare const getMyQuranSubmissionResponseRecitationScoreMin = 0;
+export declare const getMyQuranSubmissionResponseRecitationScoreMax = 100;
+export declare const getMyQuranSubmissionResponseMistakeCountsOneMinOne = 0;
+export declare const GetMyQuranSubmissionResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>;
+/**
+ * @summary List actionable student Quran audio submissions for a teacher
+ */
+export declare const listQuranSubmissionReviewQueueResponseOneMemorizationScoreMin = 0;
+export declare const listQuranSubmissionReviewQueueResponseOneMemorizationScoreMax = 100;
+export declare const listQuranSubmissionReviewQueueResponseOneRecitationScoreMin = 0;
+export declare const listQuranSubmissionReviewQueueResponseOneRecitationScoreMax = 100;
+export declare const listQuranSubmissionReviewQueueResponseOneMistakeCountsOneMinOne = 0;
+export declare const ListQuranSubmissionReviewQueueResponseItem: zodV3.ZodIntersection<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>, zodV3.ZodObject<{
+    studentName: zodV3.ZodString;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    mode: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    mode: string;
+    studentName: string;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+}, {
+    mode: string;
+    studentName: string;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+}>>;
+export declare const ListQuranSubmissionReviewQueueResponse: zodV3.ZodArray<zodV3.ZodIntersection<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>, zodV3.ZodObject<{
+    studentName: zodV3.ZodString;
+    surahName: zodV3.ZodString;
+    startAyah: zodV3.ZodNumber;
+    endAyah: zodV3.ZodNumber;
+    mode: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    mode: string;
+    studentName: string;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+}, {
+    mode: string;
+    studentName: string;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+}>>, "many">;
+/**
+ * @summary Get a short-lived protected audio URL for an owned submission
+ */
+export declare const GetQuranSubmissionAudioUrlParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const GetQuranSubmissionAudioUrlResponse: zodV3.ZodObject<{
+    url: zodV3.ZodString;
+    expiresIn: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    url: string;
+    expiresIn: number;
+}, {
+    url: string;
+    expiresIn: number;
+}>;
+/**
+ * @summary Review a student Quran audio submission
+ */
+export declare const ReviewQuranSubmissionParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const reviewQuranSubmissionBodyMemorizationScoreMin = 0;
+export declare const reviewQuranSubmissionBodyMemorizationScoreMax = 100;
+export declare const reviewQuranSubmissionBodyRecitationScoreMin = 0;
+export declare const reviewQuranSubmissionBodyRecitationScoreMax = 100;
+export declare const reviewQuranSubmissionBodyMistakeCountsOneMinOne = 0;
+export declare const reviewQuranSubmissionBodyFeedbackMax = 2000;
+export declare const ReviewQuranSubmissionBody: zodV3.ZodObject<{
+    status: zodV3.ZodEnum<["reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    recitationScore: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
+    mistakeCounts: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>>;
+    feedback: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "reviewed" | "needs_resubmission";
+    feedback?: string | null | undefined;
+    memorizationScore?: number | null | undefined;
+    recitationScore?: number | null | undefined;
+    mistakeCounts?: Record<string, number> | null | undefined;
+}, {
+    status: "reviewed" | "needs_resubmission";
+    feedback?: string | null | undefined;
+    memorizationScore?: number | null | undefined;
+    recitationScore?: number | null | undefined;
+    mistakeCounts?: Record<string, number> | null | undefined;
+}>;
+export declare const reviewQuranSubmissionResponseMemorizationScoreMin = 0;
+export declare const reviewQuranSubmissionResponseMemorizationScoreMax = 100;
+export declare const reviewQuranSubmissionResponseRecitationScoreMin = 0;
+export declare const reviewQuranSubmissionResponseRecitationScoreMax = 100;
+export declare const reviewQuranSubmissionResponseMistakeCountsOneMinOne = 0;
+export declare const ReviewQuranSubmissionResponse: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    wardId: zodV3.ZodNumber;
+    studentId: zodV3.ZodNumber;
+    status: zodV3.ZodEnum<["submitted", "reviewed", "needs_resubmission"]>;
+    memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
+    mistakeCounts: zodV3.ZodNullable<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    feedback: zodV3.ZodNullable<zodV3.ZodString>;
+    contentType: zodV3.ZodString;
+    fileSize: zodV3.ZodNumber;
+    createdAt: zodV3.ZodDate;
+    updatedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}, {
+    status: "submitted" | "reviewed" | "needs_resubmission";
+    id: number;
+    createdAt: Date;
+    updatedAt: Date;
+    feedback: string | null;
+    contentType: string;
+    studentId: number;
+    wardId: number;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    fileSize: number;
+}>;
 /**
  * @summary Get today's Quran recitation and review queue
  */

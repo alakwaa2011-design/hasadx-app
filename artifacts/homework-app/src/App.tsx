@@ -72,6 +72,7 @@ const IslamicChallengePlay = lazy(() => import("@/pages/islamic/challenge").then
 const IslamicTournamentPlay = lazy(() => import("@/pages/islamic/challenge").then((m) => ({ default: m.IslamicTournamentPlay })));
 const IslamicTournamentHost = lazy(() => import("@/pages/islamic/challenge").then((m) => ({ default: m.IslamicTournamentHost })));
 const StudentSolve = lazy(() => import("@/pages/student/solve"));
+const QuranJourneyPage = lazy(() => import("@/pages/student/quran-journey"));
 const GameJoin = lazy(() => import("@/pages/game/join"));
 const GamePlay = lazy(() => import("@/pages/game/play"));
 const TeacherGame = lazy(() => import("@/pages/game/teacher"));
@@ -511,6 +512,7 @@ function Router() {
         <Route path="/student/login" component={StudentAuth} />
         <Route path="/student/register" component={StudentAuth} />
         <Route path="/student/quran-wards/:wardId" component={QuranReader} />
+        <Route path="/student/quran-journey" component={QuranJourneyPage} />
         <Route path="/student/dashboard" component={StudentDashboard} />
         
         {/* Teacher Smart Board */}

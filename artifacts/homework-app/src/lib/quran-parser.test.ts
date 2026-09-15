@@ -80,6 +80,18 @@ describe('Madani Mushaf navigation metadata', () => {
   });
 });
 
+import { getGlobalAyahNumber } from './quran-parser';
+
+describe('Global Ayah Numbering', () => {
+  it('computes global ayah number correctly', () => {
+    const surahs = parseQuranXml(quranXml);
+    expect(getGlobalAyahNumber(surahs, 1, 1)).toBe(1);
+    expect(getGlobalAyahNumber(surahs, 1, 7)).toBe(7);
+    expect(getGlobalAyahNumber(surahs, 2, 1)).toBe(8);
+    expect(getGlobalAyahNumber(surahs, 114, 6)).toBe(6236);
+  });
+});
+
 import { groupVersesByChapter } from './quran-parser';
 
 describe('groupVersesByChapter utility', () => {

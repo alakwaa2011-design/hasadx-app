@@ -1842,6 +1842,21 @@ paths:
                   $ref: "#/components/schemas/QuranWard"
         "401": { description: Student not authenticated }
 
+  /quran/me/journey:
+    get:
+      operationId: getQuranJourney
+      tags: [quran]
+      summary: Get the signed-in student's personal Quran journey
+      description: Returns only Quran records owned by the signed-in student account. Recitations are canonical when a reviewed submission also exists.
+      responses:
+        "200":
+          description: Personal Quran journey
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranJourney"
+        "401": { description: Student not authenticated }
+
   /quran/me/wards/{id}:
     get:
       operationId: getMyQuranWard
@@ -2004,6 +2019,146 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/QuranReviewWard"
+
+  /quran/me/submissions/upload-url:
+    post:
+      operationId: prepareQuranSubmissionUpload
+      tags: [quran]
+      summary: Prepare a private Quran audio upload for the signed-in student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranSubmissionUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSubmissionUploadResponse"
+        "400": { description: Invalid audio metadata }
+        "401": { description: Student not authenticated }
+        "404": { description: Ward not found }
+
+  /quran/me/submissions:
+    get:
+      operationId: listMyQuranSubmissions
+      tags: [quran]
+      summary: List Quran audio submissions owned by the signed-in student
+      responses:
+        "200":
+          description: Student Quran submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranSubmission"
+        "401": { description: Student not authenticated }
+    post:
+      operationId: finalizeQuranSubmission
+      tags: [quran]
+      summary: Finalize an uploaded Quran audio submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranSubmissionFinalizeInput"
+      responses:
+        "201":
+          description: Submission finalized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSubmission"
+        "200":
+          description: Existing submission returned for an idempotent retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSubmission"
+        "400": { description: Invalid submission or upload }
+        "401": { description: Student not authenticated }
+        "404": { description: Ward not found }
+        "409": { description: Client request id belongs to a different submission }
+
+  /quran/me/submissions/{id}:
+    get:
+      operationId: getMyQuranSubmission
+      tags: [quran]
+      summary: Get one Quran submission owned by the signed-in student
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      responses:
+        "200":
+          description: Owned Quran submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSubmission"
+        "401": { description: Student not authenticated }
+        "404": { description: Submission not found }
+
+  /quran/submissions/review-queue:
+    get:
+      operationId: listQuranSubmissionReviewQueue
+      tags: [quran]
+      summary: List actionable student Quran audio submissions for a teacher
+      responses:
+        "200":
+          description: Actionable submission queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuranSubmissionReviewItem"
+        "401": { description: Teacher not authenticated }
+
+  /quran/submissions/{id}/audio-url:
+    get:
+      operationId: getQuranSubmissionAudioUrl
+      tags: [quran]
+      summary: Get a short-lived protected audio URL for an owned submission
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      responses:
+        "200":
+          description: Short-lived audio URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSubmissionAudioUrl"
+        "401": { description: Teacher not authenticated }
+        "404": { description: Submission not found }
+
+  /quran/submissions/{id}/review:
+    patch:
+      operationId: reviewQuranSubmission
+      tags: [quran]
+      summary: Review a student Quran audio submission
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranSubmissionReviewInput"
+      responses:
+        "200":
+          description: Reviewed submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSubmission"
+        "400": { description: Invalid review or state transition }
+        "401": { description: Teacher not authenticated }
+        "404": { description: Submission not found }
+        "409": { description: Submission was already reviewed }
 
   /quran/today:
     get:
@@ -2211,6 +2366,82 @@ components:
         recitedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
       required: [status, recitedDate]
 
+    QuranSubmissionUploadInput:
+      type: object
+      properties:
+        wardId: { type: integer }
+        contentType:
+          type: string
+          enum: [audio/webm, audio/mp4, audio/mpeg, audio/ogg]
+        fileSize: { type: integer, minimum: 1, maximum: 31457280 }
+      required: [wardId, contentType, fileSize]
+
+    QuranSubmissionUploadResponse:
+      type: object
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string, pattern: "^/objects/" }
+        expiresIn: { type: integer, minimum: 1 }
+      required: [uploadURL, objectPath, expiresIn]
+
+    QuranSubmission:
+      type: object
+      properties:
+        id: { type: integer }
+        wardId: { type: integer }
+        studentId: { type: integer }
+        status:
+          type: string
+          enum: [submitted, reviewed, needs_resubmission]
+        memorizationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        recitationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        mistakeCounts: { allOf: [{ $ref: "#/components/schemas/QuranMistakeCounts" }], nullable: true }
+        feedback: { type: ["string", "null"] }
+        contentType: { type: string }
+        fileSize: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, wardId, studentId, status, memorizationScore, recitationScore, mistakeCounts, feedback, contentType, fileSize, createdAt, updatedAt]
+
+    QuranSubmissionFinalizeInput:
+      type: object
+      properties:
+        wardId: { type: integer }
+        objectPath: { type: string, pattern: "^/objects/" }
+        clientRequestId: { type: string, minLength: 8, maxLength: 120 }
+      required: [wardId, objectPath, clientRequestId]
+
+    QuranSubmissionReviewItem:
+      allOf:
+        - $ref: "#/components/schemas/QuranSubmission"
+        - type: object
+          properties:
+            studentName: { type: string }
+            surahName: { type: string }
+            startAyah: { type: integer }
+            endAyah: { type: integer }
+            mode: { type: string }
+          required: [studentName, surahName, startAyah, endAyah, mode]
+
+    QuranSubmissionAudioUrl:
+      type: object
+      properties:
+        url: { type: string }
+        expiresIn: { type: integer, minimum: 1 }
+      required: [url, expiresIn]
+
+    QuranSubmissionReviewInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [reviewed, needs_resubmission]
+        memorizationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        recitationScore: { type: ["integer", "null"], minimum: 0, maximum: 100 }
+        mistakeCounts: { allOf: [{ $ref: "#/components/schemas/QuranMistakeCounts" }], nullable: true }
+        feedback: { type: ["string", "null"], maxLength: 2000 }
+      required: [status]
+
     QuranStudentProfile:
       type: object
       properties:
@@ -2254,6 +2485,93 @@ components:
           type: array
           items: { $ref: "#/components/schemas/QuranRecitation" }
       required: [dueWards, todayRecitations]
+
+    QuranJourneyProfile:
+      type: object
+      properties:
+        currentSurahNumber: { type: ["integer", "null"], minimum: 1, maximum: 114 }
+        currentAyah: { type: ["integer", "null"], minimum: 1 }
+        progressPercent: { type: integer, minimum: 0, maximum: 100 }
+        masteredAyahCount: { type: integer, minimum: 0 }
+        lastRecitedDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      required: [currentSurahNumber, currentAyah, progressPercent, masteredAyahCount, lastRecitedDate]
+
+    QuranJourneyWard:
+      type: object
+      properties:
+        id: { type: integer }
+        mode:
+          type: string
+          enum: [memorization, review, recitation, assessment]
+        surahNumber: { type: integer, minimum: 1, maximum: 114 }
+        surahName: { type: string }
+        startAyah: { type: integer, minimum: 1 }
+        endAyah: { type: integer, minimum: 1 }
+        assignedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        dueDate: { type: ["string", "null"], pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        status:
+          type: string
+          enum: [assigned, in_progress, completed, needs_review]
+      required: [id, mode, surahNumber, surahName, startAyah, endAyah, assignedDate, dueDate, status]
+
+    QuranJourneySummary:
+      type: object
+      properties:
+        completedWardCount: { type: integer, minimum: 0 }
+        masteredAyahCount: { type: integer, minimum: 0 }
+        needsReviewCount: { type: integer, minimum: 0 }
+        pendingSubmissionCount: { type: integer, minimum: 0 }
+        averageMemorizationScore: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        averageRecitationScore: { type: ["number", "null"], minimum: 0, maximum: 100 }
+      required: [completedWardCount, masteredAyahCount, needsReviewCount, pendingSubmissionCount, averageMemorizationScore, averageRecitationScore]
+
+    QuranJourneyStreak:
+      type: object
+      properties:
+        current: { type: integer, minimum: 0 }
+        longest: { type: integer, minimum: 0 }
+      required: [current, longest]
+
+    QuranJourneyActivity:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [recitation, submission]
+        wardId: { type: integer }
+        date: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        surahName: { type: string }
+        startAyah: { type: integer, minimum: 1 }
+        endAyah: { type: integer, minimum: 1 }
+        status: { type: string }
+        memorizationScore: { type: ["number", "null"], minimum: 0, maximum: 100 }
+        recitationScore: { type: ["number", "null"], minimum: 0, maximum: 100 }
+      required: [type, wardId, date, surahName, startAyah, endAyah, status, memorizationScore, recitationScore]
+
+    QuranJourney:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/QuranJourneyProfile"
+        nextWard:
+          allOf:
+            - $ref: "#/components/schemas/QuranJourneyWard"
+          nullable: true
+        summary:
+          $ref: "#/components/schemas/QuranJourneySummary"
+        streak:
+          $ref: "#/components/schemas/QuranJourneyStreak"
+        activeDates:
+          type: array
+          maxItems: 90
+          items: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        recentActivities:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/QuranJourneyActivity"
+      required: [profile, nextWard, summary, streak, activeDates, recentActivities]
+
     TeacherScheduleDeleteResult:
       type: object
       required: [deletedCount]

@@ -106,3 +106,4 @@ export * from "./quran-circles";
 export * from "./quran-profiles";
 export * from "./quran-wards";
 export * from "./quran-recitations";
+export * from "./quran-submissions";

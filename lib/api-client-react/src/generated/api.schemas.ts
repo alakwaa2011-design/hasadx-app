@@ -312,6 +312,124 @@ export interface QuranRecitationInput {
   recitedDate: string;
 }
 
+export type QuranSubmissionUploadInputContentType = typeof QuranSubmissionUploadInputContentType[keyof typeof QuranSubmissionUploadInputContentType];
+
+
+export const QuranSubmissionUploadInputContentType = {
+  'audio/webm': 'audio/webm',
+  'audio/mp4': 'audio/mp4',
+  'audio/mpeg': 'audio/mpeg',
+  'audio/ogg': 'audio/ogg',
+} as const;
+
+export interface QuranSubmissionUploadInput {
+  wardId: number;
+  contentType: QuranSubmissionUploadInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 31457280
+     */
+  fileSize: number;
+}
+
+export interface QuranSubmissionUploadResponse {
+  uploadURL: string;
+  /** @pattern ^/objects/ */
+  objectPath: string;
+  /** @minimum 1 */
+  expiresIn: number;
+}
+
+export type QuranSubmissionStatus = typeof QuranSubmissionStatus[keyof typeof QuranSubmissionStatus];
+
+
+export const QuranSubmissionStatus = {
+  submitted: 'submitted',
+  reviewed: 'reviewed',
+  needs_resubmission: 'needs_resubmission',
+} as const;
+
+export interface QuranSubmission {
+  id: number;
+  wardId: number;
+  studentId: number;
+  status: QuranSubmissionStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  memorizationScore: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  recitationScore: number | null;
+  mistakeCounts: QuranMistakeCounts | null;
+  /** @nullable */
+  feedback: string | null;
+  contentType: string;
+  fileSize: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuranSubmissionFinalizeInput {
+  wardId: number;
+  /** @pattern ^/objects/ */
+  objectPath: string;
+  /**
+     * @minLength 8
+     * @maxLength 120
+     */
+  clientRequestId: string;
+}
+
+export type QuranSubmissionReviewItem = QuranSubmission & {
+  studentName: string;
+  surahName: string;
+  startAyah: number;
+  endAyah: number;
+  mode: string;
+};
+
+export interface QuranSubmissionAudioUrl {
+  url: string;
+  /** @minimum 1 */
+  expiresIn: number;
+}
+
+export type QuranSubmissionReviewInputStatus = typeof QuranSubmissionReviewInputStatus[keyof typeof QuranSubmissionReviewInputStatus];
+
+
+export const QuranSubmissionReviewInputStatus = {
+  reviewed: 'reviewed',
+  needs_resubmission: 'needs_resubmission',
+} as const;
+
+export interface QuranSubmissionReviewInput {
+  status: QuranSubmissionReviewInputStatus;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  memorizationScore?: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  recitationScore?: number | null;
+  mistakeCounts?: QuranMistakeCounts | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  feedback?: string | null;
+}
+
 export interface QuranStudentProfile {
   /** @nullable */
   currentSurahNumber: number | null;
@@ -365,6 +483,152 @@ export interface QuranStudentSummary {
 export interface QuranTodayDashboard {
   dueWards: QuranReviewWard[];
   todayRecitations: QuranRecitation[];
+}
+
+export interface QuranJourneyProfile {
+  /**
+     * @minimum 1
+     * @maximum 114
+     * @nullable
+     */
+  currentSurahNumber: number | null;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  currentAyah: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  progressPercent: number;
+  /** @minimum 0 */
+  masteredAyahCount: number;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  lastRecitedDate: string | null;
+}
+
+export type QuranJourneyWardMode = typeof QuranJourneyWardMode[keyof typeof QuranJourneyWardMode];
+
+
+export const QuranJourneyWardMode = {
+  memorization: 'memorization',
+  review: 'review',
+  recitation: 'recitation',
+  assessment: 'assessment',
+} as const;
+
+export type QuranJourneyWardStatus = typeof QuranJourneyWardStatus[keyof typeof QuranJourneyWardStatus];
+
+
+export const QuranJourneyWardStatus = {
+  assigned: 'assigned',
+  in_progress: 'in_progress',
+  completed: 'completed',
+  needs_review: 'needs_review',
+} as const;
+
+export interface QuranJourneyWard {
+  id: number;
+  mode: QuranJourneyWardMode;
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  surahNumber: number;
+  surahName: string;
+  /** @minimum 1 */
+  startAyah: number;
+  /** @minimum 1 */
+  endAyah: number;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  assignedDate: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  dueDate: string | null;
+  status: QuranJourneyWardStatus;
+}
+
+export interface QuranJourneySummary {
+  /** @minimum 0 */
+  completedWardCount: number;
+  /** @minimum 0 */
+  masteredAyahCount: number;
+  /** @minimum 0 */
+  needsReviewCount: number;
+  /** @minimum 0 */
+  pendingSubmissionCount: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  averageMemorizationScore: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  averageRecitationScore: number | null;
+}
+
+export interface QuranJourneyStreak {
+  /** @minimum 0 */
+  current: number;
+  /** @minimum 0 */
+  longest: number;
+}
+
+export type QuranJourneyActivityType = typeof QuranJourneyActivityType[keyof typeof QuranJourneyActivityType];
+
+
+export const QuranJourneyActivityType = {
+  recitation: 'recitation',
+  submission: 'submission',
+} as const;
+
+export interface QuranJourneyActivity {
+  type: QuranJourneyActivityType;
+  wardId: number;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  date: string;
+  surahName: string;
+  /** @minimum 1 */
+  startAyah: number;
+  /** @minimum 1 */
+  endAyah: number;
+  status: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  memorizationScore: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  recitationScore: number | null;
+}
+
+export interface QuranJourney {
+  profile: QuranJourneyProfile;
+  nextWard: QuranJourneyWard | null;
+  summary: QuranJourneySummary;
+  streak: QuranJourneyStreak;
+  /**
+     * @maxItems 90
+     * @items.pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+     */
+  activeDates: string[];
+  /** @maxItems 20 */
+  recentActivities: QuranJourneyActivity[];
 }
 
 export interface TeacherScheduleDeleteResult {

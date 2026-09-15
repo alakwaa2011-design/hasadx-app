@@ -14,6 +14,8 @@ import { useI18n } from '@/lib/i18n';
 import { QuranPagesView } from './quran-pages-view';
 import { QuranSearchDialog } from './quran-search-dialog';
 import type { QuranWard } from '@workspace/api-client-react';
+import { QuranStudentSubmissionPanel } from '../student/quran-student-submission';
+import { QuranAudioPlayer } from '@/components/quran/quran-audio-player';
 
 export default function QuranReader() {
   const { lang } = useI18n();
@@ -107,6 +109,7 @@ export default function QuranReader() {
     mode={mode}
     requestedAyah={requestedAyah}
     isStudentWard={isStudentWard}
+    wardId={studentWard?.id}
   />;
 }
 
@@ -117,15 +120,24 @@ interface ReaderViewProps {
   mode: string | null;
   requestedAyah: number | null;
   isStudentWard: boolean;
+  wardId?: number;
 }
 
-function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isStudentWard }: ReaderViewProps) {
+function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isStudentWard, wardId }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
 
   const [surahs, setSurahs] = useState<QuranSurahParsed[] | null>(null);
   const [fontSize, setFontSize] = useState(28);
   const [isQuietMode, setIsQuietMode] = useState(false);
+
+  // Audio and Memorization State
+  const [playingAyah, setPlayingAyah] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [memoView, setMemoView] = useState<'show' | 'hide' | 'progressive'>(
+    mode === 'memorization' ? 'hide' : 'show'
+  );
+  const [revealedAyahs, setRevealedAyahs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -141,17 +153,33 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
     }
   }, [surahNumber, startAyah]);
 
+  // Reset audio & memo states on surah/mode change
   useEffect(() => {
-    const ayahToReveal = requestedAyah ?? startAyah;
+    setPlayingAyah(null);
+    setIsPlaying(false);
+    setRevealedAyahs(new Set());
+    if (mode === 'memorization') {
+      setMemoView('hide');
+    } else {
+      setMemoView('show');
+    }
+  }, [surahNumber, mode]);
+
+  useEffect(() => {
+    const ayahToReveal = playingAyah ?? requestedAyah ?? startAyah;
     if (surahs && ayahToReveal) {
       setTimeout(() => {
         const el = document.getElementById(`ayah-${ayahToReveal}`);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const rect = el.getBoundingClientRect();
+          const isInView = rect.top >= 100 && rect.bottom <= window.innerHeight - 200;
+          if (!isInView) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         }
-      }, 400);
+      }, 100);
     }
-  }, [surahs, requestedAyah, startAyah, surahNumber]);
+  }, [surahs, requestedAyah, startAyah, surahNumber, playingAyah]);
 
   if (!surahs) {
     return (
@@ -172,8 +200,8 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
     );
   }
 
-  const activeAyah = Math.min(Math.max(requestedAyah ?? startAyah ?? 1, 1), surah.ayahs.length);
-  const activeLocation = getQuranLocation(surahNumber, activeAyah);
+  const activeAyahURL = Math.min(Math.max(requestedAyah ?? startAyah ?? 1, 1), surah.ayahs.length);
+  const activeLocation = getQuranLocation(surahNumber, activeAyahURL);
 
   const navigateTo = ({ surah, ayah }: { surah: number; ayah: number }) => {
     if (isStudentWard) return;
@@ -187,11 +215,36 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
     return false;
   };
 
-  const handleNext = () => {
+  const isAyahConcealed = (ayahIndex: number) => {
+    if (memoView === 'show') return false;
+    if (revealedAyahs.has(ayahIndex)) return false;
+    if (memoView === 'progressive' && playingAyah && ayahIndex <= playingAyah) return false;
+    if (memoView === 'progressive' && !playingAyah && ayahIndex <= (startAyah ?? 1)) return false;
+    return true;
+  };
+
+  const isAyahPlayable = (index: number) => {
+    if (!isStudentWard) return true;
+    if (startAyah !== null && index < startAyah) return false;
+    if (endAyah !== null && index > endAyah) return false;
+    return true;
+  };
+
+  const handleAyahClick = (ayahIndex: number) => {
+    if (!isAyahPlayable(ayahIndex)) return;
+    if (isAyahConcealed(ayahIndex)) {
+      setRevealedAyahs(prev => new Set(prev).add(ayahIndex));
+    } else {
+      setPlayingAyah(ayahIndex);
+      setIsPlaying(true);
+    }
+  };
+
+  const handleNextSurah = () => {
     if (surahNumber < 114) navigateTo({ surah: surahNumber + 1, ayah: 1 });
   };
   
-  const handlePrev = () => {
+  const handlePrevSurah = () => {
     if (surahNumber > 1) navigateTo({ surah: surahNumber - 1, ayah: 1 });
   };
 
@@ -203,7 +256,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
       {isQuietMode && (
         <button 
           onClick={() => setIsQuietMode(false)}
-          className="fixed bottom-6 end-6 z-50 p-3 bg-emerald-700 text-white rounded-full shadow-lg hover:bg-emerald-800 transition-all opacity-30 hover:opacity-100"
+          className="fixed bottom-[180px] end-6 z-50 p-3 bg-emerald-700 text-white rounded-full shadow-lg hover:bg-emerald-800 transition-all opacity-30 hover:opacity-100"
           title={lang === 'ar' ? 'إنهاء وضع القراءة' : 'Exit quiet mode'}
         >
           <Eye className="w-6 h-6" />
@@ -239,7 +292,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
                 ))}
               </select>
               <select
-                value={activeAyah}
+                value={activeAyahURL}
                 disabled={isStudentWard}
                 onChange={e => navigateTo({ surah: surahNumber, ayah: Number(e.target.value) })}
                 aria-label={lang === 'ar' ? 'الآية' : 'Ayah'}
@@ -280,6 +333,27 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
+              <div className="flex items-center bg-muted/40 rounded-lg p-1 mr-2 rtl:ml-2">
+                <button
+                  onClick={() => setMemoView('show')}
+                  className={cn("px-2 md:px-3 py-1 text-xs md:text-sm font-bold rounded-md transition-colors", memoView === 'show' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {lang === 'ar' ? 'الكل' : 'All'}
+                </button>
+                <button
+                  onClick={() => setMemoView('hide')}
+                  className={cn("px-2 md:px-3 py-1 text-xs md:text-sm font-bold rounded-md transition-colors", memoView === 'hide' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {lang === 'ar' ? 'إخفاء' : 'Hide'}
+                </button>
+                <button
+                  onClick={() => setMemoView('progressive')}
+                  className={cn("px-2 md:px-3 py-1 text-xs md:text-sm font-bold rounded-md transition-colors", memoView === 'progressive' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                >
+                  {lang === 'ar' ? 'تتابعي' : 'Prog'}
+                </button>
+              </div>
+
               {!isStudentWard && (
                 <QuranSearchDialog
                   onSelect={({ chapterId, ayah }) =>
@@ -303,7 +377,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
         </header>
       )}
 
-      <main className="flex-1 overflow-y-auto px-4 md:px-12 py-10 pb-32 w-full max-w-4xl mx-auto">
+      <main className="flex-1 overflow-y-auto px-4 md:px-12 py-10 pb-48 w-full max-w-4xl mx-auto">
         <div className="text-center mb-10">
           <div className="inline-block px-8 py-3 rounded-3xl border-2 border-emerald-800/10 bg-emerald-50/50 dark:border-emerald-500/10 dark:bg-emerald-950/20 shadow-sm">
             <h1 className="text-3xl md:text-5xl font-black text-emerald-900 dark:text-emerald-50" style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}>
@@ -329,28 +403,53 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
             direction: 'rtl'
           }}
         >
-          {surah.ayahs.map(ayah => (
-            <span 
-              key={ayah.index} 
-              id={`ayah-${ayah.index}`}
-              className={cn(
-                "inline transition-colors duration-300 rounded-md",
-                isTaskAyah(ayah.index) ? "bg-amber-200/60 dark:bg-amber-900/40 text-amber-950 dark:text-amber-100" : "text-foreground"
-              )}
-            >
-              <span className="mx-1">{ayah.text}</span>
-              <span className="inline-flex items-center justify-center relative w-[1.8em] h-[1.8em] rounded-full border border-current mx-[0.2em] text-emerald-700/50 dark:text-emerald-400/50 select-none font-sans align-middle">
-                <span className="absolute inset-[2px] border border-dashed border-current rounded-full opacity-40"></span>
-                <span className="absolute inset-0 flex items-center justify-center text-[0.45em] font-bold text-foreground/70">{ayah.index}</span>
+          {surah.ayahs.map(ayah => {
+            const concealed = isAyahConcealed(ayah.index);
+            const isPlayingThis = playingAyah === ayah.index;
+            const inTask = isTaskAyah(ayah.index);
+            const playable = isAyahPlayable(ayah.index);
+
+            return (
+              <span
+                key={ayah.index}
+                id={`ayah-${ayah.index}`}
+                role={playable ? "button" : undefined}
+                tabIndex={playable ? 0 : undefined}
+                onClick={() => handleAyahClick(ayah.index)}
+                onKeyDown={(e) => {
+                  if (!playable) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleAyahClick(ayah.index);
+                  }
+                }}
+                className={cn(
+                  "inline transition-all duration-300 rounded-lg px-1 relative select-none md:select-auto",
+                  playable ? "cursor-pointer" : "opacity-60 grayscale",
+                  inTask && !concealed ? "bg-amber-100/60 dark:bg-amber-900/30 text-amber-950 dark:text-amber-100" : "text-foreground",
+                  isPlayingThis ? "bg-emerald-100/80 dark:bg-emerald-900/50 ring-2 ring-emerald-500/50 shadow-sm" : "",
+                  concealed ? "blur-[5px] opacity-40 hover:blur-[3px] hover:opacity-60 bg-foreground/5" : ""
+                )}
+                title={!playable ? (lang === 'ar' ? 'خارج النطاق المخصص' : 'Outside assigned range') : concealed ? (lang === 'ar' ? 'انقر للكشف' : 'Tap to reveal') : (lang === 'ar' ? 'انقر للاستماع' : 'Tap to listen')}
+                style={concealed ? { userSelect: 'none' } : {}}
+              >
+                <span className="mx-1">{ayah.text}</span>
+                <span className={cn(
+                  "inline-flex items-center justify-center relative w-[1.8em] h-[1.8em] rounded-full border border-current mx-[0.2em] font-sans align-middle",
+                  isPlayingThis ? "text-emerald-600 dark:text-emerald-400" : "text-emerald-700/40 dark:text-emerald-400/40"
+                )}>
+                  <span className="absolute inset-[2px] border border-dashed border-current rounded-full opacity-40"></span>
+                  <span className="absolute inset-0 flex items-center justify-center text-[0.45em] font-bold text-foreground/70">{ayah.index}</span>
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
 
         {!isQuietMode && !isStudentWard && (
           <div className="mt-20 flex flex-col sm:flex-row items-center justify-between border-t border-border/40 pt-8 gap-4">
             <button 
-              onClick={handlePrev}
+              onClick={handlePrevSurah}
               disabled={surahNumber === 1}
               className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-card border border-border rounded-xl font-bold shadow-sm hover:bg-muted disabled:opacity-50 flex items-center justify-center gap-2"
             >
@@ -359,7 +458,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
               {lang === 'ar' ? 'السورة السابقة' : 'Previous Surah'}
             </button>
             <button 
-              onClick={handleNext}
+              onClick={handleNextSurah}
               disabled={surahNumber === 114}
               className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-card border border-border rounded-xl font-bold shadow-sm hover:bg-muted disabled:opacity-50 flex items-center justify-center gap-2"
             >
@@ -372,16 +471,34 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
       </main>
 
       {!isQuietMode && (
-        <footer className="bg-muted/30 border-t border-border p-6 text-center text-xs text-muted-foreground shrink-0">
+        <footer className="bg-muted/30 border-t border-border p-6 pb-12 text-center text-xs text-muted-foreground shrink-0">
           <p className="font-bold mb-1">{lang === 'ar' ? 'مصدر النص: مشروع تنزيل' : 'Source Attribution - Tanzil Project'}</p>
           <p className="mb-2">
             {lang === 'ar' ? 'هذا النص القرآني منسوخ حرفياً وغير معدل من' : 'This Quranic text is copied literally and unmodified from'} <a href="https://tanzil.net" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">tanzil.net</a>
           </p>
-          <p className="opacity-70">
+          <p className="opacity-70 mb-4">
             {lang === 'ar' ? 'رخصة المشاع الإبداعي — النَّسب 3.0' : 'License: Creative Commons Attribution 3.0'}
+          </p>
+          <p className="font-bold mb-1">{lang === 'ar' ? 'مصدر التلاوات الصوتية: Islamic Network' : 'Audio Attribution - Islamic Network'}</p>
+          <p className="opacity-70">
+            {lang === 'ar' ? 'بث التلاوات متاح للأغراض التعليمية من خلال AlQuran Cloud، حقوق الطبع والنشر محفوظة للقراء.' : 'Audio streaming is provided for educational purposes via AlQuran Cloud. Copyrights remain with the reciters.'}
           </p>
         </footer>
       )}
+
+      <div className="mt-auto sticky bottom-0 z-40 w-full flex flex-col shrink-0">
+        <QuranAudioPlayer
+          surahs={surahs}
+          surahNumber={surahNumber}
+          startAyah={startAyah}
+          endAyah={endAyah}
+          playingAyah={playingAyah}
+          onPlayingAyahChange={setPlayingAyah}
+          isPlaying={isPlaying}
+          onIsPlayingChange={setIsPlaying}
+        />
+        {isStudentWard && wardId && <QuranStudentSubmissionPanel wardId={wardId} />}
+      </div>
     </div>
   );
 }

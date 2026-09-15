@@ -10,6 +10,7 @@ import {
   quranCircleMembersTable,
   quranProfilesTable,
   quranRecitationsTable,
+  quranSubmissionsTable,
   quranWardsTable,
   studentsTable,
   teacherClassesTable,
@@ -52,9 +53,28 @@ import {
   AssignQuranStudentTaskBody,
   AssignQuranStudentTaskParams,
   AssignQuranStudentTaskResponse,
+  PrepareQuranSubmissionUploadBody,
+  PrepareQuranSubmissionUploadResponse,
+  FinalizeQuranSubmissionBody,
+  FinalizeQuranSubmissionResponse,
+  GetMyQuranSubmissionParams,
+  GetMyQuranSubmissionResponse,
+  ListMyQuranSubmissionsResponse,
+  ListQuranSubmissionReviewQueueResponse,
+  GetQuranSubmissionAudioUrlParams,
+  GetQuranSubmissionAudioUrlResponse,
+  ReviewQuranSubmissionParams,
+  ReviewQuranSubmissionBody,
+  ReviewQuranSubmissionResponse,
+  GetQuranJourneyResponse,
 } from "@workspace/api-zod";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { calculateQuranJourney } from "../lib/quran-journey";
 
 const router: IRouter = Router();
+const quranSubmissionStorage = new ObjectStorageService();
+const QURAN_AUDIO_TYPES = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg"]);
+const QURAN_AUDIO_MAX_SIZE = 30 * 1024 * 1024;
 type TeacherRequest = { session?: { teacherId?: number; studentAccountId?: number }; log?: { error: (error: unknown, message: string) => void } };
 
 // Canonical metadata only. No verse text is stored or returned by this API.
@@ -145,6 +165,68 @@ async function wardForTeacher(teacherId: number, wardId: number) {
 
 function parseError(res: { status: (code: number) => { json: (body: unknown) => void } }, message: string) {
   res.status(400).json({ error: message });
+}
+
+type QuranDbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Applies completed-recitation progress exactly once. The recitation row is
+ * claimed before the profile is read/updated; the conditional update and the
+ * profile write share the caller's transaction, while the advisory lock
+ * serializes profile advancement across wards for the same student.
+ */
+async function applyCompletedRecitationProgress(
+  tx: QuranDbTransaction,
+  teacherId: number,
+  ward: { studentId: number; surahNumber: number; endAyah: number },
+  record: { id: number; status: string; progressApplied: boolean },
+  recitedDate: string,
+): Promise<void> {
+  if (!shouldApplyRecitationProgress(record.status, record.progressApplied)) return;
+  const [claimed] = await tx.update(quranRecitationsTable).set({ progressApplied: true }).where(and(
+    eq(quranRecitationsTable.id, record.id),
+    eq(quranRecitationsTable.teacherId, teacherId),
+    eq(quranRecitationsTable.progressApplied, false),
+  )).returning({ id: quranRecitationsTable.id });
+  if (!claimed) return;
+
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${teacherId}, ${ward.studentId})`);
+  const [profile] = await tx.select().from(quranProfilesTable).where(and(
+    eq(quranProfilesTable.teacherId, teacherId),
+    eq(quranProfilesTable.studentId, ward.studentId),
+  ));
+  const progress = applyCompletedWardProgress(
+    profile ?? {
+      currentSurahNumber: null,
+      currentAyah: null,
+      progressPercent: 0,
+      masteredAyahCount: 0,
+    },
+    { surahNumber: ward.surahNumber, endAyah: ward.endAyah, ayahCounts: SURAH_AYAH_COUNTS },
+  );
+  const lastRecitedDate = profile?.lastRecitedDate && profile.lastRecitedDate > recitedDate
+    ? profile.lastRecitedDate
+    : recitedDate;
+  await tx.insert(quranProfilesTable).values({
+    teacherId,
+    studentId: ward.studentId,
+    currentSurahNumber: progress.currentSurahNumber,
+    currentAyah: progress.currentAyah,
+    progressPercent: progress.progressPercent,
+    masteredAyahCount: progress.masteredAyahCount,
+    lastRecitedDate,
+    updatedAt: new Date(),
+  }).onConflictDoUpdate({
+    target: [quranProfilesTable.teacherId, quranProfilesTable.studentId],
+    set: {
+      currentSurahNumber: progress.currentSurahNumber,
+      currentAyah: progress.currentAyah,
+      progressPercent: progress.progressPercent,
+      masteredAyahCount: progress.masteredAyahCount,
+      lastRecitedDate,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 router.get("/quran/surahs", (_req, res): void => {
@@ -316,6 +398,96 @@ router.get("/quran/me/wards", async (req, res): Promise<void> => {
     .where(eq(studentsTable.studentAccountId, studentAccountId))
     .orderBy(desc(quranWardsTable.assignedDate), desc(quranWardsTable.createdAt));
   res.json(ListMyQuranWardsResponse.parse(wards));
+});
+
+router.get("/quran/me/journey", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+  try {
+    const [student] = await db.select({
+      id: studentsTable.id,
+      teacherId: studentsTable.teacherId,
+    }).from(studentsTable).where(eq(studentsTable.studentAccountId, studentAccountId));
+    if (!student) { res.status(404).json({ error: "Student not found" }); return; }
+
+    const [profile, wards, recitations, submissions] = await Promise.all([
+      db.select({
+        currentSurahNumber: quranProfilesTable.currentSurahNumber,
+        currentAyah: quranProfilesTable.currentAyah,
+        progressPercent: quranProfilesTable.progressPercent,
+        masteredAyahCount: quranProfilesTable.masteredAyahCount,
+        lastRecitedDate: quranProfilesTable.lastRecitedDate,
+      }).from(quranProfilesTable).where(and(
+        eq(quranProfilesTable.teacherId, student.teacherId),
+        eq(quranProfilesTable.studentId, student.id),
+      )),
+      db.select({
+        id: quranWardsTable.id,
+        mode: quranWardsTable.mode,
+        surahNumber: quranWardsTable.surahNumber,
+        surahName: quranWardsTable.surahName,
+        startAyah: quranWardsTable.startAyah,
+        endAyah: quranWardsTable.endAyah,
+        assignedDate: quranWardsTable.assignedDate,
+        dueDate: quranWardsTable.dueDate,
+        status: quranWardsTable.status,
+      }).from(quranWardsTable)
+        .innerJoin(studentsTable, eq(studentsTable.id, quranWardsTable.studentId))
+        .where(and(
+          eq(studentsTable.studentAccountId, studentAccountId),
+          eq(quranWardsTable.studentId, student.id),
+          eq(quranWardsTable.teacherId, student.teacherId),
+        )),
+      db.select({
+        id: quranRecitationsTable.id,
+        wardId: quranRecitationsTable.wardId,
+        status: quranRecitationsTable.status,
+        memorizationScore: quranRecitationsTable.memorizationScore,
+        recitationScore: quranRecitationsTable.recitationScore,
+        recitedDate: quranRecitationsTable.recitedDate,
+        createdAt: quranRecitationsTable.createdAt,
+      }).from(quranRecitationsTable)
+        .innerJoin(studentsTable, eq(studentsTable.id, quranRecitationsTable.studentId))
+        .where(and(
+          eq(studentsTable.studentAccountId, studentAccountId),
+          eq(quranRecitationsTable.studentId, student.id),
+          eq(quranRecitationsTable.teacherId, student.teacherId),
+        )),
+      db.select({
+        id: quranSubmissionsTable.id,
+        wardId: quranSubmissionsTable.wardId,
+        status: quranSubmissionsTable.status,
+        memorizationScore: quranSubmissionsTable.memorizationScore,
+        recitationScore: quranSubmissionsTable.recitationScore,
+        createdAt: quranSubmissionsTable.createdAt,
+      }).from(quranSubmissionsTable)
+        .innerJoin(studentsTable, eq(studentsTable.id, quranSubmissionsTable.studentId))
+        .where(and(
+          eq(quranSubmissionsTable.studentAccountId, studentAccountId),
+          eq(studentsTable.studentAccountId, studentAccountId),
+          eq(quranSubmissionsTable.studentId, student.id),
+          eq(quranSubmissionsTable.teacherId, student.teacherId),
+        )),
+    ]);
+
+    const journey = calculateQuranJourney({
+      profile: profile[0] ?? {
+        currentSurahNumber: null,
+        currentAyah: null,
+        progressPercent: 0,
+        masteredAyahCount: 0,
+        lastRecitedDate: null,
+      },
+      wards,
+      recitations,
+      submissions,
+    });
+    res.json(GetQuranJourneyResponse.parse(journey));
+  } catch (error) {
+    req.log?.error(error, "Get Quran journey failed");
+    res.status(500).json({ error: "Unable to load Quran journey" });
+  }
 });
 
 router.get("/quran/me/wards/:id", async (req, res): Promise<void> => {
@@ -591,51 +763,7 @@ router.post("/quran/wards/:id/recitations", async (req, res): Promise<void> => {
           updatedAt: new Date(),
         }).where(and(eq(quranWardsTable.id, ward.id), eq(quranWardsTable.teacherId, teacherId)));
       }
-      if (shouldApplyRecitationProgress(record.status, record.progressApplied)) {
-        // Serialize profile advancement for this teacher/student across different wards.
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(${teacherId}, ${ward.studentId})`);
-        const [profile] = await tx.select().from(quranProfilesTable).where(and(
-          eq(quranProfilesTable.teacherId, teacherId),
-          eq(quranProfilesTable.studentId, ward.studentId),
-        ));
-        const progress = applyCompletedWardProgress(
-          profile ?? {
-            currentSurahNumber: null,
-            currentAyah: null,
-            progressPercent: 0,
-            masteredAyahCount: 0,
-          },
-          { surahNumber: ward.surahNumber, endAyah: ward.endAyah, ayahCounts: SURAH_AYAH_COUNTS },
-        );
-        const lastRecitedDate = profile?.lastRecitedDate && profile.lastRecitedDate > parsed.data.recitedDate
-          ? profile.lastRecitedDate
-          : parsed.data.recitedDate;
-        await tx.insert(quranProfilesTable).values({
-          teacherId,
-          studentId: ward.studentId,
-          currentSurahNumber: progress.currentSurahNumber,
-          currentAyah: progress.currentAyah,
-          progressPercent: progress.progressPercent,
-          masteredAyahCount: progress.masteredAyahCount,
-          lastRecitedDate,
-          updatedAt: new Date(),
-        }).onConflictDoUpdate({
-          target: [quranProfilesTable.teacherId, quranProfilesTable.studentId],
-          set: {
-            currentSurahNumber: progress.currentSurahNumber,
-            currentAyah: progress.currentAyah,
-            progressPercent: progress.progressPercent,
-            masteredAyahCount: progress.masteredAyahCount,
-            lastRecitedDate,
-            updatedAt: new Date(),
-          },
-        });
-        await tx.update(quranRecitationsTable).set({ progressApplied: true }).where(and(
-          eq(quranRecitationsTable.id, record.id),
-          eq(quranRecitationsTable.teacherId, teacherId),
-          eq(quranRecitationsTable.progressApplied, false),
-        ));
-      }
+      await applyCompletedRecitationProgress(tx, teacherId, ward, record, parsed.data.recitedDate);
       return record;
     });
     if (!result) { res.status(404).json({ error: "Ward not found" }); return; }
@@ -644,6 +772,354 @@ router.post("/quran/wards/:id/recitations", async (req, res): Promise<void> => {
     req.log?.error(error, "Create Quran recitation failed");
     res.status(500).json({ error: "Unable to save Quran recitation" });
   }
+});
+
+const submissionPublicColumns = {
+  id: quranSubmissionsTable.id,
+  wardId: quranSubmissionsTable.wardId,
+  studentId: quranSubmissionsTable.studentId,
+  status: quranSubmissionsTable.status,
+  memorizationScore: quranSubmissionsTable.memorizationScore,
+  recitationScore: quranSubmissionsTable.recitationScore,
+  mistakeCounts: quranSubmissionsTable.mistakeCounts,
+  feedback: quranSubmissionsTable.feedback,
+  contentType: quranSubmissionsTable.contentType,
+  fileSize: quranSubmissionsTable.fileSize,
+  createdAt: quranSubmissionsTable.createdAt,
+  updatedAt: quranSubmissionsTable.updatedAt,
+};
+
+const submissionReviewColumns = {
+  ...submissionPublicColumns,
+  teacherId: quranSubmissionsTable.teacherId,
+  reviewedByTeacherId: quranSubmissionsTable.reviewedByTeacherId,
+};
+
+type ReviewPayload = {
+  status: "reviewed" | "needs_resubmission";
+  memorizationScore?: number | null;
+  recitationScore?: number | null;
+  mistakeCounts?: Record<string, number> | null;
+  feedback?: string | null;
+};
+
+function normalizedReviewPayload(payload: ReviewPayload) {
+  return {
+    status: payload.status,
+    memorizationScore: payload.memorizationScore ?? null,
+    recitationScore: payload.recitationScore ?? null,
+    mistakeCounts: payload.mistakeCounts
+      ? Object.fromEntries(Object.entries(payload.mistakeCounts).sort(([left], [right]) => left.localeCompare(right)))
+      : null,
+    feedback: payload.feedback ?? null,
+  };
+}
+
+function matchesCompletedReview(
+  existing: {
+    status: string;
+    memorizationScore: number | null;
+    recitationScore: number | null;
+    mistakeCounts: Record<string, number> | null;
+    feedback: string | null;
+    reviewedByTeacherId: number | null;
+  },
+  payload: ReviewPayload,
+  teacherId: number,
+): boolean {
+  const expected = normalizedReviewPayload(payload);
+  const actual = normalizedReviewPayload(existing as ReviewPayload);
+  return existing.reviewedByTeacherId === teacherId
+    && JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+async function studentWardForAccount(studentAccountId: number, wardId: number) {
+  const [ward] = await db.select({
+    id: quranWardsTable.id,
+    studentId: quranWardsTable.studentId,
+    teacherId: quranWardsTable.teacherId,
+  }).from(quranWardsTable)
+    .innerJoin(studentsTable, eq(studentsTable.id, quranWardsTable.studentId))
+    .where(and(
+      eq(quranWardsTable.id, wardId),
+      eq(studentsTable.studentAccountId, studentAccountId),
+    ));
+  return ward;
+}
+
+router.post("/quran/me/submissions/upload-url", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const parsed = PrepareQuranSubmissionUploadBody.safeParse(req.body);
+  if (!parsed.success) { parseError(res, parsed.error.message); return; }
+  if (!QURAN_AUDIO_TYPES.has(parsed.data.contentType) || parsed.data.fileSize > QURAN_AUDIO_MAX_SIZE) {
+    res.status(400).json({ error: "Unsupported audio type or file size" });
+    return;
+  }
+  if (!await studentWardForAccount(studentAccountId, parsed.data.wardId)) {
+    res.status(404).json({ error: "Ward not found" });
+    return;
+  }
+  try {
+    const uploadURL = await quranSubmissionStorage.getObjectEntityUploadURL(
+      `quran-submissions/${studentAccountId}`,
+    );
+    const objectPath = quranSubmissionStorage.normalizeObjectEntityPath(uploadURL);
+    res.json(PrepareQuranSubmissionUploadResponse.parse({
+      uploadURL,
+      objectPath,
+      expiresIn: 900,
+    }));
+  } catch (error) {
+    req.log?.error(error, "Prepare Quran submission upload failed");
+    res.status(500).json({ error: "Unable to prepare audio upload" });
+  }
+});
+
+router.post("/quran/me/submissions", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const parsed = FinalizeQuranSubmissionBody.safeParse(req.body);
+  if (!parsed.success) { parseError(res, parsed.error.message); return; }
+  const ward = await studentWardForAccount(studentAccountId, parsed.data.wardId);
+  if (!ward) { res.status(404).json({ error: "Ward not found" }); return; }
+  const expectedPrefix = `/objects/uploads/quran-submissions/${studentAccountId}/`;
+  if (!parsed.data.objectPath.startsWith(expectedPrefix) || parsed.data.objectPath.includes("..")) {
+    res.status(400).json({ error: "Invalid audio object" });
+    return;
+  }
+
+  try {
+    const objectFile = await quranSubmissionStorage.getObjectEntityFile(parsed.data.objectPath);
+    const [metadata] = await objectFile.getMetadata();
+    const contentType = String(metadata.contentType || "");
+    const fileSize = Number(metadata.size || 0);
+    if (!QURAN_AUDIO_TYPES.has(contentType) || !Number.isSafeInteger(fileSize) || fileSize < 1 || fileSize > QURAN_AUDIO_MAX_SIZE) {
+      res.status(400).json({ error: "Uploaded audio metadata is invalid" });
+      return;
+    }
+
+    const existing = await db.select({
+      ...submissionPublicColumns,
+      objectPath: quranSubmissionsTable.objectPath,
+    })
+      .from(quranSubmissionsTable)
+      .where(and(
+        eq(quranSubmissionsTable.studentAccountId, studentAccountId),
+        eq(quranSubmissionsTable.clientRequestId, parsed.data.clientRequestId),
+      ));
+    if (existing[0]) {
+      if (existing[0].wardId !== parsed.data.wardId || existing[0].objectPath !== parsed.data.objectPath) {
+        res.status(409).json({ error: "Client request id belongs to a different submission" });
+        return;
+      }
+      res.status(200).json(FinalizeQuranSubmissionResponse.parse(existing[0]));
+      return;
+    }
+
+    const [created] = await db.insert(quranSubmissionsTable).values({
+      wardId: ward.id,
+      teacherId: ward.teacherId,
+      studentId: ward.studentId,
+      studentAccountId,
+      clientRequestId: parsed.data.clientRequestId,
+      objectPath: parsed.data.objectPath,
+      contentType,
+      fileSize,
+      status: "submitted",
+    }).onConflictDoNothing({
+      target: [quranSubmissionsTable.studentAccountId, quranSubmissionsTable.clientRequestId],
+    }).returning(submissionPublicColumns);
+    if (created) {
+      res.status(201).json(FinalizeQuranSubmissionResponse.parse(created));
+      return;
+    }
+    const [replayed] = await db.select({
+      ...submissionPublicColumns,
+      objectPath: quranSubmissionsTable.objectPath,
+    })
+      .from(quranSubmissionsTable)
+      .where(and(
+        eq(quranSubmissionsTable.studentAccountId, studentAccountId),
+        eq(quranSubmissionsTable.clientRequestId, parsed.data.clientRequestId),
+      ));
+    if (!replayed || replayed.wardId !== parsed.data.wardId || replayed.objectPath !== parsed.data.objectPath) {
+      res.status(409).json({ error: "Client request id belongs to a different submission" });
+      return;
+    }
+    res.status(200).json(FinalizeQuranSubmissionResponse.parse(replayed));
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(400).json({ error: "Uploaded audio was not found" });
+      return;
+    }
+    req.log?.error(error, "Finalize Quran submission failed");
+    res.status(500).json({ error: "Unable to finalize Quran submission" });
+  }
+});
+
+router.get("/quran/me/submissions", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const submissions = await db.select(submissionPublicColumns)
+    .from(quranSubmissionsTable)
+    .where(eq(quranSubmissionsTable.studentAccountId, studentAccountId))
+    .orderBy(desc(quranSubmissionsTable.createdAt));
+  res.json(ListMyQuranSubmissionsResponse.parse(submissions));
+});
+
+router.get("/quran/me/submissions/:id", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const params = GetMyQuranSubmissionParams.safeParse(req.params);
+  if (!params.success) { parseError(res, params.error.message); return; }
+  const [submission] = await db.select(submissionPublicColumns)
+    .from(quranSubmissionsTable)
+    .where(and(
+      eq(quranSubmissionsTable.id, params.data.id),
+      eq(quranSubmissionsTable.studentAccountId, studentAccountId),
+    ));
+  if (!submission) { res.status(404).json({ error: "Submission not found" }); return; }
+  res.json(GetMyQuranSubmissionResponse.parse(submission));
+});
+
+router.get("/quran/submissions/review-queue", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const submissions = await db.select({
+    ...submissionPublicColumns,
+    studentName: studentsTable.name,
+    surahName: quranWardsTable.surahName,
+    startAyah: quranWardsTable.startAyah,
+    endAyah: quranWardsTable.endAyah,
+    mode: quranWardsTable.mode,
+  }).from(quranSubmissionsTable)
+    .innerJoin(studentsTable, eq(studentsTable.id, quranSubmissionsTable.studentId))
+    .innerJoin(quranWardsTable, eq(quranWardsTable.id, quranSubmissionsTable.wardId))
+    .where(and(
+      eq(quranSubmissionsTable.teacherId, teacherId),
+      eq(quranSubmissionsTable.status, "submitted"),
+    ))
+    .orderBy(quranSubmissionsTable.createdAt);
+  res.json(ListQuranSubmissionReviewQueueResponse.parse(submissions));
+});
+
+router.get("/quran/submissions/:id/audio-url", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const params = GetQuranSubmissionAudioUrlParams.safeParse(req.params);
+  if (!params.success) { parseError(res, params.error.message); return; }
+  const [submission] = await db.select({
+    id: quranSubmissionsTable.id,
+    teacherId: quranSubmissionsTable.teacherId,
+    objectPath: quranSubmissionsTable.objectPath,
+  }).from(quranSubmissionsTable)
+    .where(and(eq(quranSubmissionsTable.id, params.data.id), eq(quranSubmissionsTable.teacherId, teacherId)));
+  if (!submission) { res.status(404).json({ error: "Submission not found" }); return; }
+  try {
+    const objectFile = await quranSubmissionStorage.getObjectEntityFile(submission.objectPath);
+    const url = await quranSubmissionStorage.signFileDownloadUrl(objectFile, 300);
+    res.json(GetQuranSubmissionAudioUrlResponse.parse({ url, expiresIn: 300 }));
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Audio not found" });
+      return;
+    }
+    req.log?.error(error, "Get Quran submission audio URL failed");
+    res.status(500).json({ error: "Unable to access audio" });
+  }
+});
+
+router.patch("/quran/submissions/:id/review", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const params = ReviewQuranSubmissionParams.safeParse(req.params);
+  const parsed = ReviewQuranSubmissionBody.safeParse(req.body);
+  if (!params.success || !parsed.success) { parseError(res, "Invalid Quran submission review"); return; }
+  try {
+    const updated = await db.transaction(async (tx) => {
+      // Claim the submitted row first. The conditional update serializes
+      // competing teachers and makes the rest of this transaction all-or-none.
+      const [claimed] = await tx.update(quranSubmissionsTable).set({
+        status: parsed.data.status,
+        memorizationScore: parsed.data.memorizationScore ?? null,
+        recitationScore: parsed.data.recitationScore ?? null,
+        mistakeCounts: parsed.data.mistakeCounts ?? null,
+        feedback: parsed.data.feedback ?? null,
+        reviewedByTeacherId: teacherId,
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(and(
+        eq(quranSubmissionsTable.id, params.data.id),
+        eq(quranSubmissionsTable.teacherId, teacherId),
+        eq(quranSubmissionsTable.status, "submitted"),
+      )).returning(submissionPublicColumns);
+      if (!claimed) return null;
+
+      const [ward] = await tx.select().from(quranWardsTable).where(and(
+        eq(quranWardsTable.id, claimed.wardId),
+        eq(quranWardsTable.teacherId, teacherId),
+      ));
+      if (!ward) throw new Error("Quran submission ward is missing");
+
+      if (parsed.data.status === "needs_resubmission") {
+        await tx.update(quranWardsTable).set({
+          status: "needs_review",
+          updatedAt: new Date(),
+        }).where(and(eq(quranWardsTable.id, ward.id), eq(quranWardsTable.teacherId, teacherId)));
+        return claimed;
+      }
+
+      const recitedDate = today();
+      const [record] = await tx.insert(quranRecitationsTable).values({
+        teacherId,
+        wardId: ward.id,
+        studentId: ward.studentId,
+        status: "completed",
+        memorizationScore: parsed.data.memorizationScore ?? null,
+        recitationScore: parsed.data.recitationScore ?? null,
+        mistakeCounts: parsed.data.mistakeCounts ?? null,
+        teacherNote: parsed.data.feedback ?? null,
+        recitedDate,
+        progressApplied: false,
+      }).onConflictDoUpdate({
+        target: [quranRecitationsTable.teacherId, quranRecitationsTable.wardId, quranRecitationsTable.recitedDate],
+        set: {
+          status: "completed",
+          memorizationScore: parsed.data.memorizationScore ?? null,
+          recitationScore: parsed.data.recitationScore ?? null,
+          mistakeCounts: parsed.data.mistakeCounts ?? null,
+          teacherNote: parsed.data.feedback ?? null,
+        },
+      }).returning();
+
+      await tx.update(quranWardsTable).set({
+        status: "completed",
+        updatedAt: new Date(),
+      }).where(and(eq(quranWardsTable.id, ward.id), eq(quranWardsTable.teacherId, teacherId)));
+      await applyCompletedRecitationProgress(tx, teacherId, ward, record, recitedDate);
+      return claimed;
+    });
+    if (updated) {
+      res.json(ReviewQuranSubmissionResponse.parse(updated));
+      return;
+    }
+  } catch (error) {
+    req.log?.error(error, "Review Quran submission transaction failed");
+    res.status(500).json({ error: "Unable to review Quran submission" });
+    return;
+  }
+  const [existing] = await db.select(submissionReviewColumns)
+    .from(quranSubmissionsTable).where(eq(quranSubmissionsTable.id, params.data.id));
+  if (!existing || existing.teacherId !== teacherId) {
+    res.status(404).json({ error: "Submission not found" });
+    return;
+  }
+  if (existing.status !== "submitted" && matchesCompletedReview(existing, parsed.data, teacherId)) {
+    res.status(200).json(ReviewQuranSubmissionResponse.parse(existing));
+    return;
+  }
+  res.status(409).json({ error: "Submission was already reviewed" });
 });
 
 async function dueWards(teacherId: number) {

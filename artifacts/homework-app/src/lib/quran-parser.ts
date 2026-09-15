@@ -93,6 +93,14 @@ export function getQuranLocation(surah: number, ayah: number): QuranLocation {
   };
 }
 
+export function getGlobalAyahNumber(surahs: QuranSurahParsed[], surahNumber: number, ayahNumber: number): number {
+  let global = 0;
+  for (let i = 0; i < surahNumber - 1; i++) {
+    global += surahs[i].ayahs.length;
+  }
+  return global + ayahNumber;
+}
+
 export interface MinimalVerse {
   chapter_id: number;
 }

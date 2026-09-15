@@ -831,11 +831,20 @@ export default function StudentDashboard() {
 
           {quranWards.length > 0 && (
             <section className="mb-8 animate-in fade-in duration-300 delay-100" aria-labelledby="student-quran-wards">
-              <div className="mb-4 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-emerald-700" />
-                <h2 id="student-quran-wards" className="text-xl font-bold text-foreground">
-                  {lang === "ar" ? "مهامي في القرآن" : "My Quran tasks"}
-                </h2>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+                  <h2 id="student-quran-wards" className="text-xl font-bold text-foreground">
+                    {lang === "ar" ? "مهامي في القرآن" : "My Quran tasks"}
+                  </h2>
+                </div>
+                <Link
+                  href="/student/quran-journey"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
+                >
+                  {lang === "ar" ? "رحلتي القرآنية" : "Quran Journey"}
+                  {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                </Link>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {quranWards.map((ward) => (

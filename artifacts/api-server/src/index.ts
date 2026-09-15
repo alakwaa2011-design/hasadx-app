@@ -112,6 +112,47 @@ async function runSchemaMigrations() {
       CREATE INDEX IF NOT EXISTS presentation_outline_jobs_claim_idx
         ON presentation_outline_jobs(status, created_at);
     `);
+    // Quran student audio submissions are intentionally separate from
+    // quran_recitations. Runtime DDL keeps deployed instances in sync even
+    // when the reviewed Drizzle migration has not run yet.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quran_submissions (
+        id SERIAL PRIMARY KEY,
+        ward_id INTEGER NOT NULL REFERENCES quran_wards(id) ON DELETE CASCADE,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,
+        client_request_id TEXT NOT NULL,
+        object_path TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'submitted',
+        memorization_score INTEGER,
+        recitation_score INTEGER,
+        mistake_counts JSONB,
+        feedback TEXT,
+        reviewed_by_teacher_id INTEGER REFERENCES teachers(id) ON DELETE SET NULL,
+        reviewed_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT quran_submissions_status_valid
+          CHECK (status IN ('submitted','reviewed','needs_resubmission')),
+        CONSTRAINT quran_submissions_content_type_valid
+          CHECK (content_type IN ('audio/webm','audio/mp4','audio/mpeg','audio/ogg')),
+        CONSTRAINT quran_submissions_file_size_valid
+          CHECK (file_size > 0 AND file_size <= 31457280),
+        CONSTRAINT quran_submissions_mem_score_valid
+          CHECK (memorization_score IS NULL OR memorization_score BETWEEN 0 AND 100),
+        CONSTRAINT quran_submissions_rec_score_valid
+          CHECK (recitation_score IS NULL OR recitation_score BETWEEN 0 AND 100)
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_submissions_owner_request_uq
+        ON quran_submissions(student_account_id, client_request_id);
+      CREATE INDEX IF NOT EXISTS quran_submissions_teacher_status_idx
+        ON quran_submissions(teacher_id, status, created_at);
+      CREATE INDEX IF NOT EXISTS quran_submissions_student_ward_idx
+        ON quran_submissions(student_id, ward_id, created_at);
+    `);
     await migrateKidsSchema();
     // Assignment history is also applied at runtime for deployments that do
     // not run the reviewed SQL files during boot.

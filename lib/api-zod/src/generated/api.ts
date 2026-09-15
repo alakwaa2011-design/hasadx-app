@@ -4774,6 +4774,105 @@ export const ListMyQuranWardsResponse = zod.array(ListMyQuranWardsResponseItem)
 
 
 /**
+ * Returns only Quran records owned by the signed-in student account. Recitations are canonical when a reviewed submission also exists.
+ * @summary Get the signed-in student's personal Quran journey
+ */
+export const getQuranJourneyResponseProfileCurrentSurahNumberMax = 114;
+
+
+export const getQuranJourneyResponseProfileProgressPercentMin = 0;
+export const getQuranJourneyResponseProfileProgressPercentMax = 100;
+
+export const getQuranJourneyResponseProfileMasteredAyahCountMin = 0;
+
+export const getQuranJourneyResponseProfileLastRecitedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranJourneyResponseNextWardOneSurahNumberMax = 114;
+
+
+
+export const getQuranJourneyResponseNextWardOneAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranJourneyResponseNextWardOneDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranJourneyResponseSummaryCompletedWardCountMin = 0;
+
+export const getQuranJourneyResponseSummaryMasteredAyahCountMin = 0;
+
+export const getQuranJourneyResponseSummaryNeedsReviewCountMin = 0;
+
+export const getQuranJourneyResponseSummaryPendingSubmissionCountMin = 0;
+
+export const getQuranJourneyResponseSummaryAverageMemorizationScoreMin = 0;
+export const getQuranJourneyResponseSummaryAverageMemorizationScoreMax = 100;
+
+export const getQuranJourneyResponseSummaryAverageRecitationScoreMin = 0;
+export const getQuranJourneyResponseSummaryAverageRecitationScoreMax = 100;
+
+export const getQuranJourneyResponseStreakCurrentMin = 0;
+
+export const getQuranJourneyResponseStreakLongestMin = 0;
+
+export const getQuranJourneyResponseActiveDatesItemRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const getQuranJourneyResponseActiveDatesMax = 90;
+
+export const getQuranJourneyResponseRecentActivitiesItemDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMin = 0;
+export const getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMax = 100;
+
+export const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMin = 0;
+export const getQuranJourneyResponseRecentActivitiesItemRecitationScoreMax = 100;
+
+export const getQuranJourneyResponseRecentActivitiesMax = 20;
+
+
+
+export const GetQuranJourneyResponse = zod.object({
+  "profile": zod.object({
+  "currentSurahNumber": zod.int().min(1).max(getQuranJourneyResponseProfileCurrentSurahNumberMax).nullable(),
+  "currentAyah": zod.int().min(1).nullable(),
+  "progressPercent": zod.int().min(getQuranJourneyResponseProfileProgressPercentMin).max(getQuranJourneyResponseProfileProgressPercentMax),
+  "masteredAyahCount": zod.int().min(getQuranJourneyResponseProfileMasteredAyahCountMin),
+  "lastRecitedDate": zod.string().regex(getQuranJourneyResponseProfileLastRecitedDateRegExp).nullable()
+}),
+  "nextWard": zod.object({
+  "id": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(getQuranJourneyResponseNextWardOneSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(getQuranJourneyResponseNextWardOneAssignedDateRegExp),
+  "dueDate": zod.string().regex(getQuranJourneyResponseNextWardOneDueDateRegExp).nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+}).nullable(),
+  "summary": zod.object({
+  "completedWardCount": zod.int().min(getQuranJourneyResponseSummaryCompletedWardCountMin),
+  "masteredAyahCount": zod.int().min(getQuranJourneyResponseSummaryMasteredAyahCountMin),
+  "needsReviewCount": zod.int().min(getQuranJourneyResponseSummaryNeedsReviewCountMin),
+  "pendingSubmissionCount": zod.int().min(getQuranJourneyResponseSummaryPendingSubmissionCountMin),
+  "averageMemorizationScore": zod.number().min(getQuranJourneyResponseSummaryAverageMemorizationScoreMin).max(getQuranJourneyResponseSummaryAverageMemorizationScoreMax).nullable(),
+  "averageRecitationScore": zod.number().min(getQuranJourneyResponseSummaryAverageRecitationScoreMin).max(getQuranJourneyResponseSummaryAverageRecitationScoreMax).nullable()
+}),
+  "streak": zod.object({
+  "current": zod.int().min(getQuranJourneyResponseStreakCurrentMin),
+  "longest": zod.int().min(getQuranJourneyResponseStreakLongestMin)
+}),
+  "activeDates": zod.array(zod.string().regex(getQuranJourneyResponseActiveDatesItemRegExp)).max(getQuranJourneyResponseActiveDatesMax),
+  "recentActivities": zod.array(zod.object({
+  "type": zod.enum(['recitation', 'submission']),
+  "wardId": zod.int(),
+  "date": zod.string().regex(getQuranJourneyResponseRecentActivitiesItemDateRegExp),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "status": zod.string(),
+  "memorizationScore": zod.number().min(getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMin).max(getQuranJourneyResponseRecentActivitiesItemMemorizationScoreMax).nullable(),
+  "recitationScore": zod.number().min(getQuranJourneyResponseRecentActivitiesItemRecitationScoreMin).max(getQuranJourneyResponseRecentActivitiesItemRecitationScoreMax).nullable()
+})).max(getQuranJourneyResponseRecentActivitiesMax)
+})
+
+
+/**
  * @summary Get one Quran ward owned by the signed-in student
  */
 export const GetMyQuranWardParams = zod.object({
@@ -5160,6 +5259,239 @@ export const GetQuranReviewQueueResponseItem = zod.object({
   "studentName": zod.string()
 }))
 export const GetQuranReviewQueueResponse = zod.array(GetQuranReviewQueueResponseItem)
+
+
+/**
+ * @summary Prepare a private Quran audio upload for the signed-in student
+ */
+export const prepareQuranSubmissionUploadBodyFileSizeMax = 31457280;
+
+
+
+export const PrepareQuranSubmissionUploadBody = zod.object({
+  "wardId": zod.int(),
+  "contentType": zod.enum(['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg']),
+  "fileSize": zod.int().min(1).max(prepareQuranSubmissionUploadBodyFileSizeMax)
+})
+
+export const prepareQuranSubmissionUploadResponseObjectPathRegExp = new RegExp('^/objects');
+
+
+
+export const PrepareQuranSubmissionUploadResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string().regex(prepareQuranSubmissionUploadResponseObjectPathRegExp),
+  "expiresIn": zod.int().min(1)
+})
+
+
+/**
+ * @summary List Quran audio submissions owned by the signed-in student
+ */
+export const listMyQuranSubmissionsResponseMemorizationScoreMin = 0;
+export const listMyQuranSubmissionsResponseMemorizationScoreMax = 100;
+
+export const listMyQuranSubmissionsResponseRecitationScoreMin = 0;
+export const listMyQuranSubmissionsResponseRecitationScoreMax = 100;
+
+export const listMyQuranSubmissionsResponseMistakeCountsOneMinOne = 0;
+
+
+
+export const ListMyQuranSubmissionsResponseItem = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['submitted', 'reviewed', 'needs_resubmission']),
+  "memorizationScore": zod.int().min(listMyQuranSubmissionsResponseMemorizationScoreMin).max(listMyQuranSubmissionsResponseMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(listMyQuranSubmissionsResponseRecitationScoreMin).max(listMyQuranSubmissionsResponseRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(listMyQuranSubmissionsResponseMistakeCountsOneMinOne)).nullable(),
+  "feedback": zod.string().nullable(),
+  "contentType": zod.string(),
+  "fileSize": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMyQuranSubmissionsResponse = zod.array(ListMyQuranSubmissionsResponseItem)
+
+
+/**
+ * @summary Finalize an uploaded Quran audio submission
+ */
+export const finalizeQuranSubmissionBodyObjectPathRegExp = new RegExp('^/objects');
+export const finalizeQuranSubmissionBodyClientRequestIdMin = 8;
+export const finalizeQuranSubmissionBodyClientRequestIdMax = 120;
+
+
+
+export const FinalizeQuranSubmissionBody = zod.object({
+  "wardId": zod.int(),
+  "objectPath": zod.string().regex(finalizeQuranSubmissionBodyObjectPathRegExp),
+  "clientRequestId": zod.string().min(finalizeQuranSubmissionBodyClientRequestIdMin).max(finalizeQuranSubmissionBodyClientRequestIdMax)
+})
+
+export const finalizeQuranSubmissionResponseMemorizationScoreMin = 0;
+export const finalizeQuranSubmissionResponseMemorizationScoreMax = 100;
+
+export const finalizeQuranSubmissionResponseRecitationScoreMin = 0;
+export const finalizeQuranSubmissionResponseRecitationScoreMax = 100;
+
+export const finalizeQuranSubmissionResponseMistakeCountsOneMinOne = 0;
+
+
+
+export const FinalizeQuranSubmissionResponse = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['submitted', 'reviewed', 'needs_resubmission']),
+  "memorizationScore": zod.int().min(finalizeQuranSubmissionResponseMemorizationScoreMin).max(finalizeQuranSubmissionResponseMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(finalizeQuranSubmissionResponseRecitationScoreMin).max(finalizeQuranSubmissionResponseRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(finalizeQuranSubmissionResponseMistakeCountsOneMinOne)).nullable(),
+  "feedback": zod.string().nullable(),
+  "contentType": zod.string(),
+  "fileSize": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get one Quran submission owned by the signed-in student
+ */
+export const GetMyQuranSubmissionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const getMyQuranSubmissionResponseMemorizationScoreMin = 0;
+export const getMyQuranSubmissionResponseMemorizationScoreMax = 100;
+
+export const getMyQuranSubmissionResponseRecitationScoreMin = 0;
+export const getMyQuranSubmissionResponseRecitationScoreMax = 100;
+
+export const getMyQuranSubmissionResponseMistakeCountsOneMinOne = 0;
+
+
+
+export const GetMyQuranSubmissionResponse = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['submitted', 'reviewed', 'needs_resubmission']),
+  "memorizationScore": zod.int().min(getMyQuranSubmissionResponseMemorizationScoreMin).max(getMyQuranSubmissionResponseMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(getMyQuranSubmissionResponseRecitationScoreMin).max(getMyQuranSubmissionResponseRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(getMyQuranSubmissionResponseMistakeCountsOneMinOne)).nullable(),
+  "feedback": zod.string().nullable(),
+  "contentType": zod.string(),
+  "fileSize": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List actionable student Quran audio submissions for a teacher
+ */
+export const listQuranSubmissionReviewQueueResponseOneMemorizationScoreMin = 0;
+export const listQuranSubmissionReviewQueueResponseOneMemorizationScoreMax = 100;
+
+export const listQuranSubmissionReviewQueueResponseOneRecitationScoreMin = 0;
+export const listQuranSubmissionReviewQueueResponseOneRecitationScoreMax = 100;
+
+export const listQuranSubmissionReviewQueueResponseOneMistakeCountsOneMinOne = 0;
+
+
+
+export const ListQuranSubmissionReviewQueueResponseItem = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['submitted', 'reviewed', 'needs_resubmission']),
+  "memorizationScore": zod.int().min(listQuranSubmissionReviewQueueResponseOneMemorizationScoreMin).max(listQuranSubmissionReviewQueueResponseOneMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(listQuranSubmissionReviewQueueResponseOneRecitationScoreMin).max(listQuranSubmissionReviewQueueResponseOneRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(listQuranSubmissionReviewQueueResponseOneMistakeCountsOneMinOne)).nullable(),
+  "feedback": zod.string().nullable(),
+  "contentType": zod.string(),
+  "fileSize": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "studentName": zod.string(),
+  "surahName": zod.string(),
+  "startAyah": zod.int(),
+  "endAyah": zod.int(),
+  "mode": zod.string()
+}))
+export const ListQuranSubmissionReviewQueueResponse = zod.array(ListQuranSubmissionReviewQueueResponseItem)
+
+
+/**
+ * @summary Get a short-lived protected audio URL for an owned submission
+ */
+export const GetQuranSubmissionAudioUrlParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const GetQuranSubmissionAudioUrlResponse = zod.object({
+  "url": zod.string(),
+  "expiresIn": zod.int().min(1)
+})
+
+
+/**
+ * @summary Review a student Quran audio submission
+ */
+export const ReviewQuranSubmissionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const reviewQuranSubmissionBodyMemorizationScoreMin = 0;
+export const reviewQuranSubmissionBodyMemorizationScoreMax = 100;
+
+export const reviewQuranSubmissionBodyRecitationScoreMin = 0;
+export const reviewQuranSubmissionBodyRecitationScoreMax = 100;
+
+export const reviewQuranSubmissionBodyMistakeCountsOneMinOne = 0;
+
+export const reviewQuranSubmissionBodyFeedbackMax = 2000;
+
+
+
+export const ReviewQuranSubmissionBody = zod.object({
+  "status": zod.enum(['reviewed', 'needs_resubmission']),
+  "memorizationScore": zod.int().min(reviewQuranSubmissionBodyMemorizationScoreMin).max(reviewQuranSubmissionBodyMemorizationScoreMax).nullish(),
+  "recitationScore": zod.int().min(reviewQuranSubmissionBodyRecitationScoreMin).max(reviewQuranSubmissionBodyRecitationScoreMax).nullish(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(reviewQuranSubmissionBodyMistakeCountsOneMinOne)).nullish(),
+  "feedback": zod.string().max(reviewQuranSubmissionBodyFeedbackMax).nullish()
+})
+
+export const reviewQuranSubmissionResponseMemorizationScoreMin = 0;
+export const reviewQuranSubmissionResponseMemorizationScoreMax = 100;
+
+export const reviewQuranSubmissionResponseRecitationScoreMin = 0;
+export const reviewQuranSubmissionResponseRecitationScoreMax = 100;
+
+export const reviewQuranSubmissionResponseMistakeCountsOneMinOne = 0;
+
+
+
+export const ReviewQuranSubmissionResponse = zod.object({
+  "id": zod.int(),
+  "wardId": zod.int(),
+  "studentId": zod.int(),
+  "status": zod.enum(['submitted', 'reviewed', 'needs_resubmission']),
+  "memorizationScore": zod.int().min(reviewQuranSubmissionResponseMemorizationScoreMin).max(reviewQuranSubmissionResponseMemorizationScoreMax).nullable(),
+  "recitationScore": zod.int().min(reviewQuranSubmissionResponseRecitationScoreMin).max(reviewQuranSubmissionResponseRecitationScoreMax).nullable(),
+  "mistakeCounts": zod.record(zod.string(), zod.int().min(reviewQuranSubmissionResponseMistakeCountsOneMinOne)).nullable(),
+  "feedback": zod.string().nullable(),
+  "contentType": zod.string(),
+  "fileSize": zod.int(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
 
 
 /**

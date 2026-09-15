@@ -1,9 +1,11 @@
 /**
  * One stable share-link per supported activity (assignment, wheel template,
- * or a teacher's saved game).
+ * or a teacher's saved game). Saved XO activities use "xo_class" or
+ * "xo_online" as the link game type.
  * The token is a 32-char random hex string — not guessable from the assignment ID.
  * Anyone with the token can start a solo game; no login required.
- * Supported gameType values: "wameeth" | "wameeth_class" | "rocket_race" | "wheel"
+ * Supported gameType values: "wameeth" | "wameeth_class" | "rocket_race" |
+ * "wheel" | "tug_class" | "xo_class" | "xo_online"
  */
 export declare const directPlayLinksTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "direct_play_links";
@@ -120,6 +122,40 @@ export declare const directPlayLinksTable: import("drizzle-orm/pg-core").PgTable
             driverParam: string | number;
             notNull: true;
             hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        startWindowStartedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "start_window_started_at";
+            tableName: "direct_play_links";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        startCount: import("drizzle-orm/pg-core").PgColumn<{
+            name: "start_count";
+            tableName: "direct_play_links";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;

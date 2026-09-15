@@ -68,3 +68,15 @@ Individual and circle Quran assignments share one range model: surah intervals, 
 **Why:** Teachers describe real assignments in these three forms; forcing manual per-surah rows is slow and confusing.
 
 **How to apply:** Convert choices to canonical per-surah wards before submission, use reviewed juz boundaries, show the derived summary, and save all ranges atomically with stable request identity.
+
+Student audio submissions are private evidence, not progress. Only an explicit teacher approval may convert a submission into a completed recitation and advance the ward/profile.
+
+**Why:** Upload success proves only that audio arrived; retries, rejected recordings, and unreviewed evidence must never grant or duplicate Quran progress.
+
+**How to apply:** Use stable request identities, short-lived owner-authorized audio URLs, and one transaction for review state, completed recitation, ward state, and the existing progress-applied fence. Identical retries return the prior result; conflicting retries fail.
+
+Journey mastery counts unique approved ayahs, not the global ordinal of the furthest verse reached.
+
+**Why:** Non-contiguous assignments and overlapping review ranges otherwise inflate mastery and can count the same ayah more than once.
+
+**How to apply:** Derive mastery from the per-surah union of completed-recitation ranges; keep furthest Quran position and progress percentage as separate concepts.
