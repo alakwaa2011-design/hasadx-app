@@ -34,17 +34,7 @@ export default function QuranCenter() {
     }
   }, [tabFromQuery]);
 
-  useEffect(() => {
-    if (tabFromQuery === "mushaf") {
-      setLocation("/teacher/quran-reader/1?view=pages");
-    }
-  }, [setLocation, tabFromQuery]);
-
   const handleTabChange = (tab: Tab) => {
-    if (tab === "mushaf") {
-      setLocation("/teacher/quran-reader/1?view=pages");
-      return;
-    }
     setActiveTab(tab);
     setLocation(`/teacher/quran-center?tab=${tab}`);
   };
@@ -75,7 +65,6 @@ export default function QuranCenter() {
   }
 
   if (!teacher) return null;
-  if (tabFromQuery === "mushaf") return null;
 
   const TABS = [
     { id: "dashboard", label: lang === "ar" ? "الرئيسية" : "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
