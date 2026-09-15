@@ -915,9 +915,8 @@ function PrintStyles({ lang, fontStack, headingFont, fontSizePt }: { lang: "ar" 
   );
 }
 
-/** Pluck a body-font stack from the chosen font key. "default" picks a
- *  language-appropriate stack; named choices map onto our installed Google
- *  Fonts. Unknown keys silently fall back to the default. */
+/** Pluck a body-font stack from the chosen font key. The language default is
+ *  Amiri for Arabic and Arial for English to keep lesson plans easy to read. */
 export function resolveLpFont(font: LpFontFamily | undefined, lang: "ar" | "en"): string {
   const ar = lang === "ar";
   switch (font) {
@@ -932,17 +931,15 @@ export function resolveLpFont(font: LpFontFamily | undefined, lang: "ar" | "en")
     case "default":
     default:
       return ar
-        ? `'Cairo', 'Noto Naskh Arabic', 'Tajawal', 'Arial', sans-serif`
-        : `'Inter', 'Source Sans Pro', 'Helvetica Neue', Arial, sans-serif`;
+        ? `'Amiri', 'Arial', 'Noto Naskh Arabic', serif`
+        : `Arial, 'Helvetica Neue', sans-serif`;
   }
 }
 
-/** Heading variant of the body font — bumps to a more display-style
- *  family when the body font is plain, but otherwise tracks the body. */
+/** Headings track the chosen font so the default remains consistently clear. */
 export function resolveLpHeadingFont(font: LpFontFamily | undefined, lang: "ar" | "en"): string {
-  const ar = lang === "ar";
   if (!font || font === "default") {
-    return ar ? `'Reem Kufi', 'Amiri', 'Cairo', sans-serif` : `'Inter', 'Source Sans Pro', sans-serif`;
+    return resolveLpFont("default", lang);
   }
   return resolveLpFont(font, lang);
 }

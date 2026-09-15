@@ -1290,7 +1290,7 @@ export default function LessonPlanCreate() {
                     </InputCard>
                     <InputCard label={t.fontFamily} icon={Type}>
                        <select value={settings.fontFamily || "default"} onChange={e => setSettings({...settings, fontFamily: e.target.value as LpFontFamily})} className="w-full bg-transparent text-sm font-bold outline-none appearance-none cursor-pointer">
-                          <option value="default">{ar ? "الافتراضي للغة" : "Language default"}</option>
+                          <option value="default">{ar ? "الافتراضي: Amiri" : "Default: Arial"}</option>
                           <option value="cairo">Cairo</option>
                           <option value="tajawal">Tajawal</option>
                           <option value="amiri">Amiri</option>
