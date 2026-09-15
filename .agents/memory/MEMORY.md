@@ -114,3 +114,4 @@
 - [Socket terminal recovery UI](socket-terminal-recovery.md) — terminal game screens must keep results and the reconnect affordance during browser offline and Socket.IO recovery.
 - [Student reward photo privacy](student-reward-photo-privacy.md) — uploaded roster photos are teacher-private media; never expose their generic object paths as display URLs.
 - [Quran Center progress safety](quran-center-progress-safety.md) — Quran progress is teacher-owned, monotonic, and advanced once only by a completed recitation.
+- [Public game start throttling](public-game-start-throttling.md) — public-link room creation is limited atomically in PostgreSQL per durable link token, never in process memory or by caller IP.

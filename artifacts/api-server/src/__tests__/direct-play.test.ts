@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // ── Queue-based DB mock (overrides global setup-db-mock.ts) ────────────────
 const dbState = vi.hoisted(() => {
   const queue: unknown[] = [];
+  const executeQueue: unknown[] = [];
   const insertPayloads: unknown[] = [];
   function makeChain(result: unknown): unknown {
     return new Proxy({}, {
@@ -28,7 +29,7 @@ const dbState = vi.hoisted(() => {
       },
     });
   }
-  return { queue, insertPayloads, makeChain };
+  return { queue, executeQueue, insertPayloads, makeChain };
 });
 
 vi.mock("@workspace/db", () => {
@@ -44,6 +45,9 @@ vi.mock("@workspace/db", () => {
       }),
       update: () => dbState.makeChain(dbState.queue.shift()),
       delete: () => dbState.makeChain(dbState.queue.shift()),
+      execute: () => Promise.resolve(dbState.executeQueue.shift() ?? {
+        rows: [{ allowed: true, retry_after_seconds: 0 }],
+      }),
     },
     assignmentsTable:    stub,
     questionsTable:      stub,
@@ -167,6 +171,7 @@ function push(...items: unknown[]) { dbState.queue.push(...items); }
 
 beforeEach(() => {
   dbState.queue.length = 0;
+  dbState.executeQueue.length = 0;
   dbState.insertPayloads.length = 0;
   vi.clearAllMocks();
   gameMocks.createGame.mockReturnValue({ pin: "111111" });
@@ -435,11 +440,17 @@ describe("AC-4  الأمان والخصوصية", () => {
     }
 
     push([LINK_ROW_WAMEETH]);
+    dbState.executeQueue.push({ rows: [{ allowed: false, retry_after_seconds: 37 }] });
     const blocked = await request(app)
       .post(`/api/play/${rateToken}/start`)
       .set("X-Forwarded-For", "192.0.2.99, 198.51.100.250");
 
     expect(blocked.status).toBe(429);
+    expect(blocked.headers["retry-after"]).toBe("37");
+    expect(blocked.body).toEqual({
+      message: "تم إنشاء غرف كثيرة من هذا الرابط. حاول مجدداً بعد 37 ثانية.",
+      retryAfterSeconds: 37,
+    });
     expect(dbState.queue.length).toBe(0);
   });
 

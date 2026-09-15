@@ -37,19 +37,66 @@ import { createXoGameFromRest, sanitizeXoSetup } from "../game/xo-handlers";
 
 const router: IRouter = Router();
 
-// ── Per-link rate limiter for public /start endpoint ─────────────────────────
-const startBuckets = new Map<string, number[]>();
-const RL_WINDOW_MS = 60 * 1000;
+// ── Distributed per-link rate limiter for public /start endpoint ─────────────
+const RL_WINDOW_SECONDS = 60;
 const RL_MAX = 120; // 120 isolated sessions per public link per minute
 const DIRECT_JOIN_GRACE_MS = 90 * 1000;
 
-function checkStartRateLimit(linkToken: string): boolean {
-  const now = Date.now();
-  const prev = (startBuckets.get(linkToken) ?? []).filter((t) => now - t < RL_WINDOW_MS);
-  if (prev.length >= RL_MAX) { startBuckets.set(linkToken, prev); return false; }
-  prev.push(now);
-  startBuckets.set(linkToken, prev);
-  return true;
+type StartLimitResult = { allowed: boolean; retryAfterSeconds: number };
+
+export async function consumeDirectPlayStart(token: string): Promise<StartLimitResult> {
+  const result = await db.execute(sql`
+    WITH current AS (
+      SELECT id, start_window_started_at, start_count, NOW() AS checked_at
+      FROM direct_play_links
+      WHERE token = ${token}
+      FOR UPDATE
+    ),
+    updated AS (
+      UPDATE direct_play_links AS link
+      SET
+        start_window_started_at = CASE
+          WHEN current.start_window_started_at IS NULL
+            OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
+          THEN current.checked_at
+          ELSE current.start_window_started_at
+        END,
+        start_count = CASE
+          WHEN current.start_window_started_at IS NULL
+            OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
+          THEN 1
+          WHEN current.start_count < ${RL_MAX} THEN current.start_count + 1
+          ELSE current.start_count
+        END
+      FROM current
+      WHERE link.id = current.id
+      RETURNING
+        current.start_window_started_at IS NULL
+          OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
+          OR current.start_count < ${RL_MAX} AS allowed,
+        CASE
+          WHEN current.start_window_started_at IS NULL
+            OR current.start_window_started_at <= current.checked_at - (${RL_WINDOW_SECONDS} * INTERVAL '1 second')
+            OR current.start_count < ${RL_MAX}
+          THEN 0
+          ELSE GREATEST(
+            1,
+            CEIL(EXTRACT(EPOCH FROM (
+              current.start_window_started_at + (${RL_WINDOW_SECONDS} * INTERVAL '1 second') - current.checked_at
+            )))::integer
+          )
+        END AS retry_after_seconds
+    )
+    SELECT allowed, retry_after_seconds FROM updated
+  `);
+  const row = result.rows[0] as { allowed?: unknown; retry_after_seconds?: unknown } | undefined;
+  if (!row) throw new Error("Direct-play link disappeared while applying start limit");
+  return {
+    allowed: row.allowed === true,
+    retryAfterSeconds: typeof row.retry_after_seconds === "number"
+      ? row.retry_after_seconds
+      : Number(row.retry_after_seconds) || 0,
+  };
 }
 
 function getDbErrorCode(err: unknown): string | undefined {
@@ -67,16 +114,6 @@ function getDbErrorCode(err: unknown): string | undefined {
 function isValidDirectToken(token: string | undefined): token is string {
   return !!token && token.length === 32 && /^[0-9a-f]+$/.test(token);
 }
-
-// Cleanup buckets every 5 minutes to avoid unbounded growth
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, times] of startBuckets.entries()) {
-    const fresh = times.filter((t) => now - t < RL_WINDOW_MS);
-    if (fresh.length === 0) startBuckets.delete(ip);
-    else startBuckets.set(ip, fresh);
-  }
-}, 5 * 60 * 1000);
 
 const SUPPORTED_GAME_TYPES = new Set(["wameeth", "wameeth_class", "rocket_race"]);
 const WHEEL_GAME_TYPE = "wheel";
@@ -765,8 +802,13 @@ router.post("/play/:token/start", async (req, res) => {
 
     // Bound session creation by the verified high-entropy public link itself.
     // This deliberately avoids proxy trust and X-Forwarded-For assumptions.
-    if (!checkStartRateLimit(token)) {
-      return res.status(429).json({ message: "طلبات كثيرة جداً. الرجاء الانتظار دقيقة." });
+    const startLimit = await consumeDirectPlayStart(token);
+    if (!startLimit.allowed) {
+      res.setHeader("Retry-After", String(startLimit.retryAfterSeconds));
+      return res.status(429).json({
+        message: `تم إنشاء غرف كثيرة من هذا الرابط. حاول مجدداً بعد ${startLimit.retryAfterSeconds} ثانية.`,
+        retryAfterSeconds: startLimit.retryAfterSeconds,
+      });
     }
 
     const { assignmentId, gameType, title } = link;

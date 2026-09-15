@@ -29,6 +29,8 @@ export const directPlayLinksTable = pgTable(
     teacherId: integer("teacher_id")
       .notNull()
       .references(() => teachersTable.id, { onDelete: "cascade" }),
+    startWindowStartedAt: timestamp("start_window_started_at", { withTimezone: true }),
+    startCount: integer("start_count").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
