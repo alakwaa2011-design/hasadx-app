@@ -207,6 +207,23 @@ export declare const quranWardsTable: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        assignmentRequestId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "assignment_request_id";
+            tableName: "quran_wards";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "quran_wards";
@@ -249,13 +266,14 @@ export declare const insertQuranWardSchema: z.ZodObject<{
     teacherId: z.ZodInt;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     studentId: z.ZodInt;
+    status: z.ZodOptional<z.ZodString>;
     surahNumber: z.ZodInt;
     surahName: z.ZodString;
     startAyah: z.ZodInt;
     endAyah: z.ZodInt;
     assignedDate: z.ZodString;
     dueDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    status: z.ZodOptional<z.ZodString>;
+    assignmentRequestId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

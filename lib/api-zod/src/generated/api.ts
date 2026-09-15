@@ -4656,7 +4656,8 @@ export const GetQuranStudentSummaryResponse = zod.object({
   "assignedDate": zod.string().regex(getQuranStudentSummaryResponseWardsItemAssignedDateRegExp),
   "dueDate": zod.string().regex(getQuranStudentSummaryResponseWardsItemDueDateRegExp).nullable(),
   "notes": zod.string().nullable(),
-  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
 })),
   "recentRecitations": zod.array(zod.object({
   "id": zod.int(),
@@ -4738,7 +4739,8 @@ export const ListQuranStudentWardsResponseItem = zod.object({
   "assignedDate": zod.string().regex(listQuranStudentWardsResponseAssignedDateRegExp),
   "dueDate": zod.string().regex(listQuranStudentWardsResponseDueDateRegExp).nullable(),
   "notes": zod.string().nullable(),
-  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
 })
 export const ListQuranStudentWardsResponse = zod.array(ListQuranStudentWardsResponseItem)
 
@@ -4787,8 +4789,77 @@ export const CreateQuranWardResponse = zod.object({
   "assignedDate": zod.string().regex(createQuranWardResponseAssignedDateRegExp),
   "dueDate": zod.string().regex(createQuranWardResponseDueDateRegExp).nullable(),
   "notes": zod.string().nullable(),
-  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
 })
+
+
+/**
+ * @summary Assign memorization and review to every member of a Quran circle
+ */
+export const AssignQuranCircleTaskParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const assignQuranCircleTaskBodyRequestIdMin = 8;
+export const assignQuranCircleTaskBodyRequestIdMax = 100;
+
+export const assignQuranCircleTaskBodyAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const assignQuranCircleTaskBodyDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const assignQuranCircleTaskBodyMemorizationSurahNumberMax = 114;
+
+
+
+
+export const assignQuranCircleTaskBodyReviewSurahNumberMax = 114;
+
+
+
+
+
+
+export const AssignQuranCircleTaskBody = zod.object({
+  "requestId": zod.string().min(assignQuranCircleTaskBodyRequestIdMin).max(assignQuranCircleTaskBodyRequestIdMax),
+  "assignedDate": zod.string().regex(assignQuranCircleTaskBodyAssignedDateRegExp),
+  "dueDate": zod.string().regex(assignQuranCircleTaskBodyDueDateRegExp),
+  "memorization": zod.object({
+  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyMemorizationSurahNumberMax),
+  "surahName": zod.string().min(1),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1)
+}),
+  "review": zod.object({
+  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskBodyReviewSurahNumberMax),
+  "surahName": zod.string().min(1),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1)
+}),
+  "notes": zod.string().nullish()
+})
+
+export const assignQuranCircleTaskResponseSurahNumberMax = 114;
+
+
+
+export const assignQuranCircleTaskResponseAssignedDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const assignQuranCircleTaskResponseDueDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const AssignQuranCircleTaskResponseItem = zod.object({
+  "id": zod.int(),
+  "studentId": zod.int(),
+  "mode": zod.enum(['memorization', 'review', 'recitation', 'assessment']),
+  "surahNumber": zod.int().min(1).max(assignQuranCircleTaskResponseSurahNumberMax),
+  "surahName": zod.string(),
+  "startAyah": zod.int().min(1),
+  "endAyah": zod.int().min(1),
+  "assignedDate": zod.string().regex(assignQuranCircleTaskResponseAssignedDateRegExp),
+  "dueDate": zod.string().regex(assignQuranCircleTaskResponseDueDateRegExp).nullable(),
+  "notes": zod.string().nullable(),
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
+})
+export const AssignQuranCircleTaskResponse = zod.array(AssignQuranCircleTaskResponseItem)
 
 
 /**
@@ -4838,7 +4909,8 @@ export const UpdateQuranWardResponse = zod.object({
   "assignedDate": zod.string().regex(updateQuranWardResponseAssignedDateRegExp),
   "dueDate": zod.string().regex(updateQuranWardResponseDueDateRegExp).nullable(),
   "notes": zod.string().nullable(),
-  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
 })
 
 
@@ -4947,7 +5019,8 @@ export const GetQuranReviewQueueResponseItem = zod.object({
   "assignedDate": zod.string().regex(getQuranReviewQueueResponseOneAssignedDateRegExp),
   "dueDate": zod.string().regex(getQuranReviewQueueResponseOneDueDateRegExp).nullable(),
   "notes": zod.string().nullable(),
-  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
 }).and(zod.object({
   "studentName": zod.string()
 }))
@@ -4986,7 +5059,8 @@ export const GetQuranTodayDashboardResponse = zod.object({
   "assignedDate": zod.string().regex(getQuranTodayDashboardResponseDueWardsItemOneAssignedDateRegExp),
   "dueDate": zod.string().regex(getQuranTodayDashboardResponseDueWardsItemOneDueDateRegExp).nullable(),
   "notes": zod.string().nullable(),
-  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review'])
+  "status": zod.enum(['assigned', 'in_progress', 'completed', 'needs_review']),
+  "assignmentRequestId": zod.string().nullable()
 }).and(zod.object({
   "studentName": zod.string()
 }))),

@@ -59,6 +59,7 @@ import type {
   PresentationTierWithUsage,
   QuranCircle,
   QuranCircleInput,
+  QuranCircleTaskInput,
   QuranCircleUpdate,
   QuranProfileUpdate,
   QuranRecitation,
@@ -6696,6 +6697,87 @@ export const useCreateQuranWard = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCreateQuranWardMutationOptions(options));
+    }
+
+export const getAssignQuranCircleTaskUrl = (id: number,) => {
+
+
+
+
+  return `/api/quran/circles/${id}/assign`
+}
+
+/**
+ * @summary Assign memorization and review to every member of a Quran circle
+ */
+export const assignQuranCircleTask = async (id: number,
+    quranCircleTaskInput: QuranCircleTaskInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranWard[]> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranWard[]>(getAssignQuranCircleTaskUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranCircleTaskInput)
+  }
+);}
+
+
+
+
+
+export const getAssignQuranCircleTaskMutationKey = () => ['assignQuranCircleTask'] as const;
+
+export const getAssignQuranCircleTaskMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError,AssignQuranCircleTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError,AssignQuranCircleTaskMutationVariables, TContext> => {
+
+const mutationKey = getAssignQuranCircleTaskMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignQuranCircleTask>>, AssignQuranCircleTaskMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  assignQuranCircleTask(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignQuranCircleTaskMutationResult = NonNullable<Awaited<ReturnType<typeof assignQuranCircleTask>>>
+    export type AssignQuranCircleTaskMutationBody = BodyType<QuranCircleTaskInput>
+    export type AssignQuranCircleTaskMutationError = ErrorType<void>
+    export type AssignQuranCircleTaskMutationVariables = {id: number;data: BodyType<QuranCircleTaskInput>}
+
+    /**
+ * @summary Assign memorization and review to every member of a Quran circle
+ */
+export const useAssignQuranCircleTask = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError,AssignQuranCircleTaskMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignQuranCircleTask>>,
+        TError,
+        AssignQuranCircleTaskMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssignQuranCircleTaskMutationOptions(options));
     }
 
 export const getUpdateQuranWardUrl = (id: number,) => {

@@ -215,12 +215,12 @@ export declare const quranRecitationsTable: import("drizzle-orm/pg-core").PgTabl
 export declare const insertQuranRecitationSchema: z.ZodObject<{
     teacherId: z.ZodInt;
     studentId: z.ZodInt;
+    teacherNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodString;
     wardId: z.ZodInt;
     memorizationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     recitationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     mistakeCounts: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
-    teacherNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     recitedDate: z.ZodString;
     progressApplied: z.ZodOptional<z.ZodBoolean>;
 }, {

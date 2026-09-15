@@ -186,8 +186,8 @@ export declare const quranCircleMembersTable: import("drizzle-orm/pg-core").PgTa
 export declare const insertQuranCircleSchema: z.ZodObject<{
     name: z.ZodString;
     teacherId: z.ZodInt;
-    teacherClassId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    teacherClassId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
 }, {
     out: {};
     in: {};

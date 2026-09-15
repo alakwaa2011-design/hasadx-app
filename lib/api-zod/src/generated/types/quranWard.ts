@@ -32,4 +32,6 @@ export interface QuranWard {
   /** @nullable */
   notes: string | null;
   status: QuranWardStatus;
+  /** @nullable */
+  assignmentRequestId: string | null;
 }

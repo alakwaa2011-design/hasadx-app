@@ -1847,6 +1847,30 @@ paths:
         "400": { description: Invalid ward }
         "404": { description: Student not found }
 
+  /quran/circles/{id}/assign:
+    post:
+      operationId: assignQuranCircleTask
+      tags: [quran]
+      summary: Assign memorization and review to every member of a Quran circle
+      parameters:
+        - $ref: "#/components/parameters/QuranId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranCircleTaskInput"
+      responses:
+        "201":
+          description: Created or replayed circle tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QuranWard" }
+        "400": { description: Invalid task or empty circle }
+        "404": { description: Circle not found }
+
   /quran/wards/{id}:
     patch:
       operationId: updateQuranWard
@@ -2020,7 +2044,8 @@ components:
         status:
           type: string
           enum: [assigned, in_progress, completed, needs_review]
-      required: [id, studentId, mode, surahNumber, surahName, startAyah, endAyah, assignedDate, dueDate, notes, status]
+        assignmentRequestId: { type: ["string", "null"] }
+      required: [id, studentId, mode, surahNumber, surahName, startAyah, endAyah, assignedDate, dueDate, notes, status, assignmentRequestId]
 
     QuranReviewWard:
       allOf:
@@ -2048,6 +2073,26 @@ components:
           type: string
           enum: [assigned, in_progress, completed, needs_review]
       required: [studentId, mode, surahNumber, surahName, startAyah, endAyah, assignedDate]
+
+    QuranWardRangeInput:
+      type: object
+      properties:
+        surahNumber: { type: integer, minimum: 1, maximum: 114 }
+        surahName: { type: string, minLength: 1 }
+        startAyah: { type: integer, minimum: 1 }
+        endAyah: { type: integer, minimum: 1 }
+      required: [surahNumber, surahName, startAyah, endAyah]
+
+    QuranCircleTaskInput:
+      type: object
+      properties:
+        requestId: { type: string, minLength: 8, maxLength: 100 }
+        assignedDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        dueDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        memorization: { $ref: "#/components/schemas/QuranWardRangeInput" }
+        review: { $ref: "#/components/schemas/QuranWardRangeInput" }
+        notes: { type: ["string", "null"] }
+      required: [requestId, assignedDate, dueDate, memorization, review]
 
     QuranWardUpdate:
       type: object

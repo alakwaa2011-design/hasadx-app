@@ -4,9 +4,11 @@ import {
   useListQuranStudents, 
   useCreateQuranCircle,
   useUpdateQuranCircle,
+  useAssignQuranCircleTask,
   QuranCircle,
   QuranSurah
 } from "@workspace/api-client-react";
+import { QuranDailySession } from "./quran-daily-session";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { 
@@ -43,6 +45,8 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
   const [isCreating, setIsCreating] = useState(false);
   const [newCircleName, setNewCircleName] = useState("");
   const [isManagingMembers, setIsManagingMembers] = useState(false);
+  const [isAssigningTask, setIsAssigningTask] = useState(false);
+  const [sessionMode, setSessionMode] = useState(false);
 
   const handleCreate = () => {
     if (!newCircleName.trim()) return;
@@ -72,6 +76,10 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
   }
 
   const activeCircle = circles?.find(c => c.id === selectedCircle?.id) || selectedCircle;
+
+  if (sessionMode && activeCircle) {
+    return <QuranDailySession circle={activeCircle} surahs={surahs} onClose={() => setSessionMode(false)} />;
+  }
 
   // If a student is selected, show their profile full-pane or split. Let's do full-pane for focus.
   if (selectedStudentId) {
@@ -130,13 +138,13 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
                 }}
               />
               <div className="flex justify-end gap-2">
-                <button 
+                <button
                   onClick={() => setIsCreating(false)}
                   className="px-3 py-1.5 text-xs font-bold text-muted-foreground hover:bg-muted rounded-md"
                 >
                   {lang === "ar" ? "إلغاء" : "Cancel"}
                 </button>
-                <button 
+                <button
                   onClick={handleCreate}
                   disabled={!newCircleName.trim() || createCircle.isPending}
                   className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
@@ -204,12 +212,28 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
                   {activeCircle.members.length} {lang === "ar" ? "طالب مسجل" : "registered students"}
                 </p>
               </div>
-              <button 
-                onClick={() => setIsManagingMembers(true)}
-                className="px-3 md:px-4 py-2 bg-white dark:bg-card border border-border shadow-sm rounded-lg text-xs md:text-sm font-bold hover:bg-muted/50 transition-colors shrink-0"
-              >
-                {lang === "ar" ? "إضافة أو إزالة طلاب" : "Manage Students"}
-              </button>
+              <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                <button
+                  onClick={() => setIsAssigningTask(true)}
+                  className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs md:text-sm font-bold hover:bg-emerald-100 transition-colors text-center"
+                >
+                  {lang === "ar" ? "تعيين مهمة" : "Assign Task"}
+                </button>
+                <button
+                  onClick={() => setSessionMode(true)}
+                  disabled={activeCircle.members.length === 0}
+                  className="flex-1 md:flex-none px-3 md:px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs md:text-sm font-bold hover:bg-emerald-700 shadow-sm transition-all disabled:opacity-50 text-center"
+                >
+                  {lang === "ar" ? "بدء التسميع" : "Start Session"}
+                </button>
+                <button
+                  onClick={() => setIsManagingMembers(true)}
+                  className="px-3 py-2 bg-white dark:bg-card border border-border shadow-sm rounded-xl hover:bg-muted/50 transition-colors shrink-0"
+                  title={lang === "ar" ? "إدارة الطلاب" : "Manage Students"}
+                >
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,6 +276,13 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
         )}
       </div>
 
+      {isAssigningTask && activeCircle && (
+        <AssignCircleTaskModal
+          circle={activeCircle}
+          surahs={surahs}
+          onClose={() => setIsAssigningTask(false)}
+        />
+      )}
       {isManagingMembers && activeCircle && (
         <AddMemberModal 
           circle={activeCircle}
@@ -553,5 +584,188 @@ function AddMemberModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function AssignCircleTaskModal({ circle, surahs, onClose }: { circle: QuranCircle, surahs: QuranSurah[], onClose: () => void }) {
+  const { lang } = useI18n();
+  const isArabic = lang === "ar";
+  const queryClient = useQueryClient();
+  const assignTask = useAssignQuranCircleTask();
+
+  const [requestId] = useState(() => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
+
+  const now = new Date();
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+  const [dueDate, setDueDate] = useState<string>(todayStr);
+
+  const [memSurah, setMemSurah] = useState(1);
+  const [memStart, setMemStart] = useState(1);
+  const [memEnd, setMemEnd] = useState(7);
+
+  const [revSurah, setRevSurah] = useState(1);
+  const [revStart, setRevStart] = useState(1);
+  const [revEnd, setRevEnd] = useState(7);
+
+  const handleAssign = () => {
+    if (!dueDate) {
+      toast.error(isArabic ? "يرجى تحديد تاريخ الاستحقاق" : "Due date is required");
+      return;
+    }
+
+    const memSurahObj = surahs.find(s => s.number === memSurah);
+    const revSurahObj = surahs.find(s => s.number === revSurah);
+    if (!memSurahObj || !revSurahObj) return;
+
+    assignTask.mutate({
+      id: circle.id,
+      data: {
+        requestId,
+        assignedDate: todayStr,
+        dueDate,
+        memorization: {
+          surahNumber: memSurah,
+          surahName: memSurahObj.arabicName,
+          startAyah: memStart,
+          endAyah: memEnd,
+        },
+        review: {
+          surahNumber: revSurah,
+          surahName: revSurahObj.arabicName,
+          startAyah: revStart,
+          endAyah: revEnd,
+        },
+        notes: null
+      }
+    }, {
+      onSuccess: () => {
+        toast.success(isArabic ? "تم تعيين المهمة لجميع طلاب الحلقة" : "Task assigned to all students");
+        queryClient.invalidateQueries();
+        onClose();
+      },
+      onError: () => {
+        toast.error(isArabic ? "فشل تعيين المهمة" : "Failed to assign task");
+      }
+    });
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-border">
+        <DialogHeader className="p-6 border-b border-border/60 bg-muted/20">
+          <DialogTitle className="font-black text-xl text-foreground">
+            {isArabic ? "مهمة حلقة: " : "Circle Task: "} {circle.name}
+          </DialogTitle>
+          <p className="mt-1 text-xs font-bold text-muted-foreground">
+            {isArabic ? "سيتم تعيين هذه المهمة لجميع طلاب الحلقة" : "Will be assigned to all circle students"}
+          </p>
+        </DialogHeader>
+        <div className="max-h-[65vh] space-y-5 overflow-y-auto p-5">
+          <CircleWardRangeEditor
+            title={isArabic ? "نطاق الحفظ الجديد" : "Memorization Range"}
+            surahs={surahs}
+            surahNumber={memSurah}
+            onSurahChange={setMemSurah}
+            startAyah={memStart}
+            onStartChange={setMemStart}
+            endAyah={memEnd}
+            onEndChange={setMemEnd}
+            isArabic={isArabic}
+          />
+          <CircleWardRangeEditor
+            title={isArabic ? "نطاق المراجعة" : "Review Range"}
+            surahs={surahs}
+            surahNumber={revSurah}
+            onSurahChange={setRevSurah}
+            startAyah={revStart}
+            onStartChange={setRevStart}
+            endAyah={revEnd}
+            onEndChange={setRevEnd}
+            isArabic={isArabic}
+          />
+
+          <div>
+            <label className="block text-xs font-bold text-muted-foreground mb-1.5">{isArabic ? "تاريخ الاستحقاق" : "Due Date"}</label>
+            <input
+              type="date"
+              required
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+        <DialogFooter className="p-6 border-t border-border/60 bg-muted/20 sm:justify-end gap-3 flex-row justify-end">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted rounded-xl transition-colors"
+          >
+            {isArabic ? "إلغاء" : "Cancel"}
+          </button>
+          <button
+            onClick={handleAssign}
+            disabled={assignTask.isPending || !dueDate}
+            className="px-5 py-2.5 text-sm font-bold bg-emerald-600 text-white rounded-xl shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {assignTask.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isArabic ? "تعيين الحلقة كاملة" : "Assign to Circle"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CircleWardRangeEditor({
+  title, surahs, surahNumber, onSurahChange, startAyah, onStartChange, endAyah, onEndChange, isArabic
+}: any) {
+  const selectedSurah = surahs.find((surah: any) => surah.number === surahNumber);
+  const maxAyah = selectedSurah?.ayahCount ?? 1;
+  return (
+    <section className="rounded-2xl border border-border bg-muted/20 p-4">
+      <h3 className="mb-4 font-black text-foreground">{title}</h3>
+      <div className="space-y-3">
+        <select
+          value={surahNumber}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            onSurahChange(next);
+            const nextMax = surahs.find((surah: any) => surah.number === next)?.ayahCount ?? 1;
+            onStartChange(Math.min(startAyah, nextMax));
+            onEndChange(Math.min(endAyah, nextMax));
+          }}
+          className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
+        >
+          {surahs.map((surah: any) => (
+            <option key={surah.number} value={surah.number}>
+              {surah.number}. {surah.arabicName} ({surah.ayahCount} {isArabic ? "آية" : "ayahs"})
+            </option>
+          ))}
+        </select>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs font-bold text-muted-foreground">
+            {isArabic ? "من آية" : "From ayah"}
+            <input
+              type="number" min={1} max={maxAyah} value={startAyah}
+              onChange={(event) => {
+                const next = Math.min(maxAyah, Math.max(1, Number(event.target.value)));
+                onStartChange(next);
+                if (endAyah < next) onEndChange(next);
+              }}
+              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500"
+            />
+          </label>
+          <label className="text-xs font-bold text-muted-foreground">
+            {isArabic ? "إلى آية" : "To ayah"}
+            <input
+              type="number" min={startAyah} max={maxAyah} value={endAyah}
+              onChange={(event) => onEndChange(Math.min(maxAyah, Math.max(startAyah, Number(event.target.value))))}
+              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500"
+            />
+          </label>
+        </div>
+      </div>
+    </section>
   );
 }

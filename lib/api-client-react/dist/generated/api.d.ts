@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranCircle, QuranCircleInput, QuranCircleUpdate, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSurah, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSurah, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1945,6 +1945,30 @@ export declare const useCreateQuranWard: <TError = ErrorType<void>, TContext = u
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof createQuranWard>>, TError, CreateQuranWardMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof createQuranWard>>, TError, CreateQuranWardMutationVariables, TContext>;
+export declare const getAssignQuranCircleTaskUrl: (id: number) => string;
+/**
+ * @summary Assign memorization and review to every member of a Quran circle
+ */
+export declare const assignQuranCircleTask: (id: number, quranCircleTaskInput: QuranCircleTaskInput, options?: Parameters<typeof customFetch>[1]) => Promise<QuranWard[]>;
+export declare const getAssignQuranCircleTaskMutationKey: () => readonly ["assignQuranCircleTask"];
+export declare const getAssignQuranCircleTaskMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError, AssignQuranCircleTaskMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError, AssignQuranCircleTaskMutationVariables, TContext>;
+export type AssignQuranCircleTaskMutationResult = NonNullable<Awaited<ReturnType<typeof assignQuranCircleTask>>>;
+export type AssignQuranCircleTaskMutationBody = BodyType<QuranCircleTaskInput>;
+export type AssignQuranCircleTaskMutationError = ErrorType<void>;
+export type AssignQuranCircleTaskMutationVariables = {
+    id: number;
+    data: BodyType<QuranCircleTaskInput>;
+};
+/**
+* @summary Assign memorization and review to every member of a Quran circle
+*/
+export declare const useAssignQuranCircleTask: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError, AssignQuranCircleTaskMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof assignQuranCircleTask>>, TError, AssignQuranCircleTaskMutationVariables, TContext>;
 export declare const getUpdateQuranWardUrl: (id: number) => string;
 /**
  * @summary Update a Quran ward

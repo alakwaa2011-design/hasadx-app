@@ -38,3 +38,9 @@ Names extracted from a roster image require teacher review before students are c
 **Why:** Vision extraction can misread a student's name, and silently creating the wrong roster entry would contaminate attendance and Quran history.
 
 **How to apply:** Return extracted image names as a preview, place them in an editable bulk-name list, and create students only after the teacher confirms.
+
+Circle-wide Quran assignments use one server transaction and a stable request identity across retries.
+
+**Why:** A network retry must not create duplicate memorization and review wards, and a failed member insert must not leave only part of the circle assigned.
+
+**How to apply:** Submit both ranges in one circle-level request, enforce request identity at the database boundary, and create all member wards inside one transaction.

@@ -2237,6 +2237,10 @@ async function runSchemaMigrations() {
       CREATE INDEX IF NOT EXISTS quran_wards_teacher_student_idx
         ON quran_wards(teacher_id, student_id);
       CREATE INDEX IF NOT EXISTS quran_wards_teacher_due_idx ON quran_wards(teacher_id, due_date);
+      ALTER TABLE quran_wards ADD COLUMN IF NOT EXISTS assignment_request_id TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS quran_wards_assignment_request_uq
+        ON quran_wards(teacher_id, assignment_request_id, student_id, mode)
+        WHERE assignment_request_id IS NOT NULL;
       CREATE TABLE IF NOT EXISTS quran_recitations (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

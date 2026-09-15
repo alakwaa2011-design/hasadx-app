@@ -43,6 +43,9 @@ import {
   UpdateQuranWardBody,
   UpdateQuranWardParams,
   UpdateQuranWardResponse,
+  AssignQuranCircleTaskBody,
+  AssignQuranCircleTaskParams,
+  AssignQuranCircleTaskResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -323,6 +326,56 @@ router.post("/quran/wards", async (req, res): Promise<void> => {
   } catch (error) {
     req.log?.error(error, "Create Quran ward failed");
     res.status(500).json({ error: "Unable to create Quran ward" });
+  }
+});
+
+router.post("/quran/circles/:id/assign", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const params = AssignQuranCircleTaskParams.safeParse(req.params);
+  const parsed = AssignQuranCircleTaskBody.safeParse(req.body);
+  if (!params.success || !parsed.success) { parseError(res, "Invalid circle task"); return; }
+  const memorizationError = wardValidation(parsed.data.memorization);
+  const reviewError = wardValidation(parsed.data.review);
+  if (memorizationError || reviewError) { parseError(res, memorizationError ?? reviewError ?? "Invalid range"); return; }
+  try {
+    const existingCircle = await circleView(teacherId, params.data.id);
+    if (!existingCircle) { res.status(404).json({ error: "Circle not found" }); return; }
+    if (existingCircle.members.length === 0) { parseError(res, "Circle has no students"); return; }
+    const rows = await db.transaction(async (tx) => {
+      await tx.insert(quranWardsTable).values(existingCircle.members.flatMap((student) => [
+        {
+          teacherId,
+          studentId: student.id,
+          mode: "memorization",
+          ...parsed.data.memorization,
+          assignedDate: parsed.data.assignedDate,
+          dueDate: parsed.data.dueDate,
+          notes: parsed.data.notes ?? null,
+          status: "assigned",
+          assignmentRequestId: parsed.data.requestId,
+        },
+        {
+          teacherId,
+          studentId: student.id,
+          mode: "review",
+          ...parsed.data.review,
+          assignedDate: parsed.data.assignedDate,
+          dueDate: parsed.data.dueDate,
+          notes: parsed.data.notes ?? null,
+          status: "assigned",
+          assignmentRequestId: parsed.data.requestId,
+        },
+      ])).onConflictDoNothing();
+      return tx.select().from(quranWardsTable).where(and(
+        eq(quranWardsTable.teacherId, teacherId),
+        eq(quranWardsTable.assignmentRequestId, parsed.data.requestId),
+      )).orderBy(quranWardsTable.studentId, quranWardsTable.mode);
+    });
+    res.status(201).json(AssignQuranCircleTaskResponse.parse(rows));
+  } catch (error) {
+    req.log?.error(error, "Assign Quran circle task failed");
+    res.status(500).json({ error: "Unable to assign circle task" });
   }
 });
 

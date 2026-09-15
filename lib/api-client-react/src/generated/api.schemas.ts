@@ -108,6 +108,8 @@ export interface QuranWard {
   /** @nullable */
   notes: string | null;
   status: QuranWardStatus;
+  /** @nullable */
+  assignmentRequestId: string | null;
 }
 
 export type QuranReviewWard = QuranWard & {
@@ -158,6 +160,36 @@ export interface QuranWardInput {
   /** @nullable */
   notes?: string | null;
   status?: QuranWardInputStatus;
+}
+
+export interface QuranWardRangeInput {
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  surahNumber: number;
+  /** @minLength 1 */
+  surahName: string;
+  /** @minimum 1 */
+  startAyah: number;
+  /** @minimum 1 */
+  endAyah: number;
+}
+
+export interface QuranCircleTaskInput {
+  /**
+     * @minLength 8
+     * @maxLength 100
+     */
+  requestId: string;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  assignedDate: string;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  dueDate: string;
+  memorization: QuranWardRangeInput;
+  review: QuranWardRangeInput;
+  /** @nullable */
+  notes?: string | null;
 }
 
 export type QuranWardUpdateMode = typeof QuranWardUpdateMode[keyof typeof QuranWardUpdateMode];
