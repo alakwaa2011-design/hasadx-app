@@ -56,8 +56,8 @@ export function subjectMatchesQuery(subject: string | null | undefined, query: s
   if (!q) return true;
   if (s.includes(q) || q.includes(s)) return true;
   for (const group of SUBJECT_ALIAS_GROUPS) {
-    const qMatch = group.some(a => q.includes(a) || a.includes(q));
-    const sMatch = group.some(a => s.includes(a) || a.includes(s));
+    const qMatch = group.some(a => q.includes(a));
+    const sMatch = group.some(a => s.includes(a));
     if (qMatch && sMatch) return true;
   }
   return false;
@@ -72,10 +72,15 @@ export function preferredSubjectScore(
   ) ? 1 : 0;
 }
 
-// ---------------------------------------------------------------------------
-// Grade normalization — converts "7", "٧", "سابع", "seventh", "7th" etc.
-// to the canonical ordinal number (1–12) used to compare across stored values.
-// ---------------------------------------------------------------------------
+export function preferredSubjectsFromAccount(account: {
+  subjects?: unknown;
+  primarySubject?: unknown;
+}): string[] {
+  if (Array.isArray(account.subjects)) {
+    return account.subjects.filter((subject): subject is string => typeof subject === "string");
+  }
+  return typeof account.primarySubject === "string" ? [account.primarySubject] : [];
+}
 const GRADE_ARABIC_ORDINALS: Record<string, number> = {
   أول: 1, الأول: 1, "1st": 1, first: 1, "1": 1, "١": 1,
   ثاني: 2, الثاني: 2, "2nd": 2, second: 2, "2": 2, "٢": 2,
@@ -296,9 +301,7 @@ export default function SharedContentPage({
         const meData = await meRes.json();
         setCurrentTeacherId(meData.id || null);
         setIsAdmin(!!meData.isAdmin);
-        setPreferredSubjects(Array.isArray(meData.subjects)
-          ? meData.subjects.filter((subject: unknown): subject is string => typeof subject === "string")
-          : typeof meData.primarySubject === "string" ? [meData.primarySubject] : []);
+        setPreferredSubjects(preferredSubjectsFromAccount(meData));
         const params = new URLSearchParams();
         if (showHidden && meData.isAdmin) params.set("showHidden", "1");
         const qs = params.toString();
@@ -558,61 +561,57 @@ export default function SharedContentPage({
     return subjectMatchesQuery(subject, subjectFilter);
   };
 
-  const filteredAssignments = assignments
-    .filter(a =>
+  const filteredAssignments = sortByPreferredSubject(
+    assignments.filter(a =>
       (!search || a.title.includes(search) || a.teacherName?.includes(search)) &&
       matchesSubject(a.subject) &&
       (!gradeFilter || gradeMatchesQuery(a.targetClass, gradeFilter) ||
         (a.targetClasses || []).some(tc => gradeMatchesQuery(tc, gradeFilter)))
-    )
-    .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
-      if (preferenceDelta) return preferenceDelta;
-      return sortBy === "questions"
-        ? b.questionCount - a.questionCount
-        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    ),
+    preferredSubjects,
+    (a) => a.subject,
+    (a, b) => sortBy === "questions"
+      ? b.questionCount - a.questionCount
+      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
-  const filteredQuestions = questions
-    .filter(q =>
+  const filteredQuestions = sortByPreferredSubject(
+    questions.filter(q =>
       (!search || (q.text || "").includes(search) || q.teacherName?.includes(search) || subjectMatchesQuery(q.subject, search)) &&
       matchesSubject(q.subject)
-    )
-    .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
-      if (preferenceDelta) return preferenceDelta;
-      return sortBy === "questions"
-        ? b.points - a.points
-        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    ),
+    preferredSubjects,
+    (q) => q.subject,
+    (a, b) => sortBy === "questions"
+      ? b.points - a.points
+      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
-  const filteredVideos = videoLessons
-    .filter(v =>
+  const filteredVideos = sortByPreferredSubject(
+    videoLessons.filter(v =>
       (!search || v.title.includes(search) || v.teacherName?.includes(search)) &&
       matchesSubject(v.subject) &&
       (!gradeFilter || gradeMatchesQuery(v.targetClass, gradeFilter))
-    )
-    .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
-      if (preferenceDelta) return preferenceDelta;
-      return sortBy === "questions"
-        ? b.questionCount - a.questionCount
-        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    ),
+    preferredSubjects,
+    (v) => v.subject,
+    (a, b) => sortBy === "questions"
+      ? b.questionCount - a.questionCount
+      : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 
-  const filteredGameActivities = gameActivities
-    .filter(game =>
+  const filteredGameActivities = sortByPreferredSubject(
+    gameActivities.filter(game =>
       (!search || game.title.includes(search) || game.teacherName?.includes(search)) &&
       matchesSubject(game.subject) &&
       (!gradeFilter || gradeMatchesQuery(game.targetClass, gradeFilter))
-    )
-    .sort((a, b) => {
-      const preferenceDelta = preferredSubjectScore(b.subject, preferredSubjects) - preferredSubjectScore(a.subject, preferredSubjects);
-      if (preferenceDelta) return preferenceDelta;
-      return sortBy === "questions"
-        ? b.questionCount - a.questionCount
-        : new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime();
-    });
+    ),
+    preferredSubjects,
+    (game) => game.subject,
+    (a, b) => sortBy === "questions"
+      ? b.questionCount - a.questionCount
+      : new Date(b.publishedAt || b.createdAt).getTime() - new Date(a.publishedAt || a.createdAt).getTime(),
+  );
 
   const filteredPresentations = presentations
     .filter(presentation =>
@@ -1250,4 +1249,19 @@ export default function SharedContentPage({
   );
 
   return embedded ? inner : <Layout>{inner}</Layout>;
+}
+
+export function sortByPreferredSubject<T>(
+  items: readonly T[],
+  preferredSubjects: string[],
+  getSubject: (item: T) => string | null | undefined,
+  compareRemaining?: (a: T, b: T) => number,
+): T[] {
+  return [...items].sort((a, b) => {
+    const preferenceDelta =
+      preferredSubjectScore(getSubject(b), preferredSubjects) -
+      preferredSubjectScore(getSubject(a), preferredSubjects);
+    if (preferenceDelta) return preferenceDelta;
+    return compareRemaining ? compareRemaining(a, b) : 0;
+  });
 }
