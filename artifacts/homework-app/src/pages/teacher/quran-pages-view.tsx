@@ -133,11 +133,23 @@ export function QuranPagesView({
     };
   }, [activePage]);
 
+  const currentSpreadStart = activePage % 2 === 0 ? activePage - 1 : activePage;
+  const canGoToNextSpread = currentSpreadStart + 2 <= LAST_PAGE;
+  const canGoToPreviousSpread = currentSpreadStart > FIRST_PAGE;
+
   const goToPage = (page: number) => {
     const nextPage = Math.min(Math.max(page, FIRST_PAGE), LAST_PAGE);
     if (nextPage === activePage) return;
     setTurnDirection(nextPage > activePage ? "next" : "previous");
     setActivePage(nextPage);
+  };
+
+  const goToSpread = (direction: "next" | "previous") => {
+    goToPage(
+      direction === "next"
+        ? currentSpreadStart + 2
+        : currentSpreadStart - 2,
+    );
   };
 
   const goToSurah = (chapterId: number) => {
@@ -155,8 +167,8 @@ export function QuranPagesView({
   const handleTouchEnd = () => {
     if (touchStart === null || touchEnd === null) return;
     const distance = touchStart - touchEnd;
-    if (distance > 50) goToPage(activePage + 1);
-    if (distance < -50) goToPage(activePage - 1);
+    if (distance > 50) goToSpread("next");
+    if (distance < -50) goToSpread("previous");
     setTouchStart(null);
     setTouchEnd(null);
   };
@@ -385,8 +397,8 @@ export function QuranPagesView({
         >
           <button
             type="button"
-            onClick={() => goToPage(activePage - 1)}
-            disabled={activePage <= FIRST_PAGE}
+            onClick={() => goToSpread("previous")}
+            disabled={!canGoToPreviousSpread}
             className="group inline-flex min-h-12 items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-black text-emerald-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-md disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-800 dark:bg-card dark:text-emerald-100 dark:hover:bg-emerald-950/60 md:px-5"
             aria-label={lang === "ar" ? "الصفحة السابقة" : "Previous page"}
           >
@@ -400,8 +412,8 @@ export function QuranPagesView({
 
           <button
             type="button"
-            onClick={() => goToPage(activePage + 1)}
-            disabled={activePage >= LAST_PAGE}
+            onClick={() => goToSpread("next")}
+            disabled={!canGoToNextSpread}
             className="group inline-flex min-h-12 items-center gap-2 rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg disabled:pointer-events-none disabled:opacity-35 dark:bg-emerald-600 dark:hover:bg-emerald-500 md:px-5"
             aria-label={lang === "ar" ? "الصفحة التالية" : "Next page"}
           >
