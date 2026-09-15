@@ -27,6 +27,12 @@ Quran text must come from a reviewed canonical source and must never be generate
 
 **How to apply:** Metadata-only features may use a fixed reviewed surah catalog; adding verse text or Mushaf pages requires a versioned trusted dataset, licensing review, and golden integrity tests.
 
+The Mushaf uses the verbatim Tanzil Uthmani text under CC BY 3.0, with visible attribution and a pinned whole-file integrity hash.
+
+**Why:** Tanzil permits application use only when the source remains unchanged and attribution plus an update link are retained.
+
+**How to apply:** Never normalize or rewrite verse strings; any intentional source update must be reviewed against Tanzil changes, then update the pinned hash and golden counts together.
+
 The Arabic Quran Center must never expose raw English enum values. A student's daily task is presented as one focused card containing memorization and review sections.
 
 **Why:** Teachers need an immediately understandable Quran workflow without technical labels or separate cards that make one daily task look fragmented.

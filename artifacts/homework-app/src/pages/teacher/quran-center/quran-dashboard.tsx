@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useGetQuranTodayDashboard, QuranSurah } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { Loader2, BookOpen, Clock, Activity, CheckCircle2 } from "lucide-react";
 import { quranModeLabel } from "./quran-labels";
@@ -81,19 +82,29 @@ export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], o
           </div>
         ) : (
           <div className="divide-y divide-border/60">
-            {pendingWards.map(ward => (
+            {pendingWards.map(ward => {
+              const surah = surahs.find(s => s.arabicName === ward.surahName);
+              const surahNum = surah ? surah.number : 1;
+              const readerUrl = `/teacher/quran-reader/${surahNum}?startAyah=${ward.startAyah}&endAyah=${ward.endAyah}&wardId=${ward.id}&mode=${ward.mode}`;
+
+              return (
               <div key={ward.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/30 transition-colors">
-                <div>
+                <div className="flex-1">
                   <p className="font-bold text-sm text-foreground">{ward.studentName}</p>
                   <p className="text-xs text-muted-foreground mt-1 font-medium">
                     {ward.surahName} • {lang === "ar" ? "الآيات:" : "Ayahs:"} {ward.startAyah} - {ward.endAyah}
                   </p>
                 </div>
-                <div className="px-3 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400 rounded-md text-xs font-bold shrink-0">
-                  {quranModeLabel(ward.mode, isArabic)}
+                <div className="flex items-center gap-3">
+                  <Link href={readerUrl} className="p-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg dark:bg-blue-900/40 dark:text-blue-300" title={lang === 'ar' ? 'فتح في المصحف' : 'Open in Quran'}>
+                    <BookOpen className="w-4 h-4" />
+                  </Link>
+                  <div className="px-3 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400 rounded-md text-xs font-bold shrink-0">
+                    {quranModeLabel(ward.mode, isArabic)}
+                  </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

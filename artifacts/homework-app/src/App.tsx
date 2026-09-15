@@ -104,6 +104,7 @@ const TeacherIslamicAdmin = lazy(() => import("@/pages/teacher/islamic-admin"));
 const QuestionBankPage = lazy(() => import("@/pages/teacher/question-bank"));
 const UrlQrTool = lazy(() => import("@/pages/teacher/tools/url-qr"));
 const TimerTool = lazy(() => import("@/pages/teacher/tools/timer"));
+const QuranReader = lazy(() => import("@/pages/teacher/quran-reader"));
 const TeacherSchedule = lazy(() => import("@/pages/teacher/tools/schedule/index"));
 const WhiteboardMonitor = lazy(() => import("@/pages/teacher/whiteboard-monitor"));
 const QuranCenter = lazy(() => import("@/pages/teacher/quran-center"));
@@ -404,6 +405,7 @@ function Router() {
         <Route path="/teacher/tools/schedule" component={TeacherSchedule} />
         <Route path="/teacher/tools/url-qr" component={UrlQrTool} />
         <Route path="/teacher/tools/timer" component={TimerTool} />
+        <Route path="/teacher/quran-reader/:surahNumber" component={QuranReader} />
         <Route path="/teacher/quran-center" component={QuranCenter} />
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
