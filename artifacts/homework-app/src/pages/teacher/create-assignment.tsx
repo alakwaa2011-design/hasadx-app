@@ -35,6 +35,7 @@ import {
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
+import { contentDirection } from "@/lib/content-direction";
 import { TEMPLATES, type AssignmentTemplate } from "@/lib/activity-templates";
 import {
   getPublishBlockReason, hasAtLeastOneQuestion, DEFAULT_AI_QUESTION_COUNT,
@@ -2642,8 +2643,10 @@ export default function CreateAssignment() {
                                 </div>
 
                                 {/* Question text */}
-                                <input required value={q.text} onChange={e => handleQuestionChange(qIndex, 'text', e.target.value)} placeholder={t.createAssignment.questionPlaceholder} 
-                                  className="w-full bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all mb-2" />
+                                <textarea required value={q.text} onChange={e => handleQuestionChange(qIndex, 'text', e.target.value)} placeholder={t.createAssignment.questionPlaceholder}
+                                  dir={contentDirection(q.text, lang === "ar" ? "rtl" : "ltr")}
+                                  rows={2}
+                                  className="w-full resize-y bg-[#f4f7f5] dark:bg-[#0B100E] border border-emerald-50 dark:border-emerald-900/30 rounded-xl px-4 py-3 text-sm font-bold leading-relaxed text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10 transition-all mb-2" />
 
                                 {isAdaptive && (
                                   <div className="mb-2 grid grid-cols-1 gap-2 rounded-xl border border-violet-200 bg-violet-50/70 p-3 dark:border-violet-800 dark:bg-violet-950/20 sm:grid-cols-[auto_1fr] sm:items-end">
@@ -2806,8 +2809,10 @@ export default function CreateAssignment() {
                                           {opt}
                                         </button>
                                         <div className="flex-1 relative">
-                                          <input value={q[MCQ_OPT[opt]] || ""} onChange={e => handleQuestionChange(qIndex, MCQ_OPT[opt], e.target.value)}
-                                            placeholder={`${t.createAssignment.option} ${opt}`} className="text-sm pe-8" />
+                                          <textarea value={q[MCQ_OPT[opt]] || ""} onChange={e => handleQuestionChange(qIndex, MCQ_OPT[opt], e.target.value)}
+                                            dir={contentDirection(q[MCQ_OPT[opt]] || "", lang === "ar" ? "rtl" : "ltr")}
+                                            rows={1}
+                                            placeholder={`${t.createAssignment.option} ${opt}`} className="min-h-10 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed pe-8" />
                                           {/* Math for option if math subject */}
                                           {isMathSubject && (
                                             <button type="button"

@@ -17,6 +17,7 @@ import { getSocket } from "@/lib/socket";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { feedbackOnSelect, feedbackOnCelebrate, isSolveSoundEnabled, setSolveSoundEnabled } from "@/lib/solve-feedback";
 import { resolveImageUrl } from "@/lib/image-url";
+import { contentDirection } from "@/lib/content-direction";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -868,7 +869,12 @@ export default function StudentSolve() {
                             {isAnswered ? <CheckCircle2 className="w-5 h-5" /> : i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-base font-bold leading-snug">{q.text}</p>
+                            <p
+                              dir={contentDirection(q.text, dir)}
+                              className="whitespace-pre-wrap text-base font-bold leading-snug"
+                            >
+                              {q.text}
+                            </p>
                           </div>
                           <span className="shrink-0 text-xs font-black bg-primary/15 text-primary dark:text-primary/80 px-2.5 py-1 rounded-lg">
                             {q.points} {t.solve.gradeUnit}
@@ -1682,7 +1688,12 @@ export default function StudentSolve() {
                               </AnimatePresence>
                             </motion.div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-base md:text-lg font-bold leading-snug">{q.text}</p>
+                              <p
+                                dir={contentDirection(q.text, dir)}
+                                className="whitespace-pre-wrap text-base md:text-lg font-bold leading-snug"
+                              >
+                                {q.text}
+                              </p>
                             </div>
                             <span className="shrink-0 text-xs font-black bg-primary/8 text-primary px-2.5 py-1 rounded-lg">
                               {q.points} {t.solve.gradeUnit}
@@ -1748,7 +1759,12 @@ export default function StudentSolve() {
                                         className="sr-only"
                                       />
                                     )}
-                                    <span className="font-medium text-sm flex-1 leading-snug">{optText}</span>
+                                    <span
+                                      dir={contentDirection(optText, dir)}
+                                      className="whitespace-pre-wrap font-medium text-sm flex-1 leading-snug"
+                                    >
+                                      {optText}
+                                    </span>
                                     <AnimatePresence>
                                       {isSelected && (
                                         <motion.span
@@ -1829,6 +1845,7 @@ export default function StudentSolve() {
                                 value={answers[q.id] || ""}
                                 onChange={e => setAnswers({ ...answers, [q.id]: e.target.value })}
                                 placeholder={t.solve.fillBlankPlaceholder}
+                                dir={contentDirection(answers[q.id] || "", dir)}
                                 className="text-base py-3 border-2 rounded-xl focus:border-primary"
                               />
                               {answers[q.id] && (
@@ -1872,7 +1889,7 @@ export default function StudentSolve() {
                                     : t.solve.answerPlaceholder
                                 }
                                 rows={qType === "dictation" ? 3 : 5}
-                                dir={dir}
+                                dir={contentDirection(answers[q.id] || "", dir)}
                                 className="w-full rounded-xl border-2 border-input bg-background p-3 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-y"
                               />
                               {answers[q.id] && (
@@ -1925,7 +1942,10 @@ export default function StudentSolve() {
                   <div className="space-y-2">
                     {assignment.questions.map((q, i) => (
                       <div key={q.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-background border border-border">
-                        <span className="font-medium text-sm flex items-center gap-2">
+                        <span
+                          dir={contentDirection(q.text, dir)}
+                          className="whitespace-pre-wrap font-medium text-sm flex items-center gap-2"
+                        >
                           <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">{i + 1}</span>
                           {q.text}
                         </span>

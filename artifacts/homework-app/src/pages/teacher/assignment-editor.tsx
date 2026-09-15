@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { resolveImageUrl } from "@/lib/image-url";
 import { fileToBase64 } from "@/lib/utils";
+import { contentDirection } from "@/lib/content-direction";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -935,11 +936,13 @@ export function AssignmentEditor({ assignment, submissionsExist, onSave, onCance
                 <div className="space-y-4">
                   <div>
                     <Label className="text-xs mb-1">{ar ? "نص السؤال" : "Question Text"}</Label>
-                    <Input
+                    <textarea
                       value={q.text}
                       onChange={(e) => updateQuestion(idx, "text", e.target.value)}
                       placeholder={ar ? "اكتب سؤالك هنا..." : "Type your question..."}
-                      className="font-bold"
+                      dir={contentDirection(q.text, ar ? "rtl" : "ltr")}
+                      rows={2}
+                      className="flex min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-bold leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
                     <div className="mt-2 flex items-center gap-2">
                       {q.imageUrl ? (
@@ -977,11 +980,13 @@ export function AssignmentEditor({ assignment, submissionsExist, onSave, onCance
                           >
                             {q.correctAnswer === opt ? <CheckCircle className="w-4 h-4" /> : opt}
                           </button>
-                          <Input
+                          <textarea
                             value={(q as any)[`option${opt}`]}
                             onChange={(e) => updateQuestion(idx, `option${opt}` as keyof EditQuestion, e.target.value)}
                             placeholder={`${ar ? "الخيار" : "Option"} ${opt}`}
-                            className={`${q.correctAnswer === opt ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-900/10" : ""}`}
+                            dir={contentDirection((q as any)[`option${opt}`], ar ? "rtl" : "ltr")}
+                            rows={1}
+                            className={`min-h-10 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed ${q.correctAnswer === opt ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-900/10" : ""}`}
                           />
                         </div>
                       ))}
