@@ -177,7 +177,7 @@ function TimerAndAlertsSection({
     try {
       await enableCurrentDevicePushNotifications(isAr ? "ar" : "en");
       setDeviceNotificationsEnabled(true);
-      toast.success(isAr ? "تم تفعيل إشعارات جدول الحصص على هذا الجهاز" : "Schedule notifications enabled on this device");
+      toast.success(isAr ? "تم تفعيل إشعارات جدول الحصص والمواعيد على هذا الجهاز" : "Schedule and appointment notifications enabled on this device");
     } catch (error) {
       toast.error(error instanceof Error
         ? error.message

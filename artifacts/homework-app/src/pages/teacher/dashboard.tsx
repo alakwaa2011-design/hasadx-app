@@ -3523,11 +3523,11 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       tools: [
         selectTool("/teacher/students", { searchText: "إدارة الطلاب manage students class" }),
         selectTool("/teacher/tools/schedule", {
-          title: isAr ? "جدول الحصص" : "Class Schedule",
+          title: isAr ? "جدول الحصص والمواعيد" : "Class Schedule & Appointments",
           desc: isAr
             ? "نظّم حصصك ومواعيدك واحصل على تنبيهات قبل الحصة."
             : "Organize classes and appointments and get alerts before class.",
-          searchText: "جدول الحصص إدارة الجدول المواعيد التنبيهات class schedule appointments alerts",
+          searchText: "جدول الحصص والمواعيد جدول الحصص إدارة الجدول المواعيد التنبيهات class schedule appointments alerts",
         }),
       ],
     },

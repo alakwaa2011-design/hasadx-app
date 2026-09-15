@@ -137,7 +137,7 @@ describe("parseDashboardUrlParams — لا معاملات", () => {
 
 describe("بحث أدوات المعلم", () => {
   const scheduleTool = {
-    title: "جدول الحصص",
+    title: "جدول الحصص والمواعيد",
     desc: "نظّم حصصك ومواعيدك واحصل على تنبيهات قبل الحصة.",
     searchText: "جدول الحصص إدارة الجدول المواعيد التنبيهات class schedule appointments alerts",
   };
