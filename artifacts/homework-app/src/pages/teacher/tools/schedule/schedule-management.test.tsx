@@ -633,7 +633,7 @@ describe("schedule management tool", () => {
     await click("button-save-bulk-schedule");
     expect((document.querySelector('[data-testid="input-bulk-lesson-title-1"]') as HTMLInputElement).value)
       .toBe("مسودة محفوظة محليًا");
-    expect(toastError).toHaveBeenCalledWith("تعذر حفظ الجدول الكامل. صحح الأوقات وحاول مجددًا");
+    expect(toastError).toHaveBeenCalledWith("تعذر الاتصال بالخادم");
     const cancelButton = document.querySelector('[data-testid="bulk-schedule-fixed-actions"] button') as HTMLButtonElement;
     await act(async () => cancelButton.click());
 

@@ -24,10 +24,21 @@ export type ScheduleConflictDetails = {
 };
 
 export function getApiErrorMessage(error: unknown): string | null {
-  if (!error || typeof error !== "object" || !("data" in error)) return null;
-  const data = error.data;
-  if (!data || typeof data !== "object" || !("message" in data)) return null;
-  return typeof data.message === "string" ? data.message : null;
+  if (!error || typeof error !== "object") return null;
+  if ("data" in error) {
+    const data = error.data;
+    if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
+      const message = data.message.trim();
+      if (message) return message;
+    }
+  }
+  if (error instanceof Error) {
+    const message = error.message
+      .replace(/^HTTP\s+\d+\s+[^:]*:\s*/i, "")
+      .trim();
+    if (message && !/^HTTP\s+\d+/i.test(message)) return message;
+  }
+  return null;
 }
 
 export function getScheduleConflict(error: unknown): ScheduleConflictDetails | null {
@@ -38,6 +49,20 @@ export function getScheduleConflict(error: unknown): ScheduleConflictDetails | n
   return conflict && typeof conflict === "object"
     ? conflict as ScheduleConflictDetails
     : null;
+}
+
+export function scheduleConflictMessage(conflict: ScheduleConflictDetails, isAr: boolean) {
+  const conflictingTime = [conflict.conflictingStartTime, conflict.conflictingEndTime]
+    .filter(Boolean)
+    .join("–");
+  const conflictingTitle = conflict.conflictingTitle?.trim();
+  const entryLabel = isAr
+    ? (conflictingTitle ? `«${conflictingTitle}»` : "إدخال آخر")
+    : (conflictingTitle ? `“${conflictingTitle}”` : "another entry");
+
+  return isAr
+    ? `يتعارض مع ${entryLabel}${conflictingTime ? ` (${conflictingTime})` : ""}`
+    : `Overlaps ${entryLabel}${conflictingTime ? ` (${conflictingTime})` : ""}`;
 }
 
 const ARABIC_LESSON_NUMBERS = [

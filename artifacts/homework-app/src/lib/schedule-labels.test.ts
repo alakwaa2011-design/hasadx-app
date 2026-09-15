@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTeacherScheduleBulkInput,
+  getApiErrorMessage,
   normalizeImportedDaySchedules,
+  scheduleConflictMessage,
   type ExtractedScheduleDay,
 } from "./schedule-labels";
 
@@ -74,5 +76,21 @@ describe("schedule image detail preservation", () => {
         notes: "FULL SCHOOL",
       }),
     ]);
+  });
+});
+
+describe("schedule save errors", () => {
+  it("shows the conflicting entry and time in Arabic", () => {
+    expect(scheduleConflictMessage({
+      conflictingTitle: "علوم",
+      conflictingStartTime: "08:00",
+      conflictingEndTime: "08:45",
+    }, true)).toBe("يتعارض مع «علوم» (08:00–08:45)");
+  });
+
+  it("recovers a useful server message from an API error message", () => {
+    expect(getApiErrorMessage(
+      new Error("HTTP 400 Bad Request: وقت النهاية يجب أن يكون بعد وقت البداية"),
+    )).toBe("وقت النهاية يجب أن يكون بعد وقت البداية");
   });
 });

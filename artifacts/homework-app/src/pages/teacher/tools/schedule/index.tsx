@@ -39,6 +39,7 @@ import {
   getScheduleConflict,
   lessonNumberLabel,
   normalizeImportedDaySchedules,
+  scheduleConflictMessage,
   scheduleDateLabel,
   schedulePosition,
   type BulkBreakDraft,
@@ -1493,6 +1494,16 @@ export default function ScheduleManagementPage() {
   }
 
   function submitSchedule(values: ScheduleFormValues) {
+    form.clearErrors(["startTime", "endTime"]);
+    if (values.endTime && values.endTime <= values.startTime) {
+      const fieldMessage = isAr
+        ? "وقت النهاية يجب أن يكون بعد وقت البداية"
+        : "End time must be after start time";
+      form.setError("endTime", { type: "validate", message: fieldMessage });
+      toast.error(fieldMessage);
+      return;
+    }
+
     const fallbackTitle = values.kind === "weekly"
       ? lessonNumberLabel(Number(values.lessonNumber), isAr)
       : values.kind === "break"
@@ -1523,10 +1534,13 @@ export default function ScheduleManagementPage() {
     };
     const onError = (error: Error) => {
       const message = getApiErrorMessage(error);
-      if (getScheduleConflict(error)) {
-        const fieldMessage = message || (isAr ? "هذا الوقت متعارض مع إدخال آخر" : "This time overlaps another entry");
+      const conflict = getScheduleConflict(error);
+      if (conflict) {
+        const fieldMessage = scheduleConflictMessage(conflict, isAr);
         form.setError("startTime", { type: "server", message: fieldMessage });
         form.setError("endTime", { type: "server", message: fieldMessage });
+        toast.error(fieldMessage);
+        return;
       }
       toast.error(
         message
