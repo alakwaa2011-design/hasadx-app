@@ -5,8 +5,10 @@ import { z } from "zod/v4";
 import bcrypt from "bcryptjs";
 import { classroomRewardFingerprint, classroomRewardReversalKey } from "../lib/classroom-reward-fingerprint";
 import { evaluateClassroomRewardEvidence } from "../lib/classroom-reward-evaluator";
+import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+const objectStorage = new ObjectStorageService();
 const ICONS = new Set(["Star", "Heart", "ThumbsUp", "Zap", "Trophy", "Target", "Shield", "Flame", "Award", "Crown", "Lightbulb", "Rocket"]);
 // Keep this server-side allowlist deliberately closed: only bundled illustrations
 // and approved emoji are accepted, never user-supplied URLs, data URIs, or SVG.
@@ -26,6 +28,14 @@ export const NORMAL_AVATARS = new Set([
   "🏃🏽‍♂️","🏃🏽‍♀️","⛹🏽‍♂️","🤸🏽‍♀️","👦🏽","👧🏽","🧒🏽","🧑🏽","👨🏽","👩🏽",
   "🦁","🐯","🦊","🐻","🐼","🐸","🦄","🐨","🐺","🦅",
 ]);
+const STUDENT_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+const STUDENT_AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const STUDENT_AVATAR_OBJECT = /^\/objects\/uploads\/student-avatars\/(\d+)\/(\d+)\/[A-Za-z0-9_-]+$/;
+function serializedStudentAvatar(studentId: number, avatar: unknown) {
+  return typeof avatar === "string" && STUDENT_AVATAR_OBJECT.test(avatar)
+    ? `/api/classroom-rewards/students/${studentId}/avatar`
+    : avatar ?? null;
+}
 const COLORS = new Set(["#468064", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#0891b2", "#f97316"]);
 const requestKey = z.string().trim().min(8).max(200);
 const typeInput = z.object({
@@ -196,7 +206,7 @@ router.patch("/classroom-rewards/types/:id", async (req: any, res) => {
 async function classStudents(teacherId: number, className: string, teacherClassId: number) {
   const teacherClass = await ownedClass(teacherId, className);
   if (!teacherClass || Number(teacherClass.id) !== teacherClassId) return [];
-  return resultRows(await db.execute(sql`
+  const rows = resultRows(await db.execute(sql`
     SELECT s.id,s.name,COALESCE(s.avatar,a.avatar,k.avatar_key,NULL) AS avatar,
       COALESCE(SUM(b.balance),0)::int AS points,
       (SELECT MAX(tr.created_at) FROM classroom_reward_transactions tr
@@ -210,6 +220,10 @@ async function classStudents(teacherId: number, className: string, teacherClassI
     WHERE s.teacher_id=${teacherId} AND (s.student_class=${className} OR (s.student_class IS NULL AND s.grade_level=${className}))
     GROUP BY s.id,s.name,s.avatar,a.avatar,k.avatar_key ORDER BY s.name
   `));
+  return rows.map((row) => ({
+    ...row,
+    avatar: serializedStudentAvatar(Number(row.id), row.avatar),
+  }));
 }
 async function ownedClass(teacherId: number, name: string) {
   return resultRows(await db.execute(sql`SELECT id,name,created_at FROM teacher_classes WHERE teacher_id=${teacherId} AND name=${name}`))[0] ?? null;
@@ -379,7 +393,7 @@ router.get("/classroom-rewards/classes/:className/suggestions", async (req: any,
         submissionId: Number(row.submission_id),
         studentId: Number(row.student_id),
         studentName: row.student_name,
-        studentAvatar: row.student_avatar,
+        studentAvatar: serializedStudentAvatar(Number(row.student_id), row.student_avatar),
         reason: "إنجاز أكاديمي موثّق",
         evidenceLabel: row.assignment_title || "واجب مكتمل",
         evidenceDetail: `${formatAcademicScore(earned)} من ${formatAcademicScore(total)} (${percentage}٪)`,
@@ -518,7 +532,7 @@ router.get("/classroom-rewards/classes/:className/groups", async (req: any, res)
       members: members.filter((member) => Number(member.group_id) === Number(group.id)).map((member) => ({
         studentId: Number(member.student_id),
         name: member.name,
-        avatar: member.avatar,
+        avatar: serializedStudentAvatar(Number(member.student_id), member.avatar),
       })),
     })),
   });
@@ -537,7 +551,7 @@ router.get("/classroom-rewards/classes/:className/board", async (req:any,res) =>
   const groups=resultRows(await db.execute(sql`SELECT id,name,description,color,avatar,score FROM classroom_reward_groups WHERE teacher_id=${teacherId} AND teacher_class_id=${c.id} ORDER BY sort_order,name`));
   const members=groups.length ? resultRows(await db.execute(sql`SELECT group_id,student_id FROM classroom_reward_group_members WHERE teacher_id=${teacherId} AND group_id IN (${sql.join(groups.map(g=>sql`${g.id}`),sql`,`)})`)) : [];
   const goals=resultRows(await db.execute(sql`${goalSelect(teacherId,Number(c.id))} AND g.status='active' AND g.is_active=TRUE ORDER BY g.id DESC`));
-  res.json({className,students:students.map(s=>({id:Number(s.id),name:s.name,avatar:s.avatar??null,points:Number(s.points),currentWeeklyRecognition:Boolean(s.recognized_this_week)})),
+  res.json({className,students:students.map(s=>({id:Number(s.id),name:s.name,avatar:serializedStudentAvatar(Number(s.id),s.avatar),points:Number(s.points),currentWeeklyRecognition:Boolean(s.recognized_this_week)})),
     groups:groups.map(g=>({id:Number(g.id),name:g.name,description:g.description,color:g.color,avatar:g.avatar,score:Number(g.score),memberIds:members.filter(m=>Number(m.group_id)===Number(g.id)).map(m=>Number(m.student_id))})),
     goals:goals.map(goalObject),weeklyFairness:{recognizedStudentCount:students.filter(s=>s.recognized_this_week).length,totalStudentCount:students.length}});
 });
@@ -1022,8 +1036,59 @@ const controlProfileInput = z.object({
   parentName: z.preprocess(blankToNull, z.string().trim().max(200).nullish()),
   parentEmail: z.preprocess(blankToNull, z.string().trim().email().max(320).nullish()),
   notes: z.preprocess(blankToNull, z.string().max(5000).nullish()),
-  avatar: z.preprocess(blankToNull, z.string().refine((v) => NORMAL_AVATARS.has(v), "invalid avatar").nullish()),
+  avatar: z.preprocess(blankToNull, z.string().refine(
+    (v) => NORMAL_AVATARS.has(v) || STUDENT_AVATAR_OBJECT.test(v),
+    "invalid avatar",
+  ).nullish()),
 }).strict();
+
+router.post("/classroom-rewards/students/:studentId/avatar-upload", async (req: any, res) => {
+  const teacherId = teacher(req, res), studentId = numericId(req.params.studentId);
+  if (!teacherId) return;
+  if (!studentId) return res.status(400).json({ message: "معرف الطالب غير صالح" });
+  const parsed = z.object({
+    name: z.string().trim().min(1).max(255),
+    size: z.number().int().positive().max(STUDENT_AVATAR_MAX_BYTES),
+    contentType: z.string().refine((value) => STUDENT_AVATAR_TYPES.has(value)),
+  }).strict().safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "اختر صورة JPG أو PNG أو WebP أو AVIF بحجم لا يتجاوز 5 ميجابايت" });
+  }
+  const owned = resultRows(await db.execute(sql`SELECT id FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0];
+  if (!owned) return res.status(404).json({ message: "الطالب غير موجود" });
+  try {
+    const uploadURL = await objectStorage.getObjectEntityUploadURL(`student-avatars/${teacherId}/${studentId}`);
+    const objectPath = objectStorage.normalizeObjectEntityPath(uploadURL);
+    res.json({ uploadURL, objectPath });
+  } catch (error) {
+    req.log.error({ err: error, teacherId, studentId }, "Failed to create student avatar upload URL");
+    res.status(500).json({ message: "تعذر تجهيز رفع صورة الطالب" });
+  }
+});
+
+router.get("/classroom-rewards/students/:studentId/avatar", async (req: any, res) => {
+  const teacherId = teacher(req, res), studentId = numericId(req.params.studentId);
+  if (!teacherId) return;
+  if (!studentId) return res.status(400).json({ message: "معرف الطالب غير صالح" });
+  const student = resultRows(await db.execute(sql`SELECT avatar FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0];
+  if (!student || typeof student.avatar !== "string" || !STUDENT_AVATAR_OBJECT.test(student.avatar)) {
+    return res.status(404).json({ message: "صورة الطالب غير موجودة" });
+  }
+  try {
+    const file = await objectStorage.getObjectEntityFile(student.avatar);
+    const [metadata] = await file.getMetadata();
+    const contentType = String(metadata.contentType || "");
+    if (!STUDENT_AVATAR_TYPES.has(contentType)) return res.status(404).json({ message: "صورة الطالب غير موجودة" });
+    const signedUrl = await objectStorage.signFileDownloadUrl(file, 300);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.redirect(302, signedUrl);
+  } catch (error) {
+    if (!(error instanceof ObjectNotFoundError)) {
+      req.log.error({ err: error, teacherId, studentId }, "Failed to serve student avatar");
+    }
+    res.status(404).json({ message: "صورة الطالب غير موجودة" });
+  }
+});
 
 /** Compact, owner-scoped control-center payload; secrets and assignment codes are never selected. */
 router.get("/classroom-rewards/students/:studentId", async (req: any, res) => {
@@ -1045,7 +1110,7 @@ router.get("/classroom-rewards/students/:studentId", async (req: any, res) => {
   const goal=goalRow?goalObject(goalRow):null;
   const goalProgress=goal&&classRow?Number(resultRows(await db.execute(sql`SELECT COALESCE(SUM(tr.amount),0)::int progress FROM classroom_reward_transactions tr WHERE tr.teacher_id=${teacherId} AND tr.student_id=${studentId} AND tr.kind='grant' AND (tr.teacher_class_id=${classRow.id} OR (tr.teacher_class_id IS NULL AND tr.class_name_snapshot=${className} AND tr.created_at>=${classRow.created_at})) AND tr.created_at>=${new Date(goal.startsAt)} AND (${goal.endsAt?sql`tr.created_at<=${new Date(goal.endsAt)}`:sql`TRUE`}) AND (${goal.rewardTypeId?sql`tr.reward_type_id=${goal.rewardTypeId}`:sql`TRUE`}) AND NOT EXISTS (SELECT 1 FROM classroom_reward_transactions rv WHERE rv.reversal_of_id=tr.id)`))[0]?.progress??0):0;
   res.json({
-    student: { id:student.id,name:student.name,gradeLevel:student.grade_level,studentClass:student.student_class,parentPhone:student.parent_phone,parentName:student.parent_name,parentEmail:student.parent_email,notes:student.notes,avatar:student.avatar,account:{linked:Boolean(student.account_linked),username:student.account_linked?student.account_username:null,displayName:student.account_linked?student.account_display_name:null} },
+    student: { id:student.id,name:student.name,gradeLevel:student.grade_level,studentClass:student.student_class,parentPhone:student.parent_phone,parentName:student.parent_name,parentEmail:student.parent_email,notes:student.notes,avatar:serializedStudentAvatar(student.id,student.avatar),account:{linked:Boolean(student.account_linked),username:student.account_linked?student.account_username:null,displayName:student.account_linked?student.account_display_name:null} },
     rewards:{balance:Number(balance?.points??0),ledger:ledger.map((r)=>({id:r.id,points:Number(r.points),kind:r.kind,reason:r.reason,createdAt:r.created_at}))},
     achievements:achievements.map((r)=>({id:r.id,title:r.title,description:r.description,icon:r.icon_key,grantedAt:r.granted_at})),
     assignments:assignments.map((r)=>({id:r.id,title:r.title,subject:r.subject,deadline:r.deadline,totalPoints:r.total_points,score:r.score,earnedPoints:r.earned_points,submittedAt:r.submitted_at})),
@@ -1063,8 +1128,26 @@ router.patch(["/classroom-rewards/students/:studentId/profile", "/classroom-rewa
     return res.status(400).json({message});
   }
   if(!Object.keys(parsed.data).length)return res.status(400).json({message:"لا توجد تغييرات للحفظ"});
-  const owned=resultRows(await db.execute(sql`SELECT id FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0]; if(!owned)return res.status(404).json({message:"الطالب غير موجود"});
+  const owned=resultRows(await db.execute(sql`SELECT id,avatar FROM students WHERE id=${studentId} AND teacher_id=${teacherId}`))[0]; if(!owned)return res.status(404).json({message:"الطالب غير موجود"});
   const d=parsed.data;
+  if (typeof d.avatar === "string" && STUDENT_AVATAR_OBJECT.test(d.avatar)) {
+    const match = d.avatar.match(STUDENT_AVATAR_OBJECT);
+    if (!match || Number(match[1]) !== teacherId || Number(match[2]) !== studentId) {
+      return res.status(400).json({ message: "صورة الطالب لا تتبع هذا الحساب" });
+    }
+    try {
+      const file = await objectStorage.getObjectEntityFile(d.avatar);
+      const [metadata] = await file.getMetadata();
+      const contentType = String(metadata.contentType || "");
+      const size = Number(metadata.size || 0);
+      if (!STUDENT_AVATAR_TYPES.has(contentType) || !Number.isFinite(size) || size < 1 || size > STUDENT_AVATAR_MAX_BYTES) {
+        return res.status(400).json({ message: "ملف صورة الطالب غير صالح" });
+      }
+    } catch (error) {
+      req.log.warn({ err: error, teacherId, studentId }, "Student avatar verification failed");
+      return res.status(400).json({ message: "لم يكتمل رفع صورة الطالب" });
+    }
+  }
   const updates = [
     d.name !== undefined ? sql`name=${d.name}` : null,
     d.gradeLevel !== undefined ? sql`grade_level=${d.gradeLevel}` : null,
@@ -1076,7 +1159,16 @@ router.patch(["/classroom-rewards/students/:studentId/profile", "/classroom-rewa
     d.avatar !== undefined ? sql`avatar=${d.avatar}` : null,
   ].filter((v): v is ReturnType<typeof sql> => v !== null);
   const row=resultRows(await db.execute(sql`UPDATE students SET ${sql.join(updates, sql`, `)} WHERE id=${studentId} AND teacher_id=${teacherId} RETURNING id,name,grade_level,student_class,parent_phone,parent_name,parent_email,notes,avatar`))[0];
-  res.json({student:row});
+  if (
+    typeof owned.avatar === "string"
+    && STUDENT_AVATAR_OBJECT.test(owned.avatar)
+    && owned.avatar !== row.avatar
+  ) {
+    objectStorage.tryDeleteObjectEntity(owned.avatar).catch((error) => {
+      req.log.warn({ err: error, teacherId, studentId }, "Failed to delete replaced student avatar");
+    });
+  }
+  res.json({student:{...row,avatar:serializedStudentAvatar(studentId,row.avatar)}});
 });
 
 router.post("/classroom-rewards/students/:studentId/reset-password", async (req:any,res) => {

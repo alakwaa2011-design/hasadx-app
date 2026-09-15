@@ -9,6 +9,7 @@ import {
   useResetStudentPassword,
   useGrantRewards,
   useAdjustStudentBalance,
+  getStudentAvatarUpload,
 } from "./api";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
@@ -17,7 +18,7 @@ import { GoalProgressCard } from "./goal-progress";
 import {
   User, Shield, Key, History, FileText, Activity,
   Loader2, Save, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock,
-  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp, SlidersHorizontal, ArrowRight
+  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp, SlidersHorizontal, ArrowRight, Upload, ImagePlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -566,6 +567,8 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
   
   const [avatarChanged, setAvatarChanged] = useState(false);
   const [showAllAvatars, setShowAllAvatars] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const updateMutation = useUpdateStudentProfile();
   const featuredAvatars = ILLUSTRATED_AVATARS.slice(0, 8);
   const currentHiddenAvatar = ILLUSTRATED_AVATARS.find(
@@ -580,6 +583,38 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
   const handleAvatarSelect = (avatarValue: string) => {
     setFormData(prev => ({ ...prev, avatar: avatarValue }));
     setAvatarChanged(avatarValue !== student.avatar);
+  };
+
+  const handlePhotoUpload = async (file?: File) => {
+    if (!file) return;
+    const supported = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+    if (!supported.includes(file.type)) {
+      toast.error(r("اختر صورة بصيغة JPG أو PNG أو WebP أو AVIF.", "Choose a JPG, PNG, WebP, or AVIF image."));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(r("حجم الصورة يجب ألا يتجاوز 5 ميجابايت.", "The image must be 5 MB or smaller."));
+      return;
+    }
+    setPhotoUploading(true);
+    try {
+      const objectPath = await getStudentAvatarUpload(studentId, file);
+      updateMutation.mutate({ studentId, avatar: objectPath }, {
+        onSuccess: () => {
+          toast.success(r("تم حفظ صورة الطالب بنجاح.", "Student photo saved."));
+          onAvatarSaved();
+        },
+        onError: (error: any) => {
+          toast.error(getArabicRewardError(error, r("تعذر حفظ صورة الطالب.", "Could not save the student photo.")));
+        },
+        onSettled: () => setPhotoUploading(false),
+      });
+    } catch (error: any) {
+      setPhotoUploading(false);
+      toast.error(error?.message || r("تعذر رفع صورة الطالب.", "Could not upload the student photo."));
+    } finally {
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
   };
 
   const handleSaveAvatarOnly = () => {
@@ -609,7 +644,7 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
       parentPhone: formData.parentPhone.trim() || null,
       parentEmail: formData.parentEmail.trim() || null,
       notes: formData.notes.trim() || null,
-      avatar: formData.avatar || null,
+      ...(avatarChanged ? { avatar: formData.avatar || null } : {}),
     }, {
       onSuccess: () => {
          toast.success(r("تم تحديث بيانات البطل بنجاح", "Student details updated."));
@@ -627,8 +662,8 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
         <div>
           <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4 mb-6">
             <div>
-               <h3 className="font-black text-xl mb-1.5 flex items-center gap-2 text-emerald-950"><User size={24} className="text-emerald-600" /> {r("شخصية المغامر", "Adventurer character")}</h3>
-               <p className="text-sm text-emerald-900/60 font-medium">{r("اختر من الشخصيات المميزة، أو افتح المجموعة الكاملة لمزيد من التنوع.", "Choose a featured character, or open the full collection for more variety.")}</p>
+               <h3 className="font-black text-xl mb-1.5 flex items-center gap-2 text-emerald-950"><User size={24} className="text-emerald-600" /> {r("صورة الطالب أو شخصيته", "Student photo or character")}</h3>
+               <p className="text-sm text-emerald-900/60 font-medium">{r("ارفع صورة من جهازك، أو اختر إحدى الشخصيات المميزة.", "Upload a photo from your device, or choose a featured character.")}</p>
             </div>
             {avatarChanged && (
               <button
@@ -642,6 +677,44 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
               </button>
             )}
           </div>
+           <div className="mb-6 flex flex-col gap-3 rounded-3xl border-2 border-dashed border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+             <div className="flex items-center gap-3">
+               {formData.avatar.startsWith("/api/classroom-rewards/students/") ? (
+                 <AvatarDisplay
+                   avatar={formData.avatar}
+                   fallback={formData.name.charAt(0)}
+                   size="xl"
+                   className="h-11 w-11 border-2 border-white shadow-sm"
+                 />
+               ) : (
+                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                   <ImagePlus size={22} />
+                 </div>
+               )}
+               <div>
+                 <div className="text-sm font-black text-emerald-950">{r("صورة من الجهاز", "Photo from device")}</div>
+                 <div className="text-xs font-bold text-emerald-900/55">{r("JPG أو PNG أو WebP أو AVIF — حتى 5 ميجابايت", "JPG, PNG, WebP, or AVIF — up to 5 MB")}</div>
+               </div>
+             </div>
+             <input
+               ref={photoInputRef}
+               type="file"
+               accept="image/jpeg,image/png,image/webp,image/avif"
+               className="sr-only"
+               onChange={(event) => void handlePhotoUpload(event.target.files?.[0])}
+               data-testid={`input-student-photo-${studentId}`}
+             />
+             <button
+               type="button"
+               onClick={() => photoInputRef.current?.click()}
+               disabled={photoUploading || updateMutation.isPending}
+               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-md transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+               data-testid={`button-upload-student-photo-${studentId}`}
+             >
+               {photoUploading ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
+               {photoUploading ? r("جارٍ رفع الصورة...", "Uploading...") : r("اختيار صورة", "Choose photo")}
+             </button>
+           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
             {visibleAvatars.map((avatar) => (
                <button
@@ -655,6 +728,7 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
                     : "border-emerald-100 hover:border-emerald-300 hover:shadow-md hover:-translate-y-1"
                 )}
                 aria-pressed={formData.avatar === avatar.value}
+                 data-testid={`button-student-avatar-${studentId}-${avatar.value.split("/").pop()?.replace(".webp", "")}`}
               >
                 <img src={avatar.value} alt="" className="mx-auto aspect-square w-full rounded-2xl object-cover object-top bg-white/50" />
                 <span className="absolute left-3 top-3 rounded-full border border-white/70 bg-emerald-950/70 px-2 py-0.5 text-[9px] font-black text-white shadow-sm backdrop-blur-sm">

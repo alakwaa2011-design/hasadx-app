@@ -1,6 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+export const getStudentAvatarUpload = async (studentId: number, file: File) => {
+  const request = await fetch(`${API_BASE}/api/classroom-rewards/students/${studentId}/avatar-upload`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+  });
+  const requestData = await request.json().catch(() => null);
+  if (!request.ok) throw new Error(requestData?.message || "تعذر تجهيز رفع صورة الطالب");
+  const upload = await fetch(requestData.uploadURL, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!upload.ok) throw new Error("تعذر رفع صورة الطالب");
+  return String(requestData.objectPath);
+};
 
 export type RewardRuleSourceType = "assignment_submission" | "kids_activity_completion" | "game_history";
 export type RewardRuleConditionType = "completion" | "score_at_least";
@@ -585,6 +602,8 @@ export const useUpdateStudentProfile = () => {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", variables.studentId] });
       qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "board"] });
+      qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups"] });
     },
   });
 };

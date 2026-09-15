@@ -37,5 +37,9 @@ export const DEFAULT_AVATAR: string = ILLUSTRATED_AVATARS[0].value;
 
 export function isAvatarUrl(value?: string | null): boolean {
   if (!value) return false;
-  return value.startsWith("/avatars/") || value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:");
+  return value.startsWith("/avatars/")
+    || value.startsWith("/api/classroom-rewards/students/")
+    || value.startsWith("http://")
+    || value.startsWith("https://")
+    || value.startsWith("data:");
 }
