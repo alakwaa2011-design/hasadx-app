@@ -299,7 +299,10 @@ export default function StudentDashboard() {
         if (!r.ok) return { days: [] };
         return r.json();
       }).catch(() => ({ days: [] })),
-      fetch(`${API_BASE}/api/quran/me/wards`, { credentials: "include" }).then(async (r) => {
+      fetch(`${API_BASE}/api/quran/me/wards`, {
+        credentials: "include",
+        cache: "no-store",
+      }).then(async (r) => {
         if (!r.ok) return null;
         const data = await r.json();
         return Array.isArray(data) ? data : null;
@@ -312,6 +315,46 @@ export default function StudentDashboard() {
       setQuranWards(Array.isArray(quranWardsData) ? quranWardsData : []);
     }).catch(() => setLocation("/student/login")).finally(() => setLoading(false));
   }, [setLocation]);
+
+  useEffect(() => {
+    if (!student) return;
+    let cancelled = false;
+
+    const refreshQuranWards = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/quran/me/wards`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+        if (response.status === 404) {
+          setQuranStudentProfileValid(false);
+          setQuranWards([]);
+          return;
+        }
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!Array.isArray(data)) return;
+        setQuranStudentProfileValid(true);
+        setQuranWards(data);
+      } catch {
+        // Preserve the last successful Quran card during a temporary network failure.
+      }
+    };
+
+    void refreshQuranWards();
+    const intervalId = window.setInterval(refreshQuranWards, 10000);
+    const refreshOnFocus = () => void refreshQuranWards();
+    window.addEventListener("focus", refreshOnFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
+  }, [student]);
 
   useEffect(() => {
     if (!student) return;

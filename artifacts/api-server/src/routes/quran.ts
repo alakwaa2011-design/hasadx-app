@@ -378,6 +378,7 @@ router.get("/quran/students/:studentId/wards", async (req, res): Promise<void> =
 });
 
 router.get("/quran/me/wards", async (req, res): Promise<void> => {
+  res.set("Cache-Control", "private, no-store");
   const studentAccountId = studentAccountIdOf(req);
   if (studentAccountId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
   const [student] = await db.select({ id: studentsTable.id })

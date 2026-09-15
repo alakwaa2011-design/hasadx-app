@@ -98,6 +98,7 @@ suite("student Quran ward ownership", () => {
   it("lists only wards linked to the signed-in student account", async () => {
     const response = await request(studentApp(accountId)).get("/api/quran/me/wards");
     expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
     expect(response.body.map((ward: { id: number }) => ward.id)).toEqual([wardId]);
   });
 
