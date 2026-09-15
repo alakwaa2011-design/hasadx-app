@@ -861,6 +861,7 @@ export default function ScheduleManagementPage() {
   const [editingColumnLabel, setEditingColumnLabel] = useState<{ key: string; defaultLabel: string } | null>(null);
   const [columnLabelDraft, setColumnLabelDraft] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [scheduleManagerOpen, setScheduleManagerOpen] = useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -1751,6 +1752,18 @@ export default function ScheduleManagementPage() {
                      <span className="hidden sm:inline">{isAr ? "إدارة" : "Manage"}</span>
                    </summary>
                    <div className="absolute end-0 top-[calc(100%+0.5rem)] z-50 w-52 overflow-hidden rounded-xl border border-border bg-card p-1 shadow-lg animate-in fade-in zoom-in-95">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          document.body.click();
+                          setScheduleManagerOpen(true);
+                        }}
+                        data-testid="button-edit-whole-schedule"
+                        className="flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+                      >
+                        <Pencil className="h-4 w-4 text-emerald-700" />
+                        {isAr ? "تعديل الجدول" : "Edit schedule"}
+                      </button>
                      <button
                        type="button"
                        onClick={() => { document.body.click(); setDeleteAllDialogOpen(true); }}
@@ -2686,6 +2699,96 @@ export default function ScheduleManagementPage() {
       </div>
 
       {/* --- ALL DIALOGS (kept exactly same, just rendered here) --- */}
+      <Dialog open={scheduleManagerOpen} onOpenChange={setScheduleManagerOpen}>
+        <DialogContent className="flex max-h-[88dvh] max-w-2xl flex-col overflow-hidden rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-emerald-700" />
+              {isAr ? "تعديل الجدول" : "Edit schedule"}
+            </DialogTitle>
+            <DialogDescription>
+              {isAr
+                ? "اختر أي حصة أو فترة أو موعد لتعديل بياناته."
+                : "Choose any lesson, break, or appointment to edit its details."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pe-1">
+            {entries.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border px-5 py-10 text-center text-sm font-bold text-muted-foreground">
+                {isAr ? "لا توجد إدخالات محفوظة في الجدول." : "There are no saved schedule entries."}
+              </div>
+            ) : (
+              <>
+                {[
+                  {
+                    kind: "weekly" as const,
+                    title: isAr ? "الحصص الأسبوعية" : "Weekly lessons",
+                    icon: <Clock3 className="h-4 w-4" />,
+                    entries: entries
+                      .filter((entry) => entry.kind === "weekly")
+                      .sort((a, b) =>
+                        (a.dayOfWeek ?? 7) - (b.dayOfWeek ?? 7)
+                        || (a.startTime || "").localeCompare(b.startTime || "")
+                        || schedulePosition(a) - schedulePosition(b),
+                      ),
+                  },
+                  {
+                    kind: "break" as const,
+                    title: isAr ? "الفترات" : "Breaks",
+                    icon: <Coffee className="h-4 w-4" />,
+                    entries: entries
+                      .filter((entry) => entry.kind === "break")
+                      .sort((a, b) =>
+                        (a.dayOfWeek ?? 7) - (b.dayOfWeek ?? 7)
+                        || (a.startTime || "").localeCompare(b.startTime || ""),
+                      ),
+                  },
+                  {
+                    kind: "appointment" as const,
+                    title: isAr ? "المواعيد" : "Appointments",
+                    icon: <CalendarClock className="h-4 w-4" />,
+                    entries: entries
+                      .filter((entry) => entry.kind === "appointment")
+                      .sort((a, b) =>
+                        (a.appointmentDate || "").localeCompare(b.appointmentDate || "")
+                        || (a.startTime || "").localeCompare(b.startTime || ""),
+                      ),
+                  },
+                ].map((group) => (
+                  group.entries.length > 0 && (
+                    <section key={group.kind} className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+                      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/20 px-4 py-3 text-sm font-black text-foreground">
+                        <span className="text-emerald-700">{group.icon}</span>
+                        {group.title}
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {group.entries.length}
+                        </span>
+                      </div>
+                      <div className="px-4">
+                        {group.entries.map((entry, index) => (
+                          <ScheduleEntryRow
+                            key={entry.id}
+                            entry={entry}
+                            isAr={isAr}
+                            isLast={index === group.entries.length - 1}
+                            onEdit={() => {
+                              setScheduleManagerOpen(false);
+                              openEdit(entry);
+                            }}
+                            onDelete={() => removeEntry(entry)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )
+                ))}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={Boolean(editingColumnLabel)} onOpenChange={(open) => { if (!open) setEditingColumnLabel(null); }}>
         <DialogContent className="max-w-sm rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader>
