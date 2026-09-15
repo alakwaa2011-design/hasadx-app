@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { 
   useListQuranCircles, 
   useListQuranStudents, 
@@ -10,8 +10,9 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { 
-  Loader2, Plus, Users, ChevronRight, ChevronLeft, 
-  User, ArrowRight, ArrowLeft, Check
+  Loader2, Plus, Users, ChevronRight, ChevronLeft,
+  User, ArrowRight, ArrowLeft, Check, Layers, UserPlus,
+  FileSpreadsheet, Image as ImageIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -24,13 +25,15 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
   const { lang, dir } = useI18n();
   const ChevronIcon = dir === "rtl" ? ChevronLeft : ChevronRight;
   const BackIcon = dir === "rtl" ? ArrowRight : ArrowLeft;
 
   const { data: circles, isLoading: loadingCircles, refetch: refetchCircles } = useListQuranCircles();
-  const { data: rosterStudents, isLoading: loadingRoster } = useListQuranStudents();
+  const { data: rosterStudents, isLoading: loadingRoster, refetch: refetchRoster } = useListQuranStudents();
   
   const createCircle = useCreateQuranCircle();
 
@@ -86,7 +89,7 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
         </div>
         <QuranStudentProfileView 
           studentId={selectedStudentId} 
-          studentName={studentInfo?.name || "Student"} 
+          studentName={studentInfo?.name || (lang === "ar" ? "طالب" : "Student")}
           surahs={surahs} 
         />
       </div>
@@ -253,6 +256,8 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
         <AddMemberModal 
           circle={activeCircle}
           rosterStudents={rosterStudents || []}
+          circles={circles || []}
+          refetchRoster={refetchRoster}
           onClose={() => setIsManagingMembers(false)}
         />
       )}
@@ -260,26 +265,140 @@ export function QuranCircles({ surahs }: { surahs: QuranSurah[] }) {
   );
 }
 function AddMemberModal({ 
-  circle, 
-  rosterStudents, 
-  onClose 
+  circle,
+  rosterStudents,
+  circles,
+  refetchRoster,
+  onClose,
 }: { 
-  circle: QuranCircle, 
-  rosterStudents: any[], 
-  onClose: () => void 
+  circle: QuranCircle;
+  rosterStudents: Array<{ id: number; name: string; gradeLevel: string | null; studentClass: string | null }>;
+  circles: QuranCircle[];
+  refetchRoster: () => Promise<unknown>;
+  onClose: () => void;
 }) {
   const { lang } = useI18n();
+  const isArabic = lang === "ar";
   const updateCircle = useUpdateQuranCircle();
   const queryClient = useQueryClient();
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [source, setSource] = useState<"students" | "groups">("students");
+  const [addMethod, setAddMethod] = useState<"single" | "bulk" | "file">("single");
+  const [singleName, setSingleName] = useState("");
+  const [bulkNames, setBulkNames] = useState("");
+  const [targetClass, setTargetClass] = useState("");
+  const [adding, setAdding] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>(
     circle.members.map(m => m.id)
   );
+
+  const classNames = [...new Set(rosterStudents
+    .map((student) => student.studentClass || student.gradeLevel)
+    .filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b, lang));
 
   const toggleStudent = (id: number) => {
     setSelectedStudentIds(prev => 
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
+  };
+
+  const toggleGroup = (studentIds: number[]) => {
+    const allSelected = studentIds.every((id) => selectedStudentIds.includes(id));
+    setSelectedStudentIds((previous) => allSelected
+      ? previous.filter((id) => !studentIds.includes(id))
+      : [...new Set([...previous, ...studentIds])]);
+  };
+
+  const addCreatedStudents = (students: Array<{ id: number }>) => {
+    setSelectedStudentIds((previous) => [...new Set([...previous, ...students.map((student) => student.id)])]);
+    void refetchRoster();
+  };
+
+  const addSingleStudent = async () => {
+    if (!singleName.trim()) return;
+    setAdding(true);
+    try {
+      const folder = targetClass.trim() || null;
+      const response = await fetch(`${API_BASE}/api/students`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: singleName.trim(),
+          gradeLevel: folder,
+          studentClass: folder,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message);
+      addCreatedStudents([data]);
+      setSingleName("");
+      toast.success(isArabic ? "تمت إضافة الطالب إلى القائمة" : "Student added");
+    } catch {
+      toast.error(isArabic ? "تعذرت إضافة الطالب" : "Could not add student");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const addBulkStudents = async () => {
+    const names = bulkNames.split("\n")
+      .map((name) => name.replace(/^\d+[\.\-\)\s]+/, "").trim())
+      .filter(Boolean);
+    if (!names.length) return;
+    setAdding(true);
+    try {
+      const folder = targetClass.trim() || null;
+      const response = await fetch(`${API_BASE}/api/students/bulk`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          students: names.map((name) => ({ name, gradeLevel: folder, studentClass: folder })),
+        }),
+      });
+      const data = await response.json().catch(() => []);
+      if (!response.ok) throw new Error();
+      addCreatedStudents(Array.isArray(data) ? data : []);
+      setBulkNames("");
+      toast.success(isArabic ? `تمت إضافة ${data.length} طالب` : `${data.length} students added`);
+    } catch {
+      toast.error(isArabic ? "تعذرت إضافة الأسماء" : "Could not add names");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const importStudents = async (file: File) => {
+    setAdding(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (targetClass.trim()) {
+        formData.append("gradeLevel", targetClass.trim());
+        formData.append("studentClass", targetClass.trim());
+      }
+      const response = await fetch(`${API_BASE}/api/students/import`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message);
+      if (data.preview && Array.isArray(data.names)) {
+        setBulkNames(data.names.join("\n"));
+        setAddMethod("bulk");
+        toast.success(isArabic ? "تم استخراج الأسماء؛ راجعها ثم أضفها" : "Names extracted; review before adding");
+        return;
+      }
+      addCreatedStudents(data.students || []);
+      toast.success(data.message || (isArabic ? "تم استيراد الطلاب" : "Students imported"));
+    } catch {
+      toast.error(isArabic ? "تعذر استخراج الأسماء من الملف" : "Could not import students");
+    } finally {
+      setAdding(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSave = () => {
@@ -300,40 +419,120 @@ function AddMemberModal({
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-3xl border-border flex flex-col max-h-[80vh]">
+      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden rounded-3xl border-border flex flex-col max-h-[88vh]">
         <DialogHeader className="p-6 border-b border-border/60 bg-muted/20">
           <DialogTitle className="font-black text-xl text-foreground">
-            {lang === "ar" ? "إضافة أو إزالة طلاب" : "Manage Students"}
+            {lang === "ar" ? "طلاب الحلقة" : "Circle students"}
           </DialogTitle>
+          <p className="mt-1 text-xs font-bold text-muted-foreground">
+            {lang === "ar" ? "اختر من طلابك أو أضف فصلًا وأسماء جديدة" : "Choose existing students or add a class and new names"}
+          </p>
         </DialogHeader>
-        
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {rosterStudents.map(student => {
-            const isSelected = selectedStudentIds.includes(student.id);
-            return (
-              <button
-                key={student.id}
-                onClick={() => toggleStudent(student.id)}
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500",
-                  isSelected 
-                    ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800" 
-                    : "bg-background border-border hover:bg-muted/50"
+
+        <div className="grid grid-cols-2 gap-2 border-b border-border/60 bg-muted/20 p-3">
+          <button onClick={() => setSource("students")} className={cn("rounded-xl px-3 py-2.5 text-sm font-black", source === "students" ? "bg-white text-emerald-800 shadow-sm dark:bg-card dark:text-emerald-300" : "text-muted-foreground")}>
+            <Users className="me-2 inline h-4 w-4" />
+            {isArabic ? "طلاب المعلم" : "My students"}
+          </button>
+          <button onClick={() => setSource("groups")} className={cn("rounded-xl px-3 py-2.5 text-sm font-black", source === "groups" ? "bg-white text-emerald-800 shadow-sm dark:bg-card dark:text-emerald-300" : "text-muted-foreground")}>
+            <Layers className="me-2 inline h-4 w-4" />
+            {isArabic ? "الفصول والحلقات" : "Classes and circles"}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {source === "students" ? (
+            <div className="space-y-2">
+              {rosterStudents.map(student => {
+                const isSelected = selectedStudentIds.includes(student.id);
+                return (
+                  <button
+                    key={student.id}
+                    onClick={() => toggleStudent(student.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between p-3 rounded-xl border transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500",
+                      isSelected ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-800" : "bg-background border-border hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="text-start">
+                      <p className="font-bold text-sm text-foreground">{student.name}</p>
+                      <p className="text-xs text-muted-foreground">{student.studentClass || student.gradeLevel || (isArabic ? "دون فصل" : "No class")}</p>
+                    </div>
+                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", isSelected ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/30")}>
+                      {isSelected && <Check className="w-3 h-3" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <section>
+                <h3 className="mb-2 text-sm font-black">{isArabic ? "إضافة مجموعة كاملة" : "Add a whole group"}</h3>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {classNames.map((className) => {
+                    const ids = rosterStudents.filter((student) => (student.studentClass || student.gradeLevel) === className).map((student) => student.id);
+                    const allSelected = ids.length > 0 && ids.every((id) => selectedStudentIds.includes(id));
+                    return (
+                      <button key={`class-${className}`} onClick={() => toggleGroup(ids)} className={cn("rounded-xl border p-3 text-start", allSelected ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30" : "border-border bg-background")}>
+                        <p className="font-black">{className}</p>
+                        <p className="mt-1 text-xs font-bold text-muted-foreground">{ids.length} {isArabic ? "طالب" : "students"}</p>
+                      </button>
+                    );
+                  })}
+                  {circles.filter((item) => item.id !== circle.id).map((item) => {
+                    const ids = item.members.map((member) => member.id);
+                    const allSelected = ids.length > 0 && ids.every((id) => selectedStudentIds.includes(id));
+                    return (
+                      <button key={`circle-${item.id}`} onClick={() => toggleGroup(ids)} className={cn("rounded-xl border p-3 text-start", allSelected ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30" : "border-border bg-background")}>
+                        <p className="font-black">{isArabic ? "حلقة" : "Circle"}: {item.name}</p>
+                        <p className="mt-1 text-xs font-bold text-muted-foreground">{ids.length} {isArabic ? "طالب" : "students"}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-border bg-muted/20 p-4">
+                <div className="mb-3">
+                  <h3 className="font-black">{isArabic ? "إضافة طلاب أو فصل جديد" : "Add students or a new class"}</h3>
+                  <p className="mt-1 text-xs font-bold text-muted-foreground">{isArabic ? "الأسماء الجديدة تُضاف إلى قائمة طلابك وإلى هذه الحلقة" : "New names are added to your roster and this circle"}</p>
+                </div>
+                <label className="mb-3 block text-xs font-bold text-muted-foreground">
+                  {isArabic ? "اسم الفصل أو المجموعة (اختياري)" : "Class or group name (optional)"}
+                  <input value={targetClass} onChange={(event) => setTargetClass(event.target.value)} list="quran-class-names" placeholder={isArabic ? "مثال: الصف الخامس أ" : "Example: Grade 5 A"} className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500" />
+                  <datalist id="quran-class-names">{classNames.map((name) => <option key={name} value={name} />)}</datalist>
+                </label>
+                <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-background p-1">
+                  <button onClick={() => setAddMethod("single")} className={cn("rounded-lg px-2 py-2 text-xs font-black", addMethod === "single" && "bg-emerald-700 text-white")}>{isArabic ? "اسم واحد" : "One name"}</button>
+                  <button onClick={() => setAddMethod("bulk")} className={cn("rounded-lg px-2 py-2 text-xs font-black", addMethod === "bulk" && "bg-emerald-700 text-white")}>{isArabic ? "أسماء بالجملة" : "Paste names"}</button>
+                  <button onClick={() => setAddMethod("file")} className={cn("rounded-lg px-2 py-2 text-xs font-black", addMethod === "file" && "bg-emerald-700 text-white")}>{isArabic ? "ملف أو صورة" : "File or image"}</button>
+                </div>
+                {addMethod === "single" && (
+                  <div className="flex gap-2">
+                    <input value={singleName} onChange={(event) => setSingleName(event.target.value)} placeholder={isArabic ? "اسم الطالب" : "Student name"} className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500" />
+                    <button onClick={addSingleStudent} disabled={adding || !singleName.trim()} className="rounded-xl bg-emerald-700 px-4 text-sm font-black text-white disabled:opacity-50">{isArabic ? "إضافة" : "Add"}</button>
+                  </div>
                 )}
-              >
-                <div className="text-start">
-                  <p className="font-bold text-sm text-foreground">{student.name}</p>
-                  <p className="text-xs text-muted-foreground">{student.gradeLevel || (lang === "ar" ? "غير محدد" : "Unspecified")}</p>
-                </div>
-                <div className={cn(
-                  "w-5 h-5 rounded-full border flex items-center justify-center",
-                  isSelected ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/30"
-                )}>
-                  {isSelected && <Check className="w-3 h-3" />}
-                </div>
-              </button>
-            );
-          })}
+                {addMethod === "bulk" && (
+                  <div>
+                    <textarea value={bulkNames} onChange={(event) => setBulkNames(event.target.value)} placeholder={isArabic ? "اكتب كل اسم في سطر مستقل" : "One name per line"} className="h-28 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500" />
+                    <button onClick={addBulkStudents} disabled={adding || !bulkNames.trim()} className="mt-2 w-full rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{isArabic ? "إضافة جميع الأسماء" : "Add all names"}</button>
+                  </div>
+                )}
+                {addMethod === "file" && (
+                  <div>
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv,.doc,.docx,.jpg,.jpeg,.png,.webp" onChange={(event) => event.target.files?.[0] && void importStudents(event.target.files[0])} className="hidden" />
+                    <button onClick={() => fileInputRef.current?.click()} disabled={adding} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 bg-emerald-50 px-4 py-6 text-sm font-black text-emerald-800 disabled:opacity-50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                      {adding ? <Loader2 className="h-5 w-5 animate-spin" /> : <><FileSpreadsheet className="h-5 w-5" /><ImageIcon className="h-5 w-5" /></>}
+                      {isArabic ? "اختر كشفًا أو صورة أو ملف Excel" : "Choose a roster, image, or Excel file"}
+                    </button>
+                    <p className="mt-2 text-center text-[11px] font-bold text-muted-foreground">{isArabic ? "يدعم Excel وCSV وWord والصور الواضحة" : "Supports Excel, CSV, Word, and clear images"}</p>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
         </div>
         
         <DialogFooter className="p-6 border-t border-border/60 bg-muted/20 sm:justify-end gap-3 flex-row justify-end">
@@ -345,11 +544,11 @@ function AddMemberModal({
           </button>
           <button 
             onClick={handleSave}
-            disabled={updateCircle.isPending}
+            disabled={updateCircle.isPending || adding}
             className="px-5 py-2.5 text-sm font-bold bg-emerald-600 text-white rounded-xl shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {updateCircle.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {lang === "ar" ? "حفظ" : "Save"}
+            {lang === "ar" ? `حفظ الطلاب (${selectedStudentIds.length})` : `Save students (${selectedStudentIds.length})`}
           </button>
         </DialogFooter>
       </DialogContent>

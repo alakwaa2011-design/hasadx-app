@@ -2,9 +2,11 @@ import { useMemo } from "react";
 import { useGetQuranTodayDashboard, QuranSurah } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { Loader2, BookOpen, Clock, Activity, CheckCircle2 } from "lucide-react";
+import { quranModeLabel } from "./quran-labels";
 
 export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], onNavigate: (tab: "circles" | "queue") => void }) {
   const { lang } = useI18n();
+  const isArabic = lang === "ar";
   const { data: dashboard, isLoading } = useGetQuranTodayDashboard();
 
   if (isLoading) {
@@ -88,7 +90,7 @@ export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], o
                   </p>
                 </div>
                 <div className="px-3 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400 rounded-md text-xs font-bold shrink-0">
-                  {ward.mode}
+                  {quranModeLabel(ward.mode, isArabic)}
                 </div>
               </div>
             ))}

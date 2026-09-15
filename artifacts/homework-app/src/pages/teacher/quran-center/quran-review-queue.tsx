@@ -3,9 +3,11 @@ import { useGetQuranReviewQueue, QuranSurah } from "@workspace/api-client-react"
 import { useI18n } from "@/lib/i18n";
 import { Loader2, ClipboardCheck, AlertCircle } from "lucide-react";
 import { RecordRecitationModal } from "./quran-student-profile";
+import { quranDateLabel, quranModeLabel } from "./quran-labels";
 
 export function QuranReviewQueue({ surahs }: { surahs: QuranSurah[] }) {
   const { lang } = useI18n();
+  const isArabic = lang === "ar";
   const { data: queue, isLoading } = useGetQuranReviewQueue();
   const [evaluatingWardId, setEvaluatingWardId] = useState<number | null>(null);
 
@@ -58,9 +60,9 @@ export function QuranReviewQueue({ surahs }: { surahs: QuranSurah[] }) {
                     </h4>
                   </div>
                   <p className="text-[11px] md:text-xs text-muted-foreground font-medium">
-                    {lang === "ar" ? "نوع المهمة:" : "Task Mode:"} <span className="text-foreground">{ward.mode}</span> 
+                    {lang === "ar" ? "نوع المهمة:" : "Task Mode:"} <span className="text-foreground">{quranModeLabel(ward.mode, isArabic)}</span>
                     {" • "}
-                    {lang === "ar" ? "مستحقة في:" : "Due:"} <span className="text-foreground">{ward.dueDate || "-"}</span>
+                    {lang === "ar" ? "مستحقة في:" : "Due:"} <span className="text-foreground">{quranDateLabel(ward.dueDate, isArabic)}</span>
                   </p>
                 </div>
                 <div className="shrink-0">

@@ -5,8 +5,7 @@ import {
   useCreateQuranWard,
   useCreateQuranRecitation,
   QuranSurah,
-  QuranWard,
-  QuranWardInputMode
+   QuranWard
 } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { 
@@ -17,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetQuranStudentSummaryQueryKey } from "@workspace/api-client-react";
+import { quranDateLabel, quranModeLabel, quranStatusLabel } from "./quran-labels";
 
 import { 
   Dialog,
@@ -36,6 +36,7 @@ export function QuranStudentProfileView({
   surahs: QuranSurah[];
 }) {
   const { lang, dir } = useI18n();
+  const isArabic = lang === "ar";
   const queryClient = useQueryClient();
 
   const { data: summary, isLoading } = useGetQuranStudentSummary(studentId);
@@ -55,6 +56,8 @@ export function QuranStudentProfileView({
   if (!summary) return null;
 
   const { profile, wards, recentRecitations } = summary;
+  const memorizationWards = wards.filter((ward) => ward.mode === "memorization");
+  const reviewWards = wards.filter((ward) => ward.mode === "review");
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,46 +106,35 @@ export function QuranStudentProfileView({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Active Wards */}
+        {/* One clear assignment card with memorization and review together */}
         <div className="bg-white dark:bg-card p-6 rounded-3xl border border-border/60 shadow-sm">
           <div className="flex items-center gap-2 mb-6 text-foreground">
             <Activity className="w-5 h-5 text-amber-500" />
             <h3 className="font-black text-xl">{lang === "ar" ? "المهام الحالية" : "Active Wards"}</h3>
           </div>
           
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {wards.length === 0 ? (
-              <div className="text-center p-8 text-muted-foreground bg-muted/30 rounded-2xl border border-dashed border-border">
+              <div className="col-span-full text-center p-8 text-muted-foreground bg-muted/30 rounded-2xl border border-dashed border-border">
                 <p className="font-bold">{lang === "ar" ? "لا توجد مهام نشطة" : "No active wards"}</p>
               </div>
             ) : (
-              wards.map(ward => (
-                <div key={ward.id} className="p-4 border border-border/60 rounded-xl hover:border-emerald-200 transition-colors group">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2.5 py-1 bg-muted rounded-md text-[10px] font-black uppercase tracking-wider">
-                      {ward.mode}
-                    </span>
-                    <span className="text-xs font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md">
-                      {ward.status}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-foreground mb-1">{ward.surahName}</h4>
-                  <p className="text-xs text-muted-foreground font-semibold">
-                    {lang === "ar" ? "الآيات:" : "Ayahs:"} {ward.startAyah} - {ward.endAyah}
-                  </p>
-                  
-                  {ward.status !== "completed" && (
-                    <div className="mt-4 pt-3 border-t border-border/60 flex justify-end opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => setRecordingWardId(ward.id)}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {lang === "ar" ? "تسجيل تسميع" : "Record Recitation"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
+              <>
+                <WardColumn
+                  title={lang === "ar" ? "الحفظ الجديد" : "New memorization"}
+                  emptyLabel={lang === "ar" ? "لم يحدد حفظ جديد" : "No memorization assigned"}
+                  wards={memorizationWards}
+                  isArabic={isArabic}
+                  onRecord={setRecordingWardId}
+                />
+                <WardColumn
+                  title={lang === "ar" ? "المراجعة" : "Review"}
+                  emptyLabel={lang === "ar" ? "لم تحدد مراجعة" : "No review assigned"}
+                  wards={reviewWards}
+                  isArabic={isArabic}
+                  onRecord={setRecordingWardId}
+                />
+              </>
             )}
           </div>
         </div>
@@ -170,7 +162,7 @@ export function QuranStudentProfileView({
                       )} />
                       <span className="font-bold text-sm text-foreground">{rec.recitedDate}</span>
                     </div>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{rec.status}</p>
+                    <p className="text-xs font-bold text-muted-foreground">{quranStatusLabel(rec.status, isArabic)}</p>
                   </div>
                   <div className="flex items-center gap-4">
                     {rec.memorizationScore != null && (
@@ -211,6 +203,66 @@ export function QuranStudentProfileView({
   );
 }
 
+function WardColumn({
+  title,
+  emptyLabel,
+  wards,
+  isArabic,
+  onRecord,
+}: {
+  title: string;
+  emptyLabel: string;
+  wards: QuranWard[];
+  isArabic: boolean;
+  onRecord: (wardId: number) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <h4 className="font-black text-emerald-800 dark:text-emerald-300">{title}</h4>
+        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-muted-foreground dark:bg-card">
+          {wards.length}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {wards.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border bg-background/60 px-3 py-6 text-center text-xs font-bold text-muted-foreground">
+            {emptyLabel}
+          </p>
+        ) : wards.map((ward) => (
+          <div key={ward.id} className="rounded-xl border border-border/60 bg-background p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-black text-foreground">{ward.surahName}</p>
+                <p className="mt-1 text-xs font-bold text-muted-foreground">
+                  {isArabic ? "من الآية" : "Ayahs"} {ward.startAyah}–{ward.endAyah}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                {quranStatusLabel(ward.status, isArabic)}
+              </span>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/50 pt-2">
+              <span className="text-[11px] font-bold text-muted-foreground">
+                {isArabic ? "الاستحقاق:" : "Due:"} {quranDateLabel(ward.dueDate, isArabic)}
+              </span>
+              {ward.status !== "completed" && (
+                <button
+                  onClick={() => onRecord(ward.id)}
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {isArabic ? "تسجيل التسميع" : "Record"}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, surahs: QuranSurah[], onClose: () => void }) {
   const { lang } = useI18n();
   const queryClient = useQueryClient();
@@ -219,43 +271,62 @@ function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, su
   const now = new Date();
   const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-  const [mode, setMode] = useState<QuranWardInputMode>("memorization");
-  const [surahNumber, setSurahNumber] = useState<number>(1);
-  const [startAyah, setStartAyah] = useState<number>(1);
-  const [endAyah, setEndAyah] = useState<number>(7);
+  const [memorizationEnabled, setMemorizationEnabled] = useState(true);
+  const [reviewEnabled, setReviewEnabled] = useState(true);
+  const [memorizationSurah, setMemorizationSurah] = useState(1);
+  const [memorizationStart, setMemorizationStart] = useState(1);
+  const [memorizationEnd, setMemorizationEnd] = useState(7);
+  const [reviewSurah, setReviewSurah] = useState(1);
+  const [reviewStart, setReviewStart] = useState(1);
+  const [reviewEnd, setReviewEnd] = useState(7);
   const [dueDate, setDueDate] = useState<string>(todayStr);
-  
-  const selectedSurah = surahs.find(s => s.number === surahNumber);
 
-  const handleAssign = () => {
-    const surah = surahs.find(s => s.number === surahNumber);
-    if (!surah) return;
+  const handleAssign = async () => {
     if (!dueDate) {
       toast.error(lang === "ar" ? "تاريخ الاستحقاق مطلوب" : "Due date is required");
       return;
     }
-    
-    createWard.mutate({
-      data: {
-        studentId,
-        mode,
-        surahNumber,
-        surahName: surah.arabicName,
-        startAyah,
-        endAyah,
-        assignedDate: todayStr,
-        dueDate: dueDate
-      }
-    }, {
-      onSuccess: () => {
-        toast.success(lang === "ar" ? "تم تعيين المهمة بنجاح" : "Ward assigned successfully");
-        queryClient.invalidateQueries({ queryKey: getGetQuranStudentSummaryQueryKey(studentId) });
-        onClose();
-      },
-      onError: () => {
-        toast.error(lang === "ar" ? "فشل تعيين المهمة" : "Failed to assign ward");
-      }
-    });
+    if (!memorizationEnabled && !reviewEnabled) {
+      toast.error(lang === "ar" ? "اختر الحفظ أو المراجعة على الأقل" : "Select memorization or review");
+      return;
+    }
+    const tasks = [
+      memorizationEnabled ? {
+        mode: "memorization" as const,
+        surahNumber: memorizationSurah,
+        startAyah: memorizationStart,
+        endAyah: memorizationEnd,
+      } : null,
+      reviewEnabled ? {
+        mode: "review" as const,
+        surahNumber: reviewSurah,
+        startAyah: reviewStart,
+        endAyah: reviewEnd,
+      } : null,
+    ].filter((task): task is NonNullable<typeof task> => task !== null);
+    try {
+      await Promise.all(tasks.map((task) => {
+        const surah = surahs.find((item) => item.number === task.surahNumber);
+        if (!surah) throw new Error("surah");
+        return createWard.mutateAsync({
+          data: {
+            studentId,
+            mode: task.mode,
+            surahNumber: task.surahNumber,
+            surahName: surah.arabicName,
+            startAyah: task.startAyah,
+            endAyah: task.endAyah,
+            assignedDate: todayStr,
+            dueDate,
+          },
+        });
+      }));
+      toast.success(lang === "ar" ? "تم تعيين الحفظ والمراجعة" : "Assignment saved");
+      queryClient.invalidateQueries({ queryKey: getGetQuranStudentSummaryQueryKey(studentId) });
+      onClose();
+    } catch {
+      toast.error(lang === "ar" ? "تعذر تعيين المهمة" : "Failed to assign task");
+    }
   };
 
   return (
@@ -266,65 +337,33 @@ function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, su
             {lang === "ar" ? "تعيين مهمة جديدة" : "Assign New Ward"}
           </DialogTitle>
         </DialogHeader>
-        <div className="p-6 space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-muted-foreground mb-1.5">{lang === "ar" ? "النوع" : "Mode"}</label>
-            <select 
-              value={mode} 
-              onChange={e => setMode(e.target.value as QuranWardInputMode)}
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-            >
-              <option value="memorization">{lang === "ar" ? "حفظ" : "Memorization"}</option>
-              <option value="review">{lang === "ar" ? "مراجعة" : "Review"}</option>
-              <option value="recitation">{lang === "ar" ? "تلاوة" : "Recitation"}</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-xs font-bold text-muted-foreground mb-1.5">{lang === "ar" ? "السورة" : "Surah"}</label>
-            <select 
-              value={surahNumber} 
-              onChange={e => setSurahNumber(Number(e.target.value))}
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-            >
-              {surahs.map(s => (
-                <option key={s.number} value={s.number}>
-                  {s.number}. {s.arabicName} ({s.ayahCount} {lang === "ar" ? "آية" : "ayahs"})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-muted-foreground mb-1.5">{lang === "ar" ? "من آية" : "Start Ayah"}</label>
-              <input 
-                type="number" 
-                min={1} 
-                max={selectedSurah?.ayahCount || 100}
-                value={startAyah} 
-                onChange={e => {
-                  const val = Number(e.target.value);
-                  setStartAyah(Math.min(Math.max(1, val), selectedSurah?.ayahCount || val));
-                }}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-muted-foreground mb-1.5">{lang === "ar" ? "إلى آية" : "End Ayah"}</label>
-              <input 
-                type="number" 
-                min={1} 
-                max={selectedSurah?.ayahCount || 100}
-                value={endAyah} 
-                onChange={e => {
-                  const val = Number(e.target.value);
-                  setEndAyah(Math.min(Math.max(1, val), selectedSurah?.ayahCount || val));
-                }}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
+        <div className="max-h-[65vh] space-y-4 overflow-y-auto p-5">
+          <WardRangeEditor
+            title={lang === "ar" ? "الحفظ الجديد" : "New memorization"}
+            enabled={memorizationEnabled}
+            onEnabledChange={setMemorizationEnabled}
+            surahs={surahs}
+            surahNumber={memorizationSurah}
+            onSurahChange={setMemorizationSurah}
+            startAyah={memorizationStart}
+            onStartChange={setMemorizationStart}
+            endAyah={memorizationEnd}
+            onEndChange={setMemorizationEnd}
+            isArabic={lang === "ar"}
+          />
+          <WardRangeEditor
+            title={lang === "ar" ? "المراجعة" : "Review"}
+            enabled={reviewEnabled}
+            onEnabledChange={setReviewEnabled}
+            surahs={surahs}
+            surahNumber={reviewSurah}
+            onSurahChange={setReviewSurah}
+            startAyah={reviewStart}
+            onStartChange={setReviewStart}
+            endAyah={reviewEnd}
+            onEndChange={setReviewEnd}
+            isArabic={lang === "ar"}
+          />
           
           <div>
             <label className="block text-xs font-bold text-muted-foreground mb-1.5">{lang === "ar" ? "تاريخ الاستحقاق" : "Due Date"}</label>
@@ -346,7 +385,7 @@ function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, su
           </button>
           <button 
             onClick={handleAssign}
-            disabled={createWard.isPending || !dueDate}
+            disabled={createWard.isPending || !dueDate || (!memorizationEnabled && !reviewEnabled)}
             className="px-5 py-2.5 text-sm font-bold bg-emerald-600 text-white rounded-xl shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {createWard.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -355,6 +394,97 @@ function AssignWardModal({ studentId, surahs, onClose }: { studentId: number, su
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function WardRangeEditor({
+  title,
+  enabled,
+  onEnabledChange,
+  surahs,
+  surahNumber,
+  onSurahChange,
+  startAyah,
+  onStartChange,
+  endAyah,
+  onEndChange,
+  isArabic,
+}: {
+  title: string;
+  enabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  surahs: QuranSurah[];
+  surahNumber: number;
+  onSurahChange: (value: number) => void;
+  startAyah: number;
+  onStartChange: (value: number) => void;
+  endAyah: number;
+  onEndChange: (value: number) => void;
+  isArabic: boolean;
+}) {
+  const selectedSurah = surahs.find((surah) => surah.number === surahNumber);
+  const maxAyah = selectedSurah?.ayahCount ?? 1;
+  return (
+    <section className={cn("rounded-2xl border p-4", enabled ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20" : "border-border bg-muted/20 opacity-70")}>
+      <label className="mb-4 flex cursor-pointer items-center justify-between gap-3">
+        <span className="font-black text-foreground">{title}</span>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => onEnabledChange(event.target.checked)}
+          className="h-5 w-5 accent-emerald-600"
+        />
+      </label>
+      {enabled && (
+        <div className="space-y-3">
+          <select
+            value={surahNumber}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              onSurahChange(next);
+              const nextMax = surahs.find((surah) => surah.number === next)?.ayahCount ?? 1;
+              onStartChange(Math.min(startAyah, nextMax));
+              onEndChange(Math.min(endAyah, nextMax));
+            }}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold outline-none focus:border-emerald-500"
+          >
+            {surahs.map((surah) => (
+              <option key={surah.number} value={surah.number}>
+                {surah.number}. {surah.arabicName} ({surah.ayahCount} {isArabic ? "آية" : "ayahs"})
+              </option>
+            ))}
+          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-xs font-bold text-muted-foreground">
+              {isArabic ? "من آية" : "From ayah"}
+              <input
+                type="number"
+                min={1}
+                max={maxAyah}
+                value={startAyah}
+                onChange={(event) => {
+                  const next = Math.min(maxAyah, Math.max(1, Number(event.target.value)));
+                  onStartChange(next);
+                  if (endAyah < next) onEndChange(next);
+                }}
+                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500"
+              />
+            </label>
+            <label className="text-xs font-bold text-muted-foreground">
+              {isArabic ? "إلى آية" : "To ayah"}
+              <input
+                type="number"
+                min={startAyah}
+                max={maxAyah}
+                value={endAyah}
+                onChange={(event) => onEndChange(Math.min(maxAyah, Math.max(startAyah, Number(event.target.value))))}
+                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none focus:border-emerald-500"
+              />
+            </label>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 export function RecordRecitationModal({ wardId, onClose }: { wardId: number, onClose: () => void }) {

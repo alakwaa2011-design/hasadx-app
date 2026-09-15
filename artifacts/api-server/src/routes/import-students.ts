@@ -4,6 +4,7 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import mammoth from "mammoth";
 import { db, studentsTable } from "@workspace/db";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -17,8 +18,11 @@ const upload = multer({
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "application/msword",
       "text/csv",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
     ];
-    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv|docx|doc)$/i)) {
+    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv|docx|doc|jpg|jpeg|png|webp)$/i)) {
       cb(null, true);
     } else {
       cb(new Error("نوع الملف غير مدعوم"));
@@ -109,6 +113,42 @@ async function parseWord(buffer: Buffer): Promise<string[]> {
   return lines;
 }
 
+async function parseRosterImage(buffer: Buffer, mimetype: string): Promise<string[]> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-5.4-mini",
+    messages: [{
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: [
+            "استخرج أسماء الطلاب فقط من كشف الأسماء الظاهر في الصورة.",
+            "تجاهل العناوين والأرقام والدرجات والتواريخ وأسماء المواد.",
+            "لا تخمّن اسمًا غير واضح، ولا تصحح أو تعيد صياغة الأسماء.",
+            'أعد JSON فقط بالشكل: {\"names\":[\"الاسم الأول\",\"الاسم الثاني\"]}',
+          ].join("\n"),
+        },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimetype};base64,${buffer.toString("base64")}`,
+            detail: "high",
+          },
+        },
+      ],
+    }],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 2500,
+  });
+  const content = response.choices[0]?.message?.content ?? "{}";
+  const parsed = JSON.parse(content) as { names?: unknown };
+  if (!Array.isArray(parsed.names)) return [];
+  return [...new Set(parsed.names
+    .filter((name): name is string => typeof name === "string")
+    .map((name) => name.replace(/^\d+[\.\-\)\s]+/, "").trim())
+    .filter(isLikelyName))];
+}
+
 router.post("/students/import", upload.single("file"), async (req, res) => {
   try {
     const teacherId = req.session.teacherId;
@@ -126,11 +166,14 @@ router.post("/students/import", upload.single("file"), async (req, res) => {
     let names: string[] = [];
 
     const ext = originalname.toLowerCase().split(".").pop();
+    const isImage = ["jpg", "jpeg", "png", "webp"].includes(ext ?? "") || mimetype.startsWith("image/");
 
     if (ext === "xlsx" || ext === "xls" || ext === "csv" || mimetype.includes("spreadsheet") || mimetype.includes("excel") || mimetype === "text/csv") {
       names = await parseExcel(buffer);
     } else if (ext === "docx" || ext === "doc" || mimetype.includes("word")) {
       names = await parseWord(buffer);
+    } else if (isImage) {
+      names = await parseRosterImage(buffer, mimetype);
     } else {
       res.status(400).json({ message: "نوع الملف غير مدعوم" });
       return;
@@ -138,6 +181,17 @@ router.post("/students/import", upload.single("file"), async (req, res) => {
 
     if (names.length === 0) {
       res.json({ students: [], saved: 0, message: "لم يتم العثور على أسماء طلاب في الملف" });
+      return;
+    }
+
+    if (isImage) {
+      res.json({
+        students: [],
+        names,
+        saved: 0,
+        preview: true,
+        message: "تم استخراج الأسماء من الصورة. راجعها قبل الإضافة.",
+      });
       return;
     }
 

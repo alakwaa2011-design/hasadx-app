@@ -26,3 +26,15 @@ Quran text must come from a reviewed canonical source and must never be generate
 **Why:** A transcription or normalization error in Quran text is unacceptable.
 
 **How to apply:** Metadata-only features may use a fixed reviewed surah catalog; adding verse text or Mushaf pages requires a versioned trusted dataset, licensing review, and golden integrity tests.
+
+The Arabic Quran Center must never expose raw English enum values. A student's daily task is presented as one focused card containing memorization and review sections.
+
+**Why:** Teachers need an immediately understandable Quran workflow without technical labels or separate cards that make one daily task look fragmented.
+
+**How to apply:** Map every mode and status at the display boundary, format dates with the Arabic locale, and keep memorization and review together in assignment creation and profile views.
+
+Names extracted from a roster image require teacher review before students are created.
+
+**Why:** Vision extraction can misread a student's name, and silently creating the wrong roster entry would contaminate attendance and Quran history.
+
+**How to apply:** Return extracted image names as a preview, place them in an editable bulk-name list, and create students only after the teacher confirms.
