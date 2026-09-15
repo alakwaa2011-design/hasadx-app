@@ -8,6 +8,7 @@ import {
   QuranSurahParsed,
 } from '@/lib/quran-parser';
 import { MADANI_MUSHAF_METADATA } from '@/data/quran/madani-mushaf-metadata';
+import mushafChapters from '@/data/quran/qcomplex/chapters.json';
 import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -16,6 +17,10 @@ import { QuranSearchDialog } from './quran-search-dialog';
 import type { QuranWard } from '@workspace/api-client-react';
 import { QuranStudentSubmissionPanel } from '../student/quran-student-submission';
 import { QuranAudioPlayer } from '@/components/quran/quran-audio-player';
+
+const MUSHAF_SURAH_NAMES = new Map(
+  mushafChapters.map((chapter) => [chapter.id, chapter.name]),
+);
 
 export default function QuranReader() {
   const { lang } = useI18n();
@@ -357,7 +362,7 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
               >
                 {surahs.map(s => (
                   <option key={s.index} value={s.index}>
-                    {s.index}. {lang === 'ar' ? `سورة ${s.name}` : `Surah ${s.name}`}
+                    {s.index}. {MUSHAF_SURAH_NAMES.get(s.index) ?? s.name}
                   </option>
                 ))}
               </select>
@@ -448,12 +453,16 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
       )}
 
       <main className="flex-1 overflow-y-auto px-4 md:px-12 py-10 pb-48 w-full max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <div className="inline-block px-8 py-3 rounded-3xl border-2 border-emerald-800/10 bg-emerald-50/50 dark:border-emerald-500/10 dark:bg-emerald-950/20 shadow-sm">
-            <h1 className="text-3xl md:text-5xl font-black text-emerald-900 dark:text-emerald-50" style={{ fontFamily: "'Traditional Arabic', 'Amiri', serif" }}>
-              {lang === 'ar' ? `سورة ${surah.name}` : `Surah ${surah.name}`}
-            </h1>
-          </div>
+        <div className="mb-10 text-center">
+          <h1
+            className="text-4xl font-bold text-foreground md:text-5xl"
+            style={{
+              fontFamily: "'KFGQPC Uthman Taha Naskh', 'Amiri', 'Traditional Arabic', serif",
+              lineHeight: 1.6,
+            }}
+          >
+            {lang === 'ar' ? `سُورَةُ ${surah.name}` : `Surah ${surah.name}`}
+          </h1>
         </div>
 
         <div className="space-y-7">

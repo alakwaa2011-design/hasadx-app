@@ -283,10 +283,7 @@ export function QuranPagesView({
               >
                 {chapters.map((chapter) => (
                   <option key={chapter.id} value={chapter.id}>
-                    {chapter.id}.{" "}
-                    {lang === "ar"
-                      ? `سورة ${chapter.name}`
-                      : `Surah ${chapter.name}`}
+                     {chapter.id}. {chapter.name}
                   </option>
                 ))}
               </select>
