@@ -284,13 +284,12 @@ function ReaderView({ surahNumber, startAyah, endAyah, mode, requestedAyah, isSt
                 >
                   {lang === 'ar' ? 'نص القرآن' : 'Quran Text'}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setLocation(`/teacher/quran-reader/${surahNumber}?ayah=${activeAyahURL}&view=pages`)}
+                <a
+                  href={`/teacher/quran-reader/${surahNumber}?ayah=${activeAyahURL}&view=pages`}
                   className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
                 >
                   {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
-                </button>
+                </a>
               </div>
             )}
             
