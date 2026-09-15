@@ -29,9 +29,9 @@ import { RewardCelebration, type RewardCelebrationData } from "./reward-celebrat
 import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progress";
 import { LiveBoard } from "./live-board";
 import {
-  Settings, History, Volume2, VolumeX, Eye, EyeOff,
-  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, ChevronDown, ChevronUp,
-  Star, Minus, School
+  Settings, History, Volume2, VolumeX,
+  Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, ChevronDown,
+  Minus, School, MoreVertical
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -82,23 +82,6 @@ function AdventurePointsBadge({ points, className, animate = false, lang = "ar" 
         <span className="text-xs font-black text-amber-50">{rewardText(lang, "نقطة", "points")}</span>
       </div>
     </div>
-  );
-}
-
-function RoyalCompassEmblem() {
-  return (
-    <span className="rewards-pavilion-emblem" aria-hidden="true">
-      <svg viewBox="0 0 48 48" fill="none">
-        <path d="m17 9 7-5 7 5-2 6H19l-2-6Z" fill="#FFF3B8" stroke="#7E5818" strokeWidth="1.5" strokeLinejoin="round" />
-        <path d="m17 9-3 2 3 3m14-5 3 2-3 3" stroke="#FFF8D6" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="24" cy="27" r="12.5" fill="#FFDB68" stroke="#7E5818" strokeWidth="1.8" />
-        <circle cx="24" cy="27" r="8.5" fill="#225C4A" stroke="#FFF3B8" strokeWidth="1.5" />
-        <path d="m24 19.5 2.3 5.2 5.7.6-4.3 3.7 1.3 5.5-5-2.9-5 2.9 1.3-5.5-4.3-3.7 5.7-.6 2.3-5.2Z" fill="#FFE58C" />
-        <circle cx="24" cy="27" r="2" fill="#FFF8D6" />
-        <path d="M12 27a12 12 0 0 1 3.5-8.5M36 27a12 12 0 0 0-3.5-8.5" stroke="#FFF4B8" strokeWidth="1.4" strokeLinecap="round" />
-        <circle cx="10.5" cy="27" r="1.5" fill="#FFF3B8" /><circle cx="37.5" cy="27" r="1.5" fill="#FFF3B8" />
-      </svg>
-    </span>
   );
 }
 
@@ -189,12 +172,13 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const [groupGrantOpen, setGroupGrantOpen] = useState(false);
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<ClassroomRewardGoal | null>(null);
-  const [showAllGoals, setShowAllGoals] = useState(false);
+  const [goalsManagerOpen, setGoalsManagerOpen] = useState(false);
   const [liveBoardOpen, setLiveBoardOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { data: boardData, isLoading: boardLoading } = useGetRewardBoard(currentClass, liveBoardOpen);
 
   useEffect(() => {
-    setShowAllGoals(false);
+    setGoalsManagerOpen(false);
   }, [currentClass]);
 
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
@@ -634,10 +618,11 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           <i /><i /><i /><i /><i />
         </div>
 
+
         {/* Storybook Header */}
-        <header className="relative z-10 mx-auto w-full pt-4 pb-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between rounded-[2rem] border-2 border-white/60 bg-gradient-to-b from-white/90 to-white/50 p-2 sm:p-2.5 sm:pr-4 shadow-[0_8px_30px_-12px_rgba(23,63,52,0.1)] backdrop-blur-xl">
-            {/* Left/Right (RTL): Identity & Context */}
+        <header className="relative z-10 mx-auto w-full pt-4 pb-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[2rem] border-2 border-emerald-50 bg-white/95 p-2 sm:p-2.5 sm:pr-4 shadow-sm backdrop-blur-xl">
+            {/* Right (RTL): Back & Class Selector */}
             <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
               <button
                 type="button"
@@ -645,333 +630,276 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   if (embedded) setEmbeddedClass(undefined);
                   else setLocation("/teacher/rewards");
                 }}
-                className="group flex h-12 w-12 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition-all hover:bg-emerald-100 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition-all hover:bg-emerald-100 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
                 aria-label={r("الرجوع إلى اختيار الصف", "Back to class selection")}
-                title={r("الرجوع إلى اختيار الصف", "Back to class selection")}
               >
-                <ArrowRight size={22} className="transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight size={20} className="transition-transform group-hover:translate-x-0.5" />
               </button>
 
-              <div className="hidden sm:block">
-                <RoyalCompassEmblem />
+              <div className="flex flex-col min-w-0 justify-center">
+                 <div className="group relative flex items-center gap-1.5">
+                    <label htmlFor="rewards-class-selector" className="sr-only">{r("اختر صف لوحة التحفيز", "Choose a rewards board class")}</label>
+                   <select
+                     id="rewards-class-selector"
+                     value={currentClass}
+                     onChange={(e) => {
+                       if (e.target.value) {
+                         if (embedded) setEmbeddedClass(e.target.value);
+                         else setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
+                       }
+                     }}
+                     className="appearance-none bg-transparent text-lg font-black text-emerald-950 focus:outline-none cursor-pointer pr-1 truncate max-w-[10rem] sm:max-w-[16rem]"
+                   >
+                     {classOptions.map((name) => (
+                       <option key={name} value={name} className="font-bold text-emerald-950">
+                         {name}
+                       </option>
+                     ))}
+                   </select>
+                   <ChevronDown size={16} className="text-emerald-700/60 group-hover:text-emerald-700 transition-colors pointer-events-none" />
+                 </div>
               </div>
 
-              <div className="flex flex-col min-w-0 justify-center">
-                 <p className="text-[11px] sm:text-xs font-bold text-emerald-700/60 mb-0.5 sm:mb-1">{r("رحلة التحفيز", "Motivation journey")}</p>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl font-black text-emerald-950 tracking-wide flex items-center gap-2">
-                    <span className="group/class-selector relative min-w-0 flex items-center">
-                       <label htmlFor="rewards-class-selector" className="sr-only">{r("اختر صف لوحة التحفيز", "Choose a rewards board class")}</label>
-                      <select
-                        id="rewards-class-selector"
-                        value={currentClass}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            if (embedded) setEmbeddedClass(e.target.value);
-                            else setLocation(`/teacher/rewards/${encodeURIComponent(e.target.value)}`);
-                          }
-                        }}
-                         aria-label={r("اختر صف لوحة التحفيز", "Choose a rewards board class")}
-                        className="max-w-[10rem] cursor-pointer appearance-none truncate rounded-xl border border-emerald-900/10 bg-white/80 py-1 pl-7 pr-3 text-sm font-black text-emerald-950 shadow-sm outline-none backdrop-blur-md transition-all hover:bg-emerald-50 hover:border-emerald-200 focus:ring-2 focus:ring-emerald-400/50 sm:max-w-[16rem]"
-                      >
-                        {classOptions.map((name) => (
-                          <option key={name} value={name} className="font-bold text-emerald-950">
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-700/60 group-hover/class-selector:text-emerald-700 transition-colors">
-                        <ChevronDown size={14} strokeWidth={3} />
-                      </div>
-                    </span>
-                  </h1>
-                  <span className="flex items-center justify-center rounded-lg bg-emerald-100/80 px-2 py-0.5 text-[10px] font-black text-emerald-800 shrink-0">
-                     {classData?.students?.length ?? 0} {r("طالب", "students")}
-                  </span>
-                </div>
-              </div>
+              <span className="flex items-center justify-center rounded-lg bg-emerald-100/80 px-2 py-0.5 text-[11px] font-black text-emerald-800 shrink-0 shadow-inner">
+                {classData?.students?.length ?? 0} {r("طالب", "students")}
+              </span>
             </div>
 
-            {/* Actions */}
-            <div className="flex w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-white/80 bg-white/60 p-1.5 shadow-sm min-w-max mx-auto sm:mx-0">
+            {/* Left (RTL): Main Actions */}
+            <div className="flex w-full justify-center sm:w-auto sm:justify-start">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     resumeAudioContext();
                     setLiveBoardOpen(true);
                   }}
-                  className="group relative flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 sm:px-4 py-2 font-black text-white shadow-md shadow-emerald-600/20 border border-emerald-500 transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
-                   aria-label={r("لوحة التحفيز المباشرة", "Live rewards board")}
+                  className="group relative flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 font-black text-white shadow-md shadow-emerald-600/20 border border-emerald-500 transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
                   data-testid="button-live-board"
                 >
-                  <Target size={16} className="text-amber-300 transition-transform group-hover:rotate-12" />
-                   <span className="text-xs sm:text-sm">{r("لوحة التحفيز المباشرة", "Live rewards board")}</span>
+                  <Target size={18} className="text-amber-300 transition-transform group-hover:rotate-12" />
+                  <span className="text-sm">{r("اللوحة المباشرة", "Live board")}</span>
                   <span className="absolute -right-1 -top-1 flex h-3 w-3">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75 motion-reduce:animate-none" />
                     <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-400 border border-white/50" />
                   </span>
                 </button>
 
-                <div className="h-6 w-px bg-emerald-900/10 mx-0.5" />
-
-                <button
-                  type="button"
-                  onClick={() => setLedgerOpen(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                   aria-label={r("سجل النقاط", "Points ledger")}
-                   title={r("السجل والملخص", "Ledger and summary")}
-                >
-                  <History size={18} />
-                </button>
-                <button
-                  type="button"
-                  data-testid="button-open-reward-rules"
-                  onClick={() => setRulesOpen(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                   aria-label={r("قواعد التحفيز التلقائي", "Automatic reward rules")}
-                   title={r("قواعد التحفيز التلقائي", "Automatic reward rules")}
-                >
-                  <Zap size={18} className="text-amber-500 fill-amber-500/20" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(true)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
-                   aria-label={r("إعدادات التحفيز", "Reward settings")}
-                   title={r("إعدادات التحفيز", "Reward settings")}
-                >
-                  <Settings size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsMuted(!isMuted)}
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20",
-                    isMuted && "bg-slate-100 text-slate-500 shadow-none hover:bg-slate-200"
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(!menuOpen)}
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                    aria-label={r("خيارات إضافية", "More options")}
+                    aria-expanded={menuOpen}
+                    aria-controls="reward-dashboard-more-menu"
+                  >
+                    <MoreVertical size={20} />
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                      <div id="reward-dashboard-more-menu" className="absolute left-0 top-full z-50 mt-2 w-52 rounded-2xl border border-emerald-100 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95">
+                        <button type="button" onClick={() => { setLedgerOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-50 focus:bg-emerald-50 outline-none">
+                          <History size={17} className="text-emerald-600" /> {r("سجل النقاط", "Points ledger")}
+                        </button>
+                        <button type="button" data-testid="button-open-reward-rules" onClick={() => { setRulesOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-50 focus:bg-emerald-50 outline-none">
+                          <Zap size={17} className="text-amber-500" /> {r("قواعد التحفيز", "Reward rules")}
+                        </button>
+                        <button type="button" onClick={() => { setSettingsOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-50 focus:bg-emerald-50 outline-none">
+                          <Settings size={17} className="text-emerald-600" /> {r("الإعدادات", "Settings")}
+                        </button>
+                        <div className="my-1 border-t border-emerald-50" />
+                        <button type="button" onClick={() => { setIsMuted(!isMuted); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-50 focus:bg-emerald-50 outline-none">
+                          {isMuted ? <VolumeX size={17} className="text-slate-500" /> : <Volume2 size={17} className="text-emerald-600" />}
+                          {isMuted ? r("إلغاء الكتم", "Unmute") : r("كتم الصوت", "Mute sound")}
+                        </button>
+                      </div>
+                    </>
                   )}
-                   aria-label={isMuted ? r("إلغاء الكتم", "Unmute") : r("كتم الصوت", "Mute sound")}
-                   title={isMuted ? r("إلغاء الكتم", "Unmute") : r("كتم الصوت", "Mute sound")}
-                >
-                  {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-                </button>
+                </div>
               </div>
             </div>
           </div>
         </header>
 
-        <section className="relative overflow-hidden rounded-[2rem] border border-emerald-200 bg-gradient-to-l from-emerald-950 via-emerald-900 to-[#225739] p-4 text-white shadow-lg shadow-emerald-950/10 sm:p-5">
-          <div className="absolute -left-12 -top-16 h-44 w-44 rounded-full bg-amber-300/10 blur-2xl" aria-hidden="true" />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-amber-300 shadow-inner">
-                <School size={25} />
-              </span>
-              <div>
-                <p className="text-xs font-bold text-emerald-100/75">{r("نقاط الصف الجماعية", "Collective class points")}</p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <strong className="text-3xl font-black text-white">{classBalanceLoading ? "—" : formatPoints(classBalanceData?.balance ?? 0)}</strong>
-                  <span className="text-sm font-black text-amber-200">{r("نقطة للصف", "class points")}</span>
-                </div>
-                <p className="mt-1 text-[11px] font-bold text-emerald-100/65">{r("رصيد مستقل لا يغيّر نقاط الطلبة", "A separate balance that does not change student points")}</p>
+        {/* Lightweight Dashboard Strip */}
+        <section aria-label={r("ملخص التحفيز الأسبوعي", "Weekly rewards summary")} className="flex flex-nowrap items-stretch gap-3 overflow-x-auto pb-4 pt-1 [scrollbar-width:none]">
+          {/* Class Points */}
+          <button
+            type="button"
+            onClick={() => setClassBalanceOpen(true)}
+            className="group flex shrink-0 min-w-[145px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm hover:border-amber-200 hover:shadow-md transition-all text-right focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:scale-105 transition-transform shadow-inner">
+              <School size={22} />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-emerald-900/60 mb-0.5">{r("نقاط الصف", "Class points")}</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-black text-emerald-950">{classBalanceLoading ? "—" : formatPoints(classBalanceData?.balance ?? 0)}</span>
               </div>
             </div>
+          </button>
+
+          {/* Weekly Stats */}
+          <div className="flex shrink-0 min-w-[145px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm text-right">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shadow-inner">
+              <Sparkles size={22} />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-emerald-900/60 mb-0.5">{r("نقاط الأسبوع", "Weekly points")}</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-lg font-black text-emerald-950">{weeklySummaryLoading || weeklySummaryError ? "—" : formatPoints(weeklyStats.totalPoints)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Goals */}
+          {!goalsLoading && (goalsData?.goals?.length ?? 0) === 0 && (
             <button
               type="button"
-              onClick={() => setClassBalanceOpen(true)}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-amber-300 px-5 py-2.5 text-sm font-black text-emerald-950 shadow-md shadow-black/10 transition hover:bg-amber-200 active:scale-95"
+              onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
+              className="group flex shrink-0 min-w-[145px] items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 p-3 shadow-sm hover:bg-emerald-50 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
             >
-              <SlidersHorizontal size={17} />
-              {r("إضافة أو خصم", "Add or deduct")}
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100/60 text-emerald-600 group-hover:scale-105 transition-transform">
+                <Plus size={22} />
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] font-bold text-emerald-800">{r("إضافة هدف", "Add goal")}</p>
+                <p className="text-[10px] font-bold text-emerald-900/50 mt-0.5">{r("جديد للصف", "New for class")}</p>
+              </div>
             </button>
-          </div>
-        </section>
+          )}
 
-        <section aria-label={r("ملخص التحفيز الأسبوعي", "Weekly rewards summary")} className="rewards-pavilion-summary grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-          {weeklySummaryLoading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="h-[74px] animate-pulse rounded-2xl border border-emerald-100 bg-emerald-50/60" />
-              ))
-            ) : weeklySummaryError ? (
-              <div className="col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-500 sm:col-span-4">
-                {r("تعذر تحميل ملخص هذا الأسبوع الآن.", "Could not load this week's summary.")}
-              </div>
-            ) : (
-              <>
-            <div className="rewards-pavilion-summary-card rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
-              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--gold"><Sparkles size={17} /></span>
-              <div><p className="text-xs font-bold text-emerald-900/60">{r("نقاط هذا الأسبوع", "Points this week")}</p>
-              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.totalPoints)}</p></div>
-            </div>
-            <div className="rewards-pavilion-summary-card rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
-              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--coral"><UserRound size={17} /></span>
-              <div><p className="text-xs font-bold text-emerald-900/60">{r("طلاب تم تحفيزهم", "Students recognized")}</p>
-              <p className="mt-1 text-xl font-black text-emerald-950">{formatPoints(weeklyStats.recognizedCount)}</p></div>
-            </div>
-            <div className={cn("rewards-pavilion-summary-card rounded-2xl border px-3 py-3 shadow-sm", weeklyStats.awaitingRecognition > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-100 bg-white")}>
-              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--mint"><Eye size={17} /></span>
-              <div><p className="text-xs font-bold text-emerald-900/60">{r("بانتظار التحفيز", "Awaiting recognition")}</p>
-              <p className={cn("mt-1 text-xl font-black", weeklyStats.awaitingRecognition > 0 ? "text-amber-800" : "text-emerald-950")}>{formatPoints(weeklyStats.awaitingRecognition)}</p></div>
-            </div>
-            <div className="rewards-pavilion-summary-card min-w-0 rounded-2xl border border-emerald-100 bg-white px-3 py-3 shadow-sm">
-              <span className="rewards-pavilion-summary-icon rewards-pavilion-summary-icon--plum"><Zap size={17} /></span>
-               <div className="min-w-0"><p className="text-xs font-bold text-emerald-900/60">{r("الأكثر استخدامًا", "Most used")}</p>
-              <p className="mt-1 truncate text-sm font-black text-emerald-950">{weeklyStats.topTypeName}</p></div>
-            </div>
-              </>
-            )}
-          </section>
-
-        {!liveBoardOpen && (
-          <section aria-labelledby="reward-goals-title" className="rewards-pavilion-goals rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-4 shadow-sm sm:p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-950 text-amber-300 shadow-sm">
-                  <Target size={21} />
-                </span>
-                <div>
-                   <h2 id="reward-goals-title" className="font-black text-emerald-950">{r("أهداف التقدم", "Progress goals")}</h2>
-                   <p className="text-xs font-bold text-emerald-900/55">{r("حوّل النقاط إلى رحلة تعلم واضحة", "Turn points into a clear learning journey")}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
-                >
-                  <Plus size={16} />
-                   {r("هدف جديد", "New goal")}
-                </button>
-              </div>
-            </div>
-            {goalsLoading ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {[0, 1].map((item) => <div key={item} className="h-36 animate-pulse rounded-[2rem] bg-emerald-100/50" />)}
-              </div>
-            ) : (goalsData?.goals?.length ?? 0) > 0 ? (
-              <div>
-                <div id="reward-goals-list" className="grid gap-3 md:grid-cols-2">
-                  {goalsData!.goals
-                    .slice(0, showAllGoals ? undefined : INITIAL_VISIBLE_GOALS)
-                    .map((goal) => (
-                      <GoalProgressCard
-                        key={goal.id}
-                        goal={goal}
-                        onEdit={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
-                        onArchive={() => handleArchiveGoal(goal)}
-                      />
-                    ))}
-                </div>
-                {goalsData!.goals.length > INITIAL_VISIBLE_GOALS && (
-                  <button
-                    type="button"
-                    data-testid="button-toggle-reward-goals"
-                    aria-expanded={showAllGoals}
-                    aria-controls="reward-goals-list"
-                    onClick={() => setShowAllGoals((current) => !current)}
-                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-white px-3 py-2.5 text-sm font-black text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/30 motion-reduce:transition-none"
-                  >
-                    {showAllGoals ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    {showAllGoals
-                       ? r("طي الأهداف", "Collapse goals")
-                       : r(`عرض ${formatPoints(goalsData!.goals.length - INITIAL_VISIBLE_GOALS)} أهداف أخرى`, `Show ${formatPoints(goalsData!.goals.length - INITIAL_VISIBLE_GOALS)} more goals`)}
-                  </button>
-                )}
-              </div>
-            ) : (
+          {goalsData?.goals?.slice(0, INITIAL_VISIBLE_GOALS).map(goal => {
+            const percentage = Math.min(100, Math.max(0, (goal.currentPoints / goal.targetPoints) * 100));
+            const isCompleted = percentage >= 100;
+            return (
               <button
                 type="button"
-                onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-emerald-200 bg-white/70 px-4 py-5 text-sm font-black text-emerald-800 transition hover:border-amber-300 hover:bg-amber-50"
+                key={goal.id}
+                onClick={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
+                className={cn("group flex shrink-0 min-w-[160px] max-w-[200px] items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm transition-all text-right focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40", isCompleted ? "border-amber-200 hover:border-amber-300" : "border-emerald-100 hover:border-sky-200 hover:shadow-md")}
               >
-                <Target size={19} className="text-amber-500" />
-                 {r("أنشئ أول هدف للصف أو لطالب", "Create the first class or student goal")}
+                <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl group-hover:scale-105 transition-transform shadow-inner", isCompleted ? "bg-amber-100 text-amber-600" : "bg-sky-50 text-sky-600")}>
+                  <Target size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold text-emerald-900/60 mb-1.5 truncate" title={goal.title}>{goal.title}</p>
+                  <div className="flex items-center gap-2">
+                    <div className={cn("h-1.5 flex-1 rounded-full overflow-hidden", isCompleted ? "bg-amber-200/50" : "bg-slate-100")}>
+                      <div className={cn("h-full rounded-full", isCompleted ? "bg-amber-500" : "bg-sky-500")} style={{ width: `${percentage}%` }} />
+                    </div>
+                    <span className="text-[10px] font-black text-emerald-950 shrink-0">{percentage.toFixed(0)}%</span>
+                  </div>
+                </div>
               </button>
-            )}
-          </section>
-        )}
+            );
+          })}
+
+          {(goalsData?.goals?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => setGoalsManagerOpen(true)}
+              className="flex min-h-[70px] shrink-0 items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-white px-4 text-[11px] font-black text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
+            >
+              <SlidersHorizontal size={15} />
+              {r("إدارة الأهداف", "Manage goals")}
+            </button>
+          )}
+        </section>
 
         {/* Toolbar */}
-          <div className="rewards-pavilion-toolbar space-y-3">
+        <div className="rewards-pavilion-toolbar pb-3 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex bg-white border-2 border-emerald-100 rounded-xl p-1 shadow-sm shrink-0">
+              <div className="flex bg-white border border-emerald-100 rounded-xl p-1 shadow-sm shrink-0">
                 <button
                   type="button"
                   onClick={() => setViewMode("students")}
-                  className={cn("px-4 py-2 rounded-lg text-sm font-black transition-colors", viewMode === "students" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
+                  className={cn("px-4 py-1.5 rounded-lg text-sm font-black transition-colors", viewMode === "students" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
                 >
-                   {r("الطلاب", "Students")}
+                  {r("الطلاب", "Students")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("groups")}
-                  className={cn("px-4 py-2 rounded-lg text-sm font-black transition-colors", viewMode === "groups" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
+                  className={cn("px-4 py-1.5 rounded-lg text-sm font-black transition-colors", viewMode === "groups" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
                 >
-                   {r("المجموعات", "Groups")}
+                  {r("المجموعات", "Groups")}
                 </button>
               </div>
 
               {viewMode === "students" && (
-                <>
-                  <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] sm:[scrollbar-width:none]">
+                <div className="hidden sm:flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none]">
                   <button type="button" onClick={() => setActiveGroupId(null)}
-                    className={cn("shrink-0 rounded-xl border-2 px-3 py-2 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
-                     {r("كل الطلاب", "All students")}
+                    className={cn("shrink-0 rounded-xl border px-3 py-1.5 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
+                    {r("الكل", "All")}
                   </button>
                   {(groupsData?.groups ?? []).map((group) => (
                     <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
                       onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
                   ))}
-                  </div>
-                </>
-              )}
-
-              {viewMode === "groups" && (
-                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                  <button type="button" onClick={() => {
-                    setGroupManagerTargetId("new");
-                    setGroupsOpen(true);
-                  }}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900 shadow-sm hover:border-emerald-400 hover:bg-emerald-50">
-                     <Plus size={18} className="text-emerald-600" /> {r("مجموعة جديدة", "New group")}
-                  </button>
                 </div>
               )}
             </div>
 
-            {viewMode === "students" && (
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1 group">
-                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-900/40 group-focus-within:text-emerald-600 transition-colors" size={18} />
+            {viewMode === "students" ? (
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:w-64 group">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-900/40 group-focus-within:text-emerald-600 transition-colors" size={16} />
                   <input
                     type="text"
-                     placeholder={r("ابحث عن طالب...", "Search for a student...")}
+                    placeholder={r("ابحث عن طالب...", "Search for a student...")}
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-4 pr-11 py-3 rounded-2xl border-2 border-emerald-100 bg-white text-sm font-bold text-emerald-950 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 transition-all shadow-sm"
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full rounded-xl border border-emerald-100 bg-white py-2 pl-3 pr-9 text-sm font-bold text-emerald-950 shadow-sm outline-none transition-all placeholder:text-emerald-900/40 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/10"
                   />
                 </div>
                 {activeGroup && (
                   <button type="button" onClick={() => setSelectedIds(new Set(activeGroup.members.map((member) => member.studentId)))}
-                    className="hidden items-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-black text-white shadow-sm sm:flex"
+                    className="hidden shrink-0 items-center gap-2 rounded-xl border-2 px-3 py-2 text-xs font-black text-white shadow-sm sm:flex hover:opacity-90"
                     style={{ backgroundColor: activeGroup.color, borderColor: activeGroup.color }}>
-                     <UsersRound size={18} /> {r("تحديد المجموعة", "Select group")}
+                     <UsersRound size={16} /> {r("تحديد المجموعة", "Select group")}
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={toggleAll}
-                  className="flex items-center gap-2 px-5 py-3 rounded-2xl border-2 border-emerald-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 text-sm font-black text-emerald-950 transition-all shrink-0 shadow-sm"
+                  className="flex shrink-0 items-center gap-2 px-4 py-2 rounded-xl border border-emerald-100 bg-white hover:bg-emerald-50 hover:border-emerald-200 text-sm font-black text-emerald-950 transition-all shadow-sm"
                 >
                   {selectedIds.size === students.length && students.length > 0 ? (
-                     <><CheckSquare size={18} className="text-amber-500" /> {r("إلغاء التحديد", "Clear selection")}</>
+                     <><CheckSquare size={16} className="text-amber-500" /> <span className="hidden sm:inline">{r("إلغاء", "Clear")}</span></>
                   ) : (
-                     <><Square size={18} className="text-emerald-900/40" /> {activeGroup ? r("تحديد المجموعة", "Select group") : r("تحديد الكل", "Select all")}</>
+                     <><Square size={16} className="text-emerald-900/40" /> <span className="hidden sm:inline">{activeGroup ? r("المجموعة", "Group") : r("الكل", "All")}</span></>
                   )}
                 </button>
               </div>
+            ) : (
+              <button type="button" onClick={() => {
+                setGroupManagerTargetId("new");
+                setGroupsOpen(true);
+              }}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900 shadow-sm hover:border-emerald-400 hover:bg-emerald-50">
+                <Plus size={16} className="text-emerald-600" /> {r("مجموعة جديدة", "New group")}
+              </button>
             )}
           </div>
+
+          {viewMode === "students" && (
+            <div className="flex sm:hidden mt-3 min-w-0 w-full items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none]">
+              <button type="button" onClick={() => setActiveGroupId(null)}
+                className={cn("shrink-0 rounded-xl border px-3 py-1.5 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
+                {r("الكل", "All")}
+              </button>
+              {(groupsData?.groups ?? []).map((group) => (
+                <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
+                  onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Groups / Students Grid */}
         {viewMode === "groups" ? (
@@ -1235,6 +1163,46 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
            </div>
         </div>
       </div>
+
+      <Dialog open={goalsManagerOpen} onOpenChange={setGoalsManagerOpen}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto rounded-3xl" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-950">
+              <Target size={20} className="text-emerald-700" />
+              {r("إدارة أهداف التقدم", "Manage progress goals")}
+            </DialogTitle>
+            <DialogDescription>
+              {r("أنشئ هدفًا جديدًا أو عدّل الأهداف الحالية وأرشف ما لم تعد تحتاجه.", "Create a new goal, edit current goals, or archive goals you no longer need.")}
+            </DialogDescription>
+          </DialogHeader>
+          <button
+            type="button"
+            onClick={() => {
+              setGoalsManagerOpen(false);
+              setEditingGoal(null);
+              setGoalDialogOpen(true);
+            }}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
+          >
+            <Plus size={17} />
+            {r("هدف جديد", "New goal")}
+          </button>
+          <div className="grid gap-3 md:grid-cols-2">
+            {(goalsData?.goals ?? []).map((goal) => (
+              <GoalProgressCard
+                key={goal.id}
+                goal={goal}
+                onEdit={() => {
+                  setGoalsManagerOpen(false);
+                  setEditingGoal(goal);
+                  setGoalDialogOpen(true);
+                }}
+                onArchive={() => handleArchiveGoal(goal)}
+              />
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <RewardTypesSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
       <RewardRulesDialog open={rulesOpen} onOpenChange={setRulesOpen} rewardTypes={rewardTypesData || []} />
