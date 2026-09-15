@@ -347,7 +347,7 @@ export function QuranPagesView({
       )}
 
       <main
-        className="flex flex-1 items-start overflow-auto px-3 py-5 pb-24 md:px-8 md:py-8"
+        className="flex flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
         onTouchStart={(event) => {
           setTouchEnd(null);
           setTouchStart(event.targetTouches[0].clientX);
@@ -370,33 +370,40 @@ export function QuranPagesView({
             <div className="hidden lg:block">{renderPage(visiblePages.left)}</div>
           )}
         </div>
-      </main>
 
-      {!quietMode && (
-        <div
-          dir="ltr"
-          className="pointer-events-none fixed inset-x-0 bottom-8 z-30 flex justify-between px-4 md:px-12"
+        <nav
+          dir={dir}
+          aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
+          className="mx-auto mt-6 flex w-full max-w-[1032px] items-center justify-between gap-3 border-t border-emerald-900/10 px-1 pt-5 dark:border-white/10"
+          style={{ width: `${zoom}%` }}
         >
-          <button
-            type="button"
-            onClick={() => goToPage(activePage + 1)}
-            disabled={activePage >= LAST_PAGE}
-            className="pointer-events-auto flex items-center justify-center rounded-full border border-border bg-white/90 p-4 shadow-lg backdrop-blur-sm transition-all hover:bg-muted disabled:opacity-0 dark:bg-card/90"
-            aria-label={lang === "ar" ? "الصفحة التالية" : "Next page"}
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
           <button
             type="button"
             onClick={() => goToPage(activePage - 1)}
             disabled={activePage <= FIRST_PAGE}
-            className="pointer-events-auto flex items-center justify-center rounded-full border border-border bg-white/90 p-4 shadow-lg backdrop-blur-sm transition-all hover:bg-muted disabled:opacity-0 dark:bg-card/90"
+            className="group inline-flex min-h-12 items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-black text-emerald-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-md disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-800 dark:bg-card dark:text-emerald-100 dark:hover:bg-emerald-950/60 md:px-5"
             aria-label={lang === "ar" ? "الصفحة السابقة" : "Previous page"}
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 rtl:rotate-180 rtl:group-hover:translate-x-0.5" />
+            <span>{lang === "ar" ? "الصفحة السابقة" : "Previous page"}</span>
           </button>
-        </div>
-      )}
+
+          <span className="hidden text-xs font-bold text-muted-foreground sm:block">
+            {lang === "ar" ? `صفحة ${activePage} من ${LAST_PAGE}` : `Page ${activePage} of ${LAST_PAGE}`}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => goToPage(activePage + 1)}
+            disabled={activePage >= LAST_PAGE}
+            className="group inline-flex min-h-12 items-center gap-2 rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg disabled:pointer-events-none disabled:opacity-35 dark:bg-emerald-600 dark:hover:bg-emerald-500 md:px-5"
+            aria-label={lang === "ar" ? "الصفحة التالية" : "Next page"}
+          >
+            <span>{lang === "ar" ? "الصفحة التالية" : "Next page"}</span>
+            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" />
+          </button>
+        </nav>
+      </main>
     </div>
   );
 }
