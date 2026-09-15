@@ -63,20 +63,20 @@ export function QuranStudentProfileView({
   const reviewWards = wards.filter((ward) => ward.mode === "review");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Header Profile */}
-      <div className="bg-white dark:bg-card p-4 md:p-6 rounded-3xl border border-border/60 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6 relative overflow-hidden">
+      <div className="relative flex flex-col items-center gap-4 overflow-hidden rounded-2xl border border-border/60 bg-white p-4 shadow-sm dark:bg-card sm:flex-row sm:items-center md:p-5">
         <div className="hidden md:block absolute top-0 end-0 p-8 pointer-events-none opacity-5">
           <BookOpen className="w-32 h-32" />
         </div>
         
-        <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-black text-2xl md:text-3xl shadow-md shrink-0">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-xl font-black text-white shadow-sm md:h-16 md:w-16 md:text-2xl">
           {studentName.charAt(0)}
         </div>
         
-        <div className="flex-1 text-center md:text-start">
-          <h2 className="text-xl md:text-3xl font-black text-foreground">{studentName}</h2>
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-4 mt-3">
+        <div className="min-w-0 flex-1 text-center sm:text-start">
+          <h2 className="truncate text-xl font-black text-foreground md:text-2xl">{studentName}</h2>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <div className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 md:px-3 py-1 md:py-1.5 rounded-lg">
               <Target className="w-3.5 h-3.5 md:w-4 md:h-4" />
               {lang === "ar" ? "نسبة الإنجاز:" : "Progress:"} {profile.progressPercent}%
@@ -97,10 +97,10 @@ export function QuranStudentProfileView({
           </div>
         </div>
         
-        <div className="w-full md:w-auto mt-2 md:mt-0">
+        <div className="w-full sm:w-auto">
           <button 
             onClick={() => setIsAssigning(true)}
-            className="w-full md:w-auto justify-center px-4 md:px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold shadow-sm hover:bg-emerald-700 hover:shadow transition-all flex items-center gap-2"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-800 sm:w-auto"
           >
             <Plus className="w-4 h-4" />
             {lang === "ar" ? "تعيين مهمة جديدة" : "Assign Ward"}
@@ -108,15 +108,20 @@ export function QuranStudentProfileView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-4">
         {/* One clear assignment card with memorization and review together */}
-        <div className="bg-white dark:bg-card p-6 rounded-3xl border border-border/60 shadow-sm">
-          <div className="flex items-center gap-2 mb-6 text-foreground">
+        <div className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm dark:bg-card md:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3 text-foreground">
+            <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-amber-500" />
-            <h3 className="font-black text-xl">{lang === "ar" ? "المهام الحالية" : "Active Wards"}</h3>
+              <h3 className="text-lg font-black md:text-xl">{lang === "ar" ? "المهام الحالية" : "Active Wards"}</h3>
+            </div>
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {wards.length} {lang === "ar" ? "مهام" : "tasks"}
+            </span>
           </div>
           
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {wards.length === 0 ? (
               <div className="col-span-full text-center p-8 text-muted-foreground bg-muted/30 rounded-2xl border border-dashed border-border">
                 <p className="font-bold">{lang === "ar" ? "لا توجد مهام نشطة" : "No active wards"}</p>
@@ -145,16 +150,16 @@ export function QuranStudentProfileView({
         </div>
 
         {/* Recent Recitations */}
-        <div className="bg-white dark:bg-card p-6 rounded-3xl border border-border/60 shadow-sm">
-          <div className="flex items-center gap-2 mb-6 text-foreground">
+        <div className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm dark:bg-card md:p-5">
+          <div className="mb-4 flex items-center gap-2 text-foreground">
             <History className="w-5 h-5 text-emerald-500" />
-            <h3 className="font-black text-xl">{lang === "ar" ? "سجل التسميع" : "Recitation History"}</h3>
+            <h3 className="text-lg font-black md:text-xl">{lang === "ar" ? "سجل التسميع" : "Recitation History"}</h3>
           </div>
           
           <div className="space-y-3">
             {recentRecitations.length === 0 ? (
-              <div className="text-center p-8 text-muted-foreground bg-muted/30 rounded-2xl border border-dashed border-border">
-                <p className="font-bold">{lang === "ar" ? "لا يوجد سجل تسميع" : "No recitation history"}</p>
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-5 text-center text-muted-foreground">
+                <p className="text-sm font-bold">{lang === "ar" ? "لا يوجد سجل تسميع حتى الآن" : "No recitation history yet"}</p>
               </div>
             ) : (
               recentRecitations.map(rec => (
@@ -224,10 +229,10 @@ function WardColumn({
   onRecord: (wardId: number) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="font-black text-emerald-800 dark:text-emerald-300">{title}</h4>
-        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-muted-foreground dark:bg-card">
+    <section className="rounded-xl border border-border/60 bg-muted/15 p-3">
+      <div className="mb-2.5 flex items-center justify-between">
+        <h4 className="text-sm font-black text-emerald-800 dark:text-emerald-300">{title}</h4>
+        <span className="rounded-full bg-background px-2 py-0.5 text-xs font-black text-muted-foreground">
           {wards.length}
         </span>
       </div>
@@ -241,31 +246,31 @@ function WardColumn({
           const surahNum = surah ? surah.number : 1;
           const readerUrl = `/teacher/quran-reader/${surahNum}?startAyah=${ward.startAyah}&endAyah=${ward.endAyah}&wardId=${ward.id}&mode=${ward.mode}&view=reader`;
           return (
-          <div key={ward.id} className="rounded-xl border border-border/60 bg-background p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-black text-foreground">{ward.surahName}</p>
-                <p className="mt-1 text-xs font-bold text-muted-foreground">
+          <div key={ward.id} className="rounded-xl border border-border/60 bg-background p-3 transition-colors hover:border-emerald-200 dark:hover:border-emerald-900">
+            <div className="flex items-start justify-between gap-3">
+              <Link href={readerUrl} className="min-w-0 flex-1 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <p className="truncate font-black text-foreground">{ward.surahName}</p>
+                <p className="mt-0.5 text-xs font-bold text-muted-foreground">
                   {isArabic ? "من الآية" : "Ayahs"} {ward.startAyah}–{ward.endAyah}
                 </p>
-              </div>
+              </Link>
               <span className="shrink-0 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                 {quranStatusLabel(ward.status, isArabic)}
               </span>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/50 pt-2">
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2.5">
               <span className="text-[11px] font-bold text-muted-foreground">
                 {isArabic ? "الاستحقاق:" : "Due:"} {quranDateLabel(ward.dueDate, isArabic)}
               </span>
-              <div className="flex gap-2">
-                <Link href={readerUrl} className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-black text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300">
+              <div className="flex shrink-0 gap-1.5">
+                <Link href={readerUrl} className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1.5 text-xs font-black text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
                   <BookOpen className="h-3.5 w-3.5" />
-                  {isArabic ? "مصحف" : "Read"}
+                  {isArabic ? "فتح" : "Open"}
                 </Link>
                 {ward.status !== "completed" && (
                   <button
                     onClick={() => onRecord(ward.id)}
-                    className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-700 px-2.5 py-1.5 text-xs font-black text-white transition-colors hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     {isArabic ? "تسجيل" : "Record"}
