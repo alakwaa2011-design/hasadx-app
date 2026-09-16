@@ -135,6 +135,7 @@ export function QuranMadaniPageRenderer({
   useEffect(() => {
     let mounted = true;
     const fontUrls = [
+      `${import.meta.env.BASE_URL}quran/qcf-v2/p${pageNumber}.woff2`,
       `https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2`,
       `https://static.qurancdn.com/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2`,
     ];

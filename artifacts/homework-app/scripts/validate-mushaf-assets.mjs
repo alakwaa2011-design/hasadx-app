@@ -2,6 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import sharp from "sharp";
+import { createHash } from "node:crypto";
 
 const PAGE_COUNT = 604;
 const EXPECTED_WIDTH = 904;
@@ -11,6 +12,10 @@ const assetDirectory = fileURLToPath(
   new URL("../public/quran/mushaf-hafs-1441/", import.meta.url),
 );
 const manifestPath = path.join(assetDirectory, "manifest.json");
+const fontDirectory = fileURLToPath(
+  new URL("../public/quran/qcf-v2/", import.meta.url),
+);
+const fontManifestPath = path.join(fontDirectory, "manifest.json");
 
 function fail(message) {
   throw new Error(`Mushaf asset validation failed: ${message}`);
@@ -74,6 +79,73 @@ async function validatePage(pageEntry, page) {
   }
 }
 
+async function validateFont(fontEntry, page) {
+  const file = `p${page}.woff2`;
+  if (
+    fontEntry === null ||
+    typeof fontEntry !== "object" ||
+    fontEntry.page !== page ||
+    fontEntry.file !== file ||
+    !Number.isSafeInteger(fontEntry.bytes) ||
+    fontEntry.bytes < 10_000 ||
+    fontEntry.bytes > 500_000 ||
+    !SHA256_PATTERN.test(fontEntry.sha256)
+  ) {
+    fail(`QCF V2 manifest entry for page ${page} is invalid`);
+  }
+
+  const bytes = await readFile(path.join(fontDirectory, file));
+  if (bytes.length !== fontEntry.bytes) {
+    fail(`${file} has ${bytes.length} bytes, but the QCF V2 manifest records ${fontEntry.bytes}`);
+  }
+  if (bytes.subarray(0, 4).toString("ascii") !== "wOF2") {
+    fail(`${file} does not have a valid WOFF2 signature`);
+  }
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (sha256 !== fontEntry.sha256) {
+    fail(`${file} does not match its trusted SHA-256 digest`);
+  }
+}
+
+async function validateFonts() {
+  const manifest = JSON.parse(await readFile(fontManifestPath, "utf8"));
+  if (
+    manifest.format !== "QCF V2 WOFF2" ||
+    manifest.pageCount !== PAGE_COUNT ||
+    !Array.isArray(manifest.files) ||
+    manifest.files.length !== PAGE_COUNT
+  ) {
+    fail(`QCF V2 manifest must describe exactly ${PAGE_COUNT} page fonts`);
+  }
+
+  const entries = await readdir(fontDirectory, { withFileTypes: true });
+  const fontFiles = entries
+    .filter((entry) => entry.isFile() && /^p\d+\.woff2$/.test(entry.name))
+    .map((entry) => entry.name);
+  const expectedFiles = Array.from({ length: PAGE_COUNT }, (_, index) => `p${index + 1}.woff2`);
+  if (
+    fontFiles.length !== PAGE_COUNT ||
+    expectedFiles.some((file) => !fontFiles.includes(file))
+  ) {
+    fail(`expected exactly ${PAGE_COUNT} sequential QCF V2 WOFF2 files`);
+  }
+
+  const concurrency = 16;
+  for (let index = 0; index < PAGE_COUNT; index += concurrency) {
+    await Promise.all(
+      manifest.files
+        .slice(index, index + concurrency)
+        .map((entry, offset) => validateFont(entry, index + offset + 1)),
+    );
+  }
+
+  const totalBytes = manifest.files.reduce((sum, entry) => sum + entry.bytes, 0);
+  if (totalBytes !== manifest.totalBytes) {
+    fail(`QCF V2 total size is ${totalBytes}, but the manifest records ${manifest.totalBytes}`);
+  }
+  console.log(`Validated ${PAGE_COUNT} local QCF V2 WOFF2 fonts (${totalBytes} bytes) against SHA-256 manifest.`);
+}
+
 async function main() {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   if (manifest.pageCount !== PAGE_COUNT) {
@@ -124,6 +196,7 @@ async function main() {
   console.log(
     `Validated ${PAGE_COUNT} Mushaf WebP pages (${EXPECTED_WIDTH}x${EXPECTED_HEIGHT}) against manifest.json.`,
   );
+  await validateFonts();
 }
 
 main().catch((error) => {
