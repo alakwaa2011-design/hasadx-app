@@ -1701,6 +1701,42 @@ paths:
                 items:
                   $ref: "#/components/schemas/QuranSurah"
 
+  /quran/reciters:
+    get:
+      operationId: listQuranReciters
+      tags: [quran]
+      summary: List trusted Quran Foundation reciters and the current account preference
+      responses:
+        "200":
+          description: Trusted recitation catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranReciterCatalog"
+        "503": { description: Official recitation catalog is temporarily unavailable }
+
+  /quran/audio-preference:
+    patch:
+      operationId: updateQuranAudioPreference
+      tags: [quran]
+      summary: Save the current teacher or student account's preferred recitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuranAudioPreferenceInput"
+      responses:
+        "200":
+          description: Saved account audio preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranAudioPreference"
+        "400": { description: Invalid or unavailable recitation }
+        "401": { description: Not authenticated }
+        "503": { description: Official recitation catalog is temporarily unavailable }
+
   /quran/content/{surahNumber}:
     get:
       operationId: getQuranSurahContent
@@ -1730,7 +1766,7 @@ paths:
         - name: recitationId
           in: path
           required: true
-          schema: { type: integer, enum: [3, 6, 7, 9] }
+          schema: { type: integer, minimum: 1 }
         - name: surahNumber
           in: path
           required: true
@@ -2316,6 +2352,38 @@ components:
         arabicName: { type: string }
         ayahCount: { type: integer, minimum: 1 }
       required: [number, arabicName, ayahCount]
+
+    QuranReciter:
+      type: object
+      properties:
+        id: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1 }
+        style: { type: ["string", "null"] }
+      required: [id, name, style]
+
+    QuranReciterCatalog:
+      type: object
+      properties:
+        reciters:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/QuranReciter"
+        preferredRecitationId: { type: ["integer", "null"], minimum: 1 }
+      required: [reciters, preferredRecitationId]
+
+    QuranAudioPreference:
+      type: object
+      properties:
+        preferredRecitationId: { type: integer, minimum: 1 }
+      required: [preferredRecitationId]
+
+    QuranAudioPreferenceInput:
+      type: object
+      properties:
+        recitationId: { type: integer, minimum: 1 }
+      required: [recitationId]
+      additionalProperties: false
 
     QuranContentAyah:
       type: object

@@ -13917,6 +13917,56 @@ export declare const ListQuranSurahsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     ayahCount: number;
 }>, "many">;
 /**
+ * @summary List trusted Quran Foundation reciters and the current account preference
+ */
+export declare const ListQuranRecitersResponse: zodV3.ZodObject<{
+    reciters: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        style: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        id: number;
+        style: string | null;
+    }, {
+        name: string;
+        id: number;
+        style: string | null;
+    }>, "many">;
+    preferredRecitationId: zodV3.ZodNullable<zodV3.ZodNumber>;
+}, "strip", zodV3.ZodTypeAny, {
+    reciters: {
+        name: string;
+        id: number;
+        style: string | null;
+    }[];
+    preferredRecitationId: number | null;
+}, {
+    reciters: {
+        name: string;
+        id: number;
+        style: string | null;
+    }[];
+    preferredRecitationId: number | null;
+}>;
+/**
+ * @summary Save the current teacher or student account's preferred recitation
+ */
+export declare const UpdateQuranAudioPreferenceBody: zodV3.ZodObject<{
+    recitationId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    recitationId: number;
+}, {
+    recitationId: number;
+}>;
+export declare const UpdateQuranAudioPreferenceResponse: zodV3.ZodObject<{
+    preferredRecitationId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    preferredRecitationId: number;
+}, {
+    preferredRecitationId: number;
+}>;
+/**
  * @summary Get official Uthmani Quran text for one surah
  */
 export declare const getQuranSurahContentPathSurahNumberMax = 114;
@@ -13970,16 +14020,16 @@ export declare const GetQuranSurahContentResponse: zodV3.ZodObject<{
 export declare const getQuranAyahAudioPathSurahNumberMax = 114;
 export declare const getQuranAyahAudioPathAyahNumberMax = 286;
 export declare const GetQuranAyahAudioParams: zodV3.ZodObject<{
-    recitationId: zodV3.ZodUnion<[zodV3.ZodLiteral<3>, zodV3.ZodLiteral<6>, zodV3.ZodLiteral<7>, zodV3.ZodLiteral<9>]>;
+    recitationId: zodV3.ZodNumber;
     surahNumber: zodV3.ZodNumber;
     ayahNumber: zodV3.ZodNumber;
 }, "strip", zodV3.ZodTypeAny, {
+    recitationId: number;
     surahNumber: number;
-    recitationId: 6 | 3 | 7 | 9;
     ayahNumber: number;
 }, {
+    recitationId: number;
     surahNumber: number;
-    recitationId: 6 | 3 | 7 | 9;
     ayahNumber: number;
 }>;
 export declare const GetQuranAyahAudioResponse: zodV3.ZodVoid;

@@ -15,6 +15,31 @@ export interface QuranSurah {
     /** @minimum 1 */
     ayahCount: number;
 }
+export interface QuranReciter {
+    /** @minimum 1 */
+    id: number;
+    /** @minLength 1 */
+    name: string;
+    /** @nullable */
+    style: string | null;
+}
+export interface QuranReciterCatalog {
+    /** @minItems 1 */
+    reciters: QuranReciter[];
+    /**
+       * @minimum 1
+       * @nullable
+       */
+    preferredRecitationId: number | null;
+}
+export interface QuranAudioPreference {
+    /** @minimum 1 */
+    preferredRecitationId: number;
+}
+export interface QuranAudioPreferenceInput {
+    /** @minimum 1 */
+    recitationId: number;
+}
 export interface QuranContentAyah {
     /** @minimum 1 */
     index: number;

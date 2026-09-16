@@ -723,7 +723,7 @@ export function QuranTextReaderView({
           </p>
           <p className="font-bold mb-1">{lang === 'ar' ? 'المصدر الأساسي للتلاوات: Quran Foundation' : 'Primary audio source: Quran Foundation'}</p>
           <p className="opacity-70">
-            {lang === 'ar' ? 'حقوق التلاوات محفوظة للقراء، مع تشغيل مصدر احتياطي تلقائيًا عند تعذر الصوت الرسمي.' : 'Recitation rights remain with their reciters, with an automatic backup source if official audio is unavailable.'}
+            {lang === 'ar' ? 'حقوق التلاوات محفوظة للقراء، وتُشغّل الروابط الموثوقة من Quran Foundation فقط.' : 'Recitation rights remain with their reciters, and only trusted Quran Foundation links are played.'}
           </p>
         </footer>
       )}

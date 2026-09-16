@@ -10,6 +10,7 @@ export const studentAccountsTable = pgTable("student_accounts", {
   googleId: text("google_id").unique(),
   totalScore: integer("total_score").notNull().default(0),
   gamesPlayed: integer("games_played").notNull().default(0),
+  preferredQuranRecitationId: integer("preferred_quran_recitation_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

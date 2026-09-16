@@ -4509,6 +4509,43 @@ export const ListQuranSurahsResponse = zod.array(ListQuranSurahsResponseItem)
 
 
 /**
+ * @summary List trusted Quran Foundation reciters and the current account preference
+ */
+
+
+
+
+
+
+export const ListQuranRecitersResponse = zod.object({
+  "reciters": zod.array(zod.object({
+  "id": zod.int().min(1),
+  "name": zod.string().min(1),
+  "style": zod.string().nullable()
+})).min(1),
+  "preferredRecitationId": zod.int().min(1).nullable()
+})
+
+
+/**
+ * @summary Save the current teacher or student account's preferred recitation
+ */
+
+
+
+export const UpdateQuranAudioPreferenceBody = zod.object({
+  "recitationId": zod.int().min(1)
+})
+
+
+
+
+export const UpdateQuranAudioPreferenceResponse = zod.object({
+  "preferredRecitationId": zod.int().min(1)
+})
+
+
+/**
  * @summary Get official Uthmani Quran text for one surah
  */
 export const getQuranSurahContentPathSurahNumberMax = 114;
@@ -4542,6 +4579,7 @@ export const GetQuranSurahContentResponse = zod.object({
 /**
  * @summary Redirect to the official audio for one ayah
  */
+
 export const getQuranAyahAudioPathSurahNumberMax = 114;
 
 export const getQuranAyahAudioPathAyahNumberMax = 286;
@@ -4549,7 +4587,7 @@ export const getQuranAyahAudioPathAyahNumberMax = 286;
 
 
 export const GetQuranAyahAudioParams = zod.object({
-  "recitationId": zod.union([zod.literal(3),zod.literal(6),zod.literal(7),zod.literal(9)]),
+  "recitationId": zod.coerce.number().int().min(1),
   "surahNumber": zod.coerce.number().int().min(1).max(getQuranAyahAudioPathSurahNumberMax),
   "ayahNumber": zod.coerce.number().int().min(1).max(getQuranAyahAudioPathAyahNumberMax)
 })

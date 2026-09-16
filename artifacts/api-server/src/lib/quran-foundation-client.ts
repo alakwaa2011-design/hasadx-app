@@ -5,6 +5,7 @@ const OAUTH_BASE_URL = "https://oauth2.quran.foundation";
 const CONTENT_BASE_URL = "https://apis.quran.foundation";
 const TOKEN_EARLY_REFRESH_MS = 60_000;
 const CATALOG_CACHE_MS = 24 * 60 * 60 * 1_000;
+const RECITATION_CATALOG_CACHE_MS = 24 * 60 * 60 * 1_000;
 const SURAH_CACHE_MS = 24 * 60 * 60 * 1_000;
 const MADANI_PAGE_CACHE_MS = 24 * 60 * 60 * 1_000;
 const AUDIO_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
@@ -30,6 +31,12 @@ export type QuranFoundationSurahContent = {
   name: string;
   ayahs: Array<{ index: number; text: string; bismillah: string | null }>;
   source: "quran_foundation";
+};
+
+export type QuranFoundationReciter = {
+  id: number;
+  name: string;
+  style: string | null;
 };
 
 export type QuranFoundationMadaniPage = {
@@ -63,6 +70,7 @@ type CachedToken = {
 let cachedToken: CachedToken | null = null;
 let tokenRequestPromise: Promise<string> | null = null;
 let cachedCatalog: { value: QuranFoundationSurah[]; expiresAt: number } | null = null;
+let cachedRecitationCatalog: { value: QuranFoundationReciter[]; expiresAt: number } | null = null;
 const cachedSurahs = new Map<number, { value: QuranFoundationSurahContent; expiresAt: number }>();
 const cachedMadaniPages = new Map<number, { value: QuranFoundationMadaniPage; expiresAt: number }>();
 const cachedAudio = new Map<string, { value: string; expiresAt: number }>();
@@ -183,6 +191,55 @@ export async function listQuranFoundationSurahs(): Promise<QuranFoundationSurah[
   }
   const value = normalizeCatalog(await requestChapters());
   cachedCatalog = { value, expiresAt: Date.now() + CATALOG_CACHE_MS };
+  return value;
+}
+
+function normalizeRecitationCatalog(payload: unknown): QuranFoundationReciter[] {
+  const recitations = payload && typeof payload === "object"
+    ? (payload as { recitations?: unknown }).recitations
+    : null;
+  if (!Array.isArray(recitations)) {
+    throw new Error("Quran Foundation recitation response has no recitations array");
+  }
+  const normalized = recitations.map((recitation): QuranFoundationReciter => {
+    if (!recitation || typeof recitation !== "object") {
+      throw new Error("Quran Foundation recitation is invalid");
+    }
+    const value = recitation as Record<string, unknown>;
+    const translatedName = value.translated_name && typeof value.translated_name === "object"
+      ? (value.translated_name as Record<string, unknown>).name
+      : null;
+    const name = typeof translatedName === "string" && translatedName.trim()
+      ? translatedName.trim()
+      : typeof value.reciter_name === "string" && value.reciter_name.trim()
+        ? value.reciter_name.trim()
+        : null;
+    if (!Number.isInteger(value.id) || (value.id as number) < 1 || !name) {
+      throw new Error("Quran Foundation recitation fields are invalid");
+    }
+    return {
+      id: value.id as number,
+      name,
+      style: typeof value.style === "string" && value.style.trim() ? value.style.trim() : null,
+    };
+  });
+  if (normalized.length < 1 || new Set(normalized.map((reciter) => reciter.id)).size !== normalized.length) {
+    throw new Error("Quran Foundation recitation catalog is invalid");
+  }
+  return normalized.sort((left, right) => left.name.localeCompare(right.name, "ar"));
+}
+
+export async function listQuranFoundationReciters(): Promise<QuranFoundationReciter[]> {
+  if (cachedRecitationCatalog && cachedRecitationCatalog.expiresAt > Date.now()) {
+    return cachedRecitationCatalog.value;
+  }
+  const value = normalizeRecitationCatalog(
+    await requestContentJson("resources/recitations?language=ar"),
+  );
+  cachedRecitationCatalog = {
+    value,
+    expiresAt: Date.now() + RECITATION_CATALOG_CACHE_MS,
+  };
   return value;
 }
 
@@ -379,10 +436,17 @@ export async function getQuranFoundationMadaniPage(pageNumber: number): Promise<
 }
 
 export async function getQuranFoundationAudioUrl(
-  recitationId: 3 | 6 | 7 | 9,
+  recitationId: number,
   surahNumber: number,
   ayahNumber: number,
 ): Promise<string> {
+  if (!Number.isInteger(recitationId) || recitationId < 1) {
+    throw new Error("Invalid Quran Foundation recitation");
+  }
+  const reciters = await listQuranFoundationReciters();
+  if (!reciters.some((reciter) => reciter.id === recitationId)) {
+    throw new Error("Quran Foundation recitation is not in the trusted catalog");
+  }
   const cacheKey = `${recitationId}:${surahNumber}:${ayahNumber}`;
   const cached = cachedAudio.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
@@ -419,6 +483,7 @@ export function resetQuranFoundationClientForTests(): void {
   cachedToken = null;
   tokenRequestPromise = null;
   cachedCatalog = null;
+  cachedRecitationCatalog = null;
   cachedSurahs.clear();
   cachedMadaniPages.clear();
   cachedAudio.clear();

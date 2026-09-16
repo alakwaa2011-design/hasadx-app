@@ -14,8 +14,10 @@ import {
   quranIndependentPositionsTable,
   quranIndependentSessionsTable,
   quranWardsTable,
+  studentAccountsTable,
   studentsTable,
   teacherClassesTable,
+  teachersTable,
 } from "@workspace/db";
 import {
   CreateQuranCircleBody,
@@ -72,6 +74,9 @@ import {
   GetQuranSurahContentParams,
   GetQuranSurahContentResponse,
   GetQuranAyahAudioParams,
+  ListQuranRecitersResponse,
+  UpdateQuranAudioPreferenceBody,
+  UpdateQuranAudioPreferenceResponse,
   GetQuranMadaniPageParams,
   GetQuranMadaniPageResponse,
   UpdateMyQuranIndependentPositionBody,
@@ -86,6 +91,7 @@ import {
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
+  listQuranFoundationReciters,
 } from "../lib/quran-foundation-client";
 
 const router: IRouter = Router();
@@ -253,6 +259,71 @@ router.get("/quran/surahs", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.warn({ err: error }, "Quran Foundation catalog unavailable; using bundled catalog");
     res.json(ListQuranSurahsResponse.parse(QURAN_SURAHS));
+  }
+});
+
+router.get("/quran/reciters", async (req, res): Promise<void> => {
+  try {
+    const [reciters, preference] = await Promise.all([
+      listQuranFoundationReciters(),
+      studentAccountIdOf(req) !== null
+        ? db.select({ preferredRecitationId: studentAccountsTable.preferredQuranRecitationId })
+          .from(studentAccountsTable)
+          .where(eq(studentAccountsTable.id, studentAccountIdOf(req)!))
+          .limit(1)
+        : teacherIdOf(req) !== null
+          ? db.select({ preferredRecitationId: teachersTable.preferredQuranRecitationId })
+            .from(teachersTable)
+            .where(eq(teachersTable.id, teacherIdOf(req)!))
+            .limit(1)
+          : Promise.resolve([]),
+    ]);
+    const preferredRecitationId = preference[0]?.preferredRecitationId ?? null;
+    res.json(ListQuranRecitersResponse.parse({
+      reciters,
+      preferredRecitationId: reciters.some((reciter) => reciter.id === preferredRecitationId)
+        ? preferredRecitationId
+        : null,
+    }));
+  } catch (error) {
+    req.log.warn({ err: error }, "Official Quran recitation catalog unavailable");
+    res.status(503).json({ error: "Official Quran recitation catalog is temporarily unavailable" });
+  }
+});
+
+router.patch("/quran/audio-preference", async (req, res): Promise<void> => {
+  const studentAccountId = studentAccountIdOf(req);
+  const teacherId = teacherIdOf(req);
+  if (studentAccountId === null && teacherId === null) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const parsed = UpdateQuranAudioPreferenceBody.safeParse(req.body);
+  if (!parsed.success) {
+    parseError(res, "Invalid recitation");
+    return;
+  }
+  try {
+    const reciters = await listQuranFoundationReciters();
+    if (!reciters.some((reciter) => reciter.id === parsed.data.recitationId)) {
+      parseError(res, "Recitation is not in the trusted Quran Foundation catalog");
+      return;
+    }
+    if (studentAccountId !== null) {
+      await db.update(studentAccountsTable)
+        .set({ preferredQuranRecitationId: parsed.data.recitationId })
+        .where(eq(studentAccountsTable.id, studentAccountId));
+    } else {
+      await db.update(teachersTable)
+        .set({ preferredQuranRecitationId: parsed.data.recitationId })
+        .where(eq(teachersTable.id, teacherId!));
+    }
+    res.json(UpdateQuranAudioPreferenceResponse.parse({
+      preferredRecitationId: parsed.data.recitationId,
+    }));
+  } catch (error) {
+    req.log.warn({ err: error }, "Unable to save Quran audio preference");
+    res.status(503).json({ error: "Official Quran recitation catalog is temporarily unavailable" });
   }
 });
 

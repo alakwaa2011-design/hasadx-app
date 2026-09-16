@@ -323,16 +323,16 @@ export declare const insertQuranSubmissionSchema: z.ZodObject<{
     teacherId: z.ZodInt;
     studentAccountId: z.ZodInt;
     studentId: z.ZodInt;
+    feedback: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodOptional<z.ZodString>;
-    wardId: z.ZodInt;
     clientRequestId: z.ZodString;
     objectPath: z.ZodString;
-    contentType: z.ZodString;
-    fileSize: z.ZodInt;
+    wardId: z.ZodInt;
     memorizationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     recitationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     mistakeCounts: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
-    feedback: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    contentType: z.ZodString;
+    fileSize: z.ZodInt;
     reviewedByTeacherId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     reviewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
 }, {

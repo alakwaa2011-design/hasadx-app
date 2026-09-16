@@ -2375,6 +2375,10 @@ async function runSchemaMigrations() {
       ALTER TABLE quran_independent_sessions DROP COLUMN IF EXISTS student_id;
       CREATE UNIQUE INDEX IF NOT EXISTS quran_independent_sessions_account_date_uq
         ON quran_independent_sessions(student_account_id, practiced_date);
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS preferred_quran_recitation_id INTEGER;
+      ALTER TABLE student_accounts
+        ADD COLUMN IF NOT EXISTS preferred_quran_recitation_id INTEGER;
     `);
     logger.info("Web Push schema and notification trigger migrated");
   } catch (err) {

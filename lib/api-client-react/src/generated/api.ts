@@ -58,6 +58,8 @@ import type {
   PresentationSummary,
   PresentationTier,
   PresentationTierWithUsage,
+  QuranAudioPreference,
+  QuranAudioPreferenceInput,
   QuranCircle,
   QuranCircleInput,
   QuranCircleTaskInput,
@@ -71,6 +73,7 @@ import type {
   QuranProfileUpdate,
   QuranRecitation,
   QuranRecitationInput,
+  QuranReciterCatalog,
   QuranReviewWard,
   QuranStudent,
   QuranStudentProfile,
@@ -6081,6 +6084,163 @@ export function useListQuranSurahs<TData = Awaited<ReturnType<typeof listQuranSu
 
 
 
+export const getListQuranRecitersUrl = () => {
+
+
+
+
+  return `/api/quran/reciters`
+}
+
+/**
+ * @summary List trusted Quran Foundation reciters and the current account preference
+ */
+export const listQuranReciters = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranReciterCatalog> => {
+
+  return customFetch<QuranReciterCatalog>(getListQuranRecitersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQuranRecitersQueryKey = () => {
+    return [
+    `/api/quran/reciters`
+    ] as const;
+    }
+
+
+export const getListQuranRecitersQueryOptions = <TData = Awaited<ReturnType<typeof listQuranReciters>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranReciters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQuranRecitersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listQuranReciters>>> = ({ signal }) => listQuranReciters({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listQuranReciters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListQuranRecitersQueryResult = NonNullable<Awaited<ReturnType<typeof listQuranReciters>>>
+export type ListQuranRecitersQueryError = ErrorType<void>
+
+
+/**
+ * @summary List trusted Quran Foundation reciters and the current account preference
+ */
+
+export function useListQuranReciters<TData = Awaited<ReturnType<typeof listQuranReciters>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listQuranReciters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListQuranRecitersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateQuranAudioPreferenceUrl = () => {
+
+
+
+
+  return `/api/quran/audio-preference`
+}
+
+/**
+ * @summary Save the current teacher or student account's preferred recitation
+ */
+export const updateQuranAudioPreference = async (quranAudioPreferenceInput: QuranAudioPreferenceInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranAudioPreference> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranAudioPreference>(getUpdateQuranAudioPreferenceUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranAudioPreferenceInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateQuranAudioPreferenceMutationKey = () => ['updateQuranAudioPreference'] as const;
+
+export const getUpdateQuranAudioPreferenceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranAudioPreference>>, TError,UpdateQuranAudioPreferenceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateQuranAudioPreference>>, TError,UpdateQuranAudioPreferenceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateQuranAudioPreferenceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateQuranAudioPreference>>, UpdateQuranAudioPreferenceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateQuranAudioPreference(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateQuranAudioPreferenceMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuranAudioPreference>>>
+    export type UpdateQuranAudioPreferenceMutationBody = BodyType<QuranAudioPreferenceInput>
+    export type UpdateQuranAudioPreferenceMutationError = ErrorType<void>
+    export type UpdateQuranAudioPreferenceMutationVariables = {data: BodyType<QuranAudioPreferenceInput>}
+
+    /**
+ * @summary Save the current teacher or student account's preferred recitation
+ */
+export const useUpdateQuranAudioPreference = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranAudioPreference>>, TError,UpdateQuranAudioPreferenceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateQuranAudioPreference>>,
+        TError,
+        UpdateQuranAudioPreferenceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateQuranAudioPreferenceMutationOptions(options));
+    }
+
 export const getGetQuranSurahContentUrl = (surahNumber: number,) => {
 
 
@@ -6158,7 +6318,7 @@ export function useGetQuranSurahContent<TData = Awaited<ReturnType<typeof getQur
 
 
 
-export const getGetQuranAyahAudioUrl = (recitationId: 3 | 6 | 7 | 9,
+export const getGetQuranAyahAudioUrl = (recitationId: number,
     surahNumber: number,
     ayahNumber: number,) => {
 
@@ -6171,7 +6331,7 @@ export const getGetQuranAyahAudioUrl = (recitationId: 3 | 6 | 7 | 9,
 /**
  * @summary Redirect to the official audio for one ayah
  */
-export const getQuranAyahAudio = async (recitationId: 3 | 6 | 7 | 9,
+export const getQuranAyahAudio = async (recitationId: number,
     surahNumber: number,
     ayahNumber: number, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
@@ -6188,7 +6348,7 @@ export const getQuranAyahAudio = async (recitationId: 3 | 6 | 7 | 9,
 
 
 
-export const getGetQuranAyahAudioQueryKey = (recitationId: 3 | 6 | 7 | 9,
+export const getGetQuranAyahAudioQueryKey = (recitationId: number,
     surahNumber: number,
     ayahNumber: number,) => {
     return [
@@ -6197,7 +6357,7 @@ export const getGetQuranAyahAudioQueryKey = (recitationId: 3 | 6 | 7 | 9,
     }
 
 
-export const getGetQuranAyahAudioQueryOptions = <TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(recitationId: 3 | 6 | 7 | 9,
+export const getGetQuranAyahAudioQueryOptions = <TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(recitationId: number,
     surahNumber: number,
     ayahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
@@ -6226,7 +6386,7 @@ export type GetQuranAyahAudioQueryError = ErrorType<void>
  */
 
 export function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(
- recitationId: 3 | 6 | 7 | 9,
+ recitationId: number,
     surahNumber: number,
     ayahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 

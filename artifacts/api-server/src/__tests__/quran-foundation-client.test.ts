@@ -4,6 +4,7 @@ import {
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
+  listQuranFoundationReciters,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
 import qcfPageOneFixture from "./fixtures/qcf-v2-page-1.json";
@@ -132,12 +133,53 @@ describe("Quran Foundation client", () => {
         expires_in: 3600,
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 7, reciter_name: "مشاري العفاسي", style: "Murattal" }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
         verse: { verse_key: "2:255", audio: { url: "Alafasy/mp3/002255.mp3" } },
       }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(getQuranFoundationAudioUrl(7, 2, 255))
       .resolves.toBe("https://verses.quran.foundation/Alafasy/mp3/002255.mp3");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("normalizes and caches the trusted recitation catalog", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [
+          { id: 7, reciter_name: "مشاري العفاسي", style: "Murattal" },
+          { id: 6, reciter_name: "محمود خليل الحصري", style: null },
+        ],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await listQuranFoundationReciters();
+    const second = await listQuranFoundationReciters();
+    expect(first).toHaveLength(2);
+    expect(first.map((reciter) => reciter.id).sort()).toEqual([6, 7]);
+    expect(second).toBe(first);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects audio identifiers that are absent from the trusted recitation catalog", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 7, reciter_name: "مشاري العفاسي" }],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationAudioUrl(999, 1, 1))
+      .rejects.toThrow("not in the trusted catalog");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -164,6 +206,9 @@ describe("Quran Foundation client", () => {
         expires_in: 3600,
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 7, reciter_name: "مشاري العفاسي" }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
         verse: { verse_key: "2:254", audio: { url: "Alafasy/mp3/002255.mp3" } },
       }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -174,6 +219,9 @@ describe("Quran Foundation client", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({
         access_token: "access-token",
         expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 7, reciter_name: "مشاري العفاسي" }],
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         verse: {

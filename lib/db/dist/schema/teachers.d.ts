@@ -277,6 +277,23 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
         }, {}, {
             $type: Record<string, unknown>;
         }>;
+        preferredQuranRecitationId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "preferred_quran_recitation_id";
+            tableName: "teachers";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         classroomAccessToken: import("drizzle-orm/pg-core").PgColumn<{
             name: "classroom_access_token";
             tableName: "teachers";
@@ -686,6 +703,7 @@ export declare const insertTeacherSchema: z.ZodObject<{
     presentationsProEnabled: z.ZodOptional<z.ZodBoolean>;
     lastLoginAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     preferences: z.ZodOptional<z.ZodNullable<z.ZodType<Record<string, unknown>, Record<string, unknown>, z.core.$ZodTypeInternals<Record<string, unknown>, Record<string, unknown>>>>>;
+    preferredQuranRecitationId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     classroomAccessToken: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     classroomRefreshToken: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     classroomTokenExpiry: z.ZodOptional<z.ZodNullable<z.ZodDate>>;

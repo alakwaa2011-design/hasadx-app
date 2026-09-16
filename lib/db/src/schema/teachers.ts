@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -24,6 +24,7 @@ export const teachersTable = pgTable("teachers", {
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   preferences: jsonb("preferences").$type<Record<string, unknown>>(),
+  preferredQuranRecitationId: integer("preferred_quran_recitation_id"),
   // Google Classroom OAuth2 tokens
   classroomAccessToken: text("classroom_access_token"),
   classroomRefreshToken: text("classroom_refresh_token"),
