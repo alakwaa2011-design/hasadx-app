@@ -120,4 +120,62 @@ describe("buildWordDocument", () => {
       expect(runs.find(run => run.includes(option))).toContain('<w:rtl w:val="false"/>');
     }
   });
+
+  it("keeps an answer-key equation LTR inside its Arabic answer paragraph", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page data-answer-key-page dir="rtl">
+        <div class="ws-answer-line">
+          <strong dir="rtl">الإجابة:</strong>
+          <span dir="ltr">(-12) + (+7) = -5</span>
+        </div>
+      </div>`;
+
+    const wordDocument = buildWordDocument({
+      element: root,
+      title: "مفتاح إجابة الأعداد الصحيحة",
+      lang: "ar",
+    });
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(wordDocument));
+    const xml = await zip.file("word/document.xml")!.async("string");
+
+    const answerParagraph = xml.match(/<w:p>.*?الإجابة:.*?\(-12\) \+ \(\+7\) = -5.*?<\/w:p>/)?.[0];
+    expect(answerParagraph).toBeDefined();
+    expect(answerParagraph).toContain("<w:bidi");
+    const runs = answerParagraph!.match(/<w:r>.*?<\/w:r>/g) ?? [];
+    expect(runs.find(run => run.includes("الإجابة:"))).toContain("<w:rtl/>");
+    expect(runs.find(run => run.includes("(-12) + (+7) = -5"))).toContain('<w:rtl w:val="false"/>');
+    expect(answerParagraph!.indexOf("(-12) + (+7) = -5")).toBeGreaterThan(answerParagraph!.indexOf("الإجابة:"));
+  });
+
+  it("keeps a signed value LTR inside an Arabic matching pair", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page dir="rtl">
+        <ul class="ws-match-col">
+          <li class="ws-match-pair">
+            <span class="ws-match-bullet ws-match-num" dir="rtl">١.</span>
+            <span class="ws-match-text" dir="rtl">
+              <span>درجة الحرارة </span><span dir="ltr">-8°C</span>
+            </span>
+          </li>
+        </ul>
+      </div>`;
+
+    const wordDocument = buildWordDocument({
+      element: root,
+      title: "سؤال توصيل عربي",
+      lang: "ar",
+    });
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(wordDocument));
+    const xml = await zip.file("word/document.xml")!.async("string");
+
+    const pairParagraph = xml.match(/<w:p>.*?درجة الحرارة.*?-8°C.*?<\/w:p>/)?.[0];
+    expect(pairParagraph).toBeDefined();
+    expect(pairParagraph).toContain("<w:bidi");
+    const runs = pairParagraph!.match(/<w:r>.*?<\/w:r>/g) ?? [];
+    expect(runs.find(run => run.includes("درجة الحرارة"))).toContain("<w:rtl/>");
+    expect(runs.find(run => run.includes("-8°C"))).toContain('<w:rtl w:val="false"/>');
+    expect(pairParagraph!.indexOf("درجة الحرارة")).toBeLessThan(pairParagraph!.indexOf("-8°C"));
+  });
 });

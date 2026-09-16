@@ -1993,7 +1993,7 @@ function QuestionView({
         >
           <ul className="ws-match-col">
             {q.pairs.map((p, i) => (
-              <li key={`l${i}`}>
+              <li key={`l${i}`} className="ws-match-pair">
                 <span className="ws-match-bullet ws-match-num">{i + 1}.</span>
                 <span className="ws-match-text">
                   <EditSpan
@@ -2044,7 +2044,7 @@ function QuestionView({
           </div>
           <ul className="ws-match-col">
             {matchingDisplayOrder(q.pairs.length).map((srcIdx, displayIdx) => (
-              <li key={`r${displayIdx}`}>
+              <li key={`r${displayIdx}`} className="ws-match-pair">
                 <span className="ws-match-bullet ws-match-letter">({optionLabel(displayIdx, ar)})</span>
                 <span className="ws-match-text">
                   <EditSpan
