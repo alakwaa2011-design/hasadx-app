@@ -4509,6 +4509,55 @@ export const ListQuranSurahsResponse = zod.array(ListQuranSurahsResponseItem)
 
 
 /**
+ * @summary Get official Uthmani Quran text for one surah
+ */
+export const getQuranSurahContentPathSurahNumberMax = 114;
+
+
+
+export const GetQuranSurahContentParams = zod.object({
+  "surahNumber": zod.coerce.number().int().min(1).max(getQuranSurahContentPathSurahNumberMax)
+})
+
+export const getQuranSurahContentResponseIndexMax = 114;
+
+
+
+
+
+
+
+export const GetQuranSurahContentResponse = zod.object({
+  "index": zod.int().min(1).max(getQuranSurahContentResponseIndexMax),
+  "name": zod.string().min(1),
+  "ayahs": zod.array(zod.object({
+  "index": zod.int().min(1),
+  "text": zod.string().min(1),
+  "bismillah": zod.string().nullable()
+})).min(1),
+  "source": zod.enum(['quran_foundation'])
+})
+
+
+/**
+ * @summary Redirect to the official audio for one ayah
+ */
+export const getQuranAyahAudioPathSurahNumberMax = 114;
+
+export const getQuranAyahAudioPathAyahNumberMax = 286;
+
+
+
+export const GetQuranAyahAudioParams = zod.object({
+  "recitationId": zod.union([zod.literal(3),zod.literal(6),zod.literal(7),zod.literal(9)]),
+  "surahNumber": zod.coerce.number().int().min(1).max(getQuranAyahAudioPathSurahNumberMax),
+  "ayahNumber": zod.coerce.number().int().min(1).max(getQuranAyahAudioPathAyahNumberMax)
+})
+
+export const GetQuranAyahAudioResponse = zod.void()
+
+
+/**
  * @summary List the current teacher's Quran circles and members
  */
 export const ListQuranCirclesResponseItem = zod.object({

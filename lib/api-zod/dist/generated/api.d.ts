@@ -13917,6 +13917,73 @@ export declare const ListQuranSurahsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     ayahCount: number;
 }>, "many">;
 /**
+ * @summary Get official Uthmani Quran text for one surah
+ */
+export declare const getQuranSurahContentPathSurahNumberMax = 114;
+export declare const GetQuranSurahContentParams: zodV3.ZodObject<{
+    surahNumber: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    surahNumber: number;
+}, {
+    surahNumber: number;
+}>;
+export declare const getQuranSurahContentResponseIndexMax = 114;
+export declare const GetQuranSurahContentResponse: zodV3.ZodObject<{
+    index: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    ayahs: zodV3.ZodArray<zodV3.ZodObject<{
+        index: zodV3.ZodNumber;
+        text: zodV3.ZodString;
+        bismillah: zodV3.ZodNullable<zodV3.ZodString>;
+    }, "strip", zodV3.ZodTypeAny, {
+        text: string;
+        index: number;
+        bismillah: string | null;
+    }, {
+        text: string;
+        index: number;
+        bismillah: string | null;
+    }>, "many">;
+    source: zodV3.ZodEnum<["quran_foundation"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    index: number;
+    source: "quran_foundation";
+    ayahs: {
+        text: string;
+        index: number;
+        bismillah: string | null;
+    }[];
+}, {
+    name: string;
+    index: number;
+    source: "quran_foundation";
+    ayahs: {
+        text: string;
+        index: number;
+        bismillah: string | null;
+    }[];
+}>;
+/**
+ * @summary Redirect to the official audio for one ayah
+ */
+export declare const getQuranAyahAudioPathSurahNumberMax = 114;
+export declare const getQuranAyahAudioPathAyahNumberMax = 286;
+export declare const GetQuranAyahAudioParams: zodV3.ZodObject<{
+    recitationId: zodV3.ZodUnion<[zodV3.ZodLiteral<3>, zodV3.ZodLiteral<6>, zodV3.ZodLiteral<7>, zodV3.ZodLiteral<9>]>;
+    surahNumber: zodV3.ZodNumber;
+    ayahNumber: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    surahNumber: number;
+    recitationId: 6 | 3 | 7 | 9;
+    ayahNumber: number;
+}, {
+    surahNumber: number;
+    recitationId: 6 | 3 | 7 | 9;
+    ayahNumber: number;
+}>;
+export declare const GetQuranAyahAudioResponse: zodV3.ZodVoid;
+/**
  * @summary List the current teacher's Quran circles and members
  */
 export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
@@ -14306,8 +14373,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -14319,8 +14386,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -14378,8 +14445,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -14417,8 +14484,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -14522,8 +14589,8 @@ export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14535,8 +14602,8 @@ export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14562,8 +14629,8 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14575,8 +14642,8 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14608,8 +14675,8 @@ export declare const ListMyQuranWardsResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14621,8 +14688,8 @@ export declare const ListMyQuranWardsResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14648,8 +14715,8 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -14661,8 +14728,8 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15050,8 +15117,8 @@ export declare const GetMyQuranWardResponse: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15063,8 +15130,8 @@ export declare const GetMyQuranWardResponse: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15183,8 +15250,8 @@ export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15196,8 +15263,8 @@ export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15223,8 +15290,8 @@ export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObj
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15236,8 +15303,8 @@ export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObj
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15264,8 +15331,8 @@ export declare const CreateQuranWardBody: zodV3.ZodObject<{
     status: zodV3.ZodOptional<zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>>;
 }, "strip", zodV3.ZodTypeAny, {
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15275,8 +15342,8 @@ export declare const CreateQuranWardBody: zodV3.ZodObject<{
     dueDate?: string | null | undefined;
 }, {
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15306,8 +15373,8 @@ export declare const CreateQuranWardResponse: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15319,8 +15386,8 @@ export declare const CreateQuranWardResponse: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15439,8 +15506,8 @@ export declare const AssignQuranCircleTaskResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15452,8 +15519,8 @@ export declare const AssignQuranCircleTaskResponseItem: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15479,8 +15546,8 @@ export declare const AssignQuranCircleTaskResponse: zodV3.ZodArray<zodV3.ZodObje
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15492,8 +15559,8 @@ export declare const AssignQuranCircleTaskResponse: zodV3.ZodArray<zodV3.ZodObje
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15566,8 +15633,8 @@ export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15579,8 +15646,8 @@ export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15765,8 +15832,8 @@ export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15778,8 +15845,8 @@ export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15811,8 +15878,8 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -15824,8 +15891,8 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
-    studentId: number;
     surahNumber: number;
+    studentId: number;
     surahName: string;
     startAyah: number;
     endAyah: number;
@@ -16332,8 +16399,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -16345,8 +16412,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -16397,8 +16464,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;
@@ -16425,8 +16492,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
-        studentId: number;
         surahNumber: number;
+        studentId: number;
         surahName: string;
         startAyah: number;
         endAyah: number;

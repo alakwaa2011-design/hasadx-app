@@ -69,6 +69,9 @@ import {
   ReviewQuranSubmissionBody,
   ReviewQuranSubmissionResponse,
   GetQuranJourneyResponse,
+  GetQuranSurahContentParams,
+  GetQuranSurahContentResponse,
+  GetQuranAyahAudioParams,
   UpdateMyQuranIndependentPositionBody,
   UpdateMyQuranIndependentPositionResponse,
   RecordMyQuranIndependentSessionBody,
@@ -76,7 +79,11 @@ import {
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
-import { listQuranFoundationSurahs } from "../lib/quran-foundation-client";
+import {
+  getQuranFoundationAudioUrl,
+  getQuranFoundationSurahContent,
+  listQuranFoundationSurahs,
+} from "../lib/quran-foundation-client";
 
 const router: IRouter = Router();
 const quranSubmissionStorage = new ObjectStorageService();
@@ -243,6 +250,48 @@ router.get("/quran/surahs", async (req, res): Promise<void> => {
   } catch (error) {
     req.log.warn({ err: error }, "Quran Foundation catalog unavailable; using bundled catalog");
     res.json(ListQuranSurahsResponse.parse(QURAN_SURAHS));
+  }
+});
+
+router.get("/quran/content/:surahNumber", async (req, res): Promise<void> => {
+  const parsed = GetQuranSurahContentParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid surah number" });
+    return;
+  }
+  try {
+    const content = await getQuranFoundationSurahContent(parsed.data.surahNumber);
+    res.json(GetQuranSurahContentResponse.parse(content));
+  } catch (error) {
+    req.log.warn({ err: error, surahNumber: parsed.data.surahNumber }, "Official Quran text unavailable");
+    res.status(503).json({ error: "Official Quran text is temporarily unavailable" });
+  }
+});
+
+router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
+  const parsed = GetQuranAyahAudioParams.safeParse({
+    ...req.params,
+    recitationId: Number(req.params.recitationId),
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid recitation or verse" });
+    return;
+  }
+  const surah = QURAN_SURAHS[parsed.data.surahNumber - 1];
+  if (!surah || parsed.data.ayahNumber > surah.ayahCount) {
+    res.status(400).json({ error: "Ayah is outside the surah" });
+    return;
+  }
+  try {
+    const url = await getQuranFoundationAudioUrl(
+      parsed.data.recitationId,
+      parsed.data.surahNumber,
+      parsed.data.ayahNumber,
+    );
+    res.redirect(302, url);
+  } catch (error) {
+    req.log.warn({ err: error, ...parsed.data }, "Official Quran audio unavailable");
+    res.status(502).json({ error: "Official Quran audio is temporarily unavailable" });
   }
 });
 

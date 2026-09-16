@@ -16,6 +16,35 @@ export interface QuranSurah {
   ayahCount: number;
 }
 
+export interface QuranContentAyah {
+  /** @minimum 1 */
+  index: number;
+  /** @minLength 1 */
+  text: string;
+  /** @nullable */
+  bismillah: string | null;
+}
+
+export type QuranSurahContentSource = typeof QuranSurahContentSource[keyof typeof QuranSurahContentSource];
+
+
+export const QuranSurahContentSource = {
+  quran_foundation: 'quran_foundation',
+} as const;
+
+export interface QuranSurahContent {
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  index: number;
+  /** @minLength 1 */
+  name: string;
+  /** @minItems 1 */
+  ayahs: QuranContentAyah[];
+  source: QuranSurahContentSource;
+}
+
 export interface QuranStudent {
   id: number;
   name: string;

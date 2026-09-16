@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1754,6 +1754,52 @@ export type ListQuranSurahsQueryError = ErrorType<unknown>;
  */
 export declare function useListQuranSurahs<TData = Awaited<ReturnType<typeof listQuranSurahs>>, TError = ErrorType<unknown>>(options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof listQuranSurahs>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getGetQuranSurahContentUrl: (surahNumber: number) => string;
+/**
+ * @summary Get official Uthmani Quran text for one surah
+ */
+export declare const getQuranSurahContent: (surahNumber: number, options?: Parameters<typeof customFetch>[1]) => Promise<QuranSurahContent>;
+export declare const getGetQuranSurahContentQueryKey: (surahNumber: number) => readonly [`/api/quran/content/${number}`];
+export declare const getGetQuranSurahContentQueryOptions: <TData = Awaited<ReturnType<typeof getQuranSurahContent>>, TError = ErrorType<void>>(surahNumber: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranSurahContent>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getQuranSurahContent>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetQuranSurahContentQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranSurahContent>>>;
+export type GetQuranSurahContentQueryError = ErrorType<void>;
+/**
+ * @summary Get official Uthmani Quran text for one surah
+ */
+export declare function useGetQuranSurahContent<TData = Awaited<ReturnType<typeof getQuranSurahContent>>, TError = ErrorType<void>>(surahNumber: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranSurahContent>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getGetQuranAyahAudioUrl: (recitationId: 3 | 6 | 7 | 9, surahNumber: number, ayahNumber: number) => string;
+/**
+ * @summary Redirect to the official audio for one ayah
+ */
+export declare const getQuranAyahAudio: (recitationId: 3 | 6 | 7 | 9, surahNumber: number, ayahNumber: number, options?: Parameters<typeof customFetch>[1]) => Promise<unknown>;
+export declare const getGetQuranAyahAudioQueryKey: (recitationId: 3 | 6 | 7 | 9, surahNumber: number, ayahNumber: number) => readonly [`/api/quran/audio/3/${number}/${number}` | `/api/quran/audio/6/${number}/${number}` | `/api/quran/audio/7/${number}/${number}` | `/api/quran/audio/9/${number}/${number}`];
+export declare const getGetQuranAyahAudioQueryOptions: <TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(recitationId: 3 | 6 | 7 | 9, surahNumber: number, ayahNumber: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetQuranAyahAudioQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranAyahAudio>>>;
+export type GetQuranAyahAudioQueryError = ErrorType<void>;
+/**
+ * @summary Redirect to the official audio for one ayah
+ */
+export declare function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(recitationId: 3 | 6 | 7 | 9, surahNumber: number, ayahNumber: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

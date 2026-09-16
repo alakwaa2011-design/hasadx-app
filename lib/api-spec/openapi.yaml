@@ -1701,6 +1701,49 @@ paths:
                 items:
                   $ref: "#/components/schemas/QuranSurah"
 
+  /quran/content/{surahNumber}:
+    get:
+      operationId: getQuranSurahContent
+      tags: [quran]
+      summary: Get official Uthmani Quran text for one surah
+      parameters:
+        - name: surahNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 114 }
+      responses:
+        "200":
+          description: Quran text normalized for the Hasaad reader
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranSurahContent"
+        "400": { description: Invalid surah number }
+        "503": { description: Official Quran text is temporarily unavailable }
+
+  /quran/audio/{recitationId}/{surahNumber}/{ayahNumber}:
+    get:
+      operationId: getQuranAyahAudio
+      tags: [quran]
+      summary: Redirect to the official audio for one ayah
+      parameters:
+        - name: recitationId
+          in: path
+          required: true
+          schema: { type: integer, enum: [3, 6, 7, 9] }
+        - name: surahNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 114 }
+        - name: ayahNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 286 }
+      responses:
+        "302": { description: Redirect to allowlisted Quran Foundation audio }
+        "400": { description: Invalid recitation or verse }
+        "502": { description: Official audio is temporarily unavailable }
+
   /quran/circles:
     get:
       operationId: listQuranCircles
@@ -2253,6 +2296,29 @@ components:
         arabicName: { type: string }
         ayahCount: { type: integer, minimum: 1 }
       required: [number, arabicName, ayahCount]
+
+    QuranContentAyah:
+      type: object
+      properties:
+        index: { type: integer, minimum: 1 }
+        text: { type: string, minLength: 1 }
+        bismillah: { type: ["string", "null"] }
+      required: [index, text, bismillah]
+
+    QuranSurahContent:
+      type: object
+      properties:
+        index: { type: integer, minimum: 1, maximum: 114 }
+        name: { type: string, minLength: 1 }
+        ayahs:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/QuranContentAyah"
+        source:
+          type: string
+          enum: [quran_foundation]
+      required: [index, name, ayahs, source]
 
     QuranStudent:
       type: object

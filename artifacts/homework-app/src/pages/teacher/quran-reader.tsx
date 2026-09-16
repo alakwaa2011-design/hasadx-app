@@ -19,6 +19,8 @@ import {
   useRecordMyQuranIndependentSession,
   useUpdateMyQuranIndependentPosition,
   useGetQuranJourney,
+  useGetQuranSurahContent,
+  getGetQuranSurahContentQueryKey,
   getGetQuranJourneyQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -201,7 +203,15 @@ export function QuranTextReaderView({
   const queryClient = useQueryClient();
   const savePosition = useUpdateMyQuranIndependentPosition();
   const recordSession = useRecordMyQuranIndependentSession();
+  const { data: officialSurah } = useGetQuranSurahContent(surahNumber, {
+    query: {
+      queryKey: getGetQuranSurahContentQueryKey(surahNumber),
+      staleTime: 24 * 60 * 60 * 1000,
+      retry: 1,
+    },
+  });
   const lastSavedPositionRef = useRef<string | null>(null);
+  const officialSurahRef = useRef(officialSurah);
 
   const [surahs, setSurahs] = useState<QuranSurahParsed[] | null>(null);
   const [fontSize, setFontSize] = useState(28);
@@ -229,10 +239,49 @@ export function QuranTextReaderView({
   useEffect(() => {
     let mounted = true;
     import('@/data/quran/tanzil-uthmani.xml?raw').then(m => {
-      if (mounted) setSurahs(parseQuranXml(m.default));
+      if (!mounted) return;
+      const parsed = parseQuranXml(m.default);
+      const official = officialSurahRef.current;
+      if (official) {
+        const localSurah = parsed[official.index - 1];
+        parsed[official.index - 1] = {
+          index: official.index,
+          name: official.name,
+          ayahs: official.ayahs.map(ayah => ({
+            index: ayah.index,
+            text: ayah.text,
+            ...(localSurah?.ayahs[ayah.index - 1]?.bismillah
+              ? { bismillah: localSurah.ayahs[ayah.index - 1].bismillah }
+              : {}),
+          })),
+        };
+      }
+      setSurahs(parsed);
     });
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    officialSurahRef.current = officialSurah;
+    if (!officialSurah) return;
+    setSurahs(current => {
+      if (!current) return current;
+      const next = [...current];
+      const localSurah = current[officialSurah.index - 1];
+      next[officialSurah.index - 1] = {
+        index: officialSurah.index,
+        name: officialSurah.name,
+        ayahs: officialSurah.ayahs.map(ayah => ({
+          index: ayah.index,
+          text: ayah.text,
+          ...(localSurah?.ayahs[ayah.index - 1]?.bismillah
+            ? { bismillah: localSurah.ayahs[ayah.index - 1].bismillah }
+            : {}),
+        })),
+      };
+      return next;
+    });
+  }, [officialSurah]);
 
   useEffect(() => {
     if (surahNumber && !startAyah) {
@@ -624,6 +673,7 @@ export function QuranTextReaderView({
               )}
 
               <div
+                translate="no"
                 className="text-center md:text-justify rtl"
                 style={{
                   fontSize: `${fontSize}px`,
@@ -664,16 +714,16 @@ export function QuranTextReaderView({
 
       {!isQuietMode && (
         <footer className="bg-muted/30 border-t border-border p-6 pb-12 text-center text-xs text-muted-foreground shrink-0">
-          <p className="font-bold mb-1">{lang === 'ar' ? 'مصدر النص: مشروع تنزيل' : 'Source Attribution - Tanzil Project'}</p>
+          <p className="font-bold mb-1">{lang === 'ar' ? 'المصدر الأساسي للنص: Quran Foundation' : 'Primary text source: Quran Foundation'}</p>
           <p className="mb-2">
-            {lang === 'ar' ? 'هذا النص القرآني منسوخ حرفياً وغير معدل من' : 'This Quranic text is copied literally and unmodified from'} <a href="https://tanzil.net" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">tanzil.net</a>
+            {lang === 'ar' ? 'يُجلب النص العثماني الرسمي عبر' : 'Official Uthmani text is provided through'} <a href="https://quran.foundation" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">Quran Foundation</a>
           </p>
           <p className="opacity-70 mb-4">
-            {lang === 'ar' ? 'رخصة المشاع الإبداعي — النَّسب 3.0' : 'License: Creative Commons Attribution 3.0'}
+            {lang === 'ar' ? 'تُستخدم النسخة المحلية الموثوقة تلقائيًا عند انقطاع الخدمة.' : 'A trusted local copy is used automatically during service outages.'}
           </p>
-          <p className="font-bold mb-1">{lang === 'ar' ? 'مصدر التلاوات الصوتية: Islamic Network' : 'Audio Attribution - Islamic Network'}</p>
+          <p className="font-bold mb-1">{lang === 'ar' ? 'المصدر الأساسي للتلاوات: Quran Foundation' : 'Primary audio source: Quran Foundation'}</p>
           <p className="opacity-70">
-            {lang === 'ar' ? 'بث التلاوات متاح للأغراض التعليمية من خلال AlQuran Cloud، حقوق الطبع والنشر محفوظة للقراء.' : 'Audio streaming is provided for educational purposes via AlQuran Cloud. Copyrights remain with the reciters.'}
+            {lang === 'ar' ? 'حقوق التلاوات محفوظة للقراء، مع تشغيل مصدر احتياطي تلقائيًا عند تعذر الصوت الرسمي.' : 'Recitation rights remain with their reciters, with an automatic backup source if official audio is unavailable.'}
           </p>
         </footer>
       )}
@@ -684,6 +734,7 @@ export function QuranTextReaderView({
           surahNumber={surahNumber}
           startAyah={startAyah}
           endAyah={endAyah}
+          selectedAyah={selectedAyah}
           playingAyah={playingAyah}
           onPlayingAyahChange={setPlayingAyah}
           isPlaying={isPlaying}

@@ -10,6 +10,7 @@ export interface QuranAudioPlayerProps {
   surahNumber: number;
   startAyah: number | null;
   endAyah: number | null;
+  selectedAyah: number;
   playingAyah: number | null;
   onPlayingAyahChange: (ayah: number | null) => void;
   isPlaying: boolean;
@@ -17,11 +18,11 @@ export interface QuranAudioPlayerProps {
 }
 
 const RECITERS = [
-  { id: 'ar.alafasy', name: 'مشاري العفاسي' },
-  { id: 'ar.husary', name: 'محمود خليل الحصري' },
-  { id: 'ar.minshawi', name: 'محمد صديق المنشاوي' },
-  { id: 'ar.abdurrahmaansudais', name: 'عبدالرحمن السديس' },
-];
+  { id: 'ar.alafasy', foundationId: 7, name: 'مشاري العفاسي' },
+  { id: 'ar.husary', foundationId: 6, name: 'محمود خليل الحصري' },
+  { id: 'ar.minshawi', foundationId: 9, name: 'محمد صديق المنشاوي' },
+  { id: 'ar.abdurrahmaansudais', foundationId: 3, name: 'عبدالرحمن السديس' },
+] as const;
 
 const SPEEDS = [0.75, 1, 1.25];
 const REPEATS = [1, 3, 5, 10];
@@ -31,6 +32,7 @@ export function QuranAudioPlayer({
   surahNumber,
   startAyah,
   endAyah,
+  selectedAyah,
   playingAyah,
   onPlayingAyahChange,
   isPlaying,
@@ -46,6 +48,7 @@ export function QuranAudioPlayer({
   
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState(false);
+  const [useFallbackAudio, setUseFallbackAudio] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -97,11 +100,16 @@ export function QuranAudioPlayer({
     } else if (!isPlaying) {
       audioRef.current?.pause();
     }
-  }, [playingAyah, reciter, isPlaying]);
+  }, [playingAyah, reciter, isPlaying, useFallbackAudio]);
 
   useEffect(() => {
     setCurrentPlay(1);
+    setUseFallbackAudio(false);
   }, [playingAyah]);
+
+  useEffect(() => {
+    setUseFallbackAudio(false);
+  }, [reciter]);
 
   useEffect(() => {
     return () => {
@@ -151,11 +159,18 @@ export function QuranAudioPlayer({
   };
 
   const globalAyah = playingAyah ? getGlobalAyahNumber(surahs, surahNumber, playingAyah) : null;
-  const audioSrc = globalAyah ? `https://cdn.islamic.network/quran/audio/128/${reciter}/${globalAyah}.mp3` : undefined;
+  const selectedReciter = RECITERS.find(item => item.id === reciter) ?? RECITERS[0];
+  const fallbackAudioSrc = globalAyah
+    ? `https://cdn.islamic.network/quran/audio/128/${selectedReciter.id}/${globalAyah}.mp3`
+    : undefined;
+  const officialAudioSrc = playingAyah
+    ? `/api/quran/audio/${selectedReciter.foundationId}/${surahNumber}/${playingAyah}`
+    : undefined;
+  const audioSrc = useFallbackAudio ? fallbackAudioSrc : officialAudioSrc;
 
   const togglePlay = () => {
     if (!playingAyah) {
-      onPlayingAyahChange(startAyah ?? 1);
+      onPlayingAyahChange(clampAyah(selectedAyah, startAyah, endAyah) ?? startAyah ?? 1);
       onIsPlayingChange(true);
     } else {
       onIsPlayingChange(!isPlaying);
@@ -182,7 +197,16 @@ export function QuranAudioPlayer({
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => setIsBuffering(false)}
           onCanPlay={() => setIsBuffering(false)}
-          onError={() => { setError(true); setIsBuffering(false); onIsPlayingChange(false); }}
+          onError={() => {
+            if (!useFallbackAudio && fallbackAudioSrc) {
+              setUseFallbackAudio(true);
+              setIsBuffering(true);
+              return;
+            }
+            setError(true);
+            setIsBuffering(false);
+            onIsPlayingChange(false);
+          }}
         />
       )}
 

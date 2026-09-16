@@ -82,6 +82,7 @@ import type {
   QuranSubmissionUploadInput,
   QuranSubmissionUploadResponse,
   QuranSurah,
+  QuranSurahContent,
   QuranTodayDashboard,
   QuranWard,
   QuranWardInput,
@@ -6067,6 +6068,170 @@ export function useListQuranSurahs<TData = Awaited<ReturnType<typeof listQuranSu
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListQuranSurahsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranSurahContentUrl = (surahNumber: number,) => {
+
+
+
+
+  return `/api/quran/content/${surahNumber}`
+}
+
+/**
+ * @summary Get official Uthmani Quran text for one surah
+ */
+export const getQuranSurahContent = async (surahNumber: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranSurahContent> => {
+
+  return customFetch<QuranSurahContent>(getGetQuranSurahContentUrl(surahNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranSurahContentQueryKey = (surahNumber: number,) => {
+    return [
+    `/api/quran/content/${surahNumber}`
+    ] as const;
+    }
+
+
+export const getGetQuranSurahContentQueryOptions = <TData = Awaited<ReturnType<typeof getQuranSurahContent>>, TError = ErrorType<void>>(surahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranSurahContent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranSurahContentQueryKey(surahNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranSurahContent>>> = ({ signal }) => getQuranSurahContent(surahNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: surahNumber !== null && surahNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranSurahContent>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranSurahContentQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranSurahContent>>>
+export type GetQuranSurahContentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get official Uthmani Quran text for one surah
+ */
+
+export function useGetQuranSurahContent<TData = Awaited<ReturnType<typeof getQuranSurahContent>>, TError = ErrorType<void>>(
+ surahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranSurahContent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranSurahContentQueryOptions(surahNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranAyahAudioUrl = (recitationId: 3 | 6 | 7 | 9,
+    surahNumber: number,
+    ayahNumber: number,) => {
+
+
+
+
+  return `/api/quran/audio/${recitationId}/${surahNumber}/${ayahNumber}`
+}
+
+/**
+ * @summary Redirect to the official audio for one ayah
+ */
+export const getQuranAyahAudio = async (recitationId: 3 | 6 | 7 | 9,
+    surahNumber: number,
+    ayahNumber: number, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getGetQuranAyahAudioUrl(recitationId,surahNumber,ayahNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranAyahAudioQueryKey = (recitationId: 3 | 6 | 7 | 9,
+    surahNumber: number,
+    ayahNumber: number,) => {
+    return [
+    `/api/quran/audio/${recitationId}/${surahNumber}/${ayahNumber}`
+    ] as const;
+    }
+
+
+export const getGetQuranAyahAudioQueryOptions = <TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(recitationId: 3 | 6 | 7 | 9,
+    surahNumber: number,
+    ayahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranAyahAudioQueryKey(recitationId,surahNumber,ayahNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranAyahAudio>>> = ({ signal }) => getQuranAyahAudio(recitationId,surahNumber,ayahNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: recitationId !== null && recitationId !== undefined && surahNumber !== null && surahNumber !== undefined && ayahNumber !== null && ayahNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranAyahAudioQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranAyahAudio>>>
+export type GetQuranAyahAudioQueryError = ErrorType<void>
+
+
+/**
+ * @summary Redirect to the official audio for one ayah
+ */
+
+export function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof getQuranAyahAudio>>, TError = ErrorType<void>>(
+ recitationId: 3 | 6 | 7 | 9,
+    surahNumber: number,
+    ayahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahAudio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranAyahAudioQueryOptions(recitationId,surahNumber,ayahNumber,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

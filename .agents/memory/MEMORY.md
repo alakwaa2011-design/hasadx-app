@@ -90,7 +90,7 @@
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
 - [Browser test database schema lag](e2e-test-database-schema-lag.md) — the isolated Playwright database may lag behind Drizzle; verify fixture-table columns before diagnosing UI failures.
 - [Integration schema synchronization](integration-schema-synchronization.md) — sync Drizzle onto the existing test schema; rebuilding public deletes reference seeds required across the integration suite.
-- [Quran Foundation environments](quran-foundation-environments.md) — prelive credentials expose a two-surah sample; use matched production credentials and hosts for the complete catalog.
+- [Quran Foundation integration](quran-foundation-environments.md) — production needs matched hosts/credentials plus strict counts, no auth redirects, and exact-origin audio validation.
 - [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are the official reward-system identity; never expose emoji or legacy avatars as alternatives.
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Class reward balance](class-reward-balance.md) — class points use an independent balance and ledger; never distribute them to students or mix them with group scores.
