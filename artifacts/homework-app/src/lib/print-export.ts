@@ -152,6 +152,48 @@ function choiceTable(list: Element, rtl: boolean): Table {
   });
 }
 
+function matchingTable(container: Element, rtl: boolean): Table {
+  const columns = Array.from(container.querySelectorAll<HTMLElement>(":scope > .ws-match-col"));
+  const columnItems = columns.map(column =>
+    Array.from(column.children).filter(item => item.matches(".ws-match-pair")),
+  );
+  const rowCount = Math.max(0, ...columnItems.map(items => items.length));
+  const leftShare = Number.parseFloat(container.getAttribute("data-matching-left-share") ?? "");
+  const rightShare = Number.parseFloat(container.getAttribute("data-matching-right-share") ?? "");
+  const totalShare = leftShare + rightShare;
+  const widths = Number.isFinite(totalShare) && totalShare > 0
+    ? [leftShare / totalShare * 100, rightShare / totalShare * 100]
+    : [50, 50];
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    visuallyRightToLeft: rtl,
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
+    },
+    rows: Array.from({ length: rowCount }, (_, rowIndex) => new TableRow({
+      children: columnItems.map((items, columnIndex) => {
+        const item = items[rowIndex];
+        return new TableCell({
+          width: { size: widths[columnIndex], type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+          },
+          children: [item ? paragraphFor(item, rtl) : new Paragraph("")],
+        });
+      }),
+    })),
+  });
+}
+
 function pageChildren(page: Element, rtl: boolean): WordChild[] {
   const output: WordChild[] = [];
   const selectors = [
@@ -159,7 +201,7 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
     ".ws-kicker-center", ".ws-cont-title", ".ws-cont-page",
     ".ws-identity-cell", ".ws-field-label", ".ws-subtitle", ".ws-instructions",
     ".ws-section-instr", ".ws-q-head", ".ws-q-prompt", ".ws-answer-line",
-    ".ws-tf-choice", ".ws-match-pair", ".ws-footer-note", ".ws-good-luck",
+    ".ws-tf-choice", ".ws-match", ".ws-match-pair", ".ws-footer-note", ".ws-good-luck",
     ".ws-mcq",
   ].join(",");
   page.querySelectorAll(selectors).forEach(element => {
@@ -167,7 +209,12 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
       output.push(choiceTable(element, rtl));
       return;
     }
+    if (element.matches(".ws-match")) {
+      output.push(matchingTable(element, rtl));
+      return;
+    }
     if (element.closest(".ws-mcq")) return;
+    if (element.closest(".ws-match")) return;
     if (element.matches(".ws-q-prompt") && element.closest(".ws-q-head")) return;
     const text = element.textContent?.trim();
     if (text) output.push(paragraphFor(element, rtl));

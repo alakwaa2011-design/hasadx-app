@@ -148,18 +148,26 @@ describe("buildWordDocument", () => {
     expect(answerParagraph!.indexOf("(-12) + (+7) = -5")).toBeGreaterThan(answerParagraph!.indexOf("الإجابة:"));
   });
 
-  it("keeps a signed value LTR inside an Arabic matching pair", async () => {
+  it("exports matching lists as a native RTL two-column table while keeping signed values LTR", async () => {
     const root = document.createElement("div");
     root.innerHTML = `
       <div data-worksheet-page dir="rtl">
-        <ul class="ws-match-col">
-          <li class="ws-match-pair">
-            <span class="ws-match-bullet ws-match-num" dir="rtl">١.</span>
-            <span class="ws-match-text" dir="rtl">
-              <span>درجة الحرارة </span><span dir="ltr">-8°C</span>
-            </span>
-          </li>
-        </ul>
+        <div class="ws-match" data-matching-left-share="0.55" data-matching-right-share="0.45">
+          <ul class="ws-match-col">
+            <li class="ws-match-pair">
+              <span class="ws-match-bullet ws-match-num" dir="rtl">١.</span>
+              <span class="ws-match-text" dir="rtl">
+                <span>درجة الحرارة </span><span dir="ltr">-8°C</span>
+              </span>
+            </li>
+            <li class="ws-match-pair"><span dir="rtl">٢. الماء</span></li>
+          </ul>
+          <div class="ws-match-divider"></div>
+          <ul class="ws-match-col">
+            <li class="ws-match-pair"><span dir="rtl">(أ) بارد</span></li>
+            <li class="ws-match-pair"><span dir="rtl">(ب) سائل</span></li>
+          </ul>
+        </div>
       </div>`;
 
     const wordDocument = buildWordDocument({
@@ -169,6 +177,13 @@ describe("buildWordDocument", () => {
     });
     const zip = await JSZip.loadAsync(await Packer.toBuffer(wordDocument));
     const xml = await zip.file("word/document.xml")!.async("string");
+
+    expect(xml.match(/<w:tbl>/g)).toHaveLength(1);
+    expect(xml.match(/<w:tr>/g)).toHaveLength(2);
+    expect(xml.match(/<w:tc>/g)).toHaveLength(4);
+    expect(xml).toContain("<w:bidiVisual/>");
+    expect(xml.indexOf("١.")).toBeLessThan(xml.indexOf("(أ) بارد"));
+    expect(xml.indexOf("٢. الماء")).toBeLessThan(xml.indexOf("(ب) سائل"));
 
     const pairParagraph = xml.match(/<w:p>.*?درجة الحرارة.*?-8°C.*?<\/w:p>/)?.[0];
     expect(pairParagraph).toBeDefined();
