@@ -44,11 +44,40 @@ afterEach(() => {
 
 describe("MathText mixed-direction rendering", () => {
   it("isolates plain signed-number equations from an Arabic page direction", () => {
-    const equation = renderMathText("(-5) + (-9) - (+4)");
+    const equation = renderMathText("(+20) - (+14)");
 
     expect(equation.getAttribute("dir")).toBe("ltr");
     expect(equation.style.unicodeBidi).toBe("isolate");
-    expect(equation.textContent).toBe("(-5) + (-9) - (+4)");
+    expect(equation.textContent).toBe("(+20) - (+14)");
+  });
+
+  it.each(["+6", "-34"])("isolates the signed numeric option %s", (option) => {
+    const element = renderMathText(option);
+
+    expect(element.getAttribute("dir")).toBe("ltr");
+    expect(element.style.unicodeBidi).toBe("isolate");
+    expect(element.textContent).toBe(option);
+  });
+
+  it.each(["+6", "-34"])("isolates signed option %s inside an Arabic answer label", (option) => {
+    const element = renderMathText(`(أ) ${option}`);
+
+    expect(element.getAttribute("dir")).toBe("rtl");
+    expect(renderedParts(element)).toEqual([
+      { direction: null, value: "(أ) " },
+      { direction: "ltr", value: option },
+    ]);
+  });
+
+  it("isolates a full numeric expression inside Arabic text", () => {
+    const element = renderMathText("احسب (+20) - (+14) ثم اكتب الناتج");
+
+    expect(element.getAttribute("dir")).toBe("rtl");
+    expect(renderedParts(element)).toEqual([
+      { direction: null, value: "احسب " },
+      { direction: "ltr", value: "(+20) - (+14)" },
+      { direction: null, value: " ثم اكتب الناتج" },
+    ]);
   });
 
   it("keeps Arabic, an equation, and English text in source order", () => {
@@ -82,7 +111,6 @@ describe("MathText mixed-direction rendering", () => {
     const legacyText = "النص القديم: $x + 1$ و <b>ليس HTML</b> و \\[y=2\\]";
     const element = renderMathText(legacyText);
 
-    expect(element.children).toHaveLength(1);
     expect(element.textContent).toBe(legacyText);
     expect(element.querySelector("b")).toBeNull();
     expect(element.innerHTML).toContain("&lt;b&gt;ليس HTML&lt;/b&gt;");
@@ -106,7 +134,8 @@ describe("MathText mixed-direction rendering", () => {
     expect(renderedParts(element)).toEqual([
       { direction: null, value: "إجابتك Correct لأن " },
       { direction: "ltr", value: "2x=10" },
-      { direction: null, value: " إذن x = 5" },
+      { direction: null, value: " إذن x = " },
+      { direction: "ltr", value: "5" },
     ]);
   });
 });

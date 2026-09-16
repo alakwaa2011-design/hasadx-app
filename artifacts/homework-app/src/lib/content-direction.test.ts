@@ -9,7 +9,10 @@ describe("contentDirection", () => {
 
   it("keeps math-only expressions left-to-right", () => {
     expect(contentDirection("(-8) + (-6) =", "rtl")).toBe("ltr");
+    expect(contentDirection("(+20) - (+14)", "rtl")).toBe("ltr");
     expect(isEquationOnly("(-5) + (-9) - (+4)")).toBe(true);
+    expect(isEquationOnly("+6")).toBe(true);
+    expect(isEquationOnly("-34")).toBe(true);
     expect(isEquationOnly("+18")).toBe(true);
     expect(isEquationOnly("-10")).toBe(true);
     expect(isEquationOnly("احسب 5 + 3")).toBe(false);

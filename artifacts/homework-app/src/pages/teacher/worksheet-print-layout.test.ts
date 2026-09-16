@@ -58,6 +58,15 @@ describe("worksheet PDF page sizing", () => {
 });
 
 describe("official worksheet question layout", () => {
+  it("uses the shared math-direction renderer for printable prompts, options, and answers", () => {
+    expect(source).toContain('import { MathText } from "@/components/math-text"');
+    expect(source).toContain("<MathText");
+    expect(source).toContain('text={text || placeholder}');
+    expect(source).toContain('<MathText text={text} fallbackDirection={ar ? "rtl" : "ltr"} />');
+    expect(source).toContain('dir={contentDirection(text, "rtl")}');
+    expect(source).toContain('unicodeBidi: "plaintext"');
+  });
+
   it("renders the five rich worksheet question types with printable organizers", () => {
     expect(source).toContain('q.type === "worked_problem"');
     expect(source).toContain('className="ws-work-steps"');

@@ -14,6 +14,8 @@ import {
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
 import { resolveImageUrl } from "@/lib/image-url";
+import { MathText } from "@/components/math-text";
+import { contentDirection } from "@/lib/content-direction";
 import QRCode from "react-qr-code";
 import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon, Minus, Plus, RotateCcw, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 
@@ -1837,13 +1839,22 @@ function EditSpan({
   }, [text, editMode]);
 
   const visualStyle = fieldStyleToCss(style);
-  if (!editMode) return <span className={className} style={visualStyle}>{text || placeholder}</span>;
+  if (!editMode) {
+    return (
+      <MathText
+        text={text || placeholder}
+        className={className}
+        fallbackDirection="rtl"
+        style={visualStyle}
+      />
+    );
+  }
 
   return (
     <span
       ref={ref}
       className={`ws-editable${className ? ` ${className}` : ""}`}
-      style={visualStyle}
+      style={{ ...visualStyle, unicodeBidi: "plaintext" }}
       contentEditable
       suppressContentEditableWarning
       onFocus={e => {
@@ -1857,7 +1868,7 @@ function EditSpan({
       }}
       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); } }}
       spellCheck={false}
-      dir="auto"
+      dir={contentDirection(text, "rtl")}
     >
       {text || placeholder}
     </span>
@@ -2112,7 +2123,7 @@ function QuestionView({
         <div className="ws-error-correction">
           <div className="ws-incorrect-box">
             <strong>{ar ? "النص غير الصحيح:" : "Incorrect text:"}</strong>
-            <span>{q.incorrectText}</span>
+            <MathText text={q.incorrectText} fallbackDirection={ar ? "rtl" : "ltr"} />
           </div>
           <div className="ws-correction-area">
             <div className="ws-response-label">{ar ? "التصحيح" : "Correction"}</div>
@@ -2128,17 +2139,26 @@ function QuestionView({
         <div className="ws-word-bank-question">
           <div className="ws-word-bank" aria-label={ar ? "بنك الكلمات" : "Word bank"}>
             <strong>{ar ? "بنك الكلمات" : "Word bank"}</strong>
-            <div>{Array.from(new Set(q.answers.filter(Boolean))).map((word, i) => <span key={i}>{word}</span>)}</div>
+            <div>
+              {Array.from(new Set(q.answers.filter(Boolean))).map((word, i) => (
+                <MathText key={i} text={word} fallbackDirection={ar ? "rtl" : "ltr"} />
+              ))}
+            </div>
           </div>
           <ol className="ws-word-bank-items">
-            {q.items.map((item, i) => <li key={i}><span>{item}</span><span className="ws-word-bank-blank" /></li>)}
+            {q.items.map((item, i) => (
+              <li key={i}>
+                <MathText text={item} fallbackDirection={ar ? "rtl" : "ltr"} />
+                <span className="ws-word-bank-blank" />
+              </li>
+            ))}
           </ol>
         </div>
       )}
       {q.type === "compare" && (
         <div className="ws-compare-organizer">
           <div className="ws-compare-panel">
-            <strong>{q.leftLabel}</strong>
+            <strong><MathText text={q.leftLabel} fallbackDirection={ar ? "rtl" : "ltr"} /></strong>
             <span className="ws-compare-subtitle">{ar ? "خصائص واختلافات" : "Traits and differences"}</span>
             {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
           </div>
@@ -2147,7 +2167,7 @@ function QuestionView({
             {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
           </div>
           <div className="ws-compare-panel">
-            <strong>{q.rightLabel}</strong>
+            <strong><MathText text={q.rightLabel} fallbackDirection={ar ? "rtl" : "ltr"} /></strong>
             <span className="ws-compare-subtitle">{ar ? "خصائص واختلافات" : "Traits and differences"}</span>
             {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
           </div>
@@ -2156,7 +2176,7 @@ function QuestionView({
       {(q.type === "short_answer" || q.type === "tic_tac_toe") && questionStyle?.rubric && (
         <div className="ws-rubric">
           <strong>{ar ? "معيار النجاح:" : "Success criterion:"}</strong>
-          <span>{questionStyle.rubric}</span>
+          <MathText text={questionStyle.rubric} fallbackDirection={ar ? "rtl" : "ltr"} />
         </div>
       )}
     </div>
@@ -2174,13 +2194,17 @@ function AnswerView({
         <span className="ws-q-num">{questionLabel}</span>
         <div className="ws-q-prompt-wrap">
           <div className="ws-q-prompt">
-            {q.type === "matching" ? (ar ? "أزواج التوصيل" : "Matching pairs") : q.prompt}
+            <MathText
+              text={q.type === "matching" ? (ar ? "أزواج التوصيل" : "Matching pairs") : q.prompt}
+              fallbackDirection={ar ? "rtl" : "ltr"}
+            />
             {continuation && <span className="ws-answer-cont-label"> ({ar ? "تابع" : "continued"})</span>}
           </div>
         </div>
       </div>
       <div className="ws-answer-line">
-        <strong>{continuation ? (ar ? "تابع الإجابة:" : "Answer continued:") : labels.correct}</strong> {text}
+        <strong>{continuation ? (ar ? "تابع الإجابة:" : "Answer continued:") : labels.correct}</strong>{" "}
+        <MathText text={text} fallbackDirection={ar ? "rtl" : "ltr"} />
       </div>
     </div>
   );
