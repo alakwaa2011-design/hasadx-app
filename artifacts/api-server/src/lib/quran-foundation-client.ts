@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import qcfV2Integrity from "../data/qcf-v2-page-integrity.json";
+
 const OAUTH_BASE_URL = "https://oauth2.quran.foundation";
 const CONTENT_BASE_URL = "https://apis.quran.foundation";
 const TOKEN_EARLY_REFRESH_MS = 60_000;
@@ -31,9 +34,18 @@ export type QuranFoundationSurahContent = {
 
 export type QuranFoundationMadaniPage = {
   pageNumber: number;
+  juzNumber: number;
+  hizbNumber: number;
+  rubElHizbNumber: number;
+  surahStarts: Array<{
+    surahNumber: number;
+    lineNumber: number;
+  }>;
   lines: Array<{
     lineNumber: number;
     words: Array<{
+      id: number;
+      position: number;
       verseKey: string;
       glyph: string;
       text: string;
@@ -49,6 +61,7 @@ type CachedToken = {
 };
 
 let cachedToken: CachedToken | null = null;
+let tokenRequestPromise: Promise<string> | null = null;
 let cachedCatalog: { value: QuranFoundationSurah[]; expiresAt: number } | null = null;
 const cachedSurahs = new Map<number, { value: QuranFoundationSurahContent; expiresAt: number }>();
 const cachedMadaniPages = new Map<number, { value: QuranFoundationMadaniPage; expiresAt: number }>();
@@ -97,7 +110,12 @@ async function accessToken(forceRefresh = false): Promise<string> {
   if (!forceRefresh && cachedToken && cachedToken.expiresAt > Date.now()) {
     return cachedToken.value;
   }
-  return requestAccessToken();
+  if (!tokenRequestPromise) {
+    tokenRequestPromise = requestAccessToken().finally(() => {
+      tokenRequestPromise = null;
+    });
+  }
+  return tokenRequestPromise;
 }
 
 async function requestContentJson(path: string, retryAuth = true): Promise<unknown> {
@@ -219,31 +237,55 @@ export async function getQuranFoundationMadaniPage(pageNumber: number): Promise<
   const cached = cachedMadaniPages.get(pageNumber);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-  const payload = await requestContentJson(
-    `verses/by_page/${pageNumber}?mushaf=1&words=true&per_page=50&word_fields=code_v2,text_qpc_hafs,page_number,line_number`,
-  );
-  const verses = payload && typeof payload === "object"
-    ? (payload as { verses?: unknown }).verses
-    : null;
-  if (!Array.isArray(verses) || verses.length < 1) {
+  const pagePath = (page: number) =>
+    `verses/by_page/${page}?mushaf=1&words=true&per_page=50&word_fields=code_v2,text_qpc_hafs,page_number,line_number,position`;
+  const payloads = await Promise.all([
+    pageNumber > 1 ? requestContentJson(pagePath(pageNumber - 1)) : Promise.resolve(null),
+    requestContentJson(pagePath(pageNumber)),
+    pageNumber < 604 ? requestContentJson(pagePath(pageNumber + 1)) : Promise.resolve(null),
+  ]);
+  const verses = payloads.flatMap((payload) => {
+    const value = payload && typeof payload === "object"
+      ? (payload as { verses?: unknown }).verses
+      : null;
+    return Array.isArray(value) ? value : [];
+  });
+  if (verses.length < 1) {
     throw new Error("Quran Foundation Madani page has no verses");
   }
 
-  const lineMap = new Map<number, QuranFoundationMadaniPage["lines"][number]["words"]>();
+  type StagedWord = QuranFoundationMadaniPage["lines"][number]["words"][number] & {
+    lineNumber: number;
+    surahNumber: number;
+    verseNumber: number;
+    juzNumber: number;
+    hizbNumber: number;
+    rubElHizbNumber: number;
+  };
+  const stagedWords = new Map<number, StagedWord>();
   for (const verse of verses) {
     if (!verse || typeof verse !== "object") throw new Error("Quran Foundation Madani verse is invalid");
     const verseValue = verse as Record<string, unknown>;
-    if (typeof verseValue.verse_key !== "string" || !/^\d{1,3}:\d{1,3}$/.test(verseValue.verse_key)) {
+    if (
+      typeof verseValue.verse_key !== "string"
+      || !/^\d{1,3}:\d{1,3}$/.test(verseValue.verse_key)
+      || !Number.isInteger(verseValue.juz_number)
+      || !Number.isInteger(verseValue.hizb_number)
+      || !Number.isInteger(verseValue.rub_el_hizb_number)
+    ) {
       throw new Error("Quran Foundation Madani verse key is invalid");
     }
+    const [surahNumber, verseNumber] = verseValue.verse_key.split(":").map(Number);
     if (!Array.isArray(verseValue.words)) {
       throw new Error("Quran Foundation Madani verse has no words");
     }
     for (const word of verseValue.words) {
       if (!word || typeof word !== "object") throw new Error("Quran Foundation Madani word is invalid");
       const value = word as Record<string, unknown>;
+      if (value.page_number !== pageNumber) continue;
       if (
-        value.page_number !== pageNumber
+        !Number.isInteger(value.id)
+        || !Number.isInteger(value.position)
         || !Number.isInteger(value.line_number)
         || (value.line_number as number) < 1
         || (value.line_number as number) > 15
@@ -254,15 +296,62 @@ export async function getQuranFoundationMadaniPage(pageNumber: number): Promise<
       ) {
         throw new Error("Quran Foundation Madani word fields are invalid");
       }
-      const lineNumber = value.line_number as number;
-      const words = lineMap.get(lineNumber) ?? [];
-      words.push({
+      stagedWords.set(value.id as number, {
+        id: value.id as number,
+        position: value.position as number,
         verseKey: verseValue.verse_key,
         glyph: value.code_v2,
         text: value.text_qpc_hafs,
         type: value.char_type_name,
+        lineNumber: value.line_number as number,
+        surahNumber,
+        verseNumber,
+        juzNumber: verseValue.juz_number as number,
+        hizbNumber: verseValue.hizb_number as number,
+        rubElHizbNumber: verseValue.rub_el_hizb_number as number,
       });
-      lineMap.set(lineNumber, words);
+    }
+  }
+
+  const orderedWords = [...stagedWords.values()].sort((left, right) =>
+    left.lineNumber - right.lineNumber
+    || left.surahNumber - right.surahNumber
+    || left.verseNumber - right.verseNumber
+    || left.position - right.position
+  );
+  const firstWord = orderedWords[0];
+  if (!firstWord) {
+    throw new Error("Quran Foundation Madani page has no words assigned to the requested page");
+  }
+  const expectedIntegrity = qcfV2Integrity.pages[String(pageNumber) as keyof typeof qcfV2Integrity.pages];
+  const pageSignature = createHash("sha256")
+    .update(orderedWords.map((word) =>
+      `${word.id}:${word.position}:${word.lineNumber}:${word.verseKey}:${word.glyph}`
+    ).join("|"))
+    .digest("hex");
+  if (
+    !expectedIntegrity
+    || orderedWords.length !== expectedIntegrity.wordCount
+    || new Set(orderedWords.map((word) => word.lineNumber)).size !== expectedIntegrity.lineCount
+    || pageSignature !== expectedIntegrity.signature
+  ) {
+    throw new Error("Quran Foundation Madani page failed canonical integrity validation");
+  }
+  const lineMap = new Map<number, QuranFoundationMadaniPage["lines"][number]["words"]>();
+  const surahStartMap = new Map<number, number>();
+  for (const word of orderedWords) {
+    const words = lineMap.get(word.lineNumber) ?? [];
+    words.push({
+      id: word.id,
+      position: word.position,
+      verseKey: word.verseKey,
+      glyph: word.glyph,
+      text: word.text,
+      type: word.type,
+    });
+    lineMap.set(word.lineNumber, words);
+    if (word.verseNumber === 1 && !surahStartMap.has(word.surahNumber)) {
+      surahStartMap.set(word.surahNumber, word.lineNumber);
     }
   }
 
@@ -275,6 +364,13 @@ export async function getQuranFoundationMadaniPage(pageNumber: number): Promise<
 
   const value: QuranFoundationMadaniPage = {
     pageNumber,
+    juzNumber: firstWord.juzNumber,
+    hizbNumber: firstWord.hizbNumber,
+    rubElHizbNumber: firstWord.rubElHizbNumber,
+    surahStarts: [...surahStartMap.entries()].map(([surahNumber, lineNumber]) => ({
+      surahNumber,
+      lineNumber,
+    })),
     lines,
     source: "quran_foundation_qcf_v2",
   };
@@ -321,6 +417,7 @@ export async function getQuranFoundationAudioUrl(
 
 export function resetQuranFoundationClientForTests(): void {
   cachedToken = null;
+  tokenRequestPromise = null;
   cachedCatalog = null;
   cachedSurahs.clear();
   cachedMadaniPages.clear();

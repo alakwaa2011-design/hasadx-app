@@ -265,6 +265,7 @@ export function QuranPagesView({
             onFallbackError={() =>
               setFailedPages((current) => new Set(current).add(page))
             }
+            chapters={chapters}
           />
         )}
       </figure>

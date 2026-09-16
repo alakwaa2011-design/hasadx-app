@@ -7,6 +7,7 @@
  */
 import type { QuranMadaniLine } from './quranMadaniLine';
 import type { QuranMadaniPageSource } from './quranMadaniPageSource';
+import type { QuranMadaniSurahStart } from './quranMadaniSurahStart';
 
 export interface QuranMadaniPage {
   /**
@@ -14,6 +15,22 @@ export interface QuranMadaniPage {
      * @maximum 604
      */
   pageNumber: number;
+  /**
+     * @minimum 1
+     * @maximum 30
+     */
+  juzNumber: number;
+  /**
+     * @minimum 1
+     * @maximum 60
+     */
+  hizbNumber: number;
+  /**
+     * @minimum 1
+     * @maximum 240
+     */
+  rubElHizbNumber: number;
+  surahStarts: QuranMadaniSurahStart[];
   /** @minItems 1 */
   lines: QuranMadaniLine[];
   source: QuranMadaniPageSource;

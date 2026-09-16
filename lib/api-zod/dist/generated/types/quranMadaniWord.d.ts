@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 export interface QuranMadaniWord {
+    id: number;
+    position: number;
     /** @pattern ^\d{1,3}:\d{1,3}$ */
     verseKey: string;
     /** @minLength 1 */

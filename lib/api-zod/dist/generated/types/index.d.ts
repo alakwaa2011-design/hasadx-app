@@ -142,6 +142,7 @@ export * from './quranJourneyWardStatus';
 export * from './quranMadaniLine';
 export * from './quranMadaniPage';
 export * from './quranMadaniPageSource';
+export * from './quranMadaniSurahStart';
 export * from './quranMadaniWord';
 export * from './quranMistakeCounts';
 export * from './quranProfileUpdate';

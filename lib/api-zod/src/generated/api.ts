@@ -4570,6 +4570,16 @@ export const GetQuranMadaniPageParams = zod.object({
 
 export const getQuranMadaniPageResponsePageNumberMax = 604;
 
+export const getQuranMadaniPageResponseJuzNumberMax = 30;
+
+export const getQuranMadaniPageResponseHizbNumberMax = 60;
+
+export const getQuranMadaniPageResponseRubElHizbNumberMax = 240;
+
+export const getQuranMadaniPageResponseSurahStartsItemSurahNumberMax = 114;
+
+export const getQuranMadaniPageResponseSurahStartsItemLineNumberMax = 15;
+
 export const getQuranMadaniPageResponseLinesItemLineNumberMax = 15;
 
 export const getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp = new RegExp('^\\d{1,3}:\\d{1,3}$');
@@ -4581,9 +4591,18 @@ export const getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp = new Re
 
 export const GetQuranMadaniPageResponse = zod.object({
   "pageNumber": zod.int().min(1).max(getQuranMadaniPageResponsePageNumberMax),
+  "juzNumber": zod.int().min(1).max(getQuranMadaniPageResponseJuzNumberMax),
+  "hizbNumber": zod.int().min(1).max(getQuranMadaniPageResponseHizbNumberMax),
+  "rubElHizbNumber": zod.int().min(1).max(getQuranMadaniPageResponseRubElHizbNumberMax),
+  "surahStarts": zod.array(zod.object({
+  "surahNumber": zod.int().min(1).max(getQuranMadaniPageResponseSurahStartsItemSurahNumberMax),
+  "lineNumber": zod.int().min(1).max(getQuranMadaniPageResponseSurahStartsItemLineNumberMax)
+})),
   "lines": zod.array(zod.object({
   "lineNumber": zod.int().min(1).max(getQuranMadaniPageResponseLinesItemLineNumberMax),
   "words": zod.array(zod.object({
+  "id": zod.int(),
+  "position": zod.int(),
   "verseKey": zod.string().regex(getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp),
   "glyph": zod.string().min(1),
   "text": zod.string(),

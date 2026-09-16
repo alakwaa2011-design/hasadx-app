@@ -13995,25 +13995,49 @@ export declare const GetQuranMadaniPageParams: zodV3.ZodObject<{
     pageNumber: number;
 }>;
 export declare const getQuranMadaniPageResponsePageNumberMax = 604;
+export declare const getQuranMadaniPageResponseJuzNumberMax = 30;
+export declare const getQuranMadaniPageResponseHizbNumberMax = 60;
+export declare const getQuranMadaniPageResponseRubElHizbNumberMax = 240;
+export declare const getQuranMadaniPageResponseSurahStartsItemSurahNumberMax = 114;
+export declare const getQuranMadaniPageResponseSurahStartsItemLineNumberMax = 15;
 export declare const getQuranMadaniPageResponseLinesItemLineNumberMax = 15;
 export declare const getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp: RegExp;
 export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
     pageNumber: zodV3.ZodNumber;
+    juzNumber: zodV3.ZodNumber;
+    hizbNumber: zodV3.ZodNumber;
+    rubElHizbNumber: zodV3.ZodNumber;
+    surahStarts: zodV3.ZodArray<zodV3.ZodObject<{
+        surahNumber: zodV3.ZodNumber;
+        lineNumber: zodV3.ZodNumber;
+    }, "strip", zodV3.ZodTypeAny, {
+        surahNumber: number;
+        lineNumber: number;
+    }, {
+        surahNumber: number;
+        lineNumber: number;
+    }>, "many">;
     lines: zodV3.ZodArray<zodV3.ZodObject<{
         lineNumber: zodV3.ZodNumber;
         words: zodV3.ZodArray<zodV3.ZodObject<{
+            id: zodV3.ZodNumber;
+            position: zodV3.ZodNumber;
             verseKey: zodV3.ZodString;
             glyph: zodV3.ZodString;
             text: zodV3.ZodString;
             type: zodV3.ZodString;
         }, "strip", zodV3.ZodTypeAny, {
             type: string;
+            id: number;
             text: string;
+            position: number;
             verseKey: string;
             glyph: string;
         }, {
             type: string;
+            id: number;
             text: string;
+            position: number;
             verseKey: string;
             glyph: string;
         }>, "many">;
@@ -14021,7 +14045,9 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
         lineNumber: number;
         words: {
             type: string;
+            id: number;
             text: string;
+            position: number;
             verseKey: string;
             glyph: string;
         }[];
@@ -14029,7 +14055,9 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
         lineNumber: number;
         words: {
             type: string;
+            id: number;
             text: string;
+            position: number;
             verseKey: string;
             glyph: string;
         }[];
@@ -14038,11 +14066,20 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     source: "quran_foundation_qcf_v2";
     pageNumber: number;
+    juzNumber: number;
+    hizbNumber: number;
+    rubElHizbNumber: number;
+    surahStarts: {
+        surahNumber: number;
+        lineNumber: number;
+    }[];
     lines: {
         lineNumber: number;
         words: {
             type: string;
+            id: number;
             text: string;
+            position: number;
             verseKey: string;
             glyph: string;
         }[];
@@ -14050,11 +14087,20 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
 }, {
     source: "quran_foundation_qcf_v2";
     pageNumber: number;
+    juzNumber: number;
+    hizbNumber: number;
+    rubElHizbNumber: number;
+    surahStarts: {
+        surahNumber: number;
+        lineNumber: number;
+    }[];
     lines: {
         lineNumber: number;
         words: {
             type: string;
+            id: number;
             text: string;
+            position: number;
             verseKey: string;
             glyph: string;
         }[];

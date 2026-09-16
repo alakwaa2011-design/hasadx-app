@@ -40,6 +40,8 @@ export interface QuranSurahContent {
     source: QuranSurahContentSource;
 }
 export interface QuranMadaniWord {
+    id: number;
+    position: number;
     /** @pattern ^\d{1,3}:\d{1,3}$ */
     verseKey: string;
     /** @minLength 1 */
@@ -57,6 +59,18 @@ export interface QuranMadaniLine {
     /** @minItems 1 */
     words: QuranMadaniWord[];
 }
+export interface QuranMadaniSurahStart {
+    /**
+       * @minimum 1
+       * @maximum 114
+       */
+    surahNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 15
+       */
+    lineNumber: number;
+}
 export type QuranMadaniPageSource = typeof QuranMadaniPageSource[keyof typeof QuranMadaniPageSource];
 export declare const QuranMadaniPageSource: {
     readonly quran_foundation_qcf_v2: "quran_foundation_qcf_v2";
@@ -67,6 +81,22 @@ export interface QuranMadaniPage {
        * @maximum 604
        */
     pageNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 30
+       */
+    juzNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 60
+       */
+    hizbNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 240
+       */
+    rubElHizbNumber: number;
+    surahStarts: QuranMadaniSurahStart[];
     /** @minItems 1 */
     lines: QuranMadaniLine[];
     source: QuranMadaniPageSource;

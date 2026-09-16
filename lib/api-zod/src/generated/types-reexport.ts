@@ -132,6 +132,7 @@ export type * from "./types/quranJourneyWardStatus";
 export type * from "./types/quranMadaniLine";
 export type * from "./types/quranMadaniPage";
 export type * from "./types/quranMadaniPageSource";
+export type * from "./types/quranMadaniSurahStart";
 export type * from "./types/quranMadaniWord";
 export type * from "./types/quranMistakeCounts";
 export type * from "./types/quranProfileUpdate";
