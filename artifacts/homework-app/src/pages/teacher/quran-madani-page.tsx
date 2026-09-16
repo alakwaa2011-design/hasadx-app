@@ -222,6 +222,7 @@ export function QuranMadaniPageRenderer({
   if (showFallback) {
     return (
       <img
+        data-testid={`quran-page-fallback-${pageNumber}`}
         src={fallbackImageUrl}
         alt={lang === "ar" ? `صفحة المصحف رقم ${pageNumber}` : `Mushaf page ${pageNumber}`}
         className="block h-auto w-full select-none bg-white"
@@ -246,6 +247,7 @@ export function QuranMadaniPageRenderer({
 
   return (
     <div
+      data-testid={`quran-page-qcf-${pageNumber}`}
       className="@container relative w-full select-none bg-[#fdfaf6] text-black overflow-hidden rounded-[2px]"
       style={{ aspectRatio: "382.677/547.086" }}
       dir="rtl"
