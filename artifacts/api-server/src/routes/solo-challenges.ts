@@ -7,6 +7,7 @@ import {
   soloChallengesTable,
   soloChallengeScoresTable,
   soloChallengeAttemptsTable,
+  submissionsTable,
   studentsTable,
 } from "@workspace/db";
 import { eq, and, desc, asc, sql, isNull, or } from "drizzle-orm";
@@ -19,6 +20,10 @@ import {
 import { startGameFromRest } from "../game/socket-handlers";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { persistSoloChallengeResult } from "../lib/solo-challenge-results";
+import {
+  hasActiveAutomaticAssignmentGrant,
+  lockAssignmentRewardEvidence,
+} from "../lib/classroom-reward-evaluator";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -746,6 +751,22 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
     const allowedClassesList = Array.isArray((challenge as any).allowedClasses)
       ? ((challenge as any).allowedClasses as string[]).filter(c => typeof c === "string" && c.trim())
       : [];
+    const [scoreSummary] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(soloChallengeScoresTable)
+      .where(eq(soloChallengeScoresTable.slug, challenge.slug));
+    const [attemptSummary] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(soloChallengeAttemptsTable)
+      .where(eq(soloChallengeAttemptsTable.slug, challenge.slug));
+    let assignmentSubmissionCount = 0;
+    if (challenge.assignmentId !== null) {
+      const [submissionSummary] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(submissionsTable)
+        .where(eq(submissionsTable.assignmentId, challenge.assignmentId));
+      assignmentSubmissionCount = Number(submissionSummary?.count ?? 0);
+    }
 
     res.json({
       ...challenge,
@@ -755,6 +776,9 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
       questionCount,
       difficultyCounts,
       allowedClasses: allowedClassesList,
+      scoreCount: Number(scoreSummary?.count ?? 0),
+      attemptCount: Number(attemptSummary?.count ?? 0),
+      assignmentSubmissionCount,
     });
   } catch (err) {
     req.log.error(err, "Get teacher solo challenge error");
@@ -838,6 +862,107 @@ router.delete("/solo-challenges/:slug/participants/:id", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Delete participant error");
     res.status(500).json({ message: "خطأ في حذف المشارك" });
+  }
+});
+
+// ── DELETE /api/solo-challenges/:slug/submissions  (owner teacher) ─────────
+// Clears completed scores and started attempts so every participant can play
+// again. Linked assignment submissions are cleared in the same transaction so
+// its question editor becomes available without leaving mixed-version results.
+router.delete("/solo-challenges/:slug/submissions", async (req, res) => {
+  try {
+    const teacherId = requireTeacher(req, res);
+    if (!teacherId) return;
+
+    const result = await db.transaction(async (tx) => {
+      const challengeRows = (await tx.execute(sql`
+        SELECT id, teacher_id, assignment_id
+        FROM solo_challenges
+        WHERE slug = ${req.params.slug}
+        FOR UPDATE
+      `)).rows as Array<{ id: number; teacher_id: number; assignment_id: number | null }>;
+      const challenge = challengeRows[0];
+
+      if (!challenge) throw new Error("challenge_not_found");
+      if (Number(challenge.teacher_id) !== teacherId) throw new Error("not_allowed");
+
+      let deletedAssignmentSubmissions = 0;
+      const assignmentId = challenge.assignment_id == null ? null : Number(challenge.assignment_id);
+      if (assignmentId !== null) {
+        const assignmentRows = (await tx.execute(sql`
+          SELECT id, teacher_id
+          FROM assignments
+          WHERE id = ${assignmentId}
+          FOR UPDATE
+        `)).rows as Array<{ id: number; teacher_id: number }>;
+        const assignment = assignmentRows[0];
+        if (!assignment) throw new Error("assignment_not_found");
+        if (Number(assignment.teacher_id) !== teacherId) throw new Error("not_allowed");
+
+        const submissionRows = (await tx.execute(sql`
+          SELECT id
+          FROM submissions
+          WHERE assignment_id = ${assignmentId}
+          FOR UPDATE
+        `)).rows as Array<{ id: number }>;
+        const submissionIds = submissionRows.map((row) => Number(row.id));
+
+        for (const submissionId of submissionIds) {
+          await lockAssignmentRewardEvidence(tx, teacherId, submissionId);
+          if (await hasActiveAutomaticAssignmentGrant(tx, teacherId, submissionId)) {
+            throw new Error("active_automatic_reward");
+          }
+        }
+
+        if (submissionIds.length > 0) {
+          await tx.execute(sql`
+            UPDATE adaptive_sessions
+            SET submission_id = NULL
+            WHERE assignment_id = ${assignmentId}
+              AND submission_id IS NOT NULL
+          `);
+          const deleted = await tx
+            .delete(submissionsTable)
+            .where(eq(submissionsTable.assignmentId, assignmentId))
+            .returning({ id: submissionsTable.id });
+          deletedAssignmentSubmissions = deleted.length;
+        }
+      }
+
+      const deletedScores = await tx
+        .delete(soloChallengeScoresTable)
+        .where(eq(soloChallengeScoresTable.slug, req.params.slug))
+        .returning({ id: soloChallengeScoresTable.id });
+      const deletedAttempts = await tx
+        .delete(soloChallengeAttemptsTable)
+        .where(eq(soloChallengeAttemptsTable.slug, req.params.slug))
+        .returning({ id: soloChallengeAttemptsTable.id });
+
+      return {
+        deletedScores: deletedScores.length,
+        deletedAttempts: deletedAttempts.length,
+        deletedAssignmentSubmissions,
+      };
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    if (err?.message === "challenge_not_found") {
+      return res.status(404).json({ message: "المسابقة غير موجودة" });
+    }
+    if (err?.message === "assignment_not_found") {
+      return res.status(404).json({ message: "الواجب المرتبط غير موجود" });
+    }
+    if (err?.message === "not_allowed") {
+      return res.status(403).json({ message: "غير مصرح لك بحذف تسليمات هذه المسابقة" });
+    }
+    if (err?.message === "active_automatic_reward") {
+      return res.status(409).json({
+        message: "لا يمكن حذف التسليمات لوجود مكافأة تلقائية نشطة مرتبطة بها. اعكس المكافأة من سجل المكافآت أولًا ثم أعد المحاولة.",
+      });
+    }
+    req.log.error(err, "Clear solo challenge submissions error");
+    return res.status(500).json({ message: "تعذر حذف تسليمات المسابقة" });
   }
 });
 

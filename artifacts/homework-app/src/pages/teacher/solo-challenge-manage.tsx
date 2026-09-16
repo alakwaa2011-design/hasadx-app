@@ -7,7 +7,7 @@ import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Target, ChevronLeft, ChevronRight, Copy, Share2, ExternalLink, Users, Clock,
-  Trophy, FileText, Calendar, CheckCircle, XCircle, Trash2,
+  Trophy, FileText, Calendar, CheckCircle, XCircle, Trash2, ListX,
   Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw, Volume2, VolumeX, Music, AlertCircle, AlertTriangle, Settings, Gamepad2, ShieldAlert, Search, Download
 } from "lucide-react";
 import AudioPicker from "@/components/AudioPicker";
@@ -16,6 +16,15 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -54,6 +63,9 @@ interface ChallengeTeacherData {
   isMultiLevel?: boolean;
   levels?: Array<{ name: string; questionCount: number; timePerQuestion: number }> | null;
   allowedClasses?: string[];
+  scoreCount?: number;
+  attemptCount?: number;
+  assignmentSubmissionCount?: number;
 }
 
 type QuestionSelectionMode = "all" | "random" | "difficulty";
@@ -120,6 +132,9 @@ export default function SoloChallengeManagePage() {
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [deletingParticipantId, setDeletingParticipantId] = useState<number | null>(null);
   const [participantSearch, setParticipantSearch] = useState("");
+  const [showClearSubmissionsDialog, setShowClearSubmissionsDialog] = useState(false);
+  const [clearSubmissionsConfirmation, setClearSubmissionsConfirmation] = useState("");
+  const [clearingSubmissions, setClearingSubmissions] = useState(false);
 
   // Questions editor (standalone only)
   const [editQuestions, setEditQuestions] = useState<SoloQuestion[]>([]);
@@ -281,6 +296,42 @@ export default function SoloChallengeManagePage() {
       toast.error(err.message || s.deleteFailed);
     } finally {
       setDeletingParticipantId(null);
+    }
+  };
+
+  const clearAllSubmissions = async () => {
+    if (!challenge || !slug) return;
+    setClearingSubmissions(true);
+    try {
+      const res = await fetch(
+        `${API}/api/solo-challenges/${encodeURIComponent(slug)}/submissions`,
+        { method: "DELETE", credentials: "include" },
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.message);
+
+      setParticipants([]);
+      setParticipantSearch("");
+      setChallenge((current) => current ? {
+        ...current,
+        scoreCount: 0,
+        attemptCount: 0,
+        assignmentSubmissionCount: 0,
+      } : current);
+      setShowClearSubmissionsDialog(false);
+      setClearSubmissionsConfirmation("");
+      toast.success(
+        lang === "ar"
+          ? "تم حذف جميع التسليمات والمحاولات، ويمكن للجميع المشاركة من جديد"
+          : "All submissions and attempts were deleted. Everyone can participate again.",
+      );
+    } catch (err: any) {
+      toast.error(
+        err.message
+        || (lang === "ar" ? "تعذر حذف تسليمات المسابقة" : "Could not delete challenge submissions"),
+      );
+    } finally {
+      setClearingSubmissions(false);
     }
   };
 
@@ -842,12 +893,27 @@ export default function SoloChallengeManagePage() {
                         {!challenge.isStandalone && (
                           <button
                             type="button"
-                            onClick={openAssignmentQuestionEditor}
-                            className="text-xs font-bold text-white bg-primary hover:bg-primary/90 px-4 py-2 rounded-xl border border-primary flex items-center gap-1.5"
+                            onClick={() => {
+                              if ((challenge.assignmentSubmissionCount ?? 0) > 0) {
+                                setShowClearSubmissionsDialog(true);
+                                return;
+                              }
+                              openAssignmentQuestionEditor();
+                            }}
+                            className={cn(
+                              "text-xs font-bold px-4 py-2 rounded-xl border flex items-center gap-1.5",
+                              (challenge.assignmentSubmissionCount ?? 0) > 0
+                                ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                : "border-primary bg-primary text-white hover:bg-primary/90",
+                            )}
                             data-testid="button-edit-assignment-questions"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            {lang === "ar" ? "فتح محرر الواجب" : "Open assignment editor"}
+                            {(challenge.assignmentSubmissionCount ?? 0) > 0
+                              ? <ListX className="w-3.5 h-3.5" />
+                              : <Edit3 className="w-3.5 h-3.5" />}
+                            {(challenge.assignmentSubmissionCount ?? 0) > 0
+                              ? (lang === "ar" ? "مسح التسليمات للتعديل" : "Clear submissions to edit")
+                              : (lang === "ar" ? "فتح محرر الواجب" : "Open assignment editor")}
                           </button>
                         )}
                         {challenge.isStandalone && (
@@ -1020,6 +1086,15 @@ export default function SoloChallengeManagePage() {
                            <Download className="w-4 h-4" />
                            CSV
                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowClearSubmissionsDialog(true)}
+                            className="h-10 px-3 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 inline-flex items-center gap-2 text-xs font-bold"
+                            data-testid="button-clear-solo-submissions"
+                          >
+                            <ListX className="w-4 h-4" />
+                            <span className="hidden sm:inline">{lang === "ar" ? "مسح التسليمات" : "Clear submissions"}</span>
+                          </button>
                        </div>
                     </div>
 
@@ -1086,6 +1161,26 @@ export default function SoloChallengeManagePage() {
               {/* 5. Danger Zone Tab */}
               {activeTab === "danger" && (
                 <motion.div key="danger" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                  <div className="bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 rounded-3xl p-6 sm:p-8 shadow-sm">
+                    <h3 className="font-black text-xl text-amber-800 dark:text-amber-300 flex items-center gap-3 mb-3">
+                      <ListX className="w-7 h-7" />
+                      {lang === "ar" ? "مسح جميع التسليمات" : "Clear all submissions"}
+                    </h3>
+                    <p className="text-sm font-medium text-amber-900/80 dark:text-amber-200/80 mb-6 max-w-2xl leading-relaxed">
+                      {lang === "ar"
+                        ? "يحذف نتائج اللاعبين وجميع المحاولات السابقة، ثم يستطيع الجميع فتح الرابط والإجابة من جديد. تبقى المسابقة وأسئلتها ورابطها كما هي."
+                        : "Deletes player results and all previous attempts so everyone can use the link and answer again. The challenge, questions, and link remain."}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="button-clear-solo-submissions-danger"
+                      onClick={() => setShowClearSubmissionsDialog(true)}
+                      className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-black border border-amber-300 bg-white text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-card dark:text-amber-300 transition-colors"
+                    >
+                      <ListX className="w-5 h-5" />
+                      {lang === "ar" ? "مسح التسليمات والمحاولات" : "Clear submissions and attempts"}
+                    </button>
+                  </div>
                   <div className="bg-red-50 border border-red-100 dark:bg-red-950/20 dark:border-red-900/30 rounded-3xl p-6 sm:p-8 shadow-sm">
                     <h3 className="font-black text-xl text-red-600 dark:text-red-400 flex items-center gap-3 mb-3">
                       <ShieldAlert className="w-7 h-7" />
@@ -1112,6 +1207,68 @@ export default function SoloChallengeManagePage() {
           </main>
         </div>
       </div>
+
+      <Dialog
+        open={showClearSubmissionsDialog}
+        onOpenChange={(open) => {
+          if (clearingSubmissions) return;
+          setShowClearSubmissionsDialog(open);
+          if (!open) setClearSubmissionsConfirmation("");
+        }}
+      >
+        <DialogContent dir={dir} className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ListX className="w-5 h-5" />
+              {lang === "ar" ? "مسح جميع تسليمات المسابقة" : "Clear all challenge submissions"}
+            </DialogTitle>
+            <DialogDescription className="text-start leading-relaxed">
+              {lang === "ar"
+                ? `سيتم حذف ${participants.length} نتيجة ظاهرة وجميع المحاولات المسجلة. سيتمكن الجميع من إرسال الإجابات مرة أخرى. ${challenge.assignmentId ? "ستُحذف أيضًا تسليمات الواجب المرتبط حتى تتمكن من تعديل الأسئلة." : ""} لا يمكن التراجع عن هذا الإجراء.`
+                : `${participants.length} visible results and all recorded attempts will be permanently deleted. Everyone can submit again. ${challenge.assignmentId ? "Linked assignment submissions will also be deleted so you can edit its questions." : ""}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <label htmlFor="clear-solo-submissions-confirmation" className="text-sm font-bold">
+              {lang === "ar"
+                ? "للتأكيد، اكتب: حذف التسليمات"
+                : "To confirm, type: DELETE SUBMISSIONS"}
+            </label>
+            <input
+              id="clear-solo-submissions-confirmation"
+              data-testid="input-clear-solo-submissions-confirmation"
+              value={clearSubmissionsConfirmation}
+              onChange={(event) => setClearSubmissionsConfirmation(event.target.value)}
+              autoComplete="off"
+              className="h-11 w-full rounded-xl border-2 border-border bg-background px-3 text-sm font-bold outline-none focus:border-destructive focus:ring-2 focus:ring-destructive/15"
+              placeholder={lang === "ar" ? "حذف التسليمات" : "DELETE SUBMISSIONS"}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowClearSubmissionsDialog(false)}
+              disabled={clearingSubmissions}
+            >
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              variant="destructive"
+              data-testid="button-confirm-clear-solo-submissions"
+              disabled={
+                clearingSubmissions
+                || clearSubmissionsConfirmation.trim() !== (lang === "ar" ? "حذف التسليمات" : "DELETE SUBMISSIONS")
+              }
+              onClick={clearAllSubmissions}
+            >
+              {clearingSubmissions && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+              {lang === "ar" ? "حذف التسليمات نهائيًا" : "Permanently delete submissions"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Save Bar */}
       <AnimatePresence>

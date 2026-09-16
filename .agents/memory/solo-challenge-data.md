@@ -21,3 +21,9 @@ There are TWO separate "solo" systems — do not confuse them:
 2. **Live solo game** (`gameMode='solo'` in `game_history`, 207+ rows in prod). This is a different feature — PIN-based live games. `socket-handlers.ts` `finishGame` writes `game_history.detailedResults` with per-player name/score/totalCorrect. This system DOES persist; the وميض فردي one does not.
 
 **Known historical bug (fixed 2026-05-30):** frontend sent `points` but backend read `score` → all scores saved as 0; `correctCount` was never saved; `timeTaken` never sent/saved. Any solo-challenge play recorded before that fix has score=0/correctCount=0 and is unrecoverable.
+
+Clearing a self-challenge is an explicit destructive reset: delete both completed scores and persisted attempts so prior participants can start again. For assignment-linked challenges, clear linked assignment submissions in the same transaction before question editing is unlocked; never mix old results with changed questions.
+
+**Why:** scores, attempt limits, and assignment answers are separate records. Clearing only one leaves users blocked or makes historical answers refer to a changed question set.
+
+**How to apply:** require typed confirmation, preserve the challenge/questions/link, respect active automatic-reward protections, and leave unrelated `game_history` rows untouched.
