@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { useGetQuranTodayDashboard, QuranSurah } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
-import { Loader2, BookOpen, Clock, Activity, CheckCircle2 } from "lucide-react";
+import { Loader2, BookOpen, Clock, Activity, CheckCircle2, RefreshCw } from "lucide-react";
 import { quranModeLabel } from "./quran-labels";
 
 export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], onNavigate: (tab: "circles" | "queue") => void }) {
   const { lang } = useI18n();
   const isArabic = lang === "ar";
-  const { data: dashboard, isLoading } = useGetQuranTodayDashboard();
+  const { data: dashboard, isLoading, isError, refetch } = useGetQuranTodayDashboard();
 
   if (isLoading) {
     return (
@@ -18,7 +18,29 @@ export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], o
     );
   }
 
-  if (!dashboard) return null;
+  if (isError || !dashboard) {
+    return (
+      <div className="grid min-h-full place-items-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm dark:border-amber-900/60 dark:bg-card">
+          <BookOpen className="mx-auto mb-3 h-10 w-10 text-amber-600" />
+          <h2 className="text-base font-black text-foreground">
+            {lang === "ar" ? "تعذّر تحميل الرئيسية" : "Could not load the dashboard"}
+          </h2>
+          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+            {lang === "ar" ? "حدث خلل مؤقت أثناء جلب بيانات حصاد القرآن." : "There was a temporary issue loading Hasaad Quran data."}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mx-auto mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 text-xs font-black text-white transition-colors hover:bg-emerald-900"
+          >
+            <RefreshCw className="h-4 w-4" />
+            {lang === "ar" ? "إعادة المحاولة" : "Try again"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const pendingWards = dashboard.dueWards.filter(w => w.status !== "completed");
   const todayRecitations = dashboard.todayRecitations;

@@ -1255,6 +1255,7 @@ router.patch("/quran/submissions/:id/review", async (req, res): Promise<void> =>
 async function dueWards(teacherId: number) {
   return db.select({
     id: quranWardsTable.id,
+    assignmentRequestId: quranWardsTable.assignmentRequestId,
     studentId: quranWardsTable.studentId,
     mode: quranWardsTable.mode,
     surahNumber: quranWardsTable.surahNumber,
