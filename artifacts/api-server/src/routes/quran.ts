@@ -76,6 +76,7 @@ import {
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
+import { listQuranFoundationSurahs } from "../lib/quran-foundation-client";
 
 const router: IRouter = Router();
 const quranSubmissionStorage = new ObjectStorageService();
@@ -235,8 +236,14 @@ async function applyCompletedRecitationProgress(
   });
 }
 
-router.get("/quran/surahs", (_req, res): void => {
-  res.json(ListQuranSurahsResponse.parse(QURAN_SURAHS));
+router.get("/quran/surahs", async (req, res): Promise<void> => {
+  try {
+    const officialCatalog = await listQuranFoundationSurahs();
+    res.json(ListQuranSurahsResponse.parse(officialCatalog));
+  } catch (error) {
+    req.log.warn({ err: error }, "Quran Foundation catalog unavailable; using bundled catalog");
+    res.json(ListQuranSurahsResponse.parse(QURAN_SURAHS));
+  }
 });
 
 router.get("/quran/circles", async (req, res): Promise<void> => {
