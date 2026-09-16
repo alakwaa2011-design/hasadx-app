@@ -86,6 +86,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 import { WameethLaunch } from "@/components/wameeth-launch";
 import { resolveImageUrl } from "@/lib/image-url";
 import { toast } from "@/components/ui/sonner";
+import { MathText } from "@/components/math-text";
 import {
   clearIndependentControlToken,
   getIndependentControlToken,
@@ -4062,7 +4063,7 @@ export default function GamePlay() {
                 />
               </div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white leading-relaxed">
-                {question?.text}
+                <MathText text={question?.text ?? ""} fallbackDirection={lang === "ar" ? "rtl" : "ltr"} />
               </h2>
             </motion.div>
           ) : isSoloRef.current ? (
@@ -4093,7 +4094,7 @@ export default function GamePlay() {
                 </span>
               </div>
               <h2 className="text-lg sm:text-2xl md:text-[26px] font-bold text-white/95 text-center leading-[1.9] sm:leading-[1.75] tracking-wide">
-                {question?.text}
+                <MathText text={question?.text ?? ""} fallbackDirection={lang === "ar" ? "rtl" : "ltr"} />
               </h2>
               {/* Bottom diamond divider — HasadX signature */}
               <div className="flex items-center justify-center gap-2 mt-4 sm:mt-5">
@@ -4133,7 +4134,7 @@ export default function GamePlay() {
                 </div>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white text-center leading-relaxed px-10 sm:px-14">
-                {question?.text}
+                <MathText text={question?.text ?? ""} fallbackDirection={lang === "ar" ? "rtl" : "ltr"} />
               </h2>
             </motion.div>
           )}
@@ -4563,7 +4564,11 @@ export default function GamePlay() {
                     disabled={!!selectedAnswer}
                     className={`${btnClass} ${fbHackClass} rounded-xl px-2 py-1.5 font-black text-sm sm:text-base md:text-lg flex items-center justify-center text-center min-h-[40px] sm:min-h-[48px] relative transition-all duration-150 touch-manipulation select-none`}
                   >
-                    <span className="leading-snug break-words">{opt.text}</span>
+                    <MathText
+                      text={opt.text ?? ""}
+                      fallbackDirection={lang === "ar" ? "rtl" : "ltr"}
+                      className="leading-snug"
+                    />
                     {isSelected && answerResult?.correct && (
                       <motion.div
                         initial={{ scale: 0 }}
@@ -4709,15 +4714,15 @@ export default function GamePlay() {
                       {lang === "ar" ? soloColor.arLabel : soloColor.enLabel}
                     </span>
                   )}
-                  <span
+                  <MathText
+                    text={opt.text ?? ""}
+                    fallbackDirection={lang === "ar" ? "rtl" : "ltr"}
                     className={
                       soloColor
                         ? "flex-1 leading-snug text-white text-base sm:text-lg font-semibold"
                         : "leading-snug"
                     }
-                  >
-                    {opt.text}
-                  </span>
+                  />
                   {/* Pending selection confirmation — shown immediately before server responds */}
                   {isSelected && !answerResult && (
                     <motion.div

@@ -43,6 +43,14 @@ afterEach(() => {
 
 
 describe("MathText mixed-direction rendering", () => {
+  it("isolates plain signed-number equations from an Arabic page direction", () => {
+    const equation = renderMathText("(-5) + (-9) - (+4)");
+
+    expect(equation.getAttribute("dir")).toBe("ltr");
+    expect(equation.style.unicodeBidi).toBe("isolate");
+    expect(equation.textContent).toBe("(-5) + (-9) - (+4)");
+  });
+
   it("keeps Arabic, an equation, and English text in source order", () => {
     const element = renderMathText("احسب \\(x+1=3\\) then explain بالعربية");
 

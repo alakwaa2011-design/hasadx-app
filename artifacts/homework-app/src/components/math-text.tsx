@@ -2,7 +2,7 @@ import { useRef, type TextareaHTMLAttributes } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { cn } from "@/lib/utils";
-import { contentDirection } from "@/lib/content-direction";
+import { contentDirection, isEquationOnly } from "@/lib/content-direction";
 
 const INLINE_MATH = /\\\((.+?)\\\)/gs;
 
@@ -18,6 +18,7 @@ export function MathText({
   className?: string;
 }) {
   const value = text ?? children ?? "";
+  const equationOnly = isEquationOnly(value);
   const parts: Array<{ value: string; math: boolean }> = [];
   let cursor = 0;
 
@@ -30,7 +31,15 @@ export function MathText({
   if (cursor < value.length) parts.push({ value: value.slice(cursor), math: false });
 
   return (
-    <span dir={contentDirection(value, fallbackDirection)} className={cn("whitespace-pre-wrap break-words", className)}>
+    <span
+      dir={equationOnly ? "ltr" : contentDirection(value, fallbackDirection)}
+      style={{ unicodeBidi: "isolate" }}
+      className={cn(
+        "whitespace-pre-wrap break-words",
+        equationOnly && "inline-block text-left",
+        className,
+      )}
+    >
       {parts.map((part, index) => {
         if (!part.math) return <span key={index}>{part.value}</span>;
         let html: string;
@@ -126,6 +135,7 @@ export function MathTextarea({
         value={value}
         onChange={event => onValueChange(event.target.value)}
         dir={contentDirection(value, fallbackDirection)}
+        style={{ ...props.style, unicodeBidi: "plaintext" }}
         className={className}
       />
       {value.includes("\\(") && (

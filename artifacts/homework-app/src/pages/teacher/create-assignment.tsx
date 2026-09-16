@@ -2807,6 +2807,7 @@ export default function CreateAssignment() {
                                         <div className="flex-1 relative">
                                           <textarea value={q[MCQ_OPT[opt]] || ""} onChange={e => handleQuestionChange(qIndex, MCQ_OPT[opt], e.target.value)}
                                             dir={contentDirection(q[MCQ_OPT[opt]] || "", lang === "ar" ? "rtl" : "ltr")}
+                                            style={{ unicodeBidi: "plaintext" }}
                                             rows={1}
                                             placeholder={`${t.createAssignment.option} ${opt}`} className="min-h-10 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-relaxed pe-8" />
                                           {/* Math for option if math subject */}

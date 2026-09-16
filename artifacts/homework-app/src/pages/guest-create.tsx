@@ -16,6 +16,7 @@ import {
   makeDefaultQuestion,
   type GuestDraft, type GuestQuestion, type GuestQuestionType,
 } from "@/lib/guest-draft";
+import { contentDirection } from "@/lib/content-direction";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GUEST_AI_COUNT_KEY = "guestAiUsageCount";
@@ -700,6 +701,8 @@ export default function GuestCreatePage() {
                   onChange={e => updateQuestion(q.id, { text: e.target.value })}
                   placeholder={t.guestCreate.questionPlaceholder}
                   rows={2}
+                  dir={contentDirection(q.text, dir)}
+                  style={{ unicodeBidi: "plaintext" }}
                   className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
 
@@ -718,6 +721,8 @@ export default function GuestCreatePage() {
                           value={opt}
                           onChange={e => updateOption(q.id, oi, e.target.value)}
                           placeholder={`${t.guestCreate.optionPlaceholder} ${String.fromCharCode(0x41 + oi)}`}
+                          dir={contentDirection(opt, dir)}
+                          style={{ unicodeBidi: "plaintext" }}
                           className={`flex-1 px-3 py-1.5 rounded-lg border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors ${
                             q.correct === oi ? "border-primary/50 bg-primary/5" : "border-border bg-background"
                           }`}
@@ -755,6 +760,8 @@ export default function GuestCreatePage() {
                       value={q.fillAnswer}
                       onChange={e => updateQuestion(q.id, { fillAnswer: e.target.value })}
                       placeholder={t.guestCreate.fillAnswerPlaceholder}
+                      dir={contentDirection(q.fillAnswer, dir)}
+                      style={{ unicodeBidi: "plaintext" }}
                       className="w-full px-3 py-2 rounded-xl border border-primary/40 bg-primary/5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>

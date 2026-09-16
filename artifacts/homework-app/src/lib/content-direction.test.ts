@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentDirection } from "./content-direction";
+import { contentDirection, isEquationOnly } from "./content-direction";
 
 describe("contentDirection", () => {
   it("switches between Arabic and English from the entered content", () => {
@@ -9,6 +9,10 @@ describe("contentDirection", () => {
 
   it("keeps math-only expressions left-to-right", () => {
     expect(contentDirection("(-8) + (-6) =", "rtl")).toBe("ltr");
+    expect(isEquationOnly("(-5) + (-9) - (+4)")).toBe(true);
+    expect(isEquationOnly("+18")).toBe(true);
+    expect(isEquationOnly("-10")).toBe(true);
+    expect(isEquationOnly("احسب 5 + 3")).toBe(false);
   });
 
   it("uses the interface direction while the field is empty", () => {

@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { resolveImageUrl } from "@/lib/image-url";
+import { MathText } from "@/components/math-text";
 import {
   currentQuestion, escapeProgress, revealedCode,
   type EscapeAction, type EscapeState, type LockState, type LockType,
@@ -1033,7 +1034,7 @@ export function EscapeGameView({
             style={{ borderColor: `rgba(${meta.accent},0.3)` }}
           >
             <p className={`text-center font-black leading-snug text-white ${big ? "text-lg sm:text-2xl" : "text-base sm:text-lg"}`}>
-              {question.text}
+              <MathText text={question.text} fallbackDirection={ar ? "rtl" : "ltr"} />
             </p>
             {question.imageUrl && (
               <div className="flex justify-center mt-2">
@@ -1077,9 +1078,11 @@ export function EscapeGameView({
                     style={{ background: "rgba(255,255,255,0.16)", borderColor: "rgba(255,255,255,0.3)" }}>
                     {letters[pos]}
                   </span>
-                  <span className={`flex-1 leading-snug ${big ? "text-base sm:text-lg" : "text-sm sm:text-base"} ${removedOpt ? "line-through" : ""}`}>
-                    {opt}
-                  </span>
+                  <MathText
+                    text={opt}
+                    fallbackDirection={ar ? "rtl" : "ltr"}
+                    className={`flex-1 leading-snug ${big ? "text-base sm:text-lg" : "text-sm sm:text-base"} ${removedOpt ? "line-through" : ""}`}
+                  />
                   {isCorrectPick && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5 shrink-0"><path d="M20 6 9 17l-5-5"/></svg>}
                   {isWrongPick && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5 shrink-0"><path d="M18 6 6 18M6 6l12 12"/></svg>}
                   {removedOpt && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 shrink-0 text-white/50"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>}

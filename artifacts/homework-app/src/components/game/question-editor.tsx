@@ -161,12 +161,11 @@ export function QuestionCard({
                       "w-5 h-5 lg:w-6 lg:h-6 rounded-md flex items-center justify-center text-[10px] lg:text-xs shrink-0",
                       q.correctAnswer === opt ? "bg-emerald-500/20 text-emerald-700" : "bg-background border border-border/50"
                     )}>{labels[oi]}</span>
-                    <span
-                      dir={contentDirection(String(q[`option${opt}` as keyof Question] || ""), dir)}
-                      className="min-w-0 flex-1 whitespace-pre-wrap break-words"
-                    >
-                      {q[`option${opt}` as keyof Question]}
-                    </span>
+                    <MathText
+                      text={String(q[`option${opt}` as keyof Question] || "")}
+                      fallbackDirection={dir}
+                      className="min-w-0 flex-1"
+                    />
                     {q.correctAnswer === opt && <Check className="w-3.5 h-3.5 shrink-0" />}
                   </div>
                   );
@@ -322,7 +321,8 @@ export function QuestionCard({
                 onChange={e => onChange({ ...q, [`option${opt}`]: e.target.value })}
                 placeholder={copy.optionPlaceholder.replace("{option}", labels[oi])}
                 aria-label={copy.optionPlaceholder.replace("{option}", labels[oi])}
-                dir={dir}
+                dir={contentDirection(String(q[`option${opt}` as keyof Question] || ""), dir)}
+                style={{ unicodeBidi: "plaintext" }}
                 className="flex-1 text-xs lg:text-sm font-bold rounded-lg px-2 lg:px-2.5 py-1.5 lg:py-2 bg-transparent border-none focus:outline-none focus:ring-0 text-foreground placeholder:text-muted-foreground"
               />
             </div>
