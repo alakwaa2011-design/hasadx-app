@@ -24,7 +24,7 @@ import { RewardTypesSettings, IconRenderer } from "./settings";
 import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
 import { BalanceAdjustmentDialog, StudentControlCenter } from "./student-control-center";
-import { RewardGroupChip, RewardGroupsDialog, GroupAwardDialog, GroupDetailDialog } from "./groups";
+import { RewardGroupsDialog, GroupAwardDialog, GroupDetailDialog } from "./groups";
 import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
 import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progress";
 import { LiveBoard } from "./live-board";
@@ -613,15 +613,15 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         )
       )}
 
-      <div className="rewards-pavilion max-w-6xl mx-auto space-y-6 pb-32 transition-all motion-reduce:transition-none">
+      <div className="rewards-pavilion max-w-6xl mx-auto space-y-3 pb-32 transition-all motion-reduce:transition-none sm:space-y-4">
         <div className="rewards-pavilion-lights" aria-hidden="true">
           <i /><i /><i /><i /><i />
         </div>
 
 
         {/* Storybook Header */}
-        <header className="relative z-10 mx-auto w-full pt-4 pb-1">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[2rem] border-2 border-emerald-50 bg-white/95 p-2 sm:p-2.5 sm:pr-4 shadow-sm backdrop-blur-xl">
+        <header className="rewards-pavilion-header relative mx-auto w-full pt-2">
+          <div className="flex flex-col justify-between gap-2.5 rounded-[1.5rem] border-2 border-emerald-50 bg-white/95 p-2 shadow-sm backdrop-blur-xl sm:flex-row sm:items-center sm:rounded-[2rem] sm:p-2.5 sm:pr-4">
             {/* Right (RTL): Back & Class Selector */}
             <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
               <button
@@ -630,7 +630,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   if (embedded) setEmbeddedClass(undefined);
                   else setLocation("/teacher/rewards");
                 }}
-                className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition-all hover:bg-emerald-100 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition-all hover:bg-emerald-100 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20 sm:h-11 sm:w-11 sm:rounded-2xl"
                 aria-label={r("الرجوع إلى اختيار الصف", "Back to class selection")}
               >
                 <ArrowRight size={20} className="transition-transform group-hover:translate-x-0.5" />
@@ -674,7 +674,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                     resumeAudioContext();
                     setLiveBoardOpen(true);
                   }}
-                  className="group relative flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 font-black text-white shadow-md shadow-emerald-600/20 border border-emerald-500 transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40"
+                  className="group relative flex items-center gap-2 rounded-xl border border-emerald-500 bg-emerald-600 px-4 py-2 font-black text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-500 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/40 sm:rounded-2xl sm:px-5 sm:py-2.5"
                   data-testid="button-live-board"
                 >
                   <Target size={18} className="text-amber-300 transition-transform group-hover:rotate-12" />
@@ -689,7 +689,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   <button
                     type="button"
                     onClick={() => setMenuOpen(!menuOpen)}
-                    className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-emerald-700 shadow-sm transition-all hover:bg-emerald-50 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500/20 sm:h-11 sm:w-11 sm:rounded-2xl"
                     aria-label={r("خيارات إضافية", "More options")}
                     aria-expanded={menuOpen}
                     aria-controls="reward-dashboard-more-menu"
@@ -699,7 +699,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                   {menuOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                      <div id="reward-dashboard-more-menu" className="absolute left-0 top-full z-50 mt-2 w-52 rounded-2xl border border-emerald-100 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95">
+                      <div id="reward-dashboard-more-menu" className="absolute left-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-emerald-100 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 sm:w-52 sm:rounded-2xl sm:p-2">
                         <button type="button" onClick={() => { setLedgerOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-emerald-950 hover:bg-emerald-50 focus:bg-emerald-50 outline-none">
                           <History size={17} className="text-emerald-600" /> {r("سجل النقاط", "Points ledger")}
                         </button>
@@ -724,15 +724,15 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         </header>
 
         {/* Lightweight Dashboard Strip */}
-        <section aria-label={r("ملخص التحفيز الأسبوعي", "Weekly rewards summary")} className="flex flex-nowrap items-stretch gap-3 overflow-x-auto pb-4 pt-1 [scrollbar-width:none]">
+        <section aria-label={r("ملخص التحفيز الأسبوعي", "Weekly rewards summary")} className="flex flex-nowrap items-stretch gap-2 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-3 sm:pb-3">
           {/* Class Points */}
           <button
             type="button"
             onClick={() => setClassBalanceOpen(true)}
-            className="group flex shrink-0 min-w-[145px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm hover:border-amber-200 hover:shadow-md transition-all text-right focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40"
+            className="group flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-emerald-100 bg-white p-2 shadow-sm transition-all text-right hover:border-amber-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3"
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:scale-105 transition-transform shadow-inner">
-              <School size={22} />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-500 shadow-inner transition-transform group-hover:scale-105 sm:h-11 sm:w-11 sm:rounded-xl">
+              <School size={20} />
             </div>
             <div>
               <p className="text-[11px] font-bold text-emerald-900/60 mb-0.5">{r("نقاط الصف", "Class points")}</p>
@@ -743,9 +743,9 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </button>
 
           {/* Weekly Stats */}
-          <div className="flex shrink-0 min-w-[145px] items-center gap-3 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm text-right">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shadow-inner">
-              <Sparkles size={22} />
+          <div className="flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-emerald-100 bg-white p-2 shadow-sm text-right sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shadow-inner sm:h-11 sm:w-11 sm:rounded-xl">
+              <Sparkles size={20} />
             </div>
             <div>
               <p className="text-[11px] font-bold text-emerald-900/60 mb-0.5">{r("نقاط الأسبوع", "Weekly points")}</p>
@@ -760,7 +760,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             <button
               type="button"
               onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
-              className="group flex shrink-0 min-w-[145px] items-center gap-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 p-3 shadow-sm hover:bg-emerald-50 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
+              className="group flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 p-2 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40 sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3"
             >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100/60 text-emerald-600 group-hover:scale-105 transition-transform">
                 <Plus size={22} />
@@ -780,7 +780,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 type="button"
                 key={goal.id}
                 onClick={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
-                className={cn("group flex shrink-0 min-w-[160px] max-w-[200px] items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm transition-all text-right focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40", isCompleted ? "border-amber-200 hover:border-amber-300" : "border-emerald-100 hover:border-sky-200 hover:shadow-md")}
+                className={cn("group flex min-w-[145px] max-w-[190px] shrink-0 items-center gap-2 rounded-xl border bg-white p-2 shadow-sm transition-all text-right focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40 sm:min-w-[160px] sm:gap-3 sm:rounded-2xl sm:p-3", isCompleted ? "border-amber-200 hover:border-amber-300" : "border-emerald-100 hover:border-sky-200 hover:shadow-md")}
               >
                 <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl group-hover:scale-105 transition-transform shadow-inner", isCompleted ? "bg-amber-100 text-amber-600" : "bg-sky-50 text-sky-600")}>
                   <Target size={22} />
@@ -802,7 +802,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             <button
               type="button"
               onClick={() => setGoalsManagerOpen(true)}
-              className="flex min-h-[70px] shrink-0 items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-white px-4 text-[11px] font-black text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40"
+              className="flex min-h-[56px] shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 text-[11px] font-black text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40 sm:min-h-[70px] sm:rounded-2xl sm:px-4"
             >
               <SlidersHorizontal size={15} />
               {r("إدارة الأهداف", "Manage goals")}
@@ -811,13 +811,16 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         </section>
 
         {/* Toolbar */}
-        <div className="rewards-pavilion-toolbar pb-3 pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+        <div className="rewards-pavilion-toolbar pb-2 pt-1">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2">
               <div className="flex bg-white border border-emerald-100 rounded-xl p-1 shadow-sm shrink-0">
                 <button
                   type="button"
-                  onClick={() => setViewMode("students")}
+                  onClick={() => {
+                    setViewMode("students");
+                    setActiveGroupId(null);
+                  }}
                   className={cn("px-4 py-1.5 rounded-lg text-sm font-black transition-colors", viewMode === "students" ? "bg-emerald-700 text-white shadow" : "text-emerald-800 hover:bg-emerald-50")}
                 >
                   {r("الطلاب", "Students")}
@@ -831,18 +834,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 </button>
               </div>
 
-              {viewMode === "students" && (
-                <div className="hidden sm:flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none]">
-                  <button type="button" onClick={() => setActiveGroupId(null)}
-                    className={cn("shrink-0 rounded-xl border px-3 py-1.5 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
-                    {r("الكل", "All")}
-                  </button>
-                  {(groupsData?.groups ?? []).map((group) => (
-                    <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
-                      onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
-                  ))}
-                </div>
-              )}
             </div>
 
             {viewMode === "students" ? (
@@ -886,19 +877,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </button>
             )}
           </div>
-
-          {viewMode === "students" && (
-            <div className="flex sm:hidden mt-3 min-w-0 w-full items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none]">
-              <button type="button" onClick={() => setActiveGroupId(null)}
-                className={cn("shrink-0 rounded-xl border px-3 py-1.5 text-xs font-black transition-colors", activeGroupId === null ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-800 hover:border-emerald-300")}>
-                {r("الكل", "All")}
-              </button>
-              {(groupsData?.groups ?? []).map((group) => (
-                <RewardGroupChip key={group.id} group={group} active={activeGroupId === group.id}
-                  onClick={() => setActiveGroupId(activeGroupId === group.id ? null : group.id)} />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Groups / Students Grid */}

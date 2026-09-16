@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import * as LucideIcons from "lucide-react";
 import { useGetRewardTypes, useCreateRewardType, useUpdateRewardType } from "./api";
 import { Loader2, Plus, Check, X, ArrowUp, ArrowDown, Edit2, ArrowRight } from "lucide-react";
@@ -97,19 +97,22 @@ export function RewardTypesSettings({ open, onOpenChange }: { open: boolean, onO
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 bg-background/95 backdrop-blur-xl border-border overflow-hidden">
-        <DialogHeader className="p-4 border-b border-border/50 bg-muted/20">
-          <button type="button" onClick={() => onOpenChange(false)} className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted">
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1rem)] flex-col overflow-hidden border-border bg-background/95 p-0 backdrop-blur-xl sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border/50 bg-muted/20 p-3 sm:p-4">
+          <button type="button" onClick={() => onOpenChange(false)} className="mb-1.5 inline-flex w-fit items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:bg-muted">
             <ArrowRight size={15} /> {r("رجوع", "Back")}
           </button>
           <DialogTitle className="text-lg font-bold">{r("إدارة أنواع التحفيز", "Manage reward types")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {r("عدّل أنواع التحفيز ونقاطها وترتيبها أو أضف نوعًا جديدًا.", "Edit reward types, points, and order, or add a new type.")}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:space-y-3 sm:p-4">
           {isLoading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>}
           
           {!isLoading && sortedTypes.map((t: any, index: number) => (
-            <div key={t.id} className="flex flex-col gap-2 p-3 rounded-xl border border-border/50 bg-card shadow-sm">
+            <div key={t.id} className="flex flex-col gap-2 rounded-xl border border-border/50 bg-card p-2.5 shadow-sm sm:p-3">
               {editingId === t.id ? (
                 <EditForm 
                   form={editForm} 

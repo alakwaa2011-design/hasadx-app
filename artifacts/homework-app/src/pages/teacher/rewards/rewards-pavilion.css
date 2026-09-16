@@ -30,6 +30,7 @@
   border: 1px solid rgba(135,151,92,.2); border-radius: 3.2rem; pointer-events: none;
 }
 .rewards-pavilion > *:not(.rewards-pavilion-lights) { position: relative; z-index: 1; }
+.rewards-pavilion > .rewards-pavilion-header { z-index: 30; }
 .rewards-pavilion-hero {
   min-height: 8rem; padding: 1.35rem 1.6rem; border-radius: 1.9rem;
   background: linear-gradient(112deg, #082c25, #12513f 58%, #17614a);
@@ -122,7 +123,7 @@
 @keyframes rewards-pavilion-glimmer { from { background-position: 0 0; } to { background-position: 120px 70px; } }
 @keyframes rewards-pavilion-halo { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-30px,18px,0) scale(1.12); } }
 @media (max-width: 640px) {
-  .rewards-pavilion { padding: 1rem .75rem 6rem; }
+  .rewards-pavilion { padding: .65rem .65rem 6rem; }
   .rewards-pavilion::after { inset: .5rem .35rem; border-radius: 2rem; }
   .rewards-pavilion-hero { padding: 1rem; border-radius: 1.45rem; }
   .rewards-pavilion-goals { border-radius: 1.45rem; backdrop-filter: none; }
