@@ -185,9 +185,9 @@ export declare const quranIndependentSessionsTable: import("drizzle-orm/pg-core"
 }>;
 export declare const insertQuranIndependentPositionSchema: z.ZodObject<{
     studentAccountId: z.ZodInt;
+    pageNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     textSurahNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     textAyah: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    pageNumber: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
 }, {
     out: {};
     in: {};

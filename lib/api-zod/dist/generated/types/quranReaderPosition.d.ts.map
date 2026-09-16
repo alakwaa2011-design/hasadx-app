@@ -1,0 +1,1 @@
+{"version":3,"file":"quranReaderPosition.d.ts","sourceRoot":"","sources":["../../../src/generated/types/quranReaderPosition.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,mBAAmB;IAClC;;;SAGK;IACL,WAAW,EAAE,MAAM,CAAC;IACpB,iBAAiB;IACjB,UAAU,EAAE,MAAM,CAAC;IACnB;;;SAGK;IACL,UAAU,EAAE,MAAM,CAAC;IACnB,iBAAiB;IACjB,QAAQ,EAAE,MAAM,CAAC;IACjB,SAAS,EAAE,IAAI,CAAC;CACjB"}

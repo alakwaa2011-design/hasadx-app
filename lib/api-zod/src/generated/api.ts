@@ -4596,6 +4596,52 @@ export const GetQuranAyahAudioResponse = zod.void()
 
 
 /**
+ * @summary Get verified word timings for one ayah
+ */
+
+export const getQuranAyahTimingsPathSurahNumberMax = 114;
+
+export const getQuranAyahTimingsPathAyahNumberMax = 286;
+
+
+
+export const GetQuranAyahTimingsParams = zod.object({
+  "recitationId": zod.coerce.number().int().min(1),
+  "surahNumber": zod.coerce.number().int().min(1).max(getQuranAyahTimingsPathSurahNumberMax),
+  "ayahNumber": zod.coerce.number().int().min(1).max(getQuranAyahTimingsPathAyahNumberMax)
+})
+
+
+export const getQuranAyahTimingsResponseVerseKeyRegExp = new RegExp('^\\d{1,3}:\\d{1,3}$');
+export const getQuranAyahTimingsResponseAudioUrlRegExp = new RegExp('^https://(verses\\.quran\\.foundation|download\\.quranicaudio\\.com|audio\\.qurancdn\\.com)/.+');
+export const getQuranAyahTimingsResponseVerseStartMsMin = 0;
+
+export const getQuranAyahTimingsResponseVerseEndMsExclusiveMin = 0;
+
+
+export const getQuranAyahTimingsResponseSegmentsItemStartMsMin = 0;
+
+export const getQuranAyahTimingsResponseSegmentsItemEndMsMin = 0;
+
+
+
+
+export const GetQuranAyahTimingsResponse = zod.object({
+  "recitationId": zod.int().min(1),
+  "verseKey": zod.string().regex(getQuranAyahTimingsResponseVerseKeyRegExp),
+  "audioUrl": zod.string().regex(getQuranAyahTimingsResponseAudioUrlRegExp),
+  "verseStartMs": zod.number().min(getQuranAyahTimingsResponseVerseStartMsMin),
+  "verseEndMs": zod.number().gt(getQuranAyahTimingsResponseVerseEndMsExclusiveMin),
+  "segments": zod.array(zod.object({
+  "wordPosition": zod.int().min(1),
+  "startMs": zod.int().min(getQuranAyahTimingsResponseSegmentsItemStartMsMin),
+  "endMs": zod.int().min(getQuranAyahTimingsResponseSegmentsItemEndMsMin)
+})).min(1),
+  "synchronized": zod.literal(true)
+})
+
+
+/**
  * @summary Get one official QCF V2 Madani Mushaf page
  */
 export const getQuranMadaniPagePathPageNumberMax = 604;
@@ -5835,3 +5881,100 @@ export const GetQuranTodayDashboardResponse = zod.object({
   "recitedDate": zod.string().regex(getQuranTodayDashboardResponseTodayRecitationsItemRecitedDateRegExp)
 }))
 })
+
+
+export const getQuranReaderStateResponsePositionOneSurahNumberMax = 114;
+
+
+export const getQuranReaderStateResponsePositionOnePageNumberMax = 604;
+
+
+export const getQuranReaderStateResponseBookmarksItemSurahNumberMax = 114;
+
+
+export const getQuranReaderStateResponseBookmarksItemPageNumberMax = 604;
+
+
+
+export const GetQuranReaderStateResponse = zod.object({
+  "position": zod.union([zod.object({
+  "surahNumber": zod.int().min(1).max(getQuranReaderStateResponsePositionOneSurahNumberMax),
+  "ayahNumber": zod.int().min(1),
+  "pageNumber": zod.int().min(1).max(getQuranReaderStateResponsePositionOnePageNumberMax),
+  "revision": zod.int().min(1),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
+  "bookmarks": zod.array(zod.object({
+  "surahNumber": zod.int().min(1).max(getQuranReaderStateResponseBookmarksItemSurahNumberMax),
+  "ayahNumber": zod.int().min(1),
+  "pageNumber": zod.int().min(1).max(getQuranReaderStateResponseBookmarksItemPageNumberMax),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+export const updateQuranReaderPositionBodyPageNumberMax = 604;
+
+
+
+
+export const UpdateQuranReaderPositionBody = zod.object({
+  "surahNumber": zod.int(),
+  "ayahNumber": zod.int(),
+  "pageNumber": zod.int().min(1).max(updateQuranReaderPositionBodyPageNumberMax),
+  "expectedRevision": zod.int().min(1)
+})
+
+export const updateQuranReaderPositionResponseSurahNumberMax = 114;
+
+
+export const updateQuranReaderPositionResponsePageNumberMax = 604;
+
+
+
+
+export const UpdateQuranReaderPositionResponse = zod.object({
+  "surahNumber": zod.int().min(1).max(updateQuranReaderPositionResponseSurahNumberMax),
+  "ayahNumber": zod.int().min(1),
+  "pageNumber": zod.int().min(1).max(updateQuranReaderPositionResponsePageNumberMax),
+  "revision": zod.int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const AddQuranBookmarkParams = zod.object({
+  "surahNumber": zod.coerce.number().int(),
+  "ayahNumber": zod.coerce.number().int()
+})
+
+export const addQuranBookmarkBodyPageNumberMax = 604;
+
+
+
+export const AddQuranBookmarkBody = zod.object({
+  "pageNumber": zod.int().min(1).max(addQuranBookmarkBodyPageNumberMax)
+})
+
+export const addQuranBookmarkResponseSurahNumberMax = 114;
+
+
+export const addQuranBookmarkResponsePageNumberMax = 604;
+
+
+
+export const AddQuranBookmarkResponse = zod.object({
+  "surahNumber": zod.int().min(1).max(addQuranBookmarkResponseSurahNumberMax),
+  "ayahNumber": zod.int().min(1),
+  "pageNumber": zod.int().min(1).max(addQuranBookmarkResponsePageNumberMax),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const DeleteQuranBookmarkParams = zod.object({
+  "surahNumber": zod.coerce.number().int(),
+  "ayahNumber": zod.coerce.number().int()
+})
+
+export const DeleteQuranBookmarkResponse = zod.void()

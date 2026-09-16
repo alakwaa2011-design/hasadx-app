@@ -167,6 +167,29 @@ export interface QuranAyahEducation {
     selectedWord: QuranWordContext | null;
     tafsir: QuranAyahTafsir;
 }
+export interface QuranAyahTimingSegment {
+    /** @minimum 1 */
+    wordPosition: number;
+    /** @minimum 0 */
+    startMs: number;
+    /** @minimum 0 */
+    endMs: number;
+}
+export interface QuranAyahTimings {
+    /** @minimum 1 */
+    recitationId: number;
+    /** @pattern ^\d{1,3}:\d{1,3}$ */
+    verseKey: string;
+    /** @pattern ^https://verses\.quran\.foundation/.+ */
+    audioUrl: string;
+    /** @minimum 0 */
+    verseStartMs: number;
+    /** @exclusiveMinimum 0 */
+    verseEndMs: number;
+    /** @minItems 1 */
+    segments: QuranAyahTimingSegment[];
+    synchronized: true;
+}
 export interface QuranStudent {
     id: number;
     name: string;
@@ -2461,6 +2484,66 @@ export interface PresentationAiLimits {
     maxSlides: number;
     allowedDensities: PresentationAiLimitsAllowedDensitiesItem[];
     allowClaude: boolean;
+}
+export interface QuranReaderPosition {
+    /**
+       * @minimum 1
+       * @maximum 114
+       */
+    surahNumber: number;
+    /** @minimum 1 */
+    ayahNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 604
+       */
+    pageNumber: number;
+    /** @minimum 1 */
+    revision: number;
+    updatedAt: string;
+}
+export interface QuranBookmark {
+    /**
+       * @minimum 1
+       * @maximum 114
+       */
+    surahNumber: number;
+    /** @minimum 1 */
+    ayahNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 604
+       */
+    pageNumber: number;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface QuranReaderState {
+    position: QuranReaderPosition | null;
+    bookmarks: QuranBookmark[];
+}
+export interface UpdateQuranReaderPosition {
+    surahNumber: number;
+    ayahNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 604
+       */
+    pageNumber: number;
+    /** @minimum 1 */
+    expectedRevision: number;
+}
+export interface QuranReaderPositionConflict {
+    error: string;
+    /** @minimum 1 */
+    currentRevision: number;
+}
+export interface QuranBookmarkInput {
+    /**
+       * @minimum 1
+       * @maximum 604
+       */
+    pageNumber: number;
 }
 export type AdminHideAssignmentBody = {
     reason?: string | null;

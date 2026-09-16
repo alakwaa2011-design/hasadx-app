@@ -13,6 +13,8 @@ import {
   quranSubmissionsTable,
   quranIndependentPositionsTable,
   quranIndependentSessionsTable,
+  quranReaderPositionsTable,
+  quranBookmarksTable,
   quranWardsTable,
   studentAccountsTable,
   studentsTable,
@@ -74,6 +76,8 @@ import {
   GetQuranSurahContentParams,
   GetQuranSurahContentResponse,
   GetQuranAyahAudioParams,
+  GetQuranAyahTimingsParams,
+  GetQuranAyahTimingsResponse,
   ListQuranRecitersResponse,
   UpdateQuranAudioPreferenceBody,
   UpdateQuranAudioPreferenceResponse,
@@ -86,11 +90,16 @@ import {
   UpdateMyQuranIndependentPositionResponse,
   RecordMyQuranIndependentSessionBody,
   RecordMyQuranIndependentSessionResponse,
+  GetQuranReaderStateResponse,
+  UpdateQuranReaderPositionBody,
+  UpdateQuranReaderPositionResponse,
+  AddQuranBookmarkBody,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationAyahTimings,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   getQuranFoundationAyahEducation,
@@ -145,6 +154,18 @@ function studentAccountIdOf(req: TeacherRequest): number | null {
 
 function hasQuranReaderSession(req: TeacherRequest): boolean {
   return teacherIdOf(req) !== null || studentAccountIdOf(req) !== null;
+}
+
+function readerOwner(req: TeacherRequest) {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId !== null) return { studentAccountId, teacherId: null };
+  const teacherId = teacherIdOf(req);
+  return teacherId === null ? null : { teacherId, studentAccountId: null };
+}
+
+function validReaderVerse(surahNumber: number, ayahNumber: number, pageNumber: number): boolean {
+  const count = SURAH_AYAH_COUNTS[surahNumber - 1];
+  return !!count && ayahNumber >= 1 && ayahNumber <= count && pageNumber >= 1 && pageNumber <= 604;
 }
 
 function today(): string {
@@ -377,6 +398,43 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
   }
 });
 
+router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber/timings", async (req, res): Promise<void> => {
+  if (!hasQuranReaderSession(req)) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const parsed = GetQuranAyahTimingsParams.safeParse({
+    ...req.params,
+    recitationId: Number(req.params.recitationId),
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid recitation or verse" });
+    return;
+  }
+  const surah = QURAN_SURAHS[parsed.data.surahNumber - 1];
+  if (!surah || parsed.data.ayahNumber > surah.ayahCount) {
+    res.status(400).json({ error: "Ayah is outside the surah" });
+    return;
+  }
+  try {
+    const timings = await getQuranFoundationAyahTimings(
+      parsed.data.recitationId, parsed.data.surahNumber, parsed.data.ayahNumber,
+    );
+    res.setHeader("Cache-Control", "private, max-age=2592000, immutable");
+    res.json(GetQuranAyahTimingsResponse.parse(timings));
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes("mapping is unavailable")
+      || error.message.includes("timings are unavailable")
+    )) {
+      res.status(404).json({ error: "Verified Quran timing data is unavailable" });
+      return;
+    }
+    req.log?.error(error, "Official Quran ayah timings unavailable");
+    res.status(503).json({ error: "Official Quran timings are temporarily unavailable" });
+  }
+});
+
 router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> => {
   const parsed = GetQuranMadaniPageParams.safeParse(req.params);
   if (!parsed.success) {
@@ -390,6 +448,124 @@ router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> =>
     req.log.warn({ err: error, pageNumber: parsed.data.pageNumber }, "Official Madani Mushaf page unavailable");
     res.status(503).json({ error: "Official Madani Mushaf page is temporarily unavailable" });
   }
+});
+
+router.get("/quran/reader-state", async (req, res): Promise<void> => {
+  const owner = readerOwner(req);
+  if (!owner) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const ownerFilter = owner.studentAccountId !== null
+    ? eq(quranReaderPositionsTable.studentAccountId, owner.studentAccountId)
+    : eq(quranReaderPositionsTable.teacherId, owner.teacherId!);
+  const bookmarkFilter = owner.studentAccountId !== null
+    ? eq(quranBookmarksTable.studentAccountId, owner.studentAccountId)
+    : eq(quranBookmarksTable.teacherId, owner.teacherId!);
+  const [positions, bookmarks] = await Promise.all([
+    db.select({ surahNumber: quranReaderPositionsTable.surahNumber, ayahNumber: quranReaderPositionsTable.ayahNumber,
+      pageNumber: quranReaderPositionsTable.pageNumber, revision: quranReaderPositionsTable.revision, updatedAt: quranReaderPositionsTable.updatedAt })
+      .from(quranReaderPositionsTable).where(ownerFilter).limit(1),
+    db.select({ surahNumber: quranBookmarksTable.surahNumber, ayahNumber: quranBookmarksTable.ayahNumber,
+      pageNumber: quranBookmarksTable.pageNumber, createdAt: quranBookmarksTable.createdAt, updatedAt: quranBookmarksTable.updatedAt })
+      .from(quranBookmarksTable).where(bookmarkFilter)
+      .orderBy(desc(quranBookmarksTable.createdAt), desc(quranBookmarksTable.id)),
+  ]);
+  res.set("Cache-Control", "private, no-store");
+  res.json(GetQuranReaderStateResponse.parse({ position: positions[0] ?? null, bookmarks }));
+});
+
+router.put("/quran/reader-state/position", async (req, res): Promise<void> => {
+  const owner = readerOwner(req);
+  if (!owner) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const parsed = UpdateQuranReaderPositionBody.safeParse(req.body);
+  if (!parsed.success || !validReaderVerse(parsed.data?.surahNumber ?? 0, parsed.data?.ayahNumber ?? 0, parsed.data?.pageNumber ?? 0)) {
+    res.status(400).json({ error: "Invalid canonical Quran position" }); return;
+  }
+  try {
+    const ownerFilter = owner.studentAccountId !== null
+      ? eq(quranReaderPositionsTable.studentAccountId, owner.studentAccountId)
+      : eq(quranReaderPositionsTable.teacherId, owner.teacherId!);
+    const existing = (await db.select().from(quranReaderPositionsTable).where(ownerFilter).limit(1))[0];
+    if (existing ? existing.revision !== parsed.data.expectedRevision : parsed.data.expectedRevision !== 1) {
+      res.status(409).json({ error: "Reader position has changed", currentRevision: existing?.revision ?? 1 }); return;
+    }
+    const now = new Date();
+    let position;
+    if (existing) {
+      const updateFilter = and(
+        eq(quranReaderPositionsTable.id, existing.id),
+        ownerFilter,
+        eq(quranReaderPositionsTable.revision, parsed.data.expectedRevision),
+      );
+      [position] = await db.update(quranReaderPositionsTable).set({
+        surahNumber: parsed.data.surahNumber, ayahNumber: parsed.data.ayahNumber,
+        pageNumber: parsed.data.pageNumber, revision: existing.revision + 1, updatedAt: now,
+      }).where(updateFilter).returning({
+        surahNumber: quranReaderPositionsTable.surahNumber, ayahNumber: quranReaderPositionsTable.ayahNumber,
+        pageNumber: quranReaderPositionsTable.pageNumber, revision: quranReaderPositionsTable.revision, updatedAt: quranReaderPositionsTable.updatedAt,
+      });
+      if (!position) {
+        const [current] = await db.select({ revision: quranReaderPositionsTable.revision })
+          .from(quranReaderPositionsTable).where(ownerFilter).limit(1);
+        res.status(409).json({ error: "Reader position has changed", currentRevision: current?.revision ?? existing.revision });
+        return;
+      }
+    } else {
+      [position] = await db.insert(quranReaderPositionsTable).values({ ...owner, surahNumber: parsed.data.surahNumber,
+        ayahNumber: parsed.data.ayahNumber, pageNumber: parsed.data.pageNumber }).returning({
+        surahNumber: quranReaderPositionsTable.surahNumber, ayahNumber: quranReaderPositionsTable.ayahNumber,
+        pageNumber: quranReaderPositionsTable.pageNumber, revision: quranReaderPositionsTable.revision, updatedAt: quranReaderPositionsTable.updatedAt,
+      });
+    }
+    res.json(UpdateQuranReaderPositionResponse.parse(position));
+  } catch (error) {
+    const errorCode = (error as { code?: string; cause?: { code?: string } })?.cause?.code
+      ?? (error as { code?: string })?.code;
+    if (errorCode === "23505") {
+      const ownerFilter = owner.studentAccountId !== null
+        ? eq(quranReaderPositionsTable.studentAccountId, owner.studentAccountId)
+        : eq(quranReaderPositionsTable.teacherId, owner.teacherId!);
+      const [current] = await db.select({ revision: quranReaderPositionsTable.revision })
+        .from(quranReaderPositionsTable).where(ownerFilter).limit(1);
+      res.status(409).json({ error: "Reader position has changed", currentRevision: current?.revision ?? 1 });
+      return;
+    }
+    req.log?.error(error, "Save Quran reader position failed");
+    res.status(500).json({ error: "Unable to save Quran reader position" });
+  }
+});
+
+router.put("/quran/reader-state/bookmarks/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
+  const owner = readerOwner(req);
+  if (!owner) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const surahNumber = Number(req.params.surahNumber), ayahNumber = Number(req.params.ayahNumber);
+  const parsed = AddQuranBookmarkBody.safeParse(req.body);
+  if (!parsed.success || !validReaderVerse(surahNumber, ayahNumber, parsed.data?.pageNumber ?? 0)) {
+    res.status(400).json({ error: "Invalid canonical Quran bookmark" }); return;
+  }
+  const conflictTarget = owner.studentAccountId !== null
+    ? [quranBookmarksTable.studentAccountId, quranBookmarksTable.surahNumber, quranBookmarksTable.ayahNumber]
+    : [quranBookmarksTable.teacherId, quranBookmarksTable.surahNumber, quranBookmarksTable.ayahNumber];
+  const conflictTargetWhere = owner.studentAccountId !== null
+    ? sql`${quranBookmarksTable.studentAccountId} IS NOT NULL`
+    : sql`${quranBookmarksTable.teacherId} IS NOT NULL`;
+  const [bookmark] = await db.insert(quranBookmarksTable).values({ ...owner, surahNumber, ayahNumber, pageNumber: parsed.data.pageNumber })
+    .onConflictDoUpdate({
+      target: conflictTarget,
+      targetWhere: conflictTargetWhere,
+      set: { pageNumber: parsed.data.pageNumber, updatedAt: new Date() },
+    })
+    .returning({ surahNumber: quranBookmarksTable.surahNumber, ayahNumber: quranBookmarksTable.ayahNumber,
+      pageNumber: quranBookmarksTable.pageNumber, createdAt: quranBookmarksTable.createdAt, updatedAt: quranBookmarksTable.updatedAt });
+  res.json(bookmark);
+});
+
+router.delete("/quran/reader-state/bookmarks/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
+  const owner = readerOwner(req);
+  if (!owner) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const surahNumber = Number(req.params.surahNumber), ayahNumber = Number(req.params.ayahNumber);
+  if (!validReaderVerse(surahNumber, ayahNumber, 1)) { res.status(400).json({ error: "Invalid canonical Quran bookmark" }); return; }
+  const filter = owner.studentAccountId !== null ? eq(quranBookmarksTable.studentAccountId, owner.studentAccountId) : eq(quranBookmarksTable.teacherId, owner.teacherId!);
+  await db.delete(quranBookmarksTable).where(and(filter, eq(quranBookmarksTable.surahNumber, surahNumber), eq(quranBookmarksTable.ayahNumber, ayahNumber)));
+  res.status(204).send();
 });
 
 router.get("/quran/education/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {

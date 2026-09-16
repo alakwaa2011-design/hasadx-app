@@ -110,8 +110,8 @@ export declare const categoriesTable: import("drizzle-orm/pg-core").PgTableWithC
 }>;
 export declare const insertCategorySchema: z.ZodObject<{
     name: z.ZodString;
-    color: z.ZodOptional<z.ZodString>;
     teacherId: z.ZodInt;
+    color: z.ZodOptional<z.ZodString>;
     isPublic: z.ZodOptional<z.ZodBoolean>;
 }, {
     out: {};

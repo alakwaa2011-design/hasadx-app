@@ -296,8 +296,8 @@ export declare const teacherScheduleTable: import("drizzle-orm/pg-core").PgTable
     dialect: "pg";
 }>;
 export declare const insertTeacherScheduleSchema: z.ZodObject<{
-    color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     teacherId: z.ZodInt;
+    color: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;

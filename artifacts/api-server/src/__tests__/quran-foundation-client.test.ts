@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationAyahTimings,
   getQuranFoundationAyahEducation,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
@@ -182,6 +183,93 @@ describe("Quran Foundation client", () => {
     await expect(getQuranFoundationAudioUrl(999, 1, 1))
       .rejects.toThrow("not in the trusted catalog");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("validates chapter-reciter identity with object styles and permits null ayah styles", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 6, reciter_name: "Khalil", style: null }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        reciters: [{ id: 6, reciter_name: "Khaleel", style: { name: "Murattal" } }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        audio_file: { audio_url: "chapter.mp3", timestamps: [{ verse_key: "1:1", timestamp_from: 1_000, timestamp_to: 2_000,
+          segments: [[2, 1_200, 1_400], [1, 1_050, 1_100]] }] },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getQuranFoundationAyahTimings(6, 1, 1)).resolves.toMatchObject({
+      recitationId: 6, verseKey: "1:1",
+      segments: [{ wordPosition: 1, startMs: 50, endMs: 100 }, { wordPosition: 2, startMs: 200, endMs: 400 }],
+      audioUrl: "https://verses.quran.foundation/chapter.mp3", verseStartMs: 1_000, verseEndMs: 2_000, synchronized: true,
+    });
+  });
+
+  it("supports Mohamed/Muhammad aliases and rejects exact identity mismatches", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 9, reciter_name: "Muhammad", style: "Murattal" }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        reciters: [{ id: 9, reciter_name: "Mohamed", style: "Murattal" }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        audio_file: { audio_url: "chapter.mp3", timestamps: [{ verse_key: "1:1", timestamp_from: 0, timestamp_to: 10, segments: [[1, 0, 10]] }] },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getQuranFoundationAyahTimings(9, 1, 1)).resolves.toHaveProperty("segments");
+
+    resetQuranFoundationClientForTests();
+    const mismatchFetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 9, reciter_name: "Other", style: "Murattal" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 9, reciter_name: "Mohamed", style: "Murattal" }] }), { status: 200 }));
+    vi.stubGlobal("fetch", mismatchFetch);
+    await expect(getQuranFoundationAyahTimings(9, 1, 1)).rejects.toThrow("mapping is unavailable");
+  });
+
+  it("rejects malformed and nonmonotonic timing segments", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ audio_file: { audio_url: "chapter.mp3", timestamps: [{ verse_key: "1:1", timestamp_from: 0, timestamp_to: 10, segments: [[1, 20, 10], [1, 30, 40]] }] } }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getQuranFoundationAyahTimings(1, 1, 1)).rejects.toThrow("malformed");
+  });
+
+  it("rejects invalid chapter timestamp ranges and untrusted chapter audio URLs", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ audio_file: {
+        audio_url: "https://evil.example/chapter.mp3",
+        timestamps: [{ verse_key: "1:1", timestamp_from: 10, timestamp_to: 20, segments: [[1, 20, 30]] }],
+      } }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getQuranFoundationAyahTimings(1, 1, 1)).rejects.toThrow("untrusted chapter audio URL");
+  });
+
+  it("deduplicates concurrent timing requests and caches the immutable result", async () => {
+    let release!: (response: Response) => void;
+    const timingResponse = new Promise<Response>((resolve) => { release = resolve; });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
+      .mockReturnValueOnce(timingResponse);
+    vi.stubGlobal("fetch", fetchMock);
+    const first = getQuranFoundationAyahTimings(1, 1, 1);
+    const second = getQuranFoundationAyahTimings(1, 1, 1);
+    release(new Response(JSON.stringify({ audio_file: { audio_url: "chapter.mp3", timestamps: [{ verse_key: "1:1", timestamp_from: 0, timestamp_to: 10, segments: [[1, 0, 10]] }] } }), { status: 200 }));
+    const [left, right] = await Promise.all([first, second]);
+    expect(left).toBe(right);
+    expect(Object.isFrozen(left)).toBe(true);
+    await getQuranFoundationAyahTimings(1, 1, 1);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("returns only source-attributed word context and tafsir, then caches it", async () => {

@@ -25,6 +25,9 @@ import { QuranMadaniPageRenderer } from "./quran-madani-page";
 import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
+import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
+import { QuranBookmarkToggle } from "@/components/quran/quran-bookmark-toggle";
+import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 
 interface QComplexChapter {
   id: number;
@@ -68,6 +71,7 @@ export function QuranPagesView({
   initialSurah,
   initialAyah,
   initialPage,
+  onNavigate,
   startAyah,
   endAyah,
   mode,
@@ -81,7 +85,7 @@ export function QuranPagesView({
   initialSurah: number;
   initialAyah: number;
   initialPage?: number;
-  onNavigate: (location: { surah: number; ayah: number }) => void;
+  onNavigate: (location: { surah: number; ayah: number; page?: number }) => void;
   isTaskAyah: (surah: number, ayah: number) => boolean;
   startAyah: number | null;
   endAyah: number | null;
@@ -90,7 +94,7 @@ export function QuranPagesView({
   backHref?: string;
   backLabel?: { ar: string; en: string };
   embedded?: boolean;
-  onSwitchToText?: (location: { surah: number; ayah: number }) => void;
+  onSwitchToText?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
 }) {
   const { lang, dir } = useI18n();
@@ -112,6 +116,10 @@ export function QuranPagesView({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
+  const { savePosition: saveMainPosition, toggleBookmark, bookmarksMap, isMutatingBookmark } = useQuranReaderState({
+    enabled: !isIndependentPractice && mode === null,
+  });
+
   const [selectedVerseKey, setSelectedVerseKey] = useState<string | null>(null);
   const [educationSelection, setEducationSelection] = useState<{
     verseKey: string;
@@ -120,6 +128,7 @@ export function QuranPagesView({
     wordText: string | null;
   } | null>(null);
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
+  const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -144,6 +153,9 @@ export function QuranPagesView({
           verse.chapter_id === initialSurah && verse.number === initialAyah,
       );
       setActivePage(initialPage ?? initialVerse?.page_id ?? FIRST_PAGE);
+      setSelectedVerseKey(
+        initialVerse ? `${initialVerse.chapter_id}:${initialVerse.number}` : null,
+      );
       setLoading(false);
     });
 
@@ -212,6 +224,25 @@ export function QuranPagesView({
     ? Number(selectedVerseKey.split(":")[1])
     : (fallbackVerse?.number ?? initialAyah);
 
+  const { 
+    memoSession, setMemoSession, 
+    memoView, setMemoView, 
+    isAyahConcealed, toggleReveal, resetReveal,
+    startSession, endSession
+  } = useQuranMemoSession(selectedSurah, selectedAyah, startAyah, endAyah, mode);
+
+  const selectedVerse = useMemo(
+    () => verses.find((verse) => verse.chapter_id === selectedSurah && verse.number === selectedAyah) ?? fallbackVerse,
+    [fallbackVerse, selectedAyah, selectedSurah, verses],
+  );
+
+  const canonicalPage = selectedVerse?.page_id ?? activePage;
+
+  useEffect(() => {
+    if (isIndependentPractice || mode !== null || loading || !selectedVerse) return;
+    saveMainPosition(selectedVerse.chapter_id, selectedVerse.number, selectedVerse.page_id);
+  }, [isIndependentPractice, loading, mode, saveMainPosition, selectedVerse]);
+
   const playingSurah = playingVerseKey
     ? Number(playingVerseKey.split(":")[0])
     : selectedSurah;
@@ -270,8 +301,16 @@ export function QuranPagesView({
   const goToPage = (page: number) => {
     const nextPage = Math.min(Math.max(page, FIRST_PAGE), LAST_PAGE);
     if (nextPage === activePage) return;
+    const nextVerse = verses.find((verse) => verse.page_id === nextPage);
     setTurnDirection(nextPage > activePage ? "next" : "previous");
     setActivePage(nextPage);
+    if (nextVerse) {
+      onNavigate({
+        surah: nextVerse.chapter_id,
+        ayah: nextVerse.number,
+        page: nextPage,
+      });
+    }
   };
 
   const goToSpread = (direction: "next" | "previous") => {
@@ -348,8 +387,18 @@ export function QuranPagesView({
             selectedVerseKey={selectedVerseKey}
             selectedWordId={educationSelection?.wordId}
             playingVerseKey={playingVerseKey}
+            playingWordPosition={playingWordPosition}
+            isAyahConcealed={(chapterId, verseNumber) => isAyahConcealed(chapterId, verseNumber, playingAyahNum)}
             onVerseClick={(selection) => {
                const verseKey = selection.verseKey;
+               const chapterId = Number(verseKey.split(":")[0]);
+               const verseNumber = Number(verseKey.split(":")[1]);
+
+               if (isAyahConcealed(chapterId, verseNumber, playingAyahNum)) {
+                 toggleReveal(chapterId, verseNumber);
+                 return;
+               }
+
                setSelectedVerseKey(verseKey);
                setEducationSelection(selection);
               if (isPlaying && playingVerseKey) {
@@ -426,12 +475,22 @@ export function QuranPagesView({
                     {lang === "ar" ? "سجلت جلسة تدريب" : "Record practice"}
                   </button>
                 )}
+                
+                <button 
+                  type="button"
+                  onClick={() => memoSession.isActive ? endSession() : startSession()}
+                  className={cn("shrink-0 rounded-xl px-3 py-2 text-xs font-black transition-colors border", memoSession.isActive ? "bg-amber-100 border-amber-300 text-amber-900 shadow-sm dark:bg-amber-900/50 dark:border-amber-800 dark:text-amber-100" : "bg-muted/40 border-transparent hover:bg-muted text-foreground")}
+                >
+                  {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "جلسة حفظ" : "Memo Session")}
+                </button>
+
                <button
                  type="button"
                  onClick={() => {
                    const location = {
                      surah: activeChapterId,
                      ayah: verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah,
+                     page: activePage,
                    };
                    if (embedded && onSwitchToText) {
                      onSwitchToText(location);
@@ -489,6 +548,19 @@ export function QuranPagesView({
                   </option>
                 ))}
               </select>
+
+              {!isIndependentPractice && mode === null && fallbackVerse && (
+                <div className="ms-1 border-s border-border/50 ps-1 sm:ms-2 sm:ps-2">
+                  <QuranBookmarkToggle
+                    surahNumber={selectedSurah}
+                    ayahNumber={selectedAyah}
+                    pageNumber={canonicalPage}
+                    isBookmarked={bookmarksMap.has(`${selectedSurah}:${selectedAyah}`)}
+                    onToggle={toggleBookmark}
+                    disabled={isMutatingBookmark}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-1 text-muted-foreground md:gap-2">
@@ -620,6 +692,11 @@ export function QuranPagesView({
                 onPlayingAyahChange={handlePlayingAyahChange}
                 isPlaying={isPlaying}
                 onIsPlayingChange={setIsPlaying}
+                memoSession={memoSession}
+                onMemoSessionChange={setMemoSession}
+                memoView={memoView}
+                onMemoViewChange={setMemoView}
+                onPlayingWordChange={setPlayingWordPosition}
                 onClose={() => {
                   setIsPlaying(false);
                   setPlayingVerseKey(null);

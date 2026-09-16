@@ -62,6 +62,9 @@ import type {
   QuranAudioPreference,
   QuranAudioPreferenceInput,
   QuranAyahEducation,
+  QuranAyahTimings,
+  QuranBookmark,
+  QuranBookmarkInput,
   QuranCircle,
   QuranCircleInput,
   QuranCircleTaskInput,
@@ -73,6 +76,9 @@ import type {
   QuranJourney,
   QuranMadaniPage,
   QuranProfileUpdate,
+  QuranReaderPosition,
+  QuranReaderPositionConflict,
+  QuranReaderState,
   QuranRecitation,
   QuranRecitationInput,
   QuranReciterCatalog,
@@ -119,6 +125,7 @@ import type {
   UpdatePresentationBody,
   UpdatePresentationDraftBody,
   UpdateProfileBody,
+  UpdateQuranReaderPosition,
   UpdateRoleBody,
   UpdateSubmissionBody,
   UploadAiVideoSourceImage201,
@@ -6407,6 +6414,93 @@ export function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof getQuranA
 
 
 
+export const getGetQuranAyahTimingsUrl = (recitationId: number,
+    surahNumber: number,
+    ayahNumber: number,) => {
+
+
+
+
+  return `/api/quran/audio/${recitationId}/${surahNumber}/${ayahNumber}/timings`
+}
+
+/**
+ * @summary Get verified word timings for one ayah
+ */
+export const getQuranAyahTimings = async (recitationId: number,
+    surahNumber: number,
+    ayahNumber: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranAyahTimings> => {
+
+  return customFetch<QuranAyahTimings>(getGetQuranAyahTimingsUrl(recitationId,surahNumber,ayahNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranAyahTimingsQueryKey = (recitationId: number,
+    surahNumber: number,
+    ayahNumber: number,) => {
+    return [
+    `/api/quran/audio/${recitationId}/${surahNumber}/${ayahNumber}/timings`
+    ] as const;
+    }
+
+
+export const getGetQuranAyahTimingsQueryOptions = <TData = Awaited<ReturnType<typeof getQuranAyahTimings>>, TError = ErrorType<void>>(recitationId: number,
+    surahNumber: number,
+    ayahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahTimings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranAyahTimingsQueryKey(recitationId,surahNumber,ayahNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranAyahTimings>>> = ({ signal }) => getQuranAyahTimings(recitationId,surahNumber,ayahNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: recitationId !== null && recitationId !== undefined && surahNumber !== null && surahNumber !== undefined && ayahNumber !== null && ayahNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahTimings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranAyahTimingsQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranAyahTimings>>>
+export type GetQuranAyahTimingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get verified word timings for one ayah
+ */
+
+export function useGetQuranAyahTimings<TData = Awaited<ReturnType<typeof getQuranAyahTimings>>, TError = ErrorType<void>>(
+ recitationId: number,
+    surahNumber: number,
+    ayahNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahTimings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranAyahTimingsQueryOptions(recitationId,surahNumber,ayahNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetQuranMadaniPageUrl = (pageNumber: number,) => {
 
 
@@ -8774,3 +8868,301 @@ export function useGetQuranTodayDashboard<TData = Awaited<ReturnType<typeof getQ
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getGetQuranReaderStateUrl = () => {
+
+
+
+
+  return `/api/quran/reader-state`
+}
+
+export const getQuranReaderState = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranReaderState> => {
+
+  return customFetch<QuranReaderState>(getGetQuranReaderStateUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranReaderStateQueryKey = () => {
+    return [
+    `/api/quran/reader-state`
+    ] as const;
+    }
+
+
+export const getGetQuranReaderStateQueryOptions = <TData = Awaited<ReturnType<typeof getQuranReaderState>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranReaderState>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranReaderStateQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranReaderState>>> = ({ signal }) => getQuranReaderState({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranReaderState>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranReaderStateQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranReaderState>>>
+export type GetQuranReaderStateQueryError = ErrorType<void>
+
+
+
+export function useGetQuranReaderState<TData = Awaited<ReturnType<typeof getQuranReaderState>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranReaderState>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranReaderStateQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateQuranReaderPositionUrl = () => {
+
+
+
+
+  return `/api/quran/reader-state/position`
+}
+
+export const updateQuranReaderPosition = async (updateQuranReaderPositionBody: UpdateQuranReaderPosition, options?: Parameters<typeof customFetch>[1]): Promise<QuranReaderPosition> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranReaderPosition>(getUpdateQuranReaderPositionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateQuranReaderPositionBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateQuranReaderPositionMutationKey = () => ['updateQuranReaderPosition'] as const;
+
+export const getUpdateQuranReaderPositionMutationOptions = <TError = ErrorType<void | QuranReaderPositionConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranReaderPosition>>, TError,UpdateQuranReaderPositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateQuranReaderPosition>>, TError,UpdateQuranReaderPositionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateQuranReaderPositionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateQuranReaderPosition>>, UpdateQuranReaderPositionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateQuranReaderPosition(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateQuranReaderPositionMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuranReaderPosition>>>
+    export type UpdateQuranReaderPositionMutationBody = BodyType<UpdateQuranReaderPosition>
+    export type UpdateQuranReaderPositionMutationError = ErrorType<void | QuranReaderPositionConflict>
+    export type UpdateQuranReaderPositionMutationVariables = {data: BodyType<UpdateQuranReaderPosition>}
+
+    export const useUpdateQuranReaderPosition = <TError = ErrorType<void | QuranReaderPositionConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuranReaderPosition>>, TError,UpdateQuranReaderPositionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateQuranReaderPosition>>,
+        TError,
+        UpdateQuranReaderPositionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateQuranReaderPositionMutationOptions(options));
+    }
+
+export const getAddQuranBookmarkUrl = (surahNumber: number,
+    ayahNumber: number,) => {
+
+
+
+
+  return `/api/quran/reader-state/bookmarks/${surahNumber}/${ayahNumber}`
+}
+
+export const addQuranBookmark = async (surahNumber: number,
+    ayahNumber: number,
+    quranBookmarkInput: QuranBookmarkInput, options?: Parameters<typeof customFetch>[1]): Promise<QuranBookmark> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranBookmark>(getAddQuranBookmarkUrl(surahNumber,ayahNumber),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranBookmarkInput)
+  }
+);}
+
+
+
+
+
+export const getAddQuranBookmarkMutationKey = () => ['addQuranBookmark'] as const;
+
+export const getAddQuranBookmarkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addQuranBookmark>>, TError,AddQuranBookmarkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addQuranBookmark>>, TError,AddQuranBookmarkMutationVariables, TContext> => {
+
+const mutationKey = getAddQuranBookmarkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addQuranBookmark>>, AddQuranBookmarkMutationVariables> = (props) => {
+          const {surahNumber,ayahNumber,data} = props ?? {};
+
+          return  addQuranBookmark(surahNumber,ayahNumber,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddQuranBookmarkMutationResult = NonNullable<Awaited<ReturnType<typeof addQuranBookmark>>>
+    export type AddQuranBookmarkMutationBody = BodyType<QuranBookmarkInput>
+    export type AddQuranBookmarkMutationError = ErrorType<unknown>
+    export type AddQuranBookmarkMutationVariables = {surahNumber: number;ayahNumber: number;data: BodyType<QuranBookmarkInput>}
+
+    export const useAddQuranBookmark = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addQuranBookmark>>, TError,AddQuranBookmarkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addQuranBookmark>>,
+        TError,
+        AddQuranBookmarkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddQuranBookmarkMutationOptions(options));
+    }
+
+export const getDeleteQuranBookmarkUrl = (surahNumber: number,
+    ayahNumber: number,) => {
+
+
+
+
+  return `/api/quran/reader-state/bookmarks/${surahNumber}/${ayahNumber}`
+}
+
+export const deleteQuranBookmark = async (surahNumber: number,
+    ayahNumber: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteQuranBookmarkUrl(surahNumber,ayahNumber),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteQuranBookmarkMutationKey = () => ['deleteQuranBookmark'] as const;
+
+export const getDeleteQuranBookmarkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteQuranBookmark>>, TError,DeleteQuranBookmarkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteQuranBookmark>>, TError,DeleteQuranBookmarkMutationVariables, TContext> => {
+
+const mutationKey = getDeleteQuranBookmarkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteQuranBookmark>>, DeleteQuranBookmarkMutationVariables> = (props) => {
+          const {surahNumber,ayahNumber} = props ?? {};
+
+          return  deleteQuranBookmark(surahNumber,ayahNumber,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteQuranBookmarkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteQuranBookmark>>>
+
+    export type DeleteQuranBookmarkMutationError = ErrorType<unknown>
+    export type DeleteQuranBookmarkMutationVariables = {surahNumber: number;ayahNumber: number}
+
+    export const useDeleteQuranBookmark = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteQuranBookmark>>, TError,DeleteQuranBookmarkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteQuranBookmark>>,
+        TError,
+        DeleteQuranBookmarkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteQuranBookmarkMutationOptions(options));
+    }

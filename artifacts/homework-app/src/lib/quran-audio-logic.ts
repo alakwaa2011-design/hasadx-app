@@ -1,3 +1,25 @@
+export interface AyahTimingSegment {
+  wordPosition: number;
+  startMs: number;
+  endMs: number;
+}
+
+export function getActiveWordPosition(
+  currentTimeMs: number,
+  verseStartMs: number,
+  segments: AyahTimingSegment[]
+): number | null {
+  const relativeMs = currentTimeMs - verseStartMs;
+  if (relativeMs < 0) return null;
+  
+  for (const seg of segments) {
+    if (relativeMs >= seg.startMs && relativeMs < seg.endMs) {
+      return seg.wordPosition;
+    }
+  }
+  return null;
+}
+
 export function clampAyah(
   ayah: number | null,
   allowedStart: number | null,
@@ -19,24 +41,71 @@ export function isAyahAllowed(
   return true;
 }
 
-export function getNextAyah(
+export function getNextAyahMemo(
   currentAyah: number,
   surahLength: number,
-  allowedStart: number | null,
-  allowedEnd: number | null,
-  currentPlay: number,
-  maxPlays: number
-): { nextAyah: number | null; nextPlay: number } {
-  if (currentPlay < maxPlays) {
-    return { nextAyah: currentAyah, nextPlay: currentPlay + 1 };
+  rangeStart: number,
+  rangeEnd: number,
+  repeatScope: 'ayah' | 'range',
+  repeatCount: number | 'continuous',
+  currentAyahPlayCount: number,
+  currentRangePlayCount: number
+): {
+  nextAyah: number | null;
+  nextAyahPlayCount: number;
+  nextRangePlayCount: number;
+} {
+  const isContinuous = repeatCount === 'continuous';
+  const maxPlays = isContinuous ? Infinity : (repeatCount as number);
+
+  const effectiveEnd = Math.min(rangeEnd, surahLength);
+
+  if (repeatScope === 'ayah') {
+    if (currentAyahPlayCount < maxPlays) {
+      return {
+        nextAyah: currentAyah,
+        nextAyahPlayCount: currentAyahPlayCount + 1,
+        nextRangePlayCount: currentRangePlayCount,
+      };
+    }
+    
+    if (currentAyah < effectiveEnd) {
+      return {
+        nextAyah: currentAyah + 1,
+        nextAyahPlayCount: 1,
+        nextRangePlayCount: currentRangePlayCount,
+      };
+    }
+    
+    if (isContinuous) {
+      return {
+        nextAyah: rangeStart,
+        nextAyahPlayCount: 1,
+        nextRangePlayCount: currentRangePlayCount + 1,
+      };
+    }
+    
+    return { nextAyah: null, nextAyahPlayCount: 1, nextRangePlayCount: 1 };
+  } else {
+    // repeatScope === 'range'
+    if (currentAyah < effectiveEnd) {
+      return {
+        nextAyah: currentAyah + 1,
+        nextAyahPlayCount: 1,
+        nextRangePlayCount: currentRangePlayCount,
+      };
+    }
+    
+    if (currentRangePlayCount < maxPlays) {
+      return {
+        nextAyah: rangeStart,
+        nextAyahPlayCount: 1,
+        nextRangePlayCount: currentRangePlayCount + 1,
+      };
+    }
+    
+    return { nextAyah: null, nextAyahPlayCount: 1, nextRangePlayCount: 1 };
   }
-  
-  const end = allowedEnd !== null ? Math.min(allowedEnd, surahLength) : surahLength;
-  if (currentAyah < end) {
-    return { nextAyah: currentAyah + 1, nextPlay: 1 };
-  }
-  
-  return { nextAyah: null, nextPlay: 1 };
 }
 
 export function getPrevAyah(

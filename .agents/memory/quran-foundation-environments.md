@@ -26,3 +26,9 @@ Word-level meaning must use the documented `words[].translation` contract; Quran
 **Why:** tafsir markup is presentation content, not a stable word-gloss schema; inferring definitions from nearby spans can silently attach the wrong explanation to a selected word.
 
 **How to apply:** attribute the word translation and tafsir separately with their real language/resource metadata, return no word meaning when the documented translation is absent, and never synthesize or extract a gloss from tafsir HTML.
+
+Word timing comes from chapter-recitation timestamps, not the ayah-by-ayah audio response. The chapter-reciter catalog currently returns its array under `reciters`, may represent style as `{name}`, and uses a distinct ID namespace.
+
+**Why:** assuming an `chapter_reciters` envelope or interchangeable IDs passed mocked tests but failed against the live API. Exact synchronization also requires playing the chapter recording that produced the timestamps.
+
+**How to apply:** verify reciter identity before mapping catalogs, request `chapter_recitations/{chapterReciterId}/{chapter}?segments=true`, normalize each verse window, and allowlist the returned chapter-audio origin (currently `download.quranicaudio.com`).

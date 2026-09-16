@@ -108,3 +108,4 @@ export * from "./quran-wards";
 export * from "./quran-recitations";
 export * from "./quran-submissions";
 export * from "./quran-independent-practice";
+export * from "./quran-reader-state";

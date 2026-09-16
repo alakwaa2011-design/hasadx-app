@@ -12,6 +12,8 @@ interface QuranMadaniPageRendererProps {
   selectedVerseKey?: string | null;
   selectedWordId?: number | null;
   playingVerseKey?: string | null;
+  playingWordPosition?: number | null;
+  isAyahConcealed?: (chapterId: number, verseNumber: number) => boolean;
   onVerseClick?: (selection: {
     verseKey: string;
     wordId: number | null;
@@ -28,6 +30,8 @@ export function QuranMadaniPageRenderer({
   selectedVerseKey,
   selectedWordId,
   playingVerseKey,
+  playingWordPosition,
+  isAyahConcealed,
   onVerseClick,
 }: QuranMadaniPageRendererProps) {
   const { lang } = useI18n();
@@ -205,6 +209,10 @@ export function QuranMadaniPageRenderer({
                 const isSelected = selectedVerseKey && w.verseKey === selectedVerseKey;
                 const isSelectedWord = selectedWordId === w.id;
                 const isPlaying = playingVerseKey && w.verseKey === playingVerseKey;
+                const isPlayingWord = isPlaying && playingWordPosition === w.position;
+                
+                const [wChapter, wVerse] = w.verseKey.split(':').map(Number);
+                const concealed = isAyahConcealed?.(wChapter, wVerse) ?? false;
 
                 return (
                   <button
@@ -229,14 +237,18 @@ export function QuranMadaniPageRenderer({
                       // Apply standard color or highlight colors
                       isSelectedWord
                         ? "text-amber-800 bg-amber-200/70 ring-1 ring-amber-500/50"
-                        : isPlaying
+                        : isPlayingWord
+                        ? "text-emerald-800 bg-emerald-200/90 ring-1 ring-emerald-500/50"
+                        : isPlaying && !playingWordPosition
                         ? "text-emerald-700 drop-shadow-[0_0_0_rgba(22,101,52,0.8)] bg-emerald-100/50"
                         : isSelected
                         ? "text-amber-700 drop-shadow-[0_0_0_rgba(180,83,9,0.8)] bg-amber-100/40"
                         : w.type === "end"
                         ? "text-[#1d4432] drop-shadow-[0_0_0_rgba(29,68,50,1)] hover:text-emerald-800 hover:bg-emerald-50/50"
-                        : "text-black drop-shadow-[0_0_0_rgba(0,0,0,1)] hover:text-emerald-900 hover:bg-emerald-50/50"
+                        : "text-black drop-shadow-[0_0_0_rgba(0,0,0,1)] hover:text-emerald-900 hover:bg-emerald-50/50",
+                      concealed ? "blur-[4px] opacity-40 hover:blur-[2px] hover:opacity-60 bg-foreground/5" : ""
                     )}
+                    style={concealed ? { userSelect: 'none' } : {}}
                   >
                     {w.glyph}
                   </button>

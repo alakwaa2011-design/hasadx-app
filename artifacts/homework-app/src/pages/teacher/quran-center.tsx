@@ -1,18 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListQuranSurahs } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Users, ClipboardCheck, Loader2 } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
 import { QuranPagesView } from "./quran-pages-view";
 import { QuranTextReaderView } from "./quran-reader";
+import { QuranBookmarksPanel } from "@/components/quran/quran-bookmarks-panel";
+import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 
-type Tab = "mushaf" | "circles" | "queue";
+type Tab = "mushaf" | "circles" | "queue" | "bookmarks";
 
 export default function QuranCenter() {
   const { lang } = useI18n();
@@ -20,12 +22,37 @@ export default function QuranCenter() {
 
   const searchParams = new URLSearchParams(window.location.search);
   const requestedTab = searchParams.get("tab");
-  const tabFromQuery: Tab = requestedTab === "circles" || requestedTab === "queue"
+  const tabFromQuery: Tab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "bookmarks"
     ? requestedTab
     : "mushaf";
   const [activeTab, setActiveTab] = useState<Tab>(tabFromQuery);
   const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
-  const [mushafLocation, setMushafLocation] = useState({ surah: 1, ayah: 1 });
+  const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
+  const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
+  const hasExplicitMushafNavigation = useRef(false);
+
+  const { readerState, isReaderStateLoading } = useQuranReaderState({ enabled: true });
+
+  useEffect(() => {
+    if (!hasRestoredPosition && !isReaderStateLoading) {
+      if (readerState?.position && !hasExplicitMushafNavigation.current) {
+        setMushafLocation({
+          surah: readerState.position.surahNumber,
+          ayah: readerState.position.ayahNumber,
+          page: readerState.position.pageNumber,
+        });
+        if (readerState.position.pageNumber) {
+           setMushafView("pages");
+        }
+      }
+      setHasRestoredPosition(true);
+    }
+  }, [hasRestoredPosition, isReaderStateLoading, readerState?.position]);
+
+  const handleMushafNavigate = (location: { surah: number; ayah: number; page?: number }) => {
+    hasExplicitMushafNavigation.current = true;
+    setMushafLocation(location);
+  };
 
   useEffect(() => {
     if (tabFromQuery !== activeTab) {
@@ -67,6 +94,7 @@ export default function QuranCenter() {
 
   const TABS = [
     { id: "mushaf", label: lang === "ar" ? "المصحف" : "Mushaf", icon: <BookOpen className="w-5 h-5" /> },
+    { id: "bookmarks", label: lang === "ar" ? "العلامات" : "Bookmarks", icon: <Bookmark className="w-5 h-5" /> },
     { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="w-5 h-5" /> },
     { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> },
   ] as const;
@@ -133,14 +161,15 @@ export default function QuranCenter() {
                   <QuranPagesView
                     initialSurah={mushafLocation.surah}
                     initialAyah={mushafLocation.ayah}
-                    onNavigate={setMushafLocation}
+                    initialPage={mushafLocation.page}
+                    onNavigate={handleMushafNavigate}
                     isTaskAyah={() => false}
                     startAyah={null}
                     endAyah={null}
                     mode={null}
                     embedded
                     onSwitchToText={(location) => {
-                      setMushafLocation(location);
+                      handleMushafNavigate(location);
                       setMushafView("reader");
                     }}
                   />
@@ -154,9 +183,9 @@ export default function QuranCenter() {
                     isStudentWard={false}
                     isStudentPractice={false}
                     embedded
-                    onNavigate={setMushafLocation}
+                    onNavigate={handleMushafNavigate}
                     onSwitchToPages={(location) => {
-                      setMushafLocation(location);
+                      handleMushafNavigate(location);
                       setMushafView("pages");
                     }}
                   />
@@ -164,6 +193,27 @@ export default function QuranCenter() {
               )}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}
+              {activeTab === "bookmarks" && (
+                <div className="p-4 md:p-8 max-w-4xl mx-auto w-full">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-black text-emerald-900 dark:text-emerald-50">
+                        {lang === "ar" ? "العلامات المحفوظة" : "Saved Bookmarks"}
+                      </h2>
+                      <p className="mt-1 text-sm font-bold text-muted-foreground">
+                        {lang === "ar" ? "الوصول السريع إلى مواضع القراءة المحفوظة" : "Quick access to your saved reading positions"}
+                      </p>
+                    </div>
+                  </div>
+                  <QuranBookmarksPanel
+                    onNavigate={(loc) => {
+                      handleMushafNavigate(loc);
+                      setMushafView(loc.page ? "pages" : "reader");
+                      handleTabChange("mushaf");
+                    }}
+                  />
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </main>

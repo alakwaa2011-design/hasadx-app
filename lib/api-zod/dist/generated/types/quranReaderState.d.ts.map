@@ -1,0 +1,1 @@
+{"version":3,"file":"quranReaderState.d.ts","sourceRoot":"","sources":["../../../src/generated/types/quranReaderState.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,iBAAiB,CAAC;AACrD,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,uBAAuB,CAAC;AAEjE,MAAM,WAAW,gBAAgB;IAC/B,QAAQ,EAAE,mBAAmB,GAAG,IAAI,CAAC;IACrC,SAAS,EAAE,aAAa,EAAE,CAAC;CAC5B"}
