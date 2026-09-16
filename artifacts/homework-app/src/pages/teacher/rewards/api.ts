@@ -169,6 +169,25 @@ export const useGetRewardGroups = (className?: string, options?: { refetchInterv
   });
 };
 
+export function applyOptimisticRewardPoints(data: any, studentIds: Set<number>, points: number) {
+  if (!data || points <= 0 || studentIds.size === 0) return data;
+  if (Array.isArray(data.students)) {
+    return {
+      ...data,
+      students: data.students.map((student: any) => studentIds.has(Number(student.id))
+        ? { ...student, points: Number(student.points ?? 0) + points }
+        : student),
+    };
+  }
+  if (data.rewards && data.student && studentIds.has(Number(data.student.id))) {
+    return {
+      ...data,
+      rewards: { ...data.rewards, balance: Number(data.rewards.balance ?? 0) + points },
+    };
+  }
+  return data;
+}
+
 const invalidateGroups = (qc: ReturnType<typeof useQueryClient>, className: string) => {
   qc.invalidateQueries({ queryKey: ["classroom-rewards", "groups", className] });
   qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", className] });
@@ -309,8 +328,29 @@ export const useReprocessRewardRule = () => {
 export const useGrantRewards = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => fetcher(`/api/classroom-rewards/grants`, { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: (_, variables) => {
+    mutationFn: ({ optimisticPoints: _optimisticPoints, ...data }: any) =>
+      fetcher(`/api/classroom-rewards/grants`, { method: "POST", body: JSON.stringify(data) }),
+    onMutate: async (variables: any) => {
+      const points = Number(variables.optimisticPoints ?? variables.customPoints ?? 0);
+      const selected = new Set<number>((variables.studentIds ?? []).map(Number));
+      await qc.cancelQueries({ queryKey: ["classroom-rewards"] });
+      const affected = qc.getQueriesData({ queryKey: ["classroom-rewards"] });
+      if (points > 0 && selected.size) {
+        qc.setQueriesData({ queryKey: ["classroom-rewards", "classes", variables.className] }, (old: any) => {
+          return applyOptimisticRewardPoints(old, selected, points);
+        });
+        for (const studentId of selected) {
+          qc.setQueryData(["classroom-rewards", "students", studentId], (old: any) => {
+            return applyOptimisticRewardPoints(old, selected, points);
+          });
+        }
+      }
+      return { affected };
+    },
+    onError: (_error, _variables, context) => {
+      for (const [queryKey, data] of context?.affected ?? []) qc.setQueryData(queryKey, data);
+    },
+    onSettled: (_, __, variables) => {
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });

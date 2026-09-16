@@ -160,7 +160,7 @@ export function RewardCelebration({
                     transition={{ duration: 1.2, delay: 0.9 + index * 0.15, repeat: Infinity, ease: "easeInOut" }}
                   >
                     <AvatarDisplay
-                      avatar={student.avatar?.startsWith("/avatars/") ? student.avatar : "/avatars/adventurer-boy.webp"}
+                      avatar={student.avatar}
                       fallback={student.name.charAt(0)}
                       size="4xl"
                       className="h-32 w-32 border-[6px] border-white bg-amber-50 object-cover object-top shadow-2xl"

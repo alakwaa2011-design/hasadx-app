@@ -333,7 +333,6 @@ test("mobile avatar gallery keeps its first and last cards reachable with loaded
   await expect(studentCard).toBeVisible({ timeout: 20_000 });
   await studentCard.locator("xpath=..").getByTitle("ملف الطالب").click();
   await page.getByRole("tab", { name: "البيانات" }).click();
-  await page.getByRole("button", { name: /عرض المجموعة الكاملة/ }).click();
 
   const firstAvatar = ILLUSTRATED_AVATARS[0];
   const lastAvatar = ILLUSTRATED_AVATARS.at(-1);
@@ -371,7 +370,9 @@ test("mobile avatar gallery keeps its first and last cards reachable with loaded
     return card;
   };
 
+  await page.getByRole("tab", { name: "الأولاد" }).click();
   await assertCardAndImageReachable(firstAvatar);
+  await page.getByRole("tab", { name: "البنات" }).click();
   const lastCard = await assertCardAndImageReachable(lastAvatar);
   await lastCard.click();
 
@@ -595,8 +596,12 @@ test("single grant celebrates only success, resists repeated input, and saves on
   await expect(page.getByRole("dialog", { name: "احتفال بمنح النقاط" })).toHaveCount(0);
 
   await page.getByRole("tab", { name: "البيانات" }).click();
-  await page.getByRole("button", { name: /عرض المجموعة الكاملة/ }).click();
-  for (const avatar of ILLUSTRATED_AVATARS) {
+  for (const audience of ["boys", "girls"] as const) {
+    await page.getByTestId(`avatar-section-${audience}`).click();
+    const sectionAvatars = ILLUSTRATED_AVATARS.filter(
+      (avatar) => avatar.audience === audience || avatar.audience === "all",
+    );
+    for (const avatar of sectionAvatars) {
     const avatarChoice = page.getByRole("button", { name: avatar.label });
     const avatarImage = avatarChoice.locator("img");
     await expect(
@@ -644,12 +649,14 @@ test("single grant celebrates only success, resists repeated input, and saves on
       failedAvatarRequests.filter((url) => new URL(url).pathname === avatar.value),
       `فشل طلب صورة الشخصية "${avatar.label}": ${avatar.value}`,
     ).toEqual([]);
+    }
   }
 
   const selectedAvatar = ILLUSTRATED_AVATARS.find(
     (avatar) => avatar.value === "/avatars/casual-bob-girl.webp",
   );
   if (!selectedAvatar) throw new Error("Saved avatar fixture is missing from ILLUSTRATED_AVATARS");
+  await page.getByTestId("avatar-section-girls").click();
   const avatarChoice = page.getByRole("button", { name: selectedAvatar.label });
   await avatarChoice.click();
   const saveAvatar = page.getByRole("button", { name: "حفظ الشخصية" });

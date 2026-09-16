@@ -382,6 +382,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       typeId: type?.id,
       customReason: customData?.reason,
       customPoints: customData?.points,
+      optimisticPoints: type?.points ?? customData?.points ?? 0,
       idempotencyKey: key
     };
 
@@ -1245,6 +1246,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             typeId: type?.id,
             customReason: customData?.reason,
             customPoints: customData?.points,
+            optimisticPoints: type?.points ?? customData?.points ?? 0,
             idempotencyKey: key
           }, {
             onSuccess: () => {
@@ -1267,6 +1269,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           });
         }}
         loading={grantMutation.isPending}
+        pendingTypeId={grantMutation.variables?.typeId}
       />
       {balanceAdjustmentStudent && (
         <BalanceAdjustmentDialog
@@ -1337,7 +1340,7 @@ function PageContainer({ embedded, children }: { embedded: boolean; children: Re
 }
 
 function SingleStudentGrantDialog({
-  open, onOpenChange, student, rewardTypes, onGrant, onAdjustBalance, loading
+  open, onOpenChange, student, rewardTypes, onGrant, onAdjustBalance, loading, pendingTypeId
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -1346,6 +1349,7 @@ function SingleStudentGrantDialog({
   onGrant: (type?: any, customData?: { reason: string, points: number }) => void;
   onAdjustBalance: () => void;
   loading: boolean;
+  pendingTypeId?: number;
 }) {
   const { lang } = useI18n();
   const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
@@ -1414,13 +1418,16 @@ function SingleStudentGrantDialog({
                     key={type.id}
                     onClick={() => onGrant(type)}
                     disabled={loading}
-                    className="relative group flex flex-col items-center justify-center gap-3 p-4 rounded-[1.5rem] border-2 bg-white overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all duration-300 motion-reduce:transition-none motion-reduce:transform-none disabled:opacity-50 focus:outline-none focus:ring-4 focus:ring-amber-400/20"
+                    aria-busy={loading && pendingTypeId === type.id}
+                    className="relative group flex flex-col items-center justify-center gap-3 p-4 rounded-[1.5rem] border-2 bg-white overflow-hidden hover:-translate-y-1 hover:shadow-lg active:scale-[0.97] transition-all duration-150 motion-reduce:transition-none motion-reduce:transform-none disabled:opacity-60 focus:outline-none focus:ring-4 focus:ring-amber-400/20"
                     style={{ borderColor: type.color ? `${type.color}40` : 'rgba(16, 185, 129, 0.2)' }}
                   >
                     <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-current to-transparent opacity-5 rounded-bl-full" style={{ color: type.color || '#10b981' }} />
 
                     <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-emerald-50 group-hover:scale-110 transition-transform duration-300 motion-reduce:transition-none motion-reduce:transform-none" style={{ backgroundColor: type.color ? `${type.color}15` : '#ecfdf5', color: type.color || '#10b981' }}>
-                      <IconRenderer name={type.icon} />
+                      {loading && pendingTypeId === type.id
+                        ? <Loader2 size={22} className="animate-spin motion-reduce:animate-none" />
+                        : <IconRenderer name={type.icon} />}
                     </div>
 
                     <div className="text-center z-10 w-full">

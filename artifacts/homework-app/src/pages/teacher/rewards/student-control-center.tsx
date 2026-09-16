@@ -18,7 +18,7 @@ import { GoalProgressCard } from "./goal-progress";
 import {
   User, Shield, Key, History, FileText, Activity,
   Loader2, Save, Phone, BookOpen, GraduationCap, Eye, EyeOff, Lock,
-  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, ChevronDown, ChevronUp, SlidersHorizontal, ArrowRight, Upload, ImagePlus
+  Map, Compass, Sparkles, Check, Orbit, Shapes, Waypoints, SlidersHorizontal, ArrowRight, Upload, ImagePlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -220,6 +220,7 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
       className,
       studentIds: [studentId],
       typeId: type.id,
+      optimisticPoints: type.points,
       idempotencyKey: crypto.randomUUID(),
     }, {
       onSuccess: () => {
@@ -341,11 +342,14 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
                   key={type.id}
                   type="button"
                   disabled={!className || grantMutation.isPending || Boolean(celebration)}
+                  aria-busy={grantMutation.isPending && grantMutation.variables?.typeId === type.id}
                   onClick={() => grant(type)}
                    className="rounded-xl border-2 px-4 py-2.5 text-sm font-black transition-all hover:bg-emerald-50 hover:-translate-y-0.5 active:scale-95 motion-reduce:transition-none motion-reduce:transform-none disabled:opacity-50 text-emerald-950 shadow-sm flex items-center gap-2"
                   style={{ borderColor: type.color ? `${type.color}40` : '#d1fae5' }}
                 >
-                  {type.name}
+                   {grantMutation.isPending && grantMutation.variables?.typeId === type.id
+                     ? <Loader2 size={15} className="animate-spin motion-reduce:animate-none" />
+                     : type.name}
                   <span className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded text-xs border border-amber-100 flex items-center gap-0.5">
                     <Orbit size={11} />+{formatPoints(type.points)}
                   </span>
@@ -566,19 +570,20 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
   });
   
   const [avatarChanged, setAvatarChanged] = useState(false);
-  const [showAllAvatars, setShowAllAvatars] = useState(false);
+  const currentAvatarDefinition = ILLUSTRATED_AVATARS.find((avatar) => avatar.value === student.avatar);
+  const [avatarAudience, setAvatarAudience] = useState<"boys" | "girls">(
+    currentAvatarDefinition?.audience === "girls" ? "girls" : "boys",
+  );
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const updateMutation = useUpdateStudentProfile();
-  const featuredAvatars = ILLUSTRATED_AVATARS.slice(0, 8);
-  const currentHiddenAvatar = ILLUSTRATED_AVATARS.find(
-    (avatar) => avatar.value === formData.avatar && !featuredAvatars.some((featured) => featured.value === avatar.value),
+  const selectedAvatar = ILLUSTRATED_AVATARS.find((avatar) => avatar.value === formData.avatar);
+  const visibleAvatars = ILLUSTRATED_AVATARS.filter(
+    (avatar) => avatar.audience === avatarAudience || avatar.audience === "all",
   );
-  const visibleAvatars = showAllAvatars
-    ? ILLUSTRATED_AVATARS
-    : currentHiddenAvatar
-      ? [...featuredAvatars, currentHiddenAvatar]
-      : featuredAvatars;
+  const displayedAvatars = selectedAvatar && !visibleAvatars.some((avatar) => avatar.value === selectedAvatar.value)
+    ? [selectedAvatar, ...visibleAvatars]
+    : visibleAvatars;
 
   const handleAvatarSelect = (avatarValue: string) => {
     setFormData(prev => ({ ...prev, avatar: avatarValue }));
@@ -715,8 +720,23 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
                {photoUploading ? r("جارٍ رفع الصورة...", "Uploading...") : r("اختيار صورة", "Choose photo")}
              </button>
            </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
-            {visibleAvatars.map((avatar) => (
+           <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-emerald-50 p-1.5" role="tablist" aria-label={r("قسم الشخصيات", "Character section")}>
+             {(["boys", "girls"] as const).map((audience) => (
+               <button
+                 key={audience}
+                 type="button"
+                 role="tab"
+                 aria-selected={avatarAudience === audience}
+                 onClick={() => setAvatarAudience(audience)}
+                 className={cn("min-h-11 rounded-xl px-4 py-2 text-sm font-black transition-colors", avatarAudience === audience ? "bg-white text-emerald-900 shadow-sm" : "text-emerald-800/65 hover:bg-white/60")}
+                 data-testid={`avatar-section-${audience}`}
+               >
+                 {audience === "boys" ? r("الأولاد", "Boys") : r("البنات", "Girls")}
+               </button>
+             ))}
+           </div>
+           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+             {displayedAvatars.map((avatar) => (
                <button
                 key={avatar.value}
                 type="button"
@@ -743,17 +763,6 @@ function ProfileTab({ student, studentId, onAvatarSaved }: {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAllAvatars((visible) => !visible)}
-            aria-expanded={showAllAvatars}
-            className="mx-auto mt-5 flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-100 bg-white px-5 py-3 text-sm font-black text-emerald-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none"
-          >
-            {showAllAvatars ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            {showAllAvatars
-               ? r("عرض الشخصيات المميزة فقط", "Show featured characters only")
-               : r(`عرض المجموعة الكاملة (${ILLUSTRATED_AVATARS.length - featuredAvatars.length} شخصية إضافية)`, `Show full collection (${ILLUSTRATED_AVATARS.length - featuredAvatars.length} more characters)`)}
-          </button>
         </div>
 
         <div className="space-y-5">
