@@ -12,6 +12,7 @@ import {
   WidthType,
   type ISectionOptions,
 } from "docx";
+import { contentDirection, type ContentDirection } from "./content-direction";
 
 // Lightweight export helpers for the teacher's printable surfaces.
 
@@ -48,40 +49,70 @@ function alignmentFor(
   return rtl ? AlignmentType.RIGHT : AlignmentType.LEFT;
 }
 
-function textRuns(element: Element, rtl: boolean): TextRun[] {
+function directionForElement(
+  element: Element,
+  fallback: ContentDirection,
+): ContentDirection {
+  const explicitDirection = element.getAttribute("dir");
+  if (explicitDirection === "ltr" || explicitDirection === "rtl") {
+    return explicitDirection;
+  }
+  return contentDirection(element.textContent, fallback);
+}
+
+function directionForTextParent(
+  element: Element,
+  fallback: ContentDirection,
+): ContentDirection {
+  const explicitDirection = element.closest("[dir]")?.getAttribute("dir");
+  if (explicitDirection === "ltr" || explicitDirection === "rtl") {
+    return explicitDirection;
+  }
+  return contentDirection(element.textContent, fallback);
+}
+
+function textRuns(element: Element, direction: ContentDirection): TextRun[] {
   const runs: TextRun[] = [];
   const visit = (node: Node, inherited: Partial<CSSStyleDeclaration> = {}) => {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent?.replace(/\s+/g, " ") ?? "";
-      if (!text) return;
+      if (!text.trim()) return;
       const parent = node.parentElement;
       const computed = parent ? window.getComputedStyle(parent) : null;
       const inline = parent?.style;
       const size = pointsFromCss(inline?.fontSize || computed?.fontSize || "", 12);
       const weight = inline?.fontWeight || computed?.fontWeight || inherited.fontWeight || "";
+      const runDirection = parent
+        ? directionForTextParent(parent, direction)
+        : contentDirection(text, direction);
+      const runRtl = runDirection === "rtl";
       runs.push(new TextRun({
         text,
         bold: Number.parseInt(weight, 10) >= 600 || weight === "bold",
         italics: (inline?.fontStyle || computed?.fontStyle) === "italic",
         size: Math.round(size * 2),
-        font: inline?.fontFamily?.split(",")[0]?.replace(/['"]/g, "") || (rtl ? "Cairo" : "Arial"),
-        rightToLeft: rtl,
+        font: inline?.fontFamily?.split(",")[0]?.replace(/['"]/g, "") || (runRtl ? "Cairo" : "Arial"),
+        rightToLeft: runRtl,
       }));
       return;
     }
     node.childNodes.forEach(child => visit(child, inherited));
   };
   visit(element);
-  return runs.length ? runs : [new TextRun({ text: "", rightToLeft: rtl })];
+  return runs.length
+    ? runs
+    : [new TextRun({ text: "", rightToLeft: direction === "rtl" })];
 }
 
 function paragraphFor(element: Element, rtl: boolean, text?: string): Paragraph {
+  const direction = directionForElement(element, rtl ? "rtl" : "ltr");
+  const paragraphRtl = direction === "rtl";
   return new Paragraph({
     children: text == null
-      ? textRuns(element, rtl)
-      : [new TextRun({ text, rightToLeft: rtl, font: rtl ? "Cairo" : "Arial", size: 24 })],
-    bidirectional: rtl,
-    alignment: alignmentFor(element, rtl),
+      ? textRuns(element, direction)
+      : [new TextRun({ text, rightToLeft: paragraphRtl, font: paragraphRtl ? "Cairo" : "Arial", size: 24 })],
+    bidirectional: paragraphRtl,
+    alignment: alignmentFor(element, paragraphRtl),
     spacing: { after: 100, line: 300 },
   });
 }

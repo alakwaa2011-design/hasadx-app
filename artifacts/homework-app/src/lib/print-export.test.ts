@@ -81,4 +81,43 @@ describe("buildWordDocument", () => {
       expect(xml).toContain(text);
     }
   });
+
+  it("keeps equations and signed choices LTR inside an Arabic Word document", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page dir="rtl">
+        <div class="ws-q-prompt">
+          <span dir="ltr">(+20) - (+14)</span>
+        </div>
+        <ol class="ws-mcq" data-choice-columns="2">
+          <li><span dir="rtl"><span>(أ) </span><span dir="ltr">+6</span></span></li>
+          <li><span dir="rtl"><span>(ب) </span><span dir="ltr">-34</span></span></li>
+        </ol>
+      </div>`;
+
+    const wordDocument = buildWordDocument({
+      element: root,
+      title: "ورقة الأعداد الصحيحة",
+      lang: "ar",
+    });
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(wordDocument));
+    const xml = await zip.file("word/document.xml")!.async("string");
+
+    const equationParagraph = xml.match(/<w:p>.*?\(\+20\) - \(\+14\).*?<\/w:p>/)?.[0];
+    expect(equationParagraph).toBeDefined();
+    expect(equationParagraph).toContain('<w:bidi w:val="false"/>');
+    expect(equationParagraph).not.toContain("<w:rtl/>");
+    expect(equationParagraph).toContain("(+20) - (+14)");
+
+    for (const [label, option] of [["(أ) ", "+6"], ["(ب) ", "-34"]]) {
+      const choiceParagraph = xml.match(/<w:p>.*?<\/w:p>/g)
+        ?.find(paragraph => paragraph.includes(label) && paragraph.includes(option));
+      expect(choiceParagraph).toBeDefined();
+      expect(choiceParagraph).toContain("<w:bidi");
+      expect(choiceParagraph!.indexOf(label)).toBeLessThan(choiceParagraph!.indexOf(option));
+      const runs = choiceParagraph!.match(/<w:r>.*?<\/w:r>/g) ?? [];
+      expect(runs.find(run => run.includes(label))).toContain("<w:rtl/>");
+      expect(runs.find(run => run.includes(option))).toContain('<w:rtl w:val="false"/>');
+    }
+  });
 });
