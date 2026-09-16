@@ -10,8 +10,14 @@ interface QuranMadaniPageRendererProps {
   fallbackImageUrl: string;
   onFallbackError?: () => void;
   selectedVerseKey?: string | null;
+  selectedWordId?: number | null;
   playingVerseKey?: string | null;
-  onVerseClick?: (verseKey: string) => void;
+  onVerseClick?: (selection: {
+    verseKey: string;
+    wordId: number | null;
+    wordPosition: number | null;
+    wordText: string | null;
+  }) => void;
 }
 
 export function QuranMadaniPageRenderer({
@@ -20,6 +26,7 @@ export function QuranMadaniPageRenderer({
   fallbackImageUrl,
   onFallbackError,
   selectedVerseKey,
+  selectedWordId,
   playingVerseKey,
   onVerseClick,
 }: QuranMadaniPageRendererProps) {
@@ -196,6 +203,7 @@ export function QuranMadaniPageRenderer({
             >
               {line.words.map((w, i) => {
                 const isSelected = selectedVerseKey && w.verseKey === selectedVerseKey;
+                const isSelectedWord = selectedWordId === w.id;
                 const isPlaying = playingVerseKey && w.verseKey === playingVerseKey;
 
                 return (
@@ -208,13 +216,20 @@ export function QuranMadaniPageRenderer({
                         : `${w.text}, ayah ${w.verseKey.split(":")[1]}`
                     }
                     aria-pressed={Boolean(isSelected || isPlaying)}
-                    onClick={() => onVerseClick?.(w.verseKey)}
+                    onClick={() => onVerseClick?.({
+                      verseKey: w.verseKey,
+                      wordId: w.type === "word" ? w.id : null,
+                      wordPosition: w.type === "word" ? w.position : null,
+                      wordText: w.type === "word" ? w.text : null,
+                    })}
                     type="button"
                     className={cn(
                       "relative m-0 inline-block cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
                       w.type === "end" ? "text-[5.6cqw]" : "",
                       // Apply standard color or highlight colors
-                      isPlaying
+                      isSelectedWord
+                        ? "text-amber-800 bg-amber-200/70 ring-1 ring-amber-500/50"
+                        : isPlaying
                         ? "text-emerald-700 drop-shadow-[0_0_0_rgba(22,101,52,0.8)] bg-emerald-100/50"
                         : isSelected
                         ? "text-amber-700 drop-shadow-[0_0_0_rgba(180,83,9,0.8)] bg-amber-100/40"

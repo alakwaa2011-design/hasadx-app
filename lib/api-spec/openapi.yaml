@@ -1800,6 +1800,36 @@ paths:
         "400": { description: Invalid page number }
         "503": { description: Official Madani Mushaf page is temporarily unavailable }
 
+  /quran/education/{surahNumber}/{ayahNumber}:
+    get:
+      operationId: getQuranAyahEducation
+      tags: [quran]
+      summary: Get sourced Arabic word context and tafsir for one ayah
+      parameters:
+        - name: surahNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 114 }
+        - name: ayahNumber
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 286 }
+        - name: wordPosition
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+      responses:
+        "200":
+          description: Sourced educational context which does not record learning progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuranAyahEducation"
+        "400": { description: "Invalid surah, ayah, or word position" }
+        "401": { description: Not authenticated as a teacher or student }
+        "404": { description: The selected word is not part of the requested ayah }
+        "503": { description: Sourced educational content is temporarily unavailable }
+
   /quran/circles:
     get:
       operationId: listQuranCircles
@@ -2457,6 +2487,48 @@ components:
           type: string
           enum: [quran_foundation_qcf_v2]
       required: [pageNumber, juzNumber, hizbNumber, rubElHizbNumber, surahStarts, lines, source]
+
+    QuranEducationSource:
+      type: object
+      properties:
+        id: { type: ["integer", "null"] }
+        name: { type: string, minLength: 1 }
+        provider: { type: string, minLength: 1 }
+        version: { type: string, minLength: 1 }
+      required: [id, name, provider, version]
+
+    QuranWordContext:
+      type: object
+      properties:
+        id: { type: integer }
+        position: { type: integer, minimum: 1 }
+        text: { type: string, minLength: 1 }
+        meaning: { type: string, minLength: 1 }
+        source:
+          $ref: "#/components/schemas/QuranEducationSource"
+      required: [id, position, text, meaning, source]
+
+    QuranAyahTafsir:
+      type: object
+      properties:
+        text: { type: string, minLength: 1 }
+        source:
+          $ref: "#/components/schemas/QuranEducationSource"
+      required: [text, source]
+
+    QuranAyahEducation:
+      type: object
+      properties:
+        surahNumber: { type: integer, minimum: 1, maximum: 114 }
+        ayahNumber: { type: integer, minimum: 1, maximum: 286 }
+        verseKey: { type: string, pattern: '^\d{1,3}:\d{1,3}$' }
+        selectedWord:
+          anyOf:
+            - $ref: "#/components/schemas/QuranWordContext"
+            - type: "null"
+        tafsir:
+          $ref: "#/components/schemas/QuranAyahTafsir"
+      required: [surahNumber, ayahNumber, verseKey, selectedWord, tafsir]
 
     QuranStudent:
       type: object

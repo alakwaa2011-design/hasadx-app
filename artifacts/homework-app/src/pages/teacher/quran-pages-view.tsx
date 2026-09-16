@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 import { QuranMadaniPageRenderer } from "./quran-madani-page";
 import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
+import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 
 interface QComplexChapter {
@@ -112,6 +113,12 @@ export function QuranPagesView({
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
   const [selectedVerseKey, setSelectedVerseKey] = useState<string | null>(null);
+  const [educationSelection, setEducationSelection] = useState<{
+    verseKey: string;
+    wordId: number | null;
+    wordPosition: number | null;
+    wordText: string | null;
+  } | null>(null);
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -252,6 +259,7 @@ export function QuranPagesView({
     const p = selectedVerse.page_id;
     if (visiblePages.left !== p && visiblePages.right !== p && activePage !== p) {
       setSelectedVerseKey(null);
+      setEducationSelection(null);
     }
   }, [activePage, visiblePages, selectedVerseKey, verses, isPlaying]);
 
@@ -338,9 +346,12 @@ export function QuranPagesView({
               setFailedPages((current) => new Set(current).add(page))
             }
             selectedVerseKey={selectedVerseKey}
+            selectedWordId={educationSelection?.wordId}
             playingVerseKey={playingVerseKey}
-            onVerseClick={(verseKey) => {
-              setSelectedVerseKey(verseKey);
+            onVerseClick={(selection) => {
+               const verseKey = selection.verseKey;
+               setSelectedVerseKey(verseKey);
+               setEducationSelection(selection);
               if (isPlaying && playingVerseKey) {
                 // If a different surah is clicked while playing, we need to stop or update the playing track
                 // Since quran-audio-player only handles playing within one surah (via surahNumber prop),
@@ -372,7 +383,7 @@ export function QuranPagesView({
     <div
       className={cn(
         "flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
-        embedded ? "min-h-full" : "min-h-[100dvh]",
+         embedded ? "h-full overflow-hidden" : "h-[100dvh] overflow-hidden",
       )}
       dir={dir}
     >
@@ -525,7 +536,7 @@ export function QuranPagesView({
       )}
 
       <main
-        className="flex flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
+        className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
         onTouchStart={(event) => {
           setTouchEnd(null);
           setTouchStart(event.targetTouches[0].clientX);
@@ -585,24 +596,39 @@ export function QuranPagesView({
         </nav>
       </main>
 
-      {!quietMode && selectedVerseKey && audioSurahs.length > 0 && (
-        <div className="sticky bottom-0 z-40 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] w-full">
-          <QuranAudioPlayer
-            surahs={audioSurahs}
-            surahNumber={playingSurah}
-            startAyah={startAyah}
-            endAyah={endAyah}
-            selectedAyah={selectedAyah}
-            playingAyah={playingAyahNum}
-            onPlayingAyahChange={handlePlayingAyahChange}
-            isPlaying={isPlaying}
-            onIsPlayingChange={setIsPlaying}
-            onClose={() => {
-              setIsPlaying(false);
-              setPlayingVerseKey(null);
-              setSelectedVerseKey(null);
-            }}
-          />
+      {!quietMode && (educationSelection || (selectedVerseKey && audioSurahs.length > 0)) && (
+        <div
+          className="relative z-40 flex max-h-[58dvh] w-full shrink-0 flex-col"
+          data-testid="quran-bottom-dock"
+        >
+          {educationSelection && (
+            <QuranEducationPanel
+              key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
+              selection={educationSelection}
+              onClose={() => setEducationSelection(null)}
+            />
+          )}
+          {selectedVerseKey && audioSurahs.length > 0 && (
+            <div className="z-40 w-full shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+              <QuranAudioPlayer
+                surahs={audioSurahs}
+                surahNumber={playingSurah}
+                startAyah={startAyah}
+                endAyah={endAyah}
+                selectedAyah={selectedAyah}
+                playingAyah={playingAyahNum}
+                onPlayingAyahChange={handlePlayingAyahChange}
+                isPlaying={isPlaying}
+                onIsPlayingChange={setIsPlaying}
+                onClose={() => {
+                  setIsPlaying(false);
+                  setPlayingVerseKey(null);
+                  setSelectedVerseKey(null);
+                  setEducationSelection(null);
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

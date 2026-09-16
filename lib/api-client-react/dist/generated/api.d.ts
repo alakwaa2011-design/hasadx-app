@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranProfileUpdate, QuranRecitation, QuranRecitationInput, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -1869,6 +1869,29 @@ export type GetQuranMadaniPageQueryError = ErrorType<void>;
  */
 export declare function useGetQuranMadaniPage<TData = Awaited<ReturnType<typeof getQuranMadaniPage>>, TError = ErrorType<void>>(pageNumber: number, options?: {
     query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranMadaniPage>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getGetQuranAyahEducationUrl: (surahNumber: number, ayahNumber: number, params?: GetQuranAyahEducationParams) => string;
+/**
+ * @summary Get sourced Arabic word context and tafsir for one ayah
+ */
+export declare const getQuranAyahEducation: (surahNumber: number, ayahNumber: number, params?: GetQuranAyahEducationParams, options?: Parameters<typeof customFetch>[1]) => Promise<QuranAyahEducation>;
+export declare const getGetQuranAyahEducationQueryKey: (surahNumber: number, ayahNumber: number, params?: GetQuranAyahEducationParams) => readonly [`/api/quran/education/${number}/${number}`, ...GetQuranAyahEducationParams[]];
+export declare const getGetQuranAyahEducationQueryOptions: <TData = Awaited<ReturnType<typeof getQuranAyahEducation>>, TError = ErrorType<void>>(surahNumber: number, ayahNumber: number, params?: GetQuranAyahEducationParams, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahEducation>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahEducation>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetQuranAyahEducationQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranAyahEducation>>>;
+export type GetQuranAyahEducationQueryError = ErrorType<void>;
+/**
+ * @summary Get sourced Arabic word context and tafsir for one ayah
+ */
+export declare function useGetQuranAyahEducation<TData = Awaited<ReturnType<typeof getQuranAyahEducation>>, TError = ErrorType<void>>(surahNumber: number, ayahNumber: number, params?: GetQuranAyahEducationParams, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahEducation>>, TError, TData>;
     request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

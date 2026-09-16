@@ -20,3 +20,9 @@ The page reader's primary Madani Mushaf is Quran Foundation Mushaf ID 1 (QCF V2)
 **Why:** connecting official verse text and audio does not replace the visual Mushaf; continuing to show the old page images caused the product to look unchanged.
 
 **How to apply:** label the surface as Madani Mushaf QCF V2, preserve all physical line positions, and verify normal rendering contains QCF glyphs rather than the fallback image.
+
+Word-level meaning must use the documented `words[].translation` contract; Quran Foundation currently identifies that field as English. Arabic tafsir is a separate resource and must not be scraped as if its HTML spans were word definitions.
+
+**Why:** tafsir markup is presentation content, not a stable word-gloss schema; inferring definitions from nearby spans can silently attach the wrong explanation to a selected word.
+
+**How to apply:** attribute the word translation and tafsir separately with their real language/resource metadata, return no word meaning when the documented translation is absent, and never synthesize or extract a gloss from tafsir HTML.

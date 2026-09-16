@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationAyahEducation,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
@@ -181,6 +182,104 @@ describe("Quran Foundation client", () => {
     await expect(getQuranFoundationAudioUrl(999, 1, 1))
       .rejects.toThrow("not in the trusted catalog");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns only source-attributed word context and tafsir, then caches it", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "2:255",
+          words: [
+            {
+              id: 87148,
+              position: 1,
+              char_type_name: "word",
+              text_uthmani: "ٱللَّهُ",
+              translation: { text: "Allah", language_name: "english" },
+            },
+            {
+              id: 87149,
+              position: 2,
+              char_type_name: "word",
+              text_uthmani: "لَآ",
+              translation: { text: "(there is) no", language_name: "english" },
+            },
+            { id: 87150, position: 3, char_type_name: "end", text_uthmani: "٢٥٥" },
+          ],
+        },
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        tafsir: {
+          resource_id: 16,
+          text: "الله <span class=\"green\">الحي القيوم</span>",
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await getQuranFoundationAyahEducation(2, 255, 2);
+    const second = await getQuranFoundationAyahEducation(2, 255, 2);
+
+    expect(first.verseKey).toBe("2:255");
+    expect(first.selectedWord).toMatchObject({
+      id: 87149,
+      position: 2,
+      text: "لَآ",
+      meaning: "(there is) no",
+      source: {
+        id: null,
+        name: "Quran.com Word-by-Word Translation",
+        provider: "Quran Foundation",
+        version: "Content API v4 · English",
+      },
+    });
+    expect(first.tafsir.text).toBe("الله الحي القيوم");
+    expect(first.tafsir.source).toMatchObject({ id: 16, name: "التفسير الميسر" });
+    expect(second).toBe(first);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects noncanonical ayah numbers before requesting sourced content", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationAyahEducation(2, 287, 1))
+      .rejects.toThrow("Invalid Quran surah or ayah number");
+    await expect(getQuranFoundationAyahEducation(115, 1, 1))
+      .rejects.toThrow("Invalid Quran surah or ayah number");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not invent a word meaning when the documented translation is empty", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "1:1",
+          words: [{
+            id: 1,
+            position: 1,
+            char_type_name: "word",
+            text_uthmani: "بِسْمِ",
+            translation: { text: null, language_name: "english" },
+          }],
+        },
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        tafsir: { resource_id: 16, text: "أبتدئ قراءة القرآن باسم الله" },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getQuranFoundationAyahEducation(1, 1, 1);
+
+    expect(result.selectedWord).toBeNull();
+    expect(result.tafsir.source).toMatchObject({ id: 16, name: "التفسير الميسر" });
   });
 
   it("rejects a canonical catalog with a wrong ayah count", async () => {

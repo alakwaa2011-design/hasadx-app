@@ -126,6 +126,47 @@ export interface QuranMadaniPage {
     lines: QuranMadaniLine[];
     source: QuranMadaniPageSource;
 }
+export interface QuranEducationSource {
+    /** @nullable */
+    id: number | null;
+    /** @minLength 1 */
+    name: string;
+    /** @minLength 1 */
+    provider: string;
+    /** @minLength 1 */
+    version: string;
+}
+export interface QuranWordContext {
+    id: number;
+    /** @minimum 1 */
+    position: number;
+    /** @minLength 1 */
+    text: string;
+    /** @minLength 1 */
+    meaning: string;
+    source: QuranEducationSource;
+}
+export interface QuranAyahTafsir {
+    /** @minLength 1 */
+    text: string;
+    source: QuranEducationSource;
+}
+export interface QuranAyahEducation {
+    /**
+       * @minimum 1
+       * @maximum 114
+       */
+    surahNumber: number;
+    /**
+       * @minimum 1
+       * @maximum 286
+       */
+    ayahNumber: number;
+    /** @pattern ^\d{1,3}:\d{1,3}$ */
+    verseKey: string;
+    selectedWord: QuranWordContext | null;
+    tafsir: QuranAyahTafsir;
+}
 export interface QuranStudent {
     id: number;
     name: string;
@@ -2483,5 +2524,12 @@ export type UploadAiVideoSourceImage201 = {
     /** @pattern ^/objects/uploads/ai-video/ */
     objectPath: string;
     metadata: UploadAiVideoSourceImage201Metadata;
+};
+export type GetQuranAyahEducationParams = {
+    /**
+     * @minimum 1
+     * @maximum 200
+     */
+    wordPosition?: number;
 };
 //# sourceMappingURL=api.schemas.d.ts.map

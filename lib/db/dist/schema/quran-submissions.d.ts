@@ -327,6 +327,7 @@ export declare const insertQuranSubmissionSchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodString>;
     clientRequestId: z.ZodString;
     objectPath: z.ZodString;
+    reviewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     wardId: z.ZodInt;
     memorizationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     recitationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
@@ -334,7 +335,6 @@ export declare const insertQuranSubmissionSchema: z.ZodObject<{
     contentType: z.ZodString;
     fileSize: z.ZodInt;
     reviewedByTeacherId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    reviewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
 }, {
     out: {};
     in: {};

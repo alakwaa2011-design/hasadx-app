@@ -79,6 +79,9 @@ import {
   UpdateQuranAudioPreferenceResponse,
   GetQuranMadaniPageParams,
   GetQuranMadaniPageResponse,
+  GetQuranAyahEducationParams,
+  GetQuranAyahEducationQueryParams,
+  GetQuranAyahEducationResponse,
   UpdateMyQuranIndependentPositionBody,
   UpdateMyQuranIndependentPositionResponse,
   RecordMyQuranIndependentSessionBody,
@@ -90,6 +93,7 @@ import {
   getQuranFoundationAudioUrl,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
+  getQuranFoundationAyahEducation,
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
 } from "../lib/quran-foundation-client";
@@ -137,6 +141,10 @@ function teacherIdOf(req: TeacherRequest): number | null {
 
 function studentAccountIdOf(req: TeacherRequest): number | null {
   return typeof req.session?.studentAccountId === "number" ? req.session.studentAccountId : null;
+}
+
+function hasQuranReaderSession(req: TeacherRequest): boolean {
+  return teacherIdOf(req) !== null || studentAccountIdOf(req) !== null;
 }
 
 function today(): string {
@@ -381,6 +389,40 @@ router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> =>
   } catch (error) {
     req.log.warn({ err: error, pageNumber: parsed.data.pageNumber }, "Official Madani Mushaf page unavailable");
     res.status(503).json({ error: "Official Madani Mushaf page is temporarily unavailable" });
+  }
+});
+
+router.get("/quran/education/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
+  if (!hasQuranReaderSession(req)) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const params = GetQuranAyahEducationParams.safeParse(req.params);
+  const query = GetQuranAyahEducationQueryParams.safeParse(req.query);
+  if (!params.success || !query.success) {
+    res.status(400).json({ error: "Invalid Quran verse or word position" });
+    return;
+  }
+  const canonicalCount = SURAH_AYAH_COUNTS[params.data.surahNumber - 1];
+  if (!canonicalCount || params.data.ayahNumber > canonicalCount) {
+    res.status(400).json({ error: "Ayah number is outside the surah" });
+    return;
+  }
+  try {
+    const education = await getQuranFoundationAyahEducation(
+      params.data.surahNumber,
+      params.data.ayahNumber,
+      query.data.wordPosition,
+    );
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.json(GetQuranAyahEducationResponse.parse(education));
+  } catch (error) {
+    if (error instanceof Error && error.message === "Selected Quran word is not part of the ayah") {
+      res.status(404).json({ error: error.message });
+      return;
+    }
+    req.log?.error(error, "Sourced Quran education lookup failed");
+    res.status(503).json({ error: "Sourced Quran educational content is unavailable" });
   }
 });
 

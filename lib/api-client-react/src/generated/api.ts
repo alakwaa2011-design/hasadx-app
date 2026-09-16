@@ -41,6 +41,7 @@ import type {
   ErrorResponse,
   ExamSessionResponse,
   GetPresentationLinkedActivity200,
+  GetQuranAyahEducationParams,
   GoogleLoginBody,
   HealthStatus,
   LinkPresentationActivity200,
@@ -60,6 +61,7 @@ import type {
   PresentationTierWithUsage,
   QuranAudioPreference,
   QuranAudioPreferenceInput,
+  QuranAyahEducation,
   QuranCircle,
   QuranCircleInput,
   QuranCircleTaskInput,
@@ -6470,6 +6472,100 @@ export function useGetQuranMadaniPage<TData = Awaited<ReturnType<typeof getQuran
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetQuranMadaniPageQueryOptions(pageNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranAyahEducationUrl = (surahNumber: number,
+    ayahNumber: number,
+    params?: GetQuranAyahEducationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/quran/education/${surahNumber}/${ayahNumber}?${stringifiedParams}` : `/api/quran/education/${surahNumber}/${ayahNumber}`
+}
+
+/**
+ * @summary Get sourced Arabic word context and tafsir for one ayah
+ */
+export const getQuranAyahEducation = async (surahNumber: number,
+    ayahNumber: number,
+    params?: GetQuranAyahEducationParams, options?: Parameters<typeof customFetch>[1]): Promise<QuranAyahEducation> => {
+
+  return customFetch<QuranAyahEducation>(getGetQuranAyahEducationUrl(surahNumber,ayahNumber,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranAyahEducationQueryKey = (surahNumber: number,
+    ayahNumber: number,
+    params?: GetQuranAyahEducationParams,) => {
+    return [
+    `/api/quran/education/${surahNumber}/${ayahNumber}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetQuranAyahEducationQueryOptions = <TData = Awaited<ReturnType<typeof getQuranAyahEducation>>, TError = ErrorType<void>>(surahNumber: number,
+    ayahNumber: number,
+    params?: GetQuranAyahEducationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahEducation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranAyahEducationQueryKey(surahNumber,ayahNumber,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranAyahEducation>>> = ({ signal }) => getQuranAyahEducation(surahNumber,ayahNumber,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: surahNumber !== null && surahNumber !== undefined && ayahNumber !== null && ayahNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahEducation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranAyahEducationQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranAyahEducation>>>
+export type GetQuranAyahEducationQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get sourced Arabic word context and tafsir for one ayah
+ */
+
+export function useGetQuranAyahEducation<TData = Awaited<ReturnType<typeof getQuranAyahEducation>>, TError = ErrorType<void>>(
+ surahNumber: number,
+    ayahNumber: number,
+    params?: GetQuranAyahEducationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranAyahEducation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranAyahEducationQueryOptions(surahNumber,ayahNumber,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

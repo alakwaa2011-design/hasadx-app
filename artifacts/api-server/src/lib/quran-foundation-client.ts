@@ -9,8 +9,12 @@ const RECITATION_CATALOG_CACHE_MS = 24 * 60 * 60 * 1_000;
 const SURAH_CACHE_MS = 24 * 60 * 60 * 1_000;
 const MADANI_PAGE_CACHE_MS = 24 * 60 * 60 * 1_000;
 const AUDIO_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
+
+const EDUCATION_CACHE_MS = 24 * 60 * 60 * 1_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
+
+const TAFSIR_MUYASSAR_RESOURCE_ID = 16;
 const CANONICAL_AYAH_COUNTS = [
   7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98,
   135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75,
@@ -62,6 +66,22 @@ export type QuranFoundationMadaniPage = {
   source: "quran_foundation_qcf_v2";
 };
 
+export type QuranFoundationAyahEducation = {
+  surahNumber: number;
+  ayahNumber: number;
+  verseKey: string;
+  selectedWord: {
+    id: number;
+    position: number;
+    text: string;
+    meaning: string;
+    source: typeof WORD_BY_WORD_SOURCE;
+  } | null;
+  tafsir: {
+    text: string;
+    source: typeof TAFSIR_MUYASSAR_SOURCE;
+  };
+};
 type CachedToken = {
   value: string;
   expiresAt: number;
@@ -75,6 +95,7 @@ const cachedSurahs = new Map<number, { value: QuranFoundationSurahContent; expir
 const cachedMadaniPages = new Map<number, { value: QuranFoundationMadaniPage; expiresAt: number }>();
 const cachedAudio = new Map<string, { value: string; expiresAt: number }>();
 
+const cachedEducation = new Map<string, { value: QuranFoundationAyahEducation; expiresAt: number }>();
 function credentials() {
   const clientId = process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_ID?.trim();
   const clientSecret = process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_SECRET?.trim();
@@ -479,6 +500,90 @@ export async function getQuranFoundationAudioUrl(
   return value;
 }
 
+export async function getQuranFoundationAyahEducation(
+  surahNumber: number,
+  ayahNumber: number,
+  wordPosition?: number,
+): Promise<QuranFoundationAyahEducation> {
+  validateVerseNumbers(surahNumber, ayahNumber);
+  if (wordPosition !== undefined && (!Number.isInteger(wordPosition) || wordPosition < 1 || wordPosition > 200)) {
+    throw new Error("Invalid Quran word position");
+  }
+  const verseKey = `${surahNumber}:${ayahNumber}`;
+  const cacheKey = `${verseKey}:${wordPosition ?? 0}`;
+  const cached = cachedEducation.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const [versePayload, tafsirPayload] = await Promise.all([
+    requestContentJson(`verses/by_key/${verseKey}?words=true&word_fields=text_uthmani,translation`),
+    requestContentJson(`tafsirs/${TAFSIR_MUYASSAR_RESOURCE_ID}/by_ayah/${verseKey}`),
+  ]);
+  const verse = versePayload && typeof versePayload === "object"
+    ? (versePayload as { verse?: unknown }).verse
+    : null;
+  const tafsir = tafsirPayload && typeof tafsirPayload === "object"
+    ? (tafsirPayload as { tafsir?: unknown }).tafsir
+    : null;
+  if (!verse || typeof verse !== "object" || (verse as { verse_key?: unknown }).verse_key !== verseKey) {
+    throw new Error("Quran Foundation education verse is invalid");
+  }
+  if (
+    !tafsir
+    || typeof tafsir !== "object"
+    || (tafsir as { resource_id?: unknown }).resource_id !== TAFSIR_MUYASSAR_RESOURCE_ID
+    || typeof (tafsir as { text?: unknown }).text !== "string"
+  ) {
+    throw new Error("Quran Foundation sourced tafsir is invalid");
+  }
+  const tafsirText = plainText((tafsir as { text: string }).text);
+  if (!tafsirText) throw new Error("Quran Foundation sourced tafsir is empty");
+
+  const words = Array.isArray((verse as { words?: unknown }).words)
+    ? (verse as { words: unknown[] }).words
+    : [];
+  const selected = wordPosition === undefined
+    ? null
+    : words.find((word) =>
+      word
+      && typeof word === "object"
+      && (word as { position?: unknown }).position === wordPosition
+      && (word as { char_type_name?: unknown }).char_type_name === "word"
+    );
+  if (wordPosition !== undefined && !selected) {
+    throw new Error("Selected Quran word is not part of the ayah");
+  }
+  const selectedValue = selected as Record<string, unknown> | null;
+  if (
+    selectedValue
+    && (!Number.isInteger(selectedValue.id) || typeof selectedValue.text_uthmani !== "string" || !selectedValue.text_uthmani.trim())
+  ) {
+    throw new Error("Quran Foundation selected word is invalid");
+  }
+
+  const selectedTranslation = selectedValue?.translation;
+  const sourcedWordMeaning = selectedTranslation
+    && typeof selectedTranslation === "object"
+    && typeof (selectedTranslation as { text?: unknown }).text === "string"
+    && (selectedTranslation as { text: string }).text.trim()
+    && (selectedTranslation as { language_name?: unknown }).language_name === "english"
+      ? (selectedTranslation as { text: string }).text.trim()
+      : null;
+  const value: QuranFoundationAyahEducation = {
+    surahNumber,
+    ayahNumber,
+    verseKey,
+    selectedWord: selectedValue && sourcedWordMeaning ? {
+      id: selectedValue.id as number,
+      position: selectedValue.position as number,
+      text: (selectedValue.text_uthmani as string).trim(),
+      meaning: sourcedWordMeaning,
+      source: WORD_BY_WORD_SOURCE,
+    } : null,
+    tafsir: { text: tafsirText, source: TAFSIR_MUYASSAR_SOURCE },
+  };
+  cachedEducation.set(cacheKey, { value, expiresAt: Date.now() + EDUCATION_CACHE_MS });
+  return value;
+}
 export function resetQuranFoundationClientForTests(): void {
   cachedToken = null;
   tokenRequestPromise = null;
@@ -487,4 +592,44 @@ export function resetQuranFoundationClientForTests(): void {
   cachedSurahs.clear();
   cachedMadaniPages.clear();
   cachedAudio.clear();
+  cachedEducation.clear();
+}
+
+function plainText(value: string): string {
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const TAFSIR_MUYASSAR_SOURCE = {
+  id: TAFSIR_MUYASSAR_RESOURCE_ID,
+  name: "التفسير الميسر",
+  provider: "Quran Foundation",
+  version: "Content API v4",
+} as const;
+
+const WORD_BY_WORD_SOURCE = {
+  id: null,
+  name: "Quran.com Word-by-Word Translation",
+  provider: "Quran Foundation",
+  version: "Content API v4 · English",
+} as const;
+
+function validateVerseNumbers(surahNumber: number, ayahNumber: number): void {
+  if (
+    !Number.isInteger(surahNumber)
+    || surahNumber < 1
+    || surahNumber > CANONICAL_AYAH_COUNTS.length
+    || !Number.isInteger(ayahNumber)
+    || ayahNumber < 1
+    || ayahNumber > CANONICAL_AYAH_COUNTS[surahNumber - 1]
+  ) {
+    throw new Error("Invalid Quran surah or ayah number");
+  }
 }

@@ -4652,6 +4652,73 @@ export const GetQuranMadaniPageResponse = zod.object({
 
 
 /**
+ * @summary Get sourced Arabic word context and tafsir for one ayah
+ */
+export const getQuranAyahEducationPathSurahNumberMax = 114;
+
+export const getQuranAyahEducationPathAyahNumberMax = 286;
+
+
+
+export const GetQuranAyahEducationParams = zod.object({
+  "surahNumber": zod.coerce.number().int().min(1).max(getQuranAyahEducationPathSurahNumberMax),
+  "ayahNumber": zod.coerce.number().int().min(1).max(getQuranAyahEducationPathAyahNumberMax)
+})
+
+export const getQuranAyahEducationQueryWordPositionMax = 200;
+
+
+
+export const GetQuranAyahEducationQueryParams = zod.object({
+  "wordPosition": zod.coerce.number().int().min(1).max(getQuranAyahEducationQueryWordPositionMax).optional()
+})
+
+export const getQuranAyahEducationResponseSurahNumberMax = 114;
+
+export const getQuranAyahEducationResponseAyahNumberMax = 286;
+
+export const getQuranAyahEducationResponseVerseKeyRegExp = new RegExp('^\\d{1,3}:\\d{1,3}$');
+
+
+
+
+
+
+
+
+
+
+
+
+export const GetQuranAyahEducationResponse = zod.object({
+  "surahNumber": zod.int().min(1).max(getQuranAyahEducationResponseSurahNumberMax),
+  "ayahNumber": zod.int().min(1).max(getQuranAyahEducationResponseAyahNumberMax),
+  "verseKey": zod.string().regex(getQuranAyahEducationResponseVerseKeyRegExp),
+  "selectedWord": zod.union([zod.object({
+  "id": zod.int(),
+  "position": zod.int().min(1),
+  "text": zod.string().min(1),
+  "meaning": zod.string().min(1),
+  "source": zod.object({
+  "id": zod.int().nullable(),
+  "name": zod.string().min(1),
+  "provider": zod.string().min(1),
+  "version": zod.string().min(1)
+})
+}),zod.null()]),
+  "tafsir": zod.object({
+  "text": zod.string().min(1),
+  "source": zod.object({
+  "id": zod.int().nullable(),
+  "name": zod.string().min(1),
+  "provider": zod.string().min(1),
+  "version": zod.string().min(1)
+})
+})
+})
+
+
+/**
  * @summary List the current teacher's Quran circles and members
  */
 export const ListQuranCirclesResponseItem = zod.object({
