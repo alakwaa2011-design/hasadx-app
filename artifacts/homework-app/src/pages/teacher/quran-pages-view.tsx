@@ -308,7 +308,7 @@ export function QuranPagesView({
                 <ChevronRight className="h-5 w-5 ltr:hidden" />
                 {backLabel
                   ? (lang === "ar" ? backLabel.ar : backLabel.en)
-                  : (lang === "ar" ? "العودة إلى مركز القرآن" : "Back to Quran Center")}
+                  : (lang === "ar" ? "العودة إلى حصاد القرآن" : "Back to Hasaad Quran")}
               </button>
             )}
 

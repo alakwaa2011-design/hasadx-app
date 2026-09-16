@@ -445,7 +445,7 @@ export function QuranTextReaderView({
                 <ChevronRight className="w-5 h-5 ltr:hidden" />
                 {isStudentWard || isStudentPractice
                   ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
-                  : (lang === 'ar' ? 'العودة إلى مركز القرآن' : 'Back to Quran Center')}
+                  : (lang === 'ar' ? 'العودة إلى حصاد القرآن' : 'Back to Hasaad Quran')}
               </button>
             )}
             {!isStudentWard && (
