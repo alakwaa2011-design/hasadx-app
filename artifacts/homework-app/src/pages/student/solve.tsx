@@ -920,7 +920,11 @@ export default function StudentSolve() {
                                       onChange={() => { setRepeatAnswers({ ...repeatAnswers, [q.id]: opt }); feedbackOnSelect(); }}
                                       className="sr-only" />
                                   )}
-                                  <span className="font-medium text-sm flex-1">{optText}</span>
+                                  <MathText
+                                    text={optText}
+                                    fallbackDirection={dir}
+                                    className="font-medium text-sm flex-1 leading-snug"
+                                  />
                                   {isSelected && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
                                 </motion.label>
                               );
@@ -1197,9 +1201,11 @@ export default function StudentSolve() {
                                 className="max-w-full rounded-xl border border-border mt-1"
                               />
                             ) : (
-                              <span className={`font-bold ${ans.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {ans.selectedAnswer}
-                              </span>
+                              <MathText
+                                text={ans.selectedAnswer ?? ""}
+                                fallbackDirection={dir}
+                                className={`font-bold ${ans.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                              />
                             )}
                           </div>
                         </div>
@@ -1753,12 +1759,11 @@ export default function StudentSolve() {
                                         className="sr-only"
                                       />
                                     )}
-                                    <span
-                                      dir={contentDirection(optText, dir)}
-                                      className="whitespace-pre-wrap font-medium text-sm flex-1 leading-snug"
-                                    >
-                                      {optText}
-                                    </span>
+                                    <MathText
+                                      text={optText}
+                                      fallbackDirection={dir}
+                                      className="font-medium text-sm flex-1 leading-snug"
+                                    />
                                     <AnimatePresence>
                                       {isSelected && (
                                         <motion.span

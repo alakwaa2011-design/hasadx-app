@@ -41,6 +41,7 @@ afterEach(() => {
   container = null;
 });
 
+
 describe("MathText mixed-direction rendering", () => {
   it("keeps Arabic, an equation, and English text in source order", () => {
     const element = renderMathText("احسب \\(x+1=3\\) then explain بالعربية");
@@ -77,5 +78,27 @@ describe("MathText mixed-direction rendering", () => {
     expect(element.textContent).toBe(legacyText);
     expect(element.querySelector("b")).toBeNull();
     expect(element.innerHTML).toContain("&lt;b&gt;ليس HTML&lt;/b&gt;");
+  });
+
+  it("keeps a mixed Arabic, English, and KaTeX answer option in stored order", () => {
+    const storedOption = "اختر speed ثم \\(v=d/t\\) بوحدة m/s";
+    const element = renderMathText(storedOption);
+
+    expect(renderedParts(element)).toEqual([
+      { direction: null, value: "اختر speed ثم " },
+      { direction: "ltr", value: "v=d/t" },
+      { direction: null, value: " بوحدة m/s" },
+    ]);
+  });
+
+  it("keeps mixed submitted-answer feedback in stored order", () => {
+    const storedFeedback = "إجابتك Correct لأن \\(2x=10\\) إذن x = 5";
+    const element = renderMathText(storedFeedback);
+
+    expect(renderedParts(element)).toEqual([
+      { direction: null, value: "إجابتك Correct لأن " },
+      { direction: "ltr", value: "2x=10" },
+      { direction: null, value: " إذن x = 5" },
+    ]);
   });
 });
