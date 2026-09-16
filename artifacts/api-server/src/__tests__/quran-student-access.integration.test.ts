@@ -32,49 +32,6 @@ function studentApp(studentAccountId?: number) {
 
 suite("student Quran ward ownership", () => {
   beforeAll(async () => {
-    await db.execute(sql.raw(`
-      CREATE TABLE IF NOT EXISTS quran_independent_positions (
-        id SERIAL PRIMARY KEY,
-        student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,
-        text_surah_number INTEGER,
-        text_ayah INTEGER,
-        page_number INTEGER,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS quran_independent_positions_account_uq
-        ON quran_independent_positions(student_account_id);
-      CREATE TABLE IF NOT EXISTS quran_independent_sessions (
-        id SERIAL PRIMARY KEY,
-        student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,
-        practiced_date DATE NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS quran_independent_sessions_account_date_uq
-        ON quran_independent_sessions(student_account_id, practiced_date);
-      DROP INDEX IF EXISTS quran_independent_positions_student_idx;
-      ALTER TABLE quran_independent_positions DROP COLUMN IF EXISTS student_id;
-      DROP INDEX IF EXISTS quran_independent_sessions_student_date_idx;
-      ALTER TABLE quran_independent_sessions DROP COLUMN IF EXISTS student_id;
-    `));
-    await db.execute(sql.raw(`
-      CREATE TABLE IF NOT EXISTS quran_wards (
-        id SERIAL PRIMARY KEY,
-        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        mode TEXT NOT NULL,
-        surah_number INTEGER NOT NULL,
-        surah_name TEXT NOT NULL,
-        start_ayah INTEGER NOT NULL,
-        end_ayah INTEGER NOT NULL,
-        assigned_date DATE NOT NULL,
-        due_date DATE,
-        notes TEXT,
-        status TEXT NOT NULL DEFAULT 'assigned',
-        assignment_request_id TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      )
-    `));
     teacherId = Number((await db.execute(sql`
       INSERT INTO teachers(name,email,password_hash)
       VALUES (${"Quran access " + nonce}, ${`quran_access_${nonce}@test.invalid`}, 'x')

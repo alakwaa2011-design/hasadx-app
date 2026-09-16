@@ -26,43 +26,6 @@ function teacherApp() {
 
 suite("GET /api/quran/today", () => {
   beforeAll(async () => {
-    await db.execute(sql.raw(`
-      CREATE TABLE IF NOT EXISTS quran_wards (
-        id SERIAL PRIMARY KEY,
-        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        mode TEXT NOT NULL,
-        surah_number INTEGER NOT NULL,
-        surah_name TEXT NOT NULL,
-        start_ayah INTEGER NOT NULL,
-        end_ayah INTEGER NOT NULL,
-        assigned_date DATE NOT NULL,
-        due_date DATE,
-        notes TEXT,
-        status TEXT NOT NULL DEFAULT 'assigned',
-        assignment_request_id TEXT,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-      ALTER TABLE quran_wards
-        ADD COLUMN IF NOT EXISTS assignment_request_id TEXT;
-      CREATE TABLE IF NOT EXISTS quran_recitations (
-        id SERIAL PRIMARY KEY,
-        teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
-        ward_id INTEGER NOT NULL REFERENCES quran_wards(id) ON DELETE CASCADE,
-        student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-        status TEXT NOT NULL,
-        memorization_score INTEGER,
-        recitation_score INTEGER,
-        mistake_counts JSONB,
-        teacher_note TEXT,
-        recited_date DATE NOT NULL,
-        progress_applied BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-      ALTER TABLE quran_recitations
-        ADD COLUMN IF NOT EXISTS progress_applied BOOLEAN NOT NULL DEFAULT FALSE
-    `));
     teacherId = Number((await db.execute(sql`
       INSERT INTO teachers(name,email,password_hash)
       VALUES (${"Quran today " + nonce}, ${`quran_today_${nonce}@test.invalid`}, 'x')

@@ -10,6 +10,7 @@ import { defineConfig } from "vitest/config";
  * • Loads setup-integration.ts instead, which:
  *     - Validates TEST_DATABASE_URL is present and ≠ DATABASE_URL.
  *     - Redirects DATABASE_URL to the test database before the suite loads.
+ *     - Applies the current Drizzle schema once before integration files run.
  *
  * Usage
  * ─────
@@ -47,6 +48,7 @@ export default defineConfig({
       "src/__tests__/quran-student-access.integration.test.ts",
       "src/__tests__/quran-today.integration.test.ts",
     ],
+    globalSetup: ["src/__tests__/setup-integration.ts"],
     setupFiles: ["src/__tests__/setup-integration.ts"],
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل
     fileParallelism: false,
