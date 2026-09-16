@@ -46,6 +46,8 @@ describe("SubjectMultiSelect", () => {
 
     await act(async () => root.render(<Harness />));
 
+    const open = container.querySelector('[data-testid="button-open-subjects"]') as HTMLButtonElement;
+    await act(async () => open.click());
     const arabic = container.querySelector('[data-testid="button-subject-اللغة العربية"]') as HTMLButtonElement;
     const science = container.querySelector('[data-testid="button-subject-العلوم"]') as HTMLButtonElement;
     await act(async () => arabic.click());
@@ -69,6 +71,8 @@ describe("SubjectMultiSelect", () => {
       );
     });
 
+    const open = container.querySelector('[data-testid="button-open-subjects"]') as HTMLButtonElement;
+    await act(async () => open.click());
     const input = container.querySelector('[data-testid="input-custom-subject"]') as HTMLInputElement;
     const add = container.querySelector('[data-testid="button-add-custom-subject"]') as HTMLButtonElement;
     await act(async () => {
@@ -92,6 +96,8 @@ describe("SubjectMultiSelect", () => {
       );
     });
 
+    const open = container.querySelector('[data-testid="button-open-subjects"]') as HTMLButtonElement;
+    await act(async () => open.click());
     const input = container.querySelector('[data-testid="input-custom-subject"]') as HTMLInputElement;
     await act(async () => {
       setInputValue(input, "  physics ");
