@@ -10,7 +10,11 @@ import { ClassSelector } from "@/components/teacher/class-selector";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { resolveImageUrl } from "@/lib/image-url";
-import { fileToBase64 } from "@/lib/utils";
+import {
+  QUESTION_IMAGE_ACCEPT,
+  QuestionImageUploadError,
+  uploadQuestionImage,
+} from "@/lib/upload-question-image";
 import { contentDirection } from "@/lib/content-direction";
 import { MathTextarea, MathText } from "@/components/math-text";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -632,21 +636,44 @@ export function AssignmentEditor({ assignment, submissionsExist, onSave, onCance
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || imagePickerFor === -1) return;
+    const questionIndex = imagePickerFor;
+    if (!file || questionIndex === -1) return;
+    const previousImage = questions[questionIndex]?.imageUrl ?? "";
+    const previewUrl = URL.createObjectURL(file);
+    updateQuestion(questionIndex, "imageUrl", previewUrl);
+    setImagePickerFor(-1);
     try {
-      const b64 = await fileToBase64(file);
-      updateQuestion(imagePickerFor, "imageUrl", b64);
-    } catch {
-      toast.error(ar ? "فشل تحميل الصورة" : "Failed to load image");
+      const objectPath = await uploadQuestionImage(file);
+      setQuestions(current => current.map((question, index) =>
+        index === questionIndex && question.imageUrl === previewUrl
+          ? { ...question, imageUrl: objectPath }
+          : question
+      ));
+    } catch (error) {
+      setQuestions(current => current.map((question, index) =>
+        index === questionIndex && question.imageUrl === previewUrl
+          ? { ...question, imageUrl: previousImage }
+          : question
+      ));
+      const reason = error instanceof QuestionImageUploadError
+        ? error.reason
+        : "upload-failed";
+      toast.error(
+        reason === "unsupported-type"
+          ? (ar ? "صيغة الصورة غير مدعومة" : "Unsupported image format")
+          : reason === "too-large"
+            ? (ar ? "يجب ألا يتجاوز حجم الصورة 10 ميجابايت" : "Image must be 10MB or smaller")
+            : (ar ? "تعذر رفع الصورة؛ لم تُحذف الصورة السابقة" : "Could not upload image; the previous image was kept"),
+      );
     } finally {
+      URL.revokeObjectURL(previewUrl);
       if (imageInputRef.current) imageInputRef.current.value = "";
-      setImagePickerFor(-1);
     }
   };
 
   return (
     <div className="space-y-6 pb-24" dir={dir}>
-      <input type="file" accept="image/*" ref={imageInputRef} className="hidden" onChange={handleImageUpload} />
+      <input type="file" accept={QUESTION_IMAGE_ACCEPT} ref={imageInputRef} className="hidden" onChange={handleImageUpload} />
       
       {assignment.id && (
         <RevisionHistoryModal

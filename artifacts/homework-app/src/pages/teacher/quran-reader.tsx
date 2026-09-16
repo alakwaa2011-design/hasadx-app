@@ -487,7 +487,7 @@ export function QuranTextReaderView({
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
             {!embedded && (
               <button
-                onClick={() => setLocation(isStudentWard || isStudentPractice ? '/student/dashboard' : '/teacher/quran-center?tab=dashboard')}
+                onClick={() => setLocation(isStudentWard || isStudentPractice ? '/student/dashboard' : '/teacher/quran-center?tab=mushaf')}
                 className="text-sm font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 hover:underline"
               >
                 <ChevronLeft className="w-5 h-5 rtl:hidden" />

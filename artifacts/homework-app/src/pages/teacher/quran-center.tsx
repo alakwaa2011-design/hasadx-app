@@ -4,19 +4,15 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListQuranSurahs } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  BookOpen, Users, LayoutDashboard, ClipboardCheck, Loader2
-} from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Placeholders for the child views
-import { QuranDashboard } from "./quran-center/quran-dashboard";
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
 import { QuranPagesView } from "./quran-pages-view";
 import { QuranTextReaderView } from "./quran-reader";
 
-type Tab = "dashboard" | "circles" | "queue" | "mushaf";
+type Tab = "mushaf" | "circles" | "queue";
 
 export default function QuranCenter() {
   const { lang } = useI18n();
@@ -24,9 +20,9 @@ export default function QuranCenter() {
 
   const searchParams = new URLSearchParams(window.location.search);
   const requestedTab = searchParams.get("tab");
-  const tabFromQuery: Tab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "mushaf"
+  const tabFromQuery: Tab = requestedTab === "circles" || requestedTab === "queue"
     ? requestedTab
-    : "dashboard";
+    : "mushaf";
   const [activeTab, setActiveTab] = useState<Tab>(tabFromQuery);
   const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
   const [mushafLocation, setMushafLocation] = useState({ surah: 1, ayah: 1 });
@@ -70,10 +66,9 @@ export default function QuranCenter() {
   if (!teacher) return null;
 
   const TABS = [
-    { id: "dashboard", label: lang === "ar" ? "الرئيسية" : "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     { id: "mushaf", label: lang === "ar" ? "المصحف" : "Mushaf", icon: <BookOpen className="w-5 h-5" /> },
     { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="w-5 h-5" /> },
-    { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> }
+    { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> },
   ] as const;
 
   return (
@@ -133,7 +128,6 @@ export default function QuranCenter() {
               transition={{ duration: 0.2 }}
               className="absolute inset-0 overflow-y-auto"
             >
-              {activeTab === "dashboard" && <QuranDashboard surahs={surahs || []} onNavigate={handleTabChange} />}
               {activeTab === "mushaf" && (
                 mushafView === "pages" ? (
                   <QuranPagesView

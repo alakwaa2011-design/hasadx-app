@@ -26,6 +26,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { fileToBase64 } from "@/lib/utils";
 import { resolveImageUrl } from "@/lib/image-url";
+import {
+  QUESTION_IMAGE_ACCEPT,
+  QuestionImageUploadError,
+  uploadQuestionImage,
+} from "@/lib/upload-question-image";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2716,7 +2721,48 @@ export default function CreateAssignment() {
                                         <div className="absolute top-full mt-1 z-20 bg-card border border-border rounded-xl shadow-xl p-2 flex flex-col gap-1 min-w-[160px]">
                                           <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted cursor-pointer transition-colors">
                                             <Upload className="w-4 h-4 text-primary" />{lang === "ar" ? "رفع من الجهاز" : "Upload from device"}
-                                            <input type="file" accept="image/*" className="sr-only" onChange={async e => { const file = e.target.files?.[0]; if (file) { const b64 = await fileToBase64(file); handleQuestionChange(qIndex, 'imageUrl', b64); setImagePickerFor(-1); } e.target.value = ""; }} />
+                                            <input
+                                              type="file"
+                                              accept={QUESTION_IMAGE_ACCEPT}
+                                              className="sr-only"
+                                              onChange={async e => {
+                                                const file = e.target.files?.[0];
+                                                e.target.value = "";
+                                                if (!file) return;
+
+                                                const previousImage = q.imageUrl ?? null;
+                                                const previewUrl = URL.createObjectURL(file);
+                                                handleQuestionChange(qIndex, "imageUrl", previewUrl);
+                                                setImagePickerFor(-1);
+
+                                                try {
+                                                  const objectPath = await uploadQuestionImage(file);
+                                                  setQuestions(current => current.map((question, index) =>
+                                                    index === qIndex && question.imageUrl === previewUrl
+                                                      ? { ...question, imageUrl: objectPath }
+                                                      : question
+                                                  ));
+                                                } catch (error) {
+                                                  setQuestions(current => current.map((question, index) =>
+                                                    index === qIndex && question.imageUrl === previewUrl
+                                                      ? { ...question, imageUrl: previousImage }
+                                                      : question
+                                                  ));
+                                                  const reason = error instanceof QuestionImageUploadError
+                                                    ? error.reason
+                                                    : "upload-failed";
+                                                  toast.error(
+                                                    reason === "unsupported-type"
+                                                      ? (lang === "ar" ? "صيغة الصورة غير مدعومة" : "Unsupported image format")
+                                                      : reason === "too-large"
+                                                        ? (lang === "ar" ? "يجب ألا يتجاوز حجم الصورة 10 ميجابايت" : "Image must be 10MB or smaller")
+                                                        : (lang === "ar" ? "تعذر رفع الصورة؛ لم تُحذف الصورة السابقة" : "Could not upload image; the previous image was kept"),
+                                                  );
+                                                } finally {
+                                                  URL.revokeObjectURL(previewUrl);
+                                                }
+                                              }}
+                                            />
                                           </label>
                                           <button type="button" onClick={() => { const url = prompt(lang === "ar" ? "الصق رابط الصورة (URL):" : "Paste image URL:"); if (url?.trim()) { handleQuestionChange(qIndex, 'imageUrl', url.trim()); setImagePickerFor(-1); } }}
                                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors">

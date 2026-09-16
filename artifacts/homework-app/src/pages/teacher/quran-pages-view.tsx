@@ -71,7 +71,7 @@ export function QuranPagesView({
   endAyah,
   mode,
   readerBasePath = "/teacher/quran-reader",
-  backHref = "/teacher/quran-center?tab=dashboard",
+  backHref = "/teacher/quran-center?tab=mushaf",
   backLabel,
   embedded = false,
   onSwitchToText,
