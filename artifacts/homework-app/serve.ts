@@ -62,10 +62,6 @@ function cacheHeader(filePath: string): string {
   if (filePath.endsWith(".html")) return "no-cache";
   // Content-hashed assets can be cached forever
   if (filePath.includes("/assets/")) return "public, max-age=31536000, immutable";
-  // QCF V2 fonts are immutable within their versioned directory.
-  if (filePath.includes("/quran/qcf-v2/") && filePath.endsWith(".woff2")) {
-    return "public, max-age=31536000, immutable";
-  }
   return "public, max-age=3600";
 }
 

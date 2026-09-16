@@ -1,27 +1,26 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const PAGE_COUNT = 604;
-const validWoff2 = Buffer.from("wOF2-valid-test-font");
 const validatorPath = fileURLToPath(
   new URL("./validate-mushaf-deployment.mjs", import.meta.url),
 );
+const validWebp = await readFile(
+  new URL("../public/quran/mushaf-hafs-1441/001.webp", import.meta.url),
+);
 
 function manifest(overrides = {}) {
-  const files = Array.from({ length: PAGE_COUNT }, (_, index) => ({
-    page: index + 1,
-    file: `p${index + 1}.woff2`,
-    bytes: validWoff2.length,
-    sha256: "a".repeat(64),
-  }));
   return {
-    format: "QCF V2 WOFF2",
     pageCount: PAGE_COUNT,
-    files,
-    totalBytes: files.reduce((sum, entry) => sum + entry.bytes, 0),
+    pages: Array.from({ length: PAGE_COUNT }, (_, index) => ({
+      page: index + 1,
+      file: `${String(index + 1).padStart(3, "0")}.webp`,
+      bytes: validWebp.length,
+    })),
     ...overrides,
   };
 }
@@ -56,83 +55,67 @@ function deployment(overrides = {}) {
     }
 
     const file = request.url.split("/").at(-1);
-    const body = overrides.body?.(file) ?? validWoff2;
+    const body = overrides.body?.(file) ?? validWebp;
     response.statusCode = overrides.status?.(file) ?? 200;
     response.setHeader(
       "content-type",
-      overrides.contentType?.(file) ?? "font/woff2",
-    );
-    response.setHeader(
-      "cache-control",
-      overrides.cacheControl?.(file) ??
-        "public, max-age=31536000, immutable",
+      overrides.contentType?.(file) ?? "image/webp",
     );
     response.end(body);
   };
 }
 
-test("accepts all published QCF V2 fonts", async () => {
+test("accepts a complete published Mushaf", async () => {
   const result = await runValidator(deployment());
   assert.equal(result.code, 0, result.output);
-  assert.match(result.output, /all 604 WOFF2 page fonts/);
+  assert.match(result.output, /all 604 Mushaf WebP pages/);
 });
 
-test("reports a missing font by filename", async () => {
+test("reports a missing page by filename", async () => {
   const result = await runValidator(
-    deployment({ status: (file) => (file === "p123.woff2" ? 404 : 200) }),
+    deployment({ status: (file) => (file === "123.webp" ? 404 : 200) }),
   );
   assert.equal(result.code, 1);
-  assert.match(result.output, /p123\.woff2: HTTP 404/);
+  assert.match(result.output, /123\.webp: HTTP 404/);
 });
 
-test("rejects a font without the WOFF2 signature", async () => {
-  const invalid = Buffer.from(validWoff2);
-  invalid.write("BAD!", 0, "ascii");
+test("rejects a corrupt body that retains the WebP header and byte count", async () => {
+  const corruptWebp = Buffer.alloc(validWebp.length);
+  validWebp.copy(corruptWebp, 0, 0, 12);
   const result = await runValidator(
-    deployment({ body: (file) => (file === "p222.woff2" ? invalid : validWoff2) }),
+    deployment({
+      body: (file) => (file === "222.webp" ? corruptWebp : validWebp),
+    }),
   );
   assert.equal(result.code, 1);
-  assert.match(result.output, /p222\.woff2: invalid WOFF2 signature/);
+  assert.match(result.output, /222\.webp: cannot be decoded as a valid WebP/);
 });
 
-test("rejects a font whose size disagrees with the manifest", async () => {
+test("rejects a page whose size disagrees with the manifest", async () => {
   const result = await runValidator(
     deployment({
       body: (file) =>
-        file === "p333.woff2" ? validWoff2.subarray(0, 11) : validWoff2,
+        file === "333.webp" ? validWebp.subarray(0, 11) : validWebp,
     }),
   );
   assert.equal(result.code, 1);
   assert.match(
     result.output,
     new RegExp(
-      `p333\\.woff2: received 11 bytes; manifest records ${validWoff2.length}`,
+      `333\\.webp: received 11 bytes; manifest records ${validWebp.length}`,
     ),
   );
 });
 
-test("rejects a bad font content type", async () => {
+test("rejects a bad page content type", async () => {
   const result = await runValidator(
     deployment({
       contentType: (file) =>
-        file === "p444.woff2" ? "text/html" : "font/woff2",
+        file === "444.webp" ? "text/html" : "image/webp",
     }),
   );
   assert.equal(result.code, 1);
-  assert.match(result.output, /p444\.woff2: content-type "text\/html"/);
-});
-
-test("rejects short-lived font caching", async () => {
-  const result = await runValidator(
-    deployment({
-      cacheControl: (file) =>
-        file === "p555.woff2"
-          ? "public, max-age=3600"
-          : "public, max-age=31536000, immutable",
-    }),
-  );
-  assert.equal(result.code, 1);
-  assert.match(result.output, /p555\.woff2: cache-control "public, max-age=3600"/);
+  assert.match(result.output, /444\.webp: content-type "text\/html"/);
 });
 
 test("rejects a manifest with the wrong page count", async () => {
