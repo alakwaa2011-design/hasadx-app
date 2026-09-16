@@ -13984,6 +13984,83 @@ export declare const GetQuranAyahAudioParams: zodV3.ZodObject<{
 }>;
 export declare const GetQuranAyahAudioResponse: zodV3.ZodVoid;
 /**
+ * @summary Get one official QCF V2 Madani Mushaf page
+ */
+export declare const getQuranMadaniPagePathPageNumberMax = 604;
+export declare const GetQuranMadaniPageParams: zodV3.ZodObject<{
+    pageNumber: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    pageNumber: number;
+}, {
+    pageNumber: number;
+}>;
+export declare const getQuranMadaniPageResponsePageNumberMax = 604;
+export declare const getQuranMadaniPageResponseLinesItemLineNumberMax = 15;
+export declare const getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp: RegExp;
+export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
+    pageNumber: zodV3.ZodNumber;
+    lines: zodV3.ZodArray<zodV3.ZodObject<{
+        lineNumber: zodV3.ZodNumber;
+        words: zodV3.ZodArray<zodV3.ZodObject<{
+            verseKey: zodV3.ZodString;
+            glyph: zodV3.ZodString;
+            text: zodV3.ZodString;
+            type: zodV3.ZodString;
+        }, "strip", zodV3.ZodTypeAny, {
+            type: string;
+            text: string;
+            verseKey: string;
+            glyph: string;
+        }, {
+            type: string;
+            text: string;
+            verseKey: string;
+            glyph: string;
+        }>, "many">;
+    }, "strip", zodV3.ZodTypeAny, {
+        lineNumber: number;
+        words: {
+            type: string;
+            text: string;
+            verseKey: string;
+            glyph: string;
+        }[];
+    }, {
+        lineNumber: number;
+        words: {
+            type: string;
+            text: string;
+            verseKey: string;
+            glyph: string;
+        }[];
+    }>, "many">;
+    source: zodV3.ZodEnum<["quran_foundation_qcf_v2"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    source: "quran_foundation_qcf_v2";
+    pageNumber: number;
+    lines: {
+        lineNumber: number;
+        words: {
+            type: string;
+            text: string;
+            verseKey: string;
+            glyph: string;
+        }[];
+    }[];
+}, {
+    source: "quran_foundation_qcf_v2";
+    pageNumber: number;
+    lines: {
+        lineNumber: number;
+        words: {
+            type: string;
+            text: string;
+            verseKey: string;
+            glyph: string;
+        }[];
+    }[];
+}>;
+/**
  * @summary List the current teacher's Quran circles and members
  */
 export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
@@ -14894,30 +14971,30 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
             updatedAt: zodV3.ZodDate;
         }, "strip", zodV3.ZodTypeAny, {
             updatedAt: Date;
+            pageNumber: number | null;
             textSurahNumber: number | null;
             textAyah: number | null;
-            pageNumber: number | null;
         }, {
             updatedAt: Date;
+            pageNumber: number | null;
             textSurahNumber: number | null;
             textAyah: number | null;
-            pageNumber: number | null;
         }>>;
     }, "strip", zodV3.ZodTypeAny, {
         dates: string[];
         latestPosition: {
             updatedAt: Date;
+            pageNumber: number | null;
             textSurahNumber: number | null;
             textAyah: number | null;
-            pageNumber: number | null;
         } | null;
     }, {
         dates: string[];
         latestPosition: {
             updatedAt: Date;
+            pageNumber: number | null;
             textSurahNumber: number | null;
             textAyah: number | null;
-            pageNumber: number | null;
         } | null;
     }>;
 }, "strip", zodV3.ZodTypeAny, {
@@ -14967,9 +15044,9 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         dates: string[];
         latestPosition: {
             updatedAt: Date;
+            pageNumber: number | null;
             textSurahNumber: number | null;
             textAyah: number | null;
-            pageNumber: number | null;
         } | null;
     };
 }, {
@@ -15019,9 +15096,9 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         dates: string[];
         latestPosition: {
             updatedAt: Date;
+            pageNumber: number | null;
             textSurahNumber: number | null;
             textAyah: number | null;
-            pageNumber: number | null;
         } | null;
     };
 }>;
@@ -15035,13 +15112,13 @@ export declare const UpdateMyQuranIndependentPositionBody: zodV3.ZodObject<{
     textAyah: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     pageNumber: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
 }, "strip", zodV3.ZodTypeAny, {
+    pageNumber?: number | null | undefined;
     textSurahNumber?: number | null | undefined;
     textAyah?: number | null | undefined;
-    pageNumber?: number | null | undefined;
 }, {
+    pageNumber?: number | null | undefined;
     textSurahNumber?: number | null | undefined;
     textAyah?: number | null | undefined;
-    pageNumber?: number | null | undefined;
 }>;
 export declare const updateMyQuranIndependentPositionResponseTextSurahNumberMax = 114;
 export declare const updateMyQuranIndependentPositionResponsePageNumberMax = 604;
@@ -15052,14 +15129,14 @@ export declare const UpdateMyQuranIndependentPositionResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     updatedAt: Date;
+    pageNumber: number | null;
     textSurahNumber: number | null;
     textAyah: number | null;
-    pageNumber: number | null;
 }, {
     updatedAt: Date;
+    pageNumber: number | null;
     textSurahNumber: number | null;
     textAyah: number | null;
-    pageNumber: number | null;
 }>;
 /**
  * @summary Record an explicitly completed independent Quran practice session

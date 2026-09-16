@@ -39,6 +39,38 @@ export interface QuranSurahContent {
     ayahs: QuranContentAyah[];
     source: QuranSurahContentSource;
 }
+export interface QuranMadaniWord {
+    /** @pattern ^\d{1,3}:\d{1,3}$ */
+    verseKey: string;
+    /** @minLength 1 */
+    glyph: string;
+    text: string;
+    /** @minLength 1 */
+    type: string;
+}
+export interface QuranMadaniLine {
+    /**
+       * @minimum 1
+       * @maximum 15
+       */
+    lineNumber: number;
+    /** @minItems 1 */
+    words: QuranMadaniWord[];
+}
+export type QuranMadaniPageSource = typeof QuranMadaniPageSource[keyof typeof QuranMadaniPageSource];
+export declare const QuranMadaniPageSource: {
+    readonly quran_foundation_qcf_v2: "quran_foundation_qcf_v2";
+};
+export interface QuranMadaniPage {
+    /**
+       * @minimum 1
+       * @maximum 604
+       */
+    pageNumber: number;
+    /** @minItems 1 */
+    lines: QuranMadaniLine[];
+    source: QuranMadaniPageSource;
+}
 export interface QuranStudent {
     id: number;
     name: string;

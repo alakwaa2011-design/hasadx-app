@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
   resetQuranFoundationClientForTests,
@@ -181,5 +182,55 @@ describe("Quran Foundation client", () => {
       }), { status: 200 }));
     vi.stubGlobal("fetch", secondFetchMock);
     await expect(getQuranFoundationAudioUrl(7, 2, 255)).rejects.toThrow("untrusted audio URL");
+  });
+
+  it("normalizes and caches QCF V2 Madani page lines", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verses: [{
+          verse_key: "2:255",
+          words: [
+            {
+              page_number: 42,
+              line_number: 8,
+              code_v2: "ﲅ",
+              text_qpc_hafs: "ٱللَّهُ",
+              char_type_name: "word",
+            },
+            {
+              page_number: 42,
+              line_number: 9,
+              code_v2: "ﲆ",
+              text_qpc_hafs: "لَآ",
+              char_type_name: "word",
+            },
+          ],
+        }],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await getQuranFoundationMadaniPage(42);
+    const second = await getQuranFoundationMadaniPage(42);
+
+    expect(first).toEqual({
+      pageNumber: 42,
+      lines: [
+        {
+          lineNumber: 8,
+          words: [{ verseKey: "2:255", glyph: "ﲅ", text: "ٱللَّهُ", type: "word" }],
+        },
+        {
+          lineNumber: 9,
+          words: [{ verseKey: "2:255", glyph: "ﲆ", text: "لَآ", type: "word" }],
+        },
+      ],
+      source: "quran_foundation_qcf_v2",
+    });
+    expect(second).toBe(first);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

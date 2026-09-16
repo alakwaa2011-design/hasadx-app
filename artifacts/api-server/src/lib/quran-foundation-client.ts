@@ -3,6 +3,7 @@ const CONTENT_BASE_URL = "https://apis.quran.foundation";
 const TOKEN_EARLY_REFRESH_MS = 60_000;
 const CATALOG_CACHE_MS = 24 * 60 * 60 * 1_000;
 const SURAH_CACHE_MS = 24 * 60 * 60 * 1_000;
+const MADANI_PAGE_CACHE_MS = 24 * 60 * 60 * 1_000;
 const AUDIO_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
@@ -28,6 +29,20 @@ export type QuranFoundationSurahContent = {
   source: "quran_foundation";
 };
 
+export type QuranFoundationMadaniPage = {
+  pageNumber: number;
+  lines: Array<{
+    lineNumber: number;
+    words: Array<{
+      verseKey: string;
+      glyph: string;
+      text: string;
+      type: string;
+    }>;
+  }>;
+  source: "quran_foundation_qcf_v2";
+};
+
 type CachedToken = {
   value: string;
   expiresAt: number;
@@ -36,6 +51,7 @@ type CachedToken = {
 let cachedToken: CachedToken | null = null;
 let cachedCatalog: { value: QuranFoundationSurah[]; expiresAt: number } | null = null;
 const cachedSurahs = new Map<number, { value: QuranFoundationSurahContent; expiresAt: number }>();
+const cachedMadaniPages = new Map<number, { value: QuranFoundationMadaniPage; expiresAt: number }>();
 const cachedAudio = new Map<string, { value: string; expiresAt: number }>();
 
 function credentials() {
@@ -196,6 +212,76 @@ export async function getQuranFoundationSurahContent(surahNumber: number): Promi
   return value;
 }
 
+export async function getQuranFoundationMadaniPage(pageNumber: number): Promise<QuranFoundationMadaniPage> {
+  if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > 604) {
+    throw new Error("Invalid Madani Mushaf page number");
+  }
+  const cached = cachedMadaniPages.get(pageNumber);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const payload = await requestContentJson(
+    `verses/by_page/${pageNumber}?mushaf=1&words=true&per_page=50&word_fields=code_v2,text_qpc_hafs,page_number,line_number`,
+  );
+  const verses = payload && typeof payload === "object"
+    ? (payload as { verses?: unknown }).verses
+    : null;
+  if (!Array.isArray(verses) || verses.length < 1) {
+    throw new Error("Quran Foundation Madani page has no verses");
+  }
+
+  const lineMap = new Map<number, QuranFoundationMadaniPage["lines"][number]["words"]>();
+  for (const verse of verses) {
+    if (!verse || typeof verse !== "object") throw new Error("Quran Foundation Madani verse is invalid");
+    const verseValue = verse as Record<string, unknown>;
+    if (typeof verseValue.verse_key !== "string" || !/^\d{1,3}:\d{1,3}$/.test(verseValue.verse_key)) {
+      throw new Error("Quran Foundation Madani verse key is invalid");
+    }
+    if (!Array.isArray(verseValue.words)) {
+      throw new Error("Quran Foundation Madani verse has no words");
+    }
+    for (const word of verseValue.words) {
+      if (!word || typeof word !== "object") throw new Error("Quran Foundation Madani word is invalid");
+      const value = word as Record<string, unknown>;
+      if (
+        value.page_number !== pageNumber
+        || !Number.isInteger(value.line_number)
+        || (value.line_number as number) < 1
+        || (value.line_number as number) > 15
+        || typeof value.code_v2 !== "string"
+        || !value.code_v2
+        || typeof value.text_qpc_hafs !== "string"
+        || typeof value.char_type_name !== "string"
+      ) {
+        throw new Error("Quran Foundation Madani word fields are invalid");
+      }
+      const lineNumber = value.line_number as number;
+      const words = lineMap.get(lineNumber) ?? [];
+      words.push({
+        verseKey: verseValue.verse_key,
+        glyph: value.code_v2,
+        text: value.text_qpc_hafs,
+        type: value.char_type_name,
+      });
+      lineMap.set(lineNumber, words);
+    }
+  }
+
+  const lines = [...lineMap.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([lineNumber, words]) => ({ lineNumber, words }));
+  if (lines.length < 1) {
+    throw new Error("Quran Foundation Madani page has no renderable lines");
+  }
+
+  const value: QuranFoundationMadaniPage = {
+    pageNumber,
+    lines,
+    source: "quran_foundation_qcf_v2",
+  };
+  cachedMadaniPages.set(pageNumber, { value, expiresAt: Date.now() + MADANI_PAGE_CACHE_MS });
+  return value;
+}
+
 export async function getQuranFoundationAudioUrl(
   recitationId: 3 | 6 | 7 | 9,
   surahNumber: number,
@@ -237,5 +323,6 @@ export function resetQuranFoundationClientForTests(): void {
   cachedToken = null;
   cachedCatalog = null;
   cachedSurahs.clear();
+  cachedMadaniPages.clear();
   cachedAudio.clear();
 }

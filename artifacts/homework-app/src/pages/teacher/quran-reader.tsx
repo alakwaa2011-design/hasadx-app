@@ -511,14 +511,14 @@ export function QuranTextReaderView({
                     onClick={() => onSwitchToPages?.({ surah: surahNumber, ayah: activeAyahURL })}
                     className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
                   >
-                    {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
+                    {lang === 'ar' ? 'مصحف المدينة' : 'Madani Mushaf'}
                   </button>
                 ) : (
                   <a
                     href={`${isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader'}/${surahNumber}?ayah=${activeAyahURL}&view=pages`}
                     className="rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-background hover:text-foreground md:text-sm"
                   >
-                    {lang === 'ar' ? 'مصحف الصفحات' : 'Pages Mushaf'}
+                    {lang === 'ar' ? 'مصحف المدينة' : 'Madani Mushaf'}
                   </a>
                 )}
               </div>

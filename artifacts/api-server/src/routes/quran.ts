@@ -72,6 +72,8 @@ import {
   GetQuranSurahContentParams,
   GetQuranSurahContentResponse,
   GetQuranAyahAudioParams,
+  GetQuranMadaniPageParams,
+  GetQuranMadaniPageResponse,
   UpdateMyQuranIndependentPositionBody,
   UpdateMyQuranIndependentPositionResponse,
   RecordMyQuranIndependentSessionBody,
@@ -81,6 +83,7 @@ import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage"
 import { calculateQuranJourney } from "../lib/quran-journey";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
 } from "../lib/quran-foundation-client";
@@ -292,6 +295,21 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
   } catch (error) {
     req.log.warn({ err: error, ...parsed.data }, "Official Quran audio unavailable");
     res.status(502).json({ error: "Official Quran audio is temporarily unavailable" });
+  }
+});
+
+router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> => {
+  const parsed = GetQuranMadaniPageParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid Madani Mushaf page number" });
+    return;
+  }
+  try {
+    const page = await getQuranFoundationMadaniPage(parsed.data.pageNumber);
+    res.json(GetQuranMadaniPageResponse.parse(page));
+  } catch (error) {
+    req.log.warn({ err: error, pageNumber: parsed.data.pageNumber }, "Official Madani Mushaf page unavailable");
+    res.status(503).json({ error: "Official Madani Mushaf page is temporarily unavailable" });
   }
 });
 

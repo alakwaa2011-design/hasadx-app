@@ -21,6 +21,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { QuranMadaniPageRenderer } from "./quran-madani-page";
+
 interface QComplexChapter {
   id: number;
   name: string;
@@ -32,7 +34,7 @@ interface QComplexPage {
   part_id: number;
 }
 
-interface QComplexVerse {
+export interface QComplexVerse {
   number: number;
   chapter_id: number;
   page_id: number;
@@ -252,14 +254,15 @@ export function QuranPagesView({
             </button>
           </div>
         ) : (
-          <img
-            src={pageImageUrl(page)}
-            alt={lang === "ar" ? `صفحة المصحف رقم ${page}` : `Mushaf page ${page}`}
-            className="block h-auto w-full select-none bg-white"
-            loading="eager"
-            decoding="async"
-            draggable={false}
-            onError={() =>
+          <QuranMadaniPageRenderer
+            pageNumber={page}
+            isLastVerse={(chapterId, verseNumber) => {
+              return !verses.some(
+                (v) => v.chapter_id === chapterId && v.number === verseNumber + 1
+              );
+            }}
+            fallbackImageUrl={pageImageUrl(page)}
+            onFallbackError={() =>
               setFailedPages((current) => new Set(current).add(page))
             }
           />
@@ -346,7 +349,7 @@ export function QuranPagesView({
                  aria-current="page"
                  className="shrink-0 rounded-xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-900 dark:bg-amber-900/50 dark:text-amber-100 md:text-sm"
                >
-                 {lang === "ar" ? "مصحف الصفحات" : "Pages Mushaf"}
+                 {lang === "ar" ? "مصحف المدينة QCF V2" : "Madani Mushaf QCF V2"}
                </span>
               <select
                 value={activeChapterId}

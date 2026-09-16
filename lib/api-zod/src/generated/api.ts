@@ -4558,6 +4558,43 @@ export const GetQuranAyahAudioResponse = zod.void()
 
 
 /**
+ * @summary Get one official QCF V2 Madani Mushaf page
+ */
+export const getQuranMadaniPagePathPageNumberMax = 604;
+
+
+
+export const GetQuranMadaniPageParams = zod.object({
+  "pageNumber": zod.coerce.number().int().min(1).max(getQuranMadaniPagePathPageNumberMax)
+})
+
+export const getQuranMadaniPageResponsePageNumberMax = 604;
+
+export const getQuranMadaniPageResponseLinesItemLineNumberMax = 15;
+
+export const getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp = new RegExp('^\\d{1,3}:\\d{1,3}$');
+
+
+
+
+
+
+export const GetQuranMadaniPageResponse = zod.object({
+  "pageNumber": zod.int().min(1).max(getQuranMadaniPageResponsePageNumberMax),
+  "lines": zod.array(zod.object({
+  "lineNumber": zod.int().min(1).max(getQuranMadaniPageResponseLinesItemLineNumberMax),
+  "words": zod.array(zod.object({
+  "verseKey": zod.string().regex(getQuranMadaniPageResponseLinesItemWordsItemVerseKeyRegExp),
+  "glyph": zod.string().min(1),
+  "text": zod.string(),
+  "type": zod.string().min(1)
+})).min(1)
+})).min(1),
+  "source": zod.enum(['quran_foundation_qcf_v2'])
+})
+
+
+/**
  * @summary List the current teacher's Quran circles and members
  */
 export const ListQuranCirclesResponseItem = zod.object({

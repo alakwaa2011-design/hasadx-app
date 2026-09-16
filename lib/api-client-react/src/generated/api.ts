@@ -67,6 +67,7 @@ import type {
   QuranIndependentSession,
   QuranIndependentSessionInput,
   QuranJourney,
+  QuranMadaniPage,
   QuranProfileUpdate,
   QuranRecitation,
   QuranRecitationInput,
@@ -6232,6 +6233,83 @@ export function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof getQuranA
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetQuranAyahAudioQueryOptions(recitationId,surahNumber,ayahNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranMadaniPageUrl = (pageNumber: number,) => {
+
+
+
+
+  return `/api/quran/madani/pages/${pageNumber}`
+}
+
+/**
+ * @summary Get one official QCF V2 Madani Mushaf page
+ */
+export const getQuranMadaniPage = async (pageNumber: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranMadaniPage> => {
+
+  return customFetch<QuranMadaniPage>(getGetQuranMadaniPageUrl(pageNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranMadaniPageQueryKey = (pageNumber: number,) => {
+    return [
+    `/api/quran/madani/pages/${pageNumber}`
+    ] as const;
+    }
+
+
+export const getGetQuranMadaniPageQueryOptions = <TData = Awaited<ReturnType<typeof getQuranMadaniPage>>, TError = ErrorType<void>>(pageNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranMadaniPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranMadaniPageQueryKey(pageNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranMadaniPage>>> = ({ signal }) => getQuranMadaniPage(pageNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: pageNumber !== null && pageNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranMadaniPage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranMadaniPageQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranMadaniPage>>>
+export type GetQuranMadaniPageQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get one official QCF V2 Madani Mushaf page
+ */
+
+export function useGetQuranMadaniPage<TData = Awaited<ReturnType<typeof getQuranMadaniPage>>, TError = ErrorType<void>>(
+ pageNumber: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranMadaniPage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranMadaniPageQueryOptions(pageNumber,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

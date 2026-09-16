@@ -14,3 +14,9 @@ Authenticated OAuth and content requests must not follow redirects. Audio respon
 **Why:** Quran content requires stronger integrity checks than ordinary catalog data, and redirects on authenticated requests can move credentials or content trust outside the expected service boundary.
 
 **How to apply:** compare every chapter's verse count with canonical counts, reject incomplete or mismatched verse sequences, validate the requested audio verse key, and preserve trusted bundled text/audio/page assets as automatic fallbacks.
+
+The page reader's primary Madani Mushaf is Quran Foundation Mushaf ID 1 (QCF V2): fetch words by page, group them by the provided line number, and load the matching page-specific QCF font. Existing page images are fallback only.
+
+**Why:** connecting official verse text and audio does not replace the visual Mushaf; continuing to show the old page images caused the product to look unchanged.
+
+**How to apply:** label the surface as Madani Mushaf QCF V2, preserve all physical line positions, and verify normal rendering contains QCF glyphs rather than the fallback image.
