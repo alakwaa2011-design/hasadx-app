@@ -45,6 +45,7 @@ export default defineConfig({
       "src/__tests__/solo-challenge-best-result.integration.test.ts",
       "src/__tests__/auth-subject-preferences.integration.test.ts",
       "src/__tests__/quran-student-access.integration.test.ts",
+      "src/__tests__/quran-today.integration.test.ts",
     ],
     setupFiles: ["src/__tests__/setup-integration.ts"],
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل
