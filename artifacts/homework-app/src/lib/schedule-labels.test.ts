@@ -93,4 +93,10 @@ describe("schedule save errors", () => {
       new Error("HTTP 400 Bad Request: وقت النهاية يجب أن يكون بعد وقت البداية"),
     )).toBe("وقت النهاية يجب أن يكون بعد وقت البداية");
   });
+
+  it("does not expose an HTML error document in the toast", () => {
+    expect(getApiErrorMessage(
+      new Error("HTTP 500 Internal Server Error: <!DOCTYPE html><html><head></head></html>"),
+    )).toBeNull();
+  });
 });

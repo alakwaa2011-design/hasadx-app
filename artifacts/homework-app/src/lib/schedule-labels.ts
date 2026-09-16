@@ -24,19 +24,30 @@ export type ScheduleConflictDetails = {
 };
 
 export function getApiErrorMessage(error: unknown): string | null {
+  const safeMessage = (value: string): string | null => {
+    const message = value
+      .replace(/^HTTP\s+\d+\s+[^:]*:\s*/i, "")
+      .trim();
+    if (
+      !message
+      || /^HTTP\s+\d+/i.test(message)
+      || /<!doctype|<html|<head|<body|<script/i.test(message)
+    ) {
+      return null;
+    }
+    return message;
+  };
+
   if (!error || typeof error !== "object") return null;
   if ("data" in error) {
     const data = error.data;
     if (data && typeof data === "object" && "message" in data && typeof data.message === "string") {
-      const message = data.message.trim();
+      const message = safeMessage(data.message);
       if (message) return message;
     }
   }
   if (error instanceof Error) {
-    const message = error.message
-      .replace(/^HTTP\s+\d+\s+[^:]*:\s*/i, "")
-      .trim();
-    if (message && !/^HTTP\s+\d+/i.test(message)) return message;
+    return safeMessage(error.message);
   }
   return null;
 }

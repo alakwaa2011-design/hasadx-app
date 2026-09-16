@@ -632,8 +632,12 @@ router.patch("/teacher/schedule/:id", requireAuth, async (req: any, res): Promis
       `DELETE FROM notifications WHERE id IN (
          SELECT notification_id FROM teacher_schedule_notification_runs
          WHERE teacher_id = $1 AND schedule_entry_id = $2
-       );
-       DELETE FROM teacher_schedule_notification_runs WHERE teacher_id = $1 AND schedule_entry_id = $2`,
+       )`,
+      [req.session.teacherId, id],
+    );
+    await client.query(
+      `DELETE FROM teacher_schedule_notification_runs
+       WHERE teacher_id = $1 AND schedule_entry_id = $2`,
       [req.session.teacherId, id],
     );
     const updated = await client.query(
@@ -683,9 +687,16 @@ router.delete("/teacher/schedule/:id", requireAuth, async (req: any, res): Promi
       `DELETE FROM notifications WHERE id IN (
          SELECT notification_id FROM teacher_schedule_notification_runs
          WHERE teacher_id = $1 AND schedule_entry_id = $2
-       );
-       DELETE FROM teacher_schedule_notification_runs WHERE teacher_id = $1 AND schedule_entry_id = $2;
-       DELETE FROM teacher_schedule WHERE teacher_id = $1 AND id = $2`,
+       )`,
+      [req.session.teacherId, id],
+    );
+    await client.query(
+      `DELETE FROM teacher_schedule_notification_runs
+       WHERE teacher_id = $1 AND schedule_entry_id = $2`,
+      [req.session.teacherId, id],
+    );
+    await client.query(
+      `DELETE FROM teacher_schedule WHERE teacher_id = $1 AND id = $2`,
       [req.session.teacherId, id],
     );
     await client.query("COMMIT");
