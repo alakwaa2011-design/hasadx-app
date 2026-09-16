@@ -22,6 +22,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { QuranMadaniPageRenderer } from "./quran-madani-page";
+import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
+import type { QuranSurahParsed } from "@/lib/quran-parser";
 
 interface QComplexChapter {
   id: number;
@@ -109,6 +111,10 @@ export function QuranPagesView({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
+  const [selectedVerseKey, setSelectedVerseKey] = useState<string | null>(null);
+  const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
   useEffect(() => {
     let mounted = true;
 
@@ -169,6 +175,59 @@ export function QuranPagesView({
   const activePageMeta = pages.find((page) => page.id === activePage);
   const activeChapterId = activePageMeta?.chapter_id ?? FIRST_PAGE;
 
+  const audioSurahs = useMemo<QuranSurahParsed[]>(() => {
+    if (!chapters.length || !verses.length) return [];
+    return chapters.map((chapter) => {
+      const chapterVerses = verses.filter(v => v.chapter_id === chapter.id);
+      return {
+        index: chapter.id,
+        name: chapter.name,
+        ayahs: Array.from({ length: chapterVerses.length }, (_, i) => ({
+          index: i + 1,
+          text: '',
+          bismillah: undefined
+        }))
+      };
+    });
+  }, [chapters, verses]);
+
+  const fallbackVerse = useMemo(() => {
+    return verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId) ||
+           verses.find((verse) => verse.page_id === activePage) ||
+           verses[0];
+  }, [activePage, activeChapterId, verses]);
+
+  const selectedSurah = selectedVerseKey
+    ? Number(selectedVerseKey.split(":")[0])
+    : (fallbackVerse?.chapter_id ?? activeChapterId);
+
+  const selectedAyah = selectedVerseKey
+    ? Number(selectedVerseKey.split(":")[1])
+    : (fallbackVerse?.number ?? initialAyah);
+
+  const playingSurah = playingVerseKey
+    ? Number(playingVerseKey.split(":")[0])
+    : selectedSurah;
+
+  const playingAyahNum = playingVerseKey
+    ? Number(playingVerseKey.split(":")[1])
+    : null;
+
+  const handlePlayingAyahChange = (ayahNum: number | null) => {
+    if (ayahNum === null) {
+      setPlayingVerseKey(null);
+    } else {
+      const newKey = `${playingSurah}:${ayahNum}`;
+      setPlayingVerseKey(newKey);
+      setSelectedVerseKey(newKey); // Also sync selection so UI follows playback
+
+      const playingVerse = verses.find(v => v.chapter_id === playingSurah && v.number === ayahNum);
+      if (playingVerse && playingVerse.page_id !== activePage) {
+        goToPage(playingVerse.page_id);
+      }
+    }
+  };
+
   const visiblePages = useMemo(() => {
     if (activePage % 2 === 0) {
       return {
@@ -182,6 +241,19 @@ export function QuranPagesView({
       left: activePage < LAST_PAGE ? activePage + 1 : null,
     };
   }, [activePage]);
+
+  // Clear selection if navigating away from the page, unless we are currently playing.
+  useEffect(() => {
+    if (!selectedVerseKey || isPlaying) return;
+    const [s, a] = selectedVerseKey.split(":").map(Number);
+    const selectedVerse = verses.find(v => v.chapter_id === s && v.number === a);
+    if (!selectedVerse) return;
+
+    const p = selectedVerse.page_id;
+    if (visiblePages.left !== p && visiblePages.right !== p && activePage !== p) {
+      setSelectedVerseKey(null);
+    }
+  }, [activePage, visiblePages, selectedVerseKey, verses, isPlaying]);
 
   const currentSpreadStart = activePage % 2 === 0 ? activePage - 1 : activePage;
   const canGoToNextSpread = currentSpreadStart + 2 <= LAST_PAGE;
@@ -265,7 +337,23 @@ export function QuranPagesView({
             onFallbackError={() =>
               setFailedPages((current) => new Set(current).add(page))
             }
-            chapters={chapters}
+            selectedVerseKey={selectedVerseKey}
+            playingVerseKey={playingVerseKey}
+            onVerseClick={(verseKey) => {
+              setSelectedVerseKey(verseKey);
+              if (isPlaying && playingVerseKey) {
+                // If a different surah is clicked while playing, we need to stop or update the playing track
+                // Since quran-audio-player only handles playing within one surah (via surahNumber prop),
+                // we'll stop playback when jumping surahs, or seek when jumping ayahs in the same surah.
+                const clickedSurah = Number(verseKey.split(":")[0]);
+                if (clickedSurah === playingSurah) {
+                   handlePlayingAyahChange(Number(verseKey.split(":")[1]));
+                } else {
+                   setIsPlaying(false);
+                   setPlayingVerseKey(null);
+                }
+              }
+            }}
           />
         )}
       </figure>
@@ -496,6 +584,27 @@ export function QuranPagesView({
           </button>
         </nav>
       </main>
+
+      {!quietMode && selectedVerseKey && audioSurahs.length > 0 && (
+        <div className="sticky bottom-0 z-40 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] w-full">
+          <QuranAudioPlayer
+            surahs={audioSurahs}
+            surahNumber={playingSurah}
+            startAyah={startAyah}
+            endAyah={endAyah}
+            selectedAyah={selectedAyah}
+            playingAyah={playingAyahNum}
+            onPlayingAyahChange={handlePlayingAyahChange}
+            isPlaying={isPlaying}
+            onIsPlayingChange={setIsPlaying}
+            onClose={() => {
+              setIsPlaying(false);
+              setPlayingVerseKey(null);
+              setSelectedVerseKey(null);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

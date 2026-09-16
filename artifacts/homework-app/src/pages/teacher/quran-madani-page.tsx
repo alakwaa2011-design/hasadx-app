@@ -9,7 +9,9 @@ interface QuranMadaniPageRendererProps {
   isLastVerse: (chapterId: number, verseNumber: number) => boolean;
   fallbackImageUrl: string;
   onFallbackError?: () => void;
-  chapters?: { id: number; name: string }[];
+  selectedVerseKey?: string | null;
+  playingVerseKey?: string | null;
+  onVerseClick?: (verseKey: string) => void;
 }
 
 export function QuranMadaniPageRenderer({
@@ -17,6 +19,9 @@ export function QuranMadaniPageRenderer({
   isLastVerse,
   fallbackImageUrl,
   onFallbackError,
+  selectedVerseKey,
+  playingVerseKey,
+  onVerseClick,
 }: QuranMadaniPageRendererProps) {
   const { lang } = useI18n();
   const [fontState, setFontState] = useState<"loading" | "ready" | "error">("loading");
@@ -189,19 +194,39 @@ export function QuranMadaniPageRenderer({
                 isCentered ? "justify-center gap-[1.5cqw]" : "justify-between"
               )}
             >
-              {line.words.map((w, i) => (
-                <span
-                  key={w.id || i}
-                  title={w.text}
-                  aria-label={w.text}
-                  className={cn(
-                    "inline-block drop-shadow-[0_0_0_rgba(0,0,0,1)]",
-                    w.type === "end" && "text-[5.6cqw] text-[#1d4432] drop-shadow-[0_0_0_rgba(29,68,50,1)]"
-                  )}
-                >
-                  {w.glyph}
-                </span>
-              ))}
+              {line.words.map((w, i) => {
+                const isSelected = selectedVerseKey && w.verseKey === selectedVerseKey;
+                const isPlaying = playingVerseKey && w.verseKey === playingVerseKey;
+
+                return (
+                  <button
+                    key={w.id || i}
+                    title={w.text}
+                    aria-label={
+                      lang === "ar"
+                        ? `${w.text}، الآية ${w.verseKey.split(":")[1]}`
+                        : `${w.text}, ayah ${w.verseKey.split(":")[1]}`
+                    }
+                    aria-pressed={Boolean(isSelected || isPlaying)}
+                    onClick={() => onVerseClick?.(w.verseKey)}
+                    type="button"
+                    className={cn(
+                      "relative m-0 inline-block cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
+                      w.type === "end" ? "text-[5.6cqw]" : "",
+                      // Apply standard color or highlight colors
+                      isPlaying
+                        ? "text-emerald-700 drop-shadow-[0_0_0_rgba(22,101,52,0.8)] bg-emerald-100/50"
+                        : isSelected
+                        ? "text-amber-700 drop-shadow-[0_0_0_rgba(180,83,9,0.8)] bg-amber-100/40"
+                        : w.type === "end"
+                        ? "text-[#1d4432] drop-shadow-[0_0_0_rgba(29,68,50,1)] hover:text-emerald-800 hover:bg-emerald-50/50"
+                        : "text-black drop-shadow-[0_0_0_rgba(0,0,0,1)] hover:text-emerald-900 hover:bg-emerald-50/50"
+                    )}
+                  >
+                    {w.glyph}
+                  </button>
+                );
+              })}
             </div>
           );
         })}

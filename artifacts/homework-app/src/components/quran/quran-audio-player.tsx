@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Square, SkipBack, SkipForward, Settings2, Loader2, Volume2, Repeat, Zap, RefreshCw } from 'lucide-react';
+import { Play, Pause, Square, SkipBack, SkipForward, Settings2, Loader2, Volume2, Repeat, Zap, RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { getGlobalAyahNumber, QuranSurahParsed } from '@/lib/quran-parser';
@@ -15,6 +15,7 @@ export interface QuranAudioPlayerProps {
   onPlayingAyahChange: (ayah: number | null) => void;
   isPlaying: boolean;
   onIsPlayingChange: (playing: boolean) => void;
+  onClose?: () => void;
 }
 
 const RECITERS = [
@@ -36,7 +37,8 @@ export function QuranAudioPlayer({
   playingAyah,
   onPlayingAyahChange,
   isPlaying,
-  onIsPlayingChange
+  onIsPlayingChange,
+  onClose,
 }: QuranAudioPlayerProps) {
   const { lang } = useI18n();
   const isArabic = lang === 'ar';
@@ -188,6 +190,19 @@ export function QuranAudioPlayer({
 
   return (
     <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-border p-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] w-full shrink-0 flex flex-col gap-2 transition-colors">
+      {onClose && (
+        <div className="flex h-7 shrink-0 items-center justify-start">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-7 min-w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={isArabic ? "إغلاق مشغل الآية" : "Close ayah player"}
+            aria-label={isArabic ? "إغلاق مشغل الآية" : "Close ayah player"}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       {audioSrc && (
         <audio 
           ref={audioRef} 
@@ -284,7 +299,9 @@ export function QuranAudioPlayer({
           
           <div className="flex flex-col">
             <span className="font-bold text-sm md:text-base text-foreground line-clamp-1">
-              {playingAyah ? (isArabic ? `سورة ${surahs[surahNumber-1]?.name} - آية ${playingAyah}` : `Surah ${surahs[surahNumber-1]?.name} - Ayah ${playingAyah}`) : (isArabic ? 'جاهز للتشغيل' : 'Ready to play')}
+              {isArabic
+                ? `سورة ${surahs[surahNumber - 1]?.name} - آية ${playingAyah ?? selectedAyah}`
+                : `Surah ${surahs[surahNumber - 1]?.name} - Ayah ${playingAyah ?? selectedAyah}`}
             </span>
             {error && (
               <span className="text-xs font-bold text-destructive flex items-center gap-1">
