@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import JSZip from "jszip";
+import sharp from "sharp";
 import {
   db,
   pool,
@@ -33,12 +38,14 @@ let worksheetId: number;
 let framedWorksheetId: number;
 let longAnswerWorksheetId: number;
 let arabicFormattingWorksheetId: number;
+let arabicEquationWorksheetId: number;
 
 let singleHugeAnswerWorksheetId: number;
 const arabicLongAnswerWorksheetIds = new Map<
   (typeof arabicFontFamilies)[number],
   number
 >();
+const execFileAsync = promisify(execFile);
 
 function countChromiumPdfPages(pdf: Buffer): number {
   // Chromium writes every physical page as a /Type /Page object. The word
@@ -205,6 +212,38 @@ test.beforeAll(async ({ baseURL }) => {
     }
     arabicFormattingWorksheetId = (await arabicFormattingResponse.json()).id;
 
+    const arabicEquationResponse = await api.post("/api/worksheets", {
+      headers: { Cookie: teacher.cookieHeader },
+      data: {
+        title: "اختبار ترتيب المعادلات",
+        language: "ar",
+        gradeLevel: "اختبار",
+        subject: "رياضيات",
+        questions: [{
+          id: "e2e-arabic-equation-q-1",
+          type: "mcq",
+          prompt: "ما ناتج (+20) - (+14)؟",
+          options: ["+6", "-34"],
+          correctIndex: 0,
+        }],
+        settings: {
+          includeName: false,
+          includeDate: false,
+          includeClass: false,
+          includeAnswerKey: false,
+          columns: 1,
+          fontFamily: "cairo",
+          fontSizePt: 18,
+          showWatermark: false,
+          template: "exam_paper",
+        },
+      },
+    });
+    if (!arabicEquationResponse.ok()) {
+      throw new Error(`Arabic equation worksheet seed failed: ${arabicEquationResponse.status()} ${await arabicEquationResponse.text()}`);
+    }
+    arabicEquationWorksheetId = (await arabicEquationResponse.json()).id;
+
     const longAnswerQuestions = Array.from({ length: 18 }, (_, index) => ({
       id: `e2e-long-answer-q-${index + 1}`,
       type: "short_answer" as const,
@@ -319,6 +358,151 @@ test.afterAll(async () => {
 
 test.beforeEach(async ({ context, baseURL }) => {
   await attachSession(context, baseURL!, teacher);
+});
+
+test("Arabic equation signs and boundaries render in the same order in preview and PDF", async ({
+  page,
+}, testInfo) => {
+  await page.goto(`/teacher/worksheets/${arabicEquationWorksheetId}/print`);
+  const worksheetPage = page.locator("[data-worksheet-page]").first();
+  await expect(worksheetPage).toBeVisible({ timeout: 20_000 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+
+  const targets = [worksheetPage.locator(".ws-question-block").first()];
+  for (const target of targets) await expect(target).toBeVisible();
+  for (const token of ["(+20) - (+14)", "+6", "-34"]) {
+    const mathToken = worksheetPage
+      .locator('span[dir="ltr"]')
+      .filter({ hasText: new RegExp(`^${token.replace(/[()+\-]/g, "\\$&")}$`) })
+      .last();
+    await expect(mathToken).toHaveText(token);
+    const positions = await mathToken.evaluate((element, expected) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      let node: Text | null = null;
+      while (walker.nextNode()) {
+        const candidate = walker.currentNode as Text;
+        if (candidate.data === expected) {
+          node = candidate;
+          break;
+        }
+      }
+      if (!node) throw new Error(`Could not find text node for ${expected}`);
+      return Array.from(expected, (_, index) => {
+        const range = document.createRange();
+        range.setStart(node!, index);
+        range.setEnd(node!, index + 1);
+        return range.getBoundingClientRect().x;
+      });
+    }, token);
+    expect(
+      positions.every((position, index) =>
+        index === 0 || position >= positions[index - 1]! - 0.5),
+      `Preview visually reordered ${token}`,
+    ).toBe(true);
+  }
+
+  const previewTargets: Array<{
+    image: Buffer;
+    relativeBox: { x: number; y: number; width: number; height: number };
+  }> = [];
+  let worksheetSize: { width: number; height: number } | undefined;
+  for (const target of targets) {
+    const [pageBox, targetBox] = await Promise.all([
+      worksheetPage.boundingBox(),
+      target.boundingBox(),
+    ]);
+    if (!pageBox || !targetBox) throw new Error("Equation preview target has no bounding box");
+    worksheetSize ??= { width: pageBox.width, height: pageBox.height };
+    const originalStyle = await target.getAttribute("style");
+    await target.evaluate((element, width) => {
+      Object.assign((element as HTMLElement).style, {
+        position: "fixed",
+        inset: "20px auto auto 20px",
+        width: `${width}px`,
+        zIndex: "2147483647",
+        background: "#ffffff",
+      });
+    }, targetBox.width);
+    await page.evaluate(() => new Promise<void>(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    ));
+    const previewImage = await target.screenshot();
+    await target.evaluate((element, style) => {
+      if (style === null) element.removeAttribute("style");
+      else element.setAttribute("style", style);
+    }, originalStyle);
+    previewTargets.push({
+      image: previewImage,
+      relativeBox: {
+        x: targetBox.x - pageBox.x,
+        y: targetBox.y - pageBox.y,
+        width: targetBox.width,
+        height: targetBox.height,
+      },
+    });
+  }
+  if (!worksheetSize) throw new Error("Worksheet preview page has no size");
+  const pdf = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    preferCSSPageSize: true,
+  });
+  const workDir = await mkdtemp(join(tmpdir(), "worksheet-equation-pdf-"));
+  try {
+    const pdfPath = join(workDir, "worksheet.pdf");
+    const pdfImagePrefix = join(workDir, "worksheet");
+    await writeFile(pdfPath, pdf);
+    await execFileAsync("pdftoppm", [
+      "-f", "1",
+      "-singlefile",
+      "-png",
+      "-r", "96",
+      pdfPath,
+      pdfImagePrefix,
+    ]);
+    const pdfPage = await readFile(`${pdfImagePrefix}.png`);
+    const pdfMeta = await sharp(pdfPage).metadata();
+    const scaleX = pdfMeta.width! / worksheetSize.width;
+    const scaleY = pdfMeta.height! / worksheetSize.height;
+
+    for (const [index, previewTarget] of previewTargets.entries()) {
+      const box = previewTarget.relativeBox;
+      const padding = 4;
+      const left = Math.max(
+        0,
+        Math.floor(box.x * scaleX) - padding,
+      );
+      const top = Math.max(
+        0,
+        Math.floor(box.y * scaleY) - padding,
+      );
+      const width = Math.min(
+        pdfMeta.width! - left,
+        Math.ceil(box.width * scaleX) + padding * 2,
+      );
+      const height = Math.min(
+        pdfMeta.height! - top,
+        Math.ceil(box.height * scaleY) + padding * 2,
+      );
+      const region = { left, top, width, height };
+      const pdfRegion = await sharp(pdfPage).extract(region).png().toBuffer();
+      await testInfo.attach(`equation-region-${index + 1}-preview.png`, {
+        body: previewTarget.image,
+        contentType: "image/png",
+      });
+      await testInfo.attach(`equation-region-${index + 1}-pdf.png`, {
+        body: pdfRegion,
+        contentType: "image/png",
+      });
+      expect(pdfRegion).toMatchSnapshot("arabic-equation-order-pdf.png", {
+        maxDiffPixelRatio: 0.005,
+      });
+    }
+  } finally {
+    await rm(workDir, { recursive: true, force: true });
+  }
 });
 
 test("Arabic question formatting and option layout survive save, reload, and PDF export", async ({
