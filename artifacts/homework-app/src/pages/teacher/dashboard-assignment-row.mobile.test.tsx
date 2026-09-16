@@ -107,6 +107,17 @@ describe("AssignmentRow on mobile", () => {
     expect(container.textContent).toContain("تعديل النشاط");
     expect(container.textContent).toContain("نسخ الرابط");
     expect(container.textContent).toContain("إنشاء نسخة");
+    expect(container.textContent).not.toContain("مشاركة");
+    expect(container.textContent).not.toContain("عرض تفاعلي");
+    expect(container.textContent).not.toContain("نشط");
+
+    const actions = container.querySelector(
+      '[data-testid="assignment-actions-42"]',
+    ) as HTMLDivElement;
+    expect(actions.classList.contains("grid-cols-2")).toBe(true);
+    expect(actions.classList.contains("sm:grid-cols-3")).toBe(true);
+    expect(actions.classList.contains("lg:grid-cols-4")).toBe(true);
+    expect(actions.querySelectorAll(":scope > button")).toHaveLength(8);
 
     await act(async () => manageButton().click());
     await act(async () => {

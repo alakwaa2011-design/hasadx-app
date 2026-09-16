@@ -69,7 +69,6 @@ import {
   Video,
   Pencil,
   ChevronDown,
-  Share2,
   Zap,
   Coins,
   Mountain,
@@ -4623,11 +4622,11 @@ function SoloLinkButton({ assignmentId, lang, setLocation }: { assignmentId: num
     <button
       onClick={handleClick}
       disabled={state === "loading"}
-      className="text-xs font-bold px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 border-amber-400/50 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:border-amber-500/30"
+      className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-amber-400/50 bg-amber-50 px-3 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
       title={lang === "ar" ? "إنشاء مسابقة ذاتية ونسخ الرابط" : "Create Self Challenge & copy link"}
     >
       {state === "loading" ? (
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
       ) : (
         <SelfChallengeIcon size={18} />
       )}
@@ -4649,7 +4648,6 @@ export function AssignmentRow({
   lang,
   t,
   queryClient,
-  onShare,
   collections,
   addToCollection,
   removeFromCollection,
@@ -4694,7 +4692,6 @@ export function AssignmentRow({
   const isExam = assignment.examMode === true;
   const isListening = assignment.activityType === "listening";
   const isArchived = Boolean(archived || assignment.archived);
-  const statusActive = !isArchived && !deadlineExpired;
 
   return (
     <div
@@ -4753,11 +4750,6 @@ export function AssignmentRow({
               <span className="font-semibold text-[13px] sm:text-sm text-foreground truncate">
                 {assignment.title}
               </span>
-              {statusActive && (
-                <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-emerald-600/[0.09] text-emerald-950 dark:text-emerald-300 border border-emerald-600/14 leading-none">
-                  {lang === "ar" ? "نشط" : "Active"}
-                </span>
-              )}
               {deadlineExpired && (
                 <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-stone-500/[0.09] text-stone-900 dark:text-stone-400 border border-stone-500/16 leading-none">
                   {lang === "ar" ? "منتهي" : "Ended"}
@@ -4777,12 +4769,7 @@ export function AssignmentRow({
                 <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-amber-500/[0.1] text-amber-950 dark:text-amber-200 border border-amber-600/15 leading-none">
                   {lang === "ar" ? "اختبار" : "Exam"}
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1 rounded-full bg-primary/[0.075] text-[#143728] dark:text-emerald-300 border border-primary/14 leading-none">
-                  <Monitor className="w-3.5 h-3.5 opacity-80 shrink-0" />
-                  {lang === "ar" ? "عرض تفاعلي" : "Interactive"}
-                </span>
-              )}
+              ) : null}
               {isFavorite && (
                 <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-[#D9A521]/[0.11] text-[#5c4a14] dark:text-[#ebd587] border border-[#D9A521]/18 leading-none">
                   {lang === "ar" ? "مفضلة" : "Favorite"}
@@ -4877,35 +4864,39 @@ export function AssignmentRow({
             className="overflow-hidden"
           >
             <div className="border-t border-border/50" />
-            <div className="px-3 py-3.5 sm:px-4 flex flex-wrap gap-2 bg-muted/[0.04]">
-              <div className="w-full flex items-start justify-between gap-3 pb-1.5">
+            <div className="bg-muted/[0.06] px-3 py-4 sm:px-4 sm:py-5">
+              <div className="mb-3.5 sm:mb-4">
                 <div>
                   <p className="text-xs font-bold text-foreground">
                     {lang === "ar" ? "إدارة النشاط" : "Manage activity"}
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {lang === "ar"
-                      ? "عدّل النشاط أو شاركه أو أنشئ نسخة منه"
-                      : "Edit, share, or create a copy of this activity"}
+                      ? "اختر الإجراء الذي تريد تنفيذه"
+                      : "Choose the action you want to perform"}
                   </p>
                 </div>
               </div>
+              <div
+                data-testid={`assignment-actions-${assignment.id}`}
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+              >
               <button
                 onClick={() =>
                   setLocation(`/teacher/assignment/${assignment.id}`)
                 }
-                className="text-xs font-bold px-3.5 py-2 min-h-[44px] bg-primary text-primary-foreground border border-primary rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5 shadow-sm"
+                className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-primary bg-primary px-3 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
               >
-                <Pencil className="w-3.5 h-3.5" />
+                <Pencil className="h-4 w-4 shrink-0" />
                 {lang === "ar" ? "تعديل النشاط" : "Edit activity"}
               </button>
               <button
                 onClick={() =>
                   setLocation(`/teacher/assignment/${assignment.id}?tab=results`)
                 }
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground transition-colors hover:border-primary/35 hover:bg-primary/[0.04]"
               >
-                <BarChart3 className="w-3.5 h-3.5" />
+                <BarChart3 className="h-4 w-4 shrink-0 text-primary/75" />
                 {lang === "ar" ? "النتائج" : "Results"}
               </button>
               <button
@@ -4922,21 +4913,14 @@ export function AssignmentRow({
                     toast.error(lang === "ar" ? "تعذر النسخ" : "Copy failed");
                   }
                 }}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground transition-colors hover:border-primary/35 hover:bg-primary/[0.04]"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="h-4 w-4 shrink-0 text-primary/75" />
                 {lang === "ar" ? "نسخ الرابط" : "Copy link"}
               </button>
               {/* ── Self Challenge Button ── */}
               <SoloLinkButton assignmentId={assignment.id} lang={lang} setLocation={setLocation} />
 
-              <button
-                onClick={() => onShare(assignment.id)}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                {lang === "ar" ? "مشاركة" : "Share"}
-              </button>
               <button
                 onClick={async () => {
                   try {
@@ -4965,9 +4949,9 @@ export function AssignmentRow({
                     );
                   }
                 }}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground transition-colors hover:border-primary/35 hover:bg-primary/[0.04]"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="h-4 w-4 shrink-0 text-primary/75" />
                 {lang === "ar" ? "إنشاء نسخة" : "Create copy"}
               </button>
               <button
@@ -4976,7 +4960,7 @@ export function AssignmentRow({
                   e.stopPropagation();
                   openGroupMenu();
                 }}
-                className={`text-xs font-medium px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 ${
+                className={`inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border px-3 text-xs font-bold transition-colors ${
                   collections?.some((c: any) =>
                     c.assignmentIds?.includes(assignment.id),
                   )
@@ -4984,7 +4968,7 @@ export function AssignmentRow({
                     : "bg-card text-foreground border-border hover:border-foreground/40"
                 }`}
               >
-                <FolderOpen className="w-3.5 h-3.5" />
+                <FolderOpen className="h-4 w-4 shrink-0" />
                 {lang === "ar" ? "مجموعة" : "Group"}
               </button>
               {showGroupMenu &&
@@ -5070,18 +5054,19 @@ export function AssignmentRow({
                 )}
               <button
                 onClick={() => archiveAssignment(assignment.id, true, assignment.version)}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-amber-700 border border-amber-200/70 dark:border-amber-900/60 rounded-lg hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
+                className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-amber-200/70 bg-card px-3 text-xs font-bold text-amber-700 transition-colors hover:border-amber-300 hover:bg-amber-50 dark:border-amber-900/60 dark:hover:bg-amber-900/20"
               >
-                <FolderOpen className="w-3.5 h-3.5" />
+                <FolderOpen className="h-4 w-4 shrink-0" />
                 {lang === "ar" ? "أرشفة" : "Archive"}
               </button>
               <button
                 onClick={() => deleteAssignment(assignment.id)}
-                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-red-500 border border-red-200/70 dark:border-red-900/60 rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5"
+                className="inline-flex min-h-[48px] w-full items-center justify-start gap-2 rounded-xl border border-red-200/70 bg-card px-3 text-xs font-bold text-red-500 transition-colors hover:border-red-300 hover:bg-red-50 dark:border-red-900/60 dark:hover:bg-red-900/20"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="h-4 w-4 shrink-0" />
                 {lang === "ar" ? "حذف" : "Delete"}
               </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -5168,15 +5153,6 @@ function AssignmentsTabRender({
     return col?.name;
   };
 
-  const onShare = async (id: number) => {
-    try {
-      const url = `${window.location.origin}/solve/${id}`;
-      await navigator.clipboard.writeText(url);
-      toast.success(lang === "ar" ? "تم نسخ الرابط" : "Link copied");
-    } catch {
-      toast.error(lang === "ar" ? "تعذر النسخ" : "Copy failed");
-    }
-  };
 
   const games = [
     {
@@ -5469,7 +5445,6 @@ function AssignmentsTabRender({
                       lang={lang}
                       t={t}
                       queryClient={queryClient}
-                      onShare={onShare}
                       collections={collections}
                       addToCollection={addToCollection}
                       removeFromCollection={removeFromCollection}
