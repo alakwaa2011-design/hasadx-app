@@ -50,7 +50,6 @@ describe("printToPdf", () => {
 describe("buildWordDocument", () => {
   it("creates native OOXML with RTL formatting and a two-column choice table", async () => {
     const root = document.createElement("div");
-    root.id = "ws-printable-root";
     root.innerHTML = `
       <div data-worksheet-page>
         <div class="ws-q-head">
@@ -192,5 +191,74 @@ describe("buildWordDocument", () => {
     expect(runs.find(run => run.includes("درجة الحرارة"))).toContain("<w:rtl/>");
     expect(runs.find(run => run.includes("-8°C"))).toContain('<w:rtl w:val="false"/>');
     expect(pairParagraph!.indexOf("درجة الحرارة")).toBeLessThan(pairParagraph!.indexOf("-8°C"));
+  });
+
+  it("exports supported LaTeX as editable Word equations and preserves unsupported source", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page dir="rtl">
+        <div class="ws-q-prompt">
+          <span>احسب </span>
+          <span dir="ltr" data-math-latex="\\frac{x^{2}}{\\sqrt{y}}">rendered fraction</span>
+          <span> ثم </span>
+          <span dir="ltr" data-math-latex="\\sum_{i=1}^{n} i">unsupported sum</span>
+        </div>
+      </div>`;
+
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root,
+      title: "معادلات قابلة للتحرير",
+      lang: "ar",
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+
+    expect(xml).toContain("<m:oMath>");
+    expect(xml).toContain("<m:f>");
+    expect(xml).toContain("<m:sSup>");
+    expect(xml).toContain("<m:rad>");
+    expect(xml).toContain("\\sum_{i=1}^{n} i");
+    expect(xml).not.toContain("rendered fraction");
+    expect(xml).not.toContain("unsupported sum");
+    const math = xml.match(/<m:oMath>.*?<\/m:oMath>/)?.[0];
+    expect(math).toContain("<m:t>x</m:t>");
+    expect(math).toContain("<m:t>2</m:t>");
+    expect(math).toContain("<m:t>y</m:t>");
+    expect(math).not.toContain("<w:rtl");
+  });
+
+  it("binds each power to its immediate base without absorbing operators or earlier terms", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page>
+        <div class="ws-q-prompt">
+          <span data-math-latex="a^2+b^2=c^2">rendered</span>
+          <span data-math-latex="x+1^2">rendered</span>
+          <span data-math-latex="\\frac{x^2}{\\sqrt{y^3}}">rendered</span>
+        </div>
+      </div>`;
+
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root,
+      title: "Power structure",
+      lang: "ar",
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+    const equations = xml.match(/<m:oMath>.*?<\/m:oMath>/g) ?? [];
+
+    expect(equations).toHaveLength(3);
+    const powers = equations[0].match(/<m:sSup>.*?<\/m:sSup>/g) ?? [];
+    expect(powers).toHaveLength(3);
+    expect(powers.map(power => power.match(/<m:e>.*?<m:t>(.*?)<\/m:t>.*?<\/m:e>/)?.[1]))
+      .toEqual(["a", "b", "c"]);
+    expect(equations[0]).toMatch(/<\/m:sSup><m:r><m:t>\+<\/m:t><\/m:r><m:sSup>/);
+    expect(equations[0]).toMatch(/<\/m:sSup><m:r><m:t>=<\/m:t><\/m:r><m:sSup>/);
+
+    const finalPower = equations[1].match(/<m:sSup>.*?<\/m:sSup>/)?.[0];
+    expect(finalPower).toContain("<m:e><m:r><m:t>1</m:t></m:r></m:e>");
+    expect(equations[1]).toMatch(/<m:t>x<\/m:t>.*?<m:t>\+<\/m:t>.*?<m:sSup>/);
+
+    expect(equations[2]).toMatch(
+      /<m:f>.*?<m:num>.*?<m:sSup>.*?<m:t>x<\/m:t>.*?<m:t>2<\/m:t>.*?<\/m:sSup>.*?<\/m:num>.*?<m:den>.*?<m:rad>.*?<m:sSup>.*?<m:t>y<\/m:t>.*?<m:t>3<\/m:t>.*?<\/m:sSup>.*?<\/m:rad>.*?<\/m:den>.*?<\/m:f>/,
+    );
   });
 });

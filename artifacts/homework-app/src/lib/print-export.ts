@@ -2,6 +2,11 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  Math as WordMath,
+  MathFraction,
+  MathRadical,
+  MathRun,
+  MathSuperScript,
   Packer,
   PageBreak,
   Paragraph,
@@ -10,6 +15,8 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  type MathComponent,
+  type ParagraphChild,
   type ISectionOptions,
 } from "docx";
 import { contentDirection, type ContentDirection } from "./content-direction";
@@ -71,9 +78,118 @@ function directionForTextParent(
   return contentDirection(element.textContent, fallback);
 }
 
-function textRuns(element: Element, direction: ContentDirection): TextRun[] {
-  const runs: TextRun[] = [];
+class LatexMathParser {
+  private cursor = 0;
+
+  constructor(private readonly source: string) {}
+
+  parse(): MathComponent[] | null {
+    const result = this.sequence();
+    this.skipWhitespace();
+    return result && this.cursor === this.source.length ? result : null;
+  }
+
+  private sequence(stopAtBrace = false): MathComponent[] | null {
+    const components: MathComponent[] = [];
+    let text = "";
+    const flushText = () => {
+      // Keep literal atoms separate so a following superscript binds only to
+      // the immediately preceding atom, as it does in TeX.
+      for (const character of text) components.push(new MathRun(character));
+      text = "";
+    };
+
+    while (this.cursor < this.source.length) {
+      const character = this.source[this.cursor];
+      if (character === "}") {
+        if (!stopAtBrace) return null;
+        break;
+      }
+      if (character === "\\") {
+        flushText();
+        const command = this.readCommand();
+        if (command === "frac") {
+          const numerator = this.group();
+          const denominator = this.group();
+          if (!numerator || !denominator) return null;
+          components.push(new MathFraction({ numerator, denominator }));
+        } else if (command === "sqrt") {
+          const children = this.group();
+          if (!children) return null;
+          components.push(new MathRadical({ children }));
+        } else {
+          return null;
+        }
+        continue;
+      }
+      if (character === "^") {
+        flushText();
+        this.cursor += 1;
+        const base = components.pop();
+        const superScript = this.argument();
+        if (!base || !superScript) return null;
+        components.push(new MathSuperScript({ children: [base], superScript }));
+        continue;
+      }
+      if (character === "{" || character === "_") return null;
+      text += character;
+      this.cursor += 1;
+    }
+    flushText();
+    return components.length ? components : null;
+  }
+
+  private readCommand(): string {
+    this.cursor += 1;
+    const start = this.cursor;
+    while (/[A-Za-z]/.test(this.source[this.cursor] ?? "")) this.cursor += 1;
+    return this.source.slice(start, this.cursor);
+  }
+
+  private group(): MathComponent[] | null {
+    this.skipWhitespace();
+    if (this.source[this.cursor] !== "{") return null;
+    this.cursor += 1;
+    const result = this.sequence(true);
+    if (!result || this.source[this.cursor] !== "}") return null;
+    this.cursor += 1;
+    return result;
+  }
+
+  private argument(): MathComponent[] | null {
+    this.skipWhitespace();
+    if (this.source[this.cursor] === "{") return this.group();
+    const character = this.source[this.cursor];
+    if (!character || /[\\{}_^]/.test(character)) return null;
+    this.cursor += 1;
+    return [new MathRun(character)];
+  }
+
+  private skipWhitespace() {
+    while (/\s/.test(this.source[this.cursor] ?? "")) this.cursor += 1;
+  }
+}
+
+function nativeMath(latex: string): WordMath | null {
+  const components = new LatexMathParser(latex).parse();
+  return components ? new WordMath({ children: components }) : null;
+}
+
+function textRuns(element: Element, direction: ContentDirection): ParagraphChild[] {
+  const runs: ParagraphChild[] = [];
   const visit = (node: Node, inherited: Partial<CSSStyleDeclaration> = {}) => {
+    if (node instanceof Element) {
+      const latex = node.getAttribute("data-math-latex");
+      if (latex != null) {
+        runs.push(nativeMath(latex) ?? new TextRun({
+          text: `\\(${latex}\\)`,
+          font: "Arial",
+          size: 24,
+          rightToLeft: false,
+        }));
+        return;
+      }
+    }
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent?.replace(/\s+/g, " ") ?? "";
       if (!text.trim()) return;

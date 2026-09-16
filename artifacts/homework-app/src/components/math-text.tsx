@@ -66,12 +66,13 @@ export function MathText({
         try {
           html = katex.renderToString(part.value, { throwOnError: true, strict: false });
         } catch {
-          return <span key={index}>{`\\(${part.value}\\)`}</span>;
+          return <span key={index} dir="ltr" data-math-latex={part.value}>{`\\(${part.value}\\)`}</span>;
         }
         return (
           <span
             key={index}
             dir="ltr"
+            data-math-latex={part.value}
             className="mx-1 inline-block align-middle"
             dangerouslySetInnerHTML={{ __html: html }}
           />
