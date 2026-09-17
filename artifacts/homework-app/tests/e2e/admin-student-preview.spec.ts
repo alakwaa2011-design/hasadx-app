@@ -162,4 +162,51 @@ test.describe("admin student preview", () => {
     await expect(page.getByRole("button", { name: /الدور الحالي: معلّم/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /E E2E Admin Student Preview/ })).toBeVisible();
   });
+
+  test("opens student preview from the mobile menu and returns without logout", async ({
+    page,
+  }) => {
+    const logoutRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() !== "POST") return;
+      const pathname = new URL(request.url()).pathname;
+      if (pathname === "/api/auth/logout" || pathname === "/api/student-auth/logout") {
+        logoutRequests.push(pathname);
+      }
+    });
+
+    await page.goto("/teacher", { waitUntil: "domcontentloaded" });
+    const mobileMenu = page.getByRole("button", { name: "القائمة", exact: true });
+    await expect(mobileMenu).toBeVisible();
+    await mobileMenu.click();
+
+    const mobileRoleSwitcher = page.getByRole("button", { name: /الدور الحالي: معلّم/ });
+    await expect(mobileRoleSwitcher).toBeVisible();
+    await mobileRoleSwitcher.click();
+    await page.getByRole("menuitem", { name: "طالب (معاينة)", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/student\/dashboard\?preview=1$/);
+    await expect(page.getByText("أنت الآن في معاينة صفحة الطالب", { exact: false })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /مرحباً، طالب تجريبي/ })).toBeVisible();
+
+    const redeemReward = page.getByRole("button", { name: "استبدال", exact: true });
+    await expect(redeemReward).toBeVisible();
+    await expect(redeemReward).toBeDisabled();
+
+    const previewRoleSwitcher = page.getByRole("button", {
+      name: /الدور الحالي: طالب \(معاينة\)/,
+    });
+    if (!(await previewRoleSwitcher.isVisible())) {
+      await page.getByRole("button", { name: "القائمة", exact: true }).click();
+    }
+    await expect(previewRoleSwitcher).toBeVisible();
+    await previewRoleSwitcher.click();
+    await page.getByRole("menuitem", { name: "معلّم", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/teacher$/);
+    await page.getByRole("button", { name: "القائمة", exact: true }).click();
+    await expect(page.getByRole("button", { name: /الدور الحالي: معلّم/ })).toBeVisible();
+    await expect(page.locator("p").filter({ hasText: /^E2E Admin Student Preview/ }).first()).toBeVisible();
+    await expect.poll(() => logoutRequests).toEqual([]);
+  });
 });

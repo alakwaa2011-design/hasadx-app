@@ -677,6 +677,7 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
                     <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                       className="p-2.5 text-foreground hover:bg-muted rounded-lg transition-colors"
+                      aria-label={lang === "ar" ? "القائمة" : "Menu"}
                     >
                       <motion.div
                         key={mobileMenuOpen ? "close" : "menu"}

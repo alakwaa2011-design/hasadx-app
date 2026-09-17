@@ -158,11 +158,22 @@ export default defineConfig({
     {
       name: "desktop-admin-student-preview",
       testMatch: /admin-student-preview\.spec\.ts/,
+      grep: /opens student preview, blocks saving actions/,
       use: {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
         isMobile: false,
         hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "mobile-admin-student-preview",
+      testMatch: /admin-student-preview\.spec\.ts/,
+      grep: /opens student preview from the mobile menu/,
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 },
         ...chromiumLaunchOptions,
       },
     },
