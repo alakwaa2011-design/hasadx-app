@@ -180,13 +180,12 @@ export interface QuranAyahTimings {
     recitationId: number;
     /** @pattern ^\d{1,3}:\d{1,3}$ */
     verseKey: string;
-    /** @pattern ^https://verses\.quran\.foundation/.+ */
+    /** @pattern ^https://(verses\.quran\.foundation|download\.quranicaudio\.com|audio\.qurancdn\.com)/.+ */
     audioUrl: string;
     /** @minimum 0 */
     verseStartMs: number;
     /** @exclusiveMinimum 0 */
     verseEndMs: number;
-    /** @minItems 1 */
     segments: QuranAyahTimingSegment[];
     synchronized: true;
 }

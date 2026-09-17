@@ -44,3 +44,15 @@ Chapter-recitation segment arrays are not uniformly one clean triplet per word. 
 **Why:** Minshawi Kids Repeat contains teacher and child passes with repeated positions; rejecting duplicates broke valid playback. Some ayahs have usable bounds but no word-level data.
 
 **How to apply:** keep valid triplets in chronological order, discard invalid entries, allow repeated positions and empty segment lists, and always use official ayah start/end bounds for playback.
+
+Reader-picker labels must reflect explicit provider metadata rather than inferred recording behavior. In particular, `Muallim` does not establish that children repeat after the reciter; only an explicit `Kids repeat` recording should be presented as child-repeat teaching audio.
+
+**Why:** the live Husary `Muallim` recording does not contain the child-response behavior users expect from the Arabic “المعلّم” label, while the Minshawi `Kids repeat` recording does.
+
+**How to apply:** hide unstyled duplicate catalog records, exclude `Muallim` from the child-repeat category, preserve explicit Murattal/Mujawwad choices, and label `Kids repeat` as child repetition.
+
+For a user-initiated tap on one Quran word, prefer Quran Foundation's dedicated `words[].audio_url` WBW file over slicing chapter-recitation timestamps.
+
+**Why:** chapter timing segments are incomplete or multi-pass for some recordings, while the dedicated WBW asset identifies one exact word and can begin through a same-origin redirect within the original tap gesture.
+
+**How to apply:** validate the exact `wbw/{surah}_{ayah}_{position}.mp3` path against the requested word, redirect only to the allowlisted Quran CDN, and play it in a secondary audio element that never mutates ayah-player state.

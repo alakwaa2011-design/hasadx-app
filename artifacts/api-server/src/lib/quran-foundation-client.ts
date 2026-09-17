@@ -131,6 +131,7 @@ let chapterReciterRequestPromise: Promise<QuranFoundationChapterReciter[]> | nul
 const cachedSurahs = new Map<number, { value: QuranFoundationSurahContent; expiresAt: number }>();
 const cachedMadaniPages = new Map<number, { value: QuranFoundationMadaniPage; expiresAt: number }>();
 const cachedAudio = new Map<string, { value: string; expiresAt: number }>();
+const cachedWordAudio = new Map<string, { value: string; expiresAt: number }>();
 const cachedTimings = new Map<string, { value: QuranFoundationAyahTimings; expiresAt: number }>();
 const timingRequests = new Map<string, Promise<QuranFoundationAyahTimings>>();
 
@@ -314,6 +315,41 @@ export async function listQuranFoundationReciters(): Promise<QuranFoundationReci
     expiresAt: Date.now() + RECITATION_CATALOG_CACHE_MS,
   };
   return value;
+}
+
+function canonicalReciterName(name: string): string {
+  return normalizeIdentity(name.replace(/[\s–—-]*(?:مجو[ّ]?د|mujawwad)$/iu, ""));
+}
+
+function canonicalDisplayStyle(style: string | null): "Murattal" | "Mujawwad" | "Kids repeat" | null {
+  const normalized = normalizeStyle(style);
+  if (normalized === "murattal") return "Murattal";
+  if (normalized === "mujawwad") return "Mujawwad";
+  if (normalized === "kidsrepeat") return "Kids repeat";
+  return null;
+}
+
+/**
+ * Returns only semantically verified display choices. Provider records with no
+ * style are trusted for playback but are not useful duplicate picker options.
+ * "Muallim" is intentionally excluded because it does not prove child repeat.
+ */
+export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundationReciter[]> {
+  const catalog = await listQuranFoundationReciters();
+  const selected = new Map<string, QuranFoundationReciter>();
+  for (const reciter of catalog) {
+    const style = canonicalDisplayStyle(reciter.style);
+    if (!style || /تجريبي|experimental/i.test(reciter.name)) continue;
+    const normalized = { ...reciter, style };
+    const key = `${canonicalReciterName(reciter.name)}:${style}`;
+    const existing = selected.get(key);
+    if (!existing || (existing.id >= CHAPTER_PUBLIC_ID_BASE && reciter.id < CHAPTER_PUBLIC_ID_BASE)) {
+      selected.set(key, normalized);
+    }
+  }
+  return [...selected.values()].sort((left, right) =>
+    left.name.localeCompare(right.name, "ar")
+    || (left.style ?? "").localeCompare(right.style ?? "", "en"));
 }
 
 function normalizeIdentity(value: string): string {
@@ -709,6 +745,52 @@ export async function getQuranFoundationAudioUrl(
   return value;
 }
 
+export async function getQuranFoundationWordAudioUrl(
+  surahNumber: number,
+  ayahNumber: number,
+  wordPosition: number,
+): Promise<string> {
+  validateVerseNumbers(surahNumber, ayahNumber);
+  if (!Number.isInteger(wordPosition) || wordPosition < 1 || wordPosition > 200) {
+    throw new Error("Invalid Quran word position");
+  }
+  const verseKey = `${surahNumber}:${ayahNumber}`;
+  const cacheKey = `${verseKey}:${wordPosition}`;
+  const cached = cachedWordAudio.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const payload = await requestContentJson(
+    `verses/by_key/${verseKey}?words=true&word_fields=audio_url`,
+  );
+  const verse = payload && typeof payload === "object"
+    ? (payload as { verse?: unknown }).verse
+    : null;
+  if (!verse || typeof verse !== "object" || (verse as { verse_key?: unknown }).verse_key !== verseKey) {
+    throw new Error("Quran Foundation word audio verse is invalid");
+  }
+  const words = Array.isArray((verse as { words?: unknown }).words)
+    ? (verse as { words: unknown[] }).words
+    : [];
+  const word = words.find((item) =>
+    item
+    && typeof item === "object"
+    && (item as { position?: unknown }).position === wordPosition
+    && (item as { char_type_name?: unknown }).char_type_name === "word"
+  ) as Record<string, unknown> | undefined;
+  const rawPath = word?.audio_url;
+  const expectedPath = `wbw/${String(surahNumber).padStart(3, "0")}_${String(ayahNumber).padStart(3, "0")}_${String(wordPosition).padStart(3, "0")}.mp3`;
+  if (typeof rawPath !== "string" || rawPath !== expectedPath) {
+    throw new Error("Quran Foundation word audio is unavailable");
+  }
+  const url = new URL(rawPath, "https://audio.qurancdn.com/");
+  if (!TRUSTED_AUDIO_ORIGINS.has(url.origin)) {
+    throw new Error("Quran Foundation returned an untrusted word audio URL");
+  }
+  const value = url.toString();
+  cachedWordAudio.set(cacheKey, { value, expiresAt: Date.now() + AUDIO_CACHE_MS });
+  return value;
+}
+
 export async function getQuranFoundationAyahEducation(
   surahNumber: number,
   ayahNumber: number,
@@ -803,6 +885,7 @@ export function resetQuranFoundationClientForTests(): void {
   cachedSurahs.clear();
   cachedMadaniPages.clear();
   cachedAudio.clear();
+  cachedWordAudio.clear();
   cachedTimings.clear();
   timingRequests.clear();
   cachedEducation.clear();

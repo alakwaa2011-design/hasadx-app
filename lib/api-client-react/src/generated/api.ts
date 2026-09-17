@@ -6414,6 +6414,93 @@ export function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof getQuranA
 
 
 
+export const getGetQuranWordAudioUrl = (surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number,) => {
+
+
+
+
+  return `/api/quran/audio/word/${surahNumber}/${ayahNumber}/${wordPosition}`
+}
+
+/**
+ * @summary Redirect to the official Quran Foundation audio for one word
+ */
+export const getQuranWordAudio = async (surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getGetQuranWordAudioUrl(surahNumber,ayahNumber,wordPosition),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranWordAudioQueryKey = (surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number,) => {
+    return [
+    `/api/quran/audio/word/${surahNumber}/${ayahNumber}/${wordPosition}`
+    ] as const;
+    }
+
+
+export const getGetQuranWordAudioQueryOptions = <TData = Awaited<ReturnType<typeof getQuranWordAudio>>, TError = ErrorType<void>>(surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranWordAudio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranWordAudioQueryKey(surahNumber,ayahNumber,wordPosition);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranWordAudio>>> = ({ signal }) => getQuranWordAudio(surahNumber,ayahNumber,wordPosition, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: surahNumber !== null && surahNumber !== undefined && ayahNumber !== null && ayahNumber !== undefined && wordPosition !== null && wordPosition !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranWordAudio>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranWordAudioQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranWordAudio>>>
+export type GetQuranWordAudioQueryError = ErrorType<void>
+
+
+/**
+ * @summary Redirect to the official Quran Foundation audio for one word
+ */
+
+export function useGetQuranWordAudio<TData = Awaited<ReturnType<typeof getQuranWordAudio>>, TError = ErrorType<void>>(
+ surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranWordAudio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranWordAudioQueryOptions(surahNumber,ayahNumber,wordPosition,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetQuranAyahTimingsUrl = (recitationId: number,
     surahNumber: number,
     ayahNumber: number,) => {

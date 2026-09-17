@@ -76,6 +76,7 @@ import {
   GetQuranSurahContentParams,
   GetQuranSurahContentResponse,
   GetQuranAyahAudioParams,
+  GetQuranWordAudioParams,
   GetQuranAyahTimingsParams,
   GetQuranAyahTimingsResponse,
   ListQuranRecitersResponse,
@@ -99,12 +100,14 @@ import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage"
 import { calculateQuranJourney } from "../lib/quran-journey";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationWordAudioUrl,
   getQuranFoundationAyahTimings,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   getQuranFoundationAyahEducation,
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
+  listQuranFoundationDisplayReciters,
 } from "../lib/quran-foundation-client";
 
 const router: IRouter = Router();
@@ -294,7 +297,7 @@ router.get("/quran/surahs", async (req, res): Promise<void> => {
 router.get("/quran/reciters", async (req, res): Promise<void> => {
   try {
     const [reciters, preference] = await Promise.all([
-      listQuranFoundationReciters(),
+      listQuranFoundationDisplayReciters(),
       studentAccountIdOf(req) !== null
         ? db.select({ preferredRecitationId: studentAccountsTable.preferredQuranRecitationId })
           .from(studentAccountsTable)
@@ -395,6 +398,30 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
   } catch (error) {
     req.log.warn({ err: error, ...parsed.data }, "Official Quran audio unavailable");
     res.status(502).json({ error: "Official Quran audio is temporarily unavailable" });
+  }
+});
+
+router.get("/quran/audio/word/:surahNumber/:ayahNumber/:wordPosition", async (req, res): Promise<void> => {
+  const parsed = GetQuranWordAudioParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid verse or word position" });
+    return;
+  }
+  try {
+    const url = await getQuranFoundationWordAudioUrl(
+      parsed.data.surahNumber,
+      parsed.data.ayahNumber,
+      parsed.data.wordPosition,
+    );
+    res.setHeader("Cache-Control", "public, max-age=604800");
+    res.redirect(302, url);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("unavailable")) {
+      res.status(404).json({ error: "Official Quran word audio is unavailable" });
+      return;
+    }
+    req.log.warn({ err: error, ...parsed.data }, "Official Quran word audio unavailable");
+    res.status(502).json({ error: "Official Quran word audio is temporarily unavailable" });
   }
 });
 

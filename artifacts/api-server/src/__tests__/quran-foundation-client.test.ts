@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationWordAudioUrl,
   getQuranFoundationAyahTimings,
   getQuranFoundationAyahEducation,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
+  listQuranFoundationDisplayReciters,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
 import qcfPageOneFixture from "./fixtures/qcf-v2-page-1.json";
@@ -171,6 +173,87 @@ describe("Quran Foundation client", () => {
     expect(first.map((reciter) => reciter.id).sort()).toEqual([6, 7]);
     expect(second).toBe(first);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("shows only verified recitation styles and keeps child-repeat distinct from Muallim", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [
+          { id: 1, reciter_name: "عبد الباسط عبد الصمد", style: "Mujawwad" },
+          { id: 2, reciter_name: "عبد الباسط عبد الصمد", style: "Murattal" },
+          { id: 6, reciter_name: "محمود خليل الحصري", style: null },
+          { id: 8, reciter_name: "محمد صديق المنشاوي", style: "Mujawwad" },
+          { id: 9, reciter_name: "محمد صديق المنشاوي", style: "Murattal" },
+          { id: 12, reciter_name: "محمود خليل الحصري", style: "Muallim" },
+        ],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        reciters: [
+          { id: 1, reciter_name: "عبد الباسط عبد الصمد - مجود", style: "Mujawwad" },
+          { id: 6, reciter_name: "محمود خليل الحصري", style: "Murattal" },
+          { id: 168, reciter_name: "محمد صديق المنشاوي", style: "Kids repeat" },
+          { id: 176, reciter_name: "قارئ تجريبي", style: "Murattal" },
+        ],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const display = await listQuranFoundationDisplayReciters();
+
+    expect(display.map(({ id, style }) => ({ id, style }))).toEqual([
+      { id: 1, style: "Mujawwad" },
+      { id: 2, style: "Murattal" },
+      { id: 1_000_168, style: "Kids repeat" },
+      { id: 8, style: "Mujawwad" },
+      { id: 9, style: "Murattal" },
+      { id: 1_000_006, style: "Murattal" },
+    ]);
+    expect(display.some((item) => item.style === "Muallim")).toBe(false);
+  });
+
+  it("resolves only the exact official word-by-word audio path", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "6:3",
+          words: [
+            { position: 1, char_type_name: "word", audio_url: "wbw/006_003_001.mp3" },
+            { position: 2, char_type_name: "word", audio_url: "https://example.com/not-trusted.mp3" },
+          ],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationWordAudioUrl(6, 3, 1))
+      .resolves.toBe("https://audio.qurancdn.com/wbw/006_003_001.mp3");
+    await expect(getQuranFoundationWordAudioUrl(6, 3, 1))
+      .resolves.toBe("https://audio.qurancdn.com/wbw/006_003_001.mp3");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    resetQuranFoundationClientForTests();
+    const untrustedFetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "6:3",
+          words: [
+            { position: 2, char_type_name: "word", audio_url: "https://example.com/not-trusted.mp3" },
+          ],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", untrustedFetch);
+    await expect(getQuranFoundationWordAudioUrl(6, 3, 2))
+      .rejects.toThrow("unavailable");
   });
 
   it("rejects audio identifiers that are absent from the trusted recitation catalog", async () => {

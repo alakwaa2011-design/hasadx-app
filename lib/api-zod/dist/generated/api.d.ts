@@ -14034,6 +14034,26 @@ export declare const GetQuranAyahAudioParams: zodV3.ZodObject<{
 }>;
 export declare const GetQuranAyahAudioResponse: zodV3.ZodVoid;
 /**
+ * @summary Redirect to the official Quran Foundation audio for one word
+ */
+export declare const getQuranWordAudioPathSurahNumberMax = 114;
+export declare const getQuranWordAudioPathAyahNumberMax = 286;
+export declare const getQuranWordAudioPathWordPositionMax = 200;
+export declare const GetQuranWordAudioParams: zodV3.ZodObject<{
+    surahNumber: zodV3.ZodNumber;
+    ayahNumber: zodV3.ZodNumber;
+    wordPosition: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    surahNumber: number;
+    ayahNumber: number;
+    wordPosition: number;
+}, {
+    surahNumber: number;
+    ayahNumber: number;
+    wordPosition: number;
+}>;
+export declare const GetQuranWordAudioResponse: zodV3.ZodVoid;
+/**
  * @summary Get verified word timings for one ayah
  */
 export declare const getQuranAyahTimingsPathSurahNumberMax = 114;

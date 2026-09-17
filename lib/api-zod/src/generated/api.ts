@@ -4596,6 +4596,26 @@ export const GetQuranAyahAudioResponse = zod.void()
 
 
 /**
+ * @summary Redirect to the official Quran Foundation audio for one word
+ */
+export const getQuranWordAudioPathSurahNumberMax = 114;
+
+export const getQuranWordAudioPathAyahNumberMax = 286;
+
+export const getQuranWordAudioPathWordPositionMax = 200;
+
+
+
+export const GetQuranWordAudioParams = zod.object({
+  "surahNumber": zod.coerce.number().int().min(1).max(getQuranWordAudioPathSurahNumberMax),
+  "ayahNumber": zod.coerce.number().int().min(1).max(getQuranWordAudioPathAyahNumberMax),
+  "wordPosition": zod.coerce.number().int().min(1).max(getQuranWordAudioPathWordPositionMax)
+})
+
+export const GetQuranWordAudioResponse = zod.void()
+
+
+/**
  * @summary Get verified word timings for one ayah
  */
 

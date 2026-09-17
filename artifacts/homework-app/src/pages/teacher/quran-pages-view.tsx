@@ -28,6 +28,7 @@ import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { QuranBookmarkToggle } from "@/components/quran/quran-bookmark-toggle";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
+import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
 
 interface QComplexChapter {
   id: number;
@@ -133,6 +134,11 @@ export function QuranPagesView({
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
   const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { playWord, stopWordAudio } = useQuranWordAudio();
+
+  useEffect(() => {
+    stopWordAudio();
+  }, [activePage, stopWordAudio]);
 
   useEffect(() => {
     let mounted = true;
@@ -425,6 +431,10 @@ export function QuranPagesView({
 
                setSelectedVerseKey(verseKey);
                setEducationSelection(selection);
+              if (selection.wordPosition !== null) {
+                playWord(chapterId, verseNumber, selection.wordPosition);
+                return;
+              }
               if (isPlaying && playingVerseKey) {
                 // If a different surah is clicked while playing, we need to stop or update the playing track
                 // Since quran-audio-player only handles playing within one surah (via surahNumber prop),

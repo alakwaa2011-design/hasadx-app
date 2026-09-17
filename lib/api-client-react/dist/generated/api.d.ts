@@ -1850,6 +1850,29 @@ export declare function useGetQuranAyahAudio<TData = Awaited<ReturnType<typeof g
 }): UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
 };
+export declare const getGetQuranWordAudioUrl: (surahNumber: number, ayahNumber: number, wordPosition: number) => string;
+/**
+ * @summary Redirect to the official Quran Foundation audio for one word
+ */
+export declare const getQuranWordAudio: (surahNumber: number, ayahNumber: number, wordPosition: number, options?: Parameters<typeof customFetch>[1]) => Promise<unknown>;
+export declare const getGetQuranWordAudioQueryKey: (surahNumber: number, ayahNumber: number, wordPosition: number) => readonly [`/api/quran/audio/word/${number}/${number}/${number}`];
+export declare const getGetQuranWordAudioQueryOptions: <TData = Awaited<ReturnType<typeof getQuranWordAudio>>, TError = ErrorType<void>>(surahNumber: number, ayahNumber: number, wordPosition: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranWordAudio>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getQuranWordAudio>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetQuranWordAudioQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranWordAudio>>>;
+export type GetQuranWordAudioQueryError = ErrorType<void>;
+/**
+ * @summary Redirect to the official Quran Foundation audio for one word
+ */
+export declare function useGetQuranWordAudio<TData = Awaited<ReturnType<typeof getQuranWordAudio>>, TError = ErrorType<void>>(surahNumber: number, ayahNumber: number, wordPosition: number, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranWordAudio>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
 export declare const getGetQuranAyahTimingsUrl: (recitationId: number, surahNumber: number, ayahNumber: number) => string;
 /**
  * @summary Get verified word timings for one ayah

@@ -37,6 +37,7 @@ import {
 import { useQuranReaderState } from '@/components/quran/use-quran-reader-state';
 import { QuranBookmarkToggle } from '@/components/quran/quran-bookmark-toggle';
 import { useQuranMemoSession } from '@/components/quran/use-quran-memo-session';
+import { useQuranWordAudio } from '@/components/quran/use-quran-word-audio';
 
 export default function QuranReader() {
   const { lang } = useI18n();
@@ -259,6 +260,7 @@ export function QuranTextReaderView({
   );
   const selectedAyah = position.ayah;
   const [playingWord, setPlayingWord] = useState<number | null>(null);
+  const { activeWordKey, loadingWordKey, playWord, stopWordAudio } = useQuranWordAudio();
 
   const { 
     memoSession, setMemoSession, 
@@ -266,6 +268,10 @@ export function QuranTextReaderView({
     isAyahConcealed, toggleReveal, resetReveal,
     startSession, endSession
   } = useQuranMemoSession(surahNumber, selectedAyah, startAyah, endAyah, mode);
+
+  useEffect(() => {
+    stopWordAudio();
+  }, [surahNumber, stopWordAudio]);
 
   const { savePosition: saveMainPosition, toggleBookmark, bookmarksMap, isMutatingBookmark } = useQuranReaderState({
     enabled: !isStudentWard && !isIndependentPractice && mode === null,
@@ -485,12 +491,36 @@ export function QuranTextReaderView({
           {words.map((word, wordIndex) => {
              const wordPosition = wordIndex + 1;
              const isPlayingWord = isPlayingThis && playingWord === wordPosition;
+              const wordKey = `${surahNumber}:${ayah.index}:${wordPosition}`;
+              const isPreviewingWord = activeWordKey === wordKey;
+              const isLoadingWord = loadingWordKey === wordKey;
              return (
                <span 
                  key={wordIndex} 
+                  role={playable && !concealed ? "button" : undefined}
+                  tabIndex={playable && !concealed ? 0 : undefined}
+                  aria-label={playable && !concealed
+                    ? (lang === 'ar' ? `استمع إلى كلمة ${word}` : `Listen to ${word}`)
+                    : undefined}
+                  aria-busy={isLoadingWord || undefined}
+                  data-testid={`button-quran-word-${surahNumber}-${ayah.index}-${wordPosition}`}
+                  onClick={playable && !concealed ? (event) => {
+                    event.stopPropagation();
+                    playWord(surahNumber, ayah.index, wordPosition);
+                  } : undefined}
+                  onKeyDown={playable && !concealed ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      playWord(surahNumber, ayah.index, wordPosition);
+                    }
+                  } : undefined}
                  className={cn(
-                   "inline-block rounded px-0.5 transition-colors duration-200",
-                   isPlayingWord ? "text-emerald-800 bg-emerald-200/90 dark:text-emerald-200 dark:bg-emerald-800/80 ring-1 ring-emerald-500/50" : ""
+                    "inline-block rounded px-0.5 transition-colors duration-200",
+                    playable && !concealed ? "cursor-pointer hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" : "",
+                    isPlayingWord ? "text-emerald-800 bg-emerald-200/90 dark:text-emerald-200 dark:bg-emerald-800/80 ring-1 ring-emerald-500/50" : "",
+                    isPreviewingWord ? "bg-amber-200/90 text-amber-900 ring-1 ring-amber-500/60 dark:bg-amber-800/80 dark:text-amber-100" : "",
+                    isLoadingWord ? "animate-pulse" : "",
                  )}
                >
                  {word}{' '}
