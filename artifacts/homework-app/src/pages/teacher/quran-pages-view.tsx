@@ -710,18 +710,19 @@ export function QuranPagesView({
         <nav
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
-          className="mx-auto mt-6 flex w-full max-w-[1032px] items-center justify-between gap-3 border-t border-emerald-900/10 px-1 pt-5 dark:border-white/10"
+          className="mx-auto mt-3 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-3 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5"
           style={{ width: `${zoom}%` }}
         >
           <button
             type="button"
             onClick={() => goToSpread("previous")}
             disabled={!canGoToPreviousSpread}
-            className="group inline-flex min-h-12 items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-black text-emerald-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-md disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-800 dark:bg-card dark:text-emerald-100 dark:hover:bg-emerald-950/60 md:px-5"
+            className="group inline-flex min-h-10 items-center gap-1.5 rounded-full border border-emerald-900/15 bg-white/70 px-3 py-2 text-xs font-bold text-emerald-900 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-50 disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-700/60 dark:bg-card/70 dark:text-emerald-100 dark:hover:bg-emerald-950/60 md:min-h-12 md:gap-2 md:rounded-2xl md:px-5 md:py-2.5 md:text-sm md:font-black"
             aria-label={lang === "ar" ? "الصفحة السابقة" : "Previous page"}
           >
-            <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5 rtl:rotate-180 rtl:group-hover:translate-x-0.5" />
-            <span>{lang === "ar" ? "الصفحة السابقة" : "Previous page"}</span>
+            <ChevronLeft className="h-4 w-4 rtl:rotate-180 md:h-5 md:w-5" />
+            <span className="md:hidden">{lang === "ar" ? "السابق" : "Previous"}</span>
+            <span className="hidden md:inline">{lang === "ar" ? "الصفحة السابقة" : "Previous page"}</span>
           </button>
 
           <span className="hidden text-xs font-bold text-muted-foreground sm:block">
@@ -732,11 +733,12 @@ export function QuranPagesView({
             type="button"
             onClick={() => goToSpread("next")}
             disabled={!canGoToNextSpread}
-            className="group inline-flex min-h-12 items-center gap-2 rounded-2xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-md shadow-emerald-900/15 transition-all hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg disabled:pointer-events-none disabled:opacity-35 dark:bg-emerald-600 dark:hover:bg-emerald-500 md:px-5"
+            className="group inline-flex min-h-10 items-center gap-1.5 rounded-full border border-emerald-700/25 bg-emerald-700/10 px-3 py-2 text-xs font-bold text-emerald-900 shadow-sm transition-colors hover:border-emerald-500 hover:bg-emerald-100 disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:hover:bg-emerald-900/50 md:min-h-12 md:gap-2 md:rounded-2xl md:bg-emerald-700 md:px-5 md:py-2.5 md:text-sm md:font-black md:text-white md:shadow-md md:shadow-emerald-900/15 md:hover:bg-emerald-800 dark:md:bg-emerald-600 dark:md:hover:bg-emerald-500"
             aria-label={lang === "ar" ? "الصفحة التالية" : "Next page"}
           >
-            <span>{lang === "ar" ? "الصفحة التالية" : "Next page"}</span>
-            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" />
+            <span className="md:hidden">{lang === "ar" ? "التالي" : "Next"}</span>
+            <span className="hidden md:inline">{lang === "ar" ? "الصفحة التالية" : "Next page"}</span>
+            <ChevronRight className="h-4 w-4 rtl:rotate-180 md:h-5 md:w-5" />
           </button>
         </nav>
       </main>
