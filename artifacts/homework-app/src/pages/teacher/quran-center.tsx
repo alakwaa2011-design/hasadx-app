@@ -100,8 +100,11 @@ export default function QuranCenter() {
   ] as const;
 
   return (
-    <Layout>
-      <div className="flex flex-col md:flex-row h-[calc(100vh-3.5rem)] overflow-hidden bg-[#fcfaf8] dark:bg-background">
+    <Layout noHeader={activeTab === "mushaf"} hideFooter={activeTab === "mushaf"}>
+      <div className={cn(
+        "flex flex-col md:flex-row overflow-hidden bg-[#fcfaf8] dark:bg-background",
+        activeTab === "mushaf" ? "h-[100dvh]" : "h-[calc(100vh-3.5rem)]",
+      )}>
         {/* Sidebar */}
         <aside className="w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card flex md:flex-col shadow-sm z-10 shrink-0">
           <div className="p-4 md:p-6 flex items-center justify-between md:justify-start">

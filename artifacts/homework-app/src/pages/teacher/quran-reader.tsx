@@ -9,7 +9,7 @@ import {
   QuranSurahParsed,
 } from '@/lib/quran-parser';
 import { MADANI_MUSHAF_METADATA } from '@/data/quran/madani-mushaf-metadata';
-import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye, BookOpen } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, EyeOff, Eye, BookOpen, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { QuranPagesView } from './quran-pages-view';
@@ -244,6 +244,7 @@ export function QuranTextReaderView({
   const [surahs, setSurahs] = useState<QuranSurahParsed[] | null>(null);
   const [fontSize, setFontSize] = useState(28);
   const [isQuietMode, setIsQuietMode] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
 
   // Audio and Memorization State
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
@@ -558,7 +559,7 @@ export function QuranTextReaderView({
 
       {!isQuietMode && (
         <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 md:px-4 md:py-3">
             {!embedded && (
               <button
                 onClick={() => setLocation(isStudentWard || isStudentPractice ? '/student/dashboard' : '/teacher/quran-center?tab=mushaf')}
@@ -566,13 +567,18 @@ export function QuranTextReaderView({
               >
                 <ChevronLeft className="w-5 h-5 rtl:hidden" />
                 <ChevronRight className="w-5 h-5 ltr:hidden" />
-                {isStudentWard || isStudentPractice
-                  ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
-                  : (lang === 'ar' ? 'العودة إلى حصاد القرآن' : 'Back to Hasaad Quran')}
+                <span className="hidden md:inline">
+                  {isStudentWard || isStudentPractice
+                    ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
+                    : (lang === 'ar' ? 'العودة إلى حصاد القرآن' : 'Back to Hasaad Quran')}
+                </span>
               </button>
             )}
             {!isStudentWard && (
-              <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1">
+              <div className={cn(
+                "shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 md:flex",
+                mobileToolsOpen ? "flex" : "hidden",
+              )}>
                 <span
                   aria-current="page"
                   className="rounded-lg bg-white px-3 py-1.5 text-xs font-black text-emerald-800 shadow-sm dark:bg-card dark:text-emerald-200 md:text-sm"
@@ -597,8 +603,28 @@ export function QuranTextReaderView({
                 )}
               </div>
             )}
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
+              <span className="truncate text-sm font-black text-emerald-900 dark:text-emerald-100">
+                {lang === 'ar' ? `سورة ${surah.name}` : `Surah ${surah.name}`}
+              </span>
+              <span className="shrink-0 text-xs font-bold text-muted-foreground">
+                {lang === 'ar' ? `ص ${activeLocation.page}` : `p. ${activeLocation.page}`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileToolsOpen(open => !open)}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/70 bg-background text-foreground shadow-sm md:hidden"
+              aria-expanded={mobileToolsOpen}
+              aria-label={lang === 'ar' ? 'أدوات القراءة' : 'Reading tools'}
+            >
+              {mobileToolsOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
             
-            <div className="order-3 flex w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:w-auto md:flex-1">
+            <div className={cn(
+              "order-3 w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1",
+              mobileToolsOpen ? "flex" : "hidden",
+            )}>
               <select 
                 value={surahNumber} 
                 disabled={isStudentWard}
@@ -666,7 +692,10 @@ export function QuranTextReaderView({
               )}
             </div>
 
-            <div className="flex items-center gap-1 md:gap-2 text-muted-foreground">
+            <div className={cn(
+              "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
+              mobileToolsOpen ? "flex" : "hidden",
+            )}>
               {isIndependentPractice && (
                 <button
                   type="button"

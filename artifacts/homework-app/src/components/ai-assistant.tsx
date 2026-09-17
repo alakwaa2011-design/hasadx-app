@@ -676,7 +676,11 @@ export function GlobalAiAssistant() {
   // stay hidden even if a query like `?slide=2` is appended.
   const HIDDEN_SUFFIXES = ["/present", "/print"];
   const pathOnly = location.split("?")[0].split("#")[0];
+  const quranCenterMushaf = pathOnly === "/teacher/quran-center"
+    && (new URLSearchParams(window.location.search).get("tab") ?? "mushaf") === "mushaf";
   const hidden =
+    quranCenterMushaf ||
+    pathOnly.startsWith("/teacher/quran-reader/") ||
     HIDDEN_PREFIXES.some((p) => pathOnly === p || pathOnly.startsWith(p + "/")) ||
     HIDDEN_SUFFIXES.some((s) => pathOnly.endsWith(s));
 

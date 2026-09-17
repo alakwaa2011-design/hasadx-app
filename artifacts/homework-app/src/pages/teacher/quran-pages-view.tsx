@@ -7,6 +7,8 @@ import {
   EyeOff,
   ImageOff,
   Loader2,
+  Menu,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -113,6 +115,7 @@ export function QuranPagesView({
   const [loading, setLoading] = useState(true);
   const [activePage, setActivePage] = useState(FIRST_PAGE);
   const [quietMode, setQuietMode] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -483,7 +486,7 @@ export function QuranPagesView({
 
       {!quietMode && (
         <header className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-white/95 shadow-sm backdrop-blur-md dark:bg-card/95">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 md:px-4 md:py-3">
             {!embedded && (
               <button
                 type="button"
@@ -492,13 +495,39 @@ export function QuranPagesView({
               >
                 <ChevronLeft className="h-5 w-5 rtl:hidden" />
                 <ChevronRight className="h-5 w-5 ltr:hidden" />
-                {backLabel
-                  ? (lang === "ar" ? backLabel.ar : backLabel.en)
-                  : (lang === "ar" ? "العودة إلى حصاد القرآن" : "Back to Hasaad Quran")}
+                <span className="hidden md:inline">
+                  {backLabel
+                    ? (lang === "ar" ? backLabel.ar : backLabel.en)
+                    : (lang === "ar" ? "العودة إلى حصاد القرآن" : "Back to Hasaad Quran")}
+                </span>
               </button>
             )}
 
-              <div className="order-3 flex w-full flex-wrap items-center justify-center gap-2 md:order-none md:w-auto md:flex-1">
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
+              <span className="truncate text-sm font-black text-emerald-900 dark:text-emerald-100">
+                {chapters.find((chapter) => chapter.id === activeChapterId)?.name
+                  ? plainArabicSurahName(chapters.find((chapter) => chapter.id === activeChapterId)!.name)
+                  : (lang === "ar" ? "المصحف" : "Mushaf")}
+              </span>
+              <span className="shrink-0 text-xs font-bold text-muted-foreground">
+                {lang === "ar" ? `ص ${activePage}` : `p. ${activePage}`}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileToolsOpen((open) => !open)}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/70 bg-background text-foreground shadow-sm md:hidden"
+              aria-expanded={mobileToolsOpen}
+              aria-label={lang === "ar" ? "أدوات المصحف" : "Mushaf tools"}
+            >
+              {mobileToolsOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+
+              <div className={cn(
+                "order-3 w-full flex-wrap items-center justify-center gap-2 md:order-none md:flex md:w-auto md:flex-1",
+                mobileToolsOpen ? "flex" : "hidden",
+              )}>
                 {isIndependentPractice && (
                   <button
                     type="button"
@@ -597,7 +626,10 @@ export function QuranPagesView({
               )}
             </div>
 
-            <div className="flex items-center gap-1 text-muted-foreground md:gap-2">
+            <div className={cn(
+              "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
+              mobileToolsOpen ? "flex" : "hidden",
+            )}>
               <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
               <button
                 type="button"

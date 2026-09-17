@@ -201,9 +201,10 @@ function useStudentSession() {
 interface LayoutProps {
   children: ReactNode;
   noHeader?: boolean;
+  hideFooter?: boolean;
 }
 
-export function Layout({ children, noHeader }: LayoutProps) {
+export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { t, lang, setLang, dir } = useI18n();
@@ -918,7 +919,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
 
       <AuthSideRail />
 
-      <footer className="border-t border-border/40 bg-muted/30 mt-auto">
+      {!hideFooter && <footer className="border-t border-border/40 bg-muted/30 mt-auto">
         <div className="container mx-auto px-4 py-5 sm:py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
 
@@ -958,7 +959,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
             </p>
           </div>
         </div>
-      </footer>
+      </footer>}
       {/* Hasaad Guide is now mounted globally in App.tsx (<GlobalAiAssistant />)
           so it appears on every teacher/organizer page, including those that
           don't use this Layout (mobile flows hit those a lot). */}
