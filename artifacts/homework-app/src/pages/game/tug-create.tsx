@@ -7,6 +7,7 @@ import {
   Play, Clock, Swords, ArrowRight, Link2, Users, ListChecks, Monitor, Smartphone, CircleCheck,
   Check, X, Loader2, FileText, BookOpen,
   GraduationCap, Trash2, Search, Gift, Snowflake,
+  Timer, Copy
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
@@ -14,7 +15,7 @@ import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
-import { saveGameActivity } from "@/lib/saved-game-activities";
+import { saveGameActivity, createSavedGamePlayLink, savedGamePlayUrl } from "@/lib/saved-game-activities";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 
@@ -71,12 +72,15 @@ export default function TugCreate() {
   const [, setLocation] = useLocation();
 
   const [questions, setQuestions] = useState<TugQuestion[]>([]);
+  const [endMode, setEndMode] = useState<"questions" | "time">("questions");
+  const [matchDurationMinutes, setMatchDurationMinutes] = useState<number | "">(2);
   const [duration, setDuration] = useState(20);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [giftsEnabled, setGiftsEnabled] = useState(true);
   const [giftEveryCorrect, setGiftEveryCorrect] = useState<1 | 2 | 3>(3);
   const [freezeDuration, setFreezeDuration] = useState(5);
   const [creating, setCreating] = useState(false);
+  const [copyingLink, setCopyingLink] = useState(false);
   const [isShared, setIsShared] = useState(false);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
@@ -152,7 +156,16 @@ export default function TugCreate() {
     gameType: "tug",
     title: sourceTitle?.trim() || (ar ? "شد الحبل" : "Tug of War"),
     questions,
-    settings: { duration, autoAdvance, targetClass: targetClass || null, giftsEnabled, giftEveryCorrect, freezeDuration },
+    settings: {
+      duration,
+      autoAdvance,
+      targetClass: targetClass || null,
+      giftsEnabled,
+      giftEveryCorrect,
+      freezeDuration,
+      endMode,
+      matchDurationSeconds: endMode === "time" ? (Number(matchDurationMinutes) || 2) * 60 : undefined,
+    },
     source: "game-launch",
     isShared,
   });
@@ -174,6 +187,8 @@ export default function TugCreate() {
     socket.emit("tug:create", {
       questions, duration, autoAdvance, targetClass: targetClass || undefined,
       giftsEnabled, giftEveryCorrect, freezeDuration,
+      endMode,
+      matchDurationSeconds: endMode === "time" ? (Number(matchDurationMinutes) || 2) * 60 : undefined,
     },
       (res: { pin?: string; creatorToken?: string; error?: string }) => {
         setCreating(false);
@@ -200,12 +215,33 @@ export default function TugCreate() {
         freezeDuration,
         title: sourceTitle || undefined,
         savedActivityId: activity.id,
+        endMode,
+        matchDurationSeconds: endMode === "time" ? (Number(matchDurationMinutes) || 2) * 60 : undefined,
       }));
     } catch {
       toast.error(ar ? "تعذّر حفظ اللعبة تلقائيًا. حاول مرة أخرى." : "Could not auto-save the game. Please try again.");
       return;
     }
     setLocation("/game/tug/class");
+  };
+
+  const handleCopyLink = async () => {
+    if (questions.length < 2) {
+      toast.error(ar ? "لعبة شد الحبل تحتاج سؤالين على الأقل" : "Tug of War requires at least 2 questions");
+      return;
+    }
+    setCopyingLink(true);
+    try {
+      const activity = await persistActivity();
+      const token = await createSavedGamePlayLink(activity.id);
+      const link = savedGamePlayUrl(token);
+      await navigator.clipboard.writeText(link);
+      toast.success(ar ? "تم نسخ الرابط بنجاح! يمكن إرساله للطلاب الآن." : "Link copied! You can share it with students.");
+    } catch {
+      toast.error(ar ? "تعذّر إنشاء الرابط. حاول مرة أخرى." : "Could not create link. Please try again.");
+    } finally {
+      setCopyingLink(false);
+    }
   };
 
   // Bank
@@ -356,6 +392,12 @@ export default function TugCreate() {
                 setIsShared(savedActivity.isShared);
                 const settings = savedSettings(savedActivity.settings);
                 if (settings) {
+                  if (settings.endMode === "time" || settings.endMode === "questions") {
+                    setEndMode(settings.endMode);
+                  }
+                  if (typeof settings.matchDurationSeconds === "number") {
+                    setMatchDurationMinutes(Math.max(1, Math.round(settings.matchDurationSeconds / 60)));
+                  }
                   if ([10, 15, 20, 30].includes(settings.duration as number)) {
                     setDuration(settings.duration as number);
                   }
@@ -429,6 +471,76 @@ export default function TugCreate() {
               <h2 className="text-base font-black text-gray-800 mb-5">
                 {ar ? "إعدادات اللعبة" : "Game Settings"}
               </h2>
+
+              {/* End Mode row */}
+              <div className="mb-5 rounded-2xl border border-emerald-100/70 bg-emerald-50/30 p-4">
+                <p className="mb-3 text-sm font-bold text-gray-800">{ar ? "نهاية المنافسة" : "Match End Mode"}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setEndMode("questions")}
+                    className="flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-colors"
+                    style={{
+                      borderColor: endMode === "questions" ? "#0B4B35" : "transparent",
+                      background: endMode === "questions" ? "#ffffff" : "transparent",
+                      boxShadow: endMode === "questions" ? "0 2px 8px rgba(11,75,53,0.12)" : "none",
+                    }}
+                  >
+                    <ListChecks className="h-5 w-5" style={{ color: endMode === "questions" ? "#0B4B35" : "#9ca3af" }} />
+                    <span className="text-xs font-bold" style={{ color: endMode === "questions" ? "#0B4B35" : "#6b7280" }}>
+                      {ar ? "انتهاء الأسئلة" : "Questions Finish"}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setEndMode("time")}
+                    className="flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-colors"
+                    style={{
+                      borderColor: endMode === "time" ? "#0B4B35" : "transparent",
+                      background: endMode === "time" ? "#ffffff" : "transparent",
+                      boxShadow: endMode === "time" ? "0 2px 8px rgba(11,75,53,0.12)" : "none",
+                    }}
+                  >
+                    <Timer className="h-5 w-5" style={{ color: endMode === "time" ? "#0B4B35" : "#9ca3af" }} />
+                    <span className="text-xs font-bold" style={{ color: endMode === "time" ? "#0B4B35" : "#6b7280" }}>
+                      {ar ? "وقت محدد" : "Time Limit"}
+                    </span>
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {endMode === "time" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-3 flex items-center justify-between border-t border-emerald-100/60 pt-3">
+                        <span className="text-xs font-bold text-gray-700">
+                          {ar ? "مدة اللعب (دقائق):" : "Match duration (minutes):"}
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={60}
+                          value={matchDurationMinutes === "" ? "" : matchDurationMinutes}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "") {
+                              setMatchDurationMinutes(v as any);
+                            } else {
+                              setMatchDurationMinutes(Math.max(1, Math.min(60, Number(v))));
+                            }
+                          }}
+                          onBlur={() => {
+                            if (matchDurationMinutes === "") setMatchDurationMinutes(2);
+                          }}
+                          className="w-16 rounded-lg border-2 border-emerald-200 bg-white px-2 py-1 text-center text-sm font-black text-[#0B4B35] outline-none transition-colors focus:border-[#0B4B35]"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* Duration row */}
               <div className="flex items-center justify-between mb-5">
@@ -775,7 +887,7 @@ export default function TugCreate() {
               <button
                 type="button"
                 onClick={startClassMode}
-                disabled={creating}
+                disabled={creating || copyingLink}
                 className="flex min-h-[7.25rem] flex-col items-start justify-center gap-2 rounded-2xl bg-[#0B4B35] px-5 text-start text-white shadow-sm transition-colors hover:bg-[#083d2c] disabled:opacity-60"
               >
                 <span className="flex items-center gap-2 text-base font-black">
@@ -789,7 +901,7 @@ export default function TugCreate() {
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={creating}
+                disabled={creating || copyingLink}
                 className="flex min-h-[7.25rem] flex-col items-start justify-center gap-2 rounded-2xl border-2 border-[#0B4B35]/20 bg-white px-5 text-start text-[#0B4B35] transition-colors hover:bg-[#0B4B35]/5 disabled:opacity-60"
               >
                 <span className="flex items-center gap-2 text-base font-black">
@@ -799,10 +911,29 @@ export default function TugCreate() {
                 {!creating && (
                   <span className="text-xs font-medium text-slate-500">
                     {ar
-                      ? "شارك الرابط أو رمز الدخول أو QR لينضم المشاركون من أجهزتهم."
-                      : "Share the link, access code, or QR so players can join from their devices."}
+                      ? "شارك رمز الدخول لينضم المشاركون."
+                      : "Share the access code so players can join."}
                   </span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                disabled={creating || copyingLink}
+                className="sm:col-span-2 flex min-h-[5rem] flex-row items-center justify-between gap-4 rounded-2xl border-2 border-emerald-600/20 bg-emerald-50/50 px-5 py-4 text-start text-[#0B4B35] transition-colors hover:bg-emerald-50 disabled:opacity-60"
+              >
+                <div className="flex flex-col gap-1.5">
+                  <span className="flex items-center gap-2 text-base font-black">
+                    {copyingLink ? <Loader2 className="h-5 w-5 animate-spin" /> : <Copy className="h-5 w-5" />}
+                    {copyingLink ? (ar ? "جاري النسخ..." : "Copying...") : (ar ? "نسخ رابط للعب المباشر" : "Copy Direct Play Link")}
+                  </span>
+                  <span className="text-xs font-medium text-emerald-700/80">
+                    {ar
+                      ? "احفظ اللعبة وانسخ رابطاً يمكن للطلاب استخدامه للعب في أي وقت دون الحاجة لفتح العرض."
+                      : "Save the game and copy a link students can use anytime without launching a live session."}
+                  </span>
+                </div>
               </button>
             </div>
           </div>

@@ -252,3 +252,53 @@ describe("class mode — team mystery boxes", () => {
     expect(attempted).toBe(s);
   });
 });
+
+describe("class mode — timed matches", () => {
+  it("repeats each team's route cyclically instead of exhausting", () => {
+    let s = startPlaying(createClassState(makeQuestions(2), 20, {
+      rng: seededRng(), endMode: "time", matchDurationSeconds: 60,
+    }));
+    const firstIndex = s.teams.blue.qIndex;
+    const firstQuestion = currentQuestion(s, "blue")!;
+    s = classReducer(s, { type: "answer", team: "blue", index: firstQuestion.correct });
+    s = classReducer(s, { type: "tick" });
+    s = classReducer(s, { type: "tick" });
+    expect(s.status).toBe("playing");
+    expect(s.teams.blue.phase).toBe("question");
+    expect(s.teams.blue.qIndex).toBe((firstIndex + 1) % 2);
+    const secondQuestion = currentQuestion(s, "blue")!;
+    s = classReducer(s, { type: "answer", team: "blue", index: secondQuestion.correct });
+    s = classReducer(s, { type: "tick" });
+    s = classReducer(s, { type: "tick" });
+    expect(s.teams.blue.qIndex).toBe(firstIndex);
+    expect(s.teams.blue.phase).toBe("question");
+  });
+
+  it("uses one shared match timer and finishes both teams together", () => {
+    let s = startPlaying(createClassState(makeQuestions(2), 20, {
+      rng: seededRng(), endMode: "time", matchDurationSeconds: 10,
+    }));
+    expect(s.matchTimeLeft).toBe(10);
+    for (let i = 0; i < 10; i++) {
+      expect(s.status).toBe("playing");
+      s = classReducer(s, { type: "tick" });
+    }
+    expect(s.matchTimeLeft).toBe(0);
+    expect(s.status).toBe("finished");
+    expect(s.teams.blue.phase).not.toBe("exhausted");
+    expect(s.teams.red.phase).not.toBe("exhausted");
+    expect(s.winner).toBe("draw");
+  });
+
+  it("keeps question-count mode finite and unchanged", () => {
+    let s = startPlaying(createClassState(makeQuestions(1), 20, {
+      rng: seededRng(), endMode: "questions", matchDurationSeconds: 10,
+    }));
+    const q = currentQuestion(s, "blue")!;
+    s = classReducer(s, { type: "answer", team: "blue", index: q.correct });
+    s = classReducer(s, { type: "tick" });
+    s = classReducer(s, { type: "tick" });
+    expect(s.teams.blue.phase).toBe("exhausted");
+    expect(s.matchTimeLeft).toBe(10);
+  });
+});

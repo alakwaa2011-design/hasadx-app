@@ -38,6 +38,8 @@ export const TUG_CLASS_SETUP_KEY = "tug-class-setup";
 interface ClassSetup {
   questions: ClassQuestion[];
   duration: number;
+  endMode?: "questions" | "time";
+  matchDurationSeconds?: number;
   giftsEnabled?: boolean;
   giftEveryCorrect?: number;
   freezeDuration?: number;
@@ -56,6 +58,8 @@ function readSetup(): ClassSetup | null {
     return {
       questions: parsed.questions,
       duration: parsed.duration || 20,
+      endMode: parsed.endMode === "time" ? "time" : "questions",
+      matchDurationSeconds: Number.isFinite(parsed.matchDurationSeconds) ? parsed.matchDurationSeconds : undefined,
       giftsEnabled: parsed.giftsEnabled !== false,
       giftEveryCorrect: [1, 2, 3].includes(parsed.giftEveryCorrect ?? 0) ? parsed.giftEveryCorrect : 3,
       freezeDuration: Number.isFinite(parsed.freezeDuration) ? parsed.freezeDuration : 5,
@@ -788,6 +792,8 @@ function ClassGame({
       giftsEnabled: setup.giftsEnabled,
       giftEveryCorrect: setup.giftEveryCorrect,
       freezeDuration: setup.freezeDuration,
+      endMode: setup.endMode,
+      matchDurationSeconds: setup.matchDurationSeconds,
     }), { type: "start" }),
   );
   const [goFlash, setGoFlash] = useState(false);

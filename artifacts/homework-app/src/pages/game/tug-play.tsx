@@ -55,6 +55,8 @@ interface GameEndData {
   winner: "blue" | "red" | "draw";
   ropePosition: number;
   players: PlayerInfo[];
+  endMode?: "questions" | "time";
+  matchDurationSeconds?: number;
 }
 
 interface TugTeamGiftSnapshot {
@@ -424,6 +426,8 @@ export default function TugPlay() {
   const [roundData, setRoundData] = useState<RoundEndData | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndData | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [matchTimeLeft, setMatchTimeLeft] = useState<number | null>(null);
+  const [matchEndMode, setMatchEndMode] = useState<"questions" | "time">("questions");
   const [error, setError] = useState<string | null>(null);
   const [startingGame, setStartingGame] = useState(false);
   const [countdownNum, setCountdownNum] = useState<number | "GO!" | null>(null);
@@ -457,6 +461,7 @@ export default function TugPlay() {
   const [clockNow, setClockNow] = useState(Date.now());
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const matchTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const beatRef = useRef(0);
   const soundRef = useRef<TugSoundEngine | null>(null);
 
@@ -516,6 +521,20 @@ export default function TugPlay() {
       });
     }, 1000);
   }, [stopTimer, getSound]);
+
+  const startMatchTimer = useCallback((deadline: number) => {
+    if (matchTimerRef.current) clearInterval(matchTimerRef.current);
+    setMatchEndMode("time");
+    const update = () => setMatchTimeLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    update();
+    matchTimerRef.current = setInterval(update, 250);
+  }, []);
+  const stopMatchTimer = useCallback(() => {
+    if (matchTimerRef.current) {
+      clearInterval(matchTimerRef.current);
+      matchTimerRef.current = null;
+    }
+  }, []);
 
   const stopAutoAdvance = useCallback(() => {
     if (autoAdvanceRef.current) { clearInterval(autoAdvanceRef.current); autoAdvanceRef.current = null; }
@@ -686,7 +705,9 @@ export default function TugPlay() {
       setCheerMsg(null);
       setShowBoost(false);
       setPhase("question");
-      startTimer(data.duration);
+      const timed = data as QuestionData & { endMode?: "questions" | "time"; matchDeadline?: number };
+      if (timed.endMode === "time" && timed.matchDeadline) startMatchTimer(timed.matchDeadline);
+      else startTimer(data.duration);
       getSound().startBackground();
       getSound().playTugPull();
     });
@@ -723,6 +744,7 @@ export default function TugPlay() {
 
     socket.on("tug:game-end", (data: GameEndData) => {
       stopTimer();
+      stopMatchTimer();
       setGameEnd(data);
       setRopePos(data.ropePosition);
       setPlayers(data.players);
@@ -746,13 +768,15 @@ export default function TugPlay() {
       setIsPaused(true);
       setPhase("paused");
       stopTimer();
+      stopMatchTimer();
       getSound().stopBackground();
     });
 
-    socket.on("tug:resumed", (data: { timeRemaining: number }) => {
+    socket.on("tug:resumed", (data: { timeRemaining: number; matchDeadline?: number }) => {
       setIsPaused(false);
       setPhase("question");
-      startTimer(data.timeRemaining);
+      if (data.matchDeadline) startMatchTimer(data.matchDeadline);
+      else startTimer(data.timeRemaining);
       getSound().startBackground();
     });
 
@@ -800,7 +824,7 @@ export default function TugPlay() {
       stopTimer();
       stopAutoAdvance();
     };
-  }, [pin, playerName, playerAvatar, isCreator, startTimer, stopTimer, getSound, startAutoAdvance, stopAutoAdvance, lang]);
+  }, [pin, playerName, playerAvatar, isCreator, startTimer, startMatchTimer, stopMatchTimer, stopTimer, getSound, startAutoAdvance, stopAutoAdvance, lang]);
 
   useEffect(() => () => { soundRef.current?.destroy(); soundRef.current = null; }, []);
 
@@ -1367,7 +1391,13 @@ export default function TugPlay() {
                         </motion.button>
                       )}
                     </div>
-                    {phase !== "round-end" && <TimerRing timeLeft={timeLeft} total={question.duration} isUrgent={isUrgent} />}
+                    {phase !== "round-end" && (
+                      matchTimeLeft !== null && matchEndMode === "time"
+                        ? <div className={`rounded-full border-2 px-3 py-1 text-sm font-black tabular-nums ${matchTimeLeft <= 10 ? "border-red-400 bg-red-500/25 text-red-200" : "border-amber-300/60 bg-black/30 text-amber-200"}`}>
+                            ⏱ {matchTimeLeft}s
+                          </div>
+                        : <TimerRing timeLeft={timeLeft} total={question.duration} isUrgent={isUrgent} />
+                    )}
                     {phase === "round-end" && roundData && (
                       <div className="flex items-center gap-3 text-sm lg:text-base font-black">
                         <span className="text-blue-600 dark:text-blue-300 bg-blue-500/20 px-3 py-1 rounded-lg">{roundData.blueScore.toFixed(0)}</span>

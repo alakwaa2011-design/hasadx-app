@@ -53,6 +53,7 @@ interface TugGame {
   state: "lobby" | "countdown" | "question" | "round-end" | "finished" | "paused";
   stateBeforePause?: "countdown" | "question";
   pausedTimeRemaining?: number;
+  pausedMatchTimeRemaining?: number;
   players: Record<string, TugPlayer>;
   pendingPlayers: Record<string, PendingPlayer>;
   ropePosition: number;
@@ -67,6 +68,10 @@ interface TugGame {
   giftsEnabled: boolean;
   giftEveryCorrect: number;
   freezeDuration: number;
+  endMode: "questions" | "time";
+  matchDurationSeconds: number;
+  matchDeadline?: number;
+  matchTimer?: ReturnType<typeof setTimeout>;
   teamGifts: Record<TugTeam, TugGiftState>;
   pausedAt?: number;
 }
@@ -153,6 +158,7 @@ function cleanupGame(pin: string) {
   const game = tugGames.get(pin);
   if (game?.questionTimer) clearTimeout(game.questionTimer);
   if (game?.autoAdvanceTimer) clearTimeout(game.autoAdvanceTimer);
+  if (game?.matchTimer) clearTimeout(game.matchTimer);
   tugGames.delete(pin);
 }
 
@@ -193,7 +199,12 @@ function advanceToNext(tugNs: ReturnType<Server["of"]>, game: TugGame) {
   if (game.state !== "round-end") return;
   game.currentQuestionIndex += 1;
 
-  if (game.currentQuestionIndex >= game.questions.length) {
+  if (game.endMode === "time") {
+    if ((game.matchDeadline ?? 0) <= Date.now()) return endMatch(tugNs, game);
+    // The common increment above already advanced one question; wrap only.
+    game.currentQuestionIndex %= game.questions.length;
+    broadcastQuestion(tugNs, game);
+  } else if (game.currentQuestionIndex >= game.questions.length) {
     let winner: "blue" | "red" | "draw";
     if (game.ropePosition < 45) winner = "blue";
     else if (game.ropePosition > 55) winner = "red";
@@ -214,7 +225,33 @@ function advanceToNext(tugNs: ReturnType<Server["of"]>, game: TugGame) {
   }
 }
 
+function endMatch(tugNs: ReturnType<Server["of"]>, game: TugGame) {
+  if (game.state === "finished") return;
+  if (game.questionTimer) clearTimeout(game.questionTimer);
+  if (game.autoAdvanceTimer) clearTimeout(game.autoAdvanceTimer);
+  if (game.matchTimer) clearTimeout(game.matchTimer);
+  const winner: "blue" | "red" | "draw" =
+    game.ropePosition < 45 ? "blue" : game.ropePosition > 55 ? "red" : "draw";
+  game.winner = winner;
+  game.state = "finished";
+  tugNs.to(`tug:${game.pin}`).emit("tug:game-end", {
+    winner, ropePosition: game.ropePosition, players: getPlayerList(game),
+    endMode: game.endMode, matchDurationSeconds: game.matchDurationSeconds,
+  });
+  setTimeout(() => cleanupGame(game.pin), 30 * 60 * 1000);
+}
+
+function scheduleMatchDeadline(tugNs: ReturnType<Server["of"]>, game: TugGame) {
+  if (game.matchTimer) clearTimeout(game.matchTimer);
+  if (game.endMode !== "time" || !game.matchDeadline) return;
+  game.matchTimer = setTimeout(() => endMatch(tugNs, game), Math.max(0, game.matchDeadline - Date.now()) + 10);
+}
+
 function broadcastQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame) {
+  if (game.endMode === "time" && (game.matchDeadline ?? 0) <= Date.now()) {
+    endMatch(tugNs, game);
+    return;
+  }
   const q = game.questions[game.currentQuestionIndex];
   if (!q) return;
 
@@ -242,6 +279,10 @@ function broadcastQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame) {
 }
 
 function startQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame, q: TugQuestion, power: boolean) {
+  if (game.endMode === "time" && !game.matchDeadline) {
+    game.matchDeadline = Date.now() + game.matchDurationSeconds * 1000;
+    scheduleMatchDeadline(tugNs, game);
+  }
   game.state = "question";
   game.roundAnswers = {};
   game.questionStartTime = Date.now();
@@ -260,6 +301,9 @@ function startQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame, q: TugQue
     duration: q.duration,
     isPower: power,
     imageUrl: q.imageUrl || null,
+    endMode: game.endMode,
+    matchDeadline: game.matchDeadline,
+    matchRemainingSecs: game.endMode === "time" ? Math.max(0, Math.ceil(((game.matchDeadline ?? Date.now()) - Date.now()) / 1000)) : undefined,
   });
 
   scheduleBotAnswers(tugNs, game);
@@ -400,7 +444,7 @@ export function setupTugSocket(io: Server) {
 
     socket.on(
       "tug:create",
-      (data: { questions: TugQuestion[]; duration?: number; autoAdvance?: boolean; targetClass?: string; giftsEnabled?: boolean; giftEveryCorrect?: number; freezeDuration?: number }, cb: (r: object) => void) => {
+      (data: { questions: TugQuestion[]; duration?: number; endMode?: "questions" | "time"; matchDurationSeconds?: number; autoAdvance?: boolean; targetClass?: string; giftsEnabled?: boolean; giftEveryCorrect?: number; freezeDuration?: number }, cb: (r: object) => void) => {
         try {
           if (!allowTugCreate(socket.id))
             return cb({ error: "محاولات إنشاء كثيرة جداً. الرجاء الانتظار دقيقة." });
@@ -414,6 +458,8 @@ export function setupTugSocket(io: Server) {
 
           const pin = generatePin();
           const duration = Math.max(5, Math.min(60, data.duration ?? 20));
+          const endMode = data.endMode === "time" ? "time" : "questions";
+          const matchDurationSeconds = Math.max(10, Math.min(3600, Math.floor(data.matchDurationSeconds ?? 120)));
           const creatorToken = randomBytes(16).toString("hex");
           const giftEveryCorrect = Number.isInteger(data.giftEveryCorrect) && data.giftEveryCorrect! >= 1 && data.giftEveryCorrect! <= 3 ? data.giftEveryCorrect! : 3;
           const freezeDuration = Number.isInteger(data.freezeDuration) && data.freezeDuration! >= 3 && data.freezeDuration! <= 10 ? data.freezeDuration! : 5;
@@ -443,6 +489,8 @@ export function setupTugSocket(io: Server) {
             giftsEnabled: typeof data.giftsEnabled === "boolean" ? data.giftsEnabled : true,
             giftEveryCorrect,
             freezeDuration,
+            endMode,
+            matchDurationSeconds,
             teamGifts: {
               blue: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },
               red: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },
@@ -455,7 +503,7 @@ export function setupTugSocket(io: Server) {
           setTimeout(() => cleanupGame(pin), 3 * 60 * 60 * 1000);
 
           logger.info({ pin }, "Tug game created");
-          cb({ pin, creatorToken, gifts: giftState(game) });
+          cb({ pin, creatorToken, gifts: giftState(game), endMode, matchDurationSeconds });
         } catch (err) {
           logger.error(err, "tug:create error");
           cb({ error: "حدث خطأ" });
@@ -491,6 +539,8 @@ export function setupTugSocket(io: Server) {
             options: q.options,
             duration: q.duration,
             remainingSecs: game.state === "paused" ? (game.pausedTimeRemaining ?? q.duration) : remainingSecs,
+            endMode: game.endMode,
+            matchDeadline: game.matchDeadline,
             isPower: isPowerQuestion(game.currentQuestionIndex),
           } : null,
           roundSummary: game.state === "round-end" && q ? (() => {
@@ -575,6 +625,8 @@ export function setupTugSocket(io: Server) {
               duration: q.duration,
               isPower: isPowerQuestion(game.currentQuestionIndex),
               remainingSecs,
+              endMode: game.endMode,
+              matchDeadline: game.matchDeadline,
             } : undefined,
             roundSummary: game.state === "round-end" && q ? {
               correctIndex: q.correct,
@@ -733,6 +785,10 @@ export function setupTugSocket(io: Server) {
            const gifts = game.teamGifts[player.team];
            if (Date.now() < gifts.frozenUntil) return cb({ error: "فريقك متجمد حالياً." });
            if (Date.now() > (gifts.deadline ?? 0)) return cb({ error: "انتهى وقت فريقك." });
+           if (game.endMode === "time" && Date.now() >= (game.matchDeadline ?? 0)) {
+             endMatch(tugNs, game);
+             return cb({ error: "انتهى وقت المباراة." });
+           }
 
           const q = game.questions[game.currentQuestionIndex];
           const timeMs = Date.now() - (game.questionStartTime ?? Date.now());
@@ -838,6 +894,13 @@ export function setupTugSocket(io: Server) {
         if (game.state !== "question" && game.state !== "countdown") return cb({ error: "لا يمكن الإيقاف الآن." });
 
         if (game.questionTimer) clearTimeout(game.questionTimer);
+        if (game.matchTimer) {
+          clearTimeout(game.matchTimer);
+          game.matchTimer = undefined;
+        }
+        game.pausedMatchTimeRemaining = game.matchDeadline
+          ? Math.max(0, game.matchDeadline - Date.now())
+          : undefined;
         const elapsed = game.questionStartTime ? Date.now() - game.questionStartTime : 0;
         const q = game.questions[game.currentQuestionIndex];
         game.pausedTimeRemaining = Math.max(0, q.duration * 1000 - elapsed);
@@ -848,6 +911,7 @@ export function setupTugSocket(io: Server) {
         tugNs.to(`tug:${game.pin}`).emit("tug:paused", {
           pausedBy: "teacher",
           timeRemaining: game.pausedTimeRemaining,
+          matchTimeRemaining: game.pausedMatchTimeRemaining,
         });
 
         cb({ success: true });
@@ -866,6 +930,11 @@ export function setupTugSocket(io: Server) {
 
         const remaining = game.pausedTimeRemaining ?? 0;
         const pausedFor = game.pausedAt ? Date.now() - game.pausedAt : 0;
+        const resumedMatchTimeRemaining = game.pausedMatchTimeRemaining;
+        if (game.pausedMatchTimeRemaining !== undefined) {
+          game.matchDeadline = Date.now() + game.pausedMatchTimeRemaining;
+          scheduleMatchDeadline(tugNs, game);
+        }
         for (const team of ["blue", "red"] as TugTeam[]) {
           if (game.teamGifts[team].deadline) game.teamGifts[team].deadline! += pausedFor;
           if (game.teamGifts[team].frozenUntil) game.teamGifts[team].frozenUntil += pausedFor;
@@ -875,6 +944,7 @@ export function setupTugSocket(io: Server) {
           game.state = "countdown";
           game.stateBeforePause = undefined;
           game.pausedTimeRemaining = undefined;
+          game.pausedMatchTimeRemaining = undefined;
           game.pausedAt = undefined;
           broadcastQuestion(tugNs, game);
         } else {
@@ -886,7 +956,10 @@ export function setupTugSocket(io: Server) {
 
           tugNs.to(`tug:${game.pin}`).emit("tug:resumed", {
             timeRemaining: Math.ceil(remaining / 1000),
+            matchDeadline: game.matchDeadline,
+            matchTimeRemaining: resumedMatchTimeRemaining,
           });
+          game.pausedMatchTimeRemaining = undefined;
 
           scheduleRoundEnd(tugNs, game);
           emitGifts(tugNs, game);
@@ -906,6 +979,8 @@ export function setupTugSocket(io: Server) {
         if (game.creatorSocketId !== socket.id) return cb({ error: "فقط منشئ اللعبة." });
         if (game.state === "finished") return cb({ error: "اللعبة انتهت بالفعل." });
         if (game.questionTimer) clearTimeout(game.questionTimer);
+        if (game.matchTimer) clearTimeout(game.matchTimer);
+        game.matchTimer = undefined;
 
         let winner: "blue" | "red" | "draw";
         if (game.ropePosition < 45) winner = "blue";
@@ -936,7 +1011,9 @@ export function setupTugSocket(io: Server) {
 
         if (game.questionTimer) clearTimeout(game.questionTimer);
         if (game.autoAdvanceTimer) clearTimeout(game.autoAdvanceTimer);
+        if (game.matchTimer) clearTimeout(game.matchTimer);
         game.autoAdvanceTimer = undefined;
+        game.matchTimer = undefined;
 
         game.currentQuestionIndex = 0;
         game.ropePosition = 50;
@@ -946,6 +1023,8 @@ export function setupTugSocket(io: Server) {
         game.questionStartTime = undefined;
         game.stateBeforePause = undefined;
         game.pausedTimeRemaining = undefined;
+        game.pausedMatchTimeRemaining = undefined;
+        game.matchDeadline = undefined;
         game.pausedAt = undefined;
         game.teamGifts = {
           blue: { mysteryBoxes: 0, correctSinceGift: 0, shieldActive: false, frozenUntil: 0, powerPullReady: false, timeBoostReady: false },

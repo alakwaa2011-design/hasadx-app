@@ -28,6 +28,8 @@ export interface MysteryPickState {
 
 /** Optional teacher-controlled class-mode settings. */
 export interface ClassGameOptions {
+  endMode?: "questions" | "time";
+  matchDurationSeconds?: number;
   giftsEnabled?: boolean;
   /** Correct answers required per box, constrained to 1..3. */
   giftEveryCorrect?: number;
@@ -91,6 +93,9 @@ export interface ClassState {
   /** The single shared question source — both teams play ALL of these. */
   questions: ClassQuestion[];
   duration: number; // seconds per question
+  endMode: "questions" | "time";
+  matchDurationSeconds: number;
+  matchTimeLeft: number;
   giftsEnabled: boolean;
   giftEveryCorrect: number;
   freezeDuration: number;
@@ -178,6 +183,9 @@ export function createClassState(
     rope: 50,
     questions,
     duration,
+    endMode: options.endMode === "time" ? "time" : "questions",
+    matchDurationSeconds: clampSetting(options.matchDurationSeconds, 120, 10, 3600),
+    matchTimeLeft: clampSetting(options.matchDurationSeconds, 120, 10, 3600),
     giftsEnabled: options.giftsEnabled ?? true,
     giftEveryCorrect: clampSetting(options.giftEveryCorrect, 3, 1, 3),
     freezeDuration: clampSetting(options.freezeDuration, 5, 3, 10),
@@ -209,8 +217,12 @@ export function calcTugPoints(timeLeft: number, duration: number, streak: number
 
 /** Rope-wall win beats everything; otherwise both teams must be exhausted. */
 function resolveEnd(state: ClassState): ClassState {
-  if (state.rope <= 0) return { ...state, status: "finished", winner: "blue", winKind: "rope" };
-  if (state.rope >= 100) return { ...state, status: "finished", winner: "red", winKind: "rope" };
+  if (state.endMode === "questions" && state.rope <= 0) return { ...state, status: "finished", winner: "blue", winKind: "rope" };
+  if (state.endMode === "questions" && state.rope >= 100) return { ...state, status: "finished", winner: "red", winKind: "rope" };
+  if (state.endMode === "time" && state.matchTimeLeft <= 0) {
+    const winner: TeamId | "draw" = state.rope < 50 ? "blue" : state.rope > 50 ? "red" : "draw";
+    return { ...state, status: "finished", winner, winKind: "exhausted" };
+  }
   const { blue, red } = state.teams;
   if (blue.phase === "exhausted" && red.phase === "exhausted") {
     const winner: TeamId | "draw" = state.rope < 50 ? "blue" : state.rope > 50 ? "red" : "draw";
@@ -224,11 +236,11 @@ function advanceTeam(state: ClassState, id: TeamId): ClassState {
   const t = state.teams[id];
   const nextIndex = t.qIndex + 1;
   const next: TeamState =
-    nextIndex >= t.questionOrder.length
+      state.endMode !== "time" && nextIndex >= t.questionOrder.length
       ? { ...t, qIndex: nextIndex, phase: "exhausted", selected: null, correct: null, feedbackLeft: 0 }
       : {
           ...t,
-          qIndex: nextIndex,
+          qIndex: state.endMode === "time" ? nextIndex % t.questionOrder.length : nextIndex,
           phase: "question",
           selected: null,
           correct: null,
@@ -283,7 +295,14 @@ export function classReducer(state: ClassState, action: ClassAction): ClassState
       if (state.status !== "playing") return state;
       // Each team ticks independently — order is irrelevant because tickTeam
       // only touches its own team slice (rope only moves on answers).
-      return tickTeam(tickTeam(state, "blue"), "red");
+      const ticked = tickTeam(tickTeam(state, "blue"), "red");
+      if (ticked.endMode === "time") {
+        return resolveEnd({
+          ...ticked,
+          matchTimeLeft: Math.max(0, ticked.matchTimeLeft - 1),
+        });
+      }
+      return ticked;
     }
 
     case "answer": {

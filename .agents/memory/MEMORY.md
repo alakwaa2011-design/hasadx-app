@@ -62,6 +62,7 @@
 - [AI cost operation attribution](ai-cost-operation-attribution.md) — rank all calls in an AI operation before date filtering, or one credit spend can be assigned to multiple report periods.
 - [Configured admin promotion](configured-admin-promotion.md) — admin allowlisted emails must be promoted during auth/session refresh, not only server startup.
 - [Tug mystery boxes](tug-mystery-boxes.md) — gifts are team-level; device mode is server-authoritative, while board mode uses the local reducer with equivalent effects.
+- [Tug timed matches](tug-timed-matches.md) — timed mode uses one shared match clock, repeats questions, and ends both teams together; question mode keeps its existing finish rules.
 - [Safe in-app back navigation](safe-in-app-back-navigation.md) — route-level back uses the internal app stack with deterministic fallbacks; state-level form back remains local.
 - [Question images across games](question-images-across-games.md) — preserve imageUrl through every question transform and resolve storage paths at render time; failed sources must explain themselves.
 - [Game question compatibility](game-question-compatibility.md) — button-based games accept MCQ with 2–4 nonempty options plus true/false; typed answers require a renderer with text input.
