@@ -61,7 +61,7 @@ export default function QuranReader() {
   const queryEndAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
   const queryMode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
-  const view = searchParams.get('view') || 'reader';
+  const view = searchParams.get('view') || (isStudentWard ? 'pages' : 'reader');
   const requestedGuided = searchParams.get('guided') === '1';
   const isDueReviewSession = searchParams.get('reviewDue') === '1';
 
@@ -186,28 +186,37 @@ export default function QuranReader() {
   const startAyah = studentWard?.startAyah ?? queryStartAyah;
   const endAyah = studentWard?.endAyah ?? queryEndAyah;
   const mode = studentWard?.mode ?? queryMode;
+  const studentWardId = studentWard?.id;
   
-  if (!isStudentWard && view === 'pages') {
+  if (view === 'pages') {
     return (
-      <QuranPagesView
-        initialSurah={surahNumber}
-        initialAyah={computedRequestedAyah ?? startAyah ?? 1}
-        initialPage={computedPageNumber ?? (isStudentPractice ? (independentPosition?.pageNumber ?? undefined) : undefined)}
-        onNavigate={(loc) => setLocation(`${readerBasePath}/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
-        isTaskAyah={(sId, aNum) => sId === surahNumber && startAyah !== null && endAyah !== null && aNum >= startAyah && aNum <= endAyah}
-        startAyah={startAyah}
-        endAyah={endAyah}
-        mode={mode}
-        readerBasePath={readerBasePath}
-        backHref={isStudentPractice ? "/student/dashboard" : undefined}
-        backLabel={isStudentPractice
-          ? {
-              ar: "العودة إلى لوحة الطالب",
-              en: "Back to student dashboard",
-            }
-          : undefined}
-        isIndependentPractice={isStudentPractice}
-      />
+      <>
+        <QuranPagesView
+          initialSurah={surahNumber}
+          initialAyah={computedRequestedAyah ?? startAyah ?? 1}
+          initialPage={computedPageNumber ?? (isStudentPractice ? (independentPosition?.pageNumber ?? undefined) : undefined)}
+          onNavigate={isStudentWard
+            ? () => {}
+            : (loc) => setLocation(`${readerBasePath}/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
+          isTaskAyah={(sId, aNum) => sId === surahNumber && startAyah !== null && endAyah !== null && aNum >= startAyah && aNum <= endAyah}
+          startAyah={startAyah}
+          endAyah={endAyah}
+          mode={mode}
+          readerBasePath={readerBasePath}
+          backHref={isStudentWard || isStudentPractice ? "/student/dashboard" : undefined}
+          backLabel={isStudentWard || isStudentPractice
+            ? {
+                ar: "العودة إلى لوحة الطالب",
+                en: "Back to student dashboard",
+              }
+            : undefined}
+          isIndependentPractice={isStudentPractice}
+          onSwitchToText={isStudentWard && studentWardId
+            ? () => setLocation(`/student/quran-wards/${studentWardId}?view=reader`)
+            : undefined}
+        />
+        {isStudentWard && studentWardId && <QuranStudentSubmissionPanel wardId={studentWardId} />}
+      </>
     );
   }
 

@@ -715,7 +715,7 @@ export function QuranPagesView({
                         ayah: verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah,
                         page: activePage,
                       };
-                      if (embedded && onSwitchToText) {
+                       if (onSwitchToText) {
                         onSwitchToText(location);
                       } else if (isIndependentPractice) {
                         setLocation(`${readerBasePath}/${activeChapterId}?view=reader`);
