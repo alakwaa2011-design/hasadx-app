@@ -16,7 +16,7 @@ import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 
 type Tab = "mushaf" | "circles" | "queue" | "bookmarks";
 
-export default function QuranCenter() {
+export default function QuranCenter({ embedded = false }: { embedded?: boolean }) {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
 
@@ -64,7 +64,9 @@ export default function QuranCenter() {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     setMobileSectionsOpen(false);
-    setLocation(`/teacher/quran-center?tab=${tab}`);
+    if (!embedded) {
+      setLocation(`/teacher/quran-center?tab=${tab}`);
+    }
   };
 
   const { data: teacher, isLoading: authLoading } = useGetCurrentTeacher({
@@ -80,14 +82,17 @@ export default function QuranCenter() {
   }, [authLoading, setLocation, teacher]);
 
   if (authLoading) {
-    return (
+    const loader = (
+      <div className="grid min-h-[60vh] place-items-center">
+        <Loader2
+          className="h-8 w-8 animate-spin text-emerald-700"
+          aria-label={lang === "ar" ? "جارٍ التحميل" : "Loading"}
+        />
+      </div>
+    );
+    return embedded ? loader : (
       <Layout>
-        <div className="grid min-h-[60vh] place-items-center">
-          <Loader2
-            className="h-8 w-8 animate-spin text-emerald-700"
-            aria-label={lang === "ar" ? "جارٍ التحميل" : "Loading"}
-          />
-        </div>
+        {loader}
       </Layout>
     );
   }
@@ -101,11 +106,14 @@ export default function QuranCenter() {
     { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> },
   ] as const;
 
-  return (
-    <Layout noHeader={activeTab === "mushaf"} hideFooter={activeTab === "mushaf"}>
+  const content = (
       <div className={cn(
         "flex flex-col md:flex-row overflow-hidden bg-[#fcfaf8] dark:bg-background",
-        activeTab === "mushaf" ? "h-[100dvh]" : "h-[calc(100vh-3.5rem)]",
+        embedded
+          ? "h-[calc(100dvh-4rem)]"
+          : activeTab === "mushaf"
+            ? "h-[100dvh]"
+            : "h-[calc(100vh-3.5rem)]",
       )}>
         {/* Sidebar */}
         <aside className={cn(
@@ -126,17 +134,19 @@ export default function QuranCenter() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setLocation("/teacher/dashboard")}
-              className="ms-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 md:h-8 md:w-8 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
-              aria-label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
-              title={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
-              data-testid="button-quran-center-back"
-            >
-              <ChevronLeft className="h-4 w-4 rtl:hidden" />
-              <ChevronRight className="h-4 w-4 ltr:hidden" />
-            </button>
+            {!embedded && (
+              <button
+                type="button"
+                onClick={() => setLocation("/teacher/dashboard")}
+                className="ms-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 md:h-8 md:w-8 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+                aria-label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+                title={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+                data-testid="button-quran-center-back"
+              >
+                <ChevronLeft className="h-4 w-4 rtl:hidden" />
+                <ChevronRight className="h-4 w-4 ltr:hidden" />
+              </button>
+            )}
           </div>
           
           <nav className="flex md:flex-col flex-1 px-2 md:px-4 space-x-2 md:space-x-0 rtl:space-x-reverse md:space-y-1 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 items-center md:items-stretch">
@@ -242,6 +252,13 @@ export default function QuranCenter() {
           </AnimatePresence>
         </main>
       </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Layout noHeader={activeTab === "mushaf"} hideFooter={activeTab === "mushaf"}>
+      {content}
     </Layout>
   );
 }

@@ -407,7 +407,9 @@ function Router() {
         <Route path="/teacher/tools/url-qr" component={UrlQrTool} />
         <Route path="/teacher/tools/timer" component={TimerTool} />
         <Route path="/teacher/quran-reader/:surahNumber" component={QuranReader} />
-        <Route path="/teacher/quran-center" component={QuranCenter} />
+        <Route path="/teacher/quran-center">
+          <QuranCenter />
+        </Route>
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
         {/* Legacy /teacher/shared → redirect to the new activities library

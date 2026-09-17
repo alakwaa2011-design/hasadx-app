@@ -103,6 +103,7 @@ import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
 import { PricingContent } from "@/pages/teacher/pricing";
+import QuranCenter from "@/pages/teacher/quran-center";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
 import { Card, Button } from "@/components/ui-elements";
@@ -310,6 +311,7 @@ type TabId =
   | "kids_board"
   | "students"
   | "rewards"
+  | "quran"
   | "parent_messages";
 
 interface SharedAssignment {
@@ -1009,6 +1011,9 @@ export default function TeacherDashboard() {
         {activeTab === "rewards" && (
           <RewardsPage embedded />
         )}
+        {activeTab === "quran" && (
+          <QuranCenter embedded />
+        )}
         {activeTab === "kids_board" && (
           <TeacherKidsBoard embedded onBack={() => setActiveTab("overview")} />
         )}
@@ -1226,10 +1231,10 @@ export default function TeacherDashboard() {
             })()}
 
             {(() => {
-              const active = location === "/teacher/quran-center" || location.startsWith("/teacher/quran-center/");
+              const active = activeTab === "quran";
               return (
                 <button
-                  onClick={() => setLocation("/teacher/quran-center")}
+                  onClick={() => setActiveTab("quran")}
                   aria-current={active ? "page" : undefined}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
                   style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
@@ -1292,8 +1297,10 @@ export default function TeacherDashboard() {
           {activeTab !== "overview" && (
             <div
               className={cn(
-                "px-6 xl:px-10 2xl:px-14",
-                activeTab === "library_homework" ||
+                activeTab === "quran" ? "p-0" : "px-6 xl:px-10 2xl:px-14",
+                activeTab === "quran"
+                  ? ""
+                  : activeTab === "library_homework" ||
                   activeTab === "assignments"
                   ? "py-4 pt-4"
                   : "py-8",
@@ -1301,13 +1308,14 @@ export default function TeacherDashboard() {
             >
               <div
                 className={cn(
+                  activeTab === "quran" && "hidden",
                   activeTab === "library_homework" ||
                     activeTab === "assignments"
                     ? "mb-3"
                     : "mb-6",
                 )}
               >
-                <GuestDraftImportBanner />
+                {activeTab !== "quran" && <GuestDraftImportBanner />}
               </div>
               {/* Tab heading — skipped when the tab renders its own hero (libraries + assignments). */}
               {activeTab !== "library_homework" &&
@@ -1317,6 +1325,7 @@ export default function TeacherDashboard() {
                 activeTab !== "stats" &&
                 activeTab !== "credits" &&
                 activeTab !== "rewards" &&
+                activeTab !== "quran" &&
                 activeTab !== "kids_board" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
@@ -1325,7 +1334,7 @@ export default function TeacherDashboard() {
               </div>
               )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
-          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "videos", "presentations", "parent_messages", "stats", "rewards", "kids_board"].includes(activeTab) && (
+          {!["credits", "tools", "competitive", "students", "shared", "library_homework", "videos", "presentations", "parent_messages", "stats", "rewards", "quran", "kids_board"].includes(activeTab) && (
           <div
             className={cn(
               "grid grid-cols-3 gap-3",
