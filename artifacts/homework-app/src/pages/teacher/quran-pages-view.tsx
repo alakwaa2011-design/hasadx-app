@@ -140,6 +140,7 @@ export function QuranPagesView({
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">("spread");
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
