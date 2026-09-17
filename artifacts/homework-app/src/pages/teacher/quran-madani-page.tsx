@@ -10,6 +10,7 @@ interface QuranMadaniPageRendererProps {
   fallbackImageUrl: string;
   onFallbackError?: () => void;
   selectedVerseKey?: string | null;
+  selectedVerseRange?: { surah: number; startAyah: number; endAyah: number } | null;
   selectedWordId?: number | null;
   playingVerseKey?: string | null;
   playingWordPosition?: number | null;
@@ -28,6 +29,7 @@ export function QuranMadaniPageRenderer({
   fallbackImageUrl,
   onFallbackError,
   selectedVerseKey,
+  selectedVerseRange,
   selectedWordId,
   playingVerseKey,
   playingWordPosition,
@@ -206,12 +208,15 @@ export function QuranMadaniPageRenderer({
               )}
             >
               {line.words.map((w, i) => {
+                const [wChapter, wVerse] = w.verseKey.split(':').map(Number);
                 const isSelected = selectedVerseKey && w.verseKey === selectedVerseKey;
+                const isInSelectedRange = selectedVerseRange
+                  && wChapter === selectedVerseRange.surah
+                  && wVerse >= Math.min(selectedVerseRange.startAyah, selectedVerseRange.endAyah)
+                  && wVerse <= Math.max(selectedVerseRange.startAyah, selectedVerseRange.endAyah);
                 const isSelectedWord = selectedWordId === w.id;
                 const isPlaying = playingVerseKey && w.verseKey === playingVerseKey;
                 const isPlayingWord = isPlaying && playingWordPosition === w.position;
-                
-                const [wChapter, wVerse] = w.verseKey.split(':').map(Number);
                 const concealed = isAyahConcealed?.(wChapter, wVerse) ?? false;
 
                 return (
@@ -223,7 +228,7 @@ export function QuranMadaniPageRenderer({
                         ? `${w.text}، الآية ${w.verseKey.split(":")[1]}`
                         : `${w.text}, ayah ${w.verseKey.split(":")[1]}`
                     }
-                    aria-pressed={Boolean(isSelected || isPlaying)}
+                    aria-pressed={Boolean(isSelected || isInSelectedRange || isPlaying)}
                     onClick={() => onVerseClick?.({
                       verseKey: w.verseKey,
                       wordId: w.type === "word" ? w.id : null,
@@ -243,6 +248,8 @@ export function QuranMadaniPageRenderer({
                         ? "text-emerald-700 drop-shadow-[0_0_0_rgba(22,101,52,0.8)] bg-emerald-100/50"
                         : isSelected
                         ? "text-amber-700 drop-shadow-[0_0_0_rgba(180,83,9,0.8)] bg-amber-100/40"
+                        : isInSelectedRange
+                        ? "text-amber-800 bg-amber-100/60"
                         : w.type === "end"
                         ? "text-[#1d4432] drop-shadow-[0_0_0_rgba(29,68,50,1)] hover:text-emerald-800 hover:bg-emerald-50/50"
                         : "text-black drop-shadow-[0_0_0_rgba(0,0,0,1)] hover:text-emerald-900 hover:bg-emerald-50/50",

@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   ImageOff,
+  ListPlus,
   Bookmark,
   Loader2,
   Menu,
@@ -162,6 +163,11 @@ export function QuranPagesView({
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
   const [copiedVerseKey, setCopiedVerseKey] = useState<string | null>(null);
+  const [copyRange, setCopyRange] = useState<{
+    surah: number;
+    startAyah: number;
+    endAyah: number;
+  } | null>(null);
   const { playWord, stopWordAudio } = useQuranWordAudio();
 
   useEffect(() => {
@@ -279,17 +285,58 @@ export function QuranPagesView({
   });
   const selectedAyahText = selectedSurahContent?.ayahs.find((ayah) => ayah.index === selectedAyah)?.text;
 
-  const copySelectedAyah = async () => {
-    if (!selectedAyahText || !selectedVerseKey) return;
+  const copySelection = async () => {
+    if (!selectedSurahContent || !selectedVerseKey) return;
+    const rangeStart = copyRange?.surah === selectedSurah
+      ? Math.min(copyRange.startAyah, copyRange.endAyah)
+      : selectedAyah;
+    const rangeEnd = copyRange?.surah === selectedSurah
+      ? Math.max(copyRange.startAyah, copyRange.endAyah)
+      : selectedAyah;
+    const ayahs = selectedSurahContent.ayahs.filter(
+      (ayah) => ayah.index >= rangeStart && ayah.index <= rangeEnd,
+    );
+    if (!ayahs.length) return;
+    const copiedKey = `${selectedSurah}:${rangeStart}-${rangeEnd}`;
+    const copiedText = ayahs.length === 1
+      ? ayahs[0].text
+      : ayahs
+          .map((ayah) => {
+            const ayahNumber = String(ayah.index).replace(
+              /\d/g,
+              (digit) => "٠١٢٣٤٥٦٧٨٩"[Number(digit)],
+            );
+            return `${ayah.text} ﴿${ayahNumber}﴾`;
+          })
+          .join("\n");
     try {
-      await navigator.clipboard.writeText(selectedAyahText);
-      setCopiedVerseKey(selectedVerseKey);
-      toast.success(lang === "ar" ? "تم نسخ الآية" : "Ayah copied");
-      window.setTimeout(() => setCopiedVerseKey((current) => current === selectedVerseKey ? null : current), 1800);
+      await navigator.clipboard.writeText(copiedText);
+      setCopiedVerseKey(copiedKey);
+      toast.success(lang === "ar"
+        ? (ayahs.length > 1 ? `تم نسخ ${ayahs.length} آيات` : "تم نسخ الآية")
+        : (ayahs.length > 1 ? `${ayahs.length} ayahs copied` : "Ayah copied"));
+      window.setTimeout(
+        () => setCopiedVerseKey((current) => current === copiedKey ? null : current),
+        1800,
+      );
     } catch {
-      toast.error(lang === "ar" ? "تعذر نسخ الآية" : "Could not copy ayah");
+      toast.error(lang === "ar" ? "تعذر نسخ الآيات" : "Could not copy ayahs");
     }
   };
+
+  const toggleMultiCopy = () => {
+    if (copyRange) {
+      setCopyRange(null);
+      return;
+    }
+    setCopyRange({ surah: selectedSurah, startAyah: selectedAyah, endAyah: selectedAyah });
+    toast.info(lang === "ar" ? "اضغط الآن على الآية الأخيرة" : "Now tap the last ayah");
+  };
+
+  const copyRangeStart = copyRange ? Math.min(copyRange.startAyah, copyRange.endAyah) : selectedAyah;
+  const copyRangeEnd = copyRange ? Math.max(copyRange.startAyah, copyRange.endAyah) : selectedAyah;
+  const copyCount = copyRangeEnd - copyRangeStart + 1;
+  const currentCopyKey = `${selectedSurah}:${copyRangeStart}-${copyRangeEnd}`;
 
   const {
     memoSession, setMemoSession,
@@ -478,6 +525,7 @@ export function QuranPagesView({
               setFailedPages((current) => new Set(current).add(page))
             }
             selectedVerseKey={selectedVerseKey}
+            selectedVerseRange={copyRange}
             selectedWordId={educationSelection?.wordId}
             playingVerseKey={playingVerseKey}
             playingWordPosition={playingWordPosition}
@@ -492,7 +540,16 @@ export function QuranPagesView({
                  return;
                }
 
+               if (copyRange && chapterId !== copyRange.surah) {
+                 toast.error(lang === "ar"
+                   ? "اختر الآية الأخيرة من السورة نفسها"
+                   : "Choose the last ayah from the same surah");
+                 return;
+               }
                setSelectedVerseKey(verseKey);
+               if (copyRange) {
+                 setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
+               }
                setEducationSelection(selection);
               if (selection.wordPosition !== null) {
                 playWord(chapterId, verseNumber, selection.wordPosition);
@@ -761,18 +818,36 @@ export function QuranPagesView({
                 <div className="mx-1 h-5 w-px bg-border/50" />
                 <button
                   type="button"
-                  onClick={() => void copySelectedAyah()}
+                  onClick={() => void copySelection()}
                   disabled={!selectedAyahText || isFetchingSelectedSurah}
                   data-testid="button-copy-selected-ayah"
                   className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
                   aria-label={lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`}
                 >
-                  {copiedVerseKey === selectedVerseKey
+                  {copiedVerseKey === currentCopyKey
                     ? <Check className="h-4 w-4" />
                     : <Copy className="h-4 w-4" />}
-                  <span>{copiedVerseKey === selectedVerseKey
+                  <span>{copiedVerseKey === currentCopyKey
                     ? (lang === "ar" ? "تم النسخ" : "Copied")
-                    : (lang === "ar" ? "نسخ الآية" : "Copy ayah")}</span>
+                    : copyRange
+                      ? (lang === "ar" ? `نسخ ${copyCount} آيات` : `Copy ${copyCount} ayahs`)
+                      : (lang === "ar" ? "نسخ الآية" : "Copy ayah")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleMultiCopy}
+                  data-testid="button-toggle-multi-copy"
+                  className={cn(
+                    "inline-flex min-h-8 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-colors",
+                    copyRange
+                      ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
+                  {copyRange
+                    ? (lang === "ar" ? "إلغاء التحديد" : "Cancel selection")
+                    : (lang === "ar" ? "تحديد عدة آيات" : "Select multiple")}
                 </button>
 
                 {!isIndependentPractice && mode === null && fallbackVerse && (
@@ -842,21 +917,38 @@ export function QuranPagesView({
       )}
 
       {!quietMode && selectedVerseKey && (
-        <button
-          type="button"
-          onClick={() => void copySelectedAyah()}
-          disabled={!selectedAyahText || isFetchingSelectedSurah}
-          data-testid="button-copy-selected-ayah-floating"
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-xl shadow-emerald-950/25 transition-colors hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-50 md:hidden rtl:translate-x-1/2"
-          aria-label={lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`}
-        >
-          {copiedVerseKey === selectedVerseKey
-            ? <Check className="h-4 w-4" />
-            : <Copy className="h-4 w-4" />}
-          {copiedVerseKey === selectedVerseKey
-            ? (lang === "ar" ? "تم نسخ الآية" : "Ayah copied")
-            : (lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`)}
-        </button>
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 flex -translate-x-1/2 items-center gap-2 md:hidden rtl:translate-x-1/2">
+          <button
+            type="button"
+            onClick={() => void copySelection()}
+            disabled={!selectedAyahText || isFetchingSelectedSurah}
+            data-testid="button-copy-selected-ayah-floating"
+            className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-xl shadow-emerald-950/25 transition-colors hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-50"
+          >
+            {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copiedVerseKey === currentCopyKey
+              ? (lang === "ar" ? "تم النسخ" : "Copied")
+              : copyRange
+                ? (lang === "ar" ? `نسخ ${copyCount} آيات` : `Copy ${copyCount} ayahs`)
+                : (lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`)}
+          </button>
+          <button
+            type="button"
+            onClick={toggleMultiCopy}
+            data-testid="button-toggle-multi-copy-floating"
+            className={cn(
+              "inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-2.5 text-xs font-black shadow-lg",
+              copyRange
+                ? "border-red-200 bg-white text-red-700"
+                : "border-emerald-200 bg-white text-emerald-800",
+            )}
+          >
+            {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
+            {copyRange
+              ? (lang === "ar" ? "إلغاء" : "Cancel")
+              : (lang === "ar" ? "عدة آيات" : "Multiple")}
+          </button>
+        </div>
       )}
 
       <main
