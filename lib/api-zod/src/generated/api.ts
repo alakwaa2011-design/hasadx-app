@@ -5997,3 +5997,85 @@ export const DeleteQuranBookmarkParams = zod.object({
 })
 
 export const DeleteQuranBookmarkResponse = zod.void()
+
+
+/**
+ * @summary Get the student's guided memorization items
+ */
+export const getMyQuranMemorizationResponseNextReviewDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetMyQuranMemorizationResponseItem = zod.object({
+  "id": zod.int(),
+  "surahNumber": zod.int(),
+  "ayahNumber": zod.int(),
+  "status": zod.enum(['needs_review', 'learning', 'memorized']),
+  "intervalDays": zod.int(),
+  "nextReviewDate": zod.string().regex(getMyQuranMemorizationResponseNextReviewDateRegExp),
+  "lastAssessedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetMyQuranMemorizationResponse = zod.array(GetMyQuranMemorizationResponseItem)
+
+
+/**
+ * @summary Assess one memorization verse
+ */
+export const assessMyQuranMemorizationBodyRequestIdMax = 200;
+
+
+
+export const AssessMyQuranMemorizationBody = zod.object({
+  "requestId": zod.string().min(1).max(assessMyQuranMemorizationBodyRequestIdMax),
+  "surahNumber": zod.int(),
+  "ayahNumber": zod.int(),
+  "passed": zod.boolean()
+})
+
+export const assessMyQuranMemorizationResponseNextReviewDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const AssessMyQuranMemorizationResponse = zod.object({
+  "id": zod.int(),
+  "surahNumber": zod.int(),
+  "ayahNumber": zod.int(),
+  "status": zod.enum(['needs_review', 'learning', 'memorized']),
+  "intervalDays": zod.int(),
+  "nextReviewDate": zod.string().regex(assessMyQuranMemorizationResponseNextReviewDateRegExp),
+  "lastAssessedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get memorization items due today
+ */
+export const getDueQuranMemorizationResponseNextReviewDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetDueQuranMemorizationResponseItem = zod.object({
+  "id": zod.int(),
+  "surahNumber": zod.int(),
+  "ayahNumber": zod.int(),
+  "status": zod.enum(['needs_review', 'learning', 'memorized']),
+  "intervalDays": zod.int(),
+  "nextReviewDate": zod.string().regex(getDueQuranMemorizationResponseNextReviewDateRegExp),
+  "lastAssessedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetDueQuranMemorizationResponse = zod.array(GetDueQuranMemorizationResponseItem)
+
+
+/**
+ * @summary Get guided memorization summary
+ */
+export const GetQuranMemorizationSummaryResponse = zod.object({
+  "total": zod.int(),
+  "needsReview": zod.int(),
+  "learning": zod.int(),
+  "memorized": zod.int(),
+  "due": zod.int()
+})

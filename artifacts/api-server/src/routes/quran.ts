@@ -15,6 +15,8 @@ import {
   quranIndependentSessionsTable,
   quranReaderPositionsTable,
   quranBookmarksTable,
+  quranGuidedMemorizationTable,
+  quranGuidedMemorizationAssessmentReceiptsTable,
   quranWardsTable,
   studentAccountsTable,
   studentsTable,
@@ -95,6 +97,11 @@ import {
   UpdateQuranReaderPositionBody,
   UpdateQuranReaderPositionResponse,
   AddQuranBookmarkBody,
+  GetMyQuranMemorizationResponse,
+  AssessMyQuranMemorizationBody,
+  AssessMyQuranMemorizationResponse,
+  GetDueQuranMemorizationResponse,
+  GetQuranMemorizationSummaryResponse,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
@@ -171,8 +178,38 @@ function validReaderVerse(surahNumber: number, ayahNumber: number, pageNumber: n
   return !!count && ayahNumber >= 1 && ayahNumber <= count && pageNumber >= 1 && pageNumber <= 604;
 }
 
+export const QURAN_CALENDAR_TIME_ZONE = "Asia/Kuwait";
+
+export function quranCalendarToday(now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: QURAN_CALENDAR_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return quranCalendarToday();
+}
+
+function addDays(dateString: string, days: number): string {
+  const value = new Date(`${dateString}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function studentOnly(req: TeacherRequest, res: { status: (code: number) => { json: (body: unknown) => void } }): number | null {
+  const accountId = studentAccountIdOf(req);
+  if (accountId === null) {
+    res.status(401).json({ error: "Student authentication required" });
+    return null;
+  }
+  if (teacherIdOf(req) !== null) {
+    res.status(403).json({ error: "Student account required" });
+    return null;
+  }
+  return accountId;
 }
 
 function wardValidation(input: { surahNumber: number; surahName: string; startAyah: number; endAyah: number }): string | null {
@@ -475,6 +512,110 @@ router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> =>
     req.log.warn({ err: error, pageNumber: parsed.data.pageNumber }, "Official Madani Mushaf page unavailable");
     res.status(503).json({ error: "Official Madani Mushaf page is temporarily unavailable" });
   }
+});
+
+router.get("/quran/me/memorization", async (req, res): Promise<void> => {
+  const accountId = studentOnly(req, res);
+  if (accountId === null) return;
+  const items = await db.select({
+    id: quranGuidedMemorizationTable.id,
+    surahNumber: quranGuidedMemorizationTable.surahNumber,
+    ayahNumber: quranGuidedMemorizationTable.ayahNumber,
+    status: quranGuidedMemorizationTable.status,
+    intervalDays: quranGuidedMemorizationTable.intervalDays,
+    nextReviewDate: quranGuidedMemorizationTable.nextReviewDate,
+    lastAssessedAt: quranGuidedMemorizationTable.lastAssessedAt,
+    createdAt: quranGuidedMemorizationTable.createdAt,
+    updatedAt: quranGuidedMemorizationTable.updatedAt,
+  }).from(quranGuidedMemorizationTable)
+    .where(eq(quranGuidedMemorizationTable.studentAccountId, accountId))
+    .orderBy(quranGuidedMemorizationTable.surahNumber, quranGuidedMemorizationTable.ayahNumber);
+  res.set("Cache-Control", "private, no-store");
+  res.json(GetMyQuranMemorizationResponse.parse(items));
+});
+
+router.post("/quran/me/memorization/assess", async (req, res): Promise<void> => {
+  const accountId = studentOnly(req, res);
+  if (accountId === null) return;
+  const parsed = AssessMyQuranMemorizationBody.safeParse(req.body);
+  const surah = parsed.success ? QURAN_SURAHS[parsed.data.surahNumber - 1] : undefined;
+  if (!parsed.success || !surah || parsed.data.ayahNumber < 1 || parsed.data.ayahNumber > surah.ayahCount) {
+    res.status(400).json({ error: "Verse is outside the canonical Quran" });
+    return;
+  }
+  const item = await db.transaction(async (tx) => {
+    // Serialize all assessments of this verse, and make receipt lookup and
+    // state transition one durable transaction.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${accountId}, ${parsed.data.surahNumber * 1000 + parsed.data.ayahNumber})`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${accountId}, hashtext(${parsed.data.requestId}))`);
+    const [receipt] = await tx.select({ itemId: quranGuidedMemorizationAssessmentReceiptsTable.memorizationItemId })
+      .from(quranGuidedMemorizationAssessmentReceiptsTable)
+      .where(and(
+        eq(quranGuidedMemorizationAssessmentReceiptsTable.studentAccountId, accountId),
+        eq(quranGuidedMemorizationAssessmentReceiptsTable.requestId, parsed.data.requestId),
+      )).limit(1);
+    const itemFilter = and(
+      eq(quranGuidedMemorizationTable.studentAccountId, accountId),
+      eq(quranGuidedMemorizationTable.surahNumber, parsed.data.surahNumber),
+      eq(quranGuidedMemorizationTable.ayahNumber, parsed.data.ayahNumber),
+    );
+    if (receipt) {
+      const [replayed] = await tx.select().from(quranGuidedMemorizationTable)
+        .where(eq(quranGuidedMemorizationTable.id, receipt.itemId)).limit(1);
+      return replayed;
+    }
+    const [existing] = await tx.select().from(quranGuidedMemorizationTable).where(itemFilter).limit(1);
+    const intervalDays = parsed.data.passed
+      ? existing?.status === "memorized" ? Math.min(existing.intervalDays * 2, 90)
+        : existing?.status === "learning" ? 7 : 2
+      : 1;
+    const status = parsed.data.passed
+      ? existing?.status === "learning" || (existing?.status === "memorized" && intervalDays > 1) ? "memorized" : "learning"
+      : "needs_review";
+    const values = {
+      studentAccountId: accountId,
+      surahNumber: parsed.data.surahNumber,
+      ayahNumber: parsed.data.ayahNumber,
+      status,
+      intervalDays,
+      nextReviewDate: addDays(quranCalendarToday(), intervalDays),
+      lastAssessedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const [updated] = await tx.insert(quranGuidedMemorizationTable).values(values)
+      .onConflictDoUpdate({ target: [quranGuidedMemorizationTable.studentAccountId, quranGuidedMemorizationTable.surahNumber, quranGuidedMemorizationTable.ayahNumber], set: values })
+      .returning();
+    await tx.insert(quranGuidedMemorizationAssessmentReceiptsTable).values({
+      studentAccountId: accountId, requestId: parsed.data.requestId, memorizationItemId: updated.id,
+    });
+    return updated;
+  });
+  res.json(AssessMyQuranMemorizationResponse.parse(item));
+});
+
+router.get("/quran/me/memorization/due", async (req, res): Promise<void> => {
+  const accountId = studentOnly(req, res);
+  if (accountId === null) return;
+  const items = await db.select().from(quranGuidedMemorizationTable).where(and(
+    eq(quranGuidedMemorizationTable.studentAccountId, accountId),
+    lte(quranGuidedMemorizationTable.nextReviewDate, quranCalendarToday()),
+  )).orderBy(quranGuidedMemorizationTable.nextReviewDate);
+  res.set("Cache-Control", "private, no-store");
+  res.json(GetDueQuranMemorizationResponse.parse(items));
+});
+
+router.get("/quran/me/memorization/summary", async (req, res): Promise<void> => {
+  const accountId = studentOnly(req, res);
+  if (accountId === null) return;
+  const items = await db.select().from(quranGuidedMemorizationTable).where(eq(quranGuidedMemorizationTable.studentAccountId, accountId));
+  const summary = {
+    total: items.length,
+    needsReview: items.filter((item) => item.status === "needs_review").length,
+    learning: items.filter((item) => item.status === "learning").length,
+    memorized: items.filter((item) => item.status === "memorized").length,
+    due: items.filter((item) => item.nextReviewDate <= quranCalendarToday()).length,
+  };
+  res.json(GetQuranMemorizationSummaryResponse.parse(summary));
 });
 
 router.get("/quran/reader-state", async (req, res): Promise<void> => {

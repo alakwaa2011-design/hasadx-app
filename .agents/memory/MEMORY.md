@@ -123,3 +123,4 @@
 - [Personal Quran reader state](quran-personal-reader-state.md) — bookmarks and last-read are private browsing aids, separate from wards, practice, and measured progress.
 - [Public game start throttling](public-game-start-throttling.md) — public-link room creation is limited atomically in PostgreSQL per durable link token, never in process memory or by caller IP.
 - [PostgreSQL prepared statements](postgres-prepared-multi-command.md) — parameterized client queries must contain one SQL command; split multi-step cleanup into separate queries inside one transaction.
+- [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.

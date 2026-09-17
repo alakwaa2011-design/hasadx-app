@@ -23,6 +23,7 @@ interface QuranGuidedMemorizationPanelProps {
   onReplay: () => void;
   onRevealRecitation: () => void;
   onAssess: (result: "mastered" | "review") => void;
+  isAssessing?: boolean;
   lang: "ar" | "en";
 }
 
@@ -46,6 +47,7 @@ export function QuranGuidedMemorizationPanel({
   onReplay,
   onRevealRecitation,
   onAssess,
+  isAssessing,
   lang,
 }: QuranGuidedMemorizationPanelProps) {
   if (!open) return null;
@@ -151,10 +153,11 @@ export function QuranGuidedMemorizationPanel({
         )}
         {stage === 4 && (
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => onAssess("review")} className="min-h-12 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-black text-amber-900 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-200">
+            <button disabled={isAssessing} type="button" onClick={() => onAssess("review")} className="min-h-12 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-black text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:bg-amber-950/40 dark:text-amber-200">
               {ar ? "أحتاج مراجعة" : "Needs review"}
             </button>
-            <button type="button" onClick={() => onAssess("mastered")} className="min-h-12 rounded-xl bg-[#0B4B35] px-3 text-xs font-black text-white shadow-sm hover:bg-[#083d2c]">
+            <button disabled={isAssessing} type="button" onClick={() => onAssess("mastered")} className="min-h-12 rounded-xl bg-[#0B4B35] px-3 text-xs font-black text-white shadow-sm hover:bg-[#083d2c] disabled:opacity-50 flex items-center justify-center gap-2">
+              {isAssessing && <RotateCcw className="w-3.5 h-3.5 animate-spin" />}
               {ar ? "أتقنتها" : "Mastered"}
             </button>
           </div>

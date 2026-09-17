@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import quranRouter from "../routes/quran";
+import quranRouter, { quranCalendarToday } from "../routes/quran";
 
 const RUN = Boolean(process.env.TEST_DATABASE_URL) && process.env.DATABASE_URL === process.env.TEST_DATABASE_URL;
 const suite = RUN ? describe : describe.skip;
@@ -98,6 +98,63 @@ suite("student Quran ward ownership", () => {
   it("does not expose Quran access to an account without a student profile", async () => {
     const response = await request(studentApp(unlinkedAccountId)).get("/api/quran/me/wards");
     expect(response.status).toBe(404);
+  });
+
+  it("assesses only canonical verses and applies guided intervals", async () => {
+    const first = await request(studentApp(accountId))
+      .post("/api/quran/me/memorization/assess")
+       .send({ requestId: `assess-${nonce}-1`, surahNumber: 1, ayahNumber: 1, passed: true });
+    expect(first.status).toBe(200);
+    expect(first.body.status).toBe("learning");
+    expect(first.body.intervalDays).toBe(2);
+
+    const promoted = await request(studentApp(accountId))
+      .post("/api/quran/me/memorization/assess")
+       .send({ requestId: `assess-${nonce}-2`, surahNumber: 1, ayahNumber: 1, passed: true });
+    expect(promoted.status).toBe(200);
+    expect(promoted.body.status).toBe("memorized");
+    expect(promoted.body.intervalDays).toBe(7);
+
+    const invalid = await request(studentApp(accountId))
+      .post("/api/quran/me/memorization/assess")
+       .send({ requestId: `assess-${nonce}-invalid`, surahNumber: 1, ayahNumber: 99, passed: true });
+    expect(invalid.status).toBe(400);
+  });
+
+  it("lists due items and a student-owned summary", async () => {
+    const failed = await request(studentApp(accountId))
+      .post("/api/quran/me/memorization/assess")
+       .send({ requestId: `assess-${nonce}-failed`, surahNumber: 1, ayahNumber: 2, passed: false });
+    expect(failed.status).toBe(200);
+    expect((await request(studentApp(accountId)).get("/api/quran/me/memorization/due")).body
+      .some((item: { surahNumber: number; ayahNumber: number }) => item.surahNumber === 1 && item.ayahNumber === 2)).toBe(false);
+    const due = await request(studentApp(accountId)).get("/api/quran/me/memorization/due");
+    expect(due.status).toBe(200);
+    expect(failed.body.intervalDays).toBe(1);
+    const tomorrow = new Date(`${quranCalendarToday()}T00:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    expect(failed.body.nextReviewDate).toBe(tomorrow.toISOString().slice(0, 10));
+    await db.execute(sql`UPDATE quran_guided_memorization SET next_review_date = CURRENT_DATE - 1 WHERE id = ${failed.body.id}`);
+    expect((await request(studentApp(accountId)).get("/api/quran/me/memorization/due")).body
+      .some((item: { surahNumber: number; ayahNumber: number }) => item.surahNumber === 1 && item.ayahNumber === 2)).toBe(true);
+    const summary = await request(studentApp(accountId)).get("/api/quran/me/memorization/summary");
+    expect(summary.status).toBe(200);
+    expect(summary.body.total).toBe(2);
+    expect(summary.body.needsReview).toBe(1);
+  });
+
+  it("replays an assessment receipt without advancing, while isolating accounts", async () => {
+    const body = { requestId: `replay-${nonce}`, surahNumber: 1, ayahNumber: 3, passed: true };
+    const first = await request(studentApp(accountId)).post("/api/quran/me/memorization/assess").send(body);
+    const replay = await request(studentApp(accountId)).post("/api/quran/me/memorization/assess").send(body);
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    expect(replay.body.id).toBe(first.body.id);
+    expect(replay.body.intervalDays).toBe(first.body.intervalDays);
+
+    const other = await request(studentApp(otherAccountId)).post("/api/quran/me/memorization/assess").send(body);
+    expect(other.status).toBe(200);
+    expect(other.body.id).not.toBe(first.body.id);
   });
 
   it("persists independent positions for an unlinked account and supports partial updates", async () => {

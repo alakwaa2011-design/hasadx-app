@@ -51,9 +51,16 @@ import {
   useKidsProfile
 } from "@/hooks/use-kids";
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { AvatarDisplay } from "@/components/avatar-display";
 import type { QuranWard } from "@workspace/api-client-react";
+import {
+  useGetQuranMemorizationSummary,
+  getGetQuranMemorizationSummaryQueryKey,
+  useGetDueQuranMemorization,
+  getGetDueQuranMemorizationQueryKey,
+} from "@workspace/api-client-react";
 
 interface PublicAssignment {
   id: number;
@@ -119,6 +126,7 @@ const GAME_LABELS: Record<string, { key: keyof typeof import("@/locales/ar").ar.
 };
 
 export default function StudentDashboard() {
+  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { lang, t, dir } = useI18n();
   const copy = t.studentDashboard;
@@ -149,6 +157,21 @@ export default function StudentDashboard() {
   const { data: rewards = [], isLoading: rewardsLoading } = useKidsRewards();
   const { data: redemptions = [], isLoading: redemptionsLoading } = useKidsRedemptions({ refetchInterval: 15000 });
   const redeemReward = useKidsRedeemReward();
+
+  // Smart Quran Progress Data
+  const { data: quranSummary } = useGetQuranMemorizationSummary({
+    query: {
+      enabled: !!student,
+      queryKey: getGetQuranMemorizationSummaryQueryKey(),
+    }
+  });
+  const { data: dueItems = [] } = useGetDueQuranMemorization({
+    query: {
+      enabled: !!student,
+      queryKey: getGetDueQuranMemorizationQueryKey(),
+    }
+  });
+  const firstDue = dueItems[0];
 
   // Watch for new badges or rewards
   useEffect(() => {
@@ -435,6 +458,7 @@ export default function StudentDashboard() {
       method: "POST",
       credentials: "include",
     });
+    queryClient.clear();
     toast.success(copy.loggedOut);
     setLocation("/");
   };
@@ -872,7 +896,52 @@ export default function StudentDashboard() {
                   {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
                 </Link>
               </div>
-              <Link href="/student/quran-practice/1?view=pages">
+
+              {quranSummary && (
+                <div className="mb-5 grid gap-4 sm:grid-cols-2">
+                  <Card className="flex flex-col p-5 border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                    <h3 className="text-sm font-bold text-muted-foreground">{lang === "ar" ? "حصاد الحفظ" : "Memorization"}</h3>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-3xl font-black text-emerald-700 dark:text-emerald-400">{arDigit(quranSummary.memorized)}</span>
+                      <span className="text-sm font-medium text-emerald-700/70 dark:text-emerald-400/70">{lang === "ar" ? "آية محفوظة" : "memorized ayahs"}</span>
+                    </div>
+                    <div className="mt-4 flex gap-4 text-sm font-bold text-muted-foreground">
+                      <div className="flex gap-1.5 items-center">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span>{arDigit(quranSummary.needsReview)} {lang === "ar" ? "تحتاج مراجعة" : "needs review"}</span>
+                      </div>
+                      <div className="flex gap-1.5 items-center">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span>{arDigit(quranSummary.learning)} {lang === "ar" ? "قيد الحفظ" : "learning"}</span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {firstDue ? (
+                    <Card className="flex flex-col justify-between p-5 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 dark:border-amber-900/40 dark:from-amber-950/30 dark:to-orange-950/20">
+                      <div>
+                        <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300">{lang === "ar" ? "مراجعة اليوم" : "Today's Review"}</h3>
+                        <p className="mt-2 text-lg font-black text-amber-950 dark:text-amber-100">
+                           {lang === "ar" ? "سورة" : "Surah"} {arDigit(firstDue.surahNumber)} · {lang === "ar" ? "آية" : "Ayah"} {arDigit(firstDue.ayahNumber)}
+                        </p>
+                      </div>
+                      <Link href={`/student/quran-practice/${firstDue.surahNumber}?ayah=${firstDue.ayahNumber}&view=reader&guided=1&reviewDue=1`} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 px-4 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-colors">
+                        <Play className="w-4 h-4" />
+                        {lang === "ar" ? "ابدأ المراجعة" : "Start review"}
+                      </Link>
+                    </Card>
+                  ) : (
+                    <Card className="flex flex-col justify-center items-center text-center p-5 border-dashed border-emerald-200 bg-transparent dark:border-emerald-900/40">
+                      <Check className="w-8 h-8 text-emerald-500/50 mb-2" />
+                      <p className="text-sm font-bold text-muted-foreground">
+                        {lang === "ar" ? "لا توجد مراجعات مستحقة اليوم" : "No due reviews today"}
+                      </p>
+                    </Card>
+                  )}
+                </div>
+              )}
+
+              <Link href="/student/quran-practice/1?view=pages" className="block w-full">
                 <Card
                   className="group relative mb-5 overflow-hidden border-emerald-200 bg-[linear-gradient(135deg,rgba(240,253,244,0.96),rgba(255,251,235,0.9))] p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg dark:border-emerald-900/60 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.32),rgba(69,26,3,0.2))] sm:p-6"
                   data-testid="link-student-quran-mushaf"

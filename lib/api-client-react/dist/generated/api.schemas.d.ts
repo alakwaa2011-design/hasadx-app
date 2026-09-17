@@ -5,6 +5,42 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export type QuranMemorizationItemStatus = typeof QuranMemorizationItemStatus[keyof typeof QuranMemorizationItemStatus];
+export declare const QuranMemorizationItemStatus: {
+    readonly needs_review: "needs_review";
+    readonly learning: "learning";
+    readonly memorized: "memorized";
+};
+export interface QuranMemorizationItem {
+    id: number;
+    surahNumber: number;
+    ayahNumber: number;
+    status: QuranMemorizationItemStatus;
+    intervalDays: number;
+    /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+    nextReviewDate: string;
+    /** @nullable */
+    lastAssessedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface QuranMemorizationAssessment {
+    /**
+       * @minLength 1
+       * @maxLength 200
+       */
+    requestId: string;
+    surahNumber: number;
+    ayahNumber: number;
+    passed: boolean;
+}
+export interface QuranMemorizationSummary {
+    total: number;
+    needsReview: number;
+    learning: number;
+    memorized: number;
+    due: number;
+}
 export interface QuranSurah {
     /**
        * @minimum 1

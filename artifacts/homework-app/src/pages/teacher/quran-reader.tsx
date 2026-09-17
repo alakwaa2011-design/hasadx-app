@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { QuranPagesView } from './quran-pages-view';
 import { QuranSearchDialog } from './quran-search-dialog';
-import type { QuranWard } from '@workspace/api-client-react';
+import type { QuranMemorizationItem, QuranWard } from '@workspace/api-client-react';
 import {
   useRecordMyQuranIndependentSession,
   useUpdateMyQuranIndependentPosition,
@@ -24,6 +24,11 @@ import {
   getGetQuranJourneyQueryKey,
   useGetQuranReaderState,
   getGetQuranReaderStateQueryKey,
+  useAssessMyQuranMemorization,
+  useGetDueQuranMemorization,
+  getGetMyQuranMemorizationQueryKey,
+  getGetDueQuranMemorizationQueryKey,
+  getGetQuranMemorizationSummaryQueryKey,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -57,6 +62,24 @@ export default function QuranReader() {
   const queryMode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
   const view = searchParams.get('view') || 'reader';
+  const requestedGuided = searchParams.get('guided') === '1';
+  const isDueReviewSession = searchParams.get('reviewDue') === '1';
+
+  const [guidedSignal, setGuidedSignal] = useState(requestedGuided ? 1 : 0);
+  const { data: dueReviewItems = [] } = useGetDueQuranMemorization({
+    query: {
+      enabled: isStudentPractice && isDueReviewSession,
+      queryKey: getGetDueQuranMemorizationQueryKey(),
+      staleTime: 30_000,
+    },
+  });
+
+  useEffect(() => {
+    if (!requestedGuided) return;
+    const consumedUrl = new URL(window.location.href);
+    consumedUrl.searchParams.delete('guided');
+    window.history.replaceState(window.history.state, '', `${consumedUrl.pathname}${consumedUrl.search}${consumedUrl.hash}`);
+  }, [requestedGuided]);
   const {
     data: independentJourney,
     isLoading: independentJourneyLoading,
@@ -198,6 +221,10 @@ export default function QuranReader() {
     isStudentPractice={isStudentPractice}
     wardId={studentWard?.id}
     isIndependentPractice={isStudentPractice}
+    guidedMemorizationSignal={guidedSignal}
+    onGuidedMemorizationStarted={() => setGuidedSignal(0)}
+    isDueReviewSession={isDueReviewSession}
+    dueReviewItems={dueReviewItems}
   />;
 }
 
@@ -218,6 +245,8 @@ interface ReaderViewProps {
   onOpenBookmarks?: () => void;
   guidedMemorizationSignal?: number;
   onGuidedMemorizationStarted?: () => void;
+  isDueReviewSession?: boolean;
+  dueReviewItems?: QuranMemorizationItem[];
 }
 
 export function QuranTextReaderView({
@@ -237,12 +266,15 @@ export function QuranTextReaderView({
   onOpenBookmarks,
   guidedMemorizationSignal = 0,
   onGuidedMemorizationStarted,
+  isDueReviewSession = false,
+  dueReviewItems = [],
 }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const savePosition = useUpdateMyQuranIndependentPosition();
   const recordSession = useRecordMyQuranIndependentSession();
+  const assessMemorization = useAssessMyQuranMemorization();
   const { data: officialSurah } = useGetQuranSurahContent(surahNumber, {
     query: {
       queryKey: getGetQuranSurahContentQueryKey(surahNumber),
@@ -252,6 +284,7 @@ export function QuranTextReaderView({
   });
   const lastSavedPositionRef = useRef<string | null>(null);
   const officialSurahRef = useRef(officialSurah);
+  const assessmentRequestRef = useRef<{ key: string; requestId: string } | null>(null);
 
   const [surahs, setSurahs] = useState<QuranSurahParsed[] | null>(null);
   const [fontSize, setFontSize] = useState(28);
@@ -974,17 +1007,45 @@ export function QuranTextReaderView({
           setIsPlaying(true);
         }}
         onRevealRecitation={() => setGuidedRecitationRevealed(true)}
-        onAssess={(result) => {
-          const storageKey = "hasaad:quran-guided-memorization:v1";
-          try {
-            const previous = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
-            const entries = Array.isArray(previous) ? previous : [];
-            window.localStorage.setItem(storageKey, JSON.stringify([
-              ...entries.filter((entry: { surah?: number; ayah?: number }) => entry.surah !== surahNumber || entry.ayah !== guidedAyah),
-              { surah: surahNumber, ayah: guidedAyah, result, assessedAt: new Date().toISOString() },
-            ].slice(-500)));
-          } catch {
-            // The session can continue even when local browser storage is unavailable.
+        isAssessing={assessMemorization.isPending}
+        onAssess={async (result) => {
+          if (isStudentPractice) {
+            try {
+              const assessmentKey = `${surahNumber}:${guidedAyah}:${result}`;
+              if (assessmentRequestRef.current?.key !== assessmentKey) {
+                assessmentRequestRef.current = {
+                  key: assessmentKey,
+                  requestId: crypto.randomUUID(),
+                };
+              }
+              await assessMemorization.mutateAsync({
+                data: {
+                  requestId: assessmentRequestRef.current.requestId,
+                  surahNumber,
+                  ayahNumber: guidedAyah,
+                  passed: result === "mastered",
+                }
+              });
+              assessmentRequestRef.current = null;
+              queryClient.invalidateQueries({ queryKey: getGetMyQuranMemorizationQueryKey() });
+              queryClient.invalidateQueries({ queryKey: getGetDueQuranMemorizationQueryKey() });
+              queryClient.invalidateQueries({ queryKey: getGetQuranMemorizationSummaryQueryKey() });
+            } catch (err) {
+              toast.error(lang === 'ar' ? "تعذر حفظ النتيجة، حاول مرة أخرى" : "Could not save result, please try again");
+              return;
+            }
+          } else {
+            const storageKey = "hasaad:quran-guided-memorization:v1";
+            try {
+              const previous = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+              const entries = Array.isArray(previous) ? previous : [];
+              window.localStorage.setItem(storageKey, JSON.stringify([
+                ...entries.filter((entry: { surah?: number; ayah?: number }) => entry.surah !== surahNumber || entry.ayah !== guidedAyah),
+                { surah: surahNumber, ayah: guidedAyah, result, assessedAt: new Date().toISOString() },
+              ].slice(-500)));
+            } catch {
+              // The session can continue even when local browser storage is unavailable.
+            }
           }
 
           if (result === "review") {
@@ -992,6 +1053,20 @@ export function QuranTextReaderView({
             setGuidedRecitationRevealed(false);
             setGuidedRevealedWords(new Set());
             toast.success(lang === 'ar' ? "حُفظت للمراجعة، سنكرر الآية الآن" : "Saved for review. Let’s repeat this ayah");
+            return;
+          }
+
+          if (isDueReviewSession) {
+            const nextDueItem = dueReviewItems.find(
+              item => item.surahNumber !== surahNumber || item.ayahNumber !== guidedAyah,
+            );
+            if (nextDueItem) {
+              setLocation(`/student/quran-practice/${nextDueItem.surahNumber}?ayah=${nextDueItem.ayahNumber}&view=reader&guided=1&reviewDue=1`);
+            } else {
+              toast.success(lang === 'ar' ? "أتممت مراجعات اليوم" : "You completed today's reviews");
+              closeGuidedMemorization();
+              setLocation("/student/dashboard");
+            }
             return;
           }
 

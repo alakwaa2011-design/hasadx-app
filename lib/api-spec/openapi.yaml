@@ -2477,6 +2477,69 @@ paths:
       responses:
         "204": { description: Bookmark removed }
 
+  /quran/me/memorization:
+    get:
+      operationId: getMyQuranMemorization
+      tags: [quran]
+      summary: Get the student's guided memorization items
+      responses:
+        "200":
+          description: Memorization items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QuranMemorizationItem" }
+        "401": { description: Not authenticated }
+        "403": { description: Student account required }
+  /quran/me/memorization/assess:
+    post:
+      operationId: assessMyQuranMemorization
+      tags: [quran]
+      summary: Assess one memorization verse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuranMemorizationAssessment" }
+      responses:
+        "200":
+          description: Updated memorization item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuranMemorizationItem" }
+        "400": { description: Invalid verse or assessment }
+        "401": { description: Not authenticated }
+        "403": { description: Student account required }
+  /quran/me/memorization/due:
+    get:
+      operationId: getDueQuranMemorization
+      tags: [quran]
+      summary: Get memorization items due today
+      responses:
+        "200":
+          description: Due items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QuranMemorizationItem" }
+        "401": { description: Not authenticated }
+        "403": { description: Student account required }
+  /quran/me/memorization/summary:
+    get:
+      operationId: getQuranMemorizationSummary
+      tags: [quran]
+      summary: Get guided memorization summary
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuranMemorizationSummary" }
+        "401": { description: Not authenticated }
+        "403": { description: Student account required }
+
 components:
   parameters:
     QuranId:
@@ -2485,6 +2548,36 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    QuranMemorizationItem:
+      type: object
+      required: [id, surahNumber, ayahNumber, status, intervalDays, nextReviewDate, lastAssessedAt, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        surahNumber: { type: integer }
+        ayahNumber: { type: integer }
+        status: { type: string, enum: [needs_review, learning, memorized] }
+        intervalDays: { type: integer }
+        nextReviewDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        lastAssessedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    QuranMemorizationAssessment:
+      type: object
+      required: [requestId, surahNumber, ayahNumber, passed]
+      properties:
+        requestId: { type: string, minLength: 1, maxLength: 200 }
+        surahNumber: { type: integer }
+        ayahNumber: { type: integer }
+        passed: { type: boolean }
+    QuranMemorizationSummary:
+      type: object
+      required: [total, needsReview, learning, memorized, due]
+      properties:
+        total: { type: integer }
+        needsReview: { type: integer }
+        learning: { type: integer }
+        memorized: { type: integer }
+        due: { type: integer }
     QuranSurah:
       type: object
       properties:

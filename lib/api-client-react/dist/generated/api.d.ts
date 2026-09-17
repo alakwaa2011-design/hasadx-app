@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
+import type { AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAiVideoProjects200, ListAssignmentsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -2664,5 +2664,97 @@ export declare const useDeleteQuranBookmark: <TError = ErrorType<unknown>, TCont
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteQuranBookmark>>, TError, DeleteQuranBookmarkMutationVariables, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof deleteQuranBookmark>>, TError, DeleteQuranBookmarkMutationVariables, TContext>;
+export declare const getGetMyQuranMemorizationUrl: () => string;
+/**
+ * @summary Get the student's guided memorization items
+ */
+export declare const getMyQuranMemorization: (options?: Parameters<typeof customFetch>[1]) => Promise<QuranMemorizationItem[]>;
+export declare const getGetMyQuranMemorizationQueryKey: () => readonly ["/api/quran/me/memorization"];
+export declare const getGetMyQuranMemorizationQueryOptions: <TData = Awaited<ReturnType<typeof getMyQuranMemorization>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getMyQuranMemorization>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getMyQuranMemorization>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetMyQuranMemorizationQueryResult = NonNullable<Awaited<ReturnType<typeof getMyQuranMemorization>>>;
+export type GetMyQuranMemorizationQueryError = ErrorType<void>;
+/**
+ * @summary Get the student's guided memorization items
+ */
+export declare function useGetMyQuranMemorization<TData = Awaited<ReturnType<typeof getMyQuranMemorization>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getMyQuranMemorization>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getAssessMyQuranMemorizationUrl: () => string;
+/**
+ * @summary Assess one memorization verse
+ */
+export declare const assessMyQuranMemorization: (quranMemorizationAssessment: QuranMemorizationAssessment, options?: Parameters<typeof customFetch>[1]) => Promise<QuranMemorizationItem>;
+export declare const getAssessMyQuranMemorizationMutationKey: () => readonly ["assessMyQuranMemorization"];
+export declare const getAssessMyQuranMemorizationMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError, AssessMyQuranMemorizationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError, AssessMyQuranMemorizationMutationVariables, TContext>;
+export type AssessMyQuranMemorizationMutationResult = NonNullable<Awaited<ReturnType<typeof assessMyQuranMemorization>>>;
+export type AssessMyQuranMemorizationMutationBody = BodyType<QuranMemorizationAssessment>;
+export type AssessMyQuranMemorizationMutationError = ErrorType<void>;
+export type AssessMyQuranMemorizationMutationVariables = {
+    data: BodyType<QuranMemorizationAssessment>;
+};
+/**
+* @summary Assess one memorization verse
+*/
+export declare const useAssessMyQuranMemorization: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError, AssessMyQuranMemorizationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError, AssessMyQuranMemorizationMutationVariables, TContext>;
+export declare const getGetDueQuranMemorizationUrl: () => string;
+/**
+ * @summary Get memorization items due today
+ */
+export declare const getDueQuranMemorization: (options?: Parameters<typeof customFetch>[1]) => Promise<QuranMemorizationItem[]>;
+export declare const getGetDueQuranMemorizationQueryKey: () => readonly ["/api/quran/me/memorization/due"];
+export declare const getGetDueQuranMemorizationQueryOptions: <TData = Awaited<ReturnType<typeof getDueQuranMemorization>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getDueQuranMemorization>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getDueQuranMemorization>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetDueQuranMemorizationQueryResult = NonNullable<Awaited<ReturnType<typeof getDueQuranMemorization>>>;
+export type GetDueQuranMemorizationQueryError = ErrorType<void>;
+/**
+ * @summary Get memorization items due today
+ */
+export declare function useGetDueQuranMemorization<TData = Awaited<ReturnType<typeof getDueQuranMemorization>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getDueQuranMemorization>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getGetQuranMemorizationSummaryUrl: () => string;
+/**
+ * @summary Get guided memorization summary
+ */
+export declare const getQuranMemorizationSummary: (options?: Parameters<typeof customFetch>[1]) => Promise<QuranMemorizationSummary>;
+export declare const getGetQuranMemorizationSummaryQueryKey: () => readonly ["/api/quran/me/memorization/summary"];
+export declare const getGetQuranMemorizationSummaryQueryOptions: <TData = Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetQuranMemorizationSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranMemorizationSummary>>>;
+export type GetQuranMemorizationSummaryQueryError = ErrorType<void>;
+/**
+ * @summary Get guided memorization summary
+ */
+export declare function useGetQuranMemorizationSummary<TData = Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError = ErrorType<void>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
 export {};
 //# sourceMappingURL=api.d.ts.map

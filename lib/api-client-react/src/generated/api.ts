@@ -75,6 +75,9 @@ import type {
   QuranIndependentSessionInput,
   QuranJourney,
   QuranMadaniPage,
+  QuranMemorizationAssessment,
+  QuranMemorizationItem,
+  QuranMemorizationSummary,
   QuranProfileUpdate,
   QuranReaderPosition,
   QuranReaderPositionConflict,
@@ -9253,3 +9256,308 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteQuranBookmarkMutationOptions(options));
     }
+
+export const getGetMyQuranMemorizationUrl = () => {
+
+
+
+
+  return `/api/quran/me/memorization`
+}
+
+/**
+ * @summary Get the student's guided memorization items
+ */
+export const getMyQuranMemorization = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranMemorizationItem[]> => {
+
+  return customFetch<QuranMemorizationItem[]>(getGetMyQuranMemorizationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyQuranMemorizationQueryKey = () => {
+    return [
+    `/api/quran/me/memorization`
+    ] as const;
+    }
+
+
+export const getGetMyQuranMemorizationQueryOptions = <TData = Awaited<ReturnType<typeof getMyQuranMemorization>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyQuranMemorization>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyQuranMemorizationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyQuranMemorization>>> = ({ signal }) => getMyQuranMemorization({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyQuranMemorization>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyQuranMemorizationQueryResult = NonNullable<Awaited<ReturnType<typeof getMyQuranMemorization>>>
+export type GetMyQuranMemorizationQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get the student's guided memorization items
+ */
+
+export function useGetMyQuranMemorization<TData = Awaited<ReturnType<typeof getMyQuranMemorization>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyQuranMemorization>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyQuranMemorizationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAssessMyQuranMemorizationUrl = () => {
+
+
+
+
+  return `/api/quran/me/memorization/assess`
+}
+
+/**
+ * @summary Assess one memorization verse
+ */
+export const assessMyQuranMemorization = async (quranMemorizationAssessment: QuranMemorizationAssessment, options?: Parameters<typeof customFetch>[1]): Promise<QuranMemorizationItem> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<QuranMemorizationItem>(getAssessMyQuranMemorizationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quranMemorizationAssessment)
+  }
+);}
+
+
+
+
+
+export const getAssessMyQuranMemorizationMutationKey = () => ['assessMyQuranMemorization'] as const;
+
+export const getAssessMyQuranMemorizationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError,AssessMyQuranMemorizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError,AssessMyQuranMemorizationMutationVariables, TContext> => {
+
+const mutationKey = getAssessMyQuranMemorizationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assessMyQuranMemorization>>, AssessMyQuranMemorizationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  assessMyQuranMemorization(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssessMyQuranMemorizationMutationResult = NonNullable<Awaited<ReturnType<typeof assessMyQuranMemorization>>>
+    export type AssessMyQuranMemorizationMutationBody = BodyType<QuranMemorizationAssessment>
+    export type AssessMyQuranMemorizationMutationError = ErrorType<void>
+    export type AssessMyQuranMemorizationMutationVariables = {data: BodyType<QuranMemorizationAssessment>}
+
+    /**
+ * @summary Assess one memorization verse
+ */
+export const useAssessMyQuranMemorization = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessMyQuranMemorization>>, TError,AssessMyQuranMemorizationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assessMyQuranMemorization>>,
+        TError,
+        AssessMyQuranMemorizationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAssessMyQuranMemorizationMutationOptions(options));
+    }
+
+export const getGetDueQuranMemorizationUrl = () => {
+
+
+
+
+  return `/api/quran/me/memorization/due`
+}
+
+/**
+ * @summary Get memorization items due today
+ */
+export const getDueQuranMemorization = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranMemorizationItem[]> => {
+
+  return customFetch<QuranMemorizationItem[]>(getGetDueQuranMemorizationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDueQuranMemorizationQueryKey = () => {
+    return [
+    `/api/quran/me/memorization/due`
+    ] as const;
+    }
+
+
+export const getGetDueQuranMemorizationQueryOptions = <TData = Awaited<ReturnType<typeof getDueQuranMemorization>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDueQuranMemorization>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDueQuranMemorizationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDueQuranMemorization>>> = ({ signal }) => getDueQuranMemorization({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDueQuranMemorization>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDueQuranMemorizationQueryResult = NonNullable<Awaited<ReturnType<typeof getDueQuranMemorization>>>
+export type GetDueQuranMemorizationQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get memorization items due today
+ */
+
+export function useGetDueQuranMemorization<TData = Awaited<ReturnType<typeof getDueQuranMemorization>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDueQuranMemorization>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDueQuranMemorizationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranMemorizationSummaryUrl = () => {
+
+
+
+
+  return `/api/quran/me/memorization/summary`
+}
+
+/**
+ * @summary Get guided memorization summary
+ */
+export const getQuranMemorizationSummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<QuranMemorizationSummary> => {
+
+  return customFetch<QuranMemorizationSummary>(getGetQuranMemorizationSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranMemorizationSummaryQueryKey = () => {
+    return [
+    `/api/quran/me/memorization/summary`
+    ] as const;
+    }
+
+
+export const getGetQuranMemorizationSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranMemorizationSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranMemorizationSummary>>> = ({ signal }) => getQuranMemorizationSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranMemorizationSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranMemorizationSummary>>>
+export type GetQuranMemorizationSummaryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get guided memorization summary
+ */
+
+export function useGetQuranMemorizationSummary<TData = Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranMemorizationSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranMemorizationSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
