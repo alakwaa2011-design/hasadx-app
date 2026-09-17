@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ChevronDown,
@@ -97,7 +97,7 @@ export function QuranPagesView({
   embedded = false,
   onSwitchToText,
   isIndependentPractice = false,
-  mobileSectionNavigation,
+  onExitEmbedded,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -113,7 +113,7 @@ export function QuranPagesView({
   embedded?: boolean;
   onSwitchToText?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
-  mobileSectionNavigation?: ReactNode;
+  onExitEmbedded?: () => void;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -536,6 +536,17 @@ export function QuranPagesView({
                 </span>
               </button>
             )}
+            {embedded && onExitEmbedded && (
+              <button
+                type="button"
+                onClick={onExitEmbedded}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 md:hidden dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                aria-label={lang === "ar" ? "العودة إلى أقسام حصاد القرآن" : "Back to Hasaad Quran sections"}
+              >
+                <ChevronLeft className="h-5 w-5 rtl:hidden" />
+                <ChevronRight className="h-5 w-5 ltr:hidden" />
+              </button>
+            )}
 
             {/* Mobile Title */}
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
@@ -570,12 +581,6 @@ export function QuranPagesView({
               "w-full md:w-auto flex-col md:flex-row md:flex-1 items-stretch md:items-center justify-end gap-3 md:gap-4",
               mobileToolsOpen ? "flex" : "hidden md:flex"
             )}>
-              {mobileSectionNavigation && (
-                <div className="md:hidden">
-                  {mobileSectionNavigation}
-                </div>
-              )}
-
               {/* 1. Location Selectors */}
               <div className="flex items-center w-full md:w-auto rounded-xl bg-muted/30 p-1 border border-border/40 shadow-sm">
                 <div className="relative flex min-w-0 flex-1 items-center md:flex-none">

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
   getJuzStart,
@@ -210,7 +210,7 @@ interface ReaderViewProps {
   onNavigate?: (location: { surah: number; ayah: number; page?: number }) => void;
   onSwitchToPages?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
-  mobileSectionNavigation?: ReactNode;
+  onExitEmbedded?: () => void;
 }
 
 export function QuranTextReaderView({
@@ -226,7 +226,7 @@ export function QuranTextReaderView({
   onNavigate,
   onSwitchToPages,
   isIndependentPractice = false,
-  mobileSectionNavigation,
+  onExitEmbedded,
 }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -588,6 +588,17 @@ export function QuranTextReaderView({
                 </span>
               </button>
             )}
+            {embedded && onExitEmbedded && (
+              <button
+                type="button"
+                onClick={onExitEmbedded}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 md:hidden dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                aria-label={lang === 'ar' ? 'العودة إلى أقسام حصاد القرآن' : 'Back to Hasaad Quran sections'}
+              >
+                <ChevronLeft className="h-5 w-5 rtl:hidden" />
+                <ChevronRight className="h-5 w-5 ltr:hidden" />
+              </button>
+            )}
             {!isStudentWard && (
               <div className={cn(
                 "shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 md:flex",
@@ -639,11 +650,6 @@ export function QuranTextReaderView({
               "order-3 w-full flex-wrap items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1 md:flex-nowrap",
               mobileToolsOpen ? "flex" : "hidden",
             )}>
-              {mobileSectionNavigation && (
-                <div className="w-full shrink-0 md:hidden">
-                  {mobileSectionNavigation}
-                </div>
-              )}
               <select 
                 value={surahNumber} 
                 disabled={isStudentWard}

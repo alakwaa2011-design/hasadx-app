@@ -27,6 +27,7 @@ export default function QuranCenter() {
     : "mushaf";
   const [activeTab, setActiveTab] = useState<Tab>(tabFromQuery);
   const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
+  const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
   const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
   const hasExplicitMushafNavigation = useRef(false);
@@ -62,6 +63,7 @@ export default function QuranCenter() {
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
+    setMobileSectionsOpen(false);
     setLocation(`/teacher/quran-center?tab=${tab}`);
   };
 
@@ -99,33 +101,6 @@ export default function QuranCenter() {
     { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> },
   ] as const;
 
-  const mobileSectionNavigation = (
-    <nav
-      className="grid grid-cols-2 gap-2 rounded-xl border border-border/50 bg-background/95 p-2 shadow-sm md:hidden"
-      aria-label={lang === "ar" ? "أقسام حصاد القرآن" : "Hasaad Quran sections"}
-    >
-      {TABS.map((tab) => {
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => handleTabChange(tab.id as Tab)}
-            className={cn(
-              "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors",
-              isActive
-                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100"
-                : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-            )}
-          >
-            {tab.icon}
-            <span className="truncate">{tab.label}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-
   return (
     <Layout noHeader={activeTab === "mushaf"} hideFooter={activeTab === "mushaf"}>
       <div className={cn(
@@ -135,7 +110,7 @@ export default function QuranCenter() {
         {/* Sidebar */}
         <aside className={cn(
           "w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card md:flex md:flex-col shadow-sm z-10 shrink-0",
-          activeTab === "mushaf" ? "hidden" : "flex",
+          activeTab === "mushaf" && !mobileSectionsOpen ? "hidden" : "flex",
         )}>
           <div className="p-4 md:p-6 flex items-center justify-between md:justify-start">
             <div className="flex items-center gap-3 text-emerald-800 dark:text-emerald-400 md:mb-2">
@@ -179,7 +154,10 @@ export default function QuranCenter() {
         </aside>
 
         {/* Main Workspace */}
-        <main className="flex-1 overflow-hidden flex flex-col relative">
+        <main className={cn(
+          "flex-1 overflow-hidden flex-col relative md:flex",
+          activeTab === "mushaf" && mobileSectionsOpen ? "hidden" : "flex",
+        )}>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -201,7 +179,7 @@ export default function QuranCenter() {
                     endAyah={null}
                     mode={null}
                     embedded
-                    mobileSectionNavigation={mobileSectionNavigation}
+                    onExitEmbedded={() => setMobileSectionsOpen(true)}
                     onSwitchToText={(location) => {
                       handleMushafNavigate(location);
                       setMushafView("reader");
@@ -217,7 +195,7 @@ export default function QuranCenter() {
                     isStudentWard={false}
                     isStudentPractice={false}
                     embedded
-                    mobileSectionNavigation={mobileSectionNavigation}
+                    onExitEmbedded={() => setMobileSectionsOpen(true)}
                     onNavigate={handleMushafNavigate}
                     onSwitchToPages={(location) => {
                       handleMushafNavigate(location);
