@@ -153,6 +153,12 @@ export function QuranMadaniPageRenderer({
 
   const rows = Array.from({ length: 15 }, (_, i) => i + 1);
   const fontName = `qcf-v2-p${pageNumber}`;
+  const firstPagesContent = pageNumber <= 2
+    ? data.lines.filter((line) => line.words.length > 0)
+    : null;
+  const firstPagesContentStartRow = firstPagesContent
+    ? Math.max(1, Math.floor((rows.length - firstPagesContent.length) / 2) + 1)
+    : null;
 
   return (
     <div
@@ -166,8 +172,15 @@ export function QuranMadaniPageRenderer({
         style={{ fontFamily: `'${fontName}', sans-serif` }}
       >
         {rows.map((rowNum) => {
-          const line = data.lines.find((l) => l.lineNumber === rowNum);
-          const decoration = pageLayout.decorations.get(rowNum);
+          const firstPageLineIndex = firstPagesContentStartRow
+            ? rowNum - firstPagesContentStartRow
+            : -1;
+          const line = firstPagesContent
+            ? firstPagesContent[firstPageLineIndex]
+            : data.lines.find((l) => l.lineNumber === rowNum);
+          const decoration = firstPagesContent
+            ? undefined
+            : pageLayout.decorations.get(rowNum);
 
           if (decoration?.kind === "surah") {
             return <div key={rowNum} className="flex-1" aria-hidden="true" />;
