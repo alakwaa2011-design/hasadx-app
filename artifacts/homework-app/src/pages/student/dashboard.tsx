@@ -855,12 +855,12 @@ export default function StudentDashboard() {
           </div>
 
           {student && (
-            <section className="mb-8 animate-in fade-in duration-300 delay-100" aria-labelledby="student-quran-wards">
+            <section className="mb-8 animate-in fade-in duration-300 delay-100" aria-labelledby="student-quran-mushaf">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
-                  <h2 id="student-quran-wards" className="text-xl font-bold text-foreground">
-                    {lang === "ar" ? "رحلتي القرآنية" : "My Quran journey"}
+                  <h2 id="student-quran-mushaf" className="text-xl font-bold text-foreground">
+                    {lang === "ar" ? "المصحف الشريف" : "The Holy Quran"}
                   </h2>
                 </div>
                 <Link
@@ -872,8 +872,39 @@ export default function StudentDashboard() {
                   {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
                 </Link>
               </div>
-              {quranWards.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2">
+              <Link href="/student/quran-practice/1?view=pages">
+                <Card
+                  className="group relative mb-5 overflow-hidden border-emerald-200 bg-[linear-gradient(135deg,rgba(240,253,244,0.96),rgba(255,251,235,0.9))] p-5 transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg dark:border-emerald-900/60 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.32),rgba(69,26,3,0.2))] sm:p-6"
+                  data-testid="link-student-quran-mushaf"
+                >
+                  <div className="absolute -end-10 -top-12 h-32 w-32 rounded-full border-[20px] border-emerald-700/5 transition-transform duration-300 group-hover:scale-110 dark:border-emerald-300/5" />
+                  <div className="relative flex items-center gap-4">
+                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-700 text-white shadow-md shadow-emerald-900/15">
+                      <BookOpen className="h-7 w-7" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-black text-emerald-950 dark:text-emerald-100">
+                        {lang === "ar" ? "افتح المصحف" : "Open the Mushaf"}
+                      </h3>
+                      <p className="mt-1 text-sm font-semibold leading-6 text-emerald-900/65 dark:text-emerald-200/70">
+                        {lang === "ar"
+                          ? "اقرأ صفحات المصحف، استمع للآيات، وابدأ جلسة الحفظ التدريجي."
+                          : "Read Mushaf pages, listen to ayahs, and start guided memorization."}
+                      </p>
+                    </div>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/80 text-emerald-800 shadow-sm transition-colors group-hover:bg-emerald-700 group-hover:text-white dark:bg-white/10 dark:text-emerald-200">
+                      {dir === "rtl" ? <ArrowLeft className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+
+              {quranWards.length > 0 && (
+                <>
+                  <h3 className="mb-3 text-sm font-black text-muted-foreground">
+                    {lang === "ar" ? "أورادي الحالية" : "My current assignments"}
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
                   {quranWards.map((ward) => (
                     <Link key={ward.id} href={`/student/quran-wards/${ward.id}`}>
                       <Card
@@ -916,36 +947,8 @@ export default function StudentDashboard() {
                       </Card>
                     </Link>
                   ))}
-                </div>
-              ) : (
-                <Card
-                  className="border-emerald-100 bg-emerald-50/40 p-5 dark:border-emerald-900/50 dark:bg-emerald-950/20"
-                  data-testid="card-student-quran-empty"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-base font-black text-foreground">
-                        {lang === "ar" ? "ابدأ رحلتك مع القرآن" : "Start your Quran journey"}
-                      </h3>
-                      <p className="mt-1 text-sm font-medium leading-6 text-muted-foreground">
-                        {lang === "ar"
-                          ? "اقرأ من مصحف الصفحات، استمع للآيات، وتدرّب على الحفظ في أي وقت. لا تحتاج إلى انتظار ورد من المعلم."
-                          : "Read the pages Mushaf, listen to ayahs, and practice memorization anytime. You do not need to wait for a teacher assignment."}
-                      </p>
-                      <Link
-                        href="/student/quran-practice/1?view=pages"
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-emerald-800"
-                        data-testid="link-student-quran-practice"
-                      >
-                        {lang === "ar" ? "ابدأ القراءة والتدرب" : "Start reading and practicing"}
-                        {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                      </Link>
-                    </div>
                   </div>
-                </Card>
+                </>
               )}
             </section>
           )}
