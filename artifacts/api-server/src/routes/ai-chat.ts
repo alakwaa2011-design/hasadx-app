@@ -15,7 +15,7 @@ import {
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { recordCachedAiUsage, trackAiUsageCall } from "../lib/ai-usage-ledger";
-import { buildSystemPrompt, HASAD_SYSTEM_PROMPT } from "../lib/ai-system-prompt";
+import { buildSystemPrompt } from "../lib/ai-system-prompt";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
@@ -42,9 +42,7 @@ function hashQuestion(s: string): string {
   return crypto.createHash("sha256").update(normalizeForHash(s)).digest("hex");
 }
 
-// Changes automatically whenever the bundled persona, knowledge, or FAQ changes,
-// preventing an old first-turn answer from surviving a knowledge update.
-const KNOWLEDGE_CACHE_VERSION = hashQuestion(HASAD_SYSTEM_PROMPT).slice(0, 16);
+const MAX_ADMIN_KNOWLEDGE_CHARS = 60_000;
 
 async function getTeacherId(req: any, res: any): Promise<number | null> {
   const tid = req.session?.teacherId;
@@ -476,7 +474,12 @@ async function handleSendMessage(req: any, res: any) {
   }
 
   // First-turn cache lookup — runs BEFORE rate-limit, since cached hits are free.
-  const qHash = hashQuestion(`${KNOWLEDGE_CACHE_VERSION}:${language}:${message}`);
+  // Admin knowledge is part of the cache version so saved updates take effect
+  // immediately instead of returning an answer cached before the update.
+  const customRows = await db.select().from(aiCustomInstructionsTable).limit(1);
+  const fullSystemPrompt = buildSystemPrompt(customRows[0]?.content, language);
+  const knowledgeCacheVersion = hashQuestion(fullSystemPrompt).slice(0, 16);
+  const qHash = hashQuestion(`${knowledgeCacheVersion}:${language}:${message}`);
   if (isFirstTurn) {
     const cached = await db
       .select()
@@ -577,10 +580,6 @@ async function handleSendMessage(req: any, res: any) {
   let tokensIn = 0;
   let tokensOut = 0;
 
-  // Load admin custom instructions (cached per request — one fast PK lookup)
-  const customRows = await db.select().from(aiCustomInstructionsTable).limit(1);
-  const fullSystemPrompt = buildSystemPrompt(customRows[0]?.content, language);
-
   try {
     const completion = await trackAiUsageCall(req, {
       toolKey: "ai-chat",
@@ -604,7 +603,7 @@ async function handleSendMessage(req: any, res: any) {
     tokensIn = completion.usage?.input_tokens ?? 0;
     tokensOut = completion.usage?.output_tokens ?? 0;
   } catch (err: any) {
-    console.error("[ai-chat] Anthropic call failed:", err?.message || err);
+    req.log.error({ err }, "[ai-chat] Anthropic call failed");
     // Refund the slot we reserved since no provider work was done.
     await refundSlot(teacherId).catch(() => {});
     await refundCredits(req, "ai provider error");
@@ -679,7 +678,18 @@ router.put("/admin/instructions", async (req, res) => {
   const teacherId = await getTeacherId(req, res);
   if (!teacherId) return;
   if (!(await isAdmin(teacherId))) return res.status(403).json({ error: "forbidden" });
-  const { content } = z.object({ content: z.string().max(8000) }).parse(req.body);
+  const parsed = z.object({
+    content: z.string().max(MAX_ADMIN_KNOWLEDGE_CHARS),
+  }).safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "invalid_knowledge",
+      message: `Knowledge must not exceed ${MAX_ADMIN_KNOWLEDGE_CHARS} characters`,
+      maxChars: MAX_ADMIN_KNOWLEDGE_CHARS,
+    });
+    return;
+  }
+  const { content } = parsed.data;
   const existing = await db.select({ id: aiCustomInstructionsTable.id }).from(aiCustomInstructionsTable).limit(1);
   if (existing[0]) {
     await db.update(aiCustomInstructionsTable)

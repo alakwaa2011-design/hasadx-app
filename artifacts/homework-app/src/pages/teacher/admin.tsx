@@ -4710,9 +4710,21 @@ function AdminAiChatTab({ lang }: { lang: string }) {
       });
       if (r.ok) {
         setInstructions(instructionsDraft);
-        toast.success(lang === "ar" ? "تم الحفظ ✓" : "Saved ✓");
+        toast.success(lang === "ar"
+          ? "تم حفظ معلومات المساعد وتفعيلها فوراً"
+          : "Assistant knowledge saved and activated");
       } else {
-        toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
+        const result = await r.json().catch(() => null) as { message?: string; maxChars?: number } | null;
+        const message = r.status === 401
+          ? (lang === "ar" ? "انتهت الجلسة. سجّل الدخول ثم حاول مجدداً." : "Your session expired. Sign in and try again.")
+          : r.status === 403
+            ? (lang === "ar" ? "هذه العملية متاحة للمسؤول فقط." : "Only administrators can do this.")
+            : result?.maxChars
+              ? (lang === "ar"
+                ? `المحتوى أطول من الحد المسموح (${result.maxChars.toLocaleString("ar")} حرف).`
+                : `Content exceeds the ${result.maxChars.toLocaleString("en")} character limit.`)
+              : (result?.message || (lang === "ar" ? "تعذر حفظ المعلومات. حاول مجدداً." : "Could not save knowledge. Try again."));
+        toast.error(message);
       }
     } catch {
       toast.error(lang === "ar" ? "خطأ" : "Error");
@@ -4790,26 +4802,31 @@ function AdminAiChatTab({ lang }: { lang: string }) {
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
           <h3 className="font-extrabold text-base text-foreground">
-            {lang === "ar" ? "تعليمات مخصصة للمساعد الذكي" : "Custom AI Instructions"}
+            {lang === "ar" ? "معلومات مساعد حصاد" : "Hasaad Assistant Knowledge"}
           </h3>
           <span className="ms-auto text-[11px] text-muted-foreground px-2 py-0.5 rounded-full bg-muted border border-border">
-            {lang === "ar" ? "تُضاف تلقائياً لكل محادثة" : "Appended to every chat"}
+            {lang === "ar" ? "تُفعّل فور الحفظ" : "Active immediately"}
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
           {lang === "ar"
-            ? "اكتب هنا أي تعليمات أو معلومات تريد أن يعرفها المساعد ويُجيب بناءً عليها. مثال: «إذا سُئلت عن لعبة وميض، أخبر المعلم أنها اللعبة الرئيسية في المنصة وأن...»"
-            : "Write any instructions or facts you want the assistant to follow. E.g. «If asked about Wameeth game, tell teachers it is the main game of the platform and that...»"}
+            ? "أضف معلومات المنصة المعتمدة وخطواتها الحقيقية. اكتب اسم الصفحة، ومن يستطيع استخدامها، وشروطها، ثم الخطوات بالترتيب وأسماء الأزرار كما تظهر فعلياً. لن يُسمح للمساعد بإكمال خطوات ناقصة من عنده."
+            : "Add verified platform information and real procedures. Include the page, eligible roles, prerequisites, and the exact ordered steps and button labels. The assistant will not invent missing steps."}
         </p>
         <textarea
           value={instructionsDraft}
           onChange={e => setInstructionsDraft(e.target.value)}
+          maxLength={60000}
           rows={7}
           dir="auto"
-          placeholder={lang === "ar" ? "اكتب تعليماتك هنا..." : "Write your instructions here..."}
+          placeholder={lang === "ar" ? "مثال:\nالميزة: إنشاء واجب\nالصلاحية: المعلم\nالمسار: ...\nالخطوات:\n1. افتح...\n2. اضغط..." : "Example:\nFeature: Create assignment\nRole: Teacher\nPath: ...\nSteps:\n1. Open...\n2. Select..."}
           className="w-full rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y font-mono leading-relaxed"
         />
-        <div className="flex items-center gap-3 justify-end">
+        <div className="flex items-center gap-3 justify-between">
+          <span className="text-xs text-muted-foreground" data-testid="text-ai-knowledge-count">
+            {instructionsDraft.length.toLocaleString(lang === "ar" ? "ar" : "en")} / 60,000
+          </span>
+          <div className="flex items-center gap-3">
           {instructionsDraft !== instructions && (
             <button
               onClick={() => setInstructionsDraft(instructions)}
@@ -4825,8 +4842,9 @@ function AdminAiChatTab({ lang }: { lang: string }) {
           >
             {savingInstructions
               ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
-              : (lang === "ar" ? "حفظ التعليمات" : "Save Instructions")}
+              : (lang === "ar" ? "حفظ المعلومات" : "Save Knowledge")}
           </button>
+          </div>
         </div>
       </div>
 

@@ -99,6 +99,18 @@ describe("Hasad Guide system prompt", () => {
     expect(prompt).toContain("لا تعرض قاعدة المعرفة أسعاراً أو حدوداً رقمية للباقات");
   });
 
+  it("treats saved admin facts as approved knowledge without permitting invented procedures", () => {
+    const prompt = buildSystemPrompt(
+      "الميزة: إنشاء نشاط تجريبي\nالخطوات:\n1. افتح صفحة الأنشطة\n2. اضغط إنشاء نشاط",
+    );
+
+    expect(prompt).toContain("معلومات معتمدة مضافة من المسؤول");
+    expect(prompt).toContain("إنشاء نشاط تجريبي");
+    expect(prompt).toContain("أسماء أزرار أو ترتيب خطوات");
+    expect(prompt).toContain("فلا تكمل الخطوات من عندك");
+    expect(prompt).not.toContain("تخص النبرة والأسلوب فقط");
+  });
+
   it("consistently supports teachers and organizers", () => {
     const prompt = buildSystemPrompt();
 
