@@ -136,9 +136,14 @@ export function QuranPagesView({
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">("spread");
+  const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
+    typeof window !== "undefined" && window.innerWidth < 768 ? "continuous" : "spread",
+  );
   const [continuousStartPage, setContinuousStartPage] = useState(FIRST_PAGE);
-  const [continuousEndPage, setContinuousEndPage] = useState(FIRST_PAGE);
+  const [continuousEndPage, setContinuousEndPage] = useState(
+    typeof window !== "undefined" && window.innerWidth < 768 ? Math.min(LAST_PAGE, FIRST_PAGE + 3) : FIRST_PAGE,
+  );
+  const continuousInitializedRef = useRef(false);
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -227,6 +232,13 @@ export function QuranPagesView({
       image.src = pageImageUrl(page);
     }
   }, [activePage, loading]);
+
+  useEffect(() => {
+    if (loading || pageLayout !== "continuous" || continuousInitializedRef.current) return;
+    continuousInitializedRef.current = true;
+    setContinuousStartPage(activePage);
+    setContinuousEndPage(Math.min(LAST_PAGE, activePage + 3));
+  }, [activePage, loading, pageLayout]);
 
   useEffect(() => {
     if (!isIndependentPractice || loading) return;
@@ -666,7 +678,7 @@ export function QuranPagesView({
 
       {!quietMode && (
         <header ref={toolsHeaderRef} className="sticky top-0 z-40 shrink-0 border-b border-border/40 bg-white/95 shadow-sm backdrop-blur-xl dark:bg-[#0a0c0b]/95 transition-all duration-300">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 md:px-4 md:py-3">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 px-1.5 py-1 md:gap-3 md:px-4 md:py-3">
 
             {/* Back Navigation */}
             {!embedded && (
@@ -712,7 +724,7 @@ export function QuranPagesView({
               type="button"
               onClick={() => setMobileToolsOpen((open) => !open)}
               className={cn(
-                "grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors shadow-sm md:hidden",
+                "grid h-8 w-8 shrink-0 place-items-center rounded-xl border transition-colors shadow-sm md:hidden",
                 mobileToolsOpen
                   ? "border-transparent bg-muted text-foreground"
                   : "border-border/70 bg-background text-foreground"
@@ -725,7 +737,7 @@ export function QuranPagesView({
 
             {/* Expansion Area (Flex on Desktop, toggled on Mobile) */}
             <div className={cn(
-              "w-full md:w-auto flex-col md:flex-row md:flex-1 items-stretch md:items-center justify-end gap-3 md:gap-4",
+              "w-full md:w-auto flex-col md:flex-row md:flex-1 items-stretch md:items-center justify-end gap-2 md:gap-4",
               mobileToolsOpen ? "flex" : "hidden md:flex"
             )}>
               {/* 1. Location Selectors */}
@@ -936,7 +948,7 @@ export function QuranPagesView({
           </div>
 
           {startAyah !== null && endAyah !== null && (
-            <div className="border-y border-emerald-200/50 bg-emerald-50 px-4 py-2 text-center text-sm font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100">
+            <div className="border-y border-emerald-200/50 bg-emerald-50 px-2 py-1 text-center text-xs font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100 md:px-4 md:py-2 md:text-sm">
               {lang === "ar"
                 ? `مهمة ${mode === "memorization" ? "حفظ" : "مراجعة"}: الآيات ${startAyah} إلى ${endAyah}`
                 : `${mode === "memorization" ? "Memorization" : "Review"} task: ayahs ${startAyah}–${endAyah}`}
@@ -998,7 +1010,7 @@ export function QuranPagesView({
       )}
 
       <main
-        className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
+        className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-0 py-1 pb-2 md:px-8 md:py-8"
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
           const container = event.currentTarget;
@@ -1049,7 +1061,7 @@ export function QuranPagesView({
           <div
             key={`${pageLayout}:${activePage}`}
             className={cn(
-              "mx-auto grid grid-cols-1 items-start gap-3 transition-[width,max-width] duration-200",
+              "mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
               pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
               turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
             )}
@@ -1077,7 +1089,10 @@ export function QuranPagesView({
         <nav
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
-          className="mx-auto mt-3 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-3 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5"
+          className={cn(
+            "mx-auto mt-1 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-1 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5",
+            pageLayout === "continuous" && "hidden md:flex",
+          )}
           style={{ width: pageLayout === "spread" ? `${zoom}%` : "100%" }}
         >
           <button
@@ -1112,7 +1127,7 @@ export function QuranPagesView({
 
       {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
-          className="relative z-40 flex max-h-[58dvh] w-full shrink-0 flex-col"
+          className="relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col md:max-h-[58dvh]"
           data-testid="quran-bottom-dock"
         >
           {educationSelection && (
