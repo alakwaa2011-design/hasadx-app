@@ -4,6 +4,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Check,
+  Copy,
   Eye,
   EyeOff,
   ImageOff,
@@ -19,6 +21,8 @@ import { useI18n } from "@/lib/i18n";
 import { QuranSearchDialog } from "./quran-search-dialog";
 import {
   getGetQuranJourneyQueryKey,
+  getGetQuranSurahContentQueryKey,
+  useGetQuranSurahContent,
   useRecordMyQuranIndependentSession,
   useUpdateMyQuranIndependentPosition,
 } from "@workspace/api-client-react";
@@ -157,6 +161,7 @@ export function QuranPagesView({
   const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
+  const [copiedVerseKey, setCopiedVerseKey] = useState<string | null>(null);
   const { playWord, stopWordAudio } = useQuranWordAudio();
 
   useEffect(() => {
@@ -266,6 +271,25 @@ export function QuranPagesView({
   const selectedAyah = selectedVerseKey
     ? Number(selectedVerseKey.split(":")[1])
     : (fallbackVerse?.number ?? initialAyah);
+  const { data: selectedSurahContent, isFetching: isFetchingSelectedSurah } = useGetQuranSurahContent(selectedSurah, {
+    query: {
+      queryKey: getGetQuranSurahContentQueryKey(selectedSurah),
+      staleTime: Infinity,
+    },
+  });
+  const selectedAyahText = selectedSurahContent?.ayahs.find((ayah) => ayah.index === selectedAyah)?.text;
+
+  const copySelectedAyah = async () => {
+    if (!selectedAyahText || !selectedVerseKey) return;
+    try {
+      await navigator.clipboard.writeText(selectedAyahText);
+      setCopiedVerseKey(selectedVerseKey);
+      toast.success(lang === "ar" ? "تم نسخ الآية" : "Ayah copied");
+      window.setTimeout(() => setCopiedVerseKey((current) => current === selectedVerseKey ? null : current), 1800);
+    } catch {
+      toast.error(lang === "ar" ? "تعذر نسخ الآية" : "Could not copy ayah");
+    }
+  };
 
   const {
     memoSession, setMemoSession,
@@ -733,6 +757,23 @@ export function QuranPagesView({
               {/* 3. Tools Island */}
               <div className="flex w-full items-center justify-center gap-1 rounded-xl border border-border/40 bg-muted/30 p-1 px-2 shadow-sm md:w-auto">
                 <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
+
+                <div className="mx-1 h-5 w-px bg-border/50" />
+                <button
+                  type="button"
+                  onClick={() => void copySelectedAyah()}
+                  disabled={!selectedAyahText || isFetchingSelectedSurah}
+                  data-testid="button-copy-selected-ayah"
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+                  aria-label={lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`}
+                >
+                  {copiedVerseKey === selectedVerseKey
+                    ? <Check className="h-4 w-4" />
+                    : <Copy className="h-4 w-4" />}
+                  <span>{copiedVerseKey === selectedVerseKey
+                    ? (lang === "ar" ? "تم النسخ" : "Copied")
+                    : (lang === "ar" ? "نسخ الآية" : "Copy ayah")}</span>
+                </button>
 
                 {!isIndependentPractice && mode === null && fallbackVerse && (
                   <>
