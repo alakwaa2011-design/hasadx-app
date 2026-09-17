@@ -504,13 +504,13 @@ export function QuranAudioPlayer({
       {activeTab !== 'none' && (
         <div
           data-testid={`panel-${activeTab}`}
-          className="absolute bottom-full mb-3 end-2 sm:end-4 z-50 w-[340px] max-w-[calc(100vw-1rem)] rounded-xl border border-border/60 bg-background/95 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2"
+          className="absolute bottom-full end-2 z-50 mb-2 max-h-[calc(100dvh-11rem)] w-[340px] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 sm:end-4 sm:mb-3 sm:max-h-[calc(100dvh-5rem)] sm:p-4"
         >
           {activeTab === 'settings' ? (
              <div className="space-y-5">
                <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-foreground">{isArabic ? 'خيارات التلاوة' : 'Audio Options'}</span>
-                  <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors">
+                   <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     <X className="w-4 h-4" />
                   </button>
                </div>
@@ -527,7 +527,7 @@ export function QuranAudioPlayer({
                        data-testid={`button-speed-${s}`}
                        onClick={() => setSpeed(s)}
                        className={cn(
-                         "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                          "min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all",
                          speed === s ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground"
                        )}
                      >
@@ -555,7 +555,7 @@ export function QuranAudioPlayer({
                            setCurrentRangePlayCount(1);
                          }}
                          className={cn(
-                           "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                            "min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all",
                            repeat === r ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground"
                          )}
                        >
@@ -646,7 +646,7 @@ export function QuranAudioPlayer({
                    <BookOpen className="w-4 h-4 text-amber-600" />
                    <span className="font-bold text-sm text-foreground">{isArabic ? 'جلسة الحفظ والتكرار' : 'Memorization Session'}</span>
                  </div>
-                 <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors">
+                  <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                    <X className="w-4 h-4" />
                  </button>
                </div>
@@ -692,14 +692,14 @@ export function QuranAudioPlayer({
                        <button
                           data-testid="button-memo-scope-ayah"
                           onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'ayah' })}
-                          className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'ayah' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                           className={cn("min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'ayah' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                        >
                           {isArabic ? 'الآية' : 'Ayah'}
                        </button>
                        <button
                           data-testid="button-memo-scope-range"
                           onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'range' })}
-                          className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'range' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                           className={cn("min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'range' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                        >
                           {isArabic ? 'النطاق' : 'Range'}
                        </button>
@@ -714,7 +714,7 @@ export function QuranAudioPlayer({
                             key={val}
                             data-testid={`button-memo-count-${val}`}
                             onClick={() => onMemoSessionChange({ ...memoSession, repeatCount: val })}
-                            className={cn("px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatCount === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                             className={cn("min-h-8 px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatCount === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                          >
                             {val === 'continuous' ? '∞' : `${val}x`}
                          </button>
@@ -733,7 +733,7 @@ export function QuranAudioPlayer({
                             key={val}
                             data-testid={`button-memo-pause-${val}`}
                             onClick={() => onMemoSessionChange({ ...memoSession, pauseSeconds: val })}
-                            className={cn("px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.pauseSeconds === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                             className={cn("min-h-8 px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.pauseSeconds === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                          >
                             {val === 0 ? '0s' : `${val}s`}
                          </button>
@@ -751,21 +751,21 @@ export function QuranAudioPlayer({
                           <button
                              data-testid="button-memoview-show"
                              onClick={() => onMemoViewChange('show')}
-                             className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'show' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                              className={cn("min-h-8 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'show' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                           >
                              {isArabic ? 'الكل' : 'All'}
                           </button>
                           <button
                              data-testid="button-memoview-progressive"
                              onClick={() => onMemoViewChange('progressive')}
-                             className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'progressive' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                              className={cn("min-h-8 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'progressive' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                           >
                              {isArabic ? 'تتابعي' : 'Prog'}
                           </button>
                           <button
                              data-testid="button-memoview-hide"
                              onClick={() => onMemoViewChange('hide')}
-                             className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'hide' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                              className={cn("min-h-8 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'hide' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
                           >
                              {isArabic ? 'إخفاء' : 'Hide'}
                           </button>
@@ -780,10 +780,10 @@ export function QuranAudioPlayer({
       )}
 
       {/* Main Control Bar */}
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 md:gap-4 px-1 md:px-2">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 px-1 sm:flex-nowrap md:gap-4 md:px-2">
 
         {/* Left: Play & Info */}
-        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+        <div className="flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto md:gap-3">
           <button
             data-testid="button-play-pause"
             onClick={togglePlay}
@@ -847,20 +847,20 @@ export function QuranAudioPlayer({
         </div>
 
         {/* Center: Playback Controls */}
-        <div className="flex items-center gap-1 md:gap-2 shrink-0" dir="ltr">
-           <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="p-2 text-foreground/70 hover:text-foreground disabled:opacity-30 transition-colors">
+         <div className="flex basis-full items-center justify-center gap-1 sm:basis-auto md:gap-2" dir="ltr">
+            <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
              <SkipBack className="w-4 h-4 md:w-5 md:h-5 fill-current" />
           </button>
-           <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="p-2 text-foreground/70 hover:text-foreground disabled:opacity-30 transition-colors">
+            <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
              <Square className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
           </button>
-           <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="p-2 text-foreground/70 hover:text-foreground disabled:opacity-30 transition-colors">
+            <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
              <SkipForward className="w-4 h-4 md:w-5 md:h-5 fill-current" />
           </button>
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1 md:gap-2 shrink-0 border-s border-border/50 ps-2 md:ps-4">
+        <div className="flex basis-full items-center justify-center gap-1 sm:basis-auto sm:shrink-0 sm:border-s sm:border-border/50 sm:ps-2 md:gap-2 md:ps-4">
           {memoSession && (
              <button
                data-testid="button-memo-options"
@@ -868,7 +868,7 @@ export function QuranAudioPlayer({
                 aria-label={isArabic ? 'إعدادات التكرار والحفظ' : 'Repeat and memorization settings'}
                 aria-expanded={activeTab === 'memo'}
                className={cn(
-                  "relative flex h-8 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:h-9 md:text-xs",
+                   "relative flex h-10 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:text-xs",
                   activeTab === 'memo' || memoSession.isActive ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "hover:bg-muted text-muted-foreground"
                )}
              >
@@ -887,7 +887,7 @@ export function QuranAudioPlayer({
              aria-label={isArabic ? 'خيارات التلاوة' : 'Recitation options'}
              aria-expanded={activeTab === 'settings'}
              className={cn(
-                "flex h-8 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:h-9 md:text-xs",
+                 "flex h-10 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:text-xs",
                 activeTab === 'settings' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "hover:bg-muted text-muted-foreground"
              )}
           >
@@ -899,7 +899,7 @@ export function QuranAudioPlayer({
                 data-testid="button-close-player"
                 onClick={onClose}
                 aria-label={isArabic ? 'إغلاق مشغل التلاوة' : 'Close recitation player'}
-                className="flex items-center justify-center h-8 w-8 md:h-9 md:w-9 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1 rtl:mr-1 rtl:ml-0"
+                 className="ms-1 flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
              >
                 <X className="w-4 h-4 md:w-4 md:h-4" />
              </button>

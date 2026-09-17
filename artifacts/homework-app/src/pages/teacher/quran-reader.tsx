@@ -592,7 +592,7 @@ export function QuranTextReaderView({
               <button
                 type="button"
                 onClick={onExitEmbedded}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 md:hidden dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 xl:hidden dark:text-emerald-400 dark:hover:bg-emerald-950/50"
                 aria-label={lang === 'ar' ? 'العودة إلى أقسام حصاد القرآن' : 'Back to Hasaad Quran sections'}
               >
                 <ChevronLeft className="h-5 w-5 rtl:hidden" />
@@ -601,7 +601,7 @@ export function QuranTextReaderView({
             )}
             {!isStudentWard && (
               <div className={cn(
-                "shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 md:flex",
+                "shrink-0 items-center gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 xl:flex",
                 mobileToolsOpen ? "flex" : "hidden",
               )}>
                 <span
@@ -628,7 +628,7 @@ export function QuranTextReaderView({
                 )}
               </div>
             )}
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-2 xl:hidden">
               <span className="truncate text-sm font-black text-emerald-900 dark:text-emerald-100">
                 {lang === 'ar' ? `سورة ${surah.name}` : `Surah ${surah.name}`}
               </span>
@@ -639,7 +639,7 @@ export function QuranTextReaderView({
             <button
               type="button"
               onClick={() => setMobileToolsOpen(open => !open)}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/70 bg-background text-foreground shadow-sm md:hidden"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/70 bg-background text-foreground shadow-sm xl:hidden"
               aria-expanded={mobileToolsOpen}
               aria-label={lang === 'ar' ? 'أدوات القراءة' : 'Reading tools'}
             >
@@ -647,7 +647,7 @@ export function QuranTextReaderView({
             </button>
             
             <div className={cn(
-              "order-3 w-full flex-wrap items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1 md:flex-nowrap",
+              "order-3 w-full flex-wrap items-center justify-center gap-2 overflow-x-auto xl:order-none xl:flex xl:w-auto xl:flex-1 xl:flex-nowrap",
               mobileToolsOpen ? "flex" : "hidden",
             )}>
               <select 
@@ -718,7 +718,7 @@ export function QuranTextReaderView({
             </div>
 
             <div className={cn(
-              "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
+              "order-4 w-full items-center justify-center gap-1 text-muted-foreground xl:order-none xl:flex xl:w-auto xl:gap-2",
               mobileToolsOpen ? "flex" : "hidden",
             )}>
               {isIndependentPractice && (
