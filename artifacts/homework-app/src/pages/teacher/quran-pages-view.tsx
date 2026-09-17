@@ -116,6 +116,7 @@ export function QuranPagesView({
   const [activePage, setActivePage] = useState(FIRST_PAGE);
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -137,7 +138,19 @@ export function QuranPagesView({
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
   const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioDockOpen, setAudioDockOpen] = useState(false);
   const { playWord, stopWordAudio } = useQuranWordAudio();
+
+  useEffect(() => {
+    if (!mobileToolsOpen) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!toolsHeaderRef.current?.contains(event.target as Node)) {
+        setMobileToolsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
+  }, [mobileToolsOpen]);
 
   useEffect(() => {
     stopWordAudio();
@@ -316,6 +329,12 @@ export function QuranPagesView({
     const nextVerse = verses.find((verse) => verse.page_id === nextPage);
     setTurnDirection(nextPage > activePage ? "next" : "previous");
     setActivePage(nextPage);
+    setMobileToolsOpen(false);
+    if (!isPlaying) {
+      setAudioDockOpen(false);
+      setEducationSelection(null);
+      setSelectedVerseKey(null);
+    }
     if (nextVerse) {
       onNavigate({
         surah: nextVerse.chapter_id,
@@ -438,6 +457,7 @@ export function QuranPagesView({
                 playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
               }
+              setAudioDockOpen(true);
               if (isPlaying && playingVerseKey) {
                 // If a different surah is clicked while playing, we need to stop or update the playing track
                 // Since quran-audio-player only handles playing within one surah (via surahNumber prop),
@@ -485,7 +505,7 @@ export function QuranPagesView({
       )}
 
       {!quietMode && (
-        <header className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-white/95 shadow-sm backdrop-blur-md dark:bg-card/95">
+        <header ref={toolsHeaderRef} className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-white/95 shadow-sm backdrop-blur-md dark:bg-card/95">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 md:px-4 md:py-3">
             {!embedded && (
               <button
@@ -527,7 +547,12 @@ export function QuranPagesView({
               <div className={cn(
                 "order-3 w-full flex-wrap items-center justify-center gap-2 md:order-none md:flex md:w-auto md:flex-1",
                 mobileToolsOpen ? "flex" : "hidden",
-              )}>
+              )}
+                onClickCapture={(event) => {
+                  if ((event.target as HTMLElement).closest("button, a")) setMobileToolsOpen(false);
+                }}
+                onChangeCapture={() => setMobileToolsOpen(false)}
+              >
                 {isIndependentPractice && (
                   <button
                     type="button"
@@ -629,7 +654,11 @@ export function QuranPagesView({
             <div className={cn(
               "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
               mobileToolsOpen ? "flex" : "hidden",
-            )}>
+            )}
+              onClickCapture={(event) => {
+                if ((event.target as HTMLElement).closest("button, a")) setMobileToolsOpen(false);
+              }}
+            >
               <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
               <button
                 type="button"
@@ -743,7 +772,7 @@ export function QuranPagesView({
         </nav>
       </main>
 
-      {!quietMode && (educationSelection || (selectedVerseKey && audioSurahs.length > 0)) && (
+      {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
           className="relative z-40 flex max-h-[58dvh] w-full shrink-0 flex-col"
           data-testid="quran-bottom-dock"
@@ -755,7 +784,7 @@ export function QuranPagesView({
               onClose={() => setEducationSelection(null)}
             />
           )}
-          {selectedVerseKey && audioSurahs.length > 0 && (
+          {(audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0 && (
             <div className="z-40 w-full shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
               <QuranAudioPlayer
                 surahs={audioSurahs}
@@ -774,6 +803,7 @@ export function QuranPagesView({
                 onPlayingWordChange={setPlayingWordPosition}
                 onClose={() => {
                   setIsPlaying(false);
+                  setAudioDockOpen(false);
                   setPlayingVerseKey(null);
                   setSelectedVerseKey(null);
                   setEducationSelection(null);

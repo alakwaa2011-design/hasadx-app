@@ -83,6 +83,7 @@ export function QuranAudioPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<'none' | 'settings' | 'memo'>('none');
+  const playerRef = useRef<HTMLDivElement>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const activeSeekRef = useRef<{ ayah: number, startMs: number, endMs: number, url: string, segments: AyahTimingSegment[] } | null>(null);
@@ -114,6 +115,17 @@ export function QuranAudioPlayer({
     if (memoSession?.isActive) setActiveTab('memo');
     else if (activeTab === 'memo') setActiveTab('none');
   }, [memoSession?.isActive]);
+
+  useEffect(() => {
+    if (activeTab === 'none') return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!playerRef.current?.contains(event.target as Node)) {
+        setActiveTab('none');
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePress);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress);
+  }, [activeTab]);
 
   useEffect(() => {
     if (recitationId !== null || !reciterCatalog.data?.reciters.length) return;
@@ -463,7 +475,7 @@ export function QuranAudioPlayer({
   };
 
   return (
-    <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-border p-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] w-full shrink-0 flex flex-col gap-2 transition-colors">
+    <div ref={playerRef} className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-border p-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] w-full shrink-0 flex flex-col gap-2 transition-colors">
       {memoSession?.isActive && (
          <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-1">
             <div className="flex items-center gap-2">
@@ -515,7 +527,16 @@ export function QuranAudioPlayer({
       )}
 
       {activeTab === 'memo' && memoSession && onMemoSessionChange && (
-        <div id="quran-memo-settings" className="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50 mb-2 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
+         <div
+           id="quran-memo-settings"
+           className="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50 mb-2 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200"
+           onClickCapture={(event) => {
+             if ((event.target as HTMLElement).closest('button')) queueMicrotask(() => setActiveTab('none'));
+           }}
+           onChangeCapture={(event) => {
+             if (event.target instanceof HTMLSelectElement) setActiveTab('none');
+           }}
+         >
           <div className="flex items-center gap-2 mb-1 hidden md:flex">
              <BookOpen className="w-5 h-5 text-amber-700 dark:text-amber-500" />
              <span className="font-bold text-amber-900 dark:text-amber-300">
@@ -621,7 +642,13 @@ export function QuranAudioPlayer({
       )}
 
       {activeTab === 'settings' && (
-        <div id="quran-audio-settings" className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/30 rounded-xl mb-1 text-sm border border-border/50 animate-in fade-in zoom-in-95 duration-200">
+        <div
+          id="quran-audio-settings"
+          className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/30 rounded-xl mb-1 text-sm border border-border/50 animate-in fade-in zoom-in-95 duration-200"
+          onClickCapture={(event) => {
+            if ((event.target as HTMLElement).closest('button')) queueMicrotask(() => setActiveTab('none'));
+          }}
+        >
           <div className="flex w-full flex-wrap items-start gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-72">
               <div className="flex items-center gap-2">

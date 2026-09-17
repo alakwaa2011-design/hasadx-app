@@ -245,6 +245,7 @@ export function QuranTextReaderView({
   const [fontSize, setFontSize] = useState(28);
   const [isQuietMode, setIsQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const toolsHeaderRef = useRef<HTMLElement | null>(null);
 
   // Audio and Memorization State
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
@@ -262,6 +263,17 @@ export function QuranTextReaderView({
   const selectedAyah = position.ayah;
   const [playingWord, setPlayingWord] = useState<number | null>(null);
   const { activeWordKey, loadingWordKey, playWord, stopWordAudio } = useQuranWordAudio();
+
+  useEffect(() => {
+    if (!mobileToolsOpen) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!toolsHeaderRef.current?.contains(event.target as Node)) {
+        setMobileToolsOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePress);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress);
+  }, [mobileToolsOpen]);
 
   const { 
     memoSession, setMemoSession, 
@@ -558,7 +570,7 @@ export function QuranTextReaderView({
       )}
 
       {!isQuietMode && (
-        <header className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
+        <header ref={toolsHeaderRef} className="sticky top-0 z-40 bg-white/95 dark:bg-card/95 backdrop-blur-md border-b border-border/60 shadow-sm shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 md:px-4 md:py-3">
             {!embedded && (
               <button
@@ -624,7 +636,12 @@ export function QuranTextReaderView({
             <div className={cn(
               "order-3 w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1",
               mobileToolsOpen ? "flex" : "hidden",
-            )}>
+            )}
+              onClickCapture={(event) => {
+                if ((event.target as HTMLElement).closest('button, a')) setMobileToolsOpen(false);
+              }}
+              onChangeCapture={() => setMobileToolsOpen(false)}
+            >
               <select 
                 value={surahNumber} 
                 disabled={isStudentWard}
@@ -695,7 +712,11 @@ export function QuranTextReaderView({
             <div className={cn(
               "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
               mobileToolsOpen ? "flex" : "hidden",
-            )}>
+            )}
+              onClickCapture={(event) => {
+                if ((event.target as HTMLElement).closest('button, a')) setMobileToolsOpen(false);
+              }}
+            >
               {isIndependentPractice && (
                 <button
                   type="button"
