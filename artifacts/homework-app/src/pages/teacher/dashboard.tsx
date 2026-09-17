@@ -1225,6 +1225,30 @@ export default function TeacherDashboard() {
               );
             })()}
 
+            {(() => {
+              const active = location === "/teacher/quran-center" || location.startsWith("/teacher/quran-center/");
+              return (
+                <button
+                  onClick={() => setLocation("/teacher/quran-center")}
+                  aria-current={active ? "page" : undefined}
+                  className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
+                  style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
+                  data-testid="sidebar-quran-center-link"
+                >
+                  {!active && (
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(30,77,53,0.05)" }} />
+                  )}
+                  {active && (
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
+                  )}
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{ color: active ? "#1E4D35" : "rgba(30,77,53,0.62)" }}>
+                    <BookOpen className="w-4 h-4" />
+                  </span>
+                  <span className="relative truncate">{lang === "ar" ? "حصاد القرآن" : "Hasaad Quran"}</span>
+                </button>
+              );
+            })()}
+
             {/* ── Divider + Account section: الباقات (last item, standalone) ── */}
             <div className="my-3 border-t border-border/50" />
             {(() => {
@@ -3546,7 +3570,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       tools: [
         selectTool("/teacher/library", { searchText: "مكتبة المعلم teacher library resources" }),
         selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
-        selectTool("/teacher/quran-center", { searchText: "حصاد القرآن Hasaad Quran memorization" }),
       ],
     },
     {
