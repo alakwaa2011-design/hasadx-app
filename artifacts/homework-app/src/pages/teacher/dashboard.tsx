@@ -89,7 +89,6 @@ import {
   FileImage,
   BookOpen,
   Bookmark,
-  ClipboardCheck,
   Monitor,
   Headphones,
   Brain,
@@ -461,6 +460,7 @@ export default function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "content" | "other">("ai-tools");
   const [quranSubTab, setQuranSubTab] = useState<QuranCenterTab>("mushaf");
+  const [quranExpanded, setQuranExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   // Kept only as a safe fallback for an already-open legacy modal. All active
   // Wameeth launchers now navigate directly to the shared setup route below.
@@ -1243,9 +1243,15 @@ export default function TeacherDashboard() {
                 <div>
                 <button
                   onClick={() => {
-                    setActiveTab("quran");
-                    setQuranSubTab("mushaf");
+                    if (active) {
+                      setQuranExpanded((expanded) => !expanded);
+                    } else {
+                      setActiveTab("quran");
+                      setQuranSubTab("mushaf");
+                      setQuranExpanded(true);
+                    }
                   }}
+                  aria-expanded={quranExpanded}
                   aria-current={active ? "page" : undefined}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
                   style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
@@ -1260,15 +1266,21 @@ export default function TeacherDashboard() {
                   <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{ color: active ? "#1E4D35" : "rgba(30,77,53,0.62)" }}>
                     <BookOpen className="w-4 h-4" />
                   </span>
-                  <span className="relative truncate">{lang === "ar" ? "حصاد القرآن" : "Hasaad Quran"}</span>
+                  <span className="relative flex-1 truncate text-start">{lang === "ar" ? "حصاد القرآن" : "Hasaad Quran"}</span>
+                  <ChevronDown
+                    className="relative h-3.5 w-3.5 shrink-0 transition-transform"
+                    style={{
+                      color: active ? "rgba(30,77,53,0.6)" : "rgba(30,77,53,0.3)",
+                      transform: quranExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                  />
                 </button>
-                {active && (
+                {active && quranExpanded && (
                   <div className="mt-0.5 mb-1 space-y-0.5" style={{ paddingInlineStart: 12 }}>
                     {([
                       { id: "mushaf", label: lang === "ar" ? "المصحف" : "Mushaf", icon: <BookOpen className="h-3.5 w-3.5" /> },
                       { id: "bookmarks", label: lang === "ar" ? "العلامات" : "Bookmarks", icon: <Bookmark className="h-3.5 w-3.5" /> },
                       { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="h-3.5 w-3.5" /> },
-                      { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="h-3.5 w-3.5" /> },
                     ] as const).map((item) => {
                       const subActive = quranSubTab === item.id;
                       return (
