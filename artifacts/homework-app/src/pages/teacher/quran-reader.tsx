@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
   getJuzStart,
@@ -37,6 +37,10 @@ import {
 import { useQuranReaderState } from '@/components/quran/use-quran-reader-state';
 import { QuranBookmarkToggle } from '@/components/quran/quran-bookmark-toggle';
 import { useQuranMemoSession } from '@/components/quran/use-quran-memo-session';
+import {
+  QuranGuidedMemorizationPanel,
+  type GuidedMemorizationStage,
+} from '@/components/quran/quran-guided-memorization-panel';
 import { useQuranWordAudio } from '@/components/quran/use-quran-word-audio';
 
 export default function QuranReader() {
@@ -212,6 +216,8 @@ interface ReaderViewProps {
   isIndependentPractice?: boolean;
   onExitEmbedded?: () => void;
   onOpenBookmarks?: () => void;
+  guidedMemorizationSignal?: number;
+  onGuidedMemorizationStarted?: () => void;
 }
 
 export function QuranTextReaderView({
@@ -229,6 +235,8 @@ export function QuranTextReaderView({
   isIndependentPractice = false,
   onExitEmbedded,
   onOpenBookmarks,
+  guidedMemorizationSignal = 0,
+  onGuidedMemorizationStarted,
 }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -265,6 +273,11 @@ export function QuranTextReaderView({
     },
   );
   const selectedAyah = position.ayah;
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
+  const [guidedAyah, setGuidedAyah] = useState(selectedAyah);
+  const [guidedRecitationRevealed, setGuidedRecitationRevealed] = useState(false);
+  const [guidedRevealedWords, setGuidedRevealedWords] = useState<Set<number>>(new Set());
   const [playingWord, setPlayingWord] = useState<number | null>(null);
   const { activeWordKey, loadingWordKey, playWord, stopWordAudio } = useQuranWordAudio();
 
@@ -285,6 +298,63 @@ export function QuranTextReaderView({
     isAyahConcealed, toggleReveal, resetReveal,
     startSession, endSession
   } = useQuranMemoSession(surahNumber, selectedAyah, startAyah, endAyah, mode);
+
+  const startGuidedMemorization = useCallback((ayah = selectedAyah) => {
+    const safeAyah = clampQuranAyah(ayah);
+    setGuidedAyah(safeAyah);
+    setGuidedStage(0);
+    setGuidedRecitationRevealed(false);
+    setGuidedRevealedWords(new Set());
+    setGuidedOpen(true);
+    setMemoSession(session => ({
+      ...session,
+      isActive: true,
+      rangeStart: safeAyah,
+      rangeEnd: safeAyah,
+      repeatScope: 'ayah',
+      repeatCount: 3,
+      pauseSeconds: 1,
+    }));
+    setMemoView('show');
+    setPlayingAyah(safeAyah);
+    setIsPlaying(true);
+  }, [selectedAyah, setMemoSession, setMemoView]);
+
+  useEffect(() => {
+    if (guidedMemorizationSignal <= 0) return;
+    startGuidedMemorization(selectedAyah);
+    onGuidedMemorizationStarted?.();
+  }, [guidedMemorizationSignal, onGuidedMemorizationStarted, selectedAyah, startGuidedMemorization]);
+
+  useEffect(() => {
+    if (!guidedOpen) return;
+    setGuidedRecitationRevealed(false);
+    setGuidedRevealedWords(new Set());
+    setMemoView('show');
+    if (guidedStage === 0) {
+      setMemoSession(session => ({
+        ...session,
+        isActive: true,
+        rangeStart: guidedAyah,
+        rangeEnd: guidedAyah,
+        repeatScope: 'ayah',
+        repeatCount: 3,
+        pauseSeconds: 1,
+      }));
+      setPlayingAyah(guidedAyah);
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+      setPlayingAyah(null);
+    }
+  }, [guidedAyah, guidedOpen, guidedStage, setMemoSession, setMemoView]);
+
+  const closeGuidedMemorization = useCallback(() => {
+    setGuidedOpen(false);
+    setIsPlaying(false);
+    setPlayingAyah(null);
+    endSession();
+  }, [endSession]);
 
   useEffect(() => {
     stopWordAudio();
@@ -446,6 +516,10 @@ export function QuranTextReaderView({
   const handleAyahClick = (ayahIndex: number) => {
     if (!isAyahPlayable(ayahIndex)) return;
     dispatchPosition({ type: "click", ayah: ayahIndex });
+    if (guidedOpen && guidedStage === 3 && ayahIndex === guidedAyah) {
+      setGuidedRecitationRevealed(true);
+      return;
+    }
     if (isAyahConcealed(surahNumber, ayahIndex, playingAyah)) {
       toggleReveal(surahNumber, ayahIndex);
     } else {
@@ -473,7 +547,9 @@ export function QuranTextReaderView({
   const textPageGroups = groupAyahsByMushafPage(surahNumber, surah.ayahs);
 
   const renderAyah = (ayah: QuranSurahParsed['ayahs'][number]) => {
-    const concealed = isAyahConcealed(surahNumber, ayah.index, playingAyah);
+    const isGuidedAyah = guidedOpen && ayah.index === guidedAyah;
+    const guidedConcealed = isGuidedAyah && guidedStage === 3 && !guidedRecitationRevealed;
+    const concealed = guidedConcealed || isAyahConcealed(surahNumber, ayah.index, playingAyah);
     const isPlayingThis = playingAyah === ayah.index;
     const inTask = isTaskAyah(ayah.index);
     const playable = isAyahPlayable(ayah.index);
@@ -507,7 +583,12 @@ export function QuranTextReaderView({
         <span className="mx-1">
           {words.map((word, wordIndex) => {
              const wordPosition = wordIndex + 1;
-             const isPlayingWord = isPlayingThis && playingWord === wordPosition;
+              const isPlayingWord = isPlayingThis && playingWord === wordPosition;
+              const guidedWordHidden =
+                isGuidedAyah &&
+                guidedStage === 2 &&
+                wordIndex % 2 === 1 &&
+                !guidedRevealedWords.has(wordPosition);
               const wordKey = `${surahNumber}:${ayah.index}:${wordPosition}`;
               const isPreviewingWord = activeWordKey === wordKey;
               const isLoadingWord = loadingWordKey === wordKey;
@@ -523,6 +604,10 @@ export function QuranTextReaderView({
                   data-testid={`button-quran-word-${surahNumber}-${ayah.index}-${wordPosition}`}
                   onClick={playable && !concealed ? (event) => {
                     event.stopPropagation();
+                    if (guidedWordHidden) {
+                      setGuidedRevealedWords(previous => new Set(previous).add(wordPosition));
+                      return;
+                    }
                     playWord(surahNumber, ayah.index, wordPosition);
                   } : undefined}
                   onKeyDown={playable && !concealed ? (event) => {
@@ -535,12 +620,13 @@ export function QuranTextReaderView({
                  className={cn(
                     "inline-block rounded px-0.5 transition-colors duration-200",
                     playable && !concealed ? "cursor-pointer hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500" : "",
+                    guidedWordHidden ? "blur-[5px] bg-amber-100/80 text-transparent select-none hover:blur-[3px] hover:text-amber-900/30" : "",
                     isPlayingWord ? "text-emerald-800 bg-emerald-200/90 dark:text-emerald-200 dark:bg-emerald-800/80 ring-1 ring-emerald-500/50" : "",
                     isPreviewingWord ? "bg-amber-200/90 text-amber-900 ring-1 ring-amber-500/60 dark:bg-amber-800/80 dark:text-amber-100" : "",
                     isLoadingWord ? "animate-pulse" : "",
                  )}
                >
-                 {word}{' '}
+                  {word}{' '}
                </span>
              );
           })}
@@ -746,10 +832,10 @@ export function QuranTextReaderView({
               )}
               <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 mr-2 rtl:ml-2">
                 <button 
-                  onClick={() => memoSession.isActive ? endSession() : startSession()}
+                  onClick={() => guidedOpen ? closeGuidedMemorization() : startGuidedMemorization(selectedAyah)}
                   className={cn("px-3 py-1 text-xs md:text-sm font-bold rounded-md transition-colors", memoSession.isActive ? "bg-amber-100 text-amber-900 shadow-sm border border-amber-200" : "text-muted-foreground hover:text-foreground")}
                 >
-                  {memoSession.isActive ? (lang === 'ar' ? 'إنهاء الحفظ' : 'End Memo') : (lang === 'ar' ? 'جلسة حفظ' : 'Memo Session')}
+                  {guidedOpen ? (lang === 'ar' ? 'إنهاء الجلسة' : 'End Session') : (lang === 'ar' ? 'ابدأ الحفظ' : 'Start Memorizing')}
                 </button>
                 <div className="w-px h-4 bg-border mx-1"></div>
                 <button
@@ -872,6 +958,58 @@ export function QuranTextReaderView({
           </div>
         )}
       </main>
+
+      <QuranGuidedMemorizationPanel
+        open={guidedOpen}
+        stage={guidedStage}
+        surahName={surah.name}
+        ayahNumber={guidedAyah}
+        isPlaying={isPlaying}
+        recitationRevealed={guidedRecitationRevealed}
+        lang={lang}
+        onClose={closeGuidedMemorization}
+        onStageChange={setGuidedStage}
+        onReplay={() => {
+          setPlayingAyah(guidedAyah);
+          setIsPlaying(true);
+        }}
+        onRevealRecitation={() => setGuidedRecitationRevealed(true)}
+        onAssess={(result) => {
+          const storageKey = "hasaad:quran-guided-memorization:v1";
+          try {
+            const previous = JSON.parse(window.localStorage.getItem(storageKey) || "[]");
+            const entries = Array.isArray(previous) ? previous : [];
+            window.localStorage.setItem(storageKey, JSON.stringify([
+              ...entries.filter((entry: { surah?: number; ayah?: number }) => entry.surah !== surahNumber || entry.ayah !== guidedAyah),
+              { surah: surahNumber, ayah: guidedAyah, result, assessedAt: new Date().toISOString() },
+            ].slice(-500)));
+          } catch {
+            // The session can continue even when local browser storage is unavailable.
+          }
+
+          if (result === "review") {
+            setGuidedStage(0);
+            setGuidedRecitationRevealed(false);
+            setGuidedRevealedWords(new Set());
+            toast.success(lang === 'ar' ? "حُفظت للمراجعة، سنكرر الآية الآن" : "Saved for review. Let’s repeat this ayah");
+            return;
+          }
+
+          const nextAyah = guidedAyah + 1;
+          if (nextAyah <= surah.ayahs.length) {
+            dispatchPosition({ type: "click", ayah: nextAyah });
+            navigateTo({ surah: surahNumber, ayah: nextAyah });
+            setGuidedAyah(nextAyah);
+            setGuidedStage(0);
+            setGuidedRecitationRevealed(false);
+            setGuidedRevealedWords(new Set());
+            toast.success(lang === 'ar' ? "تم حفظ النتيجة، ننتقل للآية التالية" : "Result saved. Moving to the next ayah");
+          } else {
+            toast.success(lang === 'ar' ? "أتممت آخر آية في السورة" : "You completed the final ayah");
+            closeGuidedMemorization();
+          }
+        }}
+      />
 
       {!isQuietMode && (
         <footer className="bg-muted/30 border-t border-border p-6 pb-12 text-center text-xs text-muted-foreground shrink-0">

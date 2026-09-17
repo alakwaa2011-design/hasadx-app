@@ -38,6 +38,7 @@ export default function QuranCenter({
   const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [guidedMemorizationSignal, setGuidedMemorizationSignal] = useState(0);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
   const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
   const hasExplicitMushafNavigation = useRef(false);
@@ -213,6 +214,11 @@ export default function QuranCenter({
                     embedded
                     onExitEmbedded={() => setMobileSectionsOpen(true)}
                     onOpenBookmarks={() => setBookmarksOpen(true)}
+                    onStartGuidedMemorization={(location) => {
+                      handleMushafNavigate(location);
+                      setMushafView("reader");
+                      setGuidedMemorizationSignal((signal) => signal + 1);
+                    }}
                     onSwitchToText={(location) => {
                       handleMushafNavigate(location);
                       setMushafView("reader");
@@ -230,6 +236,8 @@ export default function QuranCenter({
                     embedded
                     onExitEmbedded={() => setMobileSectionsOpen(true)}
                     onOpenBookmarks={() => setBookmarksOpen(true)}
+                    guidedMemorizationSignal={guidedMemorizationSignal}
+                    onGuidedMemorizationStarted={() => setGuidedMemorizationSignal(0)}
                     onNavigate={handleMushafNavigate}
                     onSwitchToPages={(location) => {
                       handleMushafNavigate(location);

@@ -100,6 +100,7 @@ export function QuranPagesView({
   isIndependentPractice = false,
   onExitEmbedded,
   onOpenBookmarks,
+  onStartGuidedMemorization,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -117,6 +118,7 @@ export function QuranPagesView({
   isIndependentPractice?: boolean;
   onExitEmbedded?: () => void;
   onOpenBookmarks?: () => void;
+  onStartGuidedMemorization?: (location: { surah: number; ayah: number; page?: number }) => void;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -672,7 +674,21 @@ export function QuranPagesView({
 
                   <button
                     type="button"
-                    onClick={() => memoSession.isActive ? endSession() : startSession()}
+                    onClick={() => {
+                      if (memoSession.isActive) {
+                        endSession();
+                        return;
+                      }
+                      if (onStartGuidedMemorization) {
+                        onStartGuidedMemorization({
+                          surah: selectedSurah,
+                          ayah: selectedAyah,
+                          page: canonicalPage,
+                        });
+                      } else {
+                        startSession();
+                      }
+                    }}
                     data-testid="button-memo-session"
                     className={cn(
                       "flex-1 rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors md:flex-none md:text-sm",
@@ -681,7 +697,7 @@ export function QuranPagesView({
                         : "border-border/60 bg-white text-foreground hover:bg-muted dark:bg-card"
                     )}
                   >
-                    {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "جلسة حفظ" : "Memo Session")}
+                    {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
                   </button>
                 </div>
 
