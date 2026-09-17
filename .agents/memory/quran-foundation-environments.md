@@ -55,4 +55,4 @@ For a user-initiated tap on one Quran word, prefer Quran Foundation's dedicated 
 
 **Why:** chapter timing segments are incomplete or multi-pass for some recordings, while the dedicated WBW asset identifies one exact word and can begin through a same-origin redirect within the original tap gesture.
 
-**How to apply:** validate the exact `wbw/{surah}_{ayah}_{position}.mp3` path against the requested word, redirect only to the allowlisted Quran CDN, and play it in a secondary audio element that never mutates ayah-player state.
+**How to apply:** select the requested `words[]` record by its position, then validate that its audio path remains under `wbw/` and matches the requested surah/ayah. Do not require the filename suffix to equal the word position: pause markers can create gaps. Redirect only to the allowlisted Quran CDN, and play it in a secondary audio element that never mutates ayah-player state.

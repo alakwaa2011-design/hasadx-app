@@ -224,7 +224,7 @@ describe("Quran Foundation client", () => {
         verse: {
           verse_key: "6:3",
           words: [
-            { position: 1, char_type_name: "word", audio_url: "wbw/006_003_001.mp3" },
+            { position: 1, char_type_name: "word", audio_url: "wbw/006_003_004.mp3" },
             { position: 2, char_type_name: "word", audio_url: "https://example.com/not-trusted.mp3" },
           ],
         },
@@ -232,9 +232,9 @@ describe("Quran Foundation client", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(getQuranFoundationWordAudioUrl(6, 3, 1))
-      .resolves.toBe("https://audio.qurancdn.com/wbw/006_003_001.mp3");
+      .resolves.toBe("https://audio.qurancdn.com/wbw/006_003_004.mp3");
     await expect(getQuranFoundationWordAudioUrl(6, 3, 1))
-      .resolves.toBe("https://audio.qurancdn.com/wbw/006_003_001.mp3");
+      .resolves.toBe("https://audio.qurancdn.com/wbw/006_003_004.mp3");
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     resetQuranFoundationClientForTests();

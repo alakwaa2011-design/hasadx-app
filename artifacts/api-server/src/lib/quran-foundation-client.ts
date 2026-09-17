@@ -778,8 +778,10 @@ export async function getQuranFoundationWordAudioUrl(
     && (item as { char_type_name?: unknown }).char_type_name === "word"
   ) as Record<string, unknown> | undefined;
   const rawPath = word?.audio_url;
-  const expectedPath = `wbw/${String(surahNumber).padStart(3, "0")}_${String(ayahNumber).padStart(3, "0")}_${String(wordPosition).padStart(3, "0")}.mp3`;
-  if (typeof rawPath !== "string" || rawPath !== expectedPath) {
+  const verseAudioPath = new RegExp(
+    `^wbw/${String(surahNumber).padStart(3, "0")}_${String(ayahNumber).padStart(3, "0")}_\\d{3}\\.mp3$`,
+  );
+  if (typeof rawPath !== "string" || !verseAudioPath.test(rawPath)) {
     throw new Error("Quran Foundation word audio is unavailable");
   }
   const url = new URL(rawPath, "https://audio.qurancdn.com/");
