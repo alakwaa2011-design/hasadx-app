@@ -14,10 +14,13 @@ const TIMINGS_CACHE_MS = 30 * 24 * 60 * 60 * 1_000;
 const EDUCATION_CACHE_MS = 24 * 60 * 60 * 1_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
+const MAHER_AL_MUAIQLY_RECITATION_ID = 1_000_159;
+const MAHER_AL_MUAIQLY_AUDIO_BASE_URL = "https://everyayah.com/data/MaherAlMuaiqly128kbps";
 const TRUSTED_AUDIO_ORIGINS = new Set([
   VERSE_AUDIO_BASE_URL,
   "https://download.quranicaudio.com",
   "https://audio.qurancdn.com",
+  "https://everyayah.com",
 ]);
 const CHAPTER_PUBLIC_ID_BASE = 1_000_000;
 const ARABIC_CHAPTER_RECITER_NAMES: Readonly<Record<number, string>> = Object.freeze({
@@ -486,6 +489,9 @@ export async function getQuranFoundationAyahTimings(
 ): Promise<QuranFoundationAyahTimings> {
   if (!Number.isInteger(recitationId) || recitationId < 1) throw new Error("Invalid Quran Foundation recitation");
   validateVerseNumbers(surahNumber, ayahNumber);
+  if (recitationId === MAHER_AL_MUAIQLY_RECITATION_ID) {
+    throw new Error("Maher Al-Muaiqly standard recitation uses ayah-scoped playback");
+  }
   const verseKey = `${surahNumber}:${ayahNumber}`;
   const cacheKey = `${recitationId}:${verseKey}`;
   const cached = cachedTimings.get(cacheKey);
@@ -709,6 +715,16 @@ export async function getQuranFoundationAudioUrl(
   const reciters = await listQuranFoundationReciters();
   if (!reciters.some((reciter) => reciter.id === recitationId)) {
     throw new Error("Quran Foundation recitation is not in the trusted catalog");
+  }
+  if (recitationId === MAHER_AL_MUAIQLY_RECITATION_ID) {
+    validateVerseNumbers(surahNumber, ayahNumber);
+    const fileName = `${String(surahNumber).padStart(3, "0")}${String(ayahNumber).padStart(3, "0")}.mp3`;
+    const value = `${MAHER_AL_MUAIQLY_AUDIO_BASE_URL}/${fileName}`;
+    cachedAudio.set(`${recitationId}:${surahNumber}:${ayahNumber}`, {
+      value,
+      expiresAt: Date.now() + AUDIO_CACHE_MS,
+    });
+    return value;
   }
   const cacheKey = `${recitationId}:${surahNumber}:${ayahNumber}`;
   const cached = cachedAudio.get(cacheKey);

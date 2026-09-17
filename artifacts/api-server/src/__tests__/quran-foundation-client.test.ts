@@ -287,9 +287,9 @@ describe("Quran Foundation client", () => {
     const chapterFetch = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 7, reciter_name: "A" }] }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 159, reciter_name: "Chapter Only" }] }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 160, reciter_name: "Chapter Only" }] }), { status: 200 }));
     vi.stubGlobal("fetch", chapterFetch);
-    await expect(getQuranFoundationAudioUrl(1_000_159, 1, 1))
+    await expect(getQuranFoundationAudioUrl(1_000_160, 1, 1))
       .rejects.toThrow("require synchronized timing playback");
     expect(chapterFetch).toHaveBeenCalledTimes(3);
   });
@@ -299,15 +299,15 @@ describe("Quran Foundation client", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 7, reciter_name: "A" }] }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        reciters: [{ id: 159, reciter_name: "Maher al-Muaiqly", translated_name: { name: "ماهر المعيقلي" } }],
+        reciters: [{ id: 160, reciter_name: "Bandar Baleela", translated_name: { name: "بندر بليلة" } }],
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         audio_file: { audio_url: "https://download.quranicaudio.com/chapter.mp3",
           timestamps: [{ verse_key: "1:1", timestamp_from: 100, timestamp_to: 500, segments: [[1, 100, 200]] }] },
       }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    await expect(getQuranFoundationAyahTimings(1_000_159, 1, 1))
-      .resolves.toMatchObject({ recitationId: 1_000_159, verseKey: "1:1", segments: [{ wordPosition: 1, startMs: 0, endMs: 100 }] });
+    await expect(getQuranFoundationAyahTimings(1_000_160, 1, 1))
+      .resolves.toMatchObject({ recitationId: 1_000_160, verseKey: "1:1", segments: [{ wordPosition: 1, startMs: 0, endMs: 100 }] });
 
     resetQuranFoundationClientForTests();
     const malformedFetch = vi.fn()
@@ -316,6 +316,24 @@ describe("Quran Foundation client", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 159, reciter_name: "Maher al-Muaiqly" }] }), { status: 200 }));
     vi.stubGlobal("fetch", malformedFetch);
     await expect(getQuranFoundationAyahTimings(1_000_999, 1, 1)).rejects.toThrow("mapping is unavailable");
+  });
+
+  it("uses Maher Al-Muaiqly's standard ayah-scoped recording instead of the dated chapter recording", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 7, reciter_name: "مشاري العفاسي", style: "Murattal" }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        reciters: [{ id: 159, reciter_name: "Maher al-Muaiqly", translated_name: { name: "ماهر المعيقلي" }, style: "Murattal" }],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationAyahTimings(1_000_159, 1, 1))
+      .rejects.toThrow("ayah-scoped playback");
+    await expect(getQuranFoundationAudioUrl(1_000_159, 2, 255))
+      .resolves.toBe("https://everyayah.com/data/MaherAlMuaiqly128kbps/002255.mp3");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("validates chapter-reciter identity with object styles and permits null ayah styles", async () => {

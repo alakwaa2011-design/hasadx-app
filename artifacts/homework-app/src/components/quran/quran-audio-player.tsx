@@ -104,7 +104,7 @@ export function QuranAudioPlayer({
     playingAyah ?? 0,
     {
       query: {
-        enabled: !!playingAyah && !!recitationId,
+        enabled: !!playingAyah && !!recitationId && recitationId !== 1_000_159,
         retry: false,
         staleTime: Infinity,
         queryKey: getGetQuranAyahTimingsQueryKey(recitationId ?? 0, surahNumber, playingAyah ?? 0),
@@ -195,7 +195,7 @@ export function QuranAudioPlayer({
     }
 
     if (timingsQuery.isError || !timingsQuery.data?.synchronized) {
-      if (recitationId >= 1_000_000) {
+       if (recitationId >= 1_000_000 && recitationId !== 1_000_159) {
         activeSeekRef.current = null;
         currentAudioSrcRef.current = undefined;
         setAudioSrc(undefined);
