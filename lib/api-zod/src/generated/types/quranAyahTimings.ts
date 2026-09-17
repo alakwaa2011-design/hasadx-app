@@ -18,7 +18,6 @@ export interface QuranAyahTimings {
   verseStartMs: number;
   /** @exclusiveMinimum 0 */
   verseEndMs: number;
-  /** @minItems 1 */
   segments: QuranAyahTimingSegment[];
   synchronized: true;
 }

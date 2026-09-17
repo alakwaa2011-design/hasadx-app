@@ -2634,7 +2634,6 @@ components:
         verseEndMs: { type: number, exclusiveMinimum: 0 }
         segments:
           type: array
-          minItems: 1
           items:
             $ref: "#/components/schemas/QuranAyahTimingSegment"
         synchronized: { type: boolean, const: true }

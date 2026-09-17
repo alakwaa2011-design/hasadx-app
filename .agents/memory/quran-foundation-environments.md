@@ -38,3 +38,9 @@ The ayah-recitation and chapter-reciter catalogs use different ID namespaces and
 **Why:** Arabic localization made valid Maher al-Muaiqly metadata fail an English-name identity comparison. Also, chapter audio cannot safely replace per-ayah fallback audio because it would start at the beginning of the surah when timing is unavailable.
 
 **How to apply:** keep strict identity checks for legacy native mappings, use synchronized chapter audio for chapter-only readers, and reject their unsynchronized fallback rather than playing the wrong ayah.
+
+Chapter-recitation segment arrays are not uniformly one clean triplet per word. Teaching recordings may include marker arrays, malformed triplets, repeated word-position cycles, or exact ayah bounds with no word segments.
+
+**Why:** Minshawi Kids Repeat contains teacher and child passes with repeated positions; rejecting duplicates broke valid playback. Some ayahs have usable bounds but no word-level data.
+
+**How to apply:** keep valid triplets in chronological order, discard invalid entries, allow repeated positions and empty segment lists, and always use official ayah start/end bounds for playback.

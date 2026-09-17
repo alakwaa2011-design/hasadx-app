@@ -4625,7 +4625,6 @@ export const getQuranAyahTimingsResponseSegmentsItemEndMsMin = 0;
 
 
 
-
 export const GetQuranAyahTimingsResponse = zod.object({
   "recitationId": zod.int().min(1),
   "verseKey": zod.string().regex(getQuranAyahTimingsResponseVerseKeyRegExp),
@@ -4636,7 +4635,7 @@ export const GetQuranAyahTimingsResponse = zod.object({
   "wordPosition": zod.int().min(1),
   "startMs": zod.int().min(getQuranAyahTimingsResponseSegmentsItemStartMsMin),
   "endMs": zod.int().min(getQuranAyahTimingsResponseSegmentsItemEndMsMin)
-})).min(1),
+})),
   "synchronized": zod.literal(true)
 })
 

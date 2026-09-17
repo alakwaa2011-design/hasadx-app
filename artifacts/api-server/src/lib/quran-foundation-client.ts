@@ -416,26 +416,28 @@ function normalizeTimings(payload: unknown, verseKey: string, recitationId: numb
   } catch {
     throw new Error("Quran Foundation returned an untrusted chapter audio URL");
   }
-  const rawSegments = value.segments.map((segment): QuranFoundationTimingSegment => {
-    if (!Array.isArray(segment) || segment.length !== 3
-      || !Number.isInteger(segment[0]) || (segment[0] as number) < 1
-      || typeof segment[1] !== "number" || !Number.isFinite(segment[1])
-      || typeof segment[2] !== "number" || !Number.isFinite(segment[2])
-      || (segment[2] as number) < (segment[1] as number)) {
-      throw new Error("Quran Foundation verse timings are malformed");
-    }
-    const from = value.timestamp_from as number;
-    return { wordPosition: segment[0] as number, startMs: Math.max(0, segment[1] - from),
-      endMs: Math.max(0, segment[2] - from) };
-  });
-  const segments = rawSegments.sort((left, right) => left.wordPosition - right.wordPosition);
-  for (let index = 1; index < segments.length; index += 1) {
-    if (segments[index].wordPosition === segments[index - 1].wordPosition
-      || segments[index].startMs < segments[index - 1].startMs) {
-      throw new Error("Quran Foundation verse timings are nonmonotonic");
-    }
-  }
-  if (!segments.length) throw new Error("Quran Foundation verse timings are empty");
+  const from = value.timestamp_from as number;
+  const to = value.timestamp_to as number;
+  const rawSegments = value.segments
+    .filter((segment): segment is [number, number, number] =>
+      Array.isArray(segment)
+      && segment.length === 3
+      && Number.isInteger(segment[0])
+      && segment[0] > 0
+      && typeof segment[1] === "number"
+      && Number.isFinite(segment[1])
+      && typeof segment[2] === "number"
+      && Number.isFinite(segment[2])
+      && segment[1] >= from
+      && segment[2] > segment[1]
+      && segment[2] <= to)
+    .map((segment): QuranFoundationTimingSegment => ({
+      wordPosition: segment[0],
+      startMs: segment[1] - from,
+      endMs: segment[2] - from,
+    }));
+  const segments = rawSegments.sort((left, right) =>
+    left.startMs - right.startMs || left.endMs - right.endMs);
   return Object.freeze({
     recitationId, verseKey, audioUrl: normalizedAudioUrl,
     verseStartMs: value.timestamp_from, verseEndMs: value.timestamp_to,

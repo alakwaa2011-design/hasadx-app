@@ -280,14 +280,84 @@ describe("Quran Foundation client", () => {
     await expect(getQuranFoundationAyahTimings(9, 1, 1)).rejects.toThrow("mapping is unavailable");
   });
 
-  it("rejects malformed and nonmonotonic timing segments", async () => {
+  it("discards malformed word timings while preserving the exact ayah range", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 1, reciter_name: "A", style: "Murattal" }] }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ audio_file: { audio_url: "chapter.mp3", timestamps: [{ verse_key: "1:1", timestamp_from: 0, timestamp_to: 10, segments: [[1, 20, 10], [1, 30, 40]] }] } }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    await expect(getQuranFoundationAyahTimings(1, 1, 1)).rejects.toThrow("malformed");
+    await expect(getQuranFoundationAyahTimings(1, 1, 1)).resolves.toMatchObject({
+      verseStartMs: 0,
+      verseEndMs: 10,
+      segments: [],
+      synchronized: true,
+    });
+  });
+
+  it("ignores Quran Foundation marker entries mixed with valid word timing triplets", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 7, reciter_name: "A" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 168, reciter_name: "Kids repeat" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        audio_file: {
+          audio_url: "https://download.quranicaudio.com/kids-repeat.mp3",
+          timestamps: [{
+            verse_key: "6:3",
+            timestamp_from: 1_000,
+            timestamp_to: 2_000,
+            segments: [
+              [91030],
+              [1],
+              [1, 1_050, 1_200],
+              [2, 1_300, 1_500],
+              [1, 1_550, 1_700],
+              [2, 1_750, 1_900],
+              [3, 1_950, 1_850],
+              [69661],
+            ],
+          }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationAyahTimings(1_000_168, 6, 3)).resolves.toMatchObject({
+      recitationId: 1_000_168,
+      verseKey: "6:3",
+      segments: [
+        { wordPosition: 1, startMs: 50, endMs: 200 },
+        { wordPosition: 2, startMs: 300, endMs: 500 },
+        { wordPosition: 1, startMs: 550, endMs: 700 },
+        { wordPosition: 2, startMs: 750, endMs: 900 },
+      ],
+    });
+  });
+
+  it("keeps exact ayah playback when official word segments contain markers only", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: "access-token", expires_in: 3600 }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ recitations: [{ id: 7, reciter_name: "A" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ reciters: [{ id: 168, reciter_name: "Kids repeat" }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        audio_file: {
+          audio_url: "https://download.quranicaudio.com/kids-repeat.mp3",
+          timestamps: [{
+            verse_key: "6:32",
+            timestamp_from: 10_000,
+            timestamp_to: 12_000,
+            segments: [[10_000], [12_000]],
+          }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationAyahTimings(1_000_168, 6, 32)).resolves.toMatchObject({
+      verseStartMs: 10_000,
+      verseEndMs: 12_000,
+      segments: [],
+      synchronized: true,
+    });
   });
 
   it("rejects invalid chapter timestamp ranges and untrusted chapter audio URLs", async () => {
