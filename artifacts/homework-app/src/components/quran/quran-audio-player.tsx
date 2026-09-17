@@ -1195,15 +1195,15 @@ export function QuranAudioPlayer({
         </div>
 
         {/* Center: Playback Controls */}
-         <div className="flex basis-full items-center justify-center gap-1 sm:basis-auto md:gap-2" dir="ltr">
+          <div className="flex basis-full items-center justify-center gap-1 sm:basis-auto md:gap-2" dir={isArabic ? "rtl" : "ltr"}>
             <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
-             <SkipBack className="w-4 h-4 md:w-5 md:h-5 fill-current" />
+              <SkipBack className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
           </button>
             <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
              <Square className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
           </button>
             <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
-             <SkipForward className="w-4 h-4 md:w-5 md:h-5 fill-current" />
+              <SkipForward className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
           </button>
         </div>
 
