@@ -28,6 +28,7 @@ export default function FlagsSetup() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [showArenaLobby, setShowArenaLobby] = useState(false);
+  const isPreview = new URLSearchParams(window.location.search).get("preview") === "1";
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -52,6 +53,7 @@ export default function FlagsSetup() {
   }, []);
 
   const handleSoloStart = () => {
+    if (isPreview) return;
     const params = new URLSearchParams({
       tier: String(level.tier),
       count: String(questionCount),
@@ -61,6 +63,7 @@ export default function FlagsSetup() {
   };
 
   const handleMultiCreate = () => {
+    if (isPreview) return;
     const socket = ioClient(API_BASE || window.location.origin, {
       path: "/api/socket.io",
       withCredentials: true,
@@ -141,7 +144,7 @@ export default function FlagsSetup() {
   const handleSetupBack = () => {
     if (phase === "lobby") setPhase("config");
     else if (phase === "config") setPhase("mode");
-    else setLocation("/");
+    else setLocation(isPreview ? "/student/dashboard?preview=1" : "/");
   };
 
   if (phase === "lobby") {
@@ -272,8 +275,9 @@ export default function FlagsSetup() {
               </motion.div>
 
               <motion.button whileTap={{ scale: 0.97 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-                onClick={() => setShowArenaLobby(true)}
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all text-center mb-6 flex items-center justify-center gap-3">
+                onClick={() => { if (!isPreview) setShowArenaLobby(true); }}
+                disabled={isPreview}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all text-center mb-6 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
                 <Swords className="w-5 h-5 text-white" />
                 <span className="font-black text-white">{g.challengeFriend}</span>
               </motion.button>
@@ -355,7 +359,8 @@ export default function FlagsSetup() {
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={mode === "solo" ? handleSoloStart : handleMultiCreate}
-                className={`w-full py-4 rounded-2xl text-white font-black text-lg shadow-xl transition-all flex items-center justify-center gap-3 ${mode === "solo" ? "bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-500/30" : "bg-gradient-to-r from-purple-500 to-pink-600 shadow-purple-500/30"}`}
+                disabled={isPreview}
+                className={`w-full py-4 rounded-2xl text-white font-black text-lg shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${mode === "solo" ? "bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sky-500/30" : "bg-gradient-to-r from-purple-500 to-pink-600 shadow-purple-500/30"}`}
               >
                 <Play className="w-6 h-6" />
                 {mode === "solo"

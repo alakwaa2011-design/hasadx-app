@@ -1340,8 +1340,9 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {games.map((game) => {
                 const Icon = game.icon;
+                const gameHref = isPreview ? `${game.href}?preview=1` : game.href;
                 return (
-                  <Link key={game.href} href={game.href}>
+                  <Link key={game.href} href={gameHref}>
                     <Card
                       className="p-4 sm:p-5 hover:shadow-lg transition-all cursor-pointer group h-full"
                       style={{ borderColor: "rgba(0,0,0,0.08)" }}

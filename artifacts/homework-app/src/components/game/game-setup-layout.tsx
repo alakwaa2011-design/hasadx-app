@@ -126,6 +126,7 @@ interface GameStartButtonProps {
   gradient: string;
   shadow?: string;
   label: string;
+  disabled?: boolean;
   delay?: number;
   size?: "md" | "lg";
   className?: string;
@@ -136,6 +137,7 @@ export function GameStartButton({
   gradient,
   shadow = "shadow-purple-500/30",
   label,
+  disabled = false,
   delay = 0.1,
   size = "lg",
   className = "",
@@ -148,7 +150,8 @@ export function GameStartButton({
       transition={{ delay }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`w-full bg-gradient-to-r ${gradient} rounded-2xl ${isLg ? "p-5" : "p-3.5"} shadow-xl ${shadow} hover:shadow-2xl transition-all text-center mb-2 flex items-center justify-center gap-3 group ${className}`}
+      disabled={disabled}
+      className={`w-full bg-gradient-to-r ${gradient} rounded-2xl ${isLg ? "p-5" : "p-3.5"} shadow-xl ${shadow} hover:shadow-2xl transition-all text-center mb-2 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       <Play className={`${isLg ? "w-6 h-6" : "w-5 h-5"} text-white group-hover:scale-110 transition-transform`} />
       <span className={`font-black text-white ${isLg ? "text-lg" : "text-base"}`}>{label}</span>
@@ -158,6 +161,7 @@ export function GameStartButton({
 
 interface ChallengeFriendButtonProps {
   onClick: () => void;
+  disabled?: boolean;
   gradient?: string;
   delay?: number;
   className?: string;
@@ -166,6 +170,7 @@ interface ChallengeFriendButtonProps {
 
 export function ChallengeFriendButton({
   onClick,
+  disabled = false,
   gradient = "from-indigo-500 to-purple-700",
   delay = 0.12,
   className = "mb-4",
@@ -180,7 +185,8 @@ export function ChallengeFriendButton({
       transition={{ delay }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`w-full bg-gradient-to-r ${gradient} rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-3 ${className}`}
+      disabled={disabled}
+      className={`w-full bg-gradient-to-r ${gradient} rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all text-center flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       <Swords className="w-5 h-5 text-white" />
       <span className="font-black text-white">{text}</span>

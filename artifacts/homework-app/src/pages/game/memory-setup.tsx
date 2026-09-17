@@ -67,6 +67,7 @@ export default function MemorySetup() {
   const [loadingLb, setLoadingLb] = useState(true);
   const [isTeacher, setIsTeacher] = useState(false);
   const [showArenaLobby, setShowArenaLobby] = useState(false);
+  const isPreview = new URLSearchParams(window.location.search).get("preview") === "1";
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("arenaPin")) {
@@ -94,7 +95,7 @@ export default function MemorySetup() {
       title={t.gamePages.memoryTitle}
       subtitle={t.gamePages.memorySubtitle}
       showSparkle
-      backAction={<GameFlowBackButton onBack={() => setLocation("/")} />}
+      backAction={<GameFlowBackButton onBack={() => setLocation(isPreview ? "/student/dashboard?preview=1" : "/")} />}
     >
       <HowToPlayCard accentColor="text-purple-500">
         <div className="flex items-start gap-4">
@@ -113,13 +114,14 @@ export default function MemorySetup() {
       </HowToPlayCard>
 
       <GameStartButton
-        onClick={() => setLocation("/game/memory/play")}
+        onClick={() => { if (!isPreview) setLocation("/game/memory/play"); }}
+        disabled={isPreview}
         gradient="from-indigo-500 via-purple-500 to-pink-500"
         shadow="shadow-purple-500/30"
         label={t.gamePages.startPlaying}
       />
 
-      <ChallengeFriendButton onClick={() => setShowArenaLobby(true)} />
+      <ChallengeFriendButton onClick={() => { if (!isPreview) setShowArenaLobby(true); }} disabled={isPreview} />
 
       <AnimatePresence>
         {showArenaLobby && (

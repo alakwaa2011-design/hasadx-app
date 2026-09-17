@@ -95,7 +95,10 @@ test.describe("admin student preview", () => {
       const pathname = new URL(request.url()).pathname;
       if (
         pathname.startsWith("/api/public/start-wameeth/") ||
-        pathname === "/api/kids/motivation/redemptions"
+        pathname === "/api/kids/motivation/redemptions" ||
+        pathname === "/api/flag-scores" ||
+        pathname === "/api/capital-scores" ||
+        pathname === "/api/memory-scores"
       ) {
         blockedMutations.push(pathname);
       }
@@ -129,6 +132,27 @@ test.describe("admin student preview", () => {
 
     await expect.poll(() => blockedMutations).toEqual([]);
     await expect.poll(() => logoutRequests).toEqual([]);
+
+    const directGameCards = [
+      { href: "/game/flags?preview=1", mode: /فردي/, start: /ابدأ اللعبة!?/ },
+      { href: "/game/memory?preview=1", mode: null, start: /ابدأ اللعب/ },
+      { href: "/game/capitals?preview=1", mode: /فردي/, start: /ابدأ اللعبة/ },
+    ];
+    for (const card of directGameCards) {
+      await page.locator(`a[href="${card.href}"]`).click();
+      await expect(page).toHaveURL(new RegExp(`${card.href.replace(/[?]/g, "\\?")}$`));
+
+      if (card.mode) {
+        await page.getByRole("button", { name: card.mode }).click();
+      }
+      const start = page.getByRole("button", { name: card.start }).last();
+      await expect(start).toBeDisabled();
+      await page.getByRole("button", { name: "رجوع" }).click();
+      await expect(page).toHaveURL(/\/student\/dashboard\?preview=1$/);
+      await expect(page.getByText("أنت الآن في معاينة صفحة الطالب", { exact: false })).toBeVisible();
+    }
+
+    await expect.poll(() => blockedMutations).toEqual([]);
 
     await page.locator("div.fixed.inset-0.z-50").click({ position: { x: 5, y: 5 } });
     await expect(page.getByRole("button", { name: "لا، العب بمفردك", exact: true })).toHaveCount(0);

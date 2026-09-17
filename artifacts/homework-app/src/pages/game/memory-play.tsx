@@ -342,6 +342,7 @@ export default function MemoryPlay() {
   const { t, dir } = useI18n();
   const [, setLocation] = useLocation();
   const params = useParams<{ setId?: string }>();
+  const isPreview = new URLSearchParams(window.location.search).get("preview") === "1";
   const { isArenaMode, myName, opponents, results, updateScore, finishArena } = useArena("memory");
 
   const [phase, setPhase] = useState<Phase>("countdown");
@@ -610,6 +611,7 @@ export default function MemoryPlay() {
   };
 
   const handleSaveScore = async () => {
+    if (isPreview) return;
     if (!playerName.trim() || saving) return;
     setSaving(true);
     try {
@@ -788,7 +790,7 @@ export default function MemoryPlay() {
               </div>
 
               <div className="mt-auto">
-                {beatLeaderboard && !saved && (
+                {!isPreview && beatLeaderboard && !saved && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl p-4">
                     <p className="text-center text-amber-600 dark:text-amber-400 font-black text-sm mb-3">
                       🎉 {t.gamePages.playUi.amazingScore}
@@ -809,7 +811,7 @@ export default function MemoryPlay() {
                   </motion.div>
                 )}
 
-                {!beatLeaderboard && !saved && (
+                {!isPreview && !beatLeaderboard && !saved && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-2xl p-4">
                     <input
                       type="text"

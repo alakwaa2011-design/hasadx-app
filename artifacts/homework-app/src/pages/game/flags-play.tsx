@@ -51,6 +51,7 @@ export default function FlagsPlay() {
   const rawTier = parseInt(params.get("tier") || "1");
   const rawCount = parseInt(params.get("count") || "20");
   const rawDuration = parseInt(params.get("duration") || "7");
+  const isPreview = params.get("preview") === "1";
   const isMulti = !!params.get("pin");
   const tier = Math.min(4, Math.max(1, Number.isFinite(rawTier) ? rawTier : 1)) as 1 | 2 | 3 | 4;
   const count = Math.min(200, Math.max(5, Number.isFinite(rawCount) ? rawCount : 20));
@@ -127,6 +128,7 @@ export default function FlagsPlay() {
   };
 
   const handleSaveScore = async () => {
+    if (isPreview) return;
     if (!playerName.trim() || saving) return;
     setSaving(true);
     try {
@@ -403,7 +405,7 @@ export default function FlagsPlay() {
                 </div>
               </motion.div>
 
-              {!saved && (
+              {!isPreview && !saved && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border/60 rounded-2xl p-4 shadow-md mb-4">
                   {!showNameInput ? (
                     <button onClick={() => setShowNameInput(true)} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black text-sm shadow-lg flex items-center justify-center gap-2">
