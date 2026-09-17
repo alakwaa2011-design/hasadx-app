@@ -93,6 +93,13 @@ export function QuranMadaniPageRenderer({
       const previousLine = occupiedLines.filter((line) => line < start.lineNumber).at(-1) ?? 0;
       const availableRows = start.lineNumber - previousLine - 1;
       const needsBismillah = start.surahNumber !== 1 && start.surahNumber !== 9;
+      if (needsBismillah && availableRows === 1) {
+        decorations.set(start.lineNumber - 1, {
+          kind: "bismillah",
+          surahNumber: start.surahNumber,
+        });
+        continue;
+      }
       const headerRow = needsBismillah && availableRows >= 2
         ? start.lineNumber - 2
         : start.lineNumber - 1;
@@ -237,7 +244,7 @@ export function QuranMadaniPageRenderer({
                     })}
                     type="button"
                     className={cn(
-                      "relative m-0 inline-block cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
+                      "relative m-0 inline-block whitespace-nowrap cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
                       w.type === "end" ? "text-[5.6cqw]" : "",
                       // Apply standard color or highlight colors
                       isSelectedWord

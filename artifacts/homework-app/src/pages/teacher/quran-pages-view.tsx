@@ -141,6 +141,8 @@ export function QuranPagesView({
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">("spread");
+  const [continuousStartPage, setContinuousStartPage] = useState(FIRST_PAGE);
+  const [continuousEndPage, setContinuousEndPage] = useState(FIRST_PAGE);
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -408,15 +410,31 @@ export function QuranPagesView({
     if (!selectedVerse) return;
 
     const p = selectedVerse.page_id;
-    if (visiblePages.left !== p && visiblePages.right !== p && activePage !== p) {
+    const isVisibleInContinuousMode = pageLayout === "continuous"
+      && p >= continuousStartPage
+      && p <= continuousEndPage;
+    if (!isVisibleInContinuousMode && visiblePages.left !== p && visiblePages.right !== p && activePage !== p) {
       setSelectedVerseKey(null);
       setEducationSelection(null);
     }
-  }, [activePage, visiblePages, selectedVerseKey, verses, isPlaying]);
+  }, [
+    activePage,
+    continuousEndPage,
+    continuousStartPage,
+    isPlaying,
+    pageLayout,
+    selectedVerseKey,
+    verses,
+    visiblePages,
+  ]);
 
   const currentSpreadStart = activePage % 2 === 0 ? activePage - 1 : activePage;
-  const canGoToNextSpread = currentSpreadStart + 2 <= LAST_PAGE;
-  const canGoToPreviousSpread = currentSpreadStart > FIRST_PAGE;
+  const canGoToNextSpread = pageLayout === "spread"
+    ? currentSpreadStart + 2 <= LAST_PAGE
+    : activePage < LAST_PAGE;
+  const canGoToPreviousSpread = pageLayout === "spread"
+    ? currentSpreadStart > FIRST_PAGE
+    : activePage > FIRST_PAGE;
 
   const goToPage = (page: number) => {
     const nextPage = Math.min(Math.max(page, FIRST_PAGE), LAST_PAGE);
@@ -424,6 +442,10 @@ export function QuranPagesView({
     const nextVerse = verses.find((verse) => verse.page_id === nextPage);
     setTurnDirection(nextPage > activePage ? "next" : "previous");
     setActivePage(nextPage);
+    if (pageLayout === "continuous") {
+      setContinuousStartPage(nextPage);
+      setContinuousEndPage(Math.min(LAST_PAGE, nextPage + 3));
+    }
     if (!isPlaying) {
       setAudioDockOpen(false);
       setEducationSelection(null);
@@ -438,11 +460,42 @@ export function QuranPagesView({
     }
   };
 
+  const changePageLayout = (nextLayout: "spread" | "single" | "continuous") => {
+    setPageLayout(nextLayout);
+    if (nextLayout === "continuous") {
+      setContinuousStartPage(activePage);
+      setContinuousEndPage(Math.min(LAST_PAGE, activePage + 3));
+    }
+  };
+
+  const adjustZoom = (delta: number) => {
+    setZoom((current) => {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current + delta));
+      if (delta > 0 && next >= 130 && pageLayout === "spread") {
+        setPageLayout("single");
+        toast.info(lang === "ar"
+          ? "تم التحويل إلى صفحة واحدة لتناسب التكبير"
+          : "Switched to one page for better zoom");
+      }
+      return next;
+    });
+  };
+
+  const continuousPages = useMemo(
+    () => Array.from(
+      { length: continuousEndPage - continuousStartPage + 1 },
+      (_, index) => continuousStartPage + index,
+    ),
+    [continuousEndPage, continuousStartPage],
+  );
+
   const goToSpread = (direction: "next" | "previous") => {
+    const currentPage = pageLayout === "spread" ? currentSpreadStart : activePage;
+    const step = pageLayout === "spread" ? 2 : 1;
     goToPage(
       direction === "next"
-        ? currentSpreadStart + 2
-        : currentSpreadStart - 2,
+        ? currentPage + step
+        : currentPage - step,
     );
   };
 
@@ -459,6 +512,11 @@ export function QuranPagesView({
   };
 
   const handleTouchEnd = () => {
+    if (pageLayout === "continuous") {
+      setTouchStart(null);
+      setTouchEnd(null);
+      return;
+    }
     if (touchStart === null || touchEnd === null) return;
     const distance = touchStart - touchEnd;
     if (distance > 50) {
@@ -473,12 +531,13 @@ export function QuranPagesView({
     setTouchEnd(null);
   };
 
-  const renderPage = (page: number, physicalPage: "left" | "right" | "single") => {
+  const renderPage = (page: number, physicalPage: "left" | "right" | "single" | "continuous") => {
     const failed = failedPages.has(page);
 
     return (
       <figure
         key={page}
+        data-quran-page={page}
         className="relative mx-auto w-full overflow-hidden rounded-[3px] bg-white shadow-[0_20px_60px_rgba(34,87,57,0.16)] ring-1 ring-black/10"
         onClick={(event) => {
           if (didSwipeRef.current) {
@@ -488,6 +547,7 @@ export function QuranPagesView({
           const target = event.target;
           if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) return;
 
+          if (physicalPage === "continuous") return;
           const clickedSide = physicalPage === "single"
             ? (event.clientX < event.currentTarget.getBoundingClientRect().left
               + event.currentTarget.getBoundingClientRect().width / 2 ? "left" : "right")
@@ -861,9 +921,21 @@ export function QuranPagesView({
 
                 <div className="mx-1 h-5 w-px bg-border/50" />
 
+                <select
+                  value={pageLayout}
+                  onChange={(event) => changePageLayout(event.target.value as "spread" | "single" | "continuous")}
+                  data-testid="select-page-layout"
+                  aria-label={lang === "ar" ? "طريقة عرض الصفحات" : "Page layout"}
+                  className="h-8 rounded-lg bg-transparent px-2 text-xs font-bold text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
+                >
+                  <option value="spread">{lang === "ar" ? "صفحتان" : "Spread"}</option>
+                  <option value="single">{lang === "ar" ? "صفحة واحدة" : "Single page"}</option>
+                  <option value="continuous">{lang === "ar" ? "متصلة" : "Continuous"}</option>
+                </select>
+
                 <button
                   type="button"
-                  onClick={() => setZoom((value) => Math.max(MIN_ZOOM, value - 10))}
+                  onClick={() => adjustZoom(-10)}
                   disabled={zoom <= MIN_ZOOM}
                   data-testid="button-zoom-out"
                   className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
@@ -876,7 +948,7 @@ export function QuranPagesView({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setZoom((value) => Math.min(MAX_ZOOM, value + 10))}
+                  onClick={() => adjustZoom(10)}
                   disabled={zoom >= MAX_ZOOM}
                   data-testid="button-zoom-in"
                   className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
@@ -965,7 +1037,29 @@ export function QuranPagesView({
 
       <main
         className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
+        onScroll={(event) => {
+          if (pageLayout !== "continuous") return;
+          const container = event.currentTarget;
+          if (container.scrollHeight - container.scrollTop - container.clientHeight < 700) {
+            setContinuousEndPage((current) => Math.min(LAST_PAGE, current + 3));
+          }
+          const containerTop = container.getBoundingClientRect().top;
+          const pageElements = Array.from(container.querySelectorAll<HTMLElement>("[data-quran-page]"));
+          const nearestPage = pageElements.reduce<{ page: number; distance: number } | null>((nearest, element) => {
+            const page = Number(element.dataset.quranPage);
+            const distance = Math.abs(element.getBoundingClientRect().top - containerTop - 12);
+            return !nearest || distance < nearest.distance ? { page, distance } : nearest;
+          }, null);
+          if (nearestPage && nearestPage.page !== activePage) {
+            setActivePage(nearestPage.page);
+          }
+        }}
         onTouchStart={(event) => {
+           if (pageLayout === "continuous") {
+             setTouchStart(null);
+             setTouchEnd(null);
+             return;
+           }
            const target = event.target;
            if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) {
              setTouchStart(null);
@@ -979,29 +1073,50 @@ export function QuranPagesView({
         onTouchMove={(event) => setTouchEnd(event.targetTouches[0].clientX)}
         onTouchEnd={handleTouchEnd}
       >
-        <div
-          key={activePage}
-          className={cn(
-            "mx-auto grid grid-cols-1 items-start gap-3 transition-[width,max-width] duration-200 lg:grid-cols-2 lg:gap-3",
-            turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
-          )}
-          style={{
-            width: `${zoom}%`,
-            maxWidth: `${Math.round(10.32 * zoom)}px`,
-          }}
-        >
-          <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
-          <div className="lg:hidden">{renderPage(activePage, "single")}</div>
-          {visiblePages.left !== null && (
-            <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
-          )}
-        </div>
+        {pageLayout === "continuous" ? (
+          <div
+            className="mx-auto flex w-full flex-col gap-1 transition-[width,max-width] duration-200"
+            style={{
+              width: `${zoom}%`,
+              maxWidth: `${Math.round(7.2 * zoom)}px`,
+            }}
+          >
+            {continuousPages.map((page) => renderPage(page, "continuous"))}
+          </div>
+        ) : (
+          <div
+            key={`${pageLayout}:${activePage}`}
+            className={cn(
+              "mx-auto grid grid-cols-1 items-start gap-3 transition-[width,max-width] duration-200",
+              pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
+              turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
+            )}
+            style={{
+              width: `${zoom}%`,
+              maxWidth: pageLayout === "spread"
+                ? `${Math.round(10.32 * zoom)}px`
+                : `${Math.round(7.2 * zoom)}px`,
+            }}
+          >
+            {pageLayout === "spread" ? (
+              <>
+                <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
+                <div className="lg:hidden">{renderPage(activePage, "single")}</div>
+                {visiblePages.left !== null && (
+                  <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
+                )}
+              </>
+            ) : (
+              renderPage(activePage, "single")
+            )}
+          </div>
+        )}
 
         <nav
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
           className="mx-auto mt-3 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-3 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5"
-          style={{ width: `${zoom}%` }}
+          style={{ width: pageLayout === "spread" ? `${zoom}%` : "100%" }}
         >
           <button
             type="button"
