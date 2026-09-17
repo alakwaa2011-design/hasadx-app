@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   ImageOff,
+  Bookmark,
   Loader2,
   Menu,
   X,
@@ -98,6 +99,7 @@ export function QuranPagesView({
   onSwitchToText,
   isIndependentPractice = false,
   onExitEmbedded,
+  onOpenBookmarks,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -114,6 +116,7 @@ export function QuranPagesView({
   onSwitchToText?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
   onExitEmbedded?: () => void;
+  onOpenBookmarks?: () => void;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -545,6 +548,17 @@ export function QuranPagesView({
               >
                 <ChevronLeft className="h-5 w-5 rtl:hidden" />
                 <ChevronRight className="h-5 w-5 ltr:hidden" />
+              </button>
+            )}
+            {embedded && onOpenBookmarks && (
+              <button
+                type="button"
+                onClick={onOpenBookmarks}
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-emerald-900/10 bg-emerald-50/70 px-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-400/15 dark:bg-emerald-950/40 dark:text-emerald-300"
+                aria-label={lang === "ar" ? "فتح العلامات المحفوظة" : "Open saved bookmarks"}
+              >
+                <Bookmark className="h-4 w-4" />
+                <span className="hidden sm:inline">{lang === "ar" ? "العلامات" : "Bookmarks"}</span>
               </button>
             )}
 

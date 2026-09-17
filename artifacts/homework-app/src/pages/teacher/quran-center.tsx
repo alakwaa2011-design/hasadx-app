@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListQuranSurahs } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { QuranCircles } from "./quran-center/quran-circles";
@@ -37,6 +37,7 @@ export default function QuranCenter({
   const activeTab = selectedTab ?? internalTab;
   const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
   const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
   const hasExplicitMushafNavigation = useRef(false);
@@ -211,6 +212,7 @@ export default function QuranCenter({
                     mode={null}
                     embedded
                     onExitEmbedded={() => setMobileSectionsOpen(true)}
+                    onOpenBookmarks={() => setBookmarksOpen(true)}
                     onSwitchToText={(location) => {
                       handleMushafNavigate(location);
                       setMushafView("reader");
@@ -227,6 +229,7 @@ export default function QuranCenter({
                     isStudentPractice={false}
                     embedded
                     onExitEmbedded={() => setMobileSectionsOpen(true)}
+                    onOpenBookmarks={() => setBookmarksOpen(true)}
                     onNavigate={handleMushafNavigate}
                     onSwitchToPages={(location) => {
                       handleMushafNavigate(location);
@@ -259,6 +262,54 @@ export default function QuranCenter({
                 </div>
               )}
             </motion.div>
+          </AnimatePresence>
+          <AnimatePresence>
+            {embedded && activeTab === "mushaf" && bookmarksOpen && (
+              <>
+                <motion.button
+                  type="button"
+                  aria-label={lang === "ar" ? "إغلاق العلامات" : "Close bookmarks"}
+                  className="absolute inset-0 z-40 bg-emerald-950/10 backdrop-blur-[1px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setBookmarksOpen(false)}
+                />
+                <motion.aside
+                  className="absolute inset-y-0 end-0 z-50 w-[min(92vw,380px)] overflow-y-auto border-s border-border/60 bg-white/98 p-4 shadow-2xl backdrop-blur-xl dark:bg-card/98 md:p-5"
+                  initial={{ opacity: 0, x: lang === "ar" ? -24 : 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: lang === "ar" ? -24 : 24 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-black text-emerald-900 dark:text-emerald-100">
+                        {lang === "ar" ? "العلامات المحفوظة" : "Saved bookmarks"}
+                      </h2>
+                      <p className="mt-0.5 text-xs font-semibold text-muted-foreground">
+                        {lang === "ar" ? "انتقل سريعًا إلى موضع محفوظ" : "Jump to a saved position"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBookmarksOpen(false)}
+                      className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      aria-label={lang === "ar" ? "إغلاق" : "Close"}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <QuranBookmarksPanel
+                    onNavigate={(loc) => {
+                      handleMushafNavigate(loc);
+                      setMushafView(loc.page ? "pages" : "reader");
+                      setBookmarksOpen(false);
+                    }}
+                  />
+                </motion.aside>
+              </>
+            )}
           </AnimatePresence>
         </main>
       </div>

@@ -88,7 +88,6 @@ import {
   FileText,
   FileImage,
   BookOpen,
-  Bookmark,
   Monitor,
   Headphones,
   Brain,
@@ -1279,7 +1278,6 @@ export default function TeacherDashboard() {
                   <div className="mt-0.5 mb-1 space-y-0.5" style={{ paddingInlineStart: 12 }}>
                     {([
                       { id: "mushaf", label: lang === "ar" ? "المصحف" : "Mushaf", icon: <BookOpen className="h-3.5 w-3.5" /> },
-                      { id: "bookmarks", label: lang === "ar" ? "العلامات" : "Bookmarks", icon: <Bookmark className="h-3.5 w-3.5" /> },
                       { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="h-3.5 w-3.5" /> },
                     ] as const).map((item) => {
                       const subActive = quranSubTab === item.id;
