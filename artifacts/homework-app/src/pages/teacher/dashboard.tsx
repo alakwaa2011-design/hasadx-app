@@ -3630,6 +3630,9 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
       tools: [
         selectTool("/teacher/library", { searchText: "مكتبة المعلم teacher library resources" }),
         selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
+        selectTool("/teacher/quran-center", {
+          searchText: "حصاد القرآن المصحف الحلقات التحفيظ المراجعة hasaad quran mushaf memorization",
+        }),
       ],
     },
     {
