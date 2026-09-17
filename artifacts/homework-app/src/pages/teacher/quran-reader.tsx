@@ -61,7 +61,9 @@ export default function QuranReader() {
   const queryEndAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
   const queryMode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
-  const view = searchParams.get('view') || (isStudentWard ? 'pages' : 'reader');
+  // The Madani Mushaf is the single Quran reading experience. Legacy view
+  // query parameters are intentionally ignored and resolve to the page view.
+  const view = 'pages';
   const requestedGuided = searchParams.get('guided') === '1';
   const isDueReviewSession = searchParams.get('reviewDue') === '1';
 
@@ -211,9 +213,6 @@ export default function QuranReader() {
               }
             : undefined}
           isIndependentPractice={isStudentPractice}
-          onSwitchToText={isStudentWard && studentWardId
-            ? () => setLocation(`/student/quran-wards/${studentWardId}?view=reader`)
-            : undefined}
         />
         {isStudentWard && studentWardId && <QuranStudentSubmissionPanel wardId={studentWardId} />}
       </>
@@ -545,7 +544,7 @@ export function QuranTextReaderView({
       return;
     }
     const basePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
-    setLocation(`${basePath}/${surah}?ayah=${ayah}&view=reader`);
+    setLocation(`${basePath}/${surah}?ayah=${ayah}&view=pages`);
   };
 
   const isAyahPlayable = (index: number) => {
@@ -1070,7 +1069,7 @@ export function QuranTextReaderView({
               item => item.surahNumber !== surahNumber || item.ayahNumber !== guidedAyah,
             );
             if (nextDueItem) {
-              setLocation(`/student/quran-practice/${nextDueItem.surahNumber}?ayah=${nextDueItem.ayahNumber}&view=reader&guided=1&reviewDue=1`);
+              setLocation(`/student/quran-practice/${nextDueItem.surahNumber}?ayah=${nextDueItem.ayahNumber}&view=pages&reviewDue=1`);
             } else {
               toast.success(lang === 'ar' ? "أتممت مراجعات اليوم" : "You completed today's reviews");
               closeGuidedMemorization();

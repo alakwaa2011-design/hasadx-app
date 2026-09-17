@@ -100,11 +100,9 @@ export function QuranPagesView({
   backHref = "/teacher/quran-center?tab=mushaf",
   backLabel,
   embedded = false,
-  onSwitchToText,
   isIndependentPractice = false,
   onExitEmbedded,
   onOpenBookmarks,
-  onStartGuidedMemorization,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -118,11 +116,9 @@ export function QuranPagesView({
   backHref?: string;
   backLabel?: { ar: string; en: string };
   embedded?: boolean;
-  onSwitchToText?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
   onExitEmbedded?: () => void;
   onOpenBookmarks?: () => void;
-  onStartGuidedMemorization?: (location: { surah: number; ayah: number; page?: number }) => void;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -814,15 +810,8 @@ export function QuranPagesView({
                         endSession();
                         return;
                       }
-                      if (onStartGuidedMemorization) {
-                        onStartGuidedMemorization({
-                          surah: selectedSurah,
-                          ayah: selectedAyah,
-                          page: canonicalPage,
-                        });
-                      } else {
-                        startSession();
-                      }
+                      startSession();
+                      setAudioDockOpen(true);
                     }}
                     data-testid="button-memo-session"
                     className={cn(
@@ -836,33 +825,6 @@ export function QuranPagesView({
                   </button>
                 </div>
 
-                {/* View Toggle */}
-                <div className="flex flex-1 items-center rounded-xl border border-border/40 bg-muted/30 p-1 shadow-sm md:flex-none">
-                  <div className="flex flex-1 items-center justify-center whitespace-nowrap rounded-lg bg-emerald-100/80 px-3 py-1.5 text-xs font-black text-emerald-900 shadow-sm dark:bg-emerald-900/50 dark:text-emerald-100 md:flex-none">
-                    {lang === "ar" ? "مصحف المدينة" : "Madani Mushaf"}
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="button-text-view"
-                    onClick={() => {
-                      const location = {
-                        surah: activeChapterId,
-                        ayah: verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah,
-                        page: activePage,
-                      };
-                       if (onSwitchToText) {
-                        onSwitchToText(location);
-                      } else if (isIndependentPractice) {
-                        setLocation(`${readerBasePath}/${activeChapterId}?view=reader`);
-                      } else {
-                        setLocation(`${readerBasePath}/${location.surah}?ayah=${location.ayah}&view=reader`);
-                      }
-                    }}
-                    className="flex flex-1 items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 md:flex-none"
-                  >
-                    {lang === "ar" ? "نص القرآن" : "Quran Text"}
-                  </button>
-                </div>
               </div>
 
               {/* 3. Tools Island */}

@@ -11,7 +11,6 @@ import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
 import { QuranSmartReview } from "./quran-center/quran-smart-review";
 import { QuranPagesView } from "./quran-pages-view";
-import { QuranTextReaderView } from "./quran-reader";
 import { QuranBookmarksPanel } from "@/components/quran/quran-bookmarks-panel";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 
@@ -36,10 +35,8 @@ export default function QuranCenter({
     : "mushaf";
   const [internalTab, setInternalTab] = useState<QuranCenterTab>(tabFromQuery);
   const activeTab = selectedTab ?? internalTab;
-  const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
-  const [guidedMemorizationSignal, setGuidedMemorizationSignal] = useState(0);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
   const [hasRestoredPosition, setHasRestoredPosition] = useState(false);
   const hasExplicitMushafNavigation = useRef(false);
@@ -54,9 +51,6 @@ export default function QuranCenter({
           ayah: readerState.position.ayahNumber,
           page: readerState.position.pageNumber,
         });
-        if (readerState.position.pageNumber) {
-           setMushafView("pages");
-        }
       }
       setHasRestoredPosition(true);
     }
@@ -203,50 +197,19 @@ export default function QuranCenter({
               className="absolute inset-0 overflow-y-auto"
             >
               {activeTab === "mushaf" && (
-                mushafView === "pages" ? (
-                  <QuranPagesView
-                    initialSurah={mushafLocation.surah}
-                    initialAyah={mushafLocation.ayah}
-                    initialPage={mushafLocation.page}
-                    onNavigate={handleMushafNavigate}
-                    isTaskAyah={() => false}
-                    startAyah={null}
-                    endAyah={null}
-                    mode={null}
-                    embedded
-                    onExitEmbedded={() => setMobileSectionsOpen(true)}
-                    onOpenBookmarks={() => setBookmarksOpen(true)}
-                    onStartGuidedMemorization={(location) => {
-                      handleMushafNavigate(location);
-                      setMushafView("reader");
-                      setGuidedMemorizationSignal((signal) => signal + 1);
-                    }}
-                    onSwitchToText={(location) => {
-                      handleMushafNavigate(location);
-                      setMushafView("reader");
-                    }}
-                  />
-                ) : (
-                  <QuranTextReaderView
-                    surahNumber={mushafLocation.surah}
-                    requestedAyah={mushafLocation.ayah}
-                    startAyah={null}
-                    endAyah={null}
-                    mode={null}
-                    isStudentWard={false}
-                    isStudentPractice={false}
-                    embedded
-                    onExitEmbedded={() => setMobileSectionsOpen(true)}
-                    onOpenBookmarks={() => setBookmarksOpen(true)}
-                    guidedMemorizationSignal={guidedMemorizationSignal}
-                    onGuidedMemorizationStarted={() => setGuidedMemorizationSignal(0)}
-                    onNavigate={handleMushafNavigate}
-                    onSwitchToPages={(location) => {
-                      handleMushafNavigate(location);
-                      setMushafView("pages");
-                    }}
-                  />
-                )
+                <QuranPagesView
+                  initialSurah={mushafLocation.surah}
+                  initialAyah={mushafLocation.ayah}
+                  initialPage={mushafLocation.page}
+                  onNavigate={handleMushafNavigate}
+                  isTaskAyah={() => false}
+                  startAyah={null}
+                  endAyah={null}
+                  mode={null}
+                  embedded
+                  onExitEmbedded={() => setMobileSectionsOpen(true)}
+                  onOpenBookmarks={() => setBookmarksOpen(true)}
+                />
               )}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}
@@ -266,7 +229,7 @@ export default function QuranCenter({
                   <QuranBookmarksPanel
                     onNavigate={(loc) => {
                       handleMushafNavigate(loc);
-                      setMushafView(loc.page ? "pages" : "reader");
+                      setBookmarksOpen(false);
                       handleTabChange("mushaf");
                     }}
                   />
@@ -314,7 +277,6 @@ export default function QuranCenter({
                   <QuranBookmarksPanel
                     onNavigate={(loc) => {
                       handleMushafNavigate(loc);
-                      setMushafView(loc.page ? "pages" : "reader");
                       setBookmarksOpen(false);
                     }}
                   />

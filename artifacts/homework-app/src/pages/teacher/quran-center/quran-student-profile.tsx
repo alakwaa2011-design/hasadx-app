@@ -273,7 +273,7 @@ function WardColumn({
         ) : wards.map((ward) => {
           const surah = surahs.find(s => s.arabicName === ward.surahName);
           const surahNum = surah ? surah.number : 1;
-          const readerUrl = `/teacher/quran-reader/${surahNum}?startAyah=${ward.startAyah}&endAyah=${ward.endAyah}&wardId=${ward.id}&mode=${ward.mode}&view=reader`;
+          const readerUrl = `/teacher/quran-reader/${surahNum}?startAyah=${ward.startAyah}&endAyah=${ward.endAyah}&wardId=${ward.id}&mode=${ward.mode}&view=pages`;
           return (
           <div key={ward.id} className="rounded-xl border border-border/60 bg-background p-3 transition-colors hover:border-emerald-200 dark:hover:border-emerald-900">
             <div className="flex items-start justify-between gap-3">

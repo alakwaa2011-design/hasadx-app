@@ -925,7 +925,7 @@ export default function StudentDashboard() {
                            {lang === "ar" ? "سورة" : "Surah"} {arDigit(firstDue.surahNumber)} · {lang === "ar" ? "آية" : "Ayah"} {arDigit(firstDue.ayahNumber)}
                         </p>
                       </div>
-                      <Link href={`/student/quran-practice/${firstDue.surahNumber}?ayah=${firstDue.ayahNumber}&view=reader&guided=1&reviewDue=1`} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 px-4 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-colors">
+                      <Link href={`/student/quran-practice/${firstDue.surahNumber}?ayah=${firstDue.ayahNumber}&view=pages&reviewDue=1`} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 py-2.5 px-4 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-colors">
                         <Play className="w-4 h-4" />
                         {lang === "ar" ? "ابدأ المراجعة" : "Start review"}
                       </Link>
