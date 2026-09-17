@@ -279,6 +279,7 @@ export function QuranTextReaderView({
 }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
+  const readerBasePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
   const queryClient = useQueryClient();
   const savePosition = useUpdateMyQuranIndependentPosition();
   const recordSession = useRecordMyQuranIndependentSession();
@@ -1124,6 +1125,18 @@ export function QuranTextReaderView({
           memoView={memoView}
           onMemoViewChange={setMemoView}
           onPlayingWordChange={setPlayingWord}
+          onPlaybackLocationChange={(nextSurah, nextAyah) => {
+            setPlayingAyah(nextAyah);
+            setIsPlaying(true);
+            setLocation(`${readerBasePath}/${nextSurah}?ayah=${nextAyah}&view=pages`);
+          }}
+          onSurahEnd={() => {
+            if (surahNumber < 114 && startAyah === null && endAyah === null && !memoSession?.isActive) {
+              setPlayingAyah(1);
+              setIsPlaying(true);
+              setLocation(`${readerBasePath}/${surahNumber + 1}?ayah=1&view=pages`);
+            }
+          }}
           onClose={() => {
             setIsPlaying(false);
             setPlayingAyah(null);

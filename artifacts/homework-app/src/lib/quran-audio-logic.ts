@@ -118,3 +118,12 @@ export function getPrevAyah(
   }
   return null;
 }
+
+export function getNextSurahAfterEnd(
+  surahNumber: number,
+  hasExplicitRange: boolean,
+  hasActiveSession: boolean,
+): number | null {
+  if (hasExplicitRange || hasActiveSession || surahNumber >= 114) return null;
+  return surahNumber + 1;
+}

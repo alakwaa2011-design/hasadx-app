@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNextAyahMemo, clampAyah, getActiveWordPosition } from './quran-audio-logic';
+import { getNextAyahMemo, clampAyah, getActiveWordPosition, getNextSurahAfterEnd } from './quran-audio-logic';
 
 describe('quran-audio-logic', () => {
   it('clamps ayah correctly', () => {
@@ -68,6 +68,18 @@ describe('quran-audio-logic', () => {
     it('loops infinitely if continuous', () => {
       const res = getNextAyahMemo(5, 10, 1, 5, 'range', 'continuous', 1, 3);
       expect(res).toEqual({ nextAyah: 1, nextAyahPlayCount: 1, nextRangePlayCount: 4 });
+    });
+  });
+
+  describe('getNextSurahAfterEnd', () => {
+    it('advances to the next surah for unrestricted playback', () => {
+      expect(getNextSurahAfterEnd(2, false, false)).toBe(3);
+    });
+
+    it('stops at surah 114 and explicit/session boundaries', () => {
+      expect(getNextSurahAfterEnd(114, false, false)).toBe(null);
+      expect(getNextSurahAfterEnd(2, true, false)).toBe(null);
+      expect(getNextSurahAfterEnd(2, false, true)).toBe(null);
     });
   });
 });

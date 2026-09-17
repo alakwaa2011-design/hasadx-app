@@ -1154,6 +1154,20 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
+                onPlaybackLocationChange={(nextSurah, nextAyah) => {
+                  setPlayingVerseKey(`${nextSurah}:${nextAyah}`);
+                  setSelectedVerseKey(`${nextSurah}:${nextAyah}`);
+                  setIsPlaying(true);
+                  goToSurah(nextSurah);
+                }}
+                onSurahEnd={() => {
+                  if (playingSurah < 114 && startAyah === null && endAyah === null && !memoSession?.isActive) {
+                    setPlayingVerseKey(`${playingSurah + 1}:1`);
+                    setSelectedVerseKey(`${playingSurah + 1}:1`);
+                    setIsPlaying(true);
+                    goToSurah(playingSurah + 1);
+                  }
+                }}
                 onClose={() => {
                   setIsPlaying(false);
                   setAudioDockOpen(false);

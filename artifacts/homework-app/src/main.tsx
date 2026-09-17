@@ -27,6 +27,17 @@ if (splash) {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
+    let quranAudioActive = Boolean(
+      (window as Window & { __hasaadQuranAudioActive?: boolean }).__hasaadQuranAudioActive,
+    );
+    let deferredReload = false;
+    window.addEventListener("hasaad:quran-playback", (event) => {
+      quranAudioActive = Boolean((event as CustomEvent<{ active?: boolean }>).detail?.active);
+      if (!quranAudioActive && deferredReload) {
+        deferredReload = false;
+        window.location.reload();
+      }
+    });
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
@@ -44,6 +55,10 @@ if ("serviceWorker" in navigator) {
         let refreshing = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (refreshing) return;
+            if (quranAudioActive) {
+              deferredReload = true;
+              return;
+            }
           refreshing = true;
           window.location.reload();
         });

@@ -17,6 +17,7 @@ import { InsufficientCreditsDialog } from "@/components/insufficient-credits-dia
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { HeartbeatTracker } from "@/components/heartbeat-tracker";
 import { NavTracker } from "@/lib/nav-history";
+import { QuranAudioHostProvider } from "@/components/quran/quran-audio-host";
 import {
   getWameethSetupAssignmentId,
   getWameethSetupPath,
@@ -814,15 +815,17 @@ function App() {
           <QueryClientProvider client={queryClient}>
             <TooltipProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <Router />
-                <GlobalAiAssistant />
-                <GlobalTeacherTimer />
-                <GlobalActiveLessonCountdown />
-                <GlobalPushNotificationManager />
-                <InsufficientCreditsDialog />
-                <PageViewTracker />
-                <HeartbeatTracker />
-                <NavTracker />
+                <QuranAudioHostProvider>
+                  <Router />
+                  <GlobalAiAssistant />
+                  <GlobalTeacherTimer />
+                  <GlobalActiveLessonCountdown />
+                  <GlobalPushNotificationManager />
+                  <InsufficientCreditsDialog />
+                  <PageViewTracker />
+                  <HeartbeatTracker />
+                  <NavTracker />
+                </QuranAudioHostProvider>
               </WouterRouter>
               <I18nAwareToaster />
             </TooltipProvider>
