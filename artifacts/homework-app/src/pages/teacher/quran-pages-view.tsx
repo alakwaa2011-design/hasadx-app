@@ -35,7 +35,6 @@ import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
-import { QuranBookmarkToggle } from "@/components/quran/quran-bookmark-toggle";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
 
@@ -168,6 +167,8 @@ export function QuranPagesView({
     startAyah: number;
     endAyah: number;
   } | null>(null);
+  const [copyActionsOpen, setCopyActionsOpen] = useState(false);
+  const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const { playWord, stopWordAudio } = useQuranWordAudio();
 
   useEffect(() => {
@@ -286,6 +287,7 @@ export function QuranPagesView({
   const selectedAyahText = selectedSurahContent?.ayahs.find((ayah) => ayah.index === selectedAyah)?.text;
 
   const copySelection = async () => {
+    setCopyActionsOpen(false);
     if (!selectedSurahContent || !selectedVerseKey) return;
     const rangeStart = copyRange?.surah === selectedSurah
       ? Math.min(copyRange.startAyah, copyRange.endAyah)
@@ -325,6 +327,7 @@ export function QuranPagesView({
   };
 
   const toggleMultiCopy = () => {
+    setCopyActionsOpen(false);
     if (copyRange) {
       setCopyRange(null);
       return;
@@ -337,6 +340,8 @@ export function QuranPagesView({
   const copyRangeEnd = copyRange ? Math.max(copyRange.startAyah, copyRange.endAyah) : selectedAyah;
   const copyCount = copyRangeEnd - copyRangeStart + 1;
   const currentCopyKey = `${selectedSurah}:${copyRangeStart}-${copyRangeEnd}`;
+  const isCurrentBookmarked = bookmarksMap.has(`${selectedSurah}:${selectedAyah}`);
+  const canToggleCurrentBookmark = !isIndependentPractice && mode === null && Boolean(fallbackVerse);
 
   const {
     memoSession, setMemoSession,
@@ -633,18 +638,6 @@ export function QuranPagesView({
                 <ChevronRight className="h-5 w-5 ltr:hidden" />
               </button>
             )}
-            {embedded && onOpenBookmarks && (
-              <button
-                type="button"
-                onClick={onOpenBookmarks}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-emerald-900/10 bg-emerald-50/70 px-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-400/15 dark:bg-emerald-950/40 dark:text-emerald-300"
-                aria-label={lang === "ar" ? "فتح العلامات المحفوظة" : "Open saved bookmarks"}
-              >
-                <Bookmark className="h-4 w-4" />
-                <span className="hidden sm:inline">{lang === "ar" ? "العلامات" : "Bookmarks"}</span>
-              </button>
-            )}
-
             {/* Mobile Title */}
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
               <span className="truncate text-sm font-black text-emerald-900 dark:text-emerald-100">
@@ -816,52 +809,53 @@ export function QuranPagesView({
                 <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
 
                 <div className="mx-1 h-5 w-px bg-border/50" />
-                <button
-                  type="button"
-                  onClick={() => void copySelection()}
-                  disabled={!selectedAyahText || isFetchingSelectedSurah}
-                  data-testid="button-copy-selected-ayah"
-                  className="inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
-                  aria-label={lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`}
-                >
-                  {copiedVerseKey === currentCopyKey
-                    ? <Check className="h-4 w-4" />
-                    : <Copy className="h-4 w-4" />}
-                  <span>{copiedVerseKey === currentCopyKey
-                    ? (lang === "ar" ? "تم النسخ" : "Copied")
-                    : copyRange
-                      ? (lang === "ar" ? `نسخ ${copyCount} آيات` : `Copy ${copyCount} ayahs`)
-                      : (lang === "ar" ? "نسخ الآية" : "Copy ayah")}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleMultiCopy}
-                  data-testid="button-toggle-multi-copy"
-                  className={cn(
-                    "inline-flex min-h-8 items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-colors",
-                    copyRange
-                      ? "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                <div className="relative">
+                  <button type="button" onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); }}
+                    data-testid="button-copy-actions" className="grid h-8 w-8 place-items-center rounded-lg text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200"
+                    aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}>
+                    {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                  {copyActionsOpen && (
+                    <div className="absolute end-0 top-10 z-50 flex min-w-36 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl">
+                      <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
+                        <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount} آيات` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
+                      </button>
+                      <button type="button" onClick={toggleMultiCopy}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
+                        {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
+                        {lang === "ar" ? (copyRange ? "إلغاء التحديد" : "تحديد آيات") : (copyRange ? "Cancel" : "Select ayahs")}
+                      </button>
+                    </div>
                   )}
-                >
-                  {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
-                  {copyRange
-                    ? (lang === "ar" ? "إلغاء التحديد" : "Cancel selection")
-                    : (lang === "ar" ? "تحديد عدة آيات" : "Select multiple")}
-                </button>
+                </div>
 
-                {!isIndependentPractice && mode === null && fallbackVerse && (
-                  <>
-                    <div className="mx-1 h-5 w-px bg-border/50" />
-                    <QuranBookmarkToggle
-                      surahNumber={selectedSurah}
-                      ayahNumber={selectedAyah}
-                      pageNumber={canonicalPage}
-                      isBookmarked={bookmarksMap.has(`${selectedSurah}:${selectedAyah}`)}
-                      onToggle={toggleBookmark}
-                      disabled={isMutatingBookmark}
-                    />
-                  </>
+                {(canToggleCurrentBookmark || onOpenBookmarks) && (
+                  <div className="relative">
+                    <button type="button" onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); }}
+                      data-testid="button-bookmark-actions" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}>
+                      <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current text-emerald-700")} />
+                    </button>
+                    {bookmarkActionsOpen && (
+                      <div className="absolute end-0 top-10 z-50 flex min-w-40 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl">
+                        {canToggleCurrentBookmark && (
+                          <button type="button" disabled={isMutatingBookmark}
+                            onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
+                            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-50">
+                            <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
+                            {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "حفظ العلامة") : (isCurrentBookmarked ? "Remove" : "Save")}
+                          </button>
+                        )}
+                        {onOpenBookmarks && (
+                          <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
+                            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
+                            <Bookmark className="h-4 w-4" />{lang === "ar" ? "كل العلامات" : "All bookmarks"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <div className="mx-1 h-5 w-px bg-border/50" />
@@ -917,37 +911,54 @@ export function QuranPagesView({
       )}
 
       {!quietMode && selectedVerseKey && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 flex -translate-x-1/2 items-center gap-2 md:hidden rtl:translate-x-1/2">
-          <button
-            type="button"
-            onClick={() => void copySelection()}
-            disabled={!selectedAyahText || isFetchingSelectedSurah}
-            data-testid="button-copy-selected-ayah-floating"
-            className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-xl shadow-emerald-950/25 transition-colors hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-50"
-          >
-            {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copiedVerseKey === currentCopyKey
-              ? (lang === "ar" ? "تم النسخ" : "Copied")
-              : copyRange
-                ? (lang === "ar" ? `نسخ ${copyCount} آيات` : `Copy ${copyCount} ayahs`)
-                : (lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`)}
-          </button>
-          <button
-            type="button"
-            onClick={toggleMultiCopy}
-            data-testid="button-toggle-multi-copy-floating"
-            className={cn(
-              "inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-2.5 text-xs font-black shadow-lg",
-              copyRange
-                ? "border-red-200 bg-white text-red-700"
-                : "border-emerald-200 bg-white text-emerald-800",
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur md:hidden rtl:translate-x-1/2 dark:bg-card/95">
+          <div className="relative">
+            <button type="button" onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); }}
+              data-testid="button-copy-actions-floating" className="relative grid h-10 w-10 place-items-center rounded-full text-emerald-800 hover:bg-emerald-50"
+              aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}>
+              {copiedVerseKey === currentCopyKey ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+              {copyRange && <span className="absolute -end-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-emerald-700 px-1 text-[9px] font-black text-white">{copyCount}</span>}
+            </button>
+            {copyActionsOpen && (
+              <div className="absolute bottom-12 start-1/2 flex min-w-36 -translate-x-1/2 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl rtl:translate-x-1/2">
+                <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
+                  <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount}` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
+                </button>
+                <button type="button" onClick={toggleMultiCopy} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
+                  {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
+                  {lang === "ar" ? (copyRange ? "إلغاء التحديد" : "تحديد آيات") : (copyRange ? "Cancel" : "Select ayahs")}
+                </button>
+              </div>
             )}
-          >
-            {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
-            {copyRange
-              ? (lang === "ar" ? "إلغاء" : "Cancel")
-              : (lang === "ar" ? "عدة آيات" : "Multiple")}
-          </button>
+          </div>
+          {(canToggleCurrentBookmark || onOpenBookmarks) && (
+            <div className="relative">
+              <button type="button" onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); }}
+                data-testid="button-bookmark-actions-floating" className="grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+                aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}>
+                <Bookmark className={cn("h-5 w-5", isCurrentBookmarked && "fill-current text-emerald-700")} />
+              </button>
+              {bookmarkActionsOpen && (
+                <div className="absolute bottom-12 start-1/2 flex min-w-40 -translate-x-1/2 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl rtl:translate-x-1/2">
+                  {canToggleCurrentBookmark && (
+                    <button type="button" disabled={isMutatingBookmark}
+                      onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-50">
+                      <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
+                      {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "حفظ العلامة") : (isCurrentBookmarked ? "Remove" : "Save")}
+                    </button>
+                  )}
+                  {onOpenBookmarks && (
+                    <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
+                      <Bookmark className="h-4 w-4" />{lang === "ar" ? "كل العلامات" : "All bookmarks"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
