@@ -64,7 +64,17 @@ function pageImageUrl(page: number) {
   return `${import.meta.env.BASE_URL}quran/mushaf-hafs-1441/${String(page).padStart(3, "0")}.webp`;
 }
 
-function plainArabicSurahName(name: string) {
+const CANONICAL_SURAH_NAME_OVERRIDES: Readonly<Record<number, string>> = {
+  3: "آل عمران",
+  42: "الشورى",
+  55: "الرحمن",
+  92: "الليل",
+  93: "الضحى",
+};
+
+function plainArabicSurahName(chapterId: number, name: string) {
+  const canonicalName = CANONICAL_SURAH_NAME_OVERRIDES[chapterId];
+  if (canonicalName) return canonicalName;
   return name
     .replace(/\u0671/g, "ا")
     .replace(/\u0670/g, "ا")
@@ -525,7 +535,7 @@ export function QuranPagesView({
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
               <span className="truncate text-sm font-black text-emerald-900 dark:text-emerald-100">
                 {chapters.find((chapter) => chapter.id === activeChapterId)?.name
-                  ? plainArabicSurahName(chapters.find((chapter) => chapter.id === activeChapterId)!.name)
+                  ? plainArabicSurahName(activeChapterId, chapters.find((chapter) => chapter.id === activeChapterId)!.name)
                   : (lang === "ar" ? "المصحف" : "Mushaf")}
               </span>
               <span className="shrink-0 text-xs font-bold text-muted-foreground">
@@ -600,7 +610,7 @@ export function QuranPagesView({
               >
                 {chapters.map((chapter) => (
                   <option key={chapter.id} value={chapter.id}>
-                    {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.name) : chapter.name}
+                    {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
                   </option>
                 ))}
               </select>

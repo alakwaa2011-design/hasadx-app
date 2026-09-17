@@ -35,6 +35,7 @@ export interface QuranAudioPlayerProps {
 
 const SPEEDS = [0.75, 1, 1.25];
 const REPEATS = [1, 3, 5, 10];
+const MEMO_REPEAT_COUNTS: Array<number | 'continuous'> = [1, 3, 5, 10, 'continuous'];
 const ARABIC_RECITATION_STYLES: Readonly<Record<string, string>> = {
   Muallim: 'المعلّم',
   'Kids repeat': 'المعلّم – ترديد الأطفال',
@@ -73,13 +74,13 @@ export function QuranAudioPlayer({
   const [reciterSearch, setReciterSearch] = useState('');
   const [speed, setSpeed] = useState(1);
   const [repeat, setRepeat] = useState(1);
-  
+
   const [currentAyahPlayCount, setCurrentAyahPlayCount] = useState(1);
   const [currentRangePlayCount, setCurrentRangePlayCount] = useState(1);
   const lastInternalAyahRef = useRef<number | null>(null);
   const [isPausedBetween, setIsPausedBetween] = useState(false);
   const pauseTimeoutRef = useRef<number | null>(null);
-  
+
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<'none' | 'settings' | 'memo'>('none');
@@ -91,7 +92,7 @@ export function QuranAudioPlayer({
   const currentAudioSrcRef = useRef<string | undefined>(undefined);
   const lastQueryKeyRef = useRef<string>('');
   const [playingWord, setPlayingWord] = useState<number | null>(null);
-  
+
   const pendingNextActionRef = useRef<(() => void) | null>(null);
   const isEndedHandledRef = useRef(false);
 
@@ -168,7 +169,7 @@ export function QuranAudioPlayer({
       activeSeekRef.current = null;
       return;
     }
-    
+
     const currentQueryKey = `${recitationId}-${surahNumber}-${playingAyah}`;
     if (lastQueryKeyRef.current !== currentQueryKey) {
        lastQueryKeyRef.current = currentQueryKey;
@@ -192,7 +193,7 @@ export function QuranAudioPlayer({
        }
        return;
     }
-    
+
     if (timingsQuery.isError || !timingsQuery.data?.synchronized) {
       if (recitationId >= 1_000_000) {
         activeSeekRef.current = null;
@@ -219,7 +220,7 @@ export function QuranAudioPlayer({
         url: data.audioUrl,
         segments: data.segments,
       };
-      
+
       if (currentAudioSrcRef.current !== data.audioUrl) {
          currentAudioSrcRef.current = data.audioUrl;
          setAudioSrc(data.audioUrl);
@@ -239,19 +240,19 @@ export function QuranAudioPlayer({
 
   const handleTimeUpdate = () => {
     if (!audioRef.current) return;
-    
+
     if (activeSeekRef.current) {
       const currentTimeMs = audioRef.current.currentTime * 1000;
       const { startMs, endMs, segments, ayah } = activeSeekRef.current;
-      
+
       if (ayah !== playingAyah) return;
-      
+
       if (currentTimeMs >= endMs) {
         audioRef.current.pause();
         handleEnded();
         return;
       }
-      
+
       const newWord = getActiveWordPosition(currentTimeMs, startMs, segments);
       if (newWord !== playingWord) {
         setPlayingWord(newWord);
@@ -272,7 +273,7 @@ export function QuranAudioPlayer({
 
   useEffect(() => {
     if (!audioRef.current) return;
-    
+
     if (isPlaying && !isPausedBetween && audioSrc) {
        if (activeSeekRef.current) {
           const ct = audioRef.current.currentTime * 1000;
@@ -340,7 +341,7 @@ export function QuranAudioPlayer({
     if (!playingAyah) return;
     if (isEndedHandledRef.current) return;
     isEndedHandledRef.current = true;
-    
+
     const { nextAyah, nextAyahPlayCount, nextRangePlayCount } = getNextAyahMemo(
        playingAyah,
        surahLength,
@@ -351,7 +352,7 @@ export function QuranAudioPlayer({
        currentAyahPlayCount,
        currentRangePlayCount
     );
-    
+
     if (nextAyah !== null) {
       scheduleNextAction(() => {
         isEndedHandledRef.current = false;
@@ -359,7 +360,7 @@ export function QuranAudioPlayer({
         setCurrentRangePlayCount(nextRangePlayCount);
         setPlayingWord(null);
         onPlayingWordChange?.(null);
-        
+
         if (nextAyah !== playingAyah) {
           lastInternalAyahRef.current = nextAyah;
           onPlayingAyahChange(nextAyah);
@@ -475,42 +476,15 @@ export function QuranAudioPlayer({
   };
 
   return (
-    <div ref={playerRef} className="relative w-full shrink-0 border-t border-border bg-white/95 p-2 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-colors dark:bg-card/95">
-      {memoSession?.isActive && (
-         <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-1">
-            <div className="flex items-center gap-2">
-               <BookOpen className="w-5 h-5 text-emerald-600" />
-               <span className="font-bold text-emerald-900 dark:text-emerald-300">{isArabic ? 'جلسة حفظ وتكرار' : 'Memorization Session'}</span>
-            </div>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                title={isArabic ? "إغلاق مشغل الآية" : "Close player"}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-         </div>
-      )}
-      {!memoSession?.isActive && onClose && (
-        <div className="absolute end-1.5 top-1.5 z-10">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title={isArabic ? "إغلاق مشغل الآية" : "Close player"}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-      
+    <div ref={playerRef} className={cn(
+       "relative w-full shrink-0 border-t bg-background/95 p-2 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-colors dark:shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.3)]",
+       memoSession?.isActive ? "border-amber-300/60 dark:border-amber-900/40" : "border-border/60"
+    )}>
+
       {audioSrc && (
-        <audio 
-          ref={audioRef} 
-          src={audioSrc} 
+        <audio
+          ref={audioRef}
+          src={audioSrc}
           onEnded={handleEnded}
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
@@ -526,379 +500,410 @@ export function QuranAudioPlayer({
         />
       )}
 
-      {activeTab === 'memo' && memoSession && onMemoSessionChange && (
-         <div
-           id="quran-memo-settings"
-           className="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50 mb-2 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200"
-         >
-          <div className="flex items-center gap-2 mb-1 hidden md:flex">
-             <BookOpen className="w-5 h-5 text-amber-700 dark:text-amber-500" />
-             <span className="font-bold text-amber-900 dark:text-amber-300">
-                {isArabic ? 'إعدادات الحفظ والتكرار' : 'Memorization Settings'}
-             </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-             <div className="flex items-center gap-2 bg-background border border-border rounded-lg p-1.5 shadow-sm">
-                <span className="text-xs font-bold px-2">{isArabic ? 'من' : 'From'}</span>
-                <select 
-                   value={memoSession.rangeStart} 
-                   onChange={e => onMemoSessionChange({ ...memoSession, rangeStart: Number(e.target.value) })}
-                   className="bg-transparent font-bold text-sm outline-none cursor-pointer flex-1"
-                >
-                   {Array.from({ length: surahLength }, (_, i) => i + 1)
-                      .filter(i => (!startAyah || i >= startAyah) && (!endAyah || i <= endAyah))
-                      .map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-                <span className="text-xs font-bold px-2 border-l border-border">{isArabic ? 'إلى' : 'To'}</span>
-                <select 
-                   value={memoSession.rangeEnd} 
-                   onChange={e => onMemoSessionChange({ ...memoSession, rangeEnd: Math.max(memoSession.rangeStart, Number(e.target.value)) })}
-                   className="bg-transparent font-bold text-sm outline-none cursor-pointer flex-1"
-                >
-                   {Array.from({ length: surahLength }, (_, i) => i + 1)
-                      .filter(i => i >= memoSession.rangeStart && (!endAyah || i <= endAyah))
-                      .map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-             </div>
-
-             <div className="flex items-center bg-background rounded-lg border border-border shadow-sm p-1">
-                <button 
-                   onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'ayah' })}
-                   className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", memoSession.repeatScope === 'ayah' ? "bg-amber-200/50 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100" : "hover:bg-muted text-foreground")}
-                >
-                   {isArabic ? 'تكرار الآية' : 'Repeat Ayah'}
-                </button>
-                <button 
-                   onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'range' })}
-                   className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", memoSession.repeatScope === 'range' ? "bg-amber-200/50 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100" : "hover:bg-muted text-foreground")}
-                >
-                   {isArabic ? 'تكرار النطاق' : 'Repeat Range'}
-                </button>
-             </div>
-
-             <div className="flex items-center gap-2 bg-background rounded-lg border border-border shadow-sm p-1.5">
-                <Repeat className="w-4 h-4 text-muted-foreground ml-1" />
-                <select
-                   value={memoSession.repeatCount === 'continuous' ? 'continuous' : memoSession.repeatCount}
-                   onChange={e => onMemoSessionChange({ ...memoSession, repeatCount: e.target.value === 'continuous' ? 'continuous' : Number(e.target.value) })}
-                   className="bg-transparent font-bold text-sm outline-none cursor-pointer flex-1"
-                >
-                   <option value={1}>{isArabic ? 'مرة واحدة' : '1 time'}</option>
-                   <option value={3}>{isArabic ? '3 مرات' : '3 times'}</option>
-                   <option value={5}>{isArabic ? '5 مرات' : '5 times'}</option>
-                   <option value={10}>{isArabic ? '10 مرات' : '10 times'}</option>
-                   <option value="continuous">{isArabic ? 'مستمر' : 'Continuous'}</option>
-                </select>
-             </div>
-
-             <div className="flex items-center gap-2 bg-background rounded-lg border border-border shadow-sm p-1.5">
-                <Clock className="w-4 h-4 text-muted-foreground ml-1" />
-                <select
-                   value={memoSession.pauseSeconds}
-                   onChange={e => onMemoSessionChange({ ...memoSession, pauseSeconds: Number(e.target.value) })}
-                   className="bg-transparent font-bold text-sm outline-none cursor-pointer flex-1"
-                >
-                   <option value={0}>{isArabic ? 'بدون توقف' : 'No pause'}</option>
-                   <option value={1}>{isArabic ? 'توقف ثانية' : '1s pause'}</option>
-                   <option value={2}>{isArabic ? 'توقف ثانيتين' : '2s pause'}</option>
-                   <option value={3}>{isArabic ? 'توقف ٣ ثوانٍ' : '3s pause'}</option>
-                   <option value={5}>{isArabic ? 'توقف ٥ ثوانٍ' : '5s pause'}</option>
-                </select>
-             </div>
-             
-             {memoView && onMemoViewChange && (
-               <div className="flex items-center gap-2 md:col-span-2 mt-1">
-                  <Eye className="w-4 h-4 text-muted-foreground" />
-                  <div className="flex items-center bg-background rounded-lg border border-border overflow-hidden p-1">
-                     <button 
-                        onClick={() => onMemoViewChange('show')}
-                        className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors", memoView === 'show' ? "bg-emerald-600 text-white" : "hover:bg-muted text-foreground")}
-                     >
-                        {isArabic ? 'إظهار الكل' : 'Show All'}
-                     </button>
-                     <button 
-                        onClick={() => onMemoViewChange('hide')}
-                        className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors", memoView === 'hide' ? "bg-emerald-600 text-white" : "hover:bg-muted text-foreground")}
-                     >
-                        {isArabic ? 'إخفاء' : 'Hide'}
-                     </button>
-                     <button 
-                        onClick={() => onMemoViewChange('progressive')}
-                        className={cn("px-3 py-1.5 text-xs font-bold rounded-md transition-colors", memoView === 'progressive' ? "bg-emerald-600 text-white" : "hover:bg-muted text-foreground")}
-                     >
-                        {isArabic ? 'تتابعي' : 'Prog'}
-                     </button>
-                  </div>
-               </div>
-             )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'settings' && (
+      {/* Floating Panel for Active Tab */}
+      {activeTab !== 'none' && (
         <div
-          id="quran-audio-settings"
-          className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/30 rounded-xl mb-1 text-sm border border-border/50 animate-in fade-in zoom-in-95 duration-200"
+          data-testid={`panel-${activeTab}`}
+          className="absolute bottom-full mb-3 end-2 sm:end-4 z-50 w-[340px] max-w-[calc(100vw-1rem)] rounded-xl border border-border/60 bg-background/95 p-4 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2"
         >
-          <div className="flex w-full flex-wrap items-start gap-4">
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-72">
-              <div className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-muted-foreground" />
-                <span className="font-bold">{isArabic ? 'القارئ المفضل' : 'Preferred reciter'}</span>
-              </div>
-              {reciterCatalog.isLoading ? (
-                <div className="flex min-h-10 items-center gap-2 rounded-lg border border-border bg-background px-3 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{isArabic ? 'جارٍ تحميل مكتبة القراء…' : 'Loading reciter library…'}</span>
-                </div>
-              ) : reciterCatalog.isError ? (
-                <div className="flex min-h-10 items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 text-destructive">
-                  <span>{isArabic ? 'تعذر تحميل مكتبة القراء' : 'Could not load reciter library'}</span>
-                  <button
-                    type="button"
-                    onClick={() => void reciterCatalog.refetch()}
-                    className="inline-flex items-center gap-1 font-bold underline"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    {isArabic ? 'إعادة المحاولة' : 'Retry'}
+          {activeTab === 'settings' ? (
+             <div className="space-y-5">
+               <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-foreground">{isArabic ? 'خيارات التلاوة' : 'Audio Options'}</span>
+                  <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors">
+                    <X className="w-4 h-4" />
                   </button>
-                </div>
-              ) : (
-                <>
-                  <label className="relative block">
-                    <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      value={reciterSearch}
-                      onChange={(event) => setReciterSearch(event.target.value)}
-                      placeholder={isArabic ? 'ابحث باسم القارئ أو نوع التلاوة' : 'Search reciter or style'}
-                      className="h-10 w-full rounded-lg border border-border bg-background pe-3 ps-9 font-semibold text-foreground outline-none focus:border-emerald-600"
-                    />
-                  </label>
-                  <div className="max-h-44 overflow-y-auto rounded-lg border border-border bg-background p-1">
-                    {groupedReciters.length ? groupedReciters.map((group) => {
-                      const onlyRecording = group.recordings.length === 1
-                        ? group.recordings[0]
-                        : null;
-                      return (
-                        <div
-                          key={group.name}
-                          className="border-b border-border/60 px-1 py-1 last:border-b-0"
-                        >
-                          {onlyRecording ? (
-                            <button
-                              type="button"
-                              disabled={savePreference.isPending}
-                              onClick={() => void selectReciter(onlyRecording.id)}
-                              className={cn(
-                                "flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-2 text-start font-bold transition-colors disabled:opacity-60",
-                                onlyRecording.id === recitationId
-                                  ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
-                                  : "hover:bg-muted",
-                              )}
-                            >
-                              <span className="truncate">{group.name}</span>
-                              {savePreference.isPending && onlyRecording.id === recitationId && (
-                                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                              )}
-                            </button>
-                          ) : (
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-1">
-                              <span className="min-w-0 shrink truncate font-bold">{group.name}</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {group.recordings.map((item) => (
-                                  <button
-                                    type="button"
-                                    key={item.id}
-                                    disabled={savePreference.isPending}
-                                    onClick={() => void selectReciter(item.id)}
-                                    className={cn(
-                                      "inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60",
-                                      item.id === recitationId
-                                        ? "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
-                                        : "border-border bg-background hover:bg-muted",
-                                    )}
-                                  >
-                                    {recitationStyleLabel(item.style ?? null, isArabic)
-                                      ?? (isArabic ? "تلاوة" : "Recitation")}
-                                    {savePreference.isPending && item.id === recitationId && (
-                                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }) : (
-                      <p className="px-3 py-5 text-center text-muted-foreground">
-                        {isArabic ? 'لا يوجد قارئ مطابق للبحث' : 'No reciter matches your search'}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Repeat className="w-4 h-4 text-muted-foreground" />
-              <div className="flex items-center bg-background rounded-lg border border-border overflow-hidden">
-                {REPEATS.map(r => (
-                  <button 
-                    key={r} 
-                     onClick={() => {
-                       isEndedHandledRef.current = false;
-                       setRepeat(r);
-                       setCurrentAyahPlayCount(1);
-                       setCurrentRangePlayCount(1);
-                     }}
-                    className={cn(
-                      "px-3 py-1 font-bold text-xs transition-colors",
-                      repeat === r ? "bg-emerald-600 text-white" : "hover:bg-muted text-foreground"
-                    )}
-                  >
-                    {r}x
-                  </button>
-                ))}
-              </div>
-            </div>
+               </div>
 
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-muted-foreground" />
-              <div className="flex items-center bg-background rounded-lg border border-border overflow-hidden">
-                {SPEEDS.map(s => (
-                  <button 
-                    key={s} 
-                    onClick={() => setSpeed(s)}
-                    className={cn(
-                      "px-3 py-1 font-bold text-xs transition-colors",
-                      speed === s ? "bg-emerald-600 text-white" : "hover:bg-muted text-foreground"
-                    )}
-                    style={{ direction: 'ltr' }}
-                  >
-                    {s}x
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+               <div className="flex items-center justify-between gap-3">
+                 <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
+                   <Zap className="w-4 h-4" />
+                   <span>{isArabic ? 'السرعة' : 'Speed'}</span>
+                 </div>
+                 <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
+                   {SPEEDS.map(s => (
+                     <button
+                       key={s}
+                       data-testid={`button-speed-${s}`}
+                       onClick={() => setSpeed(s)}
+                       className={cn(
+                         "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                         speed === s ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground"
+                       )}
+                     >
+                       {s}x
+                     </button>
+                   ))}
+                 </div>
+               </div>
+
+               {!memoSession?.isActive && (
+                 <div className="flex items-center justify-between gap-3">
+                   <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
+                     <Repeat className="w-4 h-4" />
+                     <span>{isArabic ? 'التكرار' : 'Repeat'}</span>
+                   </div>
+                   <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
+                     {REPEATS.map(r => (
+                       <button
+                         key={r}
+                         data-testid={`button-repeat-${r}`}
+                         onClick={() => {
+                           isEndedHandledRef.current = false;
+                           setRepeat(r);
+                           setCurrentAyahPlayCount(1);
+                           setCurrentRangePlayCount(1);
+                         }}
+                         className={cn(
+                           "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                           repeat === r ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground"
+                         )}
+                       >
+                         {r}x
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+               )}
+
+               <hr className="border-border/50" />
+
+               <div className="space-y-3">
+                 <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
+                   <Volume2 className="w-4 h-4" />
+                   <span>{isArabic ? 'القارئ' : 'Reciter'}</span>
+                 </div>
+                 <div className="relative">
+                   <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                   <input
+                     data-testid="input-reciter-search"
+                     value={reciterSearch}
+                     onChange={e => setReciterSearch(e.target.value)}
+                     className="w-full h-9 pl-9 pr-3 rtl:pr-9 rtl:pl-3 text-xs font-semibold rounded-md bg-muted/30 border border-border/50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                     placeholder={isArabic ? 'بحث باسم القارئ...' : 'Search reciter...'}
+                   />
+                 </div>
+                 <div className="max-h-[180px] overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                   {reciterCatalog.isLoading ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      </div>
+                   ) : groupedReciters.length > 0 ? groupedReciters.map(group => {
+                     const onlyRecording = group.recordings.length === 1 ? group.recordings[0] : null;
+                     return (
+                       <div key={group.name} className="py-1 border-b border-border/30 last:border-0">
+                          {onlyRecording ? (
+                             <button
+                               data-testid={`button-reciter-${onlyRecording.id}`}
+                               onClick={() => selectReciter(onlyRecording.id)}
+                               disabled={savePreference.isPending}
+                               className={cn(
+                                  "w-full flex items-center justify-between p-2 rounded-md text-xs font-bold transition-all",
+                                  onlyRecording.id === recitationId ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "hover:bg-muted text-foreground"
+                               )}
+                             >
+                                <span className="truncate">{group.name}</span>
+                                {savePreference.isPending && onlyRecording.id === recitationId && <Loader2 className="w-3 h-3 animate-spin" />}
+                             </button>
+                          ) : (
+                             <div className="space-y-1.5 p-1">
+                                <span className="text-[11px] text-muted-foreground font-bold truncate block">{group.name}</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                   {group.recordings.map(item => (
+                                      <button
+                                        key={item.id}
+                                        data-testid={`button-reciter-${item.id}`}
+                                        onClick={() => selectReciter(item.id)}
+                                        disabled={savePreference.isPending}
+                                        className={cn(
+                                           "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all border",
+                                           item.id === recitationId
+                                             ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300"
+                                             : "bg-background border-border/50 hover:bg-muted text-foreground"
+                                        )}
+                                      >
+                                        {recitationStyleLabel(item.style ?? null, isArabic) ?? (isArabic ? 'تلاوة' : 'Recitation')}
+                                        {savePreference.isPending && item.id === recitationId && <Loader2 className="inline-block w-3 h-3 animate-spin ml-1 rtl:mr-1 rtl:ml-0" />}
+                                      </button>
+                                   ))}
+                                </div>
+                             </div>
+                          )}
+                       </div>
+                     )
+                   }) : (
+                      <p className="text-xs text-center text-muted-foreground py-4">
+                        {isArabic ? 'لا توجد نتائج' : 'No results found'}
+                      </p>
+                   )}
+                 </div>
+               </div>
+             </div>
+          ) : (
+             <div className="space-y-4">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-1.5">
+                   <BookOpen className="w-4 h-4 text-amber-600" />
+                   <span className="font-bold text-sm text-foreground">{isArabic ? 'جلسة الحفظ والتكرار' : 'Memorization Session'}</span>
+                 </div>
+                 <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="text-muted-foreground hover:text-foreground rounded-full p-1 transition-colors">
+                   <X className="w-4 h-4" />
+                 </button>
+               </div>
+
+               {memoSession && onMemoSessionChange && (
+                 <div className="space-y-3">
+                   <div className="flex items-center justify-between gap-2">
+                     <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'النطاق' : 'Range'}</span>
+                     <div className="flex items-center bg-muted/50 rounded-lg border border-border/50 p-0.5">
+                        <div className="flex items-center px-2 py-1 gap-1">
+                          <span className="text-[10px] text-muted-foreground">{isArabic ? 'من' : 'From'}</span>
+                          <select
+                            data-testid="select-memo-start"
+                            value={memoSession.rangeStart}
+                            onChange={e => onMemoSessionChange({ ...memoSession, rangeStart: Number(e.target.value) })}
+                            className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground"
+                          >
+                            {Array.from({ length: surahLength }, (_, i) => i + 1)
+                               .filter(i => (!startAyah || i >= startAyah) && (!endAyah || i <= endAyah))
+                               .map(i => <option key={i} value={i}>{i}</option>)}
+                          </select>
+                        </div>
+                        <div className="w-px h-3 bg-border/50 mx-1"></div>
+                        <div className="flex items-center px-2 py-1 gap-1">
+                          <span className="text-[10px] text-muted-foreground">{isArabic ? 'إلى' : 'To'}</span>
+                          <select
+                            data-testid="select-memo-end"
+                            value={memoSession.rangeEnd}
+                            onChange={e => onMemoSessionChange({ ...memoSession, rangeEnd: Math.max(memoSession.rangeStart, Number(e.target.value)) })}
+                            className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground"
+                          >
+                            {Array.from({ length: surahLength }, (_, i) => i + 1)
+                               .filter(i => i >= memoSession.rangeStart && (!endAyah || i <= endAyah))
+                               .map(i => <option key={i} value={i}>{i}</option>)}
+                          </select>
+                        </div>
+                     </div>
+                   </div>
+
+                   <div className="flex items-center justify-between gap-2">
+                     <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'تكرار' : 'Repeat'}</span>
+                     <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
+                       <button
+                          data-testid="button-memo-scope-ayah"
+                          onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'ayah' })}
+                          className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'ayah' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                       >
+                          {isArabic ? 'الآية' : 'Ayah'}
+                       </button>
+                       <button
+                          data-testid="button-memo-scope-range"
+                          onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'range' })}
+                          className={cn("px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'range' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                       >
+                          {isArabic ? 'النطاق' : 'Range'}
+                       </button>
+                     </div>
+                   </div>
+
+                   <div className="flex items-center justify-between gap-2">
+                     <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'المرات' : 'Count'}</span>
+                     <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
+                       {MEMO_REPEAT_COUNTS.map(val => (
+                         <button
+                            key={val}
+                            data-testid={`button-memo-count-${val}`}
+                            onClick={() => onMemoSessionChange({ ...memoSession, repeatCount: val })}
+                            className={cn("px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatCount === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                         >
+                            {val === 'continuous' ? '∞' : `${val}x`}
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+
+                   <div className="flex items-center justify-between gap-2">
+                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
+                        <Clock className="w-4 h-4" />
+                        <span>{isArabic ? 'توقف' : 'Pause'}</span>
+                     </div>
+                     <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
+                       {[0, 1, 2, 3, 5].map(val => (
+                         <button
+                            key={val}
+                            data-testid={`button-memo-pause-${val}`}
+                            onClick={() => onMemoSessionChange({ ...memoSession, pauseSeconds: val })}
+                            className={cn("px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.pauseSeconds === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                         >
+                            {val === 0 ? '0s' : `${val}s`}
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+
+                   {memoView && onMemoViewChange && (
+                      <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-border/50">
+                        <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                          <Eye className="w-4 h-4" />
+                          {isArabic ? 'الآيات' : 'Visibility'}
+                        </span>
+                        <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
+                          <button
+                             data-testid="button-memoview-show"
+                             onClick={() => onMemoViewChange('show')}
+                             className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'show' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                          >
+                             {isArabic ? 'الكل' : 'All'}
+                          </button>
+                          <button
+                             data-testid="button-memoview-progressive"
+                             onClick={() => onMemoViewChange('progressive')}
+                             className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'progressive' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                          >
+                             {isArabic ? 'تتابعي' : 'Prog'}
+                          </button>
+                          <button
+                             data-testid="button-memoview-hide"
+                             onClick={() => onMemoViewChange('hide')}
+                             className={cn("px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'hide' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                          >
+                             {isArabic ? 'إخفاء' : 'Hide'}
+                          </button>
+                        </div>
+                      </div>
+                   )}
+                 </div>
+               )}
+             </div>
+          )}
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-2 px-1 pe-8">
-        <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-          <button 
+      {/* Main Control Bar */}
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 md:gap-4 px-1 md:px-2">
+
+        {/* Left: Play & Info */}
+        <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+          <button
+            data-testid="button-play-pause"
             onClick={togglePlay}
-            className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105 active:scale-95 md:h-11 md:w-11",
-              memoSession?.isActive ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
-            )}
             aria-label={isPlaying ? (isArabic ? 'إيقاف مؤقت' : 'Pause') : (isArabic ? 'تشغيل' : 'Play')}
-          >
-            {isBuffering ? (
-              <Loader2 className="h-5 w-5 animate-spin md:h-6 md:w-6" />
-            ) : isPlaying ? (
-              <Pause className="h-5 w-5 fill-current md:h-6 md:w-6" />
-            ) : (
-              <Play className="h-5 w-5 fill-current ltr:ml-0.5 rtl:mr-0.5 md:h-6 md:w-6" />
+            className={cn(
+              "flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95",
+              memoSession?.isActive ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
             )}
+          >
+            {isBuffering ? <Loader2 className="w-5 h-5 animate-spin" /> : isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5 rtl:mr-0.5 rtl:ml-0" />}
           </button>
-          
-          <div className="flex min-w-0 flex-col">
-            <span className="line-clamp-1 text-xs font-bold text-foreground md:text-sm">
-              {isArabic
-                ? `سورة ${surahs[surahNumber - 1]?.name} - آية ${playingAyah ?? selectedAyah}`
-                : `Surah ${surahs[surahNumber - 1]?.name} - Ayah ${playingAyah ?? selectedAyah}`}
+          <div className="flex flex-col min-w-0">
+            <span data-testid="text-surah-info" className="truncate text-xs md:text-sm font-bold text-foreground">
+               {isArabic
+                  ? `سورة ${surahs[surahNumber - 1]?.name} - آية ${playingAyah ?? selectedAyah}`
+                  : `Surah ${surahs[surahNumber - 1]?.name} - Ayah ${playingAyah ?? selectedAyah}`}
             </span>
-            
             {isPausedBetween ? (
-               <div className="flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                  <span className="text-xs font-bold text-amber-700">{isArabic ? 'توقف...' : 'Pause...'}</span>
+               <div className="flex items-center gap-1.5 mt-0.5">
+                  <Loader2 className="w-3 h-3 animate-spin text-amber-600" />
+                  <span className="text-[10px] md:text-xs font-bold text-amber-700 dark:text-amber-400">{isArabic ? 'توقف مؤقت...' : 'Paused...'}</span>
+               </div>
+            ) : error ? (
+               <div className="flex items-center gap-1 mt-0.5 text-destructive">
+                  <span className="text-[10px] md:text-xs font-bold">{isArabic ? 'تعذر تحميل الصوت' : 'Failed to load audio'}</span>
+                  <button onClick={() => { setError(false); setIsBuffering(true); audioRef.current?.load(); audioRef.current?.play(); }} className="underline hover:no-underline">
+                    <RefreshCw className="w-3 h-3 inline" />
+                  </button>
                </div>
             ) : (
-               <span className="line-clamp-1 text-[10px] font-semibold text-muted-foreground md:text-xs">
-                 {reciterCatalog.isLoading
-                   ? (isArabic ? 'تحميل القارئ…' : 'Loading reciter…')
-                   : selectedReciter?.name ?? (isArabic ? 'القارئ غير متاح' : 'Reciter unavailable')}
-               </span>
-            )}
-            
-            {error && (
-              <span className="text-xs font-bold text-destructive flex items-center gap-1 mt-0.5">
-                {isArabic ? 'تعذر تحميل الصوت' : 'Failed to load audio'}
-                <button onClick={() => { setError(false); setIsBuffering(true); audioRef.current?.load(); audioRef.current?.play(); }} className="underline ml-1">
-                  <RefreshCw className="w-3 h-3 inline" />
-                </button>
-              </span>
-            )}
-            
-            {!error && !isPausedBetween && playingAyah && (effectiveRepeat === 'continuous' || effectiveRepeat > 1) && (
-              <span className="text-[10px] text-muted-foreground font-semibold mt-0.5 flex gap-2">
-                 {effectiveScope === 'ayah' 
-                   ? (isArabic ? `الآية: ${currentAyahPlayCount} من ${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}` : `Ayah: ${currentAyahPlayCount}/${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}`)
-                   : (isArabic ? `النطاق: ${currentRangePlayCount} من ${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}` : `Range: ${currentRangePlayCount}/${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}`)
-                 }
-              </span>
+               <div className="flex items-center gap-2 mt-0.5 text-[10px] md:text-xs font-semibold text-muted-foreground">
+                 <span className="truncate max-w-[120px] sm:max-w-[200px]">
+                   {reciterCatalog.isLoading
+                     ? (isArabic ? 'تحميل...' : 'Loading...')
+                     : selectedReciter?.name ?? (isArabic ? 'القارئ غير متاح' : 'Reciter unavailable')}
+                 </span>
+                 {memoSession?.isActive && (
+                    <>
+                      <span className="w-1 h-1 rounded-full bg-border shrink-0"></span>
+                      <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 shrink-0">
+                        <BookOpen className="w-3 h-3" />
+                        {isArabic ? 'حفظ' : 'Memo'}
+                      </span>
+                    </>
+                 )}
+                 {playingAyah && (effectiveRepeat === 'continuous' || effectiveRepeat > 1) && (
+                   <>
+                     <span className="w-1 h-1 rounded-full bg-border shrink-0"></span>
+                     <span className={cn("flex items-center gap-1 shrink-0", memoSession?.isActive ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                       <Repeat className="w-3 h-3" />
+                       {effectiveScope === 'ayah'
+                         ? `${currentAyahPlayCount}/${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}`
+                         : `${currentRangePlayCount}/${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}`
+                       }
+                     </span>
+                   </>
+                 )}
+               </div>
             )}
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center justify-center gap-0.5 md:gap-1" dir="ltr">
-          <button 
-            onClick={handlePrev} 
-            disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null}
-            className="rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-30 md:p-2"
-            title={isArabic ? 'الآية السابقة' : 'Previous Ayah'}
-          >
-            <SkipBack className="h-4 w-4 fill-current md:h-5 md:w-5" />
+        {/* Center: Playback Controls */}
+        <div className="flex items-center gap-1 md:gap-2 shrink-0" dir="ltr">
+           <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="p-2 text-foreground/70 hover:text-foreground disabled:opacity-30 transition-colors">
+             <SkipBack className="w-4 h-4 md:w-5 md:h-5 fill-current" />
           </button>
-          <button 
-            onClick={handleStop}
-            disabled={!playingAyah && !isPlaying}
-            className="rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-30 md:p-2"
-            title={isArabic ? 'إيقاف' : 'Stop'}
-          >
-            <Square className="h-3.5 w-3.5 fill-current md:h-4 md:w-4" />
+           <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="p-2 text-foreground/70 hover:text-foreground disabled:opacity-30 transition-colors">
+             <Square className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
           </button>
-          <button 
-            onClick={handleNext} 
-            disabled={!playingAyah}
-            className="rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-30 md:p-2"
-            title={isArabic ? 'الآية التالية' : 'Next Ayah'}
-          >
-            <SkipForward className="h-4 w-4 fill-current md:h-5 md:w-5" />
+           <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="p-2 text-foreground/70 hover:text-foreground disabled:opacity-30 transition-colors">
+             <SkipForward className="w-4 h-4 md:w-5 md:h-5 fill-current" />
           </button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-1">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-1 md:gap-2 shrink-0 border-s border-border/50 ps-2 md:ps-4">
           {memoSession && (
-             <button 
+             <button
+               data-testid="button-memo-options"
                onClick={() => setActiveTab(activeTab === 'memo' ? 'none' : 'memo')}
+                aria-label={isArabic ? 'إعدادات التكرار والحفظ' : 'Repeat and memorization settings'}
+                aria-expanded={activeTab === 'memo'}
                className={cn(
-                  "inline-flex min-h-8 items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition-colors",
-                 activeTab === 'memo' ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "hover:bg-muted text-foreground"
+                  "relative flex h-8 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:h-9 md:text-xs",
+                  activeTab === 'memo' || memoSession.isActive ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "hover:bg-muted text-muted-foreground"
                )}
-                title={isArabic ? 'التكرار والحفظ' : 'Repeat and memorize'}
              >
                 <Repeat className="h-4 w-4" />
                 <span>{isArabic ? 'تكرار' : 'Repeat'}</span>
+               {memoSession.isActive && <span className="absolute -top-0.5 -end-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-background"></span>}
              </button>
           )}
-          <button 
+          <button
+             data-testid="button-audio-options"
              onClick={() => {
                const isOpening = activeTab !== 'settings';
                setActiveTab(isOpening ? 'settings' : 'none');
                if (isOpening) void reciterCatalog.refetch();
              }}
-            className={cn(
-              "inline-flex min-h-8 items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition-colors",
-              activeTab === 'settings' ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200" : "hover:bg-muted text-foreground"
-            )}
-            title={isArabic ? 'خيارات التلاوة' : 'Recitation options'}
+             aria-label={isArabic ? 'خيارات التلاوة' : 'Recitation options'}
+             aria-expanded={activeTab === 'settings'}
+             className={cn(
+                "flex h-8 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:h-9 md:text-xs",
+                activeTab === 'settings' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "hover:bg-muted text-muted-foreground"
+             )}
           >
-            <Settings2 className="h-4 w-4" />
-            <span>{isArabic ? 'خيارات' : 'Options'}</span>
+             <Settings2 className="h-4 w-4" />
+             <span>{isArabic ? 'خيارات' : 'Options'}</span>
           </button>
+          {onClose && (
+             <button
+                data-testid="button-close-player"
+                onClick={onClose}
+                aria-label={isArabic ? 'إغلاق مشغل التلاوة' : 'Close recitation player'}
+                className="flex items-center justify-center h-8 w-8 md:h-9 md:w-9 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1 rtl:mr-1 rtl:ml-0"
+             >
+                <X className="w-4 h-4 md:w-4 md:h-4" />
+             </button>
+          )}
         </div>
       </div>
     </div>
