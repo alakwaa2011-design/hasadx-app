@@ -657,36 +657,62 @@ export function QuranAudioPlayer({
                     />
                   </label>
                   <div className="max-h-44 overflow-y-auto rounded-lg border border-border bg-background p-1">
-                    {groupedReciters.length ? groupedReciters.map((group) => (
-                      <div
-                        key={group.name}
-                        className="border-b border-border/60 px-3 py-2 last:border-b-0"
-                      >
-                        <span className="block truncate font-bold">{group.name}</span>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {group.recordings.map((item) => (
+                    {groupedReciters.length ? groupedReciters.map((group) => {
+                      const onlyRecording = group.recordings.length === 1
+                        ? group.recordings[0]
+                        : null;
+                      return (
+                        <div
+                          key={group.name}
+                          className="border-b border-border/60 px-1 py-1 last:border-b-0"
+                        >
+                          {onlyRecording ? (
                             <button
                               type="button"
-                              key={item.id}
                               disabled={savePreference.isPending}
-                              onClick={() => void selectReciter(item.id)}
+                              onClick={() => void selectReciter(onlyRecording.id)}
                               className={cn(
-                                "inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60",
-                                item.id === recitationId
-                                  ? "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
-                                  : "border-border bg-background hover:bg-muted",
+                                "flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-2 text-start font-bold transition-colors disabled:opacity-60",
+                                onlyRecording.id === recitationId
+                                  ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
+                                  : "hover:bg-muted",
                               )}
                             >
-                              {recitationStyleLabel(item.style ?? null, isArabic)
-                                ?? (isArabic ? "تلاوة" : "Recitation")}
-                              {savePreference.isPending && item.id === recitationId && (
+                              <span className="truncate">{group.name}</span>
+                              {savePreference.isPending && onlyRecording.id === recitationId && (
                                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                               )}
                             </button>
-                          ))}
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-1">
+                              <span className="min-w-0 shrink truncate font-bold">{group.name}</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {group.recordings.map((item) => (
+                                  <button
+                                    type="button"
+                                    key={item.id}
+                                    disabled={savePreference.isPending}
+                                    onClick={() => void selectReciter(item.id)}
+                                    className={cn(
+                                      "inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition-colors disabled:opacity-60",
+                                      item.id === recitationId
+                                        ? "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
+                                        : "border-border bg-background hover:bg-muted",
+                                    )}
+                                  >
+                                    {recitationStyleLabel(item.style ?? null, isArabic)
+                                      ?? (isArabic ? "تلاوة" : "Recitation")}
+                                    {savePreference.isPending && item.id === recitationId && (
+                                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )) : (
+                      );
+                    }) : (
                       <p className="px-3 py-5 text-center text-muted-foreground">
                         {isArabic ? 'لا يوجد قارئ مطابق للبحث' : 'No reciter matches your search'}
                       </p>
