@@ -39,3 +39,24 @@ CREATE INDEX IF NOT EXISTS quran_guided_memorization_history_item_idx
   ON quran_guided_memorization_assessment_history(memorization_item_id, assessed_at);
 CREATE INDEX IF NOT EXISTS quran_guided_memorization_history_owner_date_idx
   ON quran_guided_memorization_assessment_history(student_account_id, assessed_at);
+
+INSERT INTO quran_guided_memorization_assessment_history (
+  student_account_id, memorization_item_id, request_id, passed, status,
+  interval_days, next_review_date, assessed_at
+)
+SELECT
+  g.student_account_id,
+  g.id,
+  'backfill:' || g.id::text,
+  g.status <> 'needs_review',
+  g.status,
+  g.interval_days,
+  g.next_review_date,
+  COALESCE(g.last_assessed_at, g.updated_at, g.created_at)
+FROM quran_guided_memorization g
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM quran_guided_memorization_assessment_history h
+  WHERE h.memorization_item_id = g.id
+)
+ON CONFLICT (student_account_id, request_id) DO NOTHING;

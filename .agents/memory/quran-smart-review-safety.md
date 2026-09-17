@@ -14,3 +14,9 @@ A “today’s reviews” session advances through the server-provided due items
 **Why:** Moving to the next numeric verse can silently schedule an item that was not due, while skipping a due verse in another surah. UTC date slicing also changes the user’s review day around local midnight.
 
 **How to apply:** Preserve due-queue identity across navigation, remove each confirmed item from the queue, and keep calendar-day calculations behind one explicit helper.
+
+When assessment history is introduced after current progress already exists, create one idempotent baseline event for each item with no history.
+
+**Why:** Otherwise teachers see a current status and last-assessed timestamp but an empty history, which makes old progress appear incomplete.
+
+**How to apply:** Backfill only items with no history, use a deterministic per-item request ID, and preserve the current status, interval, next-review date, and last-assessed time.

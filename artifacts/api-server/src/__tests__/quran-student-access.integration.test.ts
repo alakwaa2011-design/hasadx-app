@@ -10,11 +10,13 @@ const suite = RUN ? describe : describe.skip;
 const nonce = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
 let teacherId = 0;
+let otherTeacherId = 0;
 let accountId = 0;
 let otherAccountId = 0;
 let unlinkedAccountId = 0;
 let studentId = 0;
 let otherStudentId = 0;
+let unlinkedStudentId = 0;
 let wardId = 0;
 let otherWardId = 0;
 
@@ -30,11 +32,28 @@ function studentApp(studentAccountId?: number) {
   return app;
 }
 
+function teacherApp(sessionTeacherId?: number) {
+  const app = express();
+  app.use(express.json());
+  app.use((req: any, _res, next) => {
+    req.session = sessionTeacherId ? { teacherId: sessionTeacherId } : {};
+    req.log = { error: () => {}, warn: () => {}, info: () => {} };
+    next();
+  });
+  app.use("/api", quranRouter);
+  return app;
+}
+
 suite("student Quran ward ownership", () => {
   beforeAll(async () => {
     teacherId = Number((await db.execute(sql`
       INSERT INTO teachers(name,email,password_hash)
       VALUES (${"Quran access " + nonce}, ${`quran_access_${nonce}@test.invalid`}, 'x')
+      RETURNING id
+    `)).rows[0].id);
+    otherTeacherId = Number((await db.execute(sql`
+      INSERT INTO teachers(name,email,password_hash)
+      VALUES (${"Other Quran teacher " + nonce}, ${`quran_other_teacher_${nonce}@test.invalid`}, 'x')
       RETURNING id
     `)).rows[0].id);
     accountId = Number((await db.execute(sql`
@@ -57,6 +76,10 @@ suite("student Quran ward ownership", () => {
       INSERT INTO students(name,teacher_id,student_account_id,student_class)
       VALUES ('طالب آخر', ${teacherId}, ${otherAccountId}, 'A') RETURNING id
     `)).rows[0].id);
+    unlinkedStudentId = Number((await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class)
+      VALUES ('طالب غير مرتبط', ${teacherId}, 'A') RETURNING id
+    `)).rows[0].id);
     wardId = Number((await db.execute(sql`
       INSERT INTO quran_wards(teacher_id,student_id,mode,surah_number,surah_name,start_ayah,end_ayah,assigned_date)
       VALUES (${teacherId}, ${studentId}, 'memorization', 1, 'الفاتحة', 1, 7, CURRENT_DATE)
@@ -71,6 +94,7 @@ suite("student Quran ward ownership", () => {
 
   afterAll(async () => {
     if (teacherId) await db.execute(sql`DELETE FROM teachers WHERE id = ${teacherId}`);
+    if (otherTeacherId) await db.execute(sql`DELETE FROM teachers WHERE id = ${otherTeacherId}`);
     if (accountId || otherAccountId || unlinkedAccountId) {
       await db.execute(sql`DELETE FROM student_accounts WHERE id IN (${accountId}, ${otherAccountId}, ${unlinkedAccountId})`);
     }
@@ -155,6 +179,41 @@ suite("student Quran ward ownership", () => {
     const other = await request(studentApp(otherAccountId)).post("/api/quran/me/memorization/assess").send(body);
     expect(other.status).toBe(200);
     expect(other.body.id).not.toBe(first.body.id);
+  });
+
+  it("shows the teacher complete owned smart-review progress without exposing it to another teacher", async () => {
+    const summary = await request(teacherApp(teacherId)).get("/api/quran/teacher/memorization/summary");
+    expect(summary.status).toBe(200);
+    expect(summary.headers["cache-control"]).toBe("private, no-store");
+    expect(summary.body.rosterCount).toBe(3);
+    expect(summary.body.linkedCount).toBe(2);
+    expect(summary.body.unlinkedCount).toBe(1);
+    expect(summary.body.total).toBeGreaterThanOrEqual(3);
+
+    const roster = await request(teacherApp(teacherId)).get("/api/quran/teacher/memorization/students");
+    expect(roster.status).toBe(200);
+    expect(roster.body.find((item: { studentId: number }) => item.studentId === unlinkedStudentId))
+      .toMatchObject({ linked: false, total: 0 });
+    expect(roster.body.find((item: { studentId: number }) => item.studentId === studentId))
+      .toMatchObject({ linked: true });
+
+    const items = await request(teacherApp(teacherId))
+      .get(`/api/quran/teacher/memorization/students/${studentId}`);
+    expect(items.status).toBe(200);
+    expect(items.body.student).toMatchObject({ studentId, linked: true });
+    expect(items.body.items.some((item: { surahNumber: number; ayahNumber: number }) =>
+      item.surahNumber === 1 && item.ayahNumber === 1)).toBe(true);
+
+    const history = await request(teacherApp(teacherId))
+      .get(`/api/quran/teacher/memorization/students/${studentId}/history`);
+    expect(history.status).toBe(200);
+    expect(history.body.filter((event: { requestId: string }) => event.requestId === `replay-${nonce}`))
+      .toHaveLength(1);
+
+    expect((await request(teacherApp(otherTeacherId))
+      .get(`/api/quran/teacher/memorization/students/${studentId}`)).status).toBe(404);
+    expect((await request(teacherApp(otherTeacherId))
+      .get(`/api/quran/teacher/memorization/students/${studentId}/history`)).status).toBe(404);
   });
 
   it("persists independent positions for an unlinked account and supports partial updates", async () => {
