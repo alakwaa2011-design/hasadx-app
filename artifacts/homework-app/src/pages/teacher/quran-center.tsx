@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListQuranSurahs } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { QuranCircles } from "./quran-center/quran-circles";
@@ -126,6 +126,17 @@ export default function QuranCenter() {
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setLocation("/teacher/dashboard")}
+              className="ms-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 md:h-8 md:w-8 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              aria-label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+              title={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
+              data-testid="button-quran-center-back"
+            >
+              <ChevronLeft className="h-4 w-4 rtl:hidden" />
+              <ChevronRight className="h-4 w-4 ltr:hidden" />
+            </button>
           </div>
           
           <nav className="flex md:flex-col flex-1 px-2 md:px-4 space-x-2 md:space-x-0 rtl:space-x-reverse md:space-y-1 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 items-center md:items-stretch">
