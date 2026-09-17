@@ -180,6 +180,10 @@ export function QuranMadaniPageRenderer({
           <div className="absolute inset-x-[7%] top-[20%] aspect-square rounded-full bg-[#fdfaf6]" />
           <div className="absolute start-1/2 top-[3%] flex w-[38%] -translate-x-1/2 items-center justify-center">
             <div className="absolute inset-x-[-18%] h-[72%] rounded-[45%] bg-[#fdfaf6]" />
+            <div className="absolute -start-[31%] h-[48%] aspect-square rotate-45 rounded-[28%] bg-[#fdfaf6]" />
+            <div className="absolute -start-[20%] h-[58%] aspect-square rounded-full bg-[#fdfaf6]" />
+            <div className="absolute -end-[31%] h-[48%] aspect-square rotate-45 rounded-[28%] bg-[#fdfaf6]" />
+            <div className="absolute -end-[20%] h-[58%] aspect-square rounded-full bg-[#fdfaf6]" />
             <span className="relative z-10 whitespace-nowrap text-[3.7cqw] font-semibold tracking-[-0.04em] text-[#1d4432]">
               {openingSurahName}
             </span>
