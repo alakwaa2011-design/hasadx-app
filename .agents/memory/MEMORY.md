@@ -125,3 +125,4 @@
 - [Public game start throttling](public-game-start-throttling.md) — public-link room creation is limited atomically in PostgreSQL per durable link token, never in process memory or by caller IP.
 - [PostgreSQL prepared statements](postgres-prepared-multi-command.md) — parameterized client queries must contain one SQL command; split multi-step cleanup into separate queries inside one transaction.
 - [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.
+- [Quran guided pause preference](quran-guided-pause-preference.md) — guided memorization must preserve the selected inter-ayah pause, including zero, instead of imposing its own delay.

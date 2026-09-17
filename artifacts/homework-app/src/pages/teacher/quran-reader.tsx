@@ -354,7 +354,6 @@ export function QuranTextReaderView({
       rangeEnd: safeAyah,
       repeatScope: 'ayah',
       repeatCount: 3,
-      pauseSeconds: 1,
     }));
     setMemoView('show');
     setPlayingAyah(safeAyah);
@@ -380,7 +379,6 @@ export function QuranTextReaderView({
         rangeEnd: guidedAyah,
         repeatScope: 'ayah',
         repeatCount: 3,
-        pauseSeconds: 1,
       }));
       setPlayingAyah(guidedAyah);
       setIsPlaying(true);
