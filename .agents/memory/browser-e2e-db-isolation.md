@@ -15,6 +15,12 @@ For browser-only visual checks with mocked API responses, block service workers 
 
 **How to apply:** Use `browser.newContext({ serviceWorkers: "block" })` and `context.route(...)` for fixture-only screenshots; intercept all API calls and do not seed the shared database.
 
+For authenticated flows that need real records, prefer seeding the isolated database over page-level API interception; the proxied Vite request can still receive the backend response even when a page route appears configured.
+
+**Why:** An admin student-preview test initially received an empty public-assignment response despite a matching page route, while a real assignment fixture exercised the same authenticated API path reliably.
+
+**How to apply:** Use browser routing only for deliberately mocked, service-worker-safe checks; use isolated DB fixtures for role/session and persistence assertions.
+
 An isolated test database can still be unusable when its schema predates the checked-in Drizzle schema; fixture inserts then fail before the browser flow starts.
 
 **Why:** E2E failures from missing columns can look like a product regression even though the app and test code never reach the route under test.

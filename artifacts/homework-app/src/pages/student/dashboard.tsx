@@ -167,6 +167,17 @@ export default function StudentDashboard() {
   const { data: rewards = [], isLoading: rewardsLoading } = useKidsRewards({ enabled: !isPreview });
   const { data: redemptions = [], isLoading: redemptionsLoading } = useKidsRedemptions({ refetchInterval: 15000, enabled: !isPreview });
   const redeemReward = useKidsRedeemReward();
+  const previewRewards = isPreview
+    ? [{
+        id: "preview-reward",
+        title: lang === "ar" ? "جائزة تجريبية" : "Preview reward",
+        description: "",
+        cost: 10,
+        image_key: "",
+        status: "active" as const,
+      }]
+    : [];
+  const visibleRewards = isPreview ? previewRewards : rewards;
 
   // Smart Quran Progress Data
   const { data: quranSummary } = useGetQuranMemorizationSummary({
@@ -1128,9 +1139,9 @@ export default function StudentDashboard() {
                     </div>
                     {rewardsLoading ? (
                       <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                    ) : rewards.length > 0 ? (
+                    ) : visibleRewards.length > 0 ? (
                       <div className="space-y-3">
-                        {rewards.map(reward => {
+                        {visibleRewards.map(reward => {
                           const activeRequest = redemptions.find(r => r.reward_title === reward.title && (r.status === 'requested' || r.status === 'approved'));
                           return (
                           <div key={reward.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
