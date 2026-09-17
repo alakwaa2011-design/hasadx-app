@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -259,9 +260,9 @@ export function QuranPagesView({
     ? Number(selectedVerseKey.split(":")[1])
     : (fallbackVerse?.number ?? initialAyah);
 
-  const { 
-    memoSession, setMemoSession, 
-    memoView, setMemoView, 
+  const {
+    memoSession, setMemoSession,
+    memoView, setMemoView,
     isAyahConcealed, toggleReveal, resetReveal,
     startSession, endSession
   } = useQuranMemoSession(selectedSurah, selectedAyah, startAyah, endAyah, mode);
@@ -514,13 +515,15 @@ export function QuranPagesView({
       )}
 
       {!quietMode && (
-        <header ref={toolsHeaderRef} className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-white/95 shadow-sm backdrop-blur-md dark:bg-card/95">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 md:px-4 md:py-3">
+        <header ref={toolsHeaderRef} className="sticky top-0 z-40 shrink-0 border-b border-border/40 bg-white/95 shadow-sm backdrop-blur-xl dark:bg-[#0a0c0b]/95 transition-all duration-300">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 md:px-4 md:py-3">
+
+            {/* Back Navigation */}
             {!embedded && (
               <button
                 type="button"
                 onClick={() => setLocation(backHref)}
-                className="flex items-center gap-1 text-sm font-bold text-emerald-700 hover:underline dark:text-emerald-400"
+                className="flex items-center gap-1.5 text-sm font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors w-auto"
               >
                 <ChevronLeft className="h-5 w-5 rtl:hidden" />
                 <ChevronRight className="h-5 w-5 ltr:hidden" />
@@ -532,168 +535,221 @@ export function QuranPagesView({
               </button>
             )}
 
+            {/* Mobile Title */}
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:hidden">
               <span className="truncate text-sm font-black text-emerald-900 dark:text-emerald-100">
                 {chapters.find((chapter) => chapter.id === activeChapterId)?.name
                   ? plainArabicSurahName(activeChapterId, chapters.find((chapter) => chapter.id === activeChapterId)!.name)
                   : (lang === "ar" ? "المصحف" : "Mushaf")}
               </span>
-              <span className="shrink-0 text-xs font-bold text-muted-foreground">
+              <span className="shrink-0 rounded-md bg-muted/50 px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground">
                 {lang === "ar" ? `ص ${activePage}` : `p. ${activePage}`}
               </span>
             </div>
 
+            {/* Mobile Toggle */}
             <button
               type="button"
               onClick={() => setMobileToolsOpen((open) => !open)}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border/70 bg-background text-foreground shadow-sm md:hidden"
+              className={cn(
+                "grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors shadow-sm md:hidden",
+                mobileToolsOpen
+                  ? "border-transparent bg-muted text-foreground"
+                  : "border-border/70 bg-background text-foreground"
+              )}
               aria-expanded={mobileToolsOpen}
               aria-label={lang === "ar" ? "أدوات المصحف" : "Mushaf tools"}
             >
-              {mobileToolsOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileToolsOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
 
-              <div className={cn(
-                "order-3 w-full flex-wrap items-center justify-center gap-2 md:order-none md:flex md:w-auto md:flex-1",
-                mobileToolsOpen ? "flex" : "hidden",
-              )}>
-                {isIndependentPractice && (
+            {/* Expansion Area (Flex on Desktop, toggled on Mobile) */}
+            <div className={cn(
+              "w-full md:w-auto flex-col md:flex-row md:flex-1 items-stretch md:items-center justify-end gap-3 md:gap-4",
+              mobileToolsOpen ? "flex" : "hidden md:flex"
+            )}>
+
+              {/* 1. Location Selectors */}
+              <div className="flex items-center w-full md:w-auto rounded-xl bg-muted/30 p-1 border border-border/40 shadow-sm">
+                <div className="relative flex min-w-0 flex-1 items-center md:flex-none">
+                  <select
+                    value={activeChapterId}
+                    onChange={(event) => goToSurah(Number(event.target.value))}
+                    className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 md:text-sm"
+                    aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
+                    data-testid="select-surah"
+                  >
+                    {chapters.map((chapter) => (
+                      <option key={chapter.id} value={chapter.id} className="bg-background">
+                        {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+
+                <div className="h-5 w-px shrink-0 bg-border/50" />
+
+                <div className="relative flex min-w-0 flex-1 items-center md:flex-none">
+                  <select
+                    value={activePageMeta?.part_id ?? FIRST_PAGE}
+                    onChange={(event) => goToJuz(Number(event.target.value))}
+                    className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 md:text-sm"
+                    aria-label={lang === "ar" ? "اختيار الجزء" : "Choose juz"}
+                    data-testid="select-juz"
+                  >
+                    {parts.map((part) => (
+                      <option key={part.id} value={part.id} className="bg-background">
+                        {lang === "ar" ? `الجزء ${part.id}` : `Juz ${part.id}`}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+
+                <div className="h-5 w-px shrink-0 bg-border/50" />
+
+                <div className="relative flex min-w-0 flex-1 items-center md:flex-none">
+                  <select
+                    value={activePage}
+                    onChange={(event) => goToPage(Number(event.target.value))}
+                    className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 md:text-sm"
+                    aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
+                    data-testid="select-page"
+                  >
+                    {pages.map((page) => (
+                      <option key={page.id} value={page.id} className="bg-background">
+                        {lang === "ar" ? `صفحة ${page.id}` : `Page ${page.id}`}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+              </div>
+
+              {/* 2. Practice/Memo Actions & View Toggle */}
+              <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
+
+                {/* Practice / Memo */}
+                <div className="flex flex-1 items-center gap-2 md:flex-none">
+                  {isIndependentPractice && (
+                    <button
+                      type="button"
+                      onClick={() => void recordIndependentPractice()}
+                      disabled={recordSession.isPending}
+                      data-testid="button-record-practice"
+                      className="flex-1 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition-colors hover:bg-emerald-800 disabled:opacity-50 md:flex-none md:text-sm"
+                    >
+                      {lang === "ar" ? "تسجيل الجلسة" : "Record"}
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={() => void recordIndependentPractice()}
-                    disabled={recordSession.isPending}
-                    className="shrink-0 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                    onClick={() => memoSession.isActive ? endSession() : startSession()}
+                    data-testid="button-memo-session"
+                    className={cn(
+                      "flex-1 rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors md:flex-none md:text-sm",
+                      memoSession.isActive
+                        ? "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-100"
+                        : "border-border/60 bg-white text-foreground hover:bg-muted dark:bg-card"
+                    )}
                   >
-                    {lang === "ar" ? "سجلت جلسة تدريب" : "Record practice"}
+                    {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "جلسة حفظ" : "Memo Session")}
                   </button>
+                </div>
+
+                {/* View Toggle */}
+                <div className="flex flex-1 items-center rounded-xl border border-border/40 bg-muted/30 p-1 shadow-sm md:flex-none">
+                  <div className="flex flex-1 items-center justify-center whitespace-nowrap rounded-lg bg-emerald-100/80 px-3 py-1.5 text-xs font-black text-emerald-900 shadow-sm dark:bg-emerald-900/50 dark:text-emerald-100 md:flex-none">
+                    {lang === "ar" ? "مصحف المدينة" : "Madani Mushaf"}
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="button-text-view"
+                    onClick={() => {
+                      const location = {
+                        surah: activeChapterId,
+                        ayah: verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah,
+                        page: activePage,
+                      };
+                      if (embedded && onSwitchToText) {
+                        onSwitchToText(location);
+                      } else if (isIndependentPractice) {
+                        setLocation(`${readerBasePath}/${activeChapterId}?view=reader`);
+                      } else {
+                        setLocation(`${readerBasePath}/${location.surah}?ayah=${location.ayah}&view=reader`);
+                      }
+                    }}
+                    className="flex flex-1 items-center justify-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 md:flex-none"
+                  >
+                    {lang === "ar" ? "نص القرآن" : "Quran Text"}
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Tools Island */}
+              <div className="flex w-full items-center justify-center gap-1 rounded-xl border border-border/40 bg-muted/30 p-1 px-2 shadow-sm md:w-auto">
+                <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
+
+                {!isIndependentPractice && mode === null && fallbackVerse && (
+                  <>
+                    <div className="mx-1 h-5 w-px bg-border/50" />
+                    <QuranBookmarkToggle
+                      surahNumber={selectedSurah}
+                      ayahNumber={selectedAyah}
+                      pageNumber={canonicalPage}
+                      isBookmarked={bookmarksMap.has(`${selectedSurah}:${selectedAyah}`)}
+                      onToggle={toggleBookmark}
+                      disabled={isMutatingBookmark}
+                    />
+                  </>
                 )}
-                
-                <button 
+
+                <div className="mx-1 h-5 w-px bg-border/50" />
+
+                <button
                   type="button"
-                  onClick={() => memoSession.isActive ? endSession() : startSession()}
-                  className={cn("shrink-0 rounded-xl px-3 py-2 text-xs font-black transition-colors border", memoSession.isActive ? "bg-amber-100 border-amber-300 text-amber-900 shadow-sm dark:bg-amber-900/50 dark:border-amber-800 dark:text-amber-100" : "bg-muted/40 border-transparent hover:bg-muted text-foreground")}
+                  onClick={() => setZoom((value) => Math.max(MIN_ZOOM, value - 10))}
+                  disabled={zoom <= MIN_ZOOM}
+                  data-testid="button-zoom-out"
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
+                  aria-label={lang === "ar" ? "تصغير الصفحة" : "Zoom out"}
                 >
-                  {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "جلسة حفظ" : "Memo Session")}
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <span className="min-w-9 text-center text-xs font-bold text-muted-foreground">
+                  {zoom}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoom((value) => Math.min(MAX_ZOOM, value + 10))}
+                  disabled={zoom >= MAX_ZOOM}
+                  data-testid="button-zoom-in"
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
+                  aria-label={lang === "ar" ? "تكبير الصفحة" : "Zoom in"}
+                >
+                  <ZoomIn className="h-4 w-4" />
                 </button>
 
-               <button
-                 type="button"
-                 onClick={() => {
-                   const location = {
-                     surah: activeChapterId,
-                     ayah: verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId)?.number ?? initialAyah,
-                     page: activePage,
-                   };
-                   if (embedded && onSwitchToText) {
-                     onSwitchToText(location);
-                    } else if (isIndependentPractice) {
-                      setLocation(`${readerBasePath}/${activeChapterId}?view=reader`);
-                   } else {
-                     setLocation(`${readerBasePath}/${location.surah}?ayah=${location.ayah}&view=reader`);
-                   }
-                 }}
-                 className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60 md:text-sm"
-               >
-                 {lang === "ar" ? "نص القرآن" : "Quran Text"}
-               </button>
-               <span
-                 aria-current="page"
-                 className="shrink-0 rounded-xl bg-amber-100 px-3 py-2 text-xs font-black text-amber-900 dark:bg-amber-900/50 dark:text-amber-100 md:text-sm"
-               >
-                 {lang === "ar" ? "مصحف المدينة QCF V2" : "Madani Mushaf QCF V2"}
-               </span>
-              <select
-                value={activeChapterId}
-                onChange={(event) => goToSurah(Number(event.target.value))}
-                className="min-w-32 cursor-pointer rounded-lg bg-muted/40 px-2 py-2 text-center text-sm font-black text-foreground outline-none transition-colors hover:bg-muted md:text-base"
-                aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
-              >
-                {chapters.map((chapter) => (
-                  <option key={chapter.id} value={chapter.id}>
-                    {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
-                  </option>
-                ))}
-              </select>
+                <div className="mx-1 hidden h-5 w-px bg-border/50 md:block" />
 
-              <select
-                value={activePageMeta?.part_id ?? FIRST_PAGE}
-                onChange={(event) => goToJuz(Number(event.target.value))}
-                className="cursor-pointer rounded-lg bg-muted/40 px-2 py-2 text-sm font-bold text-foreground outline-none hover:bg-muted"
-                aria-label={lang === "ar" ? "اختيار الجزء" : "Choose juz"}
-              >
-                {parts.map((part) => (
-                  <option key={part.id} value={part.id}>
-                    {lang === "ar" ? `الجزء ${part.id}` : `Juz ${part.id}`}
-                  </option>
-                ))}
-              </select>
+                <button
+                  type="button"
+                  onClick={() => setQuietMode(true)}
+                  data-testid="button-quiet-mode"
+                  className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex"
+                  aria-label={lang === "ar" ? "وضع القراءة الهادئ" : "Quiet mode"}
+                >
+                  <EyeOff className="h-4 w-4" />
+                </button>
+              </div>
 
-              <select
-                value={activePage}
-                onChange={(event) => goToPage(Number(event.target.value))}
-                className="cursor-pointer rounded-lg bg-muted/40 px-2 py-2 text-sm font-bold text-foreground outline-none hover:bg-muted"
-                aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
-              >
-                {pages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {lang === "ar" ? `صفحة ${page.id}` : `Page ${page.id}`}
-                  </option>
-                ))}
-              </select>
-
-              {!isIndependentPractice && mode === null && fallbackVerse && (
-                <div className="ms-1 border-s border-border/50 ps-1 sm:ms-2 sm:ps-2">
-                  <QuranBookmarkToggle
-                    surahNumber={selectedSurah}
-                    ayahNumber={selectedAyah}
-                    pageNumber={canonicalPage}
-                    isBookmarked={bookmarksMap.has(`${selectedSurah}:${selectedAyah}`)}
-                    onToggle={toggleBookmark}
-                    disabled={isMutatingBookmark}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className={cn(
-              "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
-              mobileToolsOpen ? "flex" : "hidden",
-            )}>
-              <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
-              <button
-                type="button"
-                onClick={() => setZoom((value) => Math.max(MIN_ZOOM, value - 10))}
-                disabled={zoom <= MIN_ZOOM}
-                className="rounded-xl p-2 transition-colors hover:bg-muted disabled:opacity-35"
-                aria-label={lang === "ar" ? "تصغير الصفحة" : "Zoom out"}
-              >
-                <ZoomOut className="h-5 w-5" />
-              </button>
-              <span className="hidden min-w-11 text-center text-xs font-bold sm:block">
-                {zoom}%
-              </span>
-              <button
-                type="button"
-                onClick={() => setZoom((value) => Math.min(MAX_ZOOM, value + 10))}
-                disabled={zoom >= MAX_ZOOM}
-                className="rounded-xl p-2 transition-colors hover:bg-muted disabled:opacity-35"
-                aria-label={lang === "ar" ? "تكبير الصفحة" : "Zoom in"}
-              >
-                <ZoomIn className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuietMode(true)}
-                className="hidden rounded-xl p-2 transition-colors hover:bg-muted md:block"
-                aria-label={lang === "ar" ? "وضع القراءة الهادئ" : "Quiet mode"}
-              >
-                <EyeOff className="h-5 w-5" />
-              </button>
             </div>
           </div>
 
           {startAyah !== null && endAyah !== null && (
-            <div className="border-y border-emerald-200/50 bg-emerald-100 px-4 py-2 text-center text-sm font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/50 dark:text-emerald-100">
+            <div className="border-y border-emerald-200/50 bg-emerald-50 px-4 py-2 text-center text-sm font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100">
               {lang === "ar"
                 ? `مهمة ${mode === "memorization" ? "حفظ" : "مراجعة"}: الآيات ${startAyah} إلى ${endAyah}`
                 : `${mode === "memorization" ? "Memorization" : "Review"} task: ayahs ${startAyah}–${endAyah}`}
