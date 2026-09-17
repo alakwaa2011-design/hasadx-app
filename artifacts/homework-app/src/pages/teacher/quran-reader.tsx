@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
   getJuzStart,
@@ -210,6 +210,7 @@ interface ReaderViewProps {
   onNavigate?: (location: { surah: number; ayah: number; page?: number }) => void;
   onSwitchToPages?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
+  mobileSectionNavigation?: ReactNode;
 }
 
 export function QuranTextReaderView({
@@ -225,6 +226,7 @@ export function QuranTextReaderView({
   onNavigate,
   onSwitchToPages,
   isIndependentPractice = false,
+  mobileSectionNavigation,
 }: ReaderViewProps) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -634,9 +636,14 @@ export function QuranTextReaderView({
             </button>
             
             <div className={cn(
-              "order-3 w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1",
+              "order-3 w-full flex-wrap items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1 md:flex-nowrap",
               mobileToolsOpen ? "flex" : "hidden",
             )}>
+              {mobileSectionNavigation && (
+                <div className="w-full shrink-0 md:hidden">
+                  {mobileSectionNavigation}
+                </div>
+              )}
               <select 
                 value={surahNumber} 
                 disabled={isStudentWard}

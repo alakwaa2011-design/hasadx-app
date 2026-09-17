@@ -99,6 +99,33 @@ export default function QuranCenter() {
     { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> },
   ] as const;
 
+  const mobileSectionNavigation = (
+    <nav
+      className="grid grid-cols-2 gap-2 rounded-xl border border-border/50 bg-background/95 p-2 shadow-sm md:hidden"
+      aria-label={lang === "ar" ? "أقسام حصاد القرآن" : "Hasaad Quran sections"}
+    >
+      {TABS.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => handleTabChange(tab.id as Tab)}
+            className={cn(
+              "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors",
+              isActive
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100"
+                : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            )}
+          >
+            {tab.icon}
+            <span className="truncate">{tab.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <Layout noHeader={activeTab === "mushaf"} hideFooter={activeTab === "mushaf"}>
       <div className={cn(
@@ -106,7 +133,10 @@ export default function QuranCenter() {
         activeTab === "mushaf" ? "h-[100dvh]" : "h-[calc(100vh-3.5rem)]",
       )}>
         {/* Sidebar */}
-        <aside className="w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card flex md:flex-col shadow-sm z-10 shrink-0">
+        <aside className={cn(
+          "w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card md:flex md:flex-col shadow-sm z-10 shrink-0",
+          activeTab === "mushaf" ? "hidden" : "flex",
+        )}>
           <div className="p-4 md:p-6 flex items-center justify-between md:justify-start">
             <div className="flex items-center gap-3 text-emerald-800 dark:text-emerald-400 md:mb-2">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center shadow-inner shrink-0">
@@ -171,6 +201,7 @@ export default function QuranCenter() {
                     endAyah={null}
                     mode={null}
                     embedded
+                    mobileSectionNavigation={mobileSectionNavigation}
                     onSwitchToText={(location) => {
                       handleMushafNavigate(location);
                       setMushafView("reader");
@@ -186,6 +217,7 @@ export default function QuranCenter() {
                     isStudentWard={false}
                     isStudentPractice={false}
                     embedded
+                    mobileSectionNavigation={mobileSectionNavigation}
                     onNavigate={handleMushafNavigate}
                     onSwitchToPages={(location) => {
                       handleMushafNavigate(location);

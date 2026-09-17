@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import {
   ChevronDown,
@@ -97,6 +97,7 @@ export function QuranPagesView({
   embedded = false,
   onSwitchToText,
   isIndependentPractice = false,
+  mobileSectionNavigation,
 }: {
   initialSurah: number;
   initialAyah: number;
@@ -112,6 +113,7 @@ export function QuranPagesView({
   embedded?: boolean;
   onSwitchToText?: (location: { surah: number; ayah: number; page?: number }) => void;
   isIndependentPractice?: boolean;
+  mobileSectionNavigation?: ReactNode;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
@@ -568,6 +570,11 @@ export function QuranPagesView({
               "w-full md:w-auto flex-col md:flex-row md:flex-1 items-stretch md:items-center justify-end gap-3 md:gap-4",
               mobileToolsOpen ? "flex" : "hidden md:flex"
             )}>
+              {mobileSectionNavigation && (
+                <div className="md:hidden">
+                  {mobileSectionNavigation}
+                </div>
+              )}
 
               {/* 1. Location Selectors */}
               <div className="flex items-center w-full md:w-auto rounded-xl bg-muted/30 p-1 border border-border/40 shadow-sm">
