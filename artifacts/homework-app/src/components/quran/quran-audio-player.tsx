@@ -475,7 +475,7 @@ export function QuranAudioPlayer({
   };
 
   return (
-    <div ref={playerRef} className="bg-white/95 dark:bg-card/95 backdrop-blur-md border-t border-border p-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] w-full shrink-0 flex flex-col gap-2 transition-colors">
+    <div ref={playerRef} className="relative w-full shrink-0 border-t border-border bg-white/95 p-2 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-colors dark:bg-card/95">
       {memoSession?.isActive && (
          <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-1">
             <div className="flex items-center gap-2">
@@ -495,7 +495,7 @@ export function QuranAudioPlayer({
          </div>
       )}
       {!memoSession?.isActive && onClose && (
-        <div className="flex h-7 shrink-0 items-center justify-start mb-1">
+        <div className="absolute end-1.5 top-1.5 z-10">
           <button
             type="button"
             onClick={onClose}
@@ -785,26 +785,26 @@ export function QuranAudioPlayer({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto w-full px-2">
-        <div className="flex items-center gap-2 md:gap-4 flex-1">
+      <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-2 px-1 pe-8">
+        <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
           <button 
             onClick={togglePlay}
-            className={cn("w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 shrink-0 text-white", 
+            className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105 active:scale-95 md:h-11 md:w-11",
               memoSession?.isActive ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
             )}
             aria-label={isPlaying ? (isArabic ? 'إيقاف مؤقت' : 'Pause') : (isArabic ? 'تشغيل' : 'Play')}
           >
             {isBuffering ? (
-              <Loader2 className="w-6 h-6 md:w-7 md:h-7 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin md:h-6 md:w-6" />
             ) : isPlaying ? (
-              <Pause className="w-6 h-6 md:w-7 md:h-7 fill-current" />
+              <Pause className="h-5 w-5 fill-current md:h-6 md:w-6" />
             ) : (
-              <Play className="w-6 h-6 md:w-7 md:h-7 fill-current ltr:ml-1 rtl:mr-1" />
+              <Play className="h-5 w-5 fill-current ltr:ml-0.5 rtl:mr-0.5 md:h-6 md:w-6" />
             )}
           </button>
           
-          <div className="flex flex-col">
-            <span className="font-bold text-sm md:text-base text-foreground line-clamp-1">
+          <div className="flex min-w-0 flex-col">
+            <span className="line-clamp-1 text-xs font-bold text-foreground md:text-sm">
               {isArabic
                 ? `سورة ${surahs[surahNumber - 1]?.name} - آية ${playingAyah ?? selectedAyah}`
                 : `Surah ${surahs[surahNumber - 1]?.name} - Ayah ${playingAyah ?? selectedAyah}`}
@@ -816,7 +816,7 @@ export function QuranAudioPlayer({
                   <span className="text-xs font-bold text-amber-700">{isArabic ? 'توقف...' : 'Pause...'}</span>
                </div>
             ) : (
-               <span className="text-xs font-semibold text-muted-foreground line-clamp-1">
+               <span className="line-clamp-1 text-[10px] font-semibold text-muted-foreground md:text-xs">
                  {reciterCatalog.isLoading
                    ? (isArabic ? 'تحميل القارئ…' : 'Loading reciter…')
                    : selectedReciter?.name ?? (isArabic ? 'القارئ غير متاح' : 'Reciter unavailable')}
@@ -843,44 +843,45 @@ export function QuranAudioPlayer({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 md:gap-2 justify-center" dir="ltr">
+        <div className="flex shrink-0 items-center justify-center gap-0.5 md:gap-1" dir="ltr">
           <button 
             onClick={handlePrev} 
             disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null}
-            className="p-2 md:p-3 rounded-full hover:bg-muted text-foreground disabled:opacity-30 transition-colors"
+            className="rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-30 md:p-2"
             title={isArabic ? 'الآية السابقة' : 'Previous Ayah'}
           >
-            <SkipBack className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+            <SkipBack className="h-4 w-4 fill-current md:h-5 md:w-5" />
           </button>
           <button 
             onClick={handleStop}
             disabled={!playingAyah && !isPlaying}
-            className="p-2 md:p-3 rounded-full hover:bg-muted text-foreground disabled:opacity-30 transition-colors"
+            className="rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-30 md:p-2"
             title={isArabic ? 'إيقاف' : 'Stop'}
           >
-            <Square className="w-4 h-4 md:w-5 md:h-5 fill-current" />
+            <Square className="h-3.5 w-3.5 fill-current md:h-4 md:w-4" />
           </button>
           <button 
             onClick={handleNext} 
             disabled={!playingAyah}
-            className="p-2 md:p-3 rounded-full hover:bg-muted text-foreground disabled:opacity-30 transition-colors"
+            className="rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-30 md:p-2"
             title={isArabic ? 'الآية التالية' : 'Next Ayah'}
           >
-            <SkipForward className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+            <SkipForward className="h-4 w-4 fill-current md:h-5 md:w-5" />
           </button>
         </div>
 
-        <div className="flex items-center justify-end flex-1 gap-1">
+        <div className="flex shrink-0 items-center justify-end gap-1">
           {memoSession && (
              <button 
                onClick={() => setActiveTab(activeTab === 'memo' ? 'none' : 'memo')}
                className={cn(
-                 "p-2 md:p-3 rounded-full transition-colors hidden md:block",
+                  "inline-flex min-h-8 items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition-colors",
                  activeTab === 'memo' ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200" : "hover:bg-muted text-foreground"
                )}
-               title={isArabic ? 'جلسة الحفظ' : 'Memo Session'}
+                title={isArabic ? 'التكرار والحفظ' : 'Repeat and memorize'}
              >
-               <BookOpen className="w-5 h-5 md:w-6 md:h-6" />
+                <Repeat className="h-4 w-4" />
+                <span>{isArabic ? 'تكرار' : 'Repeat'}</span>
              </button>
           )}
           <button 
@@ -890,12 +891,13 @@ export function QuranAudioPlayer({
                if (isOpening) void reciterCatalog.refetch();
              }}
             className={cn(
-              "p-2 md:p-3 rounded-full transition-colors",
+              "inline-flex min-h-8 items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition-colors",
               activeTab === 'settings' ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200" : "hover:bg-muted text-foreground"
             )}
-            title={isArabic ? 'إعدادات القراءة' : 'Audio Settings'}
+            title={isArabic ? 'خيارات التلاوة' : 'Recitation options'}
           >
-            <Settings2 className="w-5 h-5 md:w-6 md:h-6" />
+            <Settings2 className="h-4 w-4" />
+            <span>{isArabic ? 'خيارات' : 'Options'}</span>
           </button>
         </div>
       </div>
