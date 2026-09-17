@@ -19,6 +19,13 @@ import {
 
 type RecorderState = 'idle' | 'requesting' | 'recording' | 'paused' | 'completed' | 'error';
 
+function getApiErrorStatus(error: unknown): number | null {
+    if (!error || typeof error !== 'object') return null;
+    const candidate = error as { status?: unknown; response?: { status?: unknown } };
+    const status = candidate.status ?? candidate.response?.status;
+    return typeof status === 'number' ? status : null;
+}
+
 export default function QuranRecitation() {
     const { lang, dir } = useI18n();
     const params = useParams<{ surahNumber: string }>();
@@ -288,9 +295,26 @@ export default function QuranRecitation() {
                 }
                 
             } catch (err) {
-                networkErrorCountRef.current++;
-                if (networkErrorCountRef.current >= 3) {
-                    failRecording(lang === 'ar' ? 'تعذر تحليل الصوت الآن. تحقق من الشبكة ثم حاول مجددًا.' : 'Audio recognition is unavailable. Check your connection and try again.');
+                const status = getApiErrorStatus(err);
+                if (status === 502 || status === 503) {
+                    failRecording(lang === 'ar'
+                        ? 'خدمة التسميع متوقفة مؤقتًا. حاول مرة أخرى لاحقًا.'
+                        : 'The recitation service is temporarily unavailable. Please try again later.');
+                } else if (status === 401) {
+                    failRecording(lang === 'ar'
+                        ? 'انتهت جلسة الدخول. سجّل الدخول ثم حاول مجددًا.'
+                        : 'Your session has expired. Sign in and try again.');
+                } else if (status === 400 || status === 413) {
+                    failRecording(lang === 'ar'
+                        ? 'تعذر قبول المقطع الصوتي. أعد المحاولة بصوت واضح.'
+                        : 'The audio chunk was not accepted. Please try again clearly.');
+                } else if (status !== 429) {
+                    networkErrorCountRef.current++;
+                    if (networkErrorCountRef.current >= 3) {
+                        failRecording(lang === 'ar'
+                            ? 'تعذر الاتصال بالخادم. تحقق من الشبكة ثم حاول مجددًا.'
+                            : 'Could not reach the server. Check your connection and try again.');
+                    }
                 }
             } finally {
                 isSending.current = false;
