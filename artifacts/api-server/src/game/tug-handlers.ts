@@ -200,7 +200,7 @@ function advanceToNext(tugNs: ReturnType<Server["of"]>, game: TugGame) {
   game.currentQuestionIndex += 1;
 
   if (game.endMode === "time") {
-    if ((game.matchDeadline ?? 0) <= Date.now()) return endMatch(tugNs, game);
+    if (game.matchDeadline !== undefined && game.matchDeadline <= Date.now()) return endMatch(tugNs, game);
     // The common increment above already advanced one question; wrap only.
     game.currentQuestionIndex %= game.questions.length;
     broadcastQuestion(tugNs, game);
@@ -248,7 +248,7 @@ function scheduleMatchDeadline(tugNs: ReturnType<Server["of"]>, game: TugGame) {
 }
 
 function broadcastQuestion(tugNs: ReturnType<Server["of"]>, game: TugGame) {
-  if (game.endMode === "time" && (game.matchDeadline ?? 0) <= Date.now()) {
+  if (game.endMode === "time" && game.matchDeadline !== undefined && game.matchDeadline <= Date.now()) {
     endMatch(tugNs, game);
     return;
   }
@@ -782,13 +782,13 @@ export function setupTugSocket(io: Server) {
           const player = game.players[socket.id];
           if (!player) return cb({ error: "أنت لست في هذه اللعبة." });
           if (game.roundAnswers[socket.id]) return cb({ error: "أجبت بالفعل." });
-           const gifts = game.teamGifts[player.team];
-           if (Date.now() < gifts.frozenUntil) return cb({ error: "فريقك متجمد حالياً." });
-           if (Date.now() > (gifts.deadline ?? 0)) return cb({ error: "انتهى وقت فريقك." });
-           if (game.endMode === "time" && Date.now() >= (game.matchDeadline ?? 0)) {
-             endMatch(tugNs, game);
-             return cb({ error: "انتهى وقت المباراة." });
-           }
+          if (game.endMode === "time" && game.matchDeadline !== undefined && Date.now() >= game.matchDeadline) {
+            endMatch(tugNs, game);
+            return cb({ error: "انتهى وقت المباراة." });
+          }
+          const gifts = game.teamGifts[player.team];
+          if (Date.now() < gifts.frozenUntil) return cb({ error: "فريقك متجمد حالياً." });
+          if (Date.now() > (gifts.deadline ?? 0)) return cb({ error: "انتهى وقت فريقك." });
 
           const q = game.questions[game.currentQuestionIndex];
           const timeMs = Date.now() - (game.questionStartTime ?? Date.now());
