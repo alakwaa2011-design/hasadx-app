@@ -88,6 +88,8 @@ import {
   FileText,
   FileImage,
   BookOpen,
+  Bookmark,
+  ClipboardCheck,
   Monitor,
   Headphones,
   Brain,
@@ -103,7 +105,7 @@ import SharedContentPage from "@/pages/teacher/shared-content";
 import { ParentMessagesContent } from "@/pages/teacher/parent-messages";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
 import { PricingContent } from "@/pages/teacher/pricing";
-import QuranCenter from "@/pages/teacher/quran-center";
+import QuranCenter, { type QuranCenterTab } from "@/pages/teacher/quran-center";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
 import { Card, Button } from "@/components/ui-elements";
@@ -458,6 +460,7 @@ export default function TeacherDashboard() {
   );
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "content" | "other">("ai-tools");
+  const [quranSubTab, setQuranSubTab] = useState<QuranCenterTab>("mushaf");
   const [toolsExpanded, setToolsExpanded] = useState(false);
   // Kept only as a safe fallback for an already-open legacy modal. All active
   // Wameeth launchers now navigate directly to the shared setup route below.
@@ -1012,7 +1015,11 @@ export default function TeacherDashboard() {
           <RewardsPage embedded />
         )}
         {activeTab === "quran" && (
-          <QuranCenter embedded />
+          <QuranCenter
+            embedded
+            selectedTab={quranSubTab}
+            onSelectedTabChange={setQuranSubTab}
+          />
         )}
         {activeTab === "kids_board" && (
           <TeacherKidsBoard embedded onBack={() => setActiveTab("overview")} />
@@ -1233,8 +1240,12 @@ export default function TeacherDashboard() {
             {(() => {
               const active = activeTab === "quran";
               return (
+                <div>
                 <button
-                  onClick={() => setActiveTab("quran")}
+                  onClick={() => {
+                    setActiveTab("quran");
+                    setQuranSubTab("mushaf");
+                  }}
                   aria-current={active ? "page" : undefined}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
                   style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
@@ -1251,6 +1262,36 @@ export default function TeacherDashboard() {
                   </span>
                   <span className="relative truncate">{lang === "ar" ? "حصاد القرآن" : "Hasaad Quran"}</span>
                 </button>
+                {active && (
+                  <div className="mt-0.5 mb-1 space-y-0.5" style={{ paddingInlineStart: 12 }}>
+                    {([
+                      { id: "mushaf", label: lang === "ar" ? "المصحف" : "Mushaf", icon: <BookOpen className="h-3.5 w-3.5" /> },
+                      { id: "bookmarks", label: lang === "ar" ? "العلامات" : "Bookmarks", icon: <Bookmark className="h-3.5 w-3.5" /> },
+                      { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="h-3.5 w-3.5" /> },
+                      { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="h-3.5 w-3.5" /> },
+                    ] as const).map((item) => {
+                      const subActive = quranSubTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setQuranSubTab(item.id)}
+                          className="relative flex w-full items-center gap-2.5 overflow-hidden rounded-lg px-3 py-2 text-xs font-semibold transition-all"
+                          style={subActive
+                            ? { background: "rgba(201,160,80,0.12)", color: "#1E4D35", fontWeight: 700 }
+                            : { color: "rgba(30,77,53,0.68)" }}
+                        >
+                          {subActive && (
+                            <span className={cn("absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
+                          )}
+                          <span className="relative shrink-0">{item.icon}</span>
+                          <span className="relative truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>
               );
             })()}
 

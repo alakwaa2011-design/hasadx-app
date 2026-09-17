@@ -14,18 +14,27 @@ import { QuranTextReaderView } from "./quran-reader";
 import { QuranBookmarksPanel } from "@/components/quran/quran-bookmarks-panel";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 
-type Tab = "mushaf" | "circles" | "queue" | "bookmarks";
+export type QuranCenterTab = "mushaf" | "circles" | "queue" | "bookmarks";
 
-export default function QuranCenter({ embedded = false }: { embedded?: boolean }) {
+export default function QuranCenter({
+  embedded = false,
+  selectedTab,
+  onSelectedTabChange,
+}: {
+  embedded?: boolean;
+  selectedTab?: QuranCenterTab;
+  onSelectedTabChange?: (tab: QuranCenterTab) => void;
+}) {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
 
   const searchParams = new URLSearchParams(window.location.search);
   const requestedTab = searchParams.get("tab");
-  const tabFromQuery: Tab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "bookmarks"
+  const tabFromQuery: QuranCenterTab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "bookmarks"
     ? requestedTab
     : "mushaf";
-  const [activeTab, setActiveTab] = useState<Tab>(tabFromQuery);
+  const [internalTab, setInternalTab] = useState<QuranCenterTab>(tabFromQuery);
+  const activeTab = selectedTab ?? internalTab;
   const [mushafView, setMushafView] = useState<"pages" | "reader">("pages");
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
@@ -56,13 +65,14 @@ export default function QuranCenter({ embedded = false }: { embedded?: boolean }
   };
 
   useEffect(() => {
-    if (tabFromQuery !== activeTab) {
-      setActiveTab(tabFromQuery);
+    if (!embedded && tabFromQuery !== internalTab) {
+      setInternalTab(tabFromQuery);
     }
-  }, [tabFromQuery]);
+  }, [embedded, internalTab, tabFromQuery]);
 
-  const handleTabChange = (tab: Tab) => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: QuranCenterTab) => {
+    setInternalTab(tab);
+    onSelectedTabChange?.(tab);
     setMobileSectionsOpen(false);
     if (!embedded) {
       setLocation(`/teacher/quran-center?tab=${tab}`);
@@ -118,7 +128,7 @@ export default function QuranCenter({ embedded = false }: { embedded?: boolean }
         {/* Sidebar */}
         <aside className={cn(
           "w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card md:flex md:flex-col shadow-sm z-10 shrink-0",
-          activeTab === "mushaf" && !mobileSectionsOpen ? "hidden" : "flex",
+          embedded ? "hidden" : activeTab === "mushaf" && !mobileSectionsOpen ? "hidden" : "flex",
         )}>
           <div className="p-4 md:p-6 flex items-center justify-between md:justify-start">
             <div className="flex items-center gap-3 text-emerald-800 dark:text-emerald-400 md:mb-2">
@@ -155,7 +165,7 @@ export default function QuranCenter({ embedded = false }: { embedded?: boolean }
               return (
                 <button
                   key={tab.id}
-                  onClick={() => handleTabChange(tab.id as Tab)}
+                  onClick={() => handleTabChange(tab.id as QuranCenterTab)}
                   className={cn(
                     "flex items-center gap-2 md:gap-3 px-3 py-2 md:px-4 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all relative overflow-hidden shrink-0",
                     isActive 
