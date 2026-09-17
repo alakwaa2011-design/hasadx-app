@@ -841,6 +841,24 @@ export function QuranPagesView({
         </header>
       )}
 
+      {!quietMode && selectedVerseKey && (
+        <button
+          type="button"
+          onClick={() => void copySelectedAyah()}
+          disabled={!selectedAyahText || isFetchingSelectedSurah}
+          data-testid="button-copy-selected-ayah-floating"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-black text-white shadow-xl shadow-emerald-950/25 transition-colors hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-50 md:hidden rtl:translate-x-1/2"
+          aria-label={lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`}
+        >
+          {copiedVerseKey === selectedVerseKey
+            ? <Check className="h-4 w-4" />
+            : <Copy className="h-4 w-4" />}
+          {copiedVerseKey === selectedVerseKey
+            ? (lang === "ar" ? "تم نسخ الآية" : "Ayah copied")
+            : (lang === "ar" ? `نسخ الآية ${selectedAyah}` : `Copy ayah ${selectedAyah}`)}
+        </button>
+      )}
+
       <main
         className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
         onTouchStart={(event) => {
