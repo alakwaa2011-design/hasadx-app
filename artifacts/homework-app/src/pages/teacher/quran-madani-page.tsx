@@ -153,11 +153,6 @@ export function QuranMadaniPageRenderer({
 
   const rows = Array.from({ length: 15 }, (_, i) => i + 1);
   const fontName = `qcf-v2-p${pageNumber}`;
-  const openingSurahName = pageNumber === 1
-    ? "سُورَةُ الْفَاتِحَةِ"
-    : pageNumber === 2
-      ? "سُورَةُ الْبَقَرَةِ"
-      : null;
   const firstPagesContent = pageNumber <= 2
     ? data.lines.filter((line) => line.words.length > 0)
     : null;
@@ -172,24 +167,6 @@ export function QuranMadaniPageRenderer({
       dir="rtl"
       translate="no"
     >
-      {openingSurahName && (
-        <div
-          className="pointer-events-none absolute inset-x-[21.8%] top-[22.7%] bottom-[22.5%] bg-[#b9e5b8]"
-          aria-hidden="true"
-        >
-          <div className="absolute inset-x-[7%] top-[20%] aspect-square rounded-full bg-[#fdfaf6]" />
-          <div className="absolute start-1/2 top-[3%] flex w-[38%] -translate-x-1/2 items-center justify-center">
-            <div className="absolute inset-x-[-18%] h-[72%] rounded-[45%] bg-[#fdfaf6]" />
-            <div className="absolute -start-[31%] h-[48%] aspect-square rotate-45 rounded-[28%] bg-[#fdfaf6]" />
-            <div className="absolute -start-[20%] h-[58%] aspect-square rounded-full bg-[#fdfaf6]" />
-            <div className="absolute -end-[31%] h-[48%] aspect-square rotate-45 rounded-[28%] bg-[#fdfaf6]" />
-            <div className="absolute -end-[20%] h-[58%] aspect-square rounded-full bg-[#fdfaf6]" />
-            <span className="relative z-10 whitespace-nowrap text-[3.7cqw] font-semibold tracking-[-0.04em] text-[#1d4432]">
-              {openingSurahName}
-            </span>
-          </div>
-        </div>
-      )}
       <div
         className="relative z-20 flex h-full w-full flex-col px-[8.5%] py-[9.5%]"
         style={{ fontFamily: `'${fontName}', sans-serif` }}
@@ -247,7 +224,6 @@ export function QuranMadaniPageRenderer({
               key={rowNum}
               className={cn(
                 "flex w-full flex-1 items-center text-[5.2cqw] leading-none",
-                firstPagesContent && "mx-auto w-[72%] text-[4.7cqw]",
                 isCentered ? "justify-center gap-[1.5cqw]" : "justify-between"
               )}
             >
