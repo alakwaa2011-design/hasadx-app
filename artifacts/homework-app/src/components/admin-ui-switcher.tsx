@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Check,
   ChevronDown,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -57,14 +58,17 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   /* isOrganizer: visible only when orgEnabled=true, regardless of admin status */
   const isOrganizer = orgEnabled && (isAdmin || user.role === "organizer");
 
-  const current: Surface = location.startsWith("/organizer")
-    ? "organizer"
-    : location.startsWith("/teacher/admin")
-      ? "admin"
-      : "teacher";
+  type SwitcherSurface = Surface | "student";
+  const current: SwitcherSurface = location.startsWith("/student/")
+    ? "student"
+    : location.startsWith("/organizer")
+      ? "organizer"
+      : location.startsWith("/teacher/admin")
+        ? "admin"
+        : "teacher";
 
   const allItems: {
-    key: Surface;
+    key: SwitcherSurface;
     label: string;
     href: string;
     Icon: LucideIcon;
@@ -89,6 +93,13 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
       label: lang === "ar" ? "مسؤول" : "Admin",
       href: "/teacher/admin",
       Icon: ShieldCheck,
+      visible: isAdmin,
+    },
+    {
+      key: "student",
+      label: lang === "ar" ? "طالب (معاينة)" : "Student (Preview)",
+      href: "/student/dashboard?preview=1",
+      Icon: UserRound,
       visible: isAdmin,
     },
   ];
@@ -143,7 +154,7 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
                     type="button"
                     role="menuitem"
                     onClick={() => {
-                      setAdminLastSurface(it.key);
+                      if (it.key !== "student") setAdminLastSurface(it.key as Surface);
                       setOpen(false);
                       if (!active) setLocation(it.href);
                     }}
@@ -230,7 +241,7 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setAdminLastSurface(it.key);
+                    if (it.key !== "student") setAdminLastSurface(it.key as Surface);
                     setOpen(false);
                     if (!active) setLocation(it.href);
                   }}

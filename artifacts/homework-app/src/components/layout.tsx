@@ -179,8 +179,11 @@ interface StudentSession {
 
 function useStudentSession() {
   const [student, setStudent] = useState<StudentSession | null>(null);
-  const [loading, setLoading] = useState(true);
+  const isPreview = window.location.pathname === "/student/dashboard"
+    && new URLSearchParams(window.location.search).get("preview") === "1";
+  const [loading, setLoading] = useState(!isPreview);
   useEffect(() => {
+    if (isPreview) return;
     fetch(`${API_BASE}/api/student-auth/me`, { credentials: "include" })
       .then(async (r) => {
         if (r.ok) {
@@ -194,7 +197,7 @@ function useStudentSession() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [isPreview]);
   return { student, loading };
 }
 

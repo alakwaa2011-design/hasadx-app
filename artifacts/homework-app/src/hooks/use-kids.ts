@@ -368,20 +368,22 @@ export function useTeacherKidsCreateAssignment() {
 
 // --- Kids Motivation Hooks ---
 
-export function useKidsMotivationAggregate(options?: { refetchInterval?: number }) {
+export function useKidsMotivationAggregate(options?: { refetchInterval?: number; enabled?: boolean }) {
   return useQuery({
     queryKey: ["kids", "motivation", "aggregate"],
     queryFn: () => fetchKidsApi<{ balance: number; history: LedgerEntry[]; badges: BadgeGrant[] }>("/motivation"),
     retry: 0, // Fail fast so dashboard can render fallback state on 404
-    refetchInterval: options?.refetchInterval
+    refetchInterval: options?.refetchInterval,
+    enabled: options?.enabled ?? true,
   });
 }
 
-export function useKidsRewards() {
+export function useKidsRewards(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["kids", "motivation", "rewards"],
     queryFn: () => fetchKidsApi<{ rewards: Reward[] }>("/motivation/rewards").then(res => res.rewards),
-    retry: 1
+    retry: 1,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -402,12 +404,13 @@ export function useKidsRedeemReward() {
   });
 }
 
-export function useKidsRedemptions(options?: { refetchInterval?: number }) {
+export function useKidsRedemptions(options?: { refetchInterval?: number; enabled?: boolean }) {
   return useQuery({
     queryKey: ["kids", "motivation", "redemptions"],
     queryFn: () => fetchKidsApi<{ redemptions: RewardRedemption[] }>("/motivation/redemptions").then(res => res.redemptions),
     retry: 1,
-    refetchInterval: options?.refetchInterval
+    refetchInterval: options?.refetchInterval,
+    enabled: options?.enabled ?? true,
   });
 }
 

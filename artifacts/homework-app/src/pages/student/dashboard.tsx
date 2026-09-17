@@ -130,6 +130,16 @@ export default function StudentDashboard() {
   const [, setLocation] = useLocation();
   const { lang, t, dir } = useI18n();
   const copy = t.studentDashboard;
+  const isPreview = new URLSearchParams(window.location.search).get("preview") === "1";
+  const previewStudent: StudentProfile = {
+    id: 0,
+    username: "student-demo",
+    displayName: lang === "ar" ? "طالب تجريبي" : "Demo Student",
+    avatar: null,
+    totalScore: 0,
+    gamesPlayed: 0,
+    rank: 1,
+  };
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [recentScores, setRecentScores] = useState<RecentScore[]>([]);
   const [activityDays, setActivityDays] = useState<string[]>([]);
@@ -153,21 +163,21 @@ export default function StudentDashboard() {
   const initialFetchDone = useRef(false);
 
   // Motivation Data
-  const { data: motivation, isLoading: motivationLoading, isError: motivationError, error: motivationErr } = useKidsMotivationAggregate({ refetchInterval: 15000 });
-  const { data: rewards = [], isLoading: rewardsLoading } = useKidsRewards();
-  const { data: redemptions = [], isLoading: redemptionsLoading } = useKidsRedemptions({ refetchInterval: 15000 });
+  const { data: motivation, isLoading: motivationLoading, isError: motivationError, error: motivationErr } = useKidsMotivationAggregate({ refetchInterval: 15000, enabled: !isPreview });
+  const { data: rewards = [], isLoading: rewardsLoading } = useKidsRewards({ enabled: !isPreview });
+  const { data: redemptions = [], isLoading: redemptionsLoading } = useKidsRedemptions({ refetchInterval: 15000, enabled: !isPreview });
   const redeemReward = useKidsRedeemReward();
 
   // Smart Quran Progress Data
   const { data: quranSummary } = useGetQuranMemorizationSummary({
     query: {
-      enabled: !!student,
+      enabled: !!student && !isPreview,
       queryKey: getGetQuranMemorizationSummaryQueryKey(),
     }
   });
   const { data: dueItems = [] } = useGetDueQuranMemorization({
     query: {
-      enabled: !!student,
+      enabled: !!student && !isPreview,
       queryKey: getGetDueQuranMemorizationQueryKey(),
     }
   });
@@ -175,6 +185,7 @@ export default function StudentDashboard() {
 
   // Watch for new badges or rewards
   useEffect(() => {
+    if (isPreview) return;
     if (!student || !motivation || motivationLoading || redemptionsLoading) return;
 
     // Set initial fetch done after first successful render with data
@@ -273,7 +284,7 @@ export default function StudentDashboard() {
         }
       }
     } catch(e) {}
-  }, [student, motivation, redemptions, celebration?.active]);
+  }, [isPreview, student, motivation, redemptions, celebration?.active]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/assignments`)
@@ -305,6 +316,15 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
+    if (isPreview) {
+      setStudent(previewStudent);
+      setRecentScores([]);
+      setActivityDays([]);
+      setQuranWards([]);
+      setLoading(false);
+      return;
+    }
+
     Promise.all([
       fetch(`${API_BASE}/api/student-auth/me`, { credentials: "include" }).then(async (r) => {
         if (!r.ok) { setLocation("/student/login"); return null; }
@@ -332,10 +352,10 @@ export default function StudentDashboard() {
       setActivityDays(Array.isArray(daysData?.days) ? daysData.days : []);
       setQuranWards(Array.isArray(quranWardsData) ? quranWardsData : []);
     }).catch(() => setLocation("/student/login")).finally(() => setLoading(false));
-  }, [setLocation]);
+  }, [isPreview, setLocation]);
 
   useEffect(() => {
-    if (!student) return;
+    if (!student || isPreview) return;
     let cancelled = false;
 
     const refreshQuranWards = async () => {
@@ -370,10 +390,10 @@ export default function StudentDashboard() {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [student]);
+  }, [isPreview, student]);
 
   useEffect(() => {
-    if (!student) return;
+    if (!student || isPreview) return;
     let cancelled = false;
 
     const refreshGoal = async () => {
@@ -421,7 +441,7 @@ export default function StudentDashboard() {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [student, lang]);
+  }, [isPreview, student, lang]);
 
   const copyLink = (a: PublicAssignment) => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -433,6 +453,10 @@ export default function StudentDashboard() {
   };
 
   const handleStartGame = async (assignmentId: number, withBots: boolean, bots: number) => {
+    if (isPreview) {
+      toast.info(lang === "ar" ? "هذه معاينة فقط — سجّل دخول طالب لتجربة اللعب" : "Preview only — sign in as a student to play");
+      return;
+    }
     setBotDialogAssignment(null);
     setStartingGameId(assignmentId);
     try {
@@ -454,6 +478,10 @@ export default function StudentDashboard() {
   };
 
   const handleLogout = async () => {
+    if (isPreview) {
+      setLocation("/teacher");
+      return;
+    }
     await fetch(`${API_BASE}/api/student-auth/logout`, {
       method: "POST",
       credentials: "include",
@@ -577,6 +605,20 @@ export default function StudentDashboard() {
 
   return (
     <Layout>
+      {isPreview && (
+        <div className="border-b border-amber-300 bg-amber-50 px-4 py-2.5 text-center text-sm font-bold text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+          {lang === "ar"
+            ? "أنت الآن في معاينة صفحة الطالب — لا يتم حفظ أي إجراء"
+            : "You are previewing the student page — actions are not saved"}
+          <button
+            type="button"
+            onClick={() => setLocation("/teacher")}
+            className="ms-3 rounded-lg bg-amber-600 px-3 py-1 text-xs font-black text-white hover:bg-amber-700"
+          >
+            {lang === "ar" ? "العودة للمعلم" : "Back to teacher"}
+          </button>
+        </div>
+      )}
       {celebration?.active && !window.matchMedia("(prefers-reduced-motion: reduce)").matches && (
         <ConfettiBurst active={celebration.active} />
       )}
@@ -1108,7 +1150,7 @@ export default function StudentDashboard() {
                             ) : (
                               <Button
                                 size="sm"
-                                disabled={(motivation?.balance || 0) < reward.cost || redeemReward.isPending || reward.status !== 'active'}
+                                disabled={isPreview || (motivation?.balance || 0) < reward.cost || redeemReward.isPending || reward.status !== 'active'}
                                 onClick={() => {
                                   const idempotencyKey = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
                                   redeemReward.mutate({ rewardId: reward.id, idempotencyKey }, {
