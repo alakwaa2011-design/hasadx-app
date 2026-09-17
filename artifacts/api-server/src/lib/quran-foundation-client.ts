@@ -19,6 +19,17 @@ const TRUSTED_AUDIO_ORIGINS = new Set([
   "https://download.quranicaudio.com",
   "https://audio.qurancdn.com",
 ]);
+const CHAPTER_PUBLIC_ID_BASE = 1_000_000;
+const ARABIC_CHAPTER_RECITER_NAMES: Readonly<Record<number, string>> = Object.freeze({
+  158: "عبدالله علي جابر",
+  159: "ماهر المعيقلي",
+  160: "بندر بليلة",
+  161: "خليفة الطنيجي",
+  173: "مشاري راشد العفاسي",
+  174: "ياسر الدوسري",
+  175: "عبدالله حمد أبو شريدة",
+  176: "أحمد عبدالحميد طاحون - تجريبي",
+});
 
 const TAFSIR_MUYASSAR_RESOURCE_ID = 16;
 const CANONICAL_AYAH_COUNTS = [
@@ -116,6 +127,7 @@ let tokenRequestPromise: Promise<string> | null = null;
 let cachedCatalog: { value: QuranFoundationSurah[]; expiresAt: number } | null = null;
 let cachedRecitationCatalog: { value: QuranFoundationReciter[]; expiresAt: number } | null = null;
 let cachedChapterReciterCatalog: { value: QuranFoundationChapterReciter[]; expiresAt: number } | null = null;
+let chapterReciterRequestPromise: Promise<QuranFoundationChapterReciter[]> | null = null;
 const cachedSurahs = new Map<number, { value: QuranFoundationSurahContent; expiresAt: number }>();
 const cachedMadaniPages = new Map<number, { value: QuranFoundationMadaniPage; expiresAt: number }>();
 const cachedAudio = new Map<string, { value: string; expiresAt: number }>();
@@ -284,6 +296,19 @@ export async function listQuranFoundationReciters(): Promise<QuranFoundationReci
   const value = normalizeRecitationCatalog(
     await requestContentJson("resources/recitations?language=ar"),
   );
+  const chapterReciters = await listQuranFoundationChapterReciters();
+  const usedIds = new Set(value.map((reciter) => reciter.id));
+  for (const chapter of chapterReciters) {
+    const publicId = chapterPublicId(chapter.chapterReciterId);
+    if (usedIds.has(publicId)) throw new Error("Quran recitation ID namespace collision");
+    const localizedName = ARABIC_CHAPTER_RECITER_NAMES[chapter.chapterReciterId] ?? chapter.name;
+    if (!value.some((reciter) => reciter.name === localizedName && reciter.style === chapter.style)) {
+      value.push({ id: publicId, name: localizedName, style: chapter.style });
+      usedIds.add(publicId);
+    }
+  }
+  value.sort((left, right) => left.name.localeCompare(right.name, "ar")
+    || (left.style ?? "").localeCompare(right.style ?? "", "ar"));
   cachedRecitationCatalog = {
     value,
     expiresAt: Date.now() + RECITATION_CATALOG_CACHE_MS,
@@ -328,9 +353,20 @@ async function listQuranFoundationChapterReciters(): Promise<QuranFoundationChap
   if (cachedChapterReciterCatalog && cachedChapterReciterCatalog.expiresAt > Date.now()) {
     return cachedChapterReciterCatalog.value;
   }
-  const value = normalizeChapterReciterCatalog(await requestContentJson("resources/chapter_reciters?language=ar"));
-  cachedChapterReciterCatalog = { value, expiresAt: Date.now() + RECITATION_CATALOG_CACHE_MS };
-  return value;
+  if (!chapterReciterRequestPromise) {
+    chapterReciterRequestPromise = requestContentJson("resources/chapter_reciters?language=ar")
+      .then(normalizeChapterReciterCatalog)
+      .then((value) => {
+        cachedChapterReciterCatalog = { value, expiresAt: Date.now() + RECITATION_CATALOG_CACHE_MS };
+        return value;
+      })
+      .finally(() => { chapterReciterRequestPromise = null; });
+  }
+  return chapterReciterRequestPromise;
+}
+
+function chapterPublicId(chapterReciterId: number): number {
+  return CHAPTER_PUBLIC_ID_BASE + chapterReciterId;
 }
 
 const VERIFIED_CHAPTER_RECITER_IDS: Record<number, number> = {
@@ -338,11 +374,18 @@ const VERIFIED_CHAPTER_RECITER_IDS: Record<number, number> = {
 };
 
 async function verifiedChapterReciterId(recitationId: number): Promise<number | null> {
-  const chapterId = VERIFIED_CHAPTER_RECITER_IDS[recitationId];
+  const isChapterPublicId = recitationId >= CHAPTER_PUBLIC_ID_BASE;
+  const chapterId = VERIFIED_CHAPTER_RECITER_IDS[recitationId]
+    ?? (isChapterPublicId ? recitationId - CHAPTER_PUBLIC_ID_BASE : null);
   if (!chapterId) return null;
   const [reciters, chapterReciters] = await Promise.all([
     listQuranFoundationReciters(), listQuranFoundationChapterReciters(),
   ]);
+  if (isChapterPublicId) {
+    return reciters.some((item) => item.id === recitationId)
+      && chapterReciters.some((item) => item.chapterReciterId === chapterId)
+      ? chapterId : null;
+  }
   const reciter = reciters.find((item) => item.id === recitationId);
   const chapter = chapterReciters.find((item) => item.chapterReciterId === chapterId);
   if (!reciter || !chapter || normalizeIdentity(reciter.name) !== normalizeIdentity(chapter.name)) return null;
@@ -633,6 +676,9 @@ export async function getQuranFoundationAudioUrl(
   const cached = cachedAudio.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
+  if (recitationId >= CHAPTER_PUBLIC_ID_BASE) {
+    throw new Error("Chapter-only Quran recitations require synchronized timing playback");
+  }
   const payload = await requestContentJson(
     `verses/by_key/${surahNumber}:${ayahNumber}?language=ar&words=false&audio=${recitationId}`,
   );
@@ -751,6 +797,7 @@ export function resetQuranFoundationClientForTests(): void {
   cachedCatalog = null;
   cachedRecitationCatalog = null;
   cachedChapterReciterCatalog = null;
+  chapterReciterRequestPromise = null;
   cachedSurahs.clear();
   cachedMadaniPages.clear();
   cachedAudio.clear();

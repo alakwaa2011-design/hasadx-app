@@ -35,6 +35,17 @@ export interface QuranAudioPlayerProps {
 
 const SPEEDS = [0.75, 1, 1.25];
 const REPEATS = [1, 3, 5, 10];
+const ARABIC_RECITATION_STYLES: Readonly<Record<string, string>> = {
+  Muallim: 'المعلّم',
+  'Kids repeat': 'المعلّم – ترديد الأطفال',
+  Murattal: 'مرتّل',
+  Mujawwad: 'مجوّد',
+};
+
+function recitationStyleLabel(style: string | null, isArabic: boolean): string | null {
+  if (!style) return null;
+  return isArabic ? ARABIC_RECITATION_STYLES[style] ?? style : style;
+}
 
 export function QuranAudioPlayer({
   surahs,
@@ -382,7 +393,10 @@ export function QuranAudioPlayer({
   const filteredReciters = reciterCatalog.data?.reciters.filter((item) => {
     const query = reciterSearch.trim().toLocaleLowerCase(isArabic ? 'ar' : 'en');
     if (!query) return true;
-    return `${item.name} ${item.style ?? ''}`.toLocaleLowerCase(isArabic ? 'ar' : 'en').includes(query);
+    const localizedStyle = recitationStyleLabel(item.style ?? null, isArabic);
+    return `${item.name} ${item.style ?? ''} ${localizedStyle ?? ''}`
+      .toLocaleLowerCase(isArabic ? 'ar' : 'en')
+      .includes(query);
   }) ?? [];
 
   const selectReciter = async (nextRecitationId: number) => {
@@ -402,6 +416,9 @@ export function QuranAudioPlayer({
 
   const togglePlay = () => {
     if (!playingAyah) {
+      isEndedHandledRef.current = false;
+      setCurrentAyahPlayCount(1);
+      setCurrentRangePlayCount(1);
       onPlayingAyahChange(clampAyah(selectedAyah, effectiveStart, effectiveEnd) ?? effectiveStart ?? 1);
       onIsPlayingChange(true);
     } else {
@@ -417,6 +434,9 @@ export function QuranAudioPlayer({
 
   const handleStop = () => {
     discardPendingAction();
+    isEndedHandledRef.current = false;
+    setCurrentAyahPlayCount(1);
+    setCurrentRangePlayCount(1);
     onIsPlayingChange(false);
     onPlayingAyahChange(null);
     if (audioRef.current) {
@@ -635,7 +655,11 @@ export function QuranAudioPlayer({
                       >
                         <span className="min-w-0">
                           <span className="block truncate font-bold">{item.name}</span>
-                          {item.style && <span className="block truncate text-xs opacity-70">{item.style}</span>}
+                          {item.style && (
+                            <span className="block truncate text-xs opacity-70">
+                              {recitationStyleLabel(item.style, isArabic)}
+                            </span>
+                          )}
                         </span>
                         {savePreference.isPending && item.id === recitationId && (
                           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
@@ -657,7 +681,12 @@ export function QuranAudioPlayer({
                 {REPEATS.map(r => (
                   <button 
                     key={r} 
-                    onClick={() => { setRepeat(r); setCurrentAyahPlayCount(1); setCurrentRangePlayCount(1); }}
+                     onClick={() => {
+                       isEndedHandledRef.current = false;
+                       setRepeat(r);
+                       setCurrentAyahPlayCount(1);
+                       setCurrentRangePlayCount(1);
+                     }}
                     className={cn(
                       "px-3 py-1 font-bold text-xs transition-colors",
                       repeat === r ? "bg-emerald-600 text-white" : "hover:bg-muted text-foreground"
@@ -790,7 +819,11 @@ export function QuranAudioPlayer({
              </button>
           )}
           <button 
-            onClick={() => setActiveTab(activeTab === 'settings' ? 'none' : 'settings')}
+             onClick={() => {
+               const isOpening = activeTab !== 'settings';
+               setActiveTab(isOpening ? 'settings' : 'none');
+               if (isOpening) void reciterCatalog.refetch();
+             }}
             className={cn(
               "p-2 md:p-3 rounded-full transition-colors",
               activeTab === 'settings' ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200" : "hover:bg-muted text-foreground"

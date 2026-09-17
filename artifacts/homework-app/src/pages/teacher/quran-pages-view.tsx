@@ -64,7 +64,9 @@ function pageImageUrl(page: number) {
 function plainArabicSurahName(name: string) {
   return name
     .replace(/\u0671/g, "ا")
-    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "");
+    .replace(/\u0670/g, "ا")
+    .replace(/\u0640/g, "")
+    .replace(/[\u0610-\u061A\u064B-\u065F\u06D6-\u06ED]/g, "");
 }
 
 export function QuranPagesView({
@@ -114,6 +116,7 @@ export function QuranPagesView({
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
   const { savePosition: saveMainPosition, toggleBookmark, bookmarksMap, isMutatingBookmark } = useQuranReaderState({
@@ -336,19 +339,40 @@ export function QuranPagesView({
   const handleTouchEnd = () => {
     if (touchStart === null || touchEnd === null) return;
     const distance = touchStart - touchEnd;
-    if (distance > 50) goToSpread("next");
-    if (distance < -50) goToSpread("previous");
+    if (distance > 50) {
+      didSwipeRef.current = true;
+      goToSpread("next");
+    }
+    if (distance < -50) {
+      didSwipeRef.current = true;
+      goToSpread("previous");
+    }
     setTouchStart(null);
     setTouchEnd(null);
   };
 
-  const renderPage = (page: number) => {
+  const renderPage = (page: number, physicalPage: "left" | "right" | "single") => {
     const failed = failedPages.has(page);
 
     return (
       <figure
         key={page}
         className="relative mx-auto w-full overflow-hidden rounded-[3px] bg-white shadow-[0_20px_60px_rgba(34,87,57,0.16)] ring-1 ring-black/10"
+        onClick={(event) => {
+          if (didSwipeRef.current) {
+            didSwipeRef.current = false;
+            return;
+          }
+          const target = event.target;
+          if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) return;
+
+          const clickedSide = physicalPage === "single"
+            ? (event.clientX < event.currentTarget.getBoundingClientRect().left
+              + event.currentTarget.getBoundingClientRect().width / 2 ? "left" : "right")
+            : physicalPage;
+          if (clickedSide === "left" && canGoToNextSpread) goToSpread("next");
+          if (clickedSide === "right" && canGoToPreviousSpread) goToSpread("previous");
+        }}
       >
         {failed ? (
           <div className="flex aspect-[382.677/547.086] flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
@@ -610,6 +634,13 @@ export function QuranPagesView({
       <main
         className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-3 py-5 pb-8 md:px-8 md:py-8"
         onTouchStart={(event) => {
+           const target = event.target;
+           if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) {
+             setTouchStart(null);
+             setTouchEnd(null);
+             return;
+           }
+           didSwipeRef.current = false;
           setTouchEnd(null);
           setTouchStart(event.targetTouches[0].clientX);
         }}
@@ -627,10 +658,10 @@ export function QuranPagesView({
             maxWidth: `${Math.round(10.32 * zoom)}px`,
           }}
         >
-          <div className="hidden lg:block">{renderPage(visiblePages.right)}</div>
-          <div className="lg:hidden">{renderPage(activePage)}</div>
+          <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
+          <div className="lg:hidden">{renderPage(activePage, "single")}</div>
           {visiblePages.left !== null && (
-            <div className="hidden lg:block">{renderPage(visiblePages.left)}</div>
+            <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
           )}
         </div>
 

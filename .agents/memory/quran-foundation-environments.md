@@ -32,3 +32,9 @@ Word timing comes from chapter-recitation timestamps, not the ayah-by-ayah audio
 **Why:** assuming an `chapter_reciters` envelope or interchangeable IDs passed mocked tests but failed against the live API. Exact synchronization also requires playing the chapter recording that produced the timestamps.
 
 **How to apply:** verify reciter identity before mapping catalogs, request `chapter_recitations/{chapterReciterId}/{chapter}?segments=true`, normalize each verse window, and allowlist the returned chapter-audio origin (currently `download.quranicaudio.com`).
+
+The ayah-recitation and chapter-reciter catalogs use different ID namespaces and partially different reader sets. Chapter-only readers need stable public IDs derived from their source IDs; verify those by exact catalog membership, not cross-language display-name equality.
+
+**Why:** Arabic localization made valid Maher al-Muaiqly metadata fail an English-name identity comparison. Also, chapter audio cannot safely replace per-ayah fallback audio because it would start at the beginning of the surah when timing is unavailable.
+
+**How to apply:** keep strict identity checks for legacy native mappings, use synchronized chapter audio for chapter-only readers, and reject their unsynchronized fallback rather than playing the wrong ayah.
