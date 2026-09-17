@@ -128,7 +128,7 @@ export default function QuranCenter({
         {/* Sidebar */}
         <aside className={cn(
           "w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card md:flex md:flex-col shadow-sm z-10 shrink-0",
-          embedded ? "hidden" : activeTab === "mushaf" && !mobileSectionsOpen ? "hidden" : "flex",
+          embedded ? "!hidden" : activeTab === "mushaf" && !mobileSectionsOpen ? "hidden" : "flex",
         )}>
           <div className="p-4 md:p-6 flex items-center justify-between md:justify-start">
             <div className="flex items-center gap-3 text-emerald-800 dark:text-emerald-400 md:mb-2">
