@@ -436,6 +436,7 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
       parsed.data.surahNumber,
       parsed.data.ayahNumber,
     );
+    res.setHeader("Cache-Control", "private, max-age=604800, immutable");
     res.redirect(302, url);
   } catch (error) {
     req.log.warn({ err: error, ...parsed.data }, "Official Quran audio unavailable");
