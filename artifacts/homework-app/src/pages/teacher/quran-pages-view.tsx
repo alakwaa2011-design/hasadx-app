@@ -329,7 +329,6 @@ export function QuranPagesView({
     const nextVerse = verses.find((verse) => verse.page_id === nextPage);
     setTurnDirection(nextPage > activePage ? "next" : "previous");
     setActivePage(nextPage);
-    setMobileToolsOpen(false);
     if (!isPlaying) {
       setAudioDockOpen(false);
       setEducationSelection(null);
@@ -547,12 +546,7 @@ export function QuranPagesView({
               <div className={cn(
                 "order-3 w-full flex-wrap items-center justify-center gap-2 md:order-none md:flex md:w-auto md:flex-1",
                 mobileToolsOpen ? "flex" : "hidden",
-              )}
-                onClickCapture={(event) => {
-                  if ((event.target as HTMLElement).closest("button, a")) setMobileToolsOpen(false);
-                }}
-                onChangeCapture={() => setMobileToolsOpen(false)}
-              >
+              )}>
                 {isIndependentPractice && (
                   <button
                     type="button"
@@ -654,11 +648,7 @@ export function QuranPagesView({
             <div className={cn(
               "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
               mobileToolsOpen ? "flex" : "hidden",
-            )}
-              onClickCapture={(event) => {
-                if ((event.target as HTMLElement).closest("button, a")) setMobileToolsOpen(false);
-              }}
-            >
+            )}>
               <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
               <button
                 type="button"

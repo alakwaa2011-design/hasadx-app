@@ -636,12 +636,7 @@ export function QuranTextReaderView({
             <div className={cn(
               "order-3 w-full items-center justify-center gap-2 overflow-x-auto md:order-none md:flex md:w-auto md:flex-1",
               mobileToolsOpen ? "flex" : "hidden",
-            )}
-              onClickCapture={(event) => {
-                if ((event.target as HTMLElement).closest('button, a')) setMobileToolsOpen(false);
-              }}
-              onChangeCapture={() => setMobileToolsOpen(false)}
-            >
+            )}>
               <select 
                 value={surahNumber} 
                 disabled={isStudentWard}
@@ -712,11 +707,7 @@ export function QuranTextReaderView({
             <div className={cn(
               "order-4 w-full items-center justify-center gap-1 text-muted-foreground md:order-none md:flex md:w-auto md:gap-2",
               mobileToolsOpen ? "flex" : "hidden",
-            )}
-              onClickCapture={(event) => {
-                if ((event.target as HTMLElement).closest('button, a')) setMobileToolsOpen(false);
-              }}
-            >
+            )}>
               {isIndependentPractice && (
                 <button
                   type="button"

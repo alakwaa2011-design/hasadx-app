@@ -530,12 +530,6 @@ export function QuranAudioPlayer({
          <div
            id="quran-memo-settings"
            className="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50 mb-2 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200"
-           onClickCapture={(event) => {
-             if ((event.target as HTMLElement).closest('button')) queueMicrotask(() => setActiveTab('none'));
-           }}
-           onChangeCapture={(event) => {
-             if (event.target instanceof HTMLSelectElement) setActiveTab('none');
-           }}
          >
           <div className="flex items-center gap-2 mb-1 hidden md:flex">
              <BookOpen className="w-5 h-5 text-amber-700 dark:text-amber-500" />
@@ -645,9 +639,6 @@ export function QuranAudioPlayer({
         <div
           id="quran-audio-settings"
           className="flex flex-wrap items-center justify-between gap-4 p-3 bg-muted/30 rounded-xl mb-1 text-sm border border-border/50 animate-in fade-in zoom-in-95 duration-200"
-          onClickCapture={(event) => {
-            if ((event.target as HTMLElement).closest('button')) queueMicrotask(() => setActiveTab('none'));
-          }}
         >
           <div className="flex w-full flex-wrap items-start gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-72">
