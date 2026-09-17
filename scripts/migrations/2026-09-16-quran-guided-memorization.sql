@@ -23,3 +23,19 @@ CREATE TABLE IF NOT EXISTS quran_guided_memorization_assessment_receipts (
 );
 CREATE INDEX IF NOT EXISTS quran_guided_memorization_receipts_item_idx
   ON quran_guided_memorization_assessment_receipts(memorization_item_id);
+CREATE TABLE IF NOT EXISTS quran_guided_memorization_assessment_history (
+  id SERIAL PRIMARY KEY,
+  student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,
+  memorization_item_id INTEGER NOT NULL REFERENCES quran_guided_memorization(id) ON DELETE CASCADE,
+  request_id TEXT NOT NULL,
+  passed BOOLEAN NOT NULL,
+  status TEXT NOT NULL,
+  interval_days INTEGER NOT NULL,
+  next_review_date DATE NOT NULL,
+  assessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT quran_guided_memorization_history_owner_request_uq UNIQUE (student_account_id, request_id)
+);
+CREATE INDEX IF NOT EXISTS quran_guided_memorization_history_item_idx
+  ON quran_guided_memorization_assessment_history(memorization_item_id, assessed_at);
+CREATE INDEX IF NOT EXISTS quran_guided_memorization_history_owner_date_idx
+  ON quran_guided_memorization_assessment_history(student_account_id, assessed_at);

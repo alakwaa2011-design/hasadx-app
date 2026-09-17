@@ -4,17 +4,18 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListQuranSurahs } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight, X, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
+import { QuranSmartReview } from "./quran-center/quran-smart-review";
 import { QuranPagesView } from "./quran-pages-view";
 import { QuranTextReaderView } from "./quran-reader";
 import { QuranBookmarksPanel } from "@/components/quran/quran-bookmarks-panel";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 
-export type QuranCenterTab = "mushaf" | "circles" | "queue" | "bookmarks";
+export type QuranCenterTab = "mushaf" | "circles" | "queue" | "bookmarks" | "smart_review";
 
 export default function QuranCenter({
   embedded = false,
@@ -30,7 +31,7 @@ export default function QuranCenter({
 
   const searchParams = new URLSearchParams(window.location.search);
   const requestedTab = searchParams.get("tab");
-  const tabFromQuery: QuranCenterTab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "bookmarks"
+  const tabFromQuery: QuranCenterTab = requestedTab === "circles" || requestedTab === "queue" || requestedTab === "bookmarks" || requestedTab === "smart_review"
     ? requestedTab
     : "mushaf";
   const [internalTab, setInternalTab] = useState<QuranCenterTab>(tabFromQuery);
@@ -116,6 +117,7 @@ export default function QuranCenter({
     { id: "bookmarks", label: lang === "ar" ? "العلامات" : "Bookmarks", icon: <Bookmark className="w-5 h-5" /> },
     { id: "circles", label: lang === "ar" ? "الحلقات والطلاب" : "Circles & Students", icon: <Users className="w-5 h-5" /> },
     { id: "queue", label: lang === "ar" ? "طابور المراجعة" : "Review Queue", icon: <ClipboardCheck className="w-5 h-5" /> },
+    { id: "smart_review", label: lang === "ar" ? "المراجعة الذكية" : "Smart Review", icon: <Brain className="w-5 h-5" /> },
   ] as const;
 
   const content = (
@@ -248,6 +250,7 @@ export default function QuranCenter({
               )}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}
+              {activeTab === "smart_review" && <QuranSmartReview surahs={surahs || []} />}
               {activeTab === "bookmarks" && (
                 <div className="p-4 md:p-8 max-w-4xl mx-auto w-full">
                   <div className="mb-6 flex items-center justify-between">

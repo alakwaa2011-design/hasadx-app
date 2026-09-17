@@ -1,0 +1,1 @@
+{"version":3,"file":"teacherQuranMemorizationItems.d.ts","sourceRoot":"","sources":["../../../src/generated/types/teacherQuranMemorizationItems.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,qBAAqB,EAAE,MAAM,yBAAyB,CAAC;AACrE,OAAO,KAAK,EAAE,oCAAoC,EAAE,MAAM,wCAAwC,CAAC;AAEnG,MAAM,WAAW,6BAA6B;IAC5C,OAAO,EAAE,oCAAoC,CAAC;IAC9C,KAAK,EAAE,qBAAqB,EAAE,CAAC;CAChC"}

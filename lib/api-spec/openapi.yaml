@@ -2540,6 +2540,77 @@ paths:
         "401": { description: Not authenticated }
         "403": { description: Student account required }
 
+  /quran/teacher/memorization/summary:
+    get:
+      operationId: getTeacherQuranMemorizationSummary
+      tags: [quran]
+      summary: Aggregate guided memorization for the teacher's entire roster
+      responses:
+        "200":
+          description: Roster aggregate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeacherQuranMemorizationSummary" }
+        "401": { description: Not authenticated }
+  /quran/teacher/memorization/students:
+    get:
+      operationId: listTeacherQuranMemorizationStudents
+      tags: [quran]
+      summary: Summarize guided memorization for every owned roster student
+      responses:
+        "200":
+          description: Student summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TeacherQuranMemorizationStudent" }
+        "401": { description: Not authenticated }
+  /quran/teacher/memorization/students/{studentId}:
+    get:
+      operationId: listTeacherQuranMemorizationItems
+      tags: [quran]
+      summary: Get guided memorization items for an owned student
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [needs_review, learning, memorized] }
+        - name: due
+          in: query
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Student items
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeacherQuranMemorizationItems" }
+        "401": { description: Not authenticated }
+        "404": { description: Student not found }
+  /quran/teacher/memorization/students/{studentId}/history:
+    get:
+      operationId: listTeacherQuranMemorizationHistory
+      tags: [quran]
+      summary: Get immutable guided memorization assessment history
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Assessment events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TeacherQuranMemorizationHistoryEvent" }
+        "401": { description: Not authenticated }
+        "404": { description: Student not found }
+
 components:
   parameters:
     QuranId:
@@ -2578,6 +2649,61 @@ components:
         learning: { type: integer }
         memorized: { type: integer }
         due: { type: integer }
+    TeacherQuranMemorizationSummary:
+      type: object
+      required: [rosterCount, linkedCount, unlinkedCount, total, learning, needsReview, memorized, due]
+      properties:
+        rosterCount: { type: integer }
+        linkedCount: { type: integer }
+        unlinkedCount: { type: integer }
+        total: { type: integer }
+        learning: { type: integer }
+        needsReview: { type: integer }
+        memorized: { type: integer }
+        due: { type: integer }
+    TeacherQuranMemorizationStudent:
+      type: object
+      required: [studentId, name, gradeLevel, studentClass, linked, total, learning, needsReview, memorized, due, lastAssessedAt]
+      properties:
+        studentId: { type: integer }
+        name: { type: string }
+        gradeLevel: { type: ["string", "null"] }
+        studentClass: { type: ["string", "null"] }
+        linked: { type: boolean }
+        total: { type: integer }
+        learning: { type: integer }
+        needsReview: { type: integer }
+        memorized: { type: integer }
+        due: { type: integer }
+        lastAssessedAt: { type: ["string", "null"], format: date-time }
+    TeacherQuranMemorizationItems:
+      type: object
+      required: [student, items]
+      properties:
+        student:
+          type: object
+          required: [studentId, name, gradeLevel, studentClass, linked]
+          properties:
+            studentId: { type: integer }
+            name: { type: string }
+            gradeLevel: { type: ["string", "null"] }
+            studentClass: { type: ["string", "null"] }
+            linked: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/QuranMemorizationItem" }
+    TeacherQuranMemorizationHistoryEvent:
+      type: object
+      required: [id, memorizationItemId, requestId, passed, status, intervalDays, nextReviewDate, assessedAt]
+      properties:
+        id: { type: integer }
+        memorizationItemId: { type: integer }
+        requestId: { type: string }
+        passed: { type: boolean }
+        status: { type: string, enum: [needs_review, learning, memorized] }
+        intervalDays: { type: integer }
+        nextReviewDate: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        assessedAt: { type: string, format: date-time }
     QuranSurah:
       type: object
       properties:

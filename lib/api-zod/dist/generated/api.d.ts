@@ -17305,4 +17305,290 @@ export declare const GetQuranMemorizationSummaryResponse: zodV3.ZodObject<{
     needsReview: number;
     due: number;
 }>;
+/**
+ * @summary Aggregate guided memorization for the teacher's entire roster
+ */
+export declare const GetTeacherQuranMemorizationSummaryResponse: zodV3.ZodObject<{
+    rosterCount: zodV3.ZodNumber;
+    linkedCount: zodV3.ZodNumber;
+    unlinkedCount: zodV3.ZodNumber;
+    total: zodV3.ZodNumber;
+    learning: zodV3.ZodNumber;
+    needsReview: zodV3.ZodNumber;
+    memorized: zodV3.ZodNumber;
+    due: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    total: number;
+    learning: number;
+    memorized: number;
+    needsReview: number;
+    due: number;
+    rosterCount: number;
+    linkedCount: number;
+    unlinkedCount: number;
+}, {
+    total: number;
+    learning: number;
+    memorized: number;
+    needsReview: number;
+    due: number;
+    rosterCount: number;
+    linkedCount: number;
+    unlinkedCount: number;
+}>;
+/**
+ * @summary Summarize guided memorization for every owned roster student
+ */
+export declare const ListTeacherQuranMemorizationStudentsResponseItem: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+    studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    linked: zodV3.ZodBoolean;
+    total: zodV3.ZodNumber;
+    learning: zodV3.ZodNumber;
+    needsReview: zodV3.ZodNumber;
+    memorized: zodV3.ZodNumber;
+    due: zodV3.ZodNumber;
+    lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    studentClass: string | null;
+    gradeLevel: string | null;
+    total: number;
+    studentId: number;
+    learning: number;
+    memorized: number;
+    lastAssessedAt: Date | null;
+    needsReview: number;
+    due: number;
+    linked: boolean;
+}, {
+    name: string;
+    studentClass: string | null;
+    gradeLevel: string | null;
+    total: number;
+    studentId: number;
+    learning: number;
+    memorized: number;
+    lastAssessedAt: Date | null;
+    needsReview: number;
+    due: number;
+    linked: boolean;
+}>;
+export declare const ListTeacherQuranMemorizationStudentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+    name: zodV3.ZodString;
+    gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+    studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+    linked: zodV3.ZodBoolean;
+    total: zodV3.ZodNumber;
+    learning: zodV3.ZodNumber;
+    needsReview: zodV3.ZodNumber;
+    memorized: zodV3.ZodNumber;
+    due: zodV3.ZodNumber;
+    lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
+}, "strip", zodV3.ZodTypeAny, {
+    name: string;
+    studentClass: string | null;
+    gradeLevel: string | null;
+    total: number;
+    studentId: number;
+    learning: number;
+    memorized: number;
+    lastAssessedAt: Date | null;
+    needsReview: number;
+    due: number;
+    linked: boolean;
+}, {
+    name: string;
+    studentClass: string | null;
+    gradeLevel: string | null;
+    total: number;
+    studentId: number;
+    learning: number;
+    memorized: number;
+    lastAssessedAt: Date | null;
+    needsReview: number;
+    due: number;
+    linked: boolean;
+}>, "many">;
+/**
+ * @summary Get guided memorization items for an owned student
+ */
+export declare const ListTeacherQuranMemorizationItemsParams: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    studentId: number;
+}, {
+    studentId: number;
+}>;
+export declare const ListTeacherQuranMemorizationItemsQueryParams: zodV3.ZodObject<{
+    status: zodV3.ZodOptional<zodV3.ZodEnum<["needs_review", "learning", "memorized"]>>;
+    due: zodV3.ZodOptional<zodV3.ZodBoolean>;
+}, "strip", zodV3.ZodTypeAny, {
+    status?: "needs_review" | "learning" | "memorized" | undefined;
+    due?: boolean | undefined;
+}, {
+    status?: "needs_review" | "learning" | "memorized" | undefined;
+    due?: boolean | undefined;
+}>;
+export declare const listTeacherQuranMemorizationItemsResponseItemsItemNextReviewDateRegExp: RegExp;
+export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<{
+    student: zodV3.ZodObject<{
+        studentId: zodV3.ZodNumber;
+        name: zodV3.ZodString;
+        gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
+        studentClass: zodV3.ZodNullable<zodV3.ZodString>;
+        linked: zodV3.ZodBoolean;
+    }, "strip", zodV3.ZodTypeAny, {
+        name: string;
+        studentClass: string | null;
+        gradeLevel: string | null;
+        studentId: number;
+        linked: boolean;
+    }, {
+        name: string;
+        studentClass: string | null;
+        gradeLevel: string | null;
+        studentId: number;
+        linked: boolean;
+    }>;
+    items: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodNumber;
+        surahNumber: zodV3.ZodNumber;
+        ayahNumber: zodV3.ZodNumber;
+        status: zodV3.ZodEnum<["needs_review", "learning", "memorized"]>;
+        intervalDays: zodV3.ZodNumber;
+        nextReviewDate: zodV3.ZodString;
+        lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
+        createdAt: zodV3.ZodDate;
+        updatedAt: zodV3.ZodDate;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "needs_review" | "learning" | "memorized";
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        surahNumber: number;
+        ayahNumber: number;
+        intervalDays: number;
+        nextReviewDate: string;
+        lastAssessedAt: Date | null;
+    }, {
+        status: "needs_review" | "learning" | "memorized";
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        surahNumber: number;
+        ayahNumber: number;
+        intervalDays: number;
+        nextReviewDate: string;
+        lastAssessedAt: Date | null;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    student: {
+        name: string;
+        studentClass: string | null;
+        gradeLevel: string | null;
+        studentId: number;
+        linked: boolean;
+    };
+    items: {
+        status: "needs_review" | "learning" | "memorized";
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        surahNumber: number;
+        ayahNumber: number;
+        intervalDays: number;
+        nextReviewDate: string;
+        lastAssessedAt: Date | null;
+    }[];
+}, {
+    student: {
+        name: string;
+        studentClass: string | null;
+        gradeLevel: string | null;
+        studentId: number;
+        linked: boolean;
+    };
+    items: {
+        status: "needs_review" | "learning" | "memorized";
+        id: number;
+        createdAt: Date;
+        updatedAt: Date;
+        surahNumber: number;
+        ayahNumber: number;
+        intervalDays: number;
+        nextReviewDate: string;
+        lastAssessedAt: Date | null;
+    }[];
+}>;
+/**
+ * @summary Get immutable guided memorization assessment history
+ */
+export declare const ListTeacherQuranMemorizationHistoryParams: zodV3.ZodObject<{
+    studentId: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    studentId: number;
+}, {
+    studentId: number;
+}>;
+export declare const listTeacherQuranMemorizationHistoryResponseNextReviewDateRegExp: RegExp;
+export declare const ListTeacherQuranMemorizationHistoryResponseItem: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    memorizationItemId: zodV3.ZodNumber;
+    requestId: zodV3.ZodString;
+    passed: zodV3.ZodBoolean;
+    status: zodV3.ZodEnum<["needs_review", "learning", "memorized"]>;
+    intervalDays: zodV3.ZodNumber;
+    nextReviewDate: zodV3.ZodString;
+    assessedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "needs_review" | "learning" | "memorized";
+    id: number;
+    requestId: string;
+    intervalDays: number;
+    nextReviewDate: string;
+    passed: boolean;
+    memorizationItemId: number;
+    assessedAt: Date;
+}, {
+    status: "needs_review" | "learning" | "memorized";
+    id: number;
+    requestId: string;
+    intervalDays: number;
+    nextReviewDate: string;
+    passed: boolean;
+    memorizationItemId: number;
+    assessedAt: Date;
+}>;
+export declare const ListTeacherQuranMemorizationHistoryResponse: zodV3.ZodArray<zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+    memorizationItemId: zodV3.ZodNumber;
+    requestId: zodV3.ZodString;
+    passed: zodV3.ZodBoolean;
+    status: zodV3.ZodEnum<["needs_review", "learning", "memorized"]>;
+    intervalDays: zodV3.ZodNumber;
+    nextReviewDate: zodV3.ZodString;
+    assessedAt: zodV3.ZodDate;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "needs_review" | "learning" | "memorized";
+    id: number;
+    requestId: string;
+    intervalDays: number;
+    nextReviewDate: string;
+    passed: boolean;
+    memorizationItemId: number;
+    assessedAt: Date;
+}, {
+    status: "needs_review" | "learning" | "memorized";
+    id: number;
+    requestId: string;
+    intervalDays: number;
+    nextReviewDate: string;
+    passed: boolean;
+    memorizationItemId: number;
+    assessedAt: Date;
+}>, "many">;
 //# sourceMappingURL=api.d.ts.map

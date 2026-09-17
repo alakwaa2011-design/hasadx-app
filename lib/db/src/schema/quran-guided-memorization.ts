@@ -1,4 +1,4 @@
-import { date, integer, pgTable, serial, timestamp, text, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { boolean, date, integer, pgTable, serial, timestamp, text, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -37,4 +37,21 @@ export const quranGuidedMemorizationAssessmentReceiptsTable = pgTable("quran_gui
 }, (table) => ({
   ownerRequestUnique: uniqueIndex("quran_guided_memorization_receipts_owner_request_uq").on(table.studentAccountId, table.requestId),
   itemIndex: index("quran_guided_memorization_receipts_item_idx").on(table.memorizationItemId),
+}));
+
+/** Immutable event log for the student's guided memorization assessments. */
+export const quranGuidedMemorizationAssessmentHistoryTable = pgTable("quran_guided_memorization_assessment_history", {
+  id: serial("id").primaryKey(),
+  studentAccountId: integer("student_account_id").notNull().references(() => studentAccountsTable.id, { onDelete: "cascade" }),
+  memorizationItemId: integer("memorization_item_id").notNull().references(() => quranGuidedMemorizationTable.id, { onDelete: "cascade" }),
+  requestId: text("request_id").notNull(),
+  passed: boolean("passed").notNull(),
+  status: text("status").notNull(),
+  intervalDays: integer("interval_days").notNull(),
+  nextReviewDate: date("next_review_date", { mode: "string" }).notNull(),
+  assessedAt: timestamp("assessed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  itemIndex: index("quran_guided_memorization_history_item_idx").on(table.memorizationItemId, table.assessedAt),
+  ownerDateIndex: index("quran_guided_memorization_history_owner_date_idx").on(table.studentAccountId, table.assessedAt),
+  requestUnique: uniqueIndex("quran_guided_memorization_history_owner_request_uq").on(table.studentAccountId, table.requestId),
 }));

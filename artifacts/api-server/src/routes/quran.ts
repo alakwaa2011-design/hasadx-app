@@ -17,6 +17,7 @@ import {
   quranBookmarksTable,
   quranGuidedMemorizationTable,
   quranGuidedMemorizationAssessmentReceiptsTable,
+  quranGuidedMemorizationAssessmentHistoryTable,
   quranWardsTable,
   studentAccountsTable,
   studentsTable,
@@ -102,6 +103,10 @@ import {
   AssessMyQuranMemorizationResponse,
   GetDueQuranMemorizationResponse,
   GetQuranMemorizationSummaryResponse,
+  GetTeacherQuranMemorizationSummaryResponse,
+  ListTeacherQuranMemorizationStudentsResponse,
+  ListTeacherQuranMemorizationItemsResponse,
+  ListTeacherQuranMemorizationHistoryResponse,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
@@ -588,6 +593,16 @@ router.post("/quran/me/memorization/assess", async (req, res): Promise<void> => 
     await tx.insert(quranGuidedMemorizationAssessmentReceiptsTable).values({
       studentAccountId: accountId, requestId: parsed.data.requestId, memorizationItemId: updated.id,
     });
+    await tx.insert(quranGuidedMemorizationAssessmentHistoryTable).values({
+      studentAccountId: accountId,
+      memorizationItemId: updated.id,
+      requestId: parsed.data.requestId,
+      passed: parsed.data.passed,
+      status: updated.status,
+      intervalDays: updated.intervalDays,
+      nextReviewDate: updated.nextReviewDate,
+      assessedAt: updated.lastAssessedAt ?? new Date(),
+    });
     return updated;
   });
   res.json(AssessMyQuranMemorizationResponse.parse(item));
@@ -616,6 +631,114 @@ router.get("/quran/me/memorization/summary", async (req, res): Promise<void> => 
     due: items.filter((item) => item.nextReviewDate <= quranCalendarToday()).length,
   };
   res.json(GetQuranMemorizationSummaryResponse.parse(summary));
+});
+
+// Teacher views are always joined through the owned roster.  In particular, an
+// account id never acts as an authorization boundary for these endpoints.
+router.get("/quran/teacher/memorization/summary", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const today = quranCalendarToday();
+  const summaryResult = await db.execute(sql`
+    SELECT count(DISTINCT s.id)::int AS roster_count,
+      count(g.id)::int AS total,
+      count(g.id) FILTER (WHERE g.status = 'learning')::int AS learning,
+      count(g.id) FILTER (WHERE g.status = 'needs_review')::int AS needs_review,
+      count(g.id) FILTER (WHERE g.status = 'memorized')::int AS memorized,
+      count(g.id) FILTER (WHERE g.next_review_date <= ${today})::int AS due,
+      count(DISTINCT s.id) FILTER (WHERE s.student_account_id IS NOT NULL)::int AS linked_count,
+      count(DISTINCT s.id) FILTER (WHERE s.student_account_id IS NULL)::int AS unlinked_count
+    FROM students s LEFT JOIN quran_guided_memorization g ON g.student_account_id = s.student_account_id
+    WHERE s.teacher_id = ${teacherId}
+  `);
+  const row = summaryResult.rows[0];
+  res.set("Cache-Control", "private, no-store");
+  res.json(GetTeacherQuranMemorizationSummaryResponse.parse({
+    rosterCount: Number(row?.roster_count ?? 0), linkedCount: Number(row?.linked_count ?? 0),
+    unlinkedCount: Number(row?.unlinked_count ?? 0), total: Number(row?.total ?? 0),
+    learning: Number(row?.learning ?? 0), needsReview: Number(row?.needs_review ?? 0),
+    memorized: Number(row?.memorized ?? 0), due: Number(row?.due ?? 0),
+  }));
+});
+
+router.get("/quran/teacher/memorization/students", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const today = quranCalendarToday();
+  const rows = await db.execute(sql`
+    SELECT s.id AS student_id, s.name, s.grade_level, s.student_class,
+      (s.student_account_id IS NOT NULL) AS linked,
+      count(g.id)::int AS total,
+      count(g.id) FILTER (WHERE g.status = 'learning')::int AS learning,
+      count(g.id) FILTER (WHERE g.status = 'needs_review')::int AS needs_review,
+      count(g.id) FILTER (WHERE g.status = 'memorized')::int AS memorized,
+      count(g.id) FILTER (WHERE g.next_review_date <= ${today})::int AS due,
+      max(g.last_assessed_at) AS last_assessed_at
+    FROM students s LEFT JOIN quran_guided_memorization g ON g.student_account_id = s.student_account_id
+    WHERE s.teacher_id = ${teacherId}
+    GROUP BY s.id ORDER BY s.name, s.id
+  `);
+  res.set("Cache-Control", "private, no-store");
+  res.json(ListTeacherQuranMemorizationStudentsResponse.parse(rows.rows.map((r) => ({
+    studentId: Number(r.student_id), name: r.name, gradeLevel: r.grade_level,
+    studentClass: r.student_class, linked: r.linked, total: Number(r.total),
+    learning: Number(r.learning), needsReview: Number(r.needs_review),
+    memorized: Number(r.memorized), due: Number(r.due), lastAssessedAt: r.last_assessed_at,
+  }))));
+});
+
+router.get("/quran/teacher/memorization/students/:studentId", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const studentId = Number(req.params.studentId);
+  if (!Number.isInteger(studentId)) { res.status(400).json({ error: "Invalid student" }); return; }
+  const status = typeof req.query.status === "string" ? req.query.status : null;
+  const dueOnly = req.query.due === "true";
+  const today = quranCalendarToday();
+  const rows = await db.execute(sql`
+    SELECT s.id AS student_id, s.name, s.grade_level, s.student_class,
+      (s.student_account_id IS NOT NULL) AS linked, g.id, g.surah_number, g.ayah_number,
+      g.status, g.interval_days, g.next_review_date, g.last_assessed_at, g.created_at, g.updated_at
+    FROM students s LEFT JOIN quran_guided_memorization g ON g.student_account_id = s.student_account_id
+      AND (${status}::text IS NULL OR g.status = ${status})
+      AND (${dueOnly} = false OR g.next_review_date <= ${today})
+    WHERE s.teacher_id = ${teacherId} AND s.id = ${studentId}
+    ORDER BY g.surah_number, g.ayah_number
+  `);
+  if (!rows.rows.length) { res.status(404).json({ error: "Student not found" }); return; }
+  const first = rows.rows[0];
+  res.set("Cache-Control", "private, no-store");
+  res.json(ListTeacherQuranMemorizationItemsResponse.parse({
+    student: { studentId, name: first.name, gradeLevel: first.grade_level, studentClass: first.student_class, linked: first.linked },
+    items: rows.rows.filter((r) => r.id !== null).map((r) => ({
+      id: Number(r.id), surahNumber: Number(r.surah_number), ayahNumber: Number(r.ayah_number),
+      status: r.status, intervalDays: Number(r.interval_days), nextReviewDate: r.next_review_date,
+      lastAssessedAt: r.last_assessed_at, createdAt: r.created_at, updatedAt: r.updated_at,
+    })),
+  }));
+});
+
+router.get("/quran/teacher/memorization/students/:studentId/history", async (req, res): Promise<void> => {
+  const teacherId = teacherIdOf(req);
+  if (teacherId === null) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const studentId = Number(req.params.studentId);
+  const rows = await db.execute(sql`
+    SELECT h.id, h.memorization_item_id, h.request_id, h.passed, h.status, h.interval_days,
+      h.next_review_date, h.assessed_at
+    FROM quran_guided_memorization_assessment_history h
+    JOIN students s ON s.student_account_id = h.student_account_id
+    WHERE s.teacher_id = ${teacherId} AND s.id = ${studentId}
+    ORDER BY h.assessed_at DESC, h.id DESC
+  `);
+  const [owned] = await db.select({ id: studentsTable.id }).from(studentsTable)
+    .where(and(eq(studentsTable.id, studentId), eq(studentsTable.teacherId, teacherId))).limit(1);
+  if (!owned) { res.status(404).json({ error: "Student not found" }); return; }
+  res.set("Cache-Control", "private, no-store");
+  res.json(ListTeacherQuranMemorizationHistoryResponse.parse(rows.rows.map((r) => ({
+    id: Number(r.id), memorizationItemId: Number(r.memorization_item_id), requestId: r.request_id,
+    passed: r.passed, status: r.status, intervalDays: Number(r.interval_days),
+    nextReviewDate: r.next_review_date, assessedAt: r.assessed_at,
+  }))));
 });
 
 router.get("/quran/reader-state", async (req, res): Promise<void> => {

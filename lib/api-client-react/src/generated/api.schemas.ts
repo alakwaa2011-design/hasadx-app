@@ -47,6 +47,70 @@ export interface QuranMemorizationSummary {
   due: number;
 }
 
+export interface TeacherQuranMemorizationSummary {
+  rosterCount: number;
+  linkedCount: number;
+  unlinkedCount: number;
+  total: number;
+  learning: number;
+  needsReview: number;
+  memorized: number;
+  due: number;
+}
+
+export interface TeacherQuranMemorizationStudent {
+  studentId: number;
+  name: string;
+  /** @nullable */
+  gradeLevel: string | null;
+  /** @nullable */
+  studentClass: string | null;
+  linked: boolean;
+  total: number;
+  learning: number;
+  needsReview: number;
+  memorized: number;
+  due: number;
+  /** @nullable */
+  lastAssessedAt: string | null;
+}
+
+export type TeacherQuranMemorizationItemsStudent = {
+  studentId: number;
+  name: string;
+  /** @nullable */
+  gradeLevel: string | null;
+  /** @nullable */
+  studentClass: string | null;
+  linked: boolean;
+};
+
+export interface TeacherQuranMemorizationItems {
+  student: TeacherQuranMemorizationItemsStudent;
+  items: QuranMemorizationItem[];
+}
+
+export type TeacherQuranMemorizationHistoryEventStatus = typeof TeacherQuranMemorizationHistoryEventStatus[keyof typeof TeacherQuranMemorizationHistoryEventStatus];
+
+
+export const TeacherQuranMemorizationHistoryEventStatus = {
+  needs_review: 'needs_review',
+  learning: 'learning',
+  memorized: 'memorized',
+} as const;
+
+export interface TeacherQuranMemorizationHistoryEvent {
+  id: number;
+  memorizationItemId: number;
+  requestId: string;
+  passed: boolean;
+  status: TeacherQuranMemorizationHistoryEventStatus;
+  intervalDays: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  nextReviewDate: string;
+  assessedAt: string;
+}
+
 export interface QuranSurah {
   /**
      * @minimum 1
@@ -3059,3 +3123,17 @@ export type GetQuranAyahEducationParams = {
  */
 wordPosition?: number;
 };
+
+export type ListTeacherQuranMemorizationItemsParams = {
+status?: ListTeacherQuranMemorizationItemsStatus;
+due?: boolean;
+};
+
+export type ListTeacherQuranMemorizationItemsStatus = typeof ListTeacherQuranMemorizationItemsStatus[keyof typeof ListTeacherQuranMemorizationItemsStatus];
+
+
+export const ListTeacherQuranMemorizationItemsStatus = {
+  needs_review: 'needs_review',
+  learning: 'learning',
+  memorized: 'memorized',
+} as const;

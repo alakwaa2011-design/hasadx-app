@@ -6079,3 +6079,97 @@ export const GetQuranMemorizationSummaryResponse = zod.object({
   "memorized": zod.int(),
   "due": zod.int()
 })
+
+
+/**
+ * @summary Aggregate guided memorization for the teacher's entire roster
+ */
+export const GetTeacherQuranMemorizationSummaryResponse = zod.object({
+  "rosterCount": zod.int(),
+  "linkedCount": zod.int(),
+  "unlinkedCount": zod.int(),
+  "total": zod.int(),
+  "learning": zod.int(),
+  "needsReview": zod.int(),
+  "memorized": zod.int(),
+  "due": zod.int()
+})
+
+
+/**
+ * @summary Summarize guided memorization for every owned roster student
+ */
+export const ListTeacherQuranMemorizationStudentsResponseItem = zod.object({
+  "studentId": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable(),
+  "linked": zod.boolean(),
+  "total": zod.int(),
+  "learning": zod.int(),
+  "needsReview": zod.int(),
+  "memorized": zod.int(),
+  "due": zod.int(),
+  "lastAssessedAt": zod.coerce.date().nullable()
+})
+export const ListTeacherQuranMemorizationStudentsResponse = zod.array(ListTeacherQuranMemorizationStudentsResponseItem)
+
+
+/**
+ * @summary Get guided memorization items for an owned student
+ */
+export const ListTeacherQuranMemorizationItemsParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const ListTeacherQuranMemorizationItemsQueryParams = zod.object({
+  "status": zod.enum(['needs_review', 'learning', 'memorized']).optional(),
+  "due": zod.coerce.boolean().optional()
+})
+
+export const listTeacherQuranMemorizationItemsResponseItemsItemNextReviewDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListTeacherQuranMemorizationItemsResponse = zod.object({
+  "student": zod.object({
+  "studentId": zod.int(),
+  "name": zod.string(),
+  "gradeLevel": zod.string().nullable(),
+  "studentClass": zod.string().nullable(),
+  "linked": zod.boolean()
+}),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "surahNumber": zod.int(),
+  "ayahNumber": zod.int(),
+  "status": zod.enum(['needs_review', 'learning', 'memorized']),
+  "intervalDays": zod.int(),
+  "nextReviewDate": zod.string().regex(listTeacherQuranMemorizationItemsResponseItemsItemNextReviewDateRegExp),
+  "lastAssessedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get immutable guided memorization assessment history
+ */
+export const ListTeacherQuranMemorizationHistoryParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const listTeacherQuranMemorizationHistoryResponseNextReviewDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const ListTeacherQuranMemorizationHistoryResponseItem = zod.object({
+  "id": zod.int(),
+  "memorizationItemId": zod.int(),
+  "requestId": zod.string(),
+  "passed": zod.boolean(),
+  "status": zod.enum(['needs_review', 'learning', 'memorized']),
+  "intervalDays": zod.int(),
+  "nextReviewDate": zod.string().regex(listTeacherQuranMemorizationHistoryResponseNextReviewDateRegExp),
+  "assessedAt": zod.coerce.date()
+})
+export const ListTeacherQuranMemorizationHistoryResponse = zod.array(ListTeacherQuranMemorizationHistoryResponseItem)
