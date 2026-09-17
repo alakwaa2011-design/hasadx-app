@@ -85,6 +85,7 @@ import type {
   QuranReaderState,
   QuranRecitation,
   QuranRecitationInput,
+  QuranRecitationPartialResponse,
   QuranReciterCatalog,
   QuranReviewWard,
   QuranStudent,
@@ -126,6 +127,7 @@ import type {
   TeacherScheduleEntryInput,
   TeacherScheduleEntryUpdate,
   TeacherSession,
+  TranscribeQuranRecitationPartialBody,
   UpdateAiVideoProjectBody,
   UpdateAnswerBody,
   UpdateAssignmentLifecycleBody,
@@ -6334,6 +6336,84 @@ export function useGetQuranSurahContent<TData = Awaited<ReturnType<typeof getQur
 
 
 
+
+export const getTranscribeQuranRecitationPartialUrl = () => {
+
+
+
+
+  return `/api/quran/recitation/partial`
+}
+
+/**
+ * @summary Transcribe a short authenticated Quran recitation audio chunk
+ */
+export const transcribeQuranRecitationPartial = async (transcribeQuranRecitationPartialBody: TranscribeQuranRecitationPartialBody, options?: Parameters<typeof customFetch>[1]): Promise<QuranRecitationPartialResponse> => {
+    const formData = new FormData();
+formData.append(`audio`, transcribeQuranRecitationPartialBody.audio);
+formData.append(`surahNumber`, transcribeQuranRecitationPartialBody.surahNumber.toString())
+formData.append(`ayahNumber`, transcribeQuranRecitationPartialBody.ayahNumber.toString())
+
+  return customFetch<QuranRecitationPartialResponse>(getTranscribeQuranRecitationPartialUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getTranscribeQuranRecitationPartialMutationKey = () => ['transcribeQuranRecitationPartial'] as const;
+
+export const getTranscribeQuranRecitationPartialMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeQuranRecitationPartial>>, TError,TranscribeQuranRecitationPartialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof transcribeQuranRecitationPartial>>, TError,TranscribeQuranRecitationPartialMutationVariables, TContext> => {
+
+const mutationKey = getTranscribeQuranRecitationPartialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof transcribeQuranRecitationPartial>>, TranscribeQuranRecitationPartialMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  transcribeQuranRecitationPartial(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TranscribeQuranRecitationPartialMutationResult = NonNullable<Awaited<ReturnType<typeof transcribeQuranRecitationPartial>>>
+    export type TranscribeQuranRecitationPartialMutationBody = BodyType<TranscribeQuranRecitationPartialBody>
+    export type TranscribeQuranRecitationPartialMutationError = ErrorType<void>
+    export type TranscribeQuranRecitationPartialMutationVariables = {data: BodyType<TranscribeQuranRecitationPartialBody>}
+
+    /**
+ * @summary Transcribe a short authenticated Quran recitation audio chunk
+ */
+export const useTranscribeQuranRecitationPartial = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof transcribeQuranRecitationPartial>>, TError,TranscribeQuranRecitationPartialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof transcribeQuranRecitationPartial>>,
+        TError,
+        TranscribeQuranRecitationPartialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTranscribeQuranRecitationPartialMutationOptions(options));
+    }
 
 export const getGetQuranAyahAudioUrl = (recitationId: number,
     surahNumber: number,

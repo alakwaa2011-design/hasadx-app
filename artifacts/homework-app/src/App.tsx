@@ -110,6 +110,7 @@ const QuranReader = lazy(() => import("@/pages/teacher/quran-reader"));
 const TeacherSchedule = lazy(() => import("@/pages/teacher/tools/schedule/index"));
 const WhiteboardMonitor = lazy(() => import("@/pages/teacher/whiteboard-monitor"));
 const QuranCenter = lazy(() => import("@/pages/teacher/quran-center"));
+const QuranRecitation = lazy(() => import("@/pages/teacher/quran-recitation"));
 const SharedContentPage = lazy(() => import("@/pages/teacher/shared-content"));
 const CategoriesPage = lazy(() => import("@/pages/teacher/categories"));
 const CollectionsPage = lazy(() => import("@/pages/teacher/collections"));
@@ -411,6 +412,7 @@ function Router() {
         <Route path="/teacher/quran-center">
           <QuranCenter />
         </Route>
+        <Route path="/teacher/quran-recitation/:surahNumber" component={QuranRecitation} />
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
         {/* Legacy /teacher/shared → redirect to the new activities library
@@ -532,6 +534,7 @@ function Router() {
             </ErrorBoundary>
           </Suspense>
         </Route>
+        <Route path="/student/quran-recitation/:surahNumber" component={QuranRecitation} />
         <Route path="/solve/adaptive/:id" component={AdaptiveSolve} />
         <Route path="/solve/:id" component={StudentSolve} />
         <Route path="/video/:id" component={StudentVideoLesson} />

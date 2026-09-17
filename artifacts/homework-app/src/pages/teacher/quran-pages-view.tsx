@@ -13,6 +13,7 @@ import {
   Bookmark,
   Loader2,
   Menu,
+  Mic2,
   X,
   ZoomIn,
   ZoomOut,
@@ -289,6 +290,12 @@ export function QuranPagesView({
   const selectedAyah = selectedVerseKey
     ? Number(selectedVerseKey.split(":")[1])
     : (fallbackVerse?.number ?? initialAyah);
+  const recitationBasePath = readerBasePath.startsWith("/student/")
+    ? "/student/quran-recitation"
+    : "/teacher/quran-recitation";
+  const openLiveRecitation = () => {
+    setLocation(`${recitationBasePath}/${selectedSurah}?ayah=${selectedAyah}`);
+  };
   const { data: selectedSurahContent, isFetching: isFetchingSelectedSurah } = useGetQuranSurahContent(selectedSurah, {
     query: {
       queryKey: getGetQuranSurahContentQueryKey(selectedSurah),
@@ -835,6 +842,15 @@ export function QuranPagesView({
                   >
                     {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
                   </button>
+                  <button
+                    type="button"
+                    onClick={openLiveRecitation}
+                    data-testid="button-live-recitation"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition-colors hover:bg-emerald-800 md:flex-none md:text-sm"
+                  >
+                    <Mic2 className="h-4 w-4" />
+                    {lang === "ar" ? "تسميع مباشر" : "Live recitation"}
+                  </button>
                 </div>
 
               </div>
@@ -959,6 +975,15 @@ export function QuranPagesView({
 
       {!quietMode && selectedVerseKey && (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur md:hidden rtl:translate-x-1/2 dark:bg-card/95">
+          <button
+            type="button"
+            onClick={openLiveRecitation}
+            data-testid="button-live-recitation-floating"
+            className="grid h-10 w-10 place-items-center rounded-full bg-emerald-700 text-white shadow-sm transition-colors hover:bg-emerald-800"
+            aria-label={lang === "ar" ? "بدء التسميع المباشر" : "Start live recitation"}
+          >
+            <Mic2 className="h-5 w-5" />
+          </button>
           <div className="relative">
             <button type="button" onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); }}
               data-testid="button-copy-actions-floating" className="relative grid h-10 w-10 place-items-center rounded-full text-emerald-800 hover:bg-emerald-50"

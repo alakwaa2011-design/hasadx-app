@@ -4577,6 +4577,50 @@ export const GetQuranSurahContentResponse = zod.object({
 
 
 /**
+ * @summary Transcribe a short authenticated Quran recitation audio chunk
+ */
+export const transcribeQuranRecitationPartialBodySurahNumberMax = 114;
+
+export const transcribeQuranRecitationPartialBodyAyahNumberMax = 286;
+
+
+
+export const TranscribeQuranRecitationPartialBody = zod.object({
+  "audio": zod.any(),
+  "surahNumber": zod.int().min(1).max(transcribeQuranRecitationPartialBodySurahNumberMax),
+  "ayahNumber": zod.int().min(1).max(transcribeQuranRecitationPartialBodyAyahNumberMax)
+})
+
+
+export const transcribeQuranRecitationPartialResponseWordsItemStartMin = 0;
+
+export const transcribeQuranRecitationPartialResponseWordsItemEndMin = 0;
+
+export const transcribeQuranRecitationPartialResponseWordsItemConfidenceMin = 0;
+export const transcribeQuranRecitationPartialResponseWordsItemConfidenceMax = 1;
+
+export const transcribeQuranRecitationPartialResponseAudioSecondsMin = 0;
+
+export const transcribeQuranRecitationPartialResponseInferenceSecondsMin = 0;
+
+
+
+
+export const TranscribeQuranRecitationPartialResponse = zod.object({
+  "text": zod.string(),
+  "words": zod.array(zod.object({
+  "word": zod.string().min(1),
+  "start": zod.number().min(transcribeQuranRecitationPartialResponseWordsItemStartMin),
+  "end": zod.number().min(transcribeQuranRecitationPartialResponseWordsItemEndMin),
+  "confidence": zod.number().min(transcribeQuranRecitationPartialResponseWordsItemConfidenceMin).max(transcribeQuranRecitationPartialResponseWordsItemConfidenceMax)
+})),
+  "audioSeconds": zod.number().min(transcribeQuranRecitationPartialResponseAudioSecondsMin),
+  "inferenceSeconds": zod.number().min(transcribeQuranRecitationPartialResponseInferenceSecondsMin),
+  "model": zod.string().min(1)
+})
+
+
+/**
  * @summary Redirect to the official audio for one ayah
  */
 

@@ -1,4 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type RequestHandler } from "express";
+import multer from "multer";
+import { rateLimit } from "express-rate-limit";
 import { and, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
 import {
   applyCompletedWardProgress,
@@ -107,6 +109,8 @@ import {
   ListTeacherQuranMemorizationStudentsResponse,
   ListTeacherQuranMemorizationItemsResponse,
   ListTeacherQuranMemorizationHistoryResponse,
+  TranscribeQuranRecitationPartialBody,
+  TranscribeQuranRecitationPartialResponse,
 } from "@workspace/api-zod";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 import { calculateQuranJourney } from "../lib/quran-journey";
@@ -126,6 +130,9 @@ const router: IRouter = Router();
 const quranSubmissionStorage = new ObjectStorageService();
 const QURAN_AUDIO_TYPES = new Set(["audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg"]);
 const QURAN_AUDIO_MAX_SIZE = 30 * 1024 * 1024;
+const QURAN_LIVE_AUDIO_MAX_SIZE = 1024 * 1024;
+const HAFIZ_AI_BASE_URL = "https://api.hafiz-ai.com";
+const activeQuranTranscriptions = new Set<string>();
 type TeacherRequest = { session?: { teacherId?: number; studentAccountId?: number }; log?: { error: (error: unknown, message: string) => void } };
 
 // Canonical metadata only. No verse text is stored or returned by this API.
@@ -176,6 +183,106 @@ function readerOwner(req: TeacherRequest) {
   if (studentAccountId !== null) return { studentAccountId, teacherId: null };
   const teacherId = teacherIdOf(req);
   return teacherId === null ? null : { teacherId, studentAccountId: null };
+}
+
+function quranRecitationOwnerKey(req: TeacherRequest): string | null {
+  const studentAccountId = studentAccountIdOf(req);
+  if (studentAccountId !== null) return `student:${studentAccountId}`;
+  const teacherId = teacherIdOf(req);
+  return teacherId === null ? null : `teacher:${teacherId}`;
+}
+
+const quranLiveAudioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: QURAN_LIVE_AUDIO_MAX_SIZE,
+    files: 1,
+    fields: 2,
+  },
+});
+
+const quranLiveRateLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => quranRecitationOwnerKey(req) ?? "unauthenticated",
+  message: { error: "Recitation recognition request limit reached" },
+});
+
+const requireQuranReaderSession: RequestHandler = (req, res, next) => {
+  if (!hasQuranReaderSession(req)) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  next();
+};
+
+const acceptQuranLiveAudio: RequestHandler = (req, res, next) => {
+  quranLiveAudioUpload.single("audio")(req, res, (error: unknown) => {
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "Audio chunk is too large" });
+      return;
+    }
+    if (error) {
+      res.status(400).json({ error: "Invalid audio upload" });
+      return;
+    }
+    next();
+  });
+};
+
+function getPcmWavDurationSeconds(buffer: Buffer): number | null {
+  if (
+    buffer.length < 44
+    || buffer.toString("ascii", 0, 4) !== "RIFF"
+    || buffer.toString("ascii", 8, 12) !== "WAVE"
+  ) {
+    return null;
+  }
+
+  let offset = 12;
+  let audioFormat: number | null = null;
+  let channels: number | null = null;
+  let sampleRate: number | null = null;
+  let byteRate: number | null = null;
+  let bitsPerSample: number | null = null;
+  let dataSize: number | null = null;
+
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString("ascii", offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const chunkStart = offset + 8;
+    if (chunkStart + chunkSize > buffer.length) return null;
+
+    if (chunkId === "fmt " && chunkSize >= 16) {
+      audioFormat = buffer.readUInt16LE(chunkStart);
+      channels = buffer.readUInt16LE(chunkStart + 2);
+      sampleRate = buffer.readUInt32LE(chunkStart + 4);
+      byteRate = buffer.readUInt32LE(chunkStart + 8);
+      bitsPerSample = buffer.readUInt16LE(chunkStart + 14);
+    } else if (chunkId === "data") {
+      dataSize = chunkSize;
+      break;
+    }
+    offset = chunkStart + chunkSize + (chunkSize % 2);
+  }
+
+  if (
+    audioFormat !== 1
+    || channels !== 1
+    || bitsPerSample !== 16
+    || sampleRate === null
+    || sampleRate < 8_000
+    || sampleRate > 48_000
+    || byteRate === null
+    || byteRate !== sampleRate * 2
+    || dataSize === null
+  ) {
+    return null;
+  }
+
+  return dataSize / byteRate;
 }
 
 function validReaderVerse(surahNumber: number, ayahNumber: number, pageNumber: number): boolean {
@@ -415,6 +522,152 @@ router.get("/quran/content/:surahNumber", async (req, res): Promise<void> => {
     res.status(503).json({ error: "Official Quran text is temporarily unavailable" });
   }
 });
+
+router.post(
+  "/quran/recitation/partial",
+  requireQuranReaderSession,
+  quranLiveRateLimiter,
+  acceptQuranLiveAudio,
+  async (req, res): Promise<void> => {
+    const ownerKey = quranRecitationOwnerKey(req);
+    if (!ownerKey) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const parsed = TranscribeQuranRecitationPartialBody.safeParse({
+      audio: req.file,
+      surahNumber: Number(req.body?.surahNumber),
+      ayahNumber: Number(req.body?.ayahNumber),
+    });
+    if (!parsed.success || !req.file) {
+      res.status(400).json({ error: "Invalid recitation request" });
+      return;
+    }
+
+    const surah = QURAN_SURAHS[parsed.data.surahNumber - 1];
+    if (!surah || parsed.data.ayahNumber > surah.ayahCount) {
+      res.status(400).json({ error: "Ayah is outside the surah" });
+      return;
+    }
+
+    const audioSeconds = getPcmWavDurationSeconds(req.file.buffer);
+    if (audioSeconds === null || audioSeconds < 0.4 || audioSeconds > 6) {
+      res.status(400).json({ error: "Audio must be a mono PCM WAV chunk between 0.4 and 6 seconds" });
+      return;
+    }
+
+    const apiKey = process.env.HAFIZ_AI_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({ error: "Recitation recognition is not configured" });
+      return;
+    }
+
+    if (activeQuranTranscriptions.has(ownerKey)) {
+      res.status(429).json({ error: "A recitation chunk is already being processed" });
+      return;
+    }
+    activeQuranTranscriptions.add(ownerKey);
+
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), 10_000);
+    try {
+      const content = await getQuranFoundationSurahContent(parsed.data.surahNumber);
+      const targetAyah = content.ayahs.find((ayah) => ayah.index === parsed.data.ayahNumber);
+      if (!targetAyah) {
+        res.status(400).json({ error: "Ayah is outside the surah" });
+        return;
+      }
+
+      const form = new FormData();
+      form.append("file", new Blob([Uint8Array.from(req.file.buffer)], { type: "audio/wav" }), "recitation.wav");
+      form.append("language", "ar");
+      form.append("return_timestamps", "true");
+      form.append("target_ayah", targetAyah.text);
+
+      const upstreamResponse = await fetch(`${HAFIZ_AI_BASE_URL}/v1/transcribe_partial`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: form,
+        signal: abortController.signal,
+      });
+
+      if (!upstreamResponse.ok) {
+        req.log.warn(
+          {
+            upstreamStatus: upstreamResponse.status,
+            surahNumber: parsed.data.surahNumber,
+            ayahNumber: parsed.data.ayahNumber,
+            audioSeconds,
+          },
+          "Hafiz AI partial recitation request failed",
+        );
+        if (upstreamResponse.status === 429) {
+          res.status(429).json({ error: "Recitation recognition is busy; please continue reading" });
+        } else if (upstreamResponse.status === 400 || upstreamResponse.status === 413) {
+          res.status(400).json({ error: "Audio chunk was not accepted" });
+        } else {
+          res.status(503).json({ error: "Recitation recognition is temporarily unavailable" });
+        }
+        return;
+      }
+
+      const upstream = await upstreamResponse.json() as {
+        text?: unknown;
+        words?: Array<{ word?: unknown; start?: unknown; end?: unknown; confidence?: unknown }>;
+        audio_seconds?: unknown;
+        inference_seconds?: unknown;
+        model?: unknown;
+      };
+      const normalized = TranscribeQuranRecitationPartialResponse.safeParse({
+        text: upstream.text,
+        words: Array.isArray(upstream.words)
+          ? upstream.words.map((word) => ({
+              word: word.word,
+              start: word.start,
+              end: word.end,
+              confidence: word.confidence,
+            }))
+          : upstream.words,
+        audioSeconds: upstream.audio_seconds,
+        inferenceSeconds: upstream.inference_seconds,
+        model: upstream.model,
+      });
+      if (!normalized.success) {
+        req.log.warn(
+          {
+            surahNumber: parsed.data.surahNumber,
+            ayahNumber: parsed.data.ayahNumber,
+            responseIssues: normalized.error.issues.map((issue) => issue.path.join(".")),
+          },
+          "Hafiz AI returned an invalid partial recitation response",
+        );
+        res.status(502).json({ error: "Recitation recognition returned an invalid response" });
+        return;
+      }
+
+      res.json(normalized.data);
+    } catch (error) {
+      const timedOut = error instanceof Error && error.name === "AbortError";
+      req.log.warn(
+        {
+          err: error,
+          timedOut,
+          surahNumber: parsed.data.surahNumber,
+          ayahNumber: parsed.data.ayahNumber,
+          audioSeconds,
+        },
+        "Unable to process Quran recitation chunk",
+      );
+      res.status(503).json({ error: "Recitation recognition is temporarily unavailable" });
+    } finally {
+      clearTimeout(timeout);
+      activeQuranTranscriptions.delete(ownerKey);
+    }
+  },
+);
 
 router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
   const parsed = GetQuranAyahAudioParams.safeParse({

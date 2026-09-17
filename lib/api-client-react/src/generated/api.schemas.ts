@@ -180,6 +180,31 @@ export interface QuranSurahContent {
   source: QuranSurahContentSource;
 }
 
+export interface QuranRecitationWord {
+  /** @minLength 1 */
+  word: string;
+  /** @minimum 0 */
+  start: number;
+  /** @minimum 0 */
+  end: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence: number;
+}
+
+export interface QuranRecitationPartialResponse {
+  text: string;
+  words: QuranRecitationWord[];
+  /** @minimum 0 */
+  audioSeconds: number;
+  /** @minimum 0 */
+  inferenceSeconds: number;
+  /** @minLength 1 */
+  model: string;
+}
+
 export interface QuranMadaniWord {
   id: number;
   position: number;
@@ -3114,6 +3139,20 @@ export type UploadAiVideoSourceImage201 = {
   /** @pattern ^/objects/uploads/ai-video/ */
   objectPath: string;
   metadata: UploadAiVideoSourceImage201Metadata;
+};
+
+export type TranscribeQuranRecitationPartialBody = {
+  audio: Blob;
+  /**
+     * @minimum 1
+     * @maximum 114
+     */
+  surahNumber: number;
+  /**
+     * @minimum 1
+     * @maximum 286
+     */
+  ayahNumber: number;
 };
 
 export type GetQuranAyahEducationParams = {
