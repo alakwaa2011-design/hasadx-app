@@ -1347,7 +1347,7 @@ export function QuranPagesView({
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
           className={cn(
-            "quran-reader-nav mx-auto mt-1 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-1 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5",
+            "quran-reader-nav mx-auto mt-1 hidden w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-1 dark:border-white/10 md:mt-6 md:flex md:gap-3 md:pt-5",
             pageLayout === "continuous" && "hidden md:flex",
           )}
           style={{ width: pageLayout === "spread" ? `${zoom}%` : "100%" }}
