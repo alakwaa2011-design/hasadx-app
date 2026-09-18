@@ -224,7 +224,7 @@ export function QuranMadaniPageRenderer({
               key={rowNum}
               className={cn(
                 "flex w-full flex-1 items-center text-[5.2cqw] leading-none",
-                isCentered ? "justify-center gap-[1.5cqw]" : "justify-between"
+                isCentered ? "justify-center gap-[0.2cqw]" : "justify-between"
               )}
             >
               {line.words.map((w, i) => {
@@ -258,7 +258,7 @@ export function QuranMadaniPageRenderer({
                     type="button"
                     className={cn(
                       "relative m-0 inline-block whitespace-nowrap cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
-                      w.type === "end" ? "text-[5.6cqw]" : "",
+                      w.type === "end" ? "text-[5.2cqw]" : "",
                       // Apply standard color or highlight colors
                       isSelectedWord
                         ? "text-amber-800 bg-amber-200/70 ring-1 ring-amber-500/50"

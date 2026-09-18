@@ -1128,12 +1128,10 @@ export function QuranTextReaderView({
           onPlaybackLocationChange={(nextSurah, nextAyah) => {
             setPlayingAyah(nextAyah);
             setIsPlaying(true);
-            setLocation(`${readerBasePath}/${nextSurah}?ayah=${nextAyah}&view=pages`);
+            setLocation(`${readerBasePath}/${nextSurah}?ayah=${nextAyah}&view=text`);
           }}
           onSurahEnd={() => {
             if (surahNumber < 114 && startAyah === null && endAyah === null && !memoSession?.isActive) {
-              setPlayingAyah(1);
-              setIsPlaying(true);
               setLocation(`${readerBasePath}/${surahNumber + 1}?ayah=1&view=pages`);
             }
           }}

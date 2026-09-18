@@ -243,6 +243,39 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await waitFor(() => expect(previous.disabled).toBe(true));
   });
 
+  it('moves directly to the first ayah of the next surah when a surah ends', async () => {
+    timingResults.set(2, { data: connectedSecond });
+    const onPlaybackLocationChange = vi.fn();
+    const view = render(
+      <QuranAudioHostProvider>
+        <QuranAudioPlayer
+          surahs={[
+            { ayahs: [{}, {}] },
+            { ayahs: [{}] },
+          ] as never}
+          surahNumber={1}
+          startAyah={null}
+          endAyah={null}
+          selectedAyah={2}
+          playingAyah={2}
+          onPlayingAyahChange={vi.fn()}
+          isPlaying
+          onIsPlayingChange={vi.fn()}
+          onPlaybackLocationChange={onPlaybackLocationChange}
+        />
+      </QuranAudioHostProvider>,
+    );
+
+    const audio = await waitFor(() => {
+      const element = view.container.querySelector('audio');
+      expect(element).not.toBeNull();
+      return element as HTMLAudioElement;
+    });
+    fireEvent.ended(audio);
+
+    expect(onPlaybackLocationChange).toHaveBeenCalledWith(2, 1);
+  });
+
   it('ignores an old boundary response after the user advances the ayah', async () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });

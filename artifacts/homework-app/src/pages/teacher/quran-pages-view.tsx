@@ -11,6 +11,7 @@ import {
   ImageOff,
   ListPlus,
   Bookmark,
+  Headphones,
   Loader2,
   Menu,
   Mic2,
@@ -153,7 +154,7 @@ export function QuranPagesView({
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
-    typeof window !== "undefined" && window.innerWidth < 768 ? "continuous" : "spread",
+    typeof window !== "undefined" && window.innerWidth < 768 ? "single" : "spread",
   );
   const [continuousStartPage, setContinuousStartPage] = useState(FIRST_PAGE);
   const [continuousEndPage, setContinuousEndPage] = useState(
@@ -419,6 +420,16 @@ export function QuranPagesView({
     }
   };
 
+  const openAudioControls = () => {
+    const targetVerse = selectedVerseKey
+      ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
+      : verses.find((verse) => verse.page_id === activePage);
+    if (!targetVerse) return;
+    setSelectedVerseKey(`${targetVerse.chapter_id}:${targetVerse.number}`);
+    setEducationSelection(null);
+    setAudioDockOpen(true);
+  };
+
   const visiblePages = useMemo(() => {
     if (activePage % 2 === 0) {
       return {
@@ -534,7 +545,24 @@ export function QuranPagesView({
     const firstVerse = verses.find(
       (verse) => verse.chapter_id === chapterId && verse.number === 1,
     );
-    if (firstVerse) goToPage(firstVerse.page_id);
+    if (!firstVerse) return;
+    const nextPage = firstVerse.page_id;
+    setTurnDirection(nextPage >= activePage ? "next" : "previous");
+    setActivePage(nextPage);
+    if (pageLayout === "continuous") {
+      setContinuousStartPage(nextPage);
+      setContinuousEndPage(Math.min(LAST_PAGE, nextPage + 3));
+    }
+    if (!isPlaying) {
+      setAudioDockOpen(false);
+      setEducationSelection(null);
+      setSelectedVerseKey(null);
+    }
+    onNavigate({
+      surah: chapterId,
+      ayah: 1,
+      page: nextPage,
+    });
   };
 
   const goToJuz = (partId: number) => {
@@ -647,7 +675,7 @@ export function QuranPagesView({
                if (copyRange) {
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
-               setEducationSelection(standalone ? null : selection);
+               setEducationSelection(selection);
               if (selection.wordPosition !== null) {
                 playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
@@ -684,7 +712,11 @@ export function QuranPagesView({
     <div
       className={cn(
         "flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
-         embedded ? "h-full overflow-hidden" : "h-[100dvh] overflow-hidden",
+        embedded
+          ? "h-full overflow-hidden"
+          : standalone
+            ? "h-[100dvh] overflow-hidden"
+            : "min-h-0 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0",
       )}
       dir={dir}
     >
@@ -734,13 +766,13 @@ export function QuranPagesView({
             <div className="flex min-w-0 flex-1 items-center justify-center gap-1 md:hidden">
               <label className="relative flex min-w-0 max-w-32 items-center gap-1 rounded-lg px-1.5 py-1 text-emerald-900 transition-colors active:bg-emerald-50 dark:text-emerald-100 dark:active:bg-emerald-950/50">
                 <span className="truncate text-sm font-black">
-                  {chapters.find((chapter) => chapter.id === activeChapterId)?.name
-                    ? plainArabicSurahName(activeChapterId, chapters.find((chapter) => chapter.id === activeChapterId)!.name)
+                  {chapters.find((chapter) => chapter.id === selectedSurah)?.name
+                    ? plainArabicSurahName(selectedSurah, chapters.find((chapter) => chapter.id === selectedSurah)!.name)
                     : (lang === "ar" ? "المصحف" : "Mushaf")}
                 </span>
                 <ChevronDown className="h-3 w-3 shrink-0 opacity-55" />
                 <select
-                  value={activeChapterId}
+                  value={selectedSurah}
                   onChange={(event) => goToSurah(Number(event.target.value))}
                   className="absolute inset-0 cursor-pointer opacity-0"
                   aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
@@ -774,6 +806,20 @@ export function QuranPagesView({
 
             {/* Mobile primary actions */}
             <div className="flex shrink-0 items-center gap-0.5 md:hidden">
+              <button
+                type="button"
+                onClick={openAudioControls}
+                data-testid="button-mobile-audio"
+                className={cn(
+                  "grid h-9 w-9 place-items-center rounded-xl transition-colors",
+                  audioDockOpen
+                    ? "bg-emerald-700 text-white shadow-sm"
+                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200",
+                )}
+                aria-label={lang === "ar" ? "فتح التلاوة واختيار القارئ" : "Open recitation and choose reciter"}
+              >
+                <Headphones className="h-4.5 w-4.5" />
+              </button>
               <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
               {(canToggleCurrentBookmark || onOpenBookmarks) && (
                 <button
@@ -820,7 +866,7 @@ export function QuranPagesView({
               <div className="flex items-center w-full md:w-auto rounded-xl bg-muted/30 p-1 border border-border/40 shadow-sm">
                 <div className="relative flex min-w-0 flex-1 items-center md:flex-none">
                   <select
-                    value={activeChapterId}
+                    value={selectedSurah}
                     onChange={(event) => goToSurah(Number(event.target.value))}
                     className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 md:text-sm"
                     aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
@@ -1044,71 +1090,11 @@ export function QuranPagesView({
         </header>
       )}
 
-      {!quietMode && selectedVerseKey && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur md:hidden rtl:translate-x-1/2 dark:bg-card/95">
-          {LIVE_RECITATION_ENABLED && isAdmin && (
-            <button
-              type="button"
-              onClick={openLiveRecitation}
-              data-testid="button-live-recitation-floating"
-              className="grid h-10 w-10 place-items-center rounded-full bg-emerald-700 text-white shadow-sm transition-colors hover:bg-emerald-800"
-              aria-label={lang === "ar" ? "بدء التسميع المباشر" : "Start live recitation"}
-            >
-              <Mic2 className="h-5 w-5" />
-            </button>
-          )}
-          <div className="relative">
-            <button type="button" onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); }}
-              data-testid="button-copy-actions-floating" className="relative grid h-10 w-10 place-items-center rounded-full text-emerald-800 hover:bg-emerald-50"
-              aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}>
-              {copiedVerseKey === currentCopyKey ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-              {copyRange && <span className="absolute -end-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-emerald-700 px-1 text-[9px] font-black text-white">{copyCount}</span>}
-            </button>
-            {copyActionsOpen && (
-              <div className="absolute bottom-12 start-1/2 flex min-w-36 -translate-x-1/2 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl rtl:translate-x-1/2">
-                <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
-                  <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount}` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
-                </button>
-                <button type="button" onClick={toggleMultiCopy} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
-                  {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
-                  {lang === "ar" ? (copyRange ? "إلغاء التحديد" : "تحديد آيات") : (copyRange ? "Cancel" : "Select ayahs")}
-                </button>
-              </div>
-            )}
-          </div>
-          {(canToggleCurrentBookmark || onOpenBookmarks) && (
-            <div className="relative">
-              <button type="button" onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); }}
-                data-testid="button-bookmark-actions-floating" className="grid h-10 w-10 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-                aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}>
-                <Bookmark className={cn("h-5 w-5", isCurrentBookmarked && "fill-current text-emerald-700")} />
-              </button>
-              {bookmarkActionsOpen && (
-                <div className="absolute bottom-12 start-1/2 flex min-w-40 -translate-x-1/2 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl rtl:translate-x-1/2">
-                  {canToggleCurrentBookmark && (
-                    <button type="button" disabled={isMutatingBookmark}
-                      onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-50">
-                      <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
-                      {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "حفظ العلامة") : (isCurrentBookmarked ? "Remove" : "Save")}
-                    </button>
-                  )}
-                  {onOpenBookmarks && (
-                    <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
-                      <Bookmark className="h-4 w-4" />{lang === "ar" ? "كل العلامات" : "All bookmarks"}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       <main
-        className="flex min-h-0 flex-1 flex-col items-start overflow-auto px-0 py-1 pb-2 md:px-8 md:py-8"
+        className={cn(
+          "flex min-h-0 flex-col items-start px-0 py-1 pb-2 md:px-8 md:py-8",
+          embedded || standalone ? "flex-1 overflow-auto" : "overflow-visible",
+        )}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
           const container = event.currentTarget;
@@ -1223,18 +1209,11 @@ export function QuranPagesView({
         </nav>
       </main>
 
-      {!quietMode && ((!standalone && educationSelection) || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
+      {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
           className="relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col md:max-h-[58dvh]"
           data-testid="quran-bottom-dock"
         >
-          {educationSelection && (
-            <QuranEducationPanel
-              key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
-              selection={educationSelection}
-              onClose={() => setEducationSelection(null)}
-            />
-          )}
           {(audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0 && (
             <div className="z-40 w-full shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
               <QuranAudioPlayer
@@ -1254,17 +1233,25 @@ export function QuranPagesView({
                 onPlayingWordChange={setPlayingWordPosition}
                 preferenceStorage={standalone ? "local" : "server"}
                 onPlaybackLocationChange={(nextSurah, nextAyah) => {
-                  setPlayingVerseKey(`${nextSurah}:${nextAyah}`);
-                  setSelectedVerseKey(`${nextSurah}:${nextAyah}`);
+                  const nextVerseKey = `${nextSurah}:${nextAyah}`;
+                  setPlayingVerseKey(nextVerseKey);
+                  setSelectedVerseKey(nextVerseKey);
+                  setEducationSelection({
+                    verseKey: nextVerseKey,
+                    wordId: null,
+                    wordPosition: null,
+                    wordText: null,
+                  });
                   setIsPlaying(true);
                   goToSurah(nextSurah);
                 }}
                 onSurahEnd={() => {
                   if (playingSurah < 114 && startAyah === null && endAyah === null && !memoSession?.isActive) {
-                    setPlayingVerseKey(`${playingSurah + 1}:1`);
-                    setSelectedVerseKey(`${playingSurah + 1}:1`);
+                    const nextSurah = playingSurah + 1;
+                    setPlayingVerseKey(`${nextSurah}:1`);
+                    setSelectedVerseKey(`${nextSurah}:1`);
                     setIsPlaying(true);
-                    goToSurah(playingSurah + 1);
+                    goToSurah(nextSurah);
                   }
                 }}
                 onClose={() => {
@@ -1274,6 +1261,15 @@ export function QuranPagesView({
                   setSelectedVerseKey(null);
                   setEducationSelection(null);
                 }}
+              />
+            </div>
+          )}
+          {educationSelection && (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <QuranEducationPanel
+                key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
+                selection={educationSelection}
+                onClose={() => setEducationSelection(null)}
               />
             </div>
           )}

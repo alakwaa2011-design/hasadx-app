@@ -107,6 +107,8 @@ export function QuranAudioPlayer({
   const [audioSrc, setAudioSrc] = useState<string | undefined>();
   const currentAudioSrcRef = useRef<string | undefined>(undefined);
   const lastQueryKeyRef = useRef<string>('');
+  const lastAudioSurahRef = useRef(surahNumber);
+  const staleSurahSourceBlockedRef = useRef(false);
   const [playingWord, setPlayingWord] = useState<number | null>(null);
 
   const pendingNextActionRef = useRef<(() => void) | null>(null);
@@ -114,6 +116,10 @@ export function QuranAudioPlayer({
   const seamlessTransitionKeyRef = useRef<string | null>(null);
   const pendingBoundaryTransitionRef = useRef<string | null>(null);
   const restartWhenTimingsReadyRef = useRef<string | null>(null);
+  const surahEntryGuardRef = useRef<{ surah: number; ayah: number } | null>(null);
+  const endedEventRef = useRef<() => void>(() => undefined);
+  const loadedMetadataEventRef = useRef<() => void>(() => undefined);
+  const timeUpdateEventRef = useRef<() => void>(() => undefined);
 
   const surahLength = surahs[surahNumber - 1]?.ayahs.length || 0;
 
@@ -204,11 +210,20 @@ export function QuranAudioPlayer({
     const currentQueryKey = `${recitationId}-${surahNumber}-${playingAyah}`;
     if (lastQueryKeyRef.current !== currentQueryKey) {
        const isSeamlessTransition = seamlessTransitionKeyRef.current === currentQueryKey;
+       const surahChanged = lastAudioSurahRef.current !== surahNumber;
+       lastAudioSurahRef.current = surahNumber;
        seamlessTransitionKeyRef.current = null;
        if (!isSeamlessTransition) pendingBoundaryTransitionRef.current = null;
        restartWhenTimingsReadyRef.current = isSeamlessTransition ? null : currentQueryKey;
        lastQueryKeyRef.current = currentQueryKey;
-       if (!isSeamlessTransition) audioRef.current?.pause();
+       if (!isSeamlessTransition) {
+         audioRef.current?.pause();
+         if (surahChanged) {
+           staleSurahSourceBlockedRef.current = true;
+           currentAudioSrcRef.current = undefined;
+           setAudioSrc(undefined);
+         }
+       }
        if (pauseTimeoutRef.current !== null) {
          clearTimeout(pauseTimeoutRef.current);
          pauseTimeoutRef.current = null;
@@ -237,6 +252,7 @@ export function QuranAudioPlayer({
       const fallbackUrl = `/api/quran/audio/${recitationId}/${surahNumber}/${playingAyah}`;
       activeSeekRef.current = null;
       if (currentAudioSrcRef.current !== fallbackUrl) {
+         staleSurahSourceBlockedRef.current = false;
          restartWhenTimingsReadyRef.current = null;
          currentAudioSrcRef.current = fallbackUrl;
          setAudioSrc(fallbackUrl);
@@ -267,6 +283,7 @@ export function QuranAudioPlayer({
       };
 
       if (currentAudioSrcRef.current !== data.audioUrl) {
+         staleSurahSourceBlockedRef.current = false;
          restartWhenTimingsReadyRef.current = null;
          currentAudioSrcRef.current = data.audioUrl;
          setAudioSrc(data.audioUrl);
@@ -309,10 +326,25 @@ export function QuranAudioPlayer({
     if (!audioRef.current) return;
 
     if (activeSeekRef.current) {
+      const activeUrl = new URL(activeSeekRef.current.url, window.location.href).href;
+      if (audioRef.current.src !== activeUrl) return;
       const currentTimeMs = audioRef.current.currentTime * 1000;
       const { startMs, endMs, segments, ayah } = activeSeekRef.current;
 
       if (ayah !== playingAyah) return;
+      const entryGuard = surahEntryGuardRef.current;
+      if (
+        entryGuard
+        && entryGuard.surah === surahNumber
+        && entryGuard.ayah === playingAyah
+      ) {
+        if (currentTimeMs >= startMs + 100 && currentTimeMs < endMs) {
+          surahEntryGuardRef.current = null;
+        } else if (currentTimeMs >= endMs) {
+          audioRef.current.currentTime = startMs / 1000;
+          return;
+        }
+      }
 
       if (currentTimeMs >= endMs) {
         if (trySeamlessAyahTransition()) return;
@@ -342,6 +374,11 @@ export function QuranAudioPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    if (staleSurahSourceBlockedRef.current) {
+      audio.pause();
+      return;
+    }
 
     if (audioSrc) {
       const nextUrl = new URL(audioSrc, window.location.href).href;
@@ -612,6 +649,12 @@ export function QuranAudioPlayer({
 
   const handleEnded = () => {
     if (!playingAyah) return;
+    const entryGuard = surahEntryGuardRef.current;
+    if (
+      entryGuard
+      && entryGuard.surah === surahNumber
+      && entryGuard.ayah === playingAyah
+    ) return;
     if (isEndedHandledRef.current) return;
     isEndedHandledRef.current = true;
 
@@ -649,8 +692,25 @@ export function QuranAudioPlayer({
         }
       });
     } else {
-      if (onSurahEnd && !memoSession?.isActive && startAyah === null && endAyah === null && surahNumber < 114) {
-        onSurahEnd();
+      if (!memoSession?.isActive && startAyah === null && endAyah === null && surahNumber < 114) {
+        if (onPlaybackLocationChange) {
+          staleSurahSourceBlockedRef.current = true;
+          currentAudioSrcRef.current = undefined;
+          activeSeekRef.current = null;
+          setAudioSrc(undefined);
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.removeAttribute('src');
+            audioRef.current.load();
+          }
+          surahEntryGuardRef.current = { surah: surahNumber + 1, ayah: 1 };
+          onPlaybackLocationChange(surahNumber + 1, 1);
+        } else if (onSurahEnd) {
+          onSurahEnd();
+        } else {
+          onIsPlayingChange(false);
+          onPlayingAyahChange(null);
+        }
       } else {
         onIsPlayingChange(false);
         onPlayingAyahChange(null);
@@ -658,9 +718,21 @@ export function QuranAudioPlayer({
     }
   };
 
+  endedEventRef.current = handleEnded;
+  loadedMetadataEventRef.current = handleLoadedMetadata;
+  timeUpdateEventRef.current = handleTimeUpdate;
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    const handleEndedEvent = (event: Event) => {
+      const handledEvent = event as Event & { __hasaadQuranHandled?: boolean };
+      if (handledEvent.__hasaadQuranHandled) return;
+      handledEvent.__hasaadQuranHandled = true;
+      endedEventRef.current();
+    };
+    const handleLoadedMetadataEvent = () => loadedMetadataEventRef.current();
+    const handleTimeUpdateEvent = () => timeUpdateEventRef.current();
     const handlePlay = () => { setIsBuffering(false); setError(false); setIsPausedBetween(false); };
     const handleWaiting = () => setIsBuffering(true);
     const handlePlaying = () => setIsBuffering(false);
@@ -670,25 +742,25 @@ export function QuranAudioPlayer({
       setIsBuffering(false);
       onIsPlayingChange(false);
     };
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEndedEvent);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadataEvent);
+    audio.addEventListener("timeupdate", handleTimeUpdateEvent);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("waiting", handleWaiting);
     audio.addEventListener("playing", handlePlaying);
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
     return () => {
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEndedEvent);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadataEvent);
+      audio.removeEventListener("timeupdate", handleTimeUpdateEvent);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("waiting", handleWaiting);
       audio.removeEventListener("playing", handlePlaying);
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
     };
-  }, [audioRef, handleEnded, handleLoadedMetadata, handleTimeUpdate, onIsPlayingChange]);
+  }, [audioRef, onIsPlayingChange]);
 
   const handlePrev = () => {
     if (!playingAyah) return;
@@ -865,8 +937,22 @@ export function QuranAudioPlayer({
     }
   };
 
+  const cycleSpeed = () => {
+    const currentIndex = SPEEDS.indexOf(speed);
+    setSpeed(SPEEDS[(currentIndex + 1) % SPEEDS.length]);
+  };
+
+  const cycleRepeat = () => {
+    const currentIndex = REPEATS.indexOf(repeat);
+    const nextRepeat = REPEATS[(currentIndex + 1) % REPEATS.length];
+    isEndedHandledRef.current = false;
+    setCurrentAyahPlayCount(1);
+    setCurrentRangePlayCount(1);
+    setRepeat(nextRepeat);
+  };
+
   return (
-    <div ref={playerRef} className={cn(
+    <div ref={playerRef} data-quran-audio-controller="true" className={cn(
        "relative w-full shrink-0 border-t bg-background/95 p-2 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-colors dark:shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.3)]",
        memoSession?.isActive ? "border-amber-300/60 dark:border-amber-900/40" : "border-border/60"
     )}>
@@ -1151,10 +1237,10 @@ export function QuranAudioPlayer({
       )}
 
       {/* Main Control Bar */}
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 px-1 sm:flex-nowrap md:gap-4 md:px-2">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-1.5 px-1 sm:flex-nowrap md:gap-4 md:px-2">
 
         {/* Left: Play & Info */}
-        <div className="flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto md:gap-3">
+        <div className="order-1 flex min-w-0 flex-1 basis-auto items-center gap-2 md:gap-3">
           <button
             data-testid="button-play-pause"
             onClick={togglePlay}
@@ -1218,20 +1304,44 @@ export function QuranAudioPlayer({
         </div>
 
         {/* Center: Playback Controls */}
-          <div className="flex basis-full items-center justify-center gap-1 sm:basis-auto md:gap-2" dir={isArabic ? "rtl" : "ltr"}>
-            <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
-              <SkipBack className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
-          </button>
-            <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
-             <Square className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
-          </button>
-            <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
-              <SkipForward className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
-          </button>
+          <div className="order-3 flex basis-full items-center justify-center gap-1 border-t border-border/40 pt-1 sm:order-2 sm:basis-auto sm:border-0 sm:pt-0 md:gap-2">
+            <div className="flex items-center justify-center gap-1 md:gap-2" dir={isArabic ? "rtl" : "ltr"}>
+              <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
+                <SkipBack className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
+              </button>
+              <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
+                <Square className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
+              </button>
+              <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
+                <SkipForward className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
+              </button>
+            </div>
+            <button
+              data-testid="button-cycle-speed"
+              type="button"
+              onClick={cycleSpeed}
+              className="flex h-9 min-w-14 items-center justify-center gap-1 rounded-lg bg-muted/60 px-2 text-[11px] font-black text-foreground transition-colors hover:bg-muted"
+              aria-label={isArabic ? `سرعة التلاوة ${speed}` : `Playback speed ${speed}`}
+            >
+              <Zap className="h-3.5 w-3.5 text-amber-600" />
+              <span dir="ltr">{speed}x</span>
+            </button>
+            {!memoSession?.isActive && (
+              <button
+                data-testid="button-cycle-repeat"
+                type="button"
+                onClick={cycleRepeat}
+                className="flex h-9 min-w-14 items-center justify-center gap-1 rounded-lg bg-muted/60 px-2 text-[11px] font-black text-foreground transition-colors hover:bg-muted"
+                aria-label={isArabic ? `تكرار الآية ${repeat} مرات` : `Repeat ayah ${repeat} times`}
+              >
+                <Repeat className="h-3.5 w-3.5 text-emerald-700" />
+                <span dir="ltr">{repeat}x</span>
+              </button>
+            )}
         </div>
 
         {/* Right: Actions */}
-        <div className="flex basis-full items-center justify-center gap-1 sm:basis-auto sm:shrink-0 sm:border-s sm:border-border/50 sm:ps-2 md:gap-2 md:ps-4">
+        <div className="order-2 flex shrink-0 items-center justify-center gap-0.5 border-s border-border/50 ps-1 sm:order-3 md:gap-2 md:ps-4">
           {memoSession && (
              <button
                data-testid="button-memo-options"
@@ -1244,7 +1354,7 @@ export function QuranAudioPlayer({
                )}
              >
                 <Repeat className="h-4 w-4" />
-                <span>{isArabic ? 'تكرار' : 'Repeat'}</span>
+                 <span className="hidden sm:inline">{isArabic ? 'تكرار' : 'Repeat'}</span>
                {memoSession.isActive && <span className="absolute -top-0.5 -end-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-background"></span>}
              </button>
           )}
@@ -1263,7 +1373,7 @@ export function QuranAudioPlayer({
              )}
           >
              <Settings2 className="h-4 w-4" />
-             <span>{isArabic ? 'خيارات' : 'Options'}</span>
+             <span className="hidden sm:inline">{isArabic ? 'القارئ والخيارات' : 'Reciter and options'}</span>
           </button>
           {onClose && (
              <button

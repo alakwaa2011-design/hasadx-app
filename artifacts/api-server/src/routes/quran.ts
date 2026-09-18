@@ -140,6 +140,13 @@ const publicQuranTimingsLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many Quran timing requests; please try again shortly" },
 });
+const publicQuranEducationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many Quran education requests; please try again shortly" },
+});
 type TeacherRequest = { session?: { teacherId?: number; studentAccountId?: number }; log?: { error: (error: unknown, message: string) => void } };
 
 // Canonical metadata only. No verse text is stored or returned by this API.
@@ -1120,11 +1127,10 @@ router.delete("/quran/reader-state/bookmarks/:surahNumber/:ayahNumber", async (r
   res.status(204).send();
 });
 
-router.get("/quran/education/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
-  if (!hasQuranReaderSession(req)) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
-  }
+router.get(
+  "/quran/education/:surahNumber/:ayahNumber",
+  publicQuranEducationLimiter,
+  async (req, res): Promise<void> => {
   const params = GetQuranAyahEducationParams.safeParse(req.params);
   const query = GetQuranAyahEducationQueryParams.safeParse(req.query);
   if (!params.success || !query.success) {
@@ -1142,7 +1148,7 @@ router.get("/quran/education/:surahNumber/:ayahNumber", async (req, res): Promis
       params.data.ayahNumber,
       query.data.wordPosition,
     );
-    res.setHeader("Cache-Control", "private, max-age=300");
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600");
     res.json(GetQuranAyahEducationResponse.parse(education));
   } catch (error) {
     if (error instanceof Error && error.message === "Selected Quran word is not part of the ayah") {
@@ -1152,7 +1158,8 @@ router.get("/quran/education/:surahNumber/:ayahNumber", async (req, res): Promis
     req.log?.error(error, "Sourced Quran education lookup failed");
     res.status(503).json({ error: "Sourced Quran educational content is unavailable" });
   }
-});
+  },
+);
 
 router.get("/quran/circles", async (req, res): Promise<void> => {
   const teacherId = teacherIdOf(req);

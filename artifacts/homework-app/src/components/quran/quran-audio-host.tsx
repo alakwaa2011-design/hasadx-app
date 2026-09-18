@@ -93,8 +93,14 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const handleEnded = async () => {
-      if (controllerAttachedRef.current) return;
+    const handleEnded = async (event: Event) => {
+      if (
+        controllerAttachedRef.current
+        || document.querySelector('[data-quran-audio-controller="true"]')
+      ) return;
+      const handledEvent = event as Event & { __hasaadQuranHandled?: boolean };
+      if (handledEvent.__hasaadQuranHandled) return;
+      handledEvent.__hasaadQuranHandled = true;
       const session = sessionRef.current;
       if (!session) return;
       if (session.sourceMode === "ayah") {

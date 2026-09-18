@@ -209,6 +209,10 @@ interface LayoutProps {
 
 export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
   const [location, setLocation] = useLocation();
+  const isFocusedQuranReader =
+    location.startsWith("/teacher/quran-reader/")
+    || location.startsWith("/student/quran-wards/")
+    || location.startsWith("/student/quran-practice/");
   const queryClient = useQueryClient();
   const { t, lang, setLang, dir } = useI18n();
   const goBack = useSmartBack("/");
@@ -923,7 +927,7 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
 
       <AuthSideRail />
 
-      {!hideFooter && <footer className="border-t border-border/40 bg-muted/30 mt-auto">
+      {!hideFooter && !isFocusedQuranReader && <footer className="border-t border-border/40 bg-muted/30 mt-auto">
         <div className="container mx-auto px-4 py-5 sm:py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
 
