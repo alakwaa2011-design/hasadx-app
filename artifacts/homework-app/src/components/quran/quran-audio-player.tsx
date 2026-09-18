@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Square, SkipBack, SkipForward, Settings2, Loader2, Volume2, Repeat, Zap, RefreshCw, X, Search, BookOpen, Clock, Eye } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipBack, SkipForward, Settings2, Loader2, Volume2, Repeat, Zap, RefreshCw, X, Search, BookOpen, Clock, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
 import { QuranSurahParsed } from '@/lib/quran-parser';
@@ -921,17 +921,17 @@ export function QuranAudioPlayer({
     }
   };
 
-  const handleStop = () => {
+  const handleRestartAyah = () => {
     discardPendingAction();
     isEndedHandledRef.current = false;
     setCurrentAyahPlayCount(1);
     setCurrentRangePlayCount(1);
-    onIsPlayingChange(false);
-    onPlayingAyahChange(null);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      void audioRef.current.play();
     }
+    onIsPlayingChange(true);
   };
 
   const cycleSpeed = () => {
@@ -1300,14 +1300,15 @@ export function QuranAudioPlayer({
           </div>
         </div>
 
-        {/* Center: Playback Controls */}
-          <div className="order-3 flex basis-full items-center justify-center gap-1 border-t border-border/40 pt-1 sm:order-2 sm:basis-auto sm:border-0 sm:pt-0 md:gap-2">
+        {/* Playback and option controls share one compact row on phones. */}
+        <div className="order-3 flex w-full basis-full items-center justify-center gap-0.5 overflow-x-auto border-t border-border/40 pt-1 sm:order-2 sm:w-auto sm:basis-auto sm:border-0 sm:pt-0 md:gap-2">
+          <div className="flex shrink-0 items-center justify-center gap-1 md:gap-2">
             <div className="flex items-center justify-center gap-1 md:gap-2" dir={isArabic ? "rtl" : "ltr"}>
               <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
                 <SkipBack className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
               </button>
-              <button data-testid="button-stop" onClick={handleStop} disabled={!playingAyah && !isPlaying} aria-label={isArabic ? 'إيقاف التلاوة' : 'Stop recitation'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
-                <Square className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
+              <button data-testid="button-restart-ayah" onClick={handleRestartAyah} disabled={!playingAyah} aria-label={isArabic ? 'إعادة الآية من البداية' : 'Restart ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
+                <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
               </button>
               <button data-testid="button-next-ayah" onClick={handleNext} disabled={!playingAyah} aria-label={isArabic ? 'الآية التالية' : 'Next ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
                 <SkipForward className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
@@ -1335,10 +1336,10 @@ export function QuranAudioPlayer({
                 <span dir="ltr">{repeat}x</span>
               </button>
             )}
-        </div>
+          </div>
 
-        {/* Right: Actions */}
-        <div className="order-2 flex shrink-0 items-center justify-center gap-0.5 border-s border-border/50 ps-1 sm:order-3 md:gap-2 md:ps-4">
+          {/* Actions */}
+          <div className="flex shrink-0 items-center justify-center gap-0.5 border-s border-border/50 ps-1 md:gap-2 md:ps-3">
           {memoSession && (
              <button
                data-testid="button-memo-options"
@@ -1382,6 +1383,7 @@ export function QuranAudioPlayer({
                 <X className="w-4 h-4 md:w-4 md:h-4" />
              </button>
           )}
+          </div>
         </div>
       </div>
     </div>

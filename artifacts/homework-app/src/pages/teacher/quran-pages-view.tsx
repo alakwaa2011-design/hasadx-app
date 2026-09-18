@@ -1306,12 +1306,8 @@ export function QuranPagesView({
         ref={readerMainRef}
         className={cn(
           "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
+          guidedOpen && "quran-reader-main--guided touch-pan-y overscroll-contain",
         )}
-        style={guidedPanelHeight > 0
-          ? {
-              paddingBottom: `calc(${guidedPanelHeight}px + 1.5rem + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
-            }
-          : undefined}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
           const container = event.currentTarget;
@@ -1406,6 +1402,15 @@ export function QuranPagesView({
             <ChevronRight className="h-4 w-4 rtl:rotate-180 md:h-5 md:w-5" />
           </button>
         </nav>
+        {guidedPanelHeight > 0 && (
+          <div
+            aria-hidden="true"
+            className="quran-guided-scroll-reserve w-full shrink-0"
+            style={{
+              height: `calc(${guidedPanelHeight}px + 1.5rem + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
+            }}
+          />
+        )}
       </main>
 
       {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
