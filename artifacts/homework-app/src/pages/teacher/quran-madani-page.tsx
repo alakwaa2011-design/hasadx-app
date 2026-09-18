@@ -162,7 +162,7 @@ export function QuranMadaniPageRenderer({
 
   return (
     <div
-      className="@container relative w-full select-none bg-[#fdfaf6] text-black overflow-hidden rounded-[2px]"
+      className="quran-madani-page @container relative w-full select-none overflow-hidden rounded-[2px] bg-[#fdfaf6] text-black"
       style={{ aspectRatio: "382.677/547.086" }}
       dir="rtl"
       translate="no"

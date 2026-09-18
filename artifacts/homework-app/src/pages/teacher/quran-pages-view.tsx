@@ -1317,7 +1317,7 @@ export function QuranPagesView({
           <div
             key={`${pageLayout}:${activePage}`}
             className={cn(
-              "quran-page-shell mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
+              "quran-page-shell quran-page-shell--paged mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
               pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
               turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
             )}
@@ -1331,7 +1331,7 @@ export function QuranPagesView({
             {pageLayout === "spread" ? (
               <>
                 <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
-                <div className="lg:hidden">{renderPage(activePage, "single")}</div>
+                <div className="h-full lg:hidden">{renderPage(activePage, "single")}</div>
                 {visiblePages.left !== null && (
                   <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
                 )}
