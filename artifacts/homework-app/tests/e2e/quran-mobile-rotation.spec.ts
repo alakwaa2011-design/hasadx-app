@@ -106,7 +106,14 @@ async function expectDockDoesNotOverlapMushaf(page: Page) {
 
 async function emulateSafeAreaBottom(page: Page, bottom: number) {
   await page.addInitScript((inset) => {
-    document.documentElement.style.setProperty("--quran-safe-area-bottom", `${inset}px`);
+    const installSafeAreaOverride = () => {
+      const style = document.createElement("style");
+      style.dataset.quranSafeAreaOverride = "true";
+      style.textContent = `:root { --quran-safe-area-bottom: ${inset}px !important; }`;
+      document.head.append(style);
+    };
+    if (document.head) installSafeAreaOverride();
+    else document.addEventListener("DOMContentLoaded", installSafeAreaOverride, { once: true });
   }, bottom);
 }
 
@@ -244,7 +251,7 @@ test.describe("mobile Mushaf rotation", () => {
     });
   }
 
-  test("keeps the teacher Quran Center route and hides its shell in landscape", async ({
+  test("keeps page 604 safe inside Quran Center with the audio dock closed and open", async ({
     page,
     context,
     baseURL,
@@ -252,9 +259,22 @@ test.describe("mobile Mushaf rotation", () => {
     if (!teacher || !baseURL) throw new Error("Quran rotation fixture is unavailable");
     await attachSession(context as BrowserContext, baseURL, teacher);
     await page.setViewportSize(PORTRAIT);
+    await emulateSafeAreaBottom(page, 34);
     await page.goto("/teacher/quran-center?tab=mushaf");
-    await expect(page.locator(".quran-center-main")).toBeVisible();
+    await expect(page.locator(".quran-center-main")).toBeVisible({ timeout: 30_000 });
+    await page.setViewportSize(SHORT_PORTRAIT);
+
+    await page.getByTestId("select-mobile-page").selectOption("604");
+    const finalPage = page.locator("[data-quran-page='604']");
+    await expect(finalPage).toBeVisible();
+    await expect(finalPage.locator(".animate-spin")).toHaveCount(0);
+    await expect(page.getByTestId("quran-bottom-dock")).toHaveCount(0);
     await expectCompletePortraitPage(page);
+
+    await page.getByTestId("button-mobile-audio").click();
+    await expect(page.getByTestId("quran-bottom-dock")).toBeVisible();
+    await expectDockDoesNotOverlapMushaf(page);
+    await expectDockRespectsSafeArea(page, 34);
 
     await page.setViewportSize(LANDSCAPE);
     await expect(page).toHaveURL(/\/teacher\/quran-center\?tab=mushaf$/);
@@ -262,8 +282,9 @@ test.describe("mobile Mushaf rotation", () => {
     await expect(page.locator(".quran-center-sidebar")).toBeHidden();
     await expect(page.getByRole("button", { name: "الحلقات والطلاب" })).toBeHidden();
     await expectFocusedLandscape(page, /\/teacher\/quran-center\?tab=mushaf$/);
-    await page.setViewportSize(PORTRAIT);
+    await page.setViewportSize(SHORT_PORTRAIT);
     await expect(page).toHaveURL(/\/teacher\/quran-center\?tab=mushaf$/);
-    await expectCompletePortraitPage(page);
+    await expectDockDoesNotOverlapMushaf(page);
+    await expectDockRespectsSafeArea(page, 34);
   });
 });

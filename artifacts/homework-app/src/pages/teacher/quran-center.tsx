@@ -116,7 +116,7 @@ export default function QuranCenter({
 
   const content = (
       <div className={cn(
-        "quran-center-root flex flex-col md:flex-row overflow-hidden bg-[#fcfaf8] dark:bg-background",
+        "quran-center-root flex min-h-0 w-full flex-col overflow-hidden bg-[#fcfaf8] md:flex-row dark:bg-background",
         embedded
           ? "h-[calc(100dvh-4rem)]"
           : activeTab === "mushaf"
@@ -184,7 +184,7 @@ export default function QuranCenter({
 
         {/* Main Workspace */}
         <main className={cn(
-          "quran-center-main flex-1 overflow-hidden flex-col relative md:flex",
+          "quran-center-main relative min-h-0 w-full flex-1 flex-col overflow-hidden md:flex",
           activeTab === "mushaf" && mobileSectionsOpen ? "hidden" : "flex",
         )}>
           <AnimatePresence mode="wait" initial={false}>
