@@ -1,0 +1,101 @@
+نفّذ فقط إصلاح مشكلة Backward Compatibility للملفات القديمة التي منعت Production Readiness.
+
+لا تنفذ Deployment أو Production migration.
+لا تغيّر SESSION_SECRET.
+لا تعدّل نظام OTP أو الجلسات أو الـmigration الحالي إلا إذا كان ذلك ضروريًا مباشرة لهذا الإصلاح.
+لا تنفذ أي حذف جماعي أو تعديل جماعي للـmetadata في Object Storage.
+
+المشكلة الحالية:
+بعض الملفات التاريخية تستخدم مسارات مثل:
+
+/objects/uploads/
+
+بينما نظام الملكية الجديد يعتمد على مسارات مثل:
+
+/objects/uploads//…
+/objects/uploads/parent//…
+
+كما أن بعض الملفات القديمة لا تحتوي:
+verifiedUpload=true
+verifiedGeneration=
+
+وهذا قد يجعل ملفات تاريخية صحيحة، خصوصًا مرفقات رسائل أولياء الأمور، ترجع 404 بعد النشر.
+
+المطلوب:
+
+1. افحص جميع نقاط قراءة/تنزيل الملفات الحالية وحدد بالضبط أين يتم تطبيق verifiedUpload والـownership checks.
+2. أنشئ Legacy Compatibility Resolver محدودًا وآمنًا للملفات القديمة.
+3. لا تسمح بالوصول إلى ملف قديم لمجرد أن مساره:
+    /objects/uploads/
+
+يجب إثبات صلاحية الوصول من بيانات التطبيق وقاعدة البيانات.
+
+4. بالنسبة لمرفقات رسائل أولياء الأمور القديمة:
+    اسمح بالوصول إلى legacy attachment فقط إذا أثبتت قاعدة البيانات أن الملف مشار إليه فعليًا في الرسالة/الرد الذي يحق للـteacher أو parent token الحالي الوصول إليه.
+5. بالنسبة لملفات المعلم التاريخية:
+    إذا كان الملف لا يحمل verifiedUpload metadata الجديدة، فلا تعتبره موثوقًا تلقائيًا.
+    اسمح به فقط إذا أمكن إثبات ارتباطه بالمعلم الحالي من سجل موثوق في قاعدة البيانات.
+6. لا تضف verifiedUpload=true جماعيًا للملفات القديمة.
+    ولا تغيّر verifiedGeneration جماعيًا.
+    ولا تجعل legacy path عامًا لتجاوز authorization.
+7. اجعل ترتيب التحقق كالتالي تقريبًا:
+
+New verified upload
+→ استخدم نظام الملكية الجديد الحالي.
+
+Legacy upload
+→ تحقق من مرجع موثوق في قاعدة البيانات يثبت أن المستخدم/parent token الحالي يملك صلاحية الوصول.
+→ إذا ثبتت الصلاحية: اسمح بالقراءة.
+→ إذا لم تثبت: ارفض.
+
+8. لا تجعل fallback الخاص بالـlegacy يسمح بالوصول اعتمادًا على معرفة object path أو UUID فقط.
+9. أضف اختبارات تغطي على الأقل:
+
+* teacher يستطيع فتح ملفه القديم الصحيح.
+* teacher لا يستطيع فتح ملف قديم لمعلم آخر.
+* parent يستطيع فتح مرفق قديم موجود في رسالته.
+* parent token لرسالة أخرى لا يستطيع فتحه.
+* token منتهي لا يستطيع فتح المرفق.
+* legacy object غير مشار إليه في DB لا يمكن الوصول إليه.
+* الملفات الجديدة verifiedUpload تستمر بالعمل دون تغيير.
+* uploadTicket/finalization الجديد يستمر بالعمل.
+* PNG/PDF الجديدان يعملان.
+* SVG المرفوض يظل مرفوضًا.
+
+10. افحص أيضًا الأنواع التاريخية التالية إن كانت موجودة:
+
+* profile images
+* question images
+* PDFs/Word files
+* teacher library files
+* parent message attachments
+* parent reply attachments
+* videos
+
+لا تفترض أن مجرد وجود object في Object Storage يعني السماح بالوصول.
+
+11. بعد الإصلاح شغّل الاختبارات الحالية والجديدة وتأكد من عدم حدوث regression في نظام الملفات الجديد.
+12. بعدها أعد Production Readiness Check فقط للأجزاء التالية:
+
+* backward compatibility للملفات القديمة
+* parent attachments القديمة والجديدة
+* teacher historical files
+* authorization isolation
+* uploadTicket/finalization
+
+وفي النهاية أعطني قرارًا صريحًا:
+
+PASS — Safe to Publish
+
+أو
+
+FAIL — Do Not Publish
+
+إذا كانت FAIL، اذكر فقط المشاكل المانعة المتبقية وأين توجد في الكود.
+
+مهم:
+توقف بعد التقرير.
+لا تنفذ Deployment.
+لا تنفذ Production migration.
+لا تغيّر Production secrets.
+لا تحذف أو تعدّل ملفات Production.
