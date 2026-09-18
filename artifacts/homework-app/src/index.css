@@ -755,6 +755,24 @@
   overflow: hidden;
 }
 
+.quran-reader-main {
+  padding-bottom: calc(var(--quran-safe-area-bottom, env(safe-area-inset-bottom)) + 0.5rem);
+}
+
+.quran-reader-dock {
+  padding-bottom: var(--quran-safe-area-bottom, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .quran-reader-main {
+    padding-bottom: 2rem;
+  }
+
+  .quran-reader-dock {
+    padding-bottom: 0;
+  }
+}
+
 /* Phone landscape mode: keep the Mushaf inside the current route and fit one
    complete Madani page to the viewport. No separate fullscreen URL is used. */
 @media (orientation: landscape) and (max-height: 600px) {

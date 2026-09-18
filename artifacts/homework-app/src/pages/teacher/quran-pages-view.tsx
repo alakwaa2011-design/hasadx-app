@@ -1283,7 +1283,7 @@ export function QuranPagesView({
       <main
         ref={readerMainRef}
         className={cn(
-          "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
+          "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
         )}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
