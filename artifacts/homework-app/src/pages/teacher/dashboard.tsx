@@ -1265,7 +1265,7 @@ export default function TeacherDashboard() {
                   <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{ color: active ? "#1E4D35" : "rgba(30,77,53,0.62)" }}>
                     <BookOpen className="w-4 h-4" />
                   </span>
-                  <span className="relative flex-1 truncate text-start">{lang === "ar" ? "حصاد القرآن" : "Hasaad Quran"}</span>
+                  <span className="relative flex-1 truncate text-start">{lang === "ar" ? "إسلاميات حصاد" : "Hasaad Islamic"}</span>
                   <ChevronDown
                     className="relative h-3.5 w-3.5 shrink-0 transition-transform"
                     style={{
@@ -3486,7 +3486,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         },
         {
           icon: <BookOpen className="w-6 h-6" />,
-          title: isAr ? "حصاد القرآن" : "Hasaad Quran",
+          title: isAr ? "إسلاميات حصاد" : "Hasaad Islamic",
           desc: isAr ? "نظّم حلقات التحفيظ والمراجعة وسجل الحفظ اليومي لطلابك" : "Organize memorization circles and daily recitation logs",
           accent: BRAND.green,
           href: "/teacher/quran-center",
@@ -3631,7 +3631,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled, activeGroup, o
         selectTool("/teacher/library", { searchText: "مكتبة المعلم teacher library resources" }),
         selectTool("/teacher/question-bank", { searchText: "بنك الأسئلة question bank content" }),
         selectTool("/teacher/quran-center", {
-          searchText: "حصاد القرآن المصحف الحلقات التحفيظ المراجعة hasaad quran mushaf memorization",
+          searchText: "إسلاميات حصاد المصحف الحلقات التحفيظ المراجعة hasaad islamic quran mushaf memorization",
         }),
       ],
     },

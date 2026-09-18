@@ -135,7 +135,7 @@ export default function QuranCenter({
               </div>
               <div>
                 <h1 className="font-black text-base md:text-lg leading-none tracking-tight">
-                  {lang === "ar" ? "حصاد القرآن" : "Hasaad Quran"}
+                  {lang === "ar" ? "إسلاميات حصاد" : "Hasaad Islamic"}
                 </h1>
                 <p className="hidden md:block text-[11px] font-bold text-emerald-600/70 dark:text-emerald-500/70 mt-1">
                   {lang === "ar" ? "إدارة الحلقات والحفظ" : "Memorization & Circles"}

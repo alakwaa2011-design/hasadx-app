@@ -712,7 +712,7 @@ export function QuranTextReaderView({
                 <span className="hidden md:inline">
                   {isStudentWard || isStudentPractice
                     ? (lang === 'ar' ? 'العودة إلى لوحة الطالب' : 'Back to student dashboard')
-                    : (lang === 'ar' ? 'العودة إلى حصاد القرآن' : 'Back to Hasaad Quran')}
+                    : (lang === 'ar' ? 'العودة إلى إسلاميات حصاد' : 'Back to Hasaad Islamic')}
                 </span>
               </button>
             )}
@@ -721,7 +721,7 @@ export function QuranTextReaderView({
                 type="button"
                 onClick={onExitEmbedded}
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 xl:hidden dark:text-emerald-400 dark:hover:bg-emerald-950/50"
-                aria-label={lang === 'ar' ? 'العودة إلى أقسام حصاد القرآن' : 'Back to Hasaad Quran sections'}
+                aria-label={lang === 'ar' ? 'العودة إلى أقسام إسلاميات حصاد' : 'Back to Hasaad Islamic sections'}
               >
                 <ChevronLeft className="h-5 w-5 rtl:hidden" />
                 <ChevronRight className="h-5 w-5 ltr:hidden" />

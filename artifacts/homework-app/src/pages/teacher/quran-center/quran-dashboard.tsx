@@ -27,7 +27,7 @@ export function QuranDashboard({ surahs, onNavigate }: { surahs: QuranSurah[], o
             {lang === "ar" ? "تعذّر تحميل الرئيسية" : "Could not load the dashboard"}
           </h2>
           <p className="mt-1 text-xs font-semibold text-muted-foreground">
-            {lang === "ar" ? "حدث خلل مؤقت أثناء جلب بيانات حصاد القرآن." : "There was a temporary issue loading Hasaad Quran data."}
+            {lang === "ar" ? "حدث خلل مؤقت أثناء جلب بيانات إسلاميات حصاد." : "There was a temporary issue loading Hasaad Islamic data."}
           </p>
           <button
             type="button"

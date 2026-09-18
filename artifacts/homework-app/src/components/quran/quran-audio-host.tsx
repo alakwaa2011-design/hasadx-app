@@ -70,7 +70,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
         ? `${lang === "ar" ? "الآية" : "Ayah"} ${playback.ayahNumber} · ${lang === "ar" ? "السورة" : "Surah"} ${playback.surahNumber}`
         : (lang === "ar" ? "تلاوة القرآن" : "Quran recitation"),
       artist: lang === "ar" ? "قارئ القرآن" : "Quran reciter",
-      album: lang === "ar" ? "حصاد القرآن" : "Hasaad Quran",
+      album: lang === "ar" ? "إسلاميات حصاد" : "Hasaad Islamic",
     });
     mediaSession.playbackState = playback.isPlaying ? "playing" : "paused";
     const next = () => {
