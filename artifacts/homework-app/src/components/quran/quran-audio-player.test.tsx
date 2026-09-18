@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React, { useState } from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const timingResults = new Map<number, {
@@ -155,6 +155,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.restoreAllMocks();
     globalThis.Audio = OriginalAudio;
   });
@@ -216,12 +217,20 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
   it('places previous on the right and next on the left in Arabic', async () => {
     const { getByTestId } = render(<PlayerHarness />);
 
-    const controls = getByTestId('button-prev-ayah').parentElement;
+    const previous = getByTestId('button-prev-ayah') as HTMLButtonElement;
+    const next = getByTestId('button-next-ayah') as HTMLButtonElement;
+    const controls = previous.parentElement;
     expect(controls).not.toBeNull();
-    expect(controls).toHaveAttribute('dir', 'rtl');
-    expect(controls?.firstElementChild).toBe(getByTestId('button-prev-ayah'));
-    expect(controls?.lastElementChild).toBe(getByTestId('button-next-ayah'));
-    expect(getByTestId('button-prev-ayah').querySelector('svg')).toHaveClass('scale-x-[-1]');
-    expect(getByTestId('button-next-ayah').querySelector('svg')).toHaveClass('scale-x-[-1]');
+    expect(controls?.getAttribute('dir')).toBe('rtl');
+    expect(controls?.firstElementChild).toBe(previous);
+    expect(controls?.lastElementChild).toBe(next);
+    expect(previous.querySelector('svg')?.classList.contains('scale-x-[-1]')).toBe(true);
+    expect(next.querySelector('svg')?.classList.contains('scale-x-[-1]')).toBe(true);
+
+    expect(previous.disabled).toBe(true);
+    fireEvent.click(next);
+    await waitFor(() => expect(previous.disabled).toBe(false));
+    fireEvent.click(previous);
+    await waitFor(() => expect(previous.disabled).toBe(true));
   });
 });

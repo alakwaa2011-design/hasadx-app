@@ -127,3 +127,4 @@
 - [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.
 - [Quran guided pause preference](quran-guided-pause-preference.md) — guided memorization must preserve the selected inter-ayah pause, including zero, instead of imposing its own delay.
 - [Quran continuous audio handoff](quran-continuous-audio-handoff.md) — zero-pause recitation must keep chapter audio mounted and advance with prefetched timings; ayah files preload the next source.
+- [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — component tests need explicit cleanup and native DOM assertions; wrap audio consumers in their real provider.
