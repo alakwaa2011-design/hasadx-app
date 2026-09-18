@@ -926,9 +926,17 @@ export function QuranAudioPlayer({
     isEndedHandledRef.current = false;
     setCurrentAyahPlayCount(1);
     setCurrentRangePlayCount(1);
+    setPlayingWord(null);
+    onPlayingWordChange?.(null);
+    const activeAyahSeek = activeSeekRef.current?.ayah === playingAyah
+      ? activeSeekRef.current
+      : null;
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      audioRef.current.currentTime = activeAyahSeek
+        ? activeAyahSeek.startMs / 1000
+        : 0;
+      audioRef.current.playbackRate = speed;
       void audioRef.current.play();
     }
     onIsPlayingChange(true);
