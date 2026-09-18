@@ -4,6 +4,11 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { featureAccess } from "@workspace/billing";
 import { hasAiVideoAdminAccess } from "../lib/ai-video-access";
+import {
+  hasLegacySchoolLogoReference,
+  teacherHasLegacyObjectReference,
+  teacherHasParentAttachmentReference,
+} from "../lib/legacy-object-access";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -11,6 +16,32 @@ const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 30 * 1024 * 1024;
+const LEGACY_SCHOOL_LOGO_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+]);
+
+function legacyTypeLimit(contentType: string): number | null {
+  if (contentType.startsWith("video/")) return MAX_VIDEO_BYTES;
+  if (contentType.startsWith("audio/")) return MAX_AUDIO_BYTES;
+  if (contentType.startsWith("image/")) return MAX_IMAGE_BYTES;
+  if ([
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+  ].includes(contentType)) return MAX_ATTACHMENT_BYTES;
+  return null;
+}
 
 const RequestUploadUrlBody = z.object({
   name: z.string(),
@@ -251,6 +282,7 @@ async function serveObject(req: Request, res: Response) {
     const advancedVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
     const directUploadOwner = wildcardPath.match(/^uploads\/(\d+)\//)?.[1];
     const parentUploadOwner = wildcardPath.match(/^uploads\/parent\/([a-f0-9]{32})\//)?.[1];
+    const isLegacyUpload = /^uploads\/[^/]+$/.test(wildcardPath);
     if (directUploadOwner && Number(directUploadOwner) !== req.session?.teacherId) {
       res.status(404).json({ error: "Object not found" });
       return;
@@ -276,12 +308,53 @@ async function serveObject(req: Request, res: Response) {
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
     const [metadata] = await objectFile.getMetadata();
-    if ((directUploadOwner || parentUploadOwner) && (metadata.metadata?.verifiedUpload !== "true" ||
-        metadata.metadata?.verifiedGeneration !== String(metadata.generation || ""))) {
+    const rawContentType = (metadata.contentType as string) || "application/octet-stream";
+    const validMarker = metadata.metadata?.verifiedUpload === "true" &&
+      metadata.metadata?.verifiedGeneration === String(metadata.generation || "");
+
+    if (isLegacyUpload) {
+      const publiclyReadable = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+      });
+      const publicSchoolLogo = await hasLegacySchoolLogoReference(objectPath);
+      const teacherReferenced = Boolean(req.session?.teacherId) &&
+        await teacherHasLegacyObjectReference(req.session.teacherId!, objectPath);
+      const validPublicSchoolLogo = publicSchoolLogo &&
+        LEGACY_SCHOOL_LOGO_TYPES.has(rawContentType);
+      if (!publiclyReadable && !validPublicSchoolLogo && !teacherReferenced) {
+        res.status(404).json({ error: "Object not found" });
+        return;
+      }
+      const maxBytes = legacyTypeLimit(rawContentType);
+      if (!maxBytes) {
+        res.status(404).json({ error: "Object not found" });
+        return;
+      }
+      await objectStorageService.inspectUploadedObject(objectPath, rawContentType, maxBytes);
+    } else if (parentUploadOwner) {
+      const teacherReferenced = Boolean(req.session?.teacherId) &&
+        await teacherHasParentAttachmentReference(req.session.teacherId!, objectPath);
+      if (!validMarker || metadata.metadata?.parentOwner !== parentUploadOwner ||
+          !teacherReferenced) {
+        res.status(404).json({ error: "Object not found" });
+        return;
+      }
+    } else if (directUploadOwner && !validMarker) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    } else if (directUploadOwner && metadata.metadata?.verifiedGeneration !== String(metadata.generation || "")) {
       res.status(404).json({ error: "Object not found" });
       return;
     }
-    const rawContentType = (metadata.contentType as string) || "application/octet-stream";
+    if (isLegacyUpload && validMarker) {
+      // A flat path remains legacy by inventory shape even if it was
+      // individually finalized later; its DB/ACL authorization above remains
+      // mandatory and the marker never replaces ownership proof.
+      if (metadata.metadata?.verifiedGeneration !== String(metadata.generation || "")) {
+        res.status(404).json({ error: "Object not found" });
+        return;
+      }
+    }
     const contentType = /(?:svg|html|xml|javascript|xhtml)/i.test(rawContentType)
       ? "application/octet-stream" : rawContentType;
 

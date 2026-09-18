@@ -25,6 +25,7 @@ import { LEVELS, levelForXp } from "../lib/xp/levels";
 import { evaluateRule } from "../lib/xp/rules-engine";
 import { buildAchievementStatsPayload } from "../lib/xp/teacher-xp-display";
 import { isTeacherXpRewardsEnabled } from "../lib/xp/teacher-xp-rewards-flag";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 function leaderboardAvatarInitials(displayName: string): string {
   const t = displayName.trim();
@@ -33,6 +34,16 @@ function leaderboardAvatarInitials(displayName: string): string {
 }
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
+const SCHOOL_LOGO_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+]);
 
 /* ──────────────────────────────────────────────────────────────────────── */
 /* Helpers                                                                  */
@@ -317,8 +328,36 @@ router.patch("/me/privacy", async (req, res) => {
       update.displaySchool = parsed.data.displaySchool;
     if (parsed.data.profileSlug !== undefined)
       update.profileSlug = parsed.data.profileSlug;
-    if (parsed.data.schoolLogo !== undefined)
+    if (parsed.data.schoolLogo !== undefined) {
+      if (parsed.data.schoolLogo) {
+        const [current] = await db
+          .select({ schoolLogo: teachersTable.schoolLogo })
+          .from(teachersTable)
+          .where(eq(teachersTable.id, teacherId))
+          .limit(1);
+        const unchangedLegacyLogo = current?.schoolLogo === parsed.data.schoolLogo;
+        if (!unchangedLegacyLogo) {
+          if (!parsed.data.schoolLogo.startsWith(`/objects/uploads/${teacherId}/`)) {
+            res.status(400).json({ message: "مسار شعار المدرسة غير صالح" });
+            return;
+          }
+          try {
+            const file = await objectStorageService.getObjectEntityFile(parsed.data.schoolLogo);
+            const [metadata] = await file.getMetadata();
+            const validMarker = metadata.metadata?.verifiedUpload === "true" &&
+              metadata.metadata?.verifiedGeneration === String(metadata.generation || "");
+            if (!validMarker || !SCHOOL_LOGO_TYPES.has(String(metadata.contentType || ""))) {
+              res.status(400).json({ message: "تعذر التحقق من شعار المدرسة" });
+              return;
+            }
+          } catch {
+            res.status(400).json({ message: "تعذر التحقق من شعار المدرسة" });
+            return;
+          }
+        }
+      }
       update.schoolLogo = parsed.data.schoolLogo;
+    }
     if (Object.keys(update).length === 0) {
       res.json({ ok: true });
       return;

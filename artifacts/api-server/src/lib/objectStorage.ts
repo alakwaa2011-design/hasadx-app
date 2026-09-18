@@ -230,7 +230,40 @@ export class ObjectStorageService {
     objectPath: string,
     expectedType: string,
     maxBytes: number,
-  ): Promise<{ size: number; contentType: string }> {
+  ): Promise<{
+    size: number;
+    contentType: string;
+    generation: string;
+    customMetadata: Record<string, string>;
+  }> {
+    const verified = await this.inspectUploadedObject(objectPath, expectedType, maxBytes);
+    const file = await this.getObjectEntityFile(objectPath);
+    await file.setMetadata({
+      metadata: {
+        ...verified.customMetadata,
+        verifiedUpload: "true",
+        verifiedGeneration: verified.generation,
+      },
+    }, {
+      preconditionOpts: { ifGenerationMatch: Number(verified.generation) },
+    });
+    return verified;
+  }
+
+  /**
+   * Read-only byte inspection for legacy objects. Unlike finalization this
+   * deliberately does not add or change verification metadata.
+   */
+  async inspectUploadedObject(
+    objectPath: string,
+    expectedType: string,
+    maxBytes: number,
+  ): Promise<{
+    size: number;
+    contentType: string;
+    generation: string;
+    customMetadata: Record<string, string>;
+  }> {
     const file = await this.getObjectEntityFile(objectPath);
     const [metadata] = await file.getMetadata();
     const size = Number(metadata.size || 0);
@@ -243,14 +276,15 @@ export class ObjectStorageService {
       throw new Error("UPLOAD_TYPE_MISMATCH");
     }
     const generation = String(metadata.generation || "");
-    await file.setMetadata({
-      metadata: {
-        ...(metadata.metadata as Record<string, string> | undefined),
-        verifiedUpload: "true",
-        verifiedGeneration: generation,
-      },
-    });
-    return { size, contentType: detected };
+    if (!generation || !Number.isSafeInteger(Number(generation))) {
+      throw new Error("INVALID_UPLOAD_GENERATION");
+    }
+    return {
+      size,
+      contentType: detected,
+      generation,
+      customMetadata: (metadata.metadata as Record<string, string> | undefined) ?? {},
+    };
   }
 
   issueUploadTicket(input: { objectPath: string; teacherId: number; purpose: string; contentType: string; maxBytes: number; videoEntitled?: boolean }): string {

@@ -22,6 +22,21 @@ import {
 import { eq, and, desc, asc, sql, gte, lte } from "drizzle-orm";
 
 const router: IRouter = Router();
+type Attachment = {
+  name: string;
+  objectPath: string;
+  contentType: string;
+  size: number;
+};
+
+function decodeAttachments(value: string | null | undefined): Attachment[] {
+  try {
+    const parsed = value ? JSON.parse(value) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 async function validateParentAttachments(token: string, attachments?: Array<{ objectPath: string }>): Promise<boolean> {
   if (!attachments?.length) return true;
   const owner = createHash("sha256").update(token).digest("hex").slice(0, 32);
@@ -784,7 +799,16 @@ router.post("/parent-portal/:token/finalize-attachment", async (req, res) => {
     if (!parsed.data.objectPath.startsWith(`/objects/uploads/parent/${owner}/`)) throw new Error("INVALID_UPLOAD_TICKET");
     const verified = await storage.verifyUploadedObject(parsed.data.objectPath, ticket.contentType, ticket.maxBytes);
     const verifiedFile = await storage.getObjectEntityFile(parsed.data.objectPath);
-    await verifiedFile.setMetadata({ metadata: { parentOwner: owner, verifiedUpload: "true", verifiedGeneration: String((await verifiedFile.getMetadata())[0].generation || "") } });
+    await verifiedFile.setMetadata({
+      metadata: {
+        ...verified.customMetadata,
+        parentOwner: owner,
+        verifiedUpload: "true",
+        verifiedGeneration: verified.generation,
+      },
+    }, {
+      preconditionOpts: { ifGenerationMatch: Number(verified.generation) },
+    });
     res.json({ objectPath: parsed.data.objectPath, size: verified.size, contentType: verified.contentType, finalized: true });
   } catch {
     res.status(400).json({ error: "تعذر التحقق من الملف المرفوع" });
@@ -802,26 +826,35 @@ router.get("/parent-portal/:token/attachment/*path", async (req, res) => {
     const raw = req.params.path;
     const path = `/objects/${Array.isArray(raw) ? raw.join("/") : raw}`;
     const parentOwned = path.startsWith(`/objects/uploads/parent/${owner}/`);
-    let referenced: any = null;
-    const decode = (value: string | null | undefined) => {
-      try { return value ? JSON.parse(value) : []; } catch { return []; }
-    };
-    const refs = [...decode(message.attachments)];
+    const refs = [...decodeAttachments(message.attachments)];
     const replies = await db.select({ attachments: parentMessageRepliesTable.attachments })
       .from(parentMessageRepliesTable).where(eq(parentMessageRepliesTable.messageId, message.id));
-    for (const reply of replies) refs.push(...decode(reply.attachments));
-    referenced = refs.find((item: any) => item?.objectPath === path);
+    for (const reply of replies) refs.push(...decodeAttachments(reply.attachments));
+    const referenced = refs.find((item) => item?.objectPath === path);
     const teacherOwned = path.startsWith(`/objects/uploads/${message.teacherId}/`);
-    if (!parentOwned && (!teacherOwned || !referenced)) { res.status(404).end(); return; }
+    const legacyPath = /^\/objects\/uploads\/[^/]+$/.test(path);
+    if (!referenced || (!parentOwned && !teacherOwned && !legacyPath)) {
+      res.status(404).end(); return;
+    }
     const storage = new ObjectStorageService();
     const file = await storage.getObjectEntityFile(path);
     const [metadata] = await file.getMetadata();
     const validMarker = metadata.metadata?.verifiedUpload === "true" &&
       metadata.metadata?.verifiedGeneration === String(metadata.generation || "");
-    if (!validMarker || (parentOwned
-      ? metadata.metadata?.parentOwner !== owner
-      : metadata.contentType !== referenced.contentType || Number(metadata.size || 0) !== Number(referenced.size))) {
+    const metadataMatchesReference = metadata.contentType === referenced.contentType &&
+      Number(metadata.size || 0) === Number(referenced.size);
+    if ((parentOwned && (!validMarker || metadata.metadata?.parentOwner !== owner)) ||
+        (!parentOwned && validMarker && !metadataMatchesReference)) {
       res.status(404).end(); return;
+    }
+    if (!validMarker && !legacyPath) {
+      res.status(404).end(); return;
+    }
+    if (!validMarker) {
+      if (!metadataMatchesReference || referenced.size > 20 * 1024 * 1024) {
+        res.status(404).end(); return;
+      }
+      await storage.inspectUploadedObject(path, referenced.contentType, referenced.size);
     }
     res.redirect(302, await storage.signFileDownloadUrl(file, 300));
   } catch { res.status(404).end(); }

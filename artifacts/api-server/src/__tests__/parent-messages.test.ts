@@ -22,6 +22,11 @@ const mockState = vi.hoisted(() => {
 
 // Controllable sendEmail mock
 const mockSendEmail = vi.hoisted(() => vi.fn(async () => ({ delivered: true })));
+const mockStorage = vi.hoisted(() => ({
+  getFile: vi.fn(),
+  inspect: vi.fn(),
+  sign: vi.fn(),
+}));
 
 vi.mock("@workspace/db", () => {
   const stub = new Proxy({}, { get: () => "stub" });
@@ -50,6 +55,14 @@ vi.mock("../lib/parent-message-email", () => ({
   buildParentMessageEmail: () => "<p>test email</p>",
   buildTeacherReplyNotificationEmail: () => "<p>reply notif</p>",
   buildParentThreadReplyEmail: () => "<p>thread reply</p>",
+}));
+
+vi.mock("../lib/objectStorage", () => ({
+  ObjectStorageService: class {
+    getObjectEntityFile = mockStorage.getFile;
+    inspectUploadedObject = mockStorage.inspect;
+    signFileDownloadUrl = mockStorage.sign;
+  },
 }));
 
 import express from "express";
@@ -91,6 +104,108 @@ beforeEach(() => {
   mockSendEmail.mockReset();
   mockSendEmail.mockResolvedValue({ delivered: true });
   process.env.SESSION_SECRET = "test-session-secret-for-summary-signatures";
+  mockStorage.getFile.mockReset();
+  mockStorage.inspect.mockReset();
+  mockStorage.sign.mockReset();
+  mockStorage.inspect.mockResolvedValue({ size: 8, contentType: "image/png" });
+  mockStorage.sign.mockResolvedValue("https://storage.example/signed");
+});
+
+describe("parent portal attachment compatibility", () => {
+  const token = "current-thread-token";
+  const activeMessage = {
+    id: 99,
+    teacherId: 1,
+    tokenExpiresAt: new Date(Date.now() + 60_000),
+  };
+  const legacyAttachment = {
+    name: "old.png",
+    objectPath: "/objects/uploads/legacy-uuid",
+    contentType: "image/png",
+    size: 8,
+  };
+
+  function mockFile(metadata: Record<string, unknown>) {
+    mockStorage.getFile.mockResolvedValue({
+      getMetadata: vi.fn().mockResolvedValue([metadata]),
+    });
+  }
+
+  it("allows an exact legacy attachment referenced by the current thread", async () => {
+    mockState.queue.push([{ ...activeMessage, attachments: JSON.stringify([legacyAttachment]) }]);
+    mockState.queue.push([]);
+    mockFile({ contentType: "image/png", size: 8, generation: "old" });
+
+    const res = await request(makeApp(null))
+      .get(`/api/parent-portal/${token}/attachment/uploads/legacy-uuid`);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe("https://storage.example/signed");
+    expect(mockStorage.inspect).toHaveBeenCalledWith(
+      legacyAttachment.objectPath,
+      "image/png",
+      8,
+    );
+  });
+
+  it("denies the same legacy path when it is not referenced by this token's thread", async () => {
+    mockState.queue.push([{ ...activeMessage, attachments: null }]);
+    mockState.queue.push([]);
+
+    const res = await request(makeApp(null))
+      .get(`/api/parent-portal/another-token/attachment/uploads/legacy-uuid`);
+
+    expect(res.status).toBe(404);
+    expect(mockStorage.getFile).not.toHaveBeenCalled();
+  });
+
+  it("denies an expired token before reading the object", async () => {
+    mockState.queue.push([{
+      ...activeMessage,
+      tokenExpiresAt: new Date(Date.now() - 60_000),
+      attachments: JSON.stringify([legacyAttachment]),
+    }]);
+
+    const res = await request(makeApp(null))
+      .get(`/api/parent-portal/${token}/attachment/uploads/legacy-uuid`);
+
+    expect(res.status).toBe(410);
+    expect(mockStorage.getFile).not.toHaveBeenCalled();
+  });
+
+  it("denies an unreferenced legacy object even when its path is known", async () => {
+    mockState.queue.push([{ ...activeMessage, attachments: null }]);
+    mockState.queue.push([]);
+
+    const res = await request(makeApp(null))
+      .get(`/api/parent-portal/${token}/attachment/uploads/unreferenced-uuid`);
+
+    expect(res.status).toBe(404);
+    expect(mockStorage.getFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps a new verified teacher attachment working", async () => {
+    const attachment = {
+      name: "new.pdf",
+      objectPath: "/objects/uploads/1/new-file",
+      contentType: "application/pdf",
+      size: 12,
+    };
+    mockState.queue.push([{ ...activeMessage, attachments: JSON.stringify([attachment]) }]);
+    mockState.queue.push([]);
+    mockFile({
+      contentType: "application/pdf",
+      size: 12,
+      generation: "7",
+      metadata: { verifiedUpload: "true", verifiedGeneration: "7" },
+    });
+
+    const res = await request(makeApp(null))
+      .get(`/api/parent-portal/${token}/attachment/uploads/1/new-file`);
+
+    expect(res.status).toBe(302);
+    expect(mockStorage.inspect).not.toHaveBeenCalled();
+  });
 });
 
 describe("motivation summary privacy boundary", () => {
