@@ -52,10 +52,14 @@ function ActiveSession({ sourceMode }: { sourceMode: QuranAudioSession['sourceMo
 }
 
 function renderActiveSession(sourceMode: QuranAudioSession['sourceMode']) {
-  return render(
+  return render(activeSessionTree(sourceMode));
+}
+
+function activeSessionTree(sourceMode: QuranAudioSession['sourceMode']) {
+  return (
     <QuranAudioHostProvider>
       <ActiveSession sourceMode={sourceMode} />
-    </QuranAudioHostProvider>,
+    </QuranAudioHostProvider>
   );
 }
 
@@ -63,6 +67,7 @@ describe('QuranAudioHostProvider cross-route playback', () => {
   const play = vi.fn(() => Promise.resolve());
   const pause = vi.fn();
   const originalFetch = globalThis.fetch;
+  const originalMediaSessionDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaSession');
 
   beforeEach(() => {
     currentLocation = '/teacher/dashboard';
@@ -75,7 +80,13 @@ describe('QuranAudioHostProvider cross-route playback', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     globalThis.fetch = originalFetch;
+    if (originalMediaSessionDescriptor) {
+      Object.defineProperty(navigator, 'mediaSession', originalMediaSessionDescriptor);
+    } else {
+      delete (navigator as Navigator & { mediaSession?: MediaSession }).mediaSession;
+    }
   });
 
   it('continues from the last ayah into the next surah with the same audio element', async () => {
@@ -141,6 +152,83 @@ describe('QuranAudioHostProvider cross-route playback', () => {
     expect(pause).toHaveBeenCalledTimes(1);
     expect(audio.currentTime).toBe(0);
     expect(view.queryByLabelText('Stop Quran')).toBeNull();
+    expect(view.container.querySelectorAll('audio')).toHaveLength(1);
+  });
+
+  it('preserves one audio element and its position through route and visibility changes', async () => {
+    const view = renderActiveSession('ayah');
+    const audio = view.container.querySelector('audio') as HTMLAudioElement;
+
+    await waitFor(() => {
+      expect(view.getByLabelText('Stop Quran')).not.toBeNull();
+    });
+    audio.setAttribute('src', '/active-recitation.mp3');
+    Object.defineProperty(audio, 'currentTime', { value: 12, writable: true });
+    play.mockClear();
+    pause.mockClear();
+
+    currentLocation = '/teacher/quran-reader/1';
+    view.rerender(activeSessionTree('ayah'));
+    await waitFor(() => expect(view.queryByLabelText('Stop Quran')).toBeNull());
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+
+    currentLocation = '/teacher/dashboard';
+    view.rerender(activeSessionTree('ayah'));
+    await waitFor(() => expect(view.getByLabelText('Stop Quran')).not.toBeNull());
+
+    expect(view.container.querySelectorAll('audio')).toHaveLength(1);
+    expect(view.container.querySelector('audio')).toBe(audio);
+    expect(audio.getAttribute('src')).toBe('/active-recitation.mp3');
+    expect(audio.currentTime).toBe(12);
+    expect(play).not.toHaveBeenCalled();
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('registers Arabic lock-screen metadata and playback controls', async () => {
+    const handlers = new Map<string, (() => void) | null>();
+    const mediaSession = {
+      metadata: null as MediaMetadata | null,
+      playbackState: 'none' as MediaSessionPlaybackState,
+      setActionHandler: vi.fn((action: string, handler: (() => void) | null) => {
+        handlers.set(action, handler);
+      }),
+    };
+    class FakeMediaMetadata {
+      title = '';
+      artist = '';
+      album = '';
+      constructor(init: MediaMetadataInit) {
+        Object.assign(this, init);
+      }
+    }
+    vi.stubGlobal('MediaMetadata', FakeMediaMetadata);
+    Object.defineProperty(navigator, 'mediaSession', {
+      configurable: true,
+      value: mediaSession,
+    });
+
+    const view = renderActiveSession('ayah');
+    const audio = view.container.querySelector('audio') as HTMLAudioElement;
+    Object.defineProperty(audio, 'duration', { value: 120, configurable: true });
+    Object.defineProperty(audio, 'currentTime', { value: 30, writable: true });
+
+    await waitFor(() => {
+      expect(mediaSession.playbackState).toBe('playing');
+      expect(mediaSession.metadata?.title).toBe('الآية 7 · السورة 1');
+    });
+    expect(mediaSession.metadata?.artist).toBe('قارئ القرآن');
+    expect(mediaSession.metadata?.album).toBe('إسلاميات حصاد');
+
+    handlers.get('previoustrack')?.();
+    expect(audio.currentTime).toBe(0);
+    handlers.get('nexttrack')?.();
+    expect(audio.currentTime).toBe(120);
+    handlers.get('pause')?.();
+    handlers.get('play')?.();
+
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(play).toHaveBeenCalledTimes(1);
     expect(view.container.querySelectorAll('audio')).toHaveLength(1);
   });
 });
