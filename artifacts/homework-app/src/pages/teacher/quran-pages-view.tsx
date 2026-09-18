@@ -597,7 +597,7 @@ export function QuranPagesView({
       <figure
         key={page}
         data-quran-page={page}
-        className="relative mx-auto w-full overflow-hidden rounded-[3px] bg-white shadow-[0_20px_60px_rgba(34,87,57,0.16)] ring-1 ring-black/10"
+        className="quran-reader-figure relative mx-auto w-full overflow-hidden rounded-[3px] bg-white shadow-[0_20px_60px_rgba(34,87,57,0.16)] ring-1 ring-black/10"
         onClick={(event) => {
           if (didSwipeRef.current) {
             didSwipeRef.current = false;
@@ -711,7 +711,7 @@ export function QuranPagesView({
   return (
     <div
       className={cn(
-        "flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
+        "quran-reader-root flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
         embedded
           ? "h-full overflow-hidden"
           : standalone
@@ -724,7 +724,7 @@ export function QuranPagesView({
         <button
           type="button"
           onClick={() => setQuietMode(false)}
-          className="fixed bottom-6 end-6 z-50 rounded-full bg-emerald-800 p-3 text-white opacity-40 shadow-lg transition-opacity hover:opacity-100"
+          className="quran-reader-quiet-exit fixed bottom-6 end-6 z-50 rounded-full bg-emerald-800 p-3 text-white opacity-40 shadow-lg transition-opacity hover:opacity-100"
           aria-label={lang === "ar" ? "إظهار الأدوات" : "Show controls"}
         >
           <Eye className="h-6 w-6" />
@@ -732,7 +732,7 @@ export function QuranPagesView({
       )}
 
       {!quietMode && (
-        <header ref={toolsHeaderRef} className="sticky top-0 z-40 shrink-0 border-b border-border/40 bg-white/95 shadow-sm backdrop-blur-xl dark:bg-[#0a0c0b]/95 transition-all duration-300">
+        <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 shrink-0 border-b border-border/40 bg-white/95 shadow-sm backdrop-blur-xl dark:bg-[#0a0c0b]/95 transition-all duration-300">
           <div className="flex flex-wrap items-center justify-between gap-1 px-1 py-0.5 md:gap-3 md:px-4 md:py-3">
 
             {/* Back Navigation */}
@@ -819,6 +819,30 @@ export function QuranPagesView({
                 aria-label={lang === "ar" ? "فتح التلاوة واختيار القارئ" : "Open recitation and choose reciter"}
               >
                 <Headphones className="h-4.5 w-4.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (memoSession.isActive) {
+                    endSession();
+                    return;
+                  }
+                  startSession();
+                  setAudioDockOpen(true);
+                }}
+                data-testid="button-mobile-memo-session"
+                className={cn(
+                  "flex h-9 items-center gap-1 rounded-xl px-2 text-[11px] font-black transition-colors",
+                  memoSession.isActive
+                    ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
+                    : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
+                )}
+                aria-label={memoSession.isActive
+                  ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization")
+                  : (lang === "ar" ? "ابدأ الحفظ" : "Start memorization")}
+              >
+                <ListPlus className="h-4 w-4" />
+                <span>{memoSession.isActive ? (lang === "ar" ? "إنهاء" : "End") : (lang === "ar" ? "حفظ" : "Memo")}</span>
               </button>
               <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
               {(canToggleCurrentBookmark || onOpenBookmarks) && (
@@ -937,7 +961,7 @@ export function QuranPagesView({
                     </button>
                   )}
 
-                  {!standalone && <button
+                  <button
                     type="button"
                     onClick={() => {
                       if (memoSession.isActive) {
@@ -949,14 +973,14 @@ export function QuranPagesView({
                     }}
                     data-testid="button-memo-session"
                     className={cn(
-                      "flex-1 rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors md:flex-none md:text-sm",
+                      "hidden rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors md:flex md:flex-none md:text-sm",
                       memoSession.isActive
                         ? "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-100"
                         : "border-border/60 bg-white text-foreground hover:bg-muted dark:bg-card"
                     )}
                   >
                     {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
-                  </button>}
+                  </button>
                   {!standalone && LIVE_RECITATION_ENABLED && isAdmin && (
                     <button
                       type="button"
@@ -1092,7 +1116,7 @@ export function QuranPagesView({
 
       <main
         className={cn(
-          "flex min-h-0 flex-col items-start px-0 py-1 pb-2 md:px-8 md:py-8",
+          "quran-reader-main flex min-h-0 flex-col items-start px-0 py-1 pb-2 md:px-8 md:py-8",
           embedded || standalone ? "flex-1 overflow-auto" : "overflow-visible",
         )}
         onScroll={(event) => {
@@ -1133,7 +1157,7 @@ export function QuranPagesView({
       >
         {pageLayout === "continuous" ? (
           <div
-            className="mx-auto flex w-full flex-col gap-1 transition-[width,max-width] duration-200"
+            className="quran-page-shell mx-auto flex w-full flex-col gap-1 transition-[width,max-width] duration-200"
             style={{
               width: `${zoom}%`,
               maxWidth: `${Math.round(7.2 * zoom)}px`,
@@ -1145,7 +1169,7 @@ export function QuranPagesView({
           <div
             key={`${pageLayout}:${activePage}`}
             className={cn(
-              "mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
+              "quran-page-shell mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
               pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
               turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
             )}
@@ -1174,7 +1198,7 @@ export function QuranPagesView({
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
           className={cn(
-            "mx-auto mt-1 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-1 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5",
+            "quran-reader-nav mx-auto mt-1 flex w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-1 dark:border-white/10 md:mt-6 md:gap-3 md:pt-5",
             pageLayout === "continuous" && "hidden md:flex",
           )}
           style={{ width: pageLayout === "spread" ? `${zoom}%` : "100%" }}
@@ -1211,7 +1235,7 @@ export function QuranPagesView({
 
       {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
-          className="relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col md:max-h-[58dvh]"
+          className="quran-reader-dock relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col md:max-h-[58dvh]"
           data-testid="quran-bottom-dock"
         >
           {(audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0 && (

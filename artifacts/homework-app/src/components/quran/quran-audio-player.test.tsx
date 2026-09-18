@@ -246,6 +246,10 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
   it('moves directly to the first ayah of the next surah when a surah ends', async () => {
     timingResults.set(2, { data: connectedSecond });
     const onPlaybackLocationChange = vi.fn();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ audioUrl: '/next-surah.mp3' }),
+    } as Response);
     const view = render(
       <QuranAudioHostProvider>
         <QuranAudioPlayer
@@ -273,7 +277,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     });
     fireEvent.ended(audio);
 
-    expect(onPlaybackLocationChange).toHaveBeenCalledWith(2, 1);
+    await waitFor(() => expect(onPlaybackLocationChange).toHaveBeenCalledWith(2, 1));
+    expect(audio.src).toContain('/next-surah.mp3');
   });
 
   it('ignores an old boundary response after the user advances the ayah', async () => {

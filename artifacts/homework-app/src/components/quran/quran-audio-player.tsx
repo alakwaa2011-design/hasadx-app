@@ -100,7 +100,7 @@ export function QuranAudioPlayer({
     playback: hostPlayback,
     setPlayback,
     setSession,
-    setControllerAttached,
+    advanceBoundary,
   } = useQuranAudioHost();
   const preloadedAyahAudioRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const activeSeekRef = useRef<{ ayah: number, startMs: number, endMs: number, url: string, segments: AyahTimingSegment[] } | null>(null);
@@ -211,12 +211,25 @@ export function QuranAudioPlayer({
     if (lastQueryKeyRef.current !== currentQueryKey) {
        const isSeamlessTransition = seamlessTransitionKeyRef.current === currentQueryKey;
        const surahChanged = lastAudioSurahRef.current !== surahNumber;
+       const hostOwnsSurahTransition = Boolean(
+         surahChanged
+         && hostPlayback.isPlaying
+         && hostPlayback.surahNumber === surahNumber
+         && hostPlayback.ayahNumber === playingAyah
+         && audioRef.current?.src,
+       );
        lastAudioSurahRef.current = surahNumber;
        seamlessTransitionKeyRef.current = null;
        if (!isSeamlessTransition) pendingBoundaryTransitionRef.current = null;
-       restartWhenTimingsReadyRef.current = isSeamlessTransition ? null : currentQueryKey;
+       restartWhenTimingsReadyRef.current = isSeamlessTransition || hostOwnsSurahTransition
+         ? null
+         : currentQueryKey;
        lastQueryKeyRef.current = currentQueryKey;
-       if (!isSeamlessTransition) {
+       if (hostOwnsSurahTransition && audioRef.current) {
+         staleSurahSourceBlockedRef.current = false;
+         currentAudioSrcRef.current = audioRef.current.src;
+         setAudioSrc(audioRef.current.src);
+       } else if (!isSeamlessTransition) {
          audioRef.current?.pause();
          if (surahChanged) {
            staleSurahSourceBlockedRef.current = true;
@@ -302,6 +315,9 @@ export function QuranAudioPlayer({
       }
     }
   }, [
+    hostPlayback.ayahNumber,
+    hostPlayback.isPlaying,
+    hostPlayback.surahNumber,
     isPausedBetween,
     isPlaying,
     onIsPlayingChange,
@@ -693,24 +709,7 @@ export function QuranAudioPlayer({
       });
     } else {
       if (!memoSession?.isActive && startAyah === null && endAyah === null && surahNumber < 114) {
-        if (onPlaybackLocationChange) {
-          staleSurahSourceBlockedRef.current = true;
-          currentAudioSrcRef.current = undefined;
-          activeSeekRef.current = null;
-          setAudioSrc(undefined);
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.removeAttribute('src');
-            audioRef.current.load();
-          }
-          surahEntryGuardRef.current = { surah: surahNumber + 1, ayah: 1 };
-          onPlaybackLocationChange(surahNumber + 1, 1);
-        } else if (onSurahEnd) {
-          onSurahEnd();
-        } else {
-          onIsPlayingChange(false);
-          onPlayingAyahChange(null);
-        }
+        advanceBoundary();
       } else {
         onIsPlayingChange(false);
         onPlayingAyahChange(null);
@@ -725,12 +724,6 @@ export function QuranAudioPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const handleEndedEvent = (event: Event) => {
-      const handledEvent = event as Event & { __hasaadQuranHandled?: boolean };
-      if (handledEvent.__hasaadQuranHandled) return;
-      handledEvent.__hasaadQuranHandled = true;
-      endedEventRef.current();
-    };
     const handleLoadedMetadataEvent = () => loadedMetadataEventRef.current();
     const handleTimeUpdateEvent = () => timeUpdateEventRef.current();
     const handlePlay = () => { setIsBuffering(false); setError(false); setIsPausedBetween(false); };
@@ -742,7 +735,6 @@ export function QuranAudioPlayer({
       setIsBuffering(false);
       onIsPlayingChange(false);
     };
-    audio.addEventListener("ended", handleEndedEvent);
     audio.addEventListener("loadedmetadata", handleLoadedMetadataEvent);
     audio.addEventListener("timeupdate", handleTimeUpdateEvent);
     audio.addEventListener("play", handlePlay);
@@ -751,7 +743,6 @@ export function QuranAudioPlayer({
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
     return () => {
-      audio.removeEventListener("ended", handleEndedEvent);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadataEvent);
       audio.removeEventListener("timeupdate", handleTimeUpdateEvent);
       audio.removeEventListener("play", handlePlay);
@@ -824,11 +815,6 @@ export function QuranAudioPlayer({
   }, [isPlaying, playingAyah, setPlayback, surahNumber]);
 
   useEffect(() => {
-    setControllerAttached(true);
-    return () => setControllerAttached(false);
-  }, [setControllerAttached]);
-
-  useEffect(() => {
     if (!recitationId || !playingAyah) return;
     setSession({
       recitationId,
@@ -839,10 +825,13 @@ export function QuranAudioPlayer({
       unrestricted: !memoSession?.isActive && startAyah === null && endAyah === null,
       sourceMode: timingsQuery.data?.synchronized ? "chapter" : "ayah",
       speed,
+      onAyahEnded: () => endedEventRef.current(),
+      onPlaybackLocationChange,
     });
   }, [
     endAyah,
     memoSession?.isActive,
+    onPlaybackLocationChange,
     playingAyah,
     recitationId,
     setSession,

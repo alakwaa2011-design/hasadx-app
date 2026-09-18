@@ -10,6 +10,7 @@ interface QuranAudioHostValue {
   setPlayback: (state: QuranAudioPlaybackState) => void;
   setSession: (session: QuranAudioSession | null) => void;
   setControllerAttached: (attached: boolean) => void;
+  advanceBoundary: () => void;
 }
 
 export interface QuranAudioPlaybackState {
@@ -28,6 +29,13 @@ export interface QuranAudioSession {
   unrestricted: boolean;
   sourceMode: "ayah" | "chapter";
   speed: number;
+  /**
+   * The view/controller owns ayah-level repeat and timing policy.  The host
+   * invokes this only for an ended recording that does not cross a surah
+   * boundary; the media element event is still consumed by the host.
+   */
+  onAyahEnded?: () => void;
+  onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
 }
 
 const QuranAudioHostContext = createContext<QuranAudioHostValue | null>(null);
@@ -38,12 +46,124 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
     active: false, isPlaying: false, surahNumber: null, ayahNumber: null,
   });
   const sessionRef = useRef<QuranAudioSession | null>(null);
-  const controllerAttachedRef = useRef(false);
+  const sourceEpochRef = useRef(0);
+  const transitionIdRef = useRef(0);
+  const boundaryLockedRef = useRef(false);
+  const unlockSourceRef = useRef<string | null>(null);
+  const unlockAtSecondsRef = useRef(0);
   const setSession = useCallback((session: QuranAudioSession | null) => {
     sessionRef.current = session;
   }, []);
-  const setControllerAttached = useCallback((attached: boolean) => {
-    controllerAttachedRef.current = attached;
+  // Kept as a compatibility no-op for older adapters.  The host is always
+  // the sole owner of media events; controllers must not arbitrate events.
+  const setControllerAttached = useCallback((_attached: boolean) => undefined, []);
+  const advanceBoundary = useCallback(async () => {
+    const audio = audioRef.current;
+    const session = sessionRef.current;
+    if (!audio || !session || boundaryLockedRef.current) return;
+    const transitionId = ++transitionIdRef.current;
+
+    if (session.sourceMode === "ayah") {
+      const nextAyah = session.ayahNumber < (session.endAyah ?? session.surahLength)
+        ? session.ayahNumber + 1
+        : (session.unrestricted && session.surahNumber < 114 ? 1 : null);
+      const nextSurah = nextAyah === 1 && session.ayahNumber >= (session.endAyah ?? session.surahLength)
+        ? session.surahNumber + 1
+        : session.surahNumber;
+      if (nextAyah && nextSurah === session.surahNumber) {
+        session.onAyahEnded?.();
+        return;
+      }
+      if (!nextAyah) {
+        sessionRef.current = null;
+        setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
+        return;
+      }
+      boundaryLockedRef.current = true;
+      const epoch = ++sourceEpochRef.current;
+      const nextSource = `/api/quran/audio/${session.recitationId}/${nextSurah}/${nextAyah}`;
+      audio.src = nextSource;
+      audio.load();
+      audio.playbackRate = session.speed;
+      unlockSourceRef.current = new URL(nextSource, window.location.href).href;
+      unlockAtSecondsRef.current = 0.25;
+      const nextSurahLength = chapters[nextSurah - 1]?.verse_count ?? session.surahLength;
+      sessionRef.current = {
+        ...session,
+        surahNumber: nextSurah,
+        ayahNumber: nextAyah,
+        surahLength: nextSurahLength,
+      };
+      try {
+        await audio.play();
+        if (sourceEpochRef.current !== epoch || transitionIdRef.current !== transitionId) return;
+        audio.currentTime = 0;
+        setPlayback({ active: true, isPlaying: true, surahNumber: nextSurah, ayahNumber: nextAyah });
+        session.onPlaybackLocationChange?.(nextSurah, nextAyah);
+      } catch {
+        if (sourceEpochRef.current === epoch && transitionIdRef.current === transitionId) {
+          boundaryLockedRef.current = false;
+          unlockSourceRef.current = null;
+          setPlayback(current => ({ ...current, isPlaying: false }));
+        }
+      }
+      return;
+    }
+
+    if (!session.unrestricted || session.surahNumber >= 114) {
+      sessionRef.current = null;
+      setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
+      return;
+    }
+
+    try {
+      boundaryLockedRef.current = true;
+      const response = await fetch(`/api/quran/audio/${session.recitationId}/${session.surahNumber + 1}/1/timings`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("timings unavailable");
+      const timing = await response.json() as {
+        audioUrl?: string;
+        audio_url?: string;
+        verseStartMs?: number;
+      };
+      const nextSource = timing.audioUrl ?? timing.audio_url;
+      if (!nextSource) throw new Error("audio unavailable");
+      if (transitionIdRef.current !== transitionId || sessionRef.current !== session) return;
+      const epoch = ++sourceEpochRef.current;
+      const nextSurah = session.surahNumber + 1;
+      const nextStartSeconds = Math.max(0, (timing.verseStartMs ?? 0) / 1000);
+      audio.src = nextSource;
+      audio.load();
+      audio.playbackRate = session.speed;
+      unlockSourceRef.current = new URL(nextSource, window.location.href).href;
+      unlockAtSecondsRef.current = nextStartSeconds + 0.25;
+      sessionRef.current = {
+        ...session,
+        surahNumber: nextSurah,
+        ayahNumber: 1,
+        surahLength: chapters[nextSurah - 1]?.verse_count ?? session.surahLength,
+      };
+      try {
+        await audio.play();
+        if (sourceEpochRef.current !== epoch || transitionIdRef.current !== transitionId) return;
+        audio.currentTime = nextStartSeconds;
+        setPlayback({ active: true, isPlaying: true, surahNumber: nextSurah, ayahNumber: 1 });
+        session.onPlaybackLocationChange?.(nextSurah, 1);
+      } catch {
+        if (sourceEpochRef.current === epoch && transitionIdRef.current === transitionId) {
+          boundaryLockedRef.current = false;
+          unlockSourceRef.current = null;
+          setPlayback(current => ({ ...current, isPlaying: false }));
+        }
+      }
+    } catch {
+      if (transitionIdRef.current !== transitionId) return;
+      boundaryLockedRef.current = false;
+      unlockSourceRef.current = null;
+      sessionRef.current = null;
+      setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
+    }
   }, []);
   const { lang } = useI18n();
   const [location] = useLocation();
@@ -53,13 +173,24 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
     if (!audio) return;
     const setPlaying = () => setPlayback(current => ({ ...current, isPlaying: true }));
     const setPaused = () => setPlayback(current => ({ ...current, isPlaying: false }));
+    const unlockBoundaryAfterRealProgress = () => {
+      if (
+        boundaryLockedRef.current
+        && unlockSourceRef.current
+        && audio.src === unlockSourceRef.current
+        && audio.currentTime >= unlockAtSecondsRef.current
+      ) {
+        boundaryLockedRef.current = false;
+        unlockSourceRef.current = null;
+      }
+    };
     audio.addEventListener("play", setPlaying);
     audio.addEventListener("pause", setPaused);
-    audio.addEventListener("ended", setPaused);
+    audio.addEventListener("timeupdate", unlockBoundaryAfterRealProgress);
     return () => {
       audio.removeEventListener("play", setPlaying);
       audio.removeEventListener("pause", setPaused);
-      audio.removeEventListener("ended", setPaused);
+      audio.removeEventListener("timeupdate", unlockBoundaryAfterRealProgress);
     };
   }, []);
   useEffect(() => {
@@ -93,71 +224,17 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const handleEnded = async (event: Event) => {
-      if (
-        controllerAttachedRef.current
-        || document.querySelector('[data-quran-audio-controller="true"]')
-      ) return;
+    const handleEnded = (event: Event) => {
       const handledEvent = event as Event & { __hasaadQuranHandled?: boolean };
       if (handledEvent.__hasaadQuranHandled) return;
       handledEvent.__hasaadQuranHandled = true;
-      const session = sessionRef.current;
-      if (!session) return;
-      if (session.sourceMode === "ayah") {
-        const nextAyah = session.ayahNumber < (session.endAyah ?? session.surahLength)
-          ? session.ayahNumber + 1
-          : (session.unrestricted && session.surahNumber < 114 ? 1 : null);
-        const nextSurah = nextAyah === 1 && session.ayahNumber >= (session.endAyah ?? session.surahLength)
-          ? session.surahNumber + 1
-          : session.surahNumber;
-        if (!nextAyah) {
-          sessionRef.current = null;
-          setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
-          return;
-        }
-        audio.src = `/api/quran/audio/${session.recitationId}/${nextSurah}/${nextAyah}`;
-        audio.playbackRate = session.speed;
-        const nextSurahLength = nextSurah === session.surahNumber
-          ? session.surahLength
-          : (chapters[nextSurah - 1]?.verse_count ?? session.surahLength);
-        sessionRef.current = {
-          ...session,
-          surahNumber: nextSurah,
-          ayahNumber: nextAyah,
-          surahLength: nextSurahLength,
-        };
-        setPlayback({ active: true, isPlaying: true, surahNumber: nextSurah, ayahNumber: nextAyah });
-        try { await audio.play(); } catch { setPlayback(current => ({ ...current, isPlaying: false })); }
-        return;
-      }
-      if (!session.unrestricted || session.surahNumber >= 114) {
-        sessionRef.current = null;
-        setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
-        return;
-      }
-      try {
-        const response = await fetch(`/api/quran/audio/${session.recitationId}/${session.surahNumber + 1}/1/timings`, {
-          credentials: "include",
-        });
-        if (!response.ok) throw new Error("timings unavailable");
-        const timing = await response.json() as { audioUrl?: string; audio_url?: string };
-        const nextSource = timing.audioUrl ?? timing.audio_url;
-        if (!nextSource) throw new Error("audio unavailable");
-        audio.src = nextSource;
-        audio.playbackRate = session.speed;
-        sessionRef.current = { ...session, surahNumber: session.surahNumber + 1, ayahNumber: 1 };
-        setPlayback({ active: true, isPlaying: true, surahNumber: session.surahNumber + 1, ayahNumber: 1 });
-        try { await audio.play(); } catch { setPlayback(current => ({ ...current, isPlaying: false })); }
-      } catch {
-        sessionRef.current = null;
-        setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
-      }
+      void advanceBoundary();
     };
     audio.addEventListener("ended", handleEnded);
     return () => audio.removeEventListener("ended", handleEnded);
-  }, []);
+  }, [advanceBoundary]);
   return (
-    <QuranAudioHostContext.Provider value={{ audioRef, playback, setPlayback, setSession, setControllerAttached }}>
+    <QuranAudioHostContext.Provider value={{ audioRef, playback, setPlayback, setSession, setControllerAttached, advanceBoundary }}>
       {children}
       <audio ref={audioRef} className="hidden" aria-hidden="true" />
       {playback.active && !isQuranRoute && (

@@ -100,6 +100,7 @@ describe('QuranAudioHostProvider cross-route playback', () => {
     expect(view.getByLabelText('Pause Quran')).not.toBeNull();
 
     fireEvent.ended(audio);
+    fireEvent.ended(audio);
 
     await waitFor(() => {
       expect(view.getByTestId('host-playback').textContent).toBe('2:1:playing');
@@ -123,6 +124,7 @@ describe('QuranAudioHostProvider cross-route playback', () => {
       expect(view.getByTestId('host-playback').textContent).toBe('1:7:playing');
     });
     fireEvent.ended(audio);
+    fireEvent.ended(audio);
 
     await waitFor(() => {
       expect(view.getByTestId('host-playback').textContent).toBe('2:1:playing');
@@ -133,6 +135,7 @@ describe('QuranAudioHostProvider cross-route playback', () => {
     expect(view.container.querySelector('audio')).toBe(audio);
     expect(audio.getAttribute('src')).toBe('/chapter-2.mp3');
     expect(play).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('shows external controls off the Quran route and stops the shared session cleanly', async () => {
