@@ -176,8 +176,10 @@ export function QuranPagesView({
   );
   const continuousInitializedRef = useRef(false);
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeLastXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
+  const readerMainRef = useRef<HTMLElement | null>(null);
   const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
@@ -631,6 +633,71 @@ export function QuranPagesView({
     );
   };
 
+  useEffect(() => {
+    const main = readerMainRef.current;
+    if (!main) return;
+
+    const resetSwipe = () => {
+      swipeStartXRef.current = null;
+      swipeLastXRef.current = null;
+      swipeStartYRef.current = null;
+    };
+    const onTouchStart = (event: TouchEvent) => {
+      if (pageLayout === "continuous" || event.touches.length !== 1) {
+        resetSwipe();
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Node) || !main.contains(target)) {
+        resetSwipe();
+        return;
+      }
+      const quranPage = target instanceof Element ? target.closest("[data-quran-page]") : null;
+      if (!quranPage || (target instanceof Element && target.closest("input,select,textarea"))) {
+        resetSwipe();
+        return;
+      }
+      const touch = event.touches[0];
+      didSwipeRef.current = false;
+      swipeStartXRef.current = touch.clientX;
+      swipeLastXRef.current = touch.clientX;
+      swipeStartYRef.current = touch.clientY;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (swipeStartXRef.current === null || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      swipeLastXRef.current = touch.clientX;
+      const horizontal = Math.abs(touch.clientX - swipeStartXRef.current);
+      const vertical = Math.abs(touch.clientY - (swipeStartYRef.current ?? touch.clientY));
+      if (horizontal > 12 && horizontal > vertical) event.preventDefault();
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      const startX = swipeStartXRef.current;
+      const endX = event.changedTouches[0]?.clientX ?? swipeLastXRef.current;
+      resetSwipe();
+      if (startX === null || endX === null) return;
+      const movement = endX - startX;
+      if (movement > 50) {
+        didSwipeRef.current = true;
+        goToSpread("next");
+      } else if (movement < -50) {
+        didSwipeRef.current = true;
+        goToSpread("previous");
+      }
+    };
+
+    document.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+    document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    document.addEventListener("touchend", onTouchEnd, { capture: true, passive: true });
+    document.addEventListener("touchcancel", resetSwipe, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart, true);
+      document.removeEventListener("touchmove", onTouchMove, true);
+      document.removeEventListener("touchend", onTouchEnd, true);
+      document.removeEventListener("touchcancel", resetSwipe, true);
+    };
+  }, [activePage, loading, pageLayout]);
+
   const goToSurah = (chapterId: number) => {
     const firstVerse = verses.find(
       (verse) => verse.chapter_id === chapterId && verse.number === 1,
@@ -658,26 +725,6 @@ export function QuranPagesView({
   const goToJuz = (partId: number) => {
     const firstVerse = verses.find((verse) => verse.part_id === partId);
     if (firstVerse) goToPage(firstVerse.page_id);
-  };
-
-  const handleTouchEnd = () => {
-    if (pageLayout === "continuous") {
-      setTouchStart(null);
-      setTouchEnd(null);
-      return;
-    }
-    if (touchStart === null || touchEnd === null) return;
-    const distance = touchStart - touchEnd;
-    if (distance > 50) {
-      didSwipeRef.current = true;
-      goToSpread("next");
-    }
-    if (distance < -50) {
-      didSwipeRef.current = true;
-      goToSpread("previous");
-    }
-    setTouchStart(null);
-    setTouchEnd(null);
   };
 
   const renderPage = (page: number, physicalPage: "left" | "right" | "single" | "continuous") => {
@@ -1212,6 +1259,7 @@ export function QuranPagesView({
       )}
 
       <main
+        ref={readerMainRef}
         className={cn(
           "quran-reader-main flex min-h-0 flex-col items-start px-0 py-1 pb-2 md:px-8 md:py-8",
           embedded || standalone ? "flex-1 overflow-auto" : "overflow-visible",
@@ -1233,24 +1281,6 @@ export function QuranPagesView({
             setActivePage(nearestPage.page);
           }
         }}
-        onTouchStart={(event) => {
-           if (pageLayout === "continuous") {
-             setTouchStart(null);
-             setTouchEnd(null);
-             return;
-           }
-           const target = event.target;
-           if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) {
-             setTouchStart(null);
-             setTouchEnd(null);
-             return;
-           }
-           didSwipeRef.current = false;
-          setTouchEnd(null);
-          setTouchStart(event.targetTouches[0].clientX);
-        }}
-        onTouchMove={(event) => setTouchEnd(event.targetTouches[0].clientX)}
-        onTouchEnd={handleTouchEnd}
       >
         {pageLayout === "continuous" ? (
           <div
