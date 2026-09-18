@@ -6,6 +6,8 @@ test.setTimeout(120_000);
 
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
+
+const LANDSCAPE_SAFE_AREA = { left: 47, right: 0 };
 const SHORT_PORTRAIT = { width: 390, height: 667 };
 const PORTRAIT_SAFE_AREA_CASES = [
   { name: "short phone", bottomInset: 0 },
@@ -117,6 +119,16 @@ async function emulateSafeAreaBottom(page: Page, bottom: number) {
   }, bottom);
 }
 
+async function emulateLandscapeSafeArea(page: Page, left: number, right: number) {
+  await page.addInitScript(({ leftInset, rightInset }) => {
+    const applyInsets = () => {
+      document.documentElement.style.setProperty("--quran-safe-area-left", `${leftInset}px`);
+      document.documentElement.style.setProperty("--quran-safe-area-right", `${rightInset}px`);
+    };
+    if (document.documentElement) applyInsets();
+    else document.addEventListener("DOMContentLoaded", applyInsets, { once: true });
+  }, { leftInset: left, rightInset: right });
+}
 async function expectDockRespectsSafeArea(page: Page, bottomInset: number) {
   const geometry = await page.getByTestId("quran-bottom-dock").evaluate((dock) => {
     const rect = dock.getBoundingClientRect();
@@ -131,28 +143,41 @@ async function expectDockRespectsSafeArea(page: Page, bottomInset: number) {
   expect(geometry.paddingBottom).toBeGreaterThanOrEqual(bottomInset);
 }
 
-async function expectFocusedLandscape(page: Page, expectedUrl: RegExp) {
+async function expectFocusedLandscape(
+  page: Page,
+  expectedUrl: RegExp,
+  safeArea = { left: 0, right: 0 },
+) {
   await page.setViewportSize(LANDSCAPE);
   await expect(page).toHaveURL(expectedUrl);
   await expect(page.locator(".quran-reader-header")).toBeHidden();
   await expect(page.locator(".quran-reader-nav")).toBeHidden();
   await expect(page.locator(".quran-reader-dock")).toBeHidden();
 
-  const geometry = await page.locator(".quran-reader-figure").first().evaluate((figure) => {
-    const rect = figure.getBoundingClientRect();
-    return {
-      top: rect.top,
-      bottom: rect.bottom,
-      leftGap: rect.left,
-      rightGap: window.innerWidth - rect.right,
-      height: rect.height,
-      viewportHeight: window.innerHeight,
-    };
-  });
+  const geometry = await page.locator(".quran-reader-figure").first().evaluate(
+    (figure, insets) => {
+      const rect = figure.getBoundingClientRect();
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        leftGap: rect.left,
+        rightGap: window.innerWidth - rect.right,
+        safeLeft: insets.left,
+        safeRight: window.innerWidth - insets.right,
+        height: rect.height,
+        viewportHeight: window.innerHeight,
+      };
+    },
+    safeArea,
+  );
   expect(geometry.top).toBeGreaterThanOrEqual(-1);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight + 1);
   expect(geometry.height).toBeGreaterThanOrEqual(geometry.viewportHeight - 1);
-  expect(Math.abs(geometry.leftGap - geometry.rightGap)).toBeLessThanOrEqual(2);
+  expect(geometry.leftGap).toBeGreaterThanOrEqual(geometry.safeLeft - 1);
+  expect(geometry.rightGap).toBeGreaterThanOrEqual(safeArea.right - 1);
+  const leftVisibleGap = geometry.leftGap - safeArea.left;
+  const rightVisibleGap = geometry.rightGap - safeArea.right;
+  expect(Math.abs(leftVisibleGap - rightVisibleGap)).toBeLessThanOrEqual(2);
 }
 
 test.describe("mobile Mushaf rotation", () => {
@@ -210,9 +235,22 @@ test.describe("mobile Mushaf rotation", () => {
 
   test("keeps the public Quran complete through portrait and landscape", async ({ page }) => {
     await page.setViewportSize(PORTRAIT);
+    await emulateLandscapeSafeArea(
+      page,
+      LANDSCAPE_SAFE_AREA.left,
+      LANDSCAPE_SAFE_AREA.right,
+    );
     await page.goto("/quran");
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+      "content",
+      /(?:^|,\s*)viewport-fit=cover(?:,|$)/,
+    );
     await expectCompletePortraitPage(page);
-    await expectFocusedLandscape(page, /\/quran(?:\/1)?(?:\?.*)?$/);
+    await expectFocusedLandscape(
+      page,
+      /\/quran(?:\/1)?(?:\?.*)?$/,
+      LANDSCAPE_SAFE_AREA,
+    );
     await page.setViewportSize(PORTRAIT);
     await expect(page).toHaveURL(/\/quran(?:\/1)?(?:\?.*)?$/);
     await expectCompletePortraitPage(page);
