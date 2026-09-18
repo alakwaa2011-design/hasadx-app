@@ -167,6 +167,8 @@ export function QuranPagesView({
   const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
   const [guidedVerseKey, setGuidedVerseKey] = useState<string | null>(null);
   const [guidedRecitationRevealed, setGuidedRecitationRevealed] = useState(false);
+  const guidedPanelRef = useRef<HTMLElement | null>(null);
+  const [guidedPanelHeight, setGuidedPanelHeight] = useState(0);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
@@ -255,6 +257,19 @@ export function QuranPagesView({
   useEffect(() => {
     stopWordAudio();
   }, [activePage, stopWordAudio]);
+
+  useEffect(() => {
+    const panel = guidedPanelRef.current;
+    if (!guidedOpen || !panel) {
+      setGuidedPanelHeight(0);
+      return;
+    }
+    const updateHeight = () => setGuidedPanelHeight(panel.getBoundingClientRect().height);
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [guidedOpen, guidedStage]);
 
   useEffect(() => {
     let mounted = true;
@@ -1285,6 +1300,11 @@ export function QuranPagesView({
         className={cn(
           "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
         )}
+        style={guidedPanelHeight > 0
+          ? {
+              paddingBottom: `calc(${guidedPanelHeight}px + 1.5rem + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
+            }
+          : undefined}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
           const container = event.currentTarget;
@@ -1450,6 +1470,7 @@ export function QuranPagesView({
         </div>
       )}
       <QuranGuidedMemorizationPanel
+        panelRef={guidedPanelRef}
         open={guidedOpen}
         stage={guidedStage}
         surahName={chapters.find((chapter) => chapter.id === Number(guidedVerseKey?.split(":")[0]))?.name ?? ""}

@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import {
   BookOpenCheck,
   CheckCircle2,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 export type GuidedMemorizationStage = 0 | 1 | 2 | 3 | 4;
 
 interface QuranGuidedMemorizationPanelProps {
+  panelRef?: Ref<HTMLElement>;
   open: boolean;
   stage: GuidedMemorizationStage;
   surahName: string;
@@ -36,6 +38,7 @@ const STAGES = [
 ] as const;
 
 export function QuranGuidedMemorizationPanel({
+  panelRef,
   open,
   stage,
   surahName,
@@ -56,7 +59,9 @@ export function QuranGuidedMemorizationPanel({
 
   return (
     <aside
-      className="fixed inset-x-3 bottom-3 z-[70] mx-auto max-h-[calc(100dvh-1.5rem)] w-auto max-w-md overflow-y-auto rounded-[1.75rem] border border-emerald-900/10 bg-[#fffdf8]/95 p-4 shadow-[0_24px_80px_rgba(11,75,53,0.24)] backdrop-blur-xl dark:border-emerald-300/10 dark:bg-[#10251d]/95 sm:inset-x-auto sm:bottom-5 sm:end-5 sm:w-[390px] sm:p-5"
+      ref={panelRef}
+      data-testid="quran-guided-memorization-panel"
+      className="fixed inset-x-3 bottom-[calc(0.75rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] z-[70] mx-auto max-h-[calc(100dvh-1.5rem-var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] w-auto max-w-md overflow-y-auto rounded-[1.75rem] border border-emerald-900/10 bg-[#fffdf8]/95 p-4 shadow-[0_24px_80px_rgba(11,75,53,0.24)] backdrop-blur-xl dark:border-emerald-300/10 dark:bg-[#10251d]/95 sm:inset-x-auto sm:bottom-[calc(1.25rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] sm:end-5 sm:w-[390px] sm:p-5"
       dir={ar ? "rtl" : "ltr"}
       aria-label={ar ? "جلسة الحفظ التدريجي" : "Guided memorization session"}
     >

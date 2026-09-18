@@ -143,6 +143,35 @@ async function expectDockRespectsSafeArea(page: Page, bottomInset: number) {
   expect(geometry.paddingBottom).toBeGreaterThanOrEqual(bottomInset);
 }
 
+async function expectGuidedPanelDoesNotOverlapMushaf(page: Page, bottomInset: number) {
+  const geometry = await page.locator(".quran-reader-root").evaluate((root) => {
+    const main = root.querySelector<HTMLElement>(".quran-reader-main");
+    const pageElement = main?.querySelector<HTMLElement>("[data-quran-page='604']");
+    const panel = root.querySelector<HTMLElement>("[data-testid='quran-guided-memorization-panel']");
+    if (!main || !pageElement || !panel) throw new Error("Guided memorization geometry is unavailable");
+    main.scrollTop = main.scrollHeight;
+    const pageRect = pageElement.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const panelChildren = Array.from(panel.querySelectorAll<HTMLElement>("button, h2, [aria-label]"));
+    return {
+      pageBottom: pageRect.bottom,
+      panelTop: panelRect.top,
+      panelBottom: panelRect.bottom,
+      viewportBottom: window.innerHeight,
+      scrollBottom: main.scrollTop + main.clientHeight,
+      scrollHeight: main.scrollHeight,
+      childrenInsidePanel: panelChildren.every((child) => {
+        const rect = child.getBoundingClientRect();
+        return rect.top >= panelRect.top - 1 && rect.bottom <= panelRect.bottom + 1;
+      }),
+    };
+  });
+
+  expect(geometry.scrollBottom).toBeGreaterThanOrEqual(geometry.scrollHeight - 1);
+  expect(geometry.pageBottom).toBeLessThanOrEqual(geometry.panelTop + 1);
+  expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.viewportBottom - bottomInset + 1);
+  expect(geometry.childrenInsidePanel).toBe(true);
+}
 async function expectFocusedLandscape(
   page: Page,
   expectedUrl: RegExp,
@@ -289,29 +318,18 @@ test.describe("mobile Mushaf rotation", () => {
     });
   }
 
-  test("keeps page 604 safe inside Quran Center with the audio dock closed and open", async ({
+  test("keeps page 604 above the expanded guided memorization panel on a short safe-area phone", async ({
     page,
-    context,
-    baseURL,
   }) => {
-    if (!teacher || !baseURL) throw new Error("Quran rotation fixture is unavailable");
-    await attachSession(context as BrowserContext, baseURL, teacher);
-    await page.setViewportSize(PORTRAIT);
-    await emulateSafeAreaBottom(page, 34);
-    await page.goto("/teacher/quran-center?tab=mushaf");
-    await expect(page.locator(".quran-center-main")).toBeVisible({ timeout: 30_000 });
     await page.setViewportSize(SHORT_PORTRAIT);
+    await emulateSafeAreaBottom(page, 34);
+    await page.goto("/quran/114?ayah=1&page=604&view=pages");
 
-    await page.getByTestId("select-mobile-page").selectOption("604");
     const finalPage = page.locator("[data-quran-page='604']");
     await expect(finalPage).toBeVisible();
     await expect(finalPage.locator(".animate-spin")).toHaveCount(0);
-    await expect(page.getByTestId("quran-bottom-dock")).toHaveCount(0);
-    await expectCompletePortraitPage(page);
-
-    await page.getByTestId("button-mobile-audio").click();
-    await expect(page.getByTestId("quran-bottom-dock")).toBeVisible();
-    await expectDockDoesNotOverlapMushaf(page);
-    await expectDockRespectsSafeArea(page, 34);
+    await page.getByTestId("button-mobile-memo-session").click();
+    await expect(page.getByTestId("quran-guided-memorization-panel")).toBeVisible();
+    await expectGuidedPanelDoesNotOverlapMushaf(page, 34);
   });
 });

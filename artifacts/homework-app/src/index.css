@@ -837,6 +837,7 @@
   .quran-reader-header,
   .quran-reader-nav,
   .quran-reader-dock,
+  [data-testid="quran-guided-memorization-panel"],
   .quran-reader-quiet-exit {
     display: none !important;
   }
