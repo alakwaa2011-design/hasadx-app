@@ -24,6 +24,7 @@ import { QuranSearchDialog } from "./quran-search-dialog";
 import {
   getGetQuranJourneyQueryKey,
   getGetQuranSurahContentQueryKey,
+  useGetCurrentTeacher,
   useGetQuranSurahContent,
   useRecordMyQuranIndependentSession,
   useUpdateMyQuranIndependentPosition,
@@ -39,7 +40,7 @@ import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
 
-const LIVE_RECITATION_ENABLED = false;
+const LIVE_RECITATION_ENABLED = true;
 
 interface QComplexChapter {
   id: number;
@@ -125,6 +126,14 @@ export function QuranPagesView({
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
+  const isTeacherReader = readerBasePath.startsWith("/teacher/");
+  const { data: currentTeacher } = useGetCurrentTeacher({
+    query: {
+      enabled: isTeacherReader,
+      retry: false,
+    },
+  });
+  const isAdmin = Boolean(currentTeacher?.isAdmin) || currentTeacher?.role === "admin";
   const queryClient = useQueryClient();
   const savePosition = useUpdateMyQuranIndependentPosition();
   const recordSession = useRecordMyQuranIndependentSession();
@@ -844,7 +853,7 @@ export function QuranPagesView({
                   >
                     {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
                   </button>
-                  {LIVE_RECITATION_ENABLED && (
+                  {LIVE_RECITATION_ENABLED && isAdmin && (
                     <button
                       type="button"
                       onClick={openLiveRecitation}
@@ -979,7 +988,7 @@ export function QuranPagesView({
 
       {!quietMode && selectedVerseKey && (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] start-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-full border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur md:hidden rtl:translate-x-1/2 dark:bg-card/95">
-          {LIVE_RECITATION_ENABLED && (
+          {LIVE_RECITATION_ENABLED && isAdmin && (
             <button
               type="button"
               onClick={openLiveRecitation}

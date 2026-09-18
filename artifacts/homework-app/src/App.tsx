@@ -412,7 +412,11 @@ function Router() {
         <Route path="/teacher/quran-center">
           <QuranCenter />
         </Route>
-        <Route path="/teacher/quran-recitation/:surahNumber" component={QuranRecitation} />
+        <Route path="/teacher/quran-recitation/:surahNumber">
+          <AdminOnly>
+            <QuranRecitation />
+          </AdminOnly>
+        </Route>
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
         {/* Legacy /teacher/shared → redirect to the new activities library
@@ -534,7 +538,11 @@ function Router() {
             </ErrorBoundary>
           </Suspense>
         </Route>
-        <Route path="/student/quran-recitation/:surahNumber" component={QuranRecitation} />
+        <Route path="/student/quran-recitation/:surahNumber">
+          <AdminOnly>
+            <QuranRecitation />
+          </AdminOnly>
+        </Route>
         <Route path="/solve/adaptive/:id" component={AdaptiveSolve} />
         <Route path="/solve/:id" component={StudentSolve} />
         <Route path="/video/:id" component={StudentVideoLesson} />
