@@ -887,7 +887,7 @@ export function QuranPagesView({
   return (
     <div
       className={cn(
-        "quran-reader-root flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
+        "quran-reader-root relative flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
         embedded
           ? "h-full overflow-hidden"
           : standalone

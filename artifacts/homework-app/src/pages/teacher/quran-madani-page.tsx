@@ -172,7 +172,7 @@ export function QuranMadaniPageRenderer({
       translate="no"
     >
       <div
-        className="relative z-20 flex h-full w-full flex-col px-[8.5%] py-[9.5%]"
+        className="quran-madani-page-content relative z-20 flex h-full w-full flex-col px-[8.5%] py-[9.5%]"
         style={{ fontFamily: `'${fontName}', sans-serif` }}
       >
         {rows.map((rowNum) => {
