@@ -11,7 +11,7 @@ import {
   ImageOff,
   ListPlus,
   Bookmark,
-  Headphones,
+  Volume2,
   Loader2,
   Menu,
   Mic2,
@@ -1020,7 +1020,7 @@ export function QuranPagesView({
                 )}
                 aria-label={lang === "ar" ? "فتح التلاوة واختيار القارئ" : "Open recitation and choose reciter"}
               >
-                <Headphones className="h-4.5 w-4.5" />
+                <Volume2 className="h-4.5 w-4.5" />
               </button>
               <button
                 type="button"
