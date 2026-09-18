@@ -209,10 +209,15 @@ interface LayoutProps {
 
 export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
   const [location, setLocation] = useLocation();
+  const quranCenterTab = new URLSearchParams(window.location.search).get("tab");
+  const isQuranCenterMushaf =
+    window.location.pathname === "/teacher/quran-center"
+    && (!quranCenterTab || quranCenterTab === "mushaf");
   const isFocusedQuranReader =
     location.startsWith("/teacher/quran-reader/")
     || location.startsWith("/student/quran-wards/")
-    || location.startsWith("/student/quran-practice/");
+    || location.startsWith("/student/quran-practice/")
+    || isQuranCenterMushaf;
   const queryClient = useQueryClient();
   const { t, lang, setLang, dir } = useI18n();
   const goBack = useSmartBack("/");
@@ -272,7 +277,10 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-background selection:bg-primary/20"
+      className={cn(
+        "site-layout-root min-h-screen flex flex-col bg-background selection:bg-primary/20",
+        isFocusedQuranReader && "quran-focused-layout",
+      )}
       dir={dir}
     >
       {user && <XpToastListener />}
@@ -283,7 +291,7 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
       {!noHeader && !isEmbed && (
         <header
           className={cn(
-            "sticky top-0 z-50 w-full border-b shadow-sm",
+            "site-layout-header sticky top-0 z-50 w-full border-b shadow-sm",
             user
               ? "text-white [--header-muted:rgba(255,255,255,0.75)]"
               : "border-border/60 bg-card",
@@ -923,7 +931,7 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
           banner created an awkward stripe between the green header and the
           green sidebar. */}
 
-      <main className="flex-1">{children}</main>
+      <main className="site-layout-main flex-1">{children}</main>
 
       <AuthSideRail />
 

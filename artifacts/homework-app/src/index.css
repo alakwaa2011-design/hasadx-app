@@ -742,7 +742,37 @@
 
 /* Phone landscape mode: keep the Mushaf inside the current route and fit one
    complete Madani page to the viewport. No separate fullscreen URL is used. */
-@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+@media (orientation: landscape) and (max-height: 600px) {
+  .quran-focused-layout {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .quran-focused-layout > .site-layout-header {
+    display: none !important;
+  }
+
+  .quran-focused-layout > .site-layout-main {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .quran-center-root {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+  }
+
+  .quran-center-sidebar {
+    display: none !important;
+  }
+
+  .quran-center-main {
+    display: flex !important;
+    width: 100% !important;
+  }
+
   .quran-reader-root {
     height: 100dvh !important;
     min-height: 100dvh !important;

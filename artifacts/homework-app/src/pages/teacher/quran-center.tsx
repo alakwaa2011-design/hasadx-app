@@ -116,16 +116,16 @@ export default function QuranCenter({
 
   const content = (
       <div className={cn(
-        "flex flex-col md:flex-row overflow-hidden bg-[#fcfaf8] dark:bg-background",
+        "quran-center-root flex flex-col md:flex-row overflow-hidden bg-[#fcfaf8] dark:bg-background",
         embedded
           ? "h-[calc(100dvh-4rem)]"
           : activeTab === "mushaf"
-            ? "h-[100dvh]"
+            ? "h-[calc(100dvh-3rem)] sm:h-[calc(100dvh-3.5rem)]"
             : "h-[calc(100vh-3.5rem)]",
       )}>
         {/* Sidebar */}
         <aside className={cn(
-          "w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card md:flex md:flex-col shadow-sm z-10 shrink-0",
+          "quran-center-sidebar w-full md:w-64 border-b md:border-b-0 md:border-e border-border/60 bg-white dark:bg-card md:flex md:flex-col shadow-sm z-10 shrink-0",
           embedded ? "!hidden" : activeTab === "mushaf" && !mobileSectionsOpen ? "hidden" : "flex",
         )}>
           <div className="p-4 md:p-6 flex items-center justify-between md:justify-start">
@@ -184,7 +184,7 @@ export default function QuranCenter({
 
         {/* Main Workspace */}
         <main className={cn(
-          "flex-1 overflow-hidden flex-col relative md:flex",
+          "quran-center-main flex-1 overflow-hidden flex-col relative md:flex",
           activeTab === "mushaf" && mobileSectionsOpen ? "hidden" : "flex",
         )}>
           <AnimatePresence mode="wait">
