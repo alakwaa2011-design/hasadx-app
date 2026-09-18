@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import {
   readStandaloneQuranReaderState,
+  resolveStandaloneReaderPosition,
   STANDALONE_QURAN_READER_KEY,
   useQuranReaderState,
 } from './use-quran-reader-state';
@@ -16,6 +17,8 @@ vi.mock('@workspace/api-client-react', async () => {
     useUpdateQuranReaderPosition: vi.fn(),
     useAddQuranBookmark: vi.fn(),
     useDeleteQuranBookmark: vi.fn(),
+    useUpdateQuranAudioPreference: vi.fn(),
+    useListQuranReciters: vi.fn(),
   };
 });
 
@@ -32,6 +35,13 @@ describe('useQuranReaderState', () => {
     });
     vi.clearAllMocks();
     window.localStorage.removeItem(STANDALONE_QURAN_READER_KEY);
+    window.localStorage.removeItem('hasaad:standalone-quran-sync:v1');
+    vi.mocked(apiClient.useUpdateQuranAudioPreference).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ preferredRecitationId: 1 }),
+    } as any);
+    vi.mocked(apiClient.useListQuranReciters).mockReturnValue({
+      data: { reciters: [], preferredRecitationId: null },
+    } as any);
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -92,6 +102,7 @@ describe('useQuranReaderState', () => {
     } as any);
     vi.mocked(apiClient.useUpdateQuranReaderPosition).mockReturnValue({
       mutate: updatePosition,
+      mutateAsync: vi.fn(),
     } as any);
     vi.mocked(apiClient.useAddQuranBookmark).mockReturnValue({
       mutateAsync: addBookmark,
@@ -121,5 +132,101 @@ describe('useQuranReaderState', () => {
     expect(apiClient.useGetQuranReaderState).toHaveBeenCalledWith(expect.objectContaining({
       query: expect.objectContaining({ enabled: false }),
     }));
+  });
+
+  it('merges local bookmarks into the account when optional sync is enabled', async () => {
+    window.localStorage.setItem(STANDALONE_QURAN_READER_KEY, JSON.stringify({
+      position: { surahNumber: 2, ayahNumber: 5, pageNumber: 3 },
+      bookmarks: [{ surahNumber: 2, ayahNumber: 5, pageNumber: 3 }],
+    }));
+    const addBookmark = vi.fn().mockResolvedValue({});
+    const updatePosition = vi.fn().mockResolvedValue({
+      surahNumber: 2, ayahNumber: 5, pageNumber: 3, revision: 4,
+    });
+    vi.mocked(apiClient.useGetQuranReaderState).mockReturnValue({
+      data: {
+        position: { surahNumber: 1, ayahNumber: 1, pageNumber: 1, revision: 3 },
+        bookmarks: [{ surahNumber: 1, ayahNumber: 1, pageNumber: 1 }],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(apiClient.useUpdateQuranReaderPosition).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: updatePosition,
+    } as any);
+    vi.mocked(apiClient.useAddQuranBookmark).mockReturnValue({
+      mutateAsync: addBookmark,
+      isPending: false,
+    } as any);
+    vi.mocked(apiClient.useDeleteQuranBookmark).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as any);
+
+    const { result } = renderHook(
+      () => useQuranReaderState({ enabled: true, storage: 'optional' }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      expect(await result.current.setSyncEnabled(true)).toBe(true);
+    });
+
+    expect(addBookmark).toHaveBeenCalledTimes(2);
+    expect(updatePosition).toHaveBeenCalledWith({
+      data: {
+        surahNumber: 2,
+        ayahNumber: 5,
+        pageNumber: 3,
+        expectedRevision: 3,
+      },
+    });
+    expect(window.localStorage.getItem('hasaad:standalone-quran-sync:v1')).toBe('true');
+    expect(readStandaloneQuranReaderState().bookmarks).toHaveLength(2);
+  });
+
+  it('keeps the local position when account data enters the shared cache while sync is off', () => {
+    expect(resolveStandaloneReaderPosition(
+      false,
+      { surahNumber: 2, ayahNumber: 5, pageNumber: 3 },
+      { surahNumber: 18, ayahNumber: 10, pageNumber: 294 },
+    )).toEqual({ surahNumber: 2, ayahNumber: 5, pageNumber: 3 });
+  });
+
+  it('pulls the account reciter onto a first-time device when sync is enabled', async () => {
+    vi.mocked(apiClient.useGetQuranReaderState).mockReturnValue({
+      data: { position: null, bookmarks: [] },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(apiClient.useListQuranReciters).mockReturnValue({
+      data: { reciters: [{ id: 77 }], preferredRecitationId: 77 },
+    } as any);
+    vi.mocked(apiClient.useUpdateQuranReaderPosition).mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+    } as any);
+    vi.mocked(apiClient.useAddQuranBookmark).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as any);
+    vi.mocked(apiClient.useDeleteQuranBookmark).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as any);
+
+    const { result } = renderHook(
+      () => useQuranReaderState({ enabled: true, storage: 'optional' }),
+      { wrapper },
+    );
+    await act(async () => {
+      expect(await result.current.setSyncEnabled(true)).toBe(true);
+    });
+
+    expect(window.localStorage.getItem('hasaad:standalone-quran-recitation-id')).toBe('77');
+    expect(apiClient.useUpdateQuranAudioPreference().mutateAsync).not.toHaveBeenCalled();
   });
 });

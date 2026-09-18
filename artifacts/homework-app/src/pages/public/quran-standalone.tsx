@@ -3,7 +3,15 @@ import { Helmet } from "react-helmet-async";
 import { useLocation, useParams } from "wouter";
 import { QuranPagesView } from "@/pages/teacher/quran-pages-view";
 import { useI18n } from "@/lib/i18n";
-import { readStandaloneQuranReaderState } from "@/components/quran/use-quran-reader-state";
+import {
+  readStandaloneQuranReaderState,
+  resolveStandaloneReaderPosition,
+  STANDALONE_QURAN_SYNC_KEY,
+} from "@/components/quran/use-quran-reader-state";
+import {
+  getGetQuranReaderStateQueryKey,
+  useGetQuranReaderState,
+} from "@workspace/api-client-react";
 import chapters from "@/data/quran/qcomplex/chapters.json";
 import verses from "@/data/quran/qcomplex/verses.json";
 
@@ -18,21 +26,38 @@ export function PublicQuranStandalone() {
   const params = useParams<{ surahNumber?: string }>();
   const [, setLocation] = useLocation();
   const savedState = useMemo(readStandaloneQuranReaderState, []);
+  const syncRequested = useMemo(
+    () => window.localStorage.getItem(STANDALONE_QURAN_SYNC_KEY) === "true",
+    [],
+  );
+  const { data: syncedState } = useGetQuranReaderState({
+    query: {
+      enabled: syncRequested,
+      retry: false,
+      queryKey: getGetQuranReaderStateQueryKey(),
+      staleTime: 60 * 1000,
+    },
+  });
+  const initialPosition = resolveStandaloneReaderPosition(
+    syncRequested,
+    savedState.position,
+    syncedState?.position ?? null,
+  );
   const searchParams = new URLSearchParams(window.location.search);
   
   const initialSurah = parseBoundedInteger(params.surahNumber, 1, 114)
-    ?? (params.surahNumber ? 1 : (savedState.position?.surahNumber ?? 1));
+    ?? (params.surahNumber ? 1 : (initialPosition?.surahNumber ?? 1));
   
   const ayahParam = searchParams.get("ayah");
   const validInitialAyah = parseBoundedInteger(
     ayahParam,
     1,
     chapters[initialSurah - 1]?.verse_count ?? 1,
-  ) ?? (params.surahNumber ? 1 : (savedState.position?.ayahNumber ?? 1));
+  ) ?? (params.surahNumber ? 1 : (initialPosition?.ayahNumber ?? 1));
 
   const pageParam = searchParams.get("page");
   const requestedPage = parseBoundedInteger(pageParam, 1, 604)
-    ?? (params.surahNumber ? undefined : (savedState.position?.pageNumber ?? undefined));
+    ?? (params.surahNumber ? undefined : (initialPosition?.pageNumber ?? undefined));
   const canonicalVersePage = verses.find(
     (verse) => verse.chapter_id === initialSurah && verse.number === validInitialAyah,
   )?.page_id;
@@ -63,6 +88,7 @@ export function PublicQuranStandalone() {
       </Helmet>
       
       <QuranPagesView
+        key={params.surahNumber ? "explicit-location" : `saved-${initialPosition?.surahNumber ?? 1}-${initialPosition?.ayahNumber ?? 1}-${initialPosition?.pageNumber ?? 1}`}
         initialSurah={initialSurah}
         initialAyah={validInitialAyah}
         initialPage={validInitialPage}

@@ -50,12 +50,13 @@ describe("sourced Quran education route", () => {
     getEducation.mockResolvedValue(sourcedResponse);
   });
 
-  it("requires a teacher or student session", async () => {
+  it("serves sourced education content without requiring a teacher or student session", async () => {
     const response = await request(appWithSession({}))
       .get("/api/quran/education/2/255?wordPosition=1");
 
-    expect(response.status).toBe(401);
-    expect(getEducation).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(sourcedResponse);
+    expect(getEducation).toHaveBeenCalledWith(2, 255, 1);
   });
 
   it.each([

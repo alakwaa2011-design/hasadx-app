@@ -15,6 +15,8 @@ import {
   Loader2,
   Menu,
   Mic2,
+  Cloud,
+  CloudOff,
   X,
   ZoomIn,
   ZoomOut,
@@ -167,9 +169,19 @@ export function QuranPagesView({
   const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
-  const { savePosition: saveMainPosition, toggleBookmark, bookmarksMap, isMutatingBookmark } = useQuranReaderState({
+  const {
+    savePosition: saveMainPosition,
+    toggleBookmark,
+    bookmarksMap,
+    isMutatingBookmark,
+    canSync,
+    syncEnabled,
+    syncActive,
+    isSyncing,
+    setSyncEnabled,
+  } = useQuranReaderState({
     enabled: !isIndependentPractice && mode === null,
-    storage: standalone ? "local" : "server",
+    storage: standalone ? "optional" : "server",
   });
 
   const [selectedVerseKey, setSelectedVerseKey] = useState<string | null>(null);
@@ -751,6 +763,32 @@ export function QuranPagesView({
                 </span>
               </button>
             )}
+            {standalone && canSync && (
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={() => void setSyncEnabled(!syncEnabled)}
+                className={cn(
+                  "flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold transition-colors disabled:opacity-50",
+                  syncEnabled
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                    : "bg-stone-100 text-stone-600 dark:bg-stone-900 dark:text-stone-300",
+                )}
+                aria-pressed={syncEnabled}
+                title={lang === "ar"
+                  ? (syncEnabled ? "إيقاف المزامنة بين الأجهزة" : "مزامنة العلامات والموضع والقارئ بين الأجهزة")
+                  : (syncEnabled ? "Turn off sync across devices" : "Sync bookmarks, position, and reciter across devices")}
+              >
+                {isSyncing
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : syncEnabled
+                    ? <Cloud className="h-4 w-4" />
+                    : <CloudOff className="h-4 w-4" />}
+                <span className="hidden sm:inline">
+                  {lang === "ar" ? (syncEnabled ? "المزامنة مفعّلة" : "تفعيل المزامنة") : (syncEnabled ? "Sync on" : "Turn on sync")}
+                </span>
+              </button>
+            )}
             {embedded && onExitEmbedded && (
               <button
                 type="button"
@@ -1241,6 +1279,7 @@ export function QuranPagesView({
           {(audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0 && (
             <div className="z-40 w-full shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
               <QuranAudioPlayer
+                key={standalone ? (syncActive ? "synced-reciter" : "local-reciter") : "account-reciter"}
                 surahs={audioSurahs}
                 surahNumber={playingSurah}
                 startAyah={startAyah}
@@ -1255,7 +1294,7 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
-                preferenceStorage={standalone ? "local" : "server"}
+                preferenceStorage={standalone && !syncActive ? "local" : "server"}
                 onPlaybackLocationChange={(nextSurah, nextAyah) => {
                   const nextVerseKey = `${nextSurah}:${nextAyah}`;
                   setPlayingVerseKey(nextVerseKey);

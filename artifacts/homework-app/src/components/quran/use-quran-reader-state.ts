@@ -5,6 +5,9 @@ import {
   useUpdateQuranReaderPosition,
   useAddQuranBookmark,
   useDeleteQuranBookmark,
+  useUpdateQuranAudioPreference,
+  useListQuranReciters,
+  getListQuranRecitersQueryKey,
   getGetQuranReaderStateQueryKey
 } from '@workspace/api-client-react';
 import { toast } from 'sonner';
@@ -24,6 +27,16 @@ export interface StandaloneQuranReaderState {
 }
 
 export const STANDALONE_QURAN_READER_KEY = 'hasaad:standalone-quran-reader:v1';
+export const STANDALONE_QURAN_SYNC_KEY = 'hasaad:standalone-quran-sync:v1';
+const STANDALONE_QURAN_RECITATION_KEY = 'hasaad:standalone-quran-recitation-id';
+
+export function resolveStandaloneReaderPosition(
+  syncEnabled: boolean,
+  localPosition: StandaloneQuranReaderState['position'],
+  accountPosition: StandaloneQuranReaderState['position'],
+) {
+  return syncEnabled ? (accountPosition ?? localPosition) : localPosition;
+}
 
 const EMPTY_STANDALONE_STATE: StandaloneQuranReaderState = {
   position: null,
@@ -68,11 +81,14 @@ function persistStandaloneQuranReaderState(state: StandaloneQuranReaderState) {
 
 export function useQuranReaderState(options: {
   enabled?: boolean;
-  storage?: 'server' | 'local';
+  storage?: 'server' | 'local' | 'optional';
 } = {}) {
   const { lang } = useI18n();
   const queryClient = useQueryClient();
-  const isLocal = options.storage === 'local';
+  const isOptional = options.storage === 'optional';
+  const [syncEnabled, setSyncEnabledState] = useState(
+    () => isOptional && window.localStorage.getItem(STANDALONE_QURAN_SYNC_KEY) === 'true',
+  );
   const [localState, setLocalState] = useState<StandaloneQuranReaderState>(
     readStandaloneQuranReaderState,
   );
@@ -81,18 +97,32 @@ export function useQuranReaderState(options: {
     data: readerState,
     isLoading: isReaderStateLoading,
     isError: isReaderStateError,
+    error: readerStateError,
     refetch: refetchReaderState,
   } = useGetQuranReaderState({
     query: {
-      enabled: options.enabled && !isLocal,
+      enabled: options.enabled && options.storage !== 'local',
       queryKey: getGetQuranReaderStateQueryKey(),
       staleTime: 60 * 1000,
+      retry: false,
     }
   });
+  const isLocal = options.storage === 'local'
+    || (isOptional && (!syncEnabled || isReaderStateLoading || isReaderStateError || !readerState));
 
   const updatePositionMutation = useUpdateQuranReaderPosition();
   const addBookmarkMutation = useAddQuranBookmark();
   const deleteBookmarkMutation = useDeleteQuranBookmark();
+  const updateAudioPreferenceMutation = useUpdateQuranAudioPreference();
+  const reciterCatalog = useListQuranReciters({
+    query: {
+      enabled: isOptional,
+      retry: false,
+      staleTime: 60 * 1000,
+      queryKey: getListQuranRecitersQueryKey(),
+    },
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // state variables for optimistic UI or keeping track of what was saved
   const lastSavedPositionRef = useRef<{ surahNumber: number; ayahNumber: number; pageNumber: number } | null>(null);
@@ -122,6 +152,13 @@ export function useQuranReaderState(options: {
     window.addEventListener('storage', syncFromStorage);
     return () => window.removeEventListener('storage', syncFromStorage);
   }, [isLocal]);
+
+  useEffect(() => {
+    const status = (readerStateError as { status?: number } | null)?.status;
+    if (!isOptional || !syncEnabled || status !== 401) return;
+    window.localStorage.setItem(STANDALONE_QURAN_SYNC_KEY, 'false');
+    setSyncEnabledState(false);
+  }, [isOptional, readerStateError, syncEnabled]);
 
   const savePosition = useCallback((surahNumber: number, ayahNumber: number, pageNumber: number) => {
     if (isLocal) {
@@ -241,6 +278,106 @@ export function useQuranReaderState(options: {
     return map;
   }, [isLocal, localState.bookmarks, readerState?.bookmarks]);
 
+  const canSync = isOptional && !isReaderStateLoading && !isReaderStateError && Boolean(readerState);
+
+  const setSyncEnabled = useCallback(async (enabled: boolean) => {
+    if (!isOptional || isSyncing || (enabled && !canSync)) return false;
+    setIsSyncing(true);
+    try {
+      if (enabled) {
+        const local = readStandaloneQuranReaderState();
+        const serverBookmarks = readerState?.bookmarks ?? [];
+        const mergedBookmarks = new Map<string, { surahNumber: number; ayahNumber: number; pageNumber: number }>();
+        for (const bookmark of [...serverBookmarks, ...local.bookmarks]) {
+          mergedBookmarks.set(`${bookmark.surahNumber}:${bookmark.ayahNumber}`, {
+            surahNumber: bookmark.surahNumber,
+            ayahNumber: bookmark.ayahNumber,
+            pageNumber: bookmark.pageNumber,
+          });
+        }
+        await Promise.all(Array.from(mergedBookmarks.values()).map((bookmark) =>
+          addBookmarkMutation.mutateAsync({
+            surahNumber: bookmark.surahNumber,
+            ayahNumber: bookmark.ayahNumber,
+            data: { pageNumber: bookmark.pageNumber },
+          })
+        ));
+        if (local.position) {
+          const position = await updatePositionMutation.mutateAsync({
+            data: {
+              ...local.position,
+              expectedRevision: readerState?.position?.revision ?? 1,
+            },
+          });
+          revisionRef.current = position.revision;
+        }
+        const localRecitationId = Number(window.localStorage.getItem(STANDALONE_QURAN_RECITATION_KEY));
+        if (Number.isInteger(localRecitationId) && localRecitationId > 0) {
+          await updateAudioPreferenceMutation.mutateAsync({ data: { recitationId: localRecitationId } });
+        } else if (reciterCatalog.data?.preferredRecitationId) {
+          window.localStorage.setItem(
+            STANDALONE_QURAN_RECITATION_KEY,
+            String(reciterCatalog.data.preferredRecitationId),
+          );
+        }
+        persistStandaloneQuranReaderState({
+          position: local.position ?? (readerState?.position ? {
+            surahNumber: readerState.position.surahNumber,
+            ayahNumber: readerState.position.ayahNumber,
+            pageNumber: readerState.position.pageNumber,
+          } : null),
+          bookmarks: Array.from(mergedBookmarks.values()),
+        });
+        window.localStorage.setItem(STANDALONE_QURAN_SYNC_KEY, 'true');
+        setSyncEnabledState(true);
+        await queryClient.invalidateQueries({ queryKey: getGetQuranReaderStateQueryKey() });
+      } else {
+        if (reciterCatalog.data?.preferredRecitationId) {
+          window.localStorage.setItem(
+            STANDALONE_QURAN_RECITATION_KEY,
+            String(reciterCatalog.data.preferredRecitationId),
+          );
+        }
+        const serverPosition = readerState?.position;
+        persistStandaloneQuranReaderState({
+          position: serverPosition ? {
+            surahNumber: serverPosition.surahNumber,
+            ayahNumber: serverPosition.ayahNumber,
+            pageNumber: serverPosition.pageNumber,
+          } : localState.position,
+          bookmarks: Array.from(new Map(
+            [...localState.bookmarks, ...(readerState?.bookmarks ?? [])].map((bookmark) => [
+              `${bookmark.surahNumber}:${bookmark.ayahNumber}`,
+              { surahNumber: bookmark.surahNumber, ayahNumber: bookmark.ayahNumber, pageNumber: bookmark.pageNumber },
+            ]),
+          ).values()),
+        });
+        setLocalState(readStandaloneQuranReaderState());
+        window.localStorage.setItem(STANDALONE_QURAN_SYNC_KEY, 'false');
+        setSyncEnabledState(false);
+      }
+      return true;
+    } catch {
+      toast.error(lang === 'ar' ? 'تعذر تحديث مزامنة المصحف' : 'Could not update Quran sync');
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [
+    addBookmarkMutation,
+    canSync,
+    isOptional,
+    isSyncing,
+    lang,
+    localState.bookmarks,
+    localState.position,
+    queryClient,
+    reciterCatalog.data?.preferredRecitationId,
+    readerState,
+    updateAudioPreferenceMutation,
+    updatePositionMutation,
+  ]);
+
   return {
     readerState,
     isReaderStateLoading: isLocal ? false : isReaderStateLoading,
@@ -249,5 +386,10 @@ export function useQuranReaderState(options: {
     toggleBookmark,
     bookmarksMap,
     isMutatingBookmark: isLocal ? false : addBookmarkMutation.isPending || deleteBookmarkMutation.isPending,
+    canSync,
+    syncEnabled,
+    syncActive: isOptional && !isLocal,
+    isSyncing,
+    setSyncEnabled,
   };
 }
