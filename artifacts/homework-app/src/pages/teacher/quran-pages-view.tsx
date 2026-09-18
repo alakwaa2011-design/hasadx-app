@@ -39,6 +39,10 @@ import { toast } from "sonner";
 import { QuranMadaniPageRenderer } from "./quran-madani-page";
 import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
 import { useQuranAudioHost } from "@/components/quran/quran-audio-host";
+import {
+  QuranGuidedMemorizationPanel,
+  type GuidedMemorizationStage,
+} from "@/components/quran/quran-guided-memorization-panel";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
@@ -157,6 +161,10 @@ export function QuranPagesView({
   const [activePage, setActivePage] = useState(FIRST_PAGE);
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
+  const [guidedVerseKey, setGuidedVerseKey] = useState<string | null>(null);
+  const [guidedRecitationRevealed, setGuidedRecitationRevealed] = useState(false);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
@@ -398,7 +406,7 @@ export function QuranPagesView({
     memoSession, setMemoSession,
     memoView, setMemoView,
     isAyahConcealed, toggleReveal, resetReveal,
-    startSession, endSession
+    endSession
   } = useQuranMemoSession(selectedSurah, selectedAyah, startAyah, endAyah, mode);
 
   const selectedVerse = useMemo(
@@ -446,19 +454,69 @@ export function QuranPagesView({
     setAudioDockOpen(true);
   };
 
+  const closeGuidedMemorization = () => {
+    audioRef.current?.pause();
+    setGuidedOpen(false);
+    setGuidedStage(0);
+    setGuidedVerseKey(null);
+    setGuidedRecitationRevealed(false);
+    setIsPlaying(false);
+    setPlayingVerseKey(null);
+    endSession();
+  };
+
+  const setGuidedStageAndPlayback = (stage: GuidedMemorizationStage) => {
+    setGuidedStage(stage);
+    setGuidedRecitationRevealed(false);
+    if (stage === 0 && guidedVerseKey) {
+      setMemoView("show");
+      setMemoSession((session) => ({
+        ...session,
+        isActive: true,
+        rangeStart: Number(guidedVerseKey.split(":")[1]),
+        rangeEnd: Number(guidedVerseKey.split(":")[1]),
+        repeatScope: "ayah",
+        repeatCount: 3,
+      }));
+      setPlayingVerseKey(guidedVerseKey);
+      setIsPlaying(true);
+      return;
+    }
+    audioRef.current?.pause();
+    setIsPlaying(false);
+    setMemoView(stage === 2 ? "progressive" : stage === 3 ? "hide" : "show");
+  };
+
   const toggleMemoSession = () => {
-    if (memoSession.isActive) {
-      endSession();
+    if (guidedOpen || memoSession.isActive) {
+      closeGuidedMemorization();
       return;
     }
     const targetVerse = selectedVerseKey
       ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
       : selectedVerse ?? verses.find((verse) => verse.page_id === activePage);
-    if (targetVerse) {
-      setSelectedVerseKey(`${targetVerse.chapter_id}:${targetVerse.number}`);
+    if (!targetVerse) {
+      endSession();
+      return;
     }
+    const targetKey = `${targetVerse.chapter_id}:${targetVerse.number}`;
+    setSelectedVerseKey(targetKey);
+    setPlayingVerseKey(targetKey);
+    setGuidedVerseKey(targetKey);
+    setGuidedStage(0);
+    setGuidedRecitationRevealed(false);
+    setGuidedOpen(true);
     setEducationSelection(null);
-    startSession();
+    setMemoSession((session) => ({
+      ...session,
+      isActive: true,
+      rangeStart: targetVerse.number,
+      rangeEnd: targetVerse.number,
+      repeatScope: "ayah",
+      repeatCount: 3,
+    }));
+    setMemoView("show");
+    setIsPlaying(true);
     setAudioDockOpen(true);
   };
 
@@ -1292,6 +1350,7 @@ export function QuranPagesView({
                 onIsPlayingChange={setIsPlaying}
                 memoSession={memoSession}
                 onMemoSessionChange={setMemoSession}
+                guidedMemorizationActive={guidedOpen}
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
@@ -1339,6 +1398,61 @@ export function QuranPagesView({
           )}
         </div>
       )}
+      <QuranGuidedMemorizationPanel
+        open={guidedOpen}
+        stage={guidedStage}
+        surahName={chapters.find((chapter) => chapter.id === Number(guidedVerseKey?.split(":")[0]))?.name ?? ""}
+        ayahNumber={Number(guidedVerseKey?.split(":")[1]) || selectedAyah}
+        isPlaying={isPlaying}
+        recitationRevealed={guidedRecitationRevealed}
+        lang={lang}
+        onClose={closeGuidedMemorization}
+        onStageChange={setGuidedStageAndPlayback}
+        onReplay={() => {
+          if (!guidedVerseKey) return;
+          setPlayingVerseKey(guidedVerseKey);
+          setIsPlaying(true);
+        }}
+        onRevealRecitation={() => {
+          setGuidedRecitationRevealed(true);
+          setMemoView("show");
+        }}
+        onAssess={(result) => {
+          if (result === "review") {
+            setGuidedStageAndPlayback(0);
+            toast.success(lang === "ar" ? "سنكرر الآية الآن" : "Let’s repeat this ayah");
+            return;
+          }
+          const currentSurah = Number(guidedVerseKey?.split(":")[0]);
+          const currentAyah = Number(guidedVerseKey?.split(":")[1]);
+          const nextVerse = verses.find(
+            (verse) => verse.chapter_id === currentSurah && verse.number === currentAyah + 1,
+          );
+          if (!nextVerse) {
+            toast.success(lang === "ar" ? "أتممت آخر آية في السورة" : "You completed the final ayah");
+            closeGuidedMemorization();
+            return;
+          }
+          const nextKey = `${nextVerse.chapter_id}:${nextVerse.number}`;
+          setSelectedVerseKey(nextKey);
+          setGuidedVerseKey(nextKey);
+          setGuidedStage(0);
+          setGuidedRecitationRevealed(false);
+          setMemoView("show");
+          setMemoSession((session) => ({
+            ...session,
+            isActive: true,
+            rangeStart: nextVerse.number,
+            rangeEnd: nextVerse.number,
+            repeatScope: "ayah",
+            repeatCount: 3,
+          }));
+          setPlayingVerseKey(nextKey);
+          setIsPlaying(true);
+          if (nextVerse.page_id !== activePage) goToPage(nextVerse.page_id);
+          toast.success(lang === "ar" ? "ننتقل إلى الآية التالية" : "Moving to the next ayah");
+        }}
+      />
     </div>
   );
 }

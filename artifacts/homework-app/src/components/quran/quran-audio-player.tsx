@@ -33,6 +33,7 @@ export interface QuranAudioPlayerProps {
   onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
   memoSession?: MemoSessionState;
   onMemoSessionChange?: (session: MemoSessionState) => void;
+  guidedMemorizationActive?: boolean;
   memoView?: 'show' | 'hide' | 'progressive';
   onMemoViewChange?: (view: 'show' | 'hide' | 'progressive') => void;
   onPlayingWordChange?: (wordPosition: number | null) => void;
@@ -69,6 +70,7 @@ export function QuranAudioPlayer({
   onPlaybackLocationChange,
   memoSession,
   onMemoSessionChange,
+  guidedMemorizationActive = false,
   memoView,
   onMemoViewChange,
   onPlayingWordChange,
@@ -144,9 +146,9 @@ export function QuranAudioPlayer({
   );
 
   useEffect(() => {
-    if (memoSession?.isActive) setActiveTab('memo');
+    if (memoSession?.isActive && !guidedMemorizationActive) setActiveTab('memo');
     else if (activeTab === 'memo') setActiveTab('none');
-  }, [memoSession?.isActive]);
+  }, [activeTab, guidedMemorizationActive, memoSession?.isActive]);
 
   useEffect(() => {
     if (activeTab === 'none') return;
