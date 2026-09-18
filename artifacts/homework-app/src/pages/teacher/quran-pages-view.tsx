@@ -217,6 +217,7 @@ export function QuranPagesView({
   const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
+  const [educationLocked, setEducationLocked] = useState(false);
   const [copiedVerseKey, setCopiedVerseKey] = useState<string | null>(null);
   const [copyRange, setCopyRange] = useState<{
     surah: number;
@@ -226,6 +227,16 @@ export function QuranPagesView({
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const { playWord, stopWordAudio } = useQuranWordAudio();
+
+  useEffect(() => {
+    if (educationLocked || guidedOpen || !isPlaying || !playingVerseKey) return;
+    setEducationSelection({
+      verseKey: playingVerseKey,
+      wordId: null,
+      wordPosition: null,
+      wordText: null,
+    });
+  }, [educationLocked, guidedOpen, isPlaying, playingVerseKey]);
 
   const handleStandaloneSyncToggle = async () => {
     const enabling = !syncEnabled;
@@ -1465,6 +1476,7 @@ export function QuranPagesView({
                   setPlayingVerseKey(null);
                   setSelectedVerseKey(null);
                   setEducationSelection(null);
+                  setEducationLocked(false);
                 }}
               />
             </div>
@@ -1475,6 +1487,8 @@ export function QuranPagesView({
                 key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
                 selection={educationSelection}
                 onClose={() => setEducationSelection(null)}
+                locked={educationLocked}
+                onToggleLock={() => setEducationLocked((locked) => !locked)}
               />
             </div>
           )}

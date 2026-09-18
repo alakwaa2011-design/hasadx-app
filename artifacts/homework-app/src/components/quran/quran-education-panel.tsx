@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, Check, Copy, Languages, Loader2, Share2, X } from "lucide-react";
+import { BookOpenText, Check, Copy, Languages, Loader2, Lock, Share2, Unlock, X } from "lucide-react";
 import {
   getGetQuranAyahEducationQueryKey,
   useGetQuranAyahEducation,
@@ -16,9 +16,13 @@ type QuranEducationSelection = {
 export function QuranEducationPanel({
   selection,
   onClose,
+  locked = false,
+  onToggleLock,
 }: {
   selection: QuranEducationSelection;
   onClose: () => void;
+  locked?: boolean;
+  onToggleLock?: () => void;
 }) {
   const { lang } = useI18n();
   const [tab, setTab] = useState<"translation" | "tafsir">("tafsir");
@@ -109,6 +113,25 @@ export function QuranEducationPanel({
               {lang === "ar" ? "ترجمة الكلمة" : "Word translation"}
             </button>
           )}
+          <button
+            type="button"
+            onClick={onToggleLock}
+            aria-pressed={locked}
+            className={cn(
+              "rounded-lg p-1.5 transition-colors",
+              locked
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+            aria-label={lang === "ar"
+              ? (locked ? "فتح متابعة التفسير مع التلاوة" : "قفل التفسير الحالي")
+              : (locked ? "Unlock tafsir following" : "Lock current tafsir")}
+            title={lang === "ar"
+              ? (locked ? "فتح المتابعة التلقائية" : "قفل التفسير الحالي")
+              : (locked ? "Resume automatic following" : "Lock current tafsir")}
+          >
+            {locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+          </button>
           <button
             type="button"
             onClick={() => void copyDisplayedText()}
