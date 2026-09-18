@@ -740,6 +740,21 @@
 .undo-box-flash  { animation: undoBoxPop  0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
 .undo-btn-pulse  { animation: undoBtnPulse 0.32s ease-out both; }
 
+/* The Quran reader owns the remaining viewport below the site header. Keeping
+   the page and optional dock in one flex column prevents controls from covering
+   the final ayah and avoids a permanent empty reserve when the dock is closed. */
+.quran-focused-layout {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.quran-focused-layout > .site-layout-main {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Phone landscape mode: keep the Mushaf inside the current route and fit one
    complete Madani page to the viewport. No separate fullscreen URL is used. */
 @media (orientation: landscape) and (max-height: 600px) {

@@ -756,7 +756,7 @@ export function QuranPagesView({
       <figure
         key={page}
         data-quran-page={page}
-        className="quran-reader-figure relative mx-auto w-full overflow-hidden rounded-[3px] bg-white shadow-[0_20px_60px_rgba(34,87,57,0.16)] ring-1 ring-black/10"
+        className="quran-reader-figure relative mx-auto w-full overflow-hidden bg-[#fdfaf6] md:rounded-[3px] md:bg-white md:shadow-[0_20px_60px_rgba(34,87,57,0.16)] md:ring-1 md:ring-black/10"
         onClick={(event) => {
           if (didSwipeRef.current) {
             didSwipeRef.current = false;
@@ -870,7 +870,7 @@ export function QuranPagesView({
           ? "h-full overflow-hidden"
           : standalone
             ? "h-[100dvh] overflow-hidden"
-            : "min-h-0 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-0",
+            : "h-full min-h-0 overflow-hidden",
       )}
       dir={dir}
     >
@@ -886,7 +886,7 @@ export function QuranPagesView({
       )}
 
       {!quietMode && (
-        <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 shrink-0 border-b border-border/40 bg-white/95 shadow-sm backdrop-blur-xl dark:bg-[#0a0c0b]/95 transition-all duration-300">
+        <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 shrink-0 rounded-b-2xl border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-[0_6px_20px_rgba(34,87,57,0.08)] backdrop-blur-xl transition-all duration-300 dark:bg-[#0a0c0b]/95 md:rounded-none md:shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-1 px-1 py-0.5 md:gap-3 md:px-4 md:py-3">
 
             {/* Back Navigation */}
@@ -1283,8 +1283,7 @@ export function QuranPagesView({
       <main
         ref={readerMainRef}
         className={cn(
-          "quran-reader-main flex min-h-0 flex-col items-start px-0 py-1 pb-2 md:px-8 md:py-8",
-          embedded || standalone ? "flex-1 overflow-auto" : "overflow-visible",
+          "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
         )}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
@@ -1384,7 +1383,7 @@ export function QuranPagesView({
 
       {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
-          className="quran-reader-dock relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col md:max-h-[58dvh]"
+          className="quran-reader-dock relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col overflow-hidden rounded-t-[22px] bg-[#fbfaf6] shadow-[0_-10px_34px_rgba(34,87,57,0.12)] ring-1 ring-emerald-950/10 dark:bg-[#111512] md:max-h-[58dvh] md:rounded-none"
           data-testid="quran-bottom-dock"
         >
           {(audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0 && (
