@@ -47,13 +47,15 @@ import {
   type GuidedMemorizationStage,
 } from '@/components/quran/quran-guided-memorization-panel';
 import { useQuranWordAudio } from '@/components/quran/use-quran-word-audio';
+import { isStudentQuranReaderPath } from '@/lib/quran-live-recitation';
 
 export default function QuranReader() {
   const { lang } = useI18n();
   const params = useParams<{ surahNumber?: string; wardId?: string }>();
   const [, setLocation] = useLocation();
-  const isStudentWard = window.location.pathname.includes('/student/quran-wards/');
-  const isStudentPractice = window.location.pathname.includes('/student/quran-practice/');
+  const isStudentWard = window.location.pathname.startsWith('/student/quran-wards/');
+  const isStudentPractice = window.location.pathname.startsWith('/student/quran-practice/');
+  const isStudentReader = isStudentQuranReaderPath(window.location.pathname);
   const readerBasePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
   const searchParams = new URLSearchParams(window.location.search);
 
@@ -213,6 +215,7 @@ export default function QuranReader() {
               }
             : undefined}
           isIndependentPractice={isStudentPractice}
+          liveRecitationAvailable={!isStudentReader}
         />
         {isStudentWard && studentWardId && <QuranStudentSubmissionPanel wardId={studentWardId} />}
       </>

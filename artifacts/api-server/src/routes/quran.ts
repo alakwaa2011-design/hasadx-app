@@ -125,6 +125,7 @@ import {
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
 } from "../lib/quran-foundation-client";
+import { rejectStudentLiveRecitation } from "../lib/quran-live-recitation-access";
 
 const router: IRouter = Router();
 const quranSubmissionStorage = new ObjectStorageService();
@@ -541,6 +542,7 @@ router.post(
   "/quran/recitation/partial",
   requireQuranReaderSession,
   quranLiveRateLimiter,
+  rejectStudentLiveRecitation,
   acceptQuranLiveAudio,
   async (req, res): Promise<void> => {
     const ownerKey = quranRecitationOwnerKey(req);

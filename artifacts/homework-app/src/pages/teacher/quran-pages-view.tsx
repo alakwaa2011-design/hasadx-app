@@ -110,6 +110,7 @@ export function QuranPagesView({
   embedded = false,
   standalone = false,
   isIndependentPractice = false,
+  liveRecitationAvailable,
   onExitEmbedded,
   onOpenBookmarks,
 }: {
@@ -127,6 +128,7 @@ export function QuranPagesView({
   embedded?: boolean;
   standalone?: boolean;
   isIndependentPractice?: boolean;
+  liveRecitationAvailable: boolean;
   onExitEmbedded?: () => void;
   onOpenBookmarks?: () => void;
 }) {

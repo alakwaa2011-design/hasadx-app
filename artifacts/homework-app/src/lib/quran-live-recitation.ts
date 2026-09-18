@@ -9,7 +9,19 @@ export interface QuranChunkAlignment {
   mismatchKey: string | null;
 }
 
+export interface QuranMismatchConfirmation {
+  mismatchKey: string | null;
+  count: number;
+  shouldAlert: boolean;
+}
+
 const QURAN_MARKS = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
+
+export function isStudentQuranReaderPath(pathname: string): boolean {
+  return pathname.startsWith("/student/quran-wards/")
+    || pathname.startsWith("/student/quran-practice/")
+    || pathname.startsWith("/student/quran-recitation/");
+}
 
 export function normalizeQuranWord(text: string): string {
   return text
@@ -61,6 +73,23 @@ export function alignQuranRecitationChunk(
     nextExpectedIndex,
     madeProgress,
     mismatchKey: madeProgress ? null : mismatchKey,
+  };
+}
+
+export function confirmQuranMismatch(
+  previousKey: string | null,
+  previousCount: number,
+  mismatchKey: string | null,
+): QuranMismatchConfirmation {
+  if (!mismatchKey) {
+    return { mismatchKey: null, count: 0, shouldAlert: false };
+  }
+
+  const count = previousKey === mismatchKey ? previousCount + 1 : 1;
+  return {
+    mismatchKey,
+    count: count >= 2 ? 0 : count,
+    shouldAlert: count >= 2,
   };
 }
 

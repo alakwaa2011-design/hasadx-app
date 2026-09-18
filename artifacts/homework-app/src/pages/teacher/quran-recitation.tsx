@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
   getGetQuranSurahContentQueryKey,
+  getGetCurrentTeacherQueryKey,
   transcribeQuranRecitationPartial,
+  useGetCurrentTeacher,
   useGetQuranSurahContent,
 } from '@workspace/api-client-react';
 import { Loader2, Mic, Pause, Square, Check, ChevronRight, ChevronLeft, AlertCircle, RefreshCw } from 'lucide-react';
@@ -11,6 +13,7 @@ import { useI18n } from '@/lib/i18n';
 import { toast } from 'sonner';
 import {
   alignQuranRecitationChunk,
+  confirmQuranMismatch,
   concatPcm,
   downsamplePcm,
   encodePcmWav,
@@ -37,6 +40,12 @@ export default function QuranRecitation() {
     
     const isStudent = window.location.pathname.startsWith('/student');
     const basePath = isStudent ? '/student/dashboard' : '/teacher/quran-center?tab=mushaf';
+    const teacherSession = useGetCurrentTeacher({
+        query: {
+            queryKey: getGetCurrentTeacherQueryKey(),
+            retry: false,
+        },
+    });
     
     const { data: surah, isLoading } = useGetQuranSurahContent(surahNumber, {
         query: {
@@ -278,15 +287,15 @@ export default function QuranRecitation() {
                             completeRecording();
                         }
                     } else if (alignment.mismatchKey) {
-                        if (lastMismatchKeyRef.current === alignment.mismatchKey) {
-                            mismatchCountRef.current += 1;
-                        } else {
-                            lastMismatchKeyRef.current = alignment.mismatchKey;
-                            mismatchCountRef.current = 1;
-                        }
-                        if (mismatchCountRef.current >= 2) {
+                        const confirmation = confirmQuranMismatch(
+                            lastMismatchKeyRef.current,
+                            mismatchCountRef.current,
+                            alignment.mismatchKey,
+                        );
+                        lastMismatchKeyRef.current = confirmation.mismatchKey;
+                        mismatchCountRef.current = confirmation.count;
+                        if (confirmation.shouldAlert) {
                             playGentleCue();
-                            mismatchCountRef.current = 0;
                         }
                     } else {
                         mismatchCountRef.current = 0;
@@ -331,6 +340,14 @@ export default function QuranRecitation() {
             </div>
         );
     }
+
+    if (teacherSession.isPending) {
+        return (
+            <div className="flex min-h-[100dvh] items-center justify-center bg-[#fcfaf8] dark:bg-[#0a0c0b]">
+                <Loader2 className="h-10 w-10 animate-spin text-emerald-700" />
+            </div>
+        );
+    }
     
     if (!isLoading && !ayah) {
         return (
@@ -344,6 +361,27 @@ export default function QuranRecitation() {
                         className="bg-emerald-600 text-white px-6 py-2 rounded-full shadow-md hover:bg-emerald-700 transition-colors"
                     >
                         {lang === 'ar' ? 'العودة' : 'Go Back'}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!teacherSession.isSuccess) {
+        return (
+            <div className="flex min-h-[100dvh] items-center justify-center bg-[#fcfaf8] p-6 dark:bg-[#0a0c0b]" dir={dir}>
+                <div className="max-w-md rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm dark:border-amber-900 dark:bg-card">
+                    <AlertCircle className="mx-auto mb-4 h-9 w-9 text-amber-600" />
+                    <h1 className="font-black text-foreground">
+                        {lang === 'ar' ? 'التسميع المباشر قيد التحقق' : 'Live recitation is under evaluation'}
+                    </h1>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {lang === 'ar'
+                            ? 'لن نرسل صوت الطالب إلى خدمة خارجية قبل اكتمال اختبار الدقة والخصوصية والترخيص.'
+                            : 'Student audio will not be sent to an external service until accuracy, privacy, and licensing checks are complete.'}
+                    </p>
+                    <button onClick={() => setLocation(basePath)} className="mt-5 rounded-xl bg-emerald-700 px-5 py-2.5 font-bold text-white">
+                        {lang === 'ar' ? 'العودة' : 'Go back'}
                     </button>
                 </div>
             </div>
