@@ -799,7 +799,7 @@ export default function CreateVideoLesson() {
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
       if (!metaRes.ok) throw new Error("Failed to get upload URL");
-      const { uploadURL, objectPath } = await metaRes.json();
+      const { uploadURL, objectPath, finalizeURL, uploadTicket } = await metaRes.json();
 
       const xhr = new XMLHttpRequest();
       await new Promise<void>((resolve, reject) => {
@@ -816,6 +816,8 @@ export default function CreateVideoLesson() {
         xhr.send(file);
       });
 
+      const finalized = await fetch(`${API_BASE}/api${finalizeURL || "/storage/uploads/finalize"}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ objectPath, uploadTicket }) });
+      if (!finalized.ok) throw new Error("Upload verification failed");
       const servingUrl = `${API_BASE}/api/storage${objectPath}`;
       setVideoUrl(servingUrl);
       setVideoSource("upload");

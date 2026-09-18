@@ -304,9 +304,15 @@ export function ParentMessagesContent() {
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
       if (!r.ok) { toast.error((await r.json()).error || "فشل رفع الملف"); return null; }
-      const { uploadURL, objectPath } = await r.json();
+      const { uploadURL, objectPath, finalizeURL, uploadTicket } = await r.json();
       const up = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       if (!up.ok) { toast.error("فشل رفع الملف إلى التخزين"); return null; }
+      const finalized = await fetch(`${BASE}/api${finalizeURL || "/storage/uploads/finalize"}`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ objectPath, uploadTicket }),
+      });
+      if (!finalized.ok) { toast.error("فشل التحقق من الملف المرفوع"); return null; }
       return { name: file.name, objectPath, contentType: file.type, size: file.size };
     } catch { toast.error("فشل رفع الملف"); return null; }
   }

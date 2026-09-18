@@ -17,7 +17,12 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
 export class QuestionImageUploadError extends Error {
   constructor(
-    public readonly reason: "unsupported-type" | "too-large" | "request-failed" | "upload-failed",
+    public readonly reason:
+      | "unsupported-type"
+      | "too-large"
+      | "request-failed"
+      | "upload-failed"
+      | "upload-verification-failed",
   ) {
     super(reason);
   }
@@ -48,7 +53,9 @@ export async function uploadQuestionImage(file: File): Promise<string> {
 
   const result = await request.json() as {
     uploadURL?: unknown;
-    objectPath?: unknown;
+     objectPath?: unknown;
+     finalizeURL?: unknown;
+     uploadTicket?: unknown;
   };
   if (
     typeof result.uploadURL !== "string"
@@ -57,7 +64,6 @@ export async function uploadQuestionImage(file: File): Promise<string> {
   ) {
     throw new QuestionImageUploadError("request-failed");
   }
-
   const upload = await fetch(result.uploadURL, {
     method: "PUT",
     headers: { "Content-Type": file.type },
@@ -66,6 +72,11 @@ export async function uploadQuestionImage(file: File): Promise<string> {
   if (!upload.ok) {
     throw new QuestionImageUploadError("upload-failed");
   }
+  const finalized = await fetch(`${API_BASE}/api${typeof result.finalizeURL === "string" ? result.finalizeURL : "/storage/uploads/finalize"}`, {
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ objectPath: result.objectPath, uploadTicket: result.uploadTicket }),
+  });
+  if (!finalized.ok) throw new QuestionImageUploadError("upload-verification-failed");
 
   return result.objectPath;
 }

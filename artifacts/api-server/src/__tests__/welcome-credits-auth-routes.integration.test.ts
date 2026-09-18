@@ -11,6 +11,14 @@
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 
+// The production limiter is intentionally disabled in this database integration
+// suite. Rate-limit behavior is covered by the limiter's own tests; sharing one
+// process limiter would make otherwise independent cases affect each other.
+vi.mock("../lib/rate-limiter", () => ({
+  authLimiter: (_req: any, _res: any, next: any) => next(),
+  registerLimiter: (_req: any, _res: any, next: any) => next(),
+}));
+
 // Google route coverage: mock the ID-token verifier so /auth/google can run without real OAuth.
 const googleProfile = { sub: "", email: "", emailVerified: true, name: "Google Test" };
 const { sendEmailMock } = vi.hoisted(() => ({
@@ -45,7 +53,7 @@ function makeApp() {
   let nextSessionId = 0;
   app.use(express.json());
   app.use((req: any, res, next) => {
-    const sid = req.headers.cookie?.match(/(?:^|;\s*)test_sid=([^;]+)/)?.[1] ?? `s${++nextSessionId}`;
+    let sid = req.headers.cookie?.match(/(?:^|;\s*)test_sid=([^;]+)/)?.[1] ?? `s${++nextSessionId}`;
     let session = sessions.get(sid);
     if (!session) {
       session = {
@@ -55,9 +63,26 @@ function makeApp() {
       sessions.set(sid, session);
       res.cookie("test_sid", sid);
     }
-    mostRecentSession = session;
     req.session = session;
     req.sessionID = sid;
+    session.regenerate = vi.fn((callback: (error?: unknown) => void) => {
+      const old = session;
+      const rotatedSid = `s${++nextSessionId}`;
+      const rotated: any = {
+        cookie: { ...old.cookie },
+        save: vi.fn((cb: (error?: unknown) => void) => cb()),
+      };
+      sessions.delete(sid);
+      sessions.set(rotatedSid, rotated);
+      sid = rotatedSid;
+      session = rotated;
+      req.session = rotated;
+      req.sessionID = rotatedSid;
+      mostRecentSession = rotated;
+      res.cookie("test_sid", rotatedSid);
+      callback();
+    });
+    mostRecentSession = session;
     req.log = { info: () => {}, warn: () => {}, error: () => {} };
     next();
   });
@@ -126,6 +151,15 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
   let originalWelcomeCredits: number | null = null;
 
   beforeAll(async () => {
+    // Keep this suite runnable against a freshly-created dedicated test DB
+    // without requiring a full Drizzle push. These are the phase-one additive
+    // columns only; production migrations are never executed by tests.
+    await db.execute(sql`
+      ALTER TABLE teachers ADD COLUMN IF NOT EXISTS otp_attempts INTEGER NOT NULL DEFAULT 0
+    `);
+    await db.execute(sql`
+      ALTER TABLE teachers ADD COLUMN IF NOT EXISTS otp_locked_until TIMESTAMP
+    `);
     const existing = await db.execute(sql`SELECT welcome_credits FROM platform_settings ORDER BY id LIMIT 1`);
     originalWelcomeCredits = existing.rows.length ? Number((existing.rows[0] as any).welcome_credits ?? 0) : null;
     await db.execute(sql`UPDATE platform_settings SET welcome_credits = 50 WHERE id = (SELECT id FROM platform_settings ORDER BY id LIMIT 1)`);
@@ -366,16 +400,54 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
     expect(registration.status).toBe(201);
 
     const row = await db.execute(sql`
-      SELECT id, email FROM teachers WHERE lower(email) = ${email.toLowerCase()} LIMIT 1
+      SELECT id, email, verification_otp, otp_expires_at
+      FROM teachers WHERE lower(email) = ${email.toLowerCase()} LIMIT 1
     `);
     const tid = Number((row.rows[0] as any).id);
     tids.push(tid);
     expect((row.rows[0] as any).email).toBe(email.toLowerCase());
+    expect((row.rows[0] as any).verification_otp).toMatch(/^[0-9a-f]{64}$/i);
+    expect(new Date((row.rows[0] as any).otp_expires_at).getTime()).toBeGreaterThan(Date.now() + 9 * 60 * 1000);
     expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ to: email.toLowerCase() }));
 
     const duplicate = await request(app)
       .post("/api/auth/register")
       .send({ name: "Duplicate", email: email.toLowerCase(), password: PASSWORD });
     expect(duplicate.status).toBe(409);
+  });
+
+  it("AUTH8 — wrong OTP attempts are bounded and resend resets the lock", async () => {
+    const t = await createUnverifiedTeacher("attempt-lock", { otp: "616161" });
+    tids.push(t.id);
+    for (let i = 0; i < 4; i++) {
+      expect((await request(app).post("/api/auth/verify-otp")
+        .send({ identifier: t.email, otp: "000000" })).status).toBe(400);
+    }
+    expect((await request(app).post("/api/auth/verify-otp")
+      .send({ identifier: t.email, otp: "000000" })).status).toBe(429);
+    const locked = await db.execute(sql`
+      SELECT otp_attempts, otp_locked_until FROM teachers WHERE id = ${t.id}
+    `);
+    expect(Number((locked.rows[0] as any).otp_attempts)).toBeGreaterThanOrEqual(5);
+    expect((locked.rows[0] as any).otp_locked_until).not.toBeNull();
+
+    await db.execute(sql`UPDATE teachers SET otp_expires_at = NOW() - INTERVAL '2 minutes' WHERE id = ${t.id}`);
+    expect((await request(app).post("/api/auth/resend-otp").send({ identifier: t.email })).status).toBe(200);
+    const reset = await db.execute(sql`
+      SELECT otp_attempts, otp_locked_until FROM teachers WHERE id = ${t.id}
+    `);
+    expect(Number((reset.rows[0] as any).otp_attempts)).toBe(0);
+    expect((reset.rows[0] as any).otp_locked_until).toBeNull();
+  });
+
+  it("AUTH9 — an email verification token is single-use and never logs in twice", async () => {
+    const token = `single-use-${RUN_ID}-token`;
+    const t = await createUnverifiedTeacher("single-use", { token });
+    tids.push(t.id);
+    const first = await request(app).get(`/api/auth/verify-email?token=${token}`);
+    expect(first.status).toBe(200);
+    const second = await request(app).get(`/api/auth/verify-email?token=${token}`);
+    expect(second.status).toBe(400);
+    expect(second.body.invalid).toBe(true);
   });
 });

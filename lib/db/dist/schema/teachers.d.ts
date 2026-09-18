@@ -617,6 +617,40 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        otpAttempts: import("drizzle-orm/pg-core").PgColumn<{
+            name: "otp_attempts";
+            tableName: "teachers";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        otpLockedUntil: import("drizzle-orm/pg-core").PgColumn<{
+            name: "otp_locked_until";
+            tableName: "teachers";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         verifiedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "verified_at";
             tableName: "teachers";
@@ -723,6 +757,8 @@ export declare const insertTeacherSchema: z.ZodObject<{
     showOnLeaderboard: z.ZodOptional<z.ZodBoolean>;
     verificationOtp: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     otpExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    otpAttempts: z.ZodOptional<z.ZodInt>;
+    otpLockedUntil: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     verifiedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     emailVerified: z.ZodOptional<z.ZodBoolean>;
     emailVerifyToken: z.ZodOptional<z.ZodNullable<z.ZodString>>;

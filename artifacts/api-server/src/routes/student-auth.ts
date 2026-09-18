@@ -4,6 +4,7 @@ import { db, studentAccountsTable, flagScoresTable, colorScoresTable, memoryScor
 import { eq, desc, gt, gte, sql, count, and } from "drizzle-orm";
 import { authLimiter, registerLimiter } from "../lib/rate-limiter";
 import { logActivity } from "../lib/activity-logger";
+import { establishStudentSession } from "../lib/safe-auth-session";
 
 const router: IRouter = Router();
 
@@ -56,8 +57,7 @@ router.post("/student-auth/register", registerLimiter, async (req, res) => {
       })
       .returning();
 
-    delete req.session.teacherId;
-    req.session.studentAccountId = student.id;
+    await establishStudentSession(req, student.id);
 
     res.status(201).json({
       student: {
@@ -101,8 +101,7 @@ router.post("/student-auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    delete req.session.teacherId;
-    req.session.studentAccountId = student.id;
+    await establishStudentSession(req, student.id);
 
     logActivity({
       req,
@@ -535,8 +534,7 @@ router.post("/student-auth/google", authLimiter, async (req, res) => {
       return;
     }
 
-    delete req.session.teacherId;
-    req.session.studentAccountId = student.id;
+    await establishStudentSession(req, student.id);
 
     res.json({
       student: {

@@ -1,6 +1,7 @@
 import { Storage, File } from "@google-cloud/storage";
 import { Readable } from "stream";
 import { randomUUID } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -220,6 +221,74 @@ export class ObjectStorageService {
     return objectFile;
   }
 
+  /**
+   * Verify an uploaded object's bytes rather than trusting the user supplied
+   * Content-Type header.  This deliberately only recognises the formats
+   * supported by the upload endpoints.
+   */
+  async verifyUploadedObject(
+    objectPath: string,
+    expectedType: string,
+    maxBytes: number,
+  ): Promise<{ size: number; contentType: string }> {
+    const file = await this.getObjectEntityFile(objectPath);
+    const [metadata] = await file.getMetadata();
+    const size = Number(metadata.size || 0);
+    if (!Number.isSafeInteger(size) || size <= 0 || size > maxBytes) {
+      throw new Error("INVALID_UPLOAD_SIZE");
+    }
+    const [head] = await file.download({ start: 0, end: Math.min(size, 8192) - 1 });
+    const detected = detectUploadType(head, expectedType);
+    if (!detected || detected !== expectedType) {
+      throw new Error("UPLOAD_TYPE_MISMATCH");
+    }
+    const generation = String(metadata.generation || "");
+    await file.setMetadata({
+      metadata: {
+        ...(metadata.metadata as Record<string, string> | undefined),
+        verifiedUpload: "true",
+        verifiedGeneration: generation,
+      },
+    });
+    return { size, contentType: detected };
+  }
+
+  issueUploadTicket(input: { objectPath: string; teacherId: number; purpose: string; contentType: string; maxBytes: number; videoEntitled?: boolean }): string {
+    const payload = Buffer.from(JSON.stringify({ ...input, exp: Date.now() + 15 * 60_000 })).toString("base64url");
+    return `${payload}.${createHmac("sha256", uploadTicketSecret()).update(payload).digest("base64url")}`;
+  }
+
+  issueScopedUploadTicket(input: { objectPath: string; owner: string; purpose: string; contentType: string; maxBytes: number }): string {
+    const payload = Buffer.from(JSON.stringify({ ...input, exp: Date.now() + 15 * 60_000 })).toString("base64url");
+    return `${payload}.${createHmac("sha256", uploadTicketSecret()).update(payload).digest("base64url")}`;
+  }
+
+  verifyScopedUploadTicket(ticket: string, expected: { objectPath: string; owner: string; purpose: string }) {
+    const [payload, signature] = ticket.split(".");
+    const expectedSig = createHmac("sha256", uploadTicketSecret()).update(payload || "").digest();
+    const actualSig = Buffer.from(signature || "", "base64url");
+    if (!payload || actualSig.length !== expectedSig.length || !timingSafeEqual(actualSig, expectedSig)) throw new Error("INVALID_UPLOAD_TICKET");
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (parsed.exp < Date.now() || parsed.objectPath !== expected.objectPath || parsed.owner !== expected.owner || parsed.purpose !== expected.purpose) throw new Error("INVALID_UPLOAD_TICKET");
+    return parsed as { contentType: string; maxBytes: number; owner: string };
+  }
+
+  verifyUploadTicket(ticket: string, expected: { objectPath: string; teacherId: number; purpose?: string }): {
+    purpose: string; contentType: string; maxBytes: number; videoEntitled?: boolean;
+  } {
+    const [payload, signature] = ticket.split(".");
+    if (!payload || !signature) throw new Error("INVALID_UPLOAD_TICKET");
+    const expectedSig = createHmac("sha256", uploadTicketSecret()).update(payload).digest();
+    const actualSig = Buffer.from(signature, "base64url");
+    if (actualSig.length !== expectedSig.length || !timingSafeEqual(actualSig, expectedSig)) throw new Error("INVALID_UPLOAD_TICKET");
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (parsed.exp < Date.now() || parsed.objectPath !== expected.objectPath || parsed.teacherId !== expected.teacherId ||
+        (expected.purpose !== undefined && parsed.purpose !== expected.purpose)) {
+      throw new Error("INVALID_UPLOAD_TICKET");
+    }
+    return { purpose: parsed.purpose, contentType: parsed.contentType, maxBytes: parsed.maxBytes, videoEntitled: parsed.videoEntitled };
+  }
+
   async listUploadObjects(ownerPrefix?: string): Promise<File[]> {
     let dir = this.getPrivateObjectDir();
     if (!dir.endsWith("/")) dir = `${dir}/`;
@@ -311,6 +380,49 @@ export class ObjectStorageService {
   }
 }
 
+export function detectUploadType(bytes: Buffer, claimedType: string): string | null {
+  const b = bytes;
+  const u32 = b.length >= 4 ? b.readUInt32BE(0) : 0;
+  const isZip = u32 === 0x504b0304 || u32 === 0x504b0506 || u32 === 0x504b0708;
+  if (b.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))) return "image/png";
+  if (b.subarray(0, 3).equals(Buffer.from("ffd8ff", "hex"))) return "image/jpeg";
+  if (b.subarray(0, 6).toString("ascii") === "GIF87a" || b.subarray(0, 6).toString("ascii") === "GIF89a") return "image/gif";
+  if (b.subarray(0, 4).toString("ascii") === "RIFF" && b.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp";
+  if (b.length >= 12 && b.subarray(4, 8).toString("ascii") === "ftyp" &&
+      /^(avif|avis|heic|heix|hevc|hevx)$/i.test(b.subarray(8, 12).toString("ascii"))) {
+    return claimedType === "image/heic" || claimedType === "image/heif" ? claimedType : "image/avif";
+  }
+  if (b.subarray(0, 5).toString("ascii") === "%PDF-") return "application/pdf";
+  if (b.subarray(0, 8).equals(Buffer.from("d0cf11e0a1b11ae1", "hex")) && (
+    claimedType === "application/msword" || claimedType === "application/vnd.ms-excel" ||
+    claimedType === "application/vnd.ms-powerpoint"
+  )) return claimedType;
+  const zipText = isZip ? b.toString("latin1") : "";
+  if (isZip && (claimedType === "application/zip" || claimedType === "application/x-zip-compressed" ||
+    zipText.includes("[Content_Types].xml")) && (
+    claimedType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    claimedType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    claimedType === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    claimedType === "application/zip" || claimedType === "application/x-zip-compressed"
+  )) return claimedType;
+  if (claimedType === "text/plain" && !b.subarray(0, Math.min(b.length, 8192)).includes(0)) {
+    const text = b.toString("utf8").trimStart().toLowerCase();
+    if (!/^<!doctype\s+(html|svg)|^<\s*(html|svg|script|xml)\b/.test(text)) return "text/plain";
+  }
+  // Container formats and media have signatures too, but are intentionally
+  // accepted only by their dedicated endpoints.
+  if (claimedType.startsWith("audio/") || claimedType.startsWith("video/")) {
+    if (b.subarray(0, 4).toString("ascii") === "OggS" || (b.subarray(0, 4).toString("ascii") === "RIFF" &&
+        b.subarray(8, 12).toString("ascii") === "WAVE") ||
+        b.subarray(0, 4).equals(Buffer.from("1a45dfa3", "hex")) ||
+        b.subarray(0, 2).equals(Buffer.from("fffb", "hex")) ||
+        b.subarray(0, 2).equals(Buffer.from("fff3", "hex")) ||
+        b.subarray(4, 8).toString("ascii") === "ftyp" || b.subarray(0, 3).toString("ascii") === "ID3" ||
+        b.subarray(0, 4).toString("ascii") === "fLaC") return claimedType;
+  }
+  return null;
+}
+
 export function parseObjectPath(path: string): {
   bucketName: string;
   objectName: string;
@@ -330,6 +442,12 @@ export function parseObjectPath(path: string): {
     bucketName,
     objectName,
   };
+}
+
+function uploadTicketSecret(): string {
+  const secret = process.env.UPLOAD_TICKET_SECRET || process.env.SESSION_SECRET;
+  if (!secret) throw new Error("UPLOAD_TICKET_SECRET is not configured");
+  return secret;
 }
 
 async function signObjectURL({

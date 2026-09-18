@@ -4,14 +4,14 @@ import {
   studentsTable, teachersTable, notificationsTable, classroomRewardTransactionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
-import { createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "crypto";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const attachmentSchema = z.array(z.object({
   name: z.string().max(255),
   objectPath: z.string().max(500),
   contentType: z.string().max(200),
-  size: z.number().int().positive(),
+       size: z.number().finite().int().positive(),
 })).max(5).optional();
 import { sendEmail, getAppBaseUrl } from "../lib/email";
 import {
@@ -22,6 +22,42 @@ import {
 import { eq, and, desc, asc, sql, gte, lte } from "drizzle-orm";
 
 const router: IRouter = Router();
+async function validateParentAttachments(token: string, attachments?: Array<{ objectPath: string }>): Promise<boolean> {
+  if (!attachments?.length) return true;
+  const owner = createHash("sha256").update(token).digest("hex").slice(0, 32);
+  const storage = new ObjectStorageService();
+  for (const attachment of attachments) {
+    if (!attachment.objectPath.startsWith(`/objects/uploads/parent/${owner}/`)) return false;
+    try {
+      const file = await storage.getObjectEntityFile(attachment.objectPath);
+      const [metadata] = await file.getMetadata();
+      if (metadata.metadata?.verifiedUpload !== "true" ||
+          metadata.metadata?.parentOwner !== owner ||
+          metadata.metadata?.verifiedGeneration !== String(metadata.generation || "")) return false;
+    } catch { return false; }
+  }
+  return true;
+}
+async function validateTeacherAttachments(teacherId: number, attachments?: Array<{ objectPath: string; contentType: string; size: number }>): Promise<boolean> {
+  if (!attachments?.length) return true;
+  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif",
+    "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "text/plain"]);
+  const storage = new ObjectStorageService();
+  for (const attachment of attachments) {
+    if (!allowed.has(attachment.contentType) || attachment.size <= 0 || attachment.size > 20 * 1024 * 1024 ||
+        !attachment.objectPath.startsWith(`/objects/uploads/${teacherId}/`)) return false;
+    try {
+      const file = await storage.getObjectEntityFile(attachment.objectPath);
+      const [metadata] = await file.getMetadata();
+      if (metadata.metadata?.verifiedUpload !== "true" ||
+          metadata.metadata?.verifiedGeneration !== String(metadata.generation || "") ||
+          Number(metadata.size || 0) !== attachment.size) return false;
+    } catch { return false; }
+  }
+  return true;
+}
 
 const summaryRequestSchema = z.object({
   studentId: z.number().int().positive(),
@@ -244,6 +280,9 @@ router.post("/parent-messages", async (req, res) => {
     if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
 
     const { studentId, subject, body, parentEmail, parentName, attachments } = parsed.data;
+    if (!(await validateTeacherAttachments(teacherId, attachments))) {
+      res.status(400).json({ message: "المرفق غير موثق أو غير مسموح" }); return;
+    }
 
     const [student] = await db.select()
       .from(studentsTable)
@@ -274,7 +313,7 @@ router.post("/parent-messages", async (req, res) => {
 
     const attachmentLinks = attachments?.map(a => ({
       name: a.name, contentType: a.contentType, size: a.size,
-      url: `${baseUrl}/api/storage${a.objectPath}`,
+      url: `${baseUrl}/api/parent-portal/${replyToken}/attachment/${a.objectPath.replace(/^\/objects\//, "")}`,
     }));
 
     const emailHtml = buildParentMessageEmail({
@@ -330,6 +369,9 @@ router.post("/parent-messages/bulk", async (req, res) => {
     if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
 
     const { classFilter, subject, body, attachments: bulkAttachments } = parsed.data;
+    if (!(await validateTeacherAttachments(teacherId, bulkAttachments))) {
+      res.status(400).json({ message: "المرفق غير موثق أو غير مسموح" }); return;
+    }
 
     const [teacher] = await db.select({
       id: teachersTable.id, name: teachersTable.name,
@@ -374,7 +416,7 @@ router.post("/parent-messages/bulk", async (req, res) => {
 
         const bulkAttachmentLinks = bulkAttachments?.map(a => ({
           name: a.name, contentType: a.contentType, size: a.size,
-          url: `${baseUrl}/api/storage${a.objectPath}`,
+          url: `${baseUrl}/api/parent-portal/${replyToken}/attachment/${a.objectPath.replace(/^\/objects\//, "")}`,
         }));
 
         const emailHtml = buildParentMessageEmail({
@@ -522,6 +564,9 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
     }).safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
     const { body, attachments } = parsed.data;
+    if (!(await validateTeacherAttachments(teacherId, attachments))) {
+      res.status(400).json({ message: "المرفق غير موثق أو غير مسموح" }); return;
+    }
 
     const [msg] = await db
       .select({
@@ -552,7 +597,7 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
       const baseUrl = getAppBaseUrl();
       const attachmentLinks = attachments?.map(a => ({
         name: a.name, contentType: a.contentType, size: a.size,
-        url: `${baseUrl}/api/storage${a.objectPath}`,
+        url: `${baseUrl}/api/parent-portal/${msg.replyToken}/attachment/${a.objectPath.replace(/^\/objects\//, "")}`,
       }));
       const emailHtml = buildParentThreadReplyEmail({
         teacherName: teacher.name,
@@ -696,7 +741,7 @@ router.post("/parent-portal/:token/upload-attachment-url", async (req, res) => {
 
     const { name, size, contentType } = parsed.data;
     const ALLOWED = [
-      "image/",
+       "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif",
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -714,13 +759,72 @@ router.post("/parent-portal/:token/upload-attachment-url", async (req, res) => {
     }
 
     const storage = new ObjectStorageService();
-    const uploadURL = await storage.getObjectEntityUploadURL();
+    const owner = createHash("sha256").update(token).digest("hex").slice(0, 32);
+    const uploadURL = await storage.getObjectEntityUploadURL(`parent/${owner}`);
     const objectPath = storage.normalizeObjectEntityPath(uploadURL);
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    const uploadTicket = storage.issueScopedUploadTicket({ objectPath, owner, purpose: "parent-attachment", contentType, maxBytes: 20 * 1024 * 1024 });
+    res.json({ uploadURL, objectPath, uploadTicket, finalizeURL: `/api/parent-portal/${token}/finalize-attachment`, metadata: { name, size, contentType } });
   } catch (err) {
     console.error("parent-portal upload-attachment-url error:", err);
     res.status(500).json({ error: "حدث خطأ أثناء إنشاء رابط الرفع" });
   }
+});
+
+router.post("/parent-portal/:token/finalize-attachment", async (req, res) => {
+  try {
+    const { token } = req.params;
+    const [msg] = await db.select({ tokenExpiresAt: parentMessagesTable.tokenExpiresAt }).from(parentMessagesTable)
+      .where(eq(parentMessagesTable.replyToken, token)).limit(1);
+    if (!msg || msg.tokenExpiresAt < new Date()) { res.status(410).json({ error: "انتهت صلاحية هذا الرابط" }); return; }
+    const parsed = z.object({ objectPath: z.string(), uploadTicket: z.string() }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "بيانات غير صالحة" }); return; }
+    const owner = createHash("sha256").update(token).digest("hex").slice(0, 32);
+    const storage = new ObjectStorageService();
+    const ticket = storage.verifyScopedUploadTicket(parsed.data.uploadTicket, { objectPath: parsed.data.objectPath, owner, purpose: "parent-attachment" });
+    if (!parsed.data.objectPath.startsWith(`/objects/uploads/parent/${owner}/`)) throw new Error("INVALID_UPLOAD_TICKET");
+    const verified = await storage.verifyUploadedObject(parsed.data.objectPath, ticket.contentType, ticket.maxBytes);
+    const verifiedFile = await storage.getObjectEntityFile(parsed.data.objectPath);
+    await verifiedFile.setMetadata({ metadata: { parentOwner: owner, verifiedUpload: "true", verifiedGeneration: String((await verifiedFile.getMetadata())[0].generation || "") } });
+    res.json({ objectPath: parsed.data.objectPath, size: verified.size, contentType: verified.contentType, finalized: true });
+  } catch {
+    res.status(400).json({ error: "تعذر التحقق من الملف المرفوع" });
+  }
+});
+
+router.get("/parent-portal/:token/attachment/*path", async (req, res) => {
+  try {
+    const token = req.params.token;
+    const [message] = await db.select({ id: parentMessagesTable.id, teacherId: parentMessagesTable.teacherId, tokenExpiresAt: parentMessagesTable.tokenExpiresAt, attachments: parentMessagesTable.attachments })
+      .from(parentMessagesTable).where(eq(parentMessagesTable.replyToken, token)).limit(1);
+    if (!message) { res.status(404).end(); return; }
+    if (message.tokenExpiresAt < new Date()) { res.status(410).end(); return; }
+    const owner = createHash("sha256").update(token).digest("hex").slice(0, 32);
+    const raw = req.params.path;
+    const path = `/objects/${Array.isArray(raw) ? raw.join("/") : raw}`;
+    const parentOwned = path.startsWith(`/objects/uploads/parent/${owner}/`);
+    let referenced: any = null;
+    const decode = (value: string | null | undefined) => {
+      try { return value ? JSON.parse(value) : []; } catch { return []; }
+    };
+    const refs = [...decode(message.attachments)];
+    const replies = await db.select({ attachments: parentMessageRepliesTable.attachments })
+      .from(parentMessageRepliesTable).where(eq(parentMessageRepliesTable.messageId, message.id));
+    for (const reply of replies) refs.push(...decode(reply.attachments));
+    referenced = refs.find((item: any) => item?.objectPath === path);
+    const teacherOwned = path.startsWith(`/objects/uploads/${message.teacherId}/`);
+    if (!parentOwned && (!teacherOwned || !referenced)) { res.status(404).end(); return; }
+    const storage = new ObjectStorageService();
+    const file = await storage.getObjectEntityFile(path);
+    const [metadata] = await file.getMetadata();
+    const validMarker = metadata.metadata?.verifiedUpload === "true" &&
+      metadata.metadata?.verifiedGeneration === String(metadata.generation || "");
+    if (!validMarker || (parentOwned
+      ? metadata.metadata?.parentOwner !== owner
+      : metadata.contentType !== referenced.contentType || Number(metadata.size || 0) !== Number(referenced.size))) {
+      res.status(404).end(); return;
+    }
+    res.redirect(302, await storage.signFileDownloadUrl(file, 300));
+  } catch { res.status(404).end(); }
 });
 
 // ── Parent portal: submit reply ─────────────────────────────
@@ -749,6 +853,9 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
       .innerJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
       .where(eq(parentMessagesTable.replyToken, token))
       .limit(1);
+    if (!msg || msg.tokenExpiresAt < new Date() || !(await validateParentAttachments(token, attachments))) {
+      res.status(400).json({ message: "مرفق غير موثق" }); return;
+    }
 
     if (!msg) { res.status(404).json({ message: "الرابط غير صالح" }); return; }
     if (msg.tokenExpiresAt < new Date()) { res.status(410).json({ message: "انتهت صلاحية هذا الرابط" }); return; }

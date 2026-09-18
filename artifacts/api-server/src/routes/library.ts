@@ -328,11 +328,12 @@ router.post("/library/files", requireAuth, async (req: any, res: Response) => {
     let actualSize = 0;
     let actualType = pending.expectedContentType;
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-      const [metadata] = await objectFile.getMetadata();
-      actualSize = parseInt(String(metadata.size || 0), 10) || 0;
-      actualType = (metadata.contentType as string) || pending.expectedContentType;
+      const expectedType = pending.expectedContentType === "image/jpg" ? "image/jpeg" : pending.expectedContentType;
+      const verified = await objectStorageService.verifyUploadedObject(objectPath, expectedType, MAX_FILE_BYTES);
+      actualSize = verified.size;
+      actualType = verified.contentType;
     } catch {
+      try { await objectStorageService.tryDeleteObjectEntity(objectPath); } catch { /* best effort quarantine */ }
       res.status(404).json({ message: "لم يتم العثور على الملف المرفوع" });
       return;
     }

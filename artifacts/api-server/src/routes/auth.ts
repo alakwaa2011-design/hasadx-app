@@ -115,9 +115,10 @@ const RESET_GENERIC_RESPONSE = {
   message: "إذا كان الحساب موجوداً، فسيتم إرسال تعليمات الاستعادة قريباً",
 };
 
-const OTP_TTL_EMAIL_MS = 30 * 60 * 1000; // 30 minutes (email)
-const OTP_TTL_MS = OTP_TTL_EMAIL_MS;      // default used for legacy paths
+const OTP_TTL_MS = 10 * 60 * 1000; // OTPs are valid for 10 minutes
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCK_MS = 15 * 60 * 1000;
 
 async function ensureConfiguredAdmin(
   teacher: typeof teachersTable.$inferSelect,
@@ -134,7 +135,19 @@ async function ensureConfiguredAdmin(
 }
 
 function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+function hashOtp(otp: string): string {
+  const key = process.env.SESSION_SECRET;
+  if (!key) throw new Error("SESSION_SECRET is required to hash OTPs");
+  return crypto.createHmac("sha256", key).update(otp).digest("hex");
+}
+
+function otpMatches(stored: string, supplied: string): boolean {
+  const expected = hashOtp(supplied);
+  const actual = /^[0-9a-f]{64}$/i.test(stored) ? stored : hashOtp(stored);
+  return crypto.timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
 }
 
 async function revokeTeacherSessions(
@@ -361,6 +374,23 @@ async function persistSession(req: any): Promise<void> {
   });
 }
 
+/** Rotate the session identifier whenever authentication establishes identity. */
+async function establishTeacherSession(req: any, teacherId: number): Promise<void> {
+  const oldSession = req.session;
+  const rememberMe = oldSession?.cookie?.maxAge;
+  const regenerate = oldSession?.regenerate;
+  if (typeof regenerate === "function") {
+    await new Promise<void>((resolve, reject) => {
+      regenerate.call(oldSession, (error: unknown) => error ? reject(error) : resolve());
+    });
+  }
+  delete req.session.studentAccountId;
+  req.session.teacherId = teacherId;
+  if (rememberMe) req.session.cookie.maxAge = rememberMe;
+  stampTeacherSession(req);
+  await persistSession(req);
+}
+
 /** Fire-and-forget: detect country from IP and update the teacher record. Never throws. */
 async function detectAndSaveCountry(teacherId: number, req: any): Promise<void> {
   try {
@@ -447,8 +477,10 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         passwordHash,
         role: requestedRole,
         preferences: subjects.length ? { primarySubject: subjects[0], subjects } : null,
-        verificationOtp: otp,
+        verificationOtp: hashOtp(otp),
         otpExpiresAt,
+        otpAttempts: 0,
+        otpLockedUntil: null,
         emailVerifyToken: rawVerifyToken,
         emailVerifyTokenExpiresAt: rawVerifyToken ? otpExpiresAt : null,
         acquisitionSource: (body as any).acquisitionSource || null,
@@ -565,9 +597,10 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    delete req.session.studentAccountId;
-    req.session.teacherId = teacher.id;
-    stampTeacherSession(req);
+    if (body.rememberMe) {
+      req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+    }
+    await establishTeacherSession(req, teacher.id);
 
     void logIslamicEvent({
       userId: teacher.id,
@@ -583,11 +616,6 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       action: "login",
       details: { method: "password" },
     });
-
-    if (body.rememberMe) {
-      req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-    }
-    await persistSession(req);
 
     const { runAfterCommit } = await db.transaction(async (tx) => {
       await tx
@@ -1525,6 +1553,12 @@ router.post("/auth/google", authLimiter, async (req, res) => {
             // If account was registered by email but not yet verified, Google confirms it now
             ...(existingByEmail.verifiedAt ? {} : { verifiedAt: new Date() }),
             emailVerified: true,
+            verificationOtp: null,
+            otpExpiresAt: null,
+            otpAttempts: 0,
+            otpLockedUntil: null,
+            emailVerifyToken: null,
+            emailVerifyTokenExpiresAt: null,
           })
           .where(eq(teachersTable.id, existingByEmail.id))
           .returning();
@@ -1563,10 +1597,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       return;
     }
 
-    delete req.session.studentAccountId;
-    req.session.teacherId = teacher.id;
-    stampTeacherSession(req);
-    await persistSession(req);
+    await establishTeacherSession(req, teacher.id);
 
     await db
       .update(teachersTable)
@@ -1622,22 +1653,19 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
       return;
     }
 
-    if (teacher.emailVerified) {
-      // Already verified — create a session and let them in
-      req.session.teacherId = teacher.id;
-      stampTeacherSession(req);
-      await persistSession(req);
-      void trackLoginDevice(req, teacher, req.log);
-      res.json({ ok: true, alreadyVerified: true, teacher: { id: teacher.id, name: teacher.name, email: teacher.email, role: teacher.role, isAdmin: teacher.isAdmin } });
+    // Expiry is checked before any verified-state behavior. An expired token
+    // can never establish a session, including for an already verified account.
+    if (!teacher.emailVerifyTokenExpiresAt || new Date() > teacher.emailVerifyTokenExpiresAt) {
+      await db.update(teachersTable)
+        .set({ emailVerifyToken: null, emailVerifyTokenExpiresAt: null })
+        .where(and(eq(teachersTable.id, teacher.id), eq(teachersTable.emailVerifyToken, token)));
+      res.status(410).json({ message: "انتهت صلاحية رابط التحقق. اطلب رمزاً جديداً", expired: true });
       return;
     }
 
-    if (!teacher.emailVerifyTokenExpiresAt || new Date() > teacher.emailVerifyTokenExpiresAt) {
-      // Expired — clear the stale token but keep OTP so user can still use it
-      await db.update(teachersTable)
-        .set({ emailVerifyToken: null, emailVerifyTokenExpiresAt: null })
-        .where(eq(teachersTable.id, teacher.id));
-      res.status(410).json({ message: "انتهت صلاحية رابط التحقق. اطلب رمزاً جديداً", expired: true });
+    if (teacher.emailVerified) {
+      // A consumed/already-verified token is never an authentication credential.
+      res.status(400).json({ message: "رابط التحقق غير صالح أو تم استخدامه مسبقاً", invalid: true });
       return;
     }
 
@@ -1652,17 +1680,25 @@ router.get("/auth/verify-email", authLimiter, async (req, res) => {
         emailVerified: true,
         verificationOtp: null,
         otpExpiresAt: null,
+        otpAttempts: 0,
+        otpLockedUntil: null,
         emailVerifyToken: null,
         emailVerifyTokenExpiresAt: null,
         lastLoginAt: new Date(),
       })
-      .where(eq(teachersTable.id, teacher.id))
+      .where(and(
+        eq(teachersTable.id, teacher.id),
+        eq(teachersTable.emailVerifyToken, token),
+        eq(teachersTable.emailVerified, false),
+        gt(teachersTable.emailVerifyTokenExpiresAt, new Date()),
+      ))
       .returning();
 
-    delete req.session.studentAccountId;
-    req.session.teacherId = verified.id;
-    stampTeacherSession(req);
-    await persistSession(req);
+    if (!verified) {
+      res.status(400).json({ message: "رابط التحقق غير صالح أو تم استخدامه مسبقاً", invalid: true });
+      return;
+    }
+    await establishTeacherSession(req, verified.id);
     void trackLoginDevice(req, verified, req.log);
 
     void detectAndSaveCountry(verified.id, req);
@@ -1732,7 +1768,35 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
       return;
     }
 
-    if (teacher.verificationOtp !== otp) {
+    if (teacher.otpLockedUntil && new Date() < teacher.otpLockedUntil) {
+      res.status(429).json({ message: "تم تعليق المحاولات مؤقتاً. اطلب رمزاً جديداً" });
+      return;
+    }
+
+    if (!otpMatches(teacher.verificationOtp, otp)) {
+      // Increment in PostgreSQL, rather than read-then-write, so concurrent
+      // guesses cannot all observe the same attempt count.  The returned
+      // value is the authoritative count for this request.
+      const [attempt] = await db
+        .update(teachersTable)
+        .set({
+          otpAttempts: sql`${teachersTable.otpAttempts} + 1`,
+          otpLockedUntil: sql`CASE WHEN ${teachersTable.otpAttempts} + 1 >= ${OTP_MAX_ATTEMPTS}
+            THEN NOW() + (${OTP_LOCK_MS} * INTERVAL '1 millisecond') ELSE NULL END`,
+        })
+        .where(and(
+          eq(teachersTable.id, teacher.id),
+          eq(teachersTable.emailVerified, false),
+          eq(teachersTable.verificationOtp, teacher.verificationOtp),
+          sql`(${teachersTable.otpLockedUntil} IS NULL OR ${teachersTable.otpLockedUntil} <= NOW())`,
+          gt(teachersTable.otpExpiresAt, new Date()),
+        ))
+        .returning({ otpAttempts: teachersTable.otpAttempts });
+      const attempts = attempt?.otpAttempts ?? OTP_MAX_ATTEMPTS;
+      if (attempts >= OTP_MAX_ATTEMPTS) {
+        res.status(429).json({ message: "محاولات كثيرة. اطلب رمزاً جديداً" });
+        return;
+      }
       res.status(400).json({ message: "الرمز غير صحيح" });
       return;
     }
@@ -1743,14 +1807,33 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
     // Mark as verified and clear OTP
     const [verified] = await db
       .update(teachersTable)
-      .set({ verifiedAt: new Date(), emailVerified: true, verificationOtp: null, otpExpiresAt: null, lastLoginAt: new Date() })
-      .where(eq(teachersTable.id, teacher.id))
+      .set({
+        verifiedAt: new Date(),
+        emailVerified: true,
+        verificationOtp: null,
+        otpExpiresAt: null,
+        otpAttempts: 0,
+        otpLockedUntil: null,
+        emailVerifyToken: null,
+        emailVerifyTokenExpiresAt: null,
+        lastLoginAt: new Date(),
+      })
+      .where(and(
+        eq(teachersTable.id, teacher.id),
+        eq(teachersTable.emailVerified, false),
+        eq(teachersTable.verificationOtp, teacher.verificationOtp),
+        sql`(${teachersTable.otpLockedUntil} IS NULL OR ${teachersTable.otpLockedUntil} <= NOW())`,
+        sql`${teachersTable.otpAttempts} < ${OTP_MAX_ATTEMPTS}`,
+        gt(teachersTable.otpExpiresAt, new Date()),
+      ))
       .returning();
 
-    delete req.session.studentAccountId;
-    req.session.teacherId = verified.id;
-    stampTeacherSession(req);
-    await persistSession(req);
+    if (!verified) {
+      res.status(429).json({ message: "محاولات كثيرة. اطلب رمزاً جديداً" });
+      return;
+    }
+
+    await establishTeacherSession(req, verified.id);
     void trackLoginDevice(req, verified, req.log);
 
     void detectAndSaveCountry(verified.id, req);
@@ -1823,8 +1906,10 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     const updated = await db
       .update(teachersTable)
       .set({
-        verificationOtp: otp,
+        verificationOtp: hashOtp(otp),
         otpExpiresAt,
+        otpAttempts: 0,
+        otpLockedUntil: null,
         emailVerifyToken: rawVerifyToken,
         emailVerifyTokenExpiresAt: rawVerifyToken ? otpExpiresAt : null,
       })

@@ -53,6 +53,10 @@ import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 async function runSchemaMigrations() {
   try {
     await db.execute(sql`
+      ALTER TABLE teachers ADD COLUMN IF NOT EXISTS otp_attempts INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE teachers ADD COLUMN IF NOT EXISTS otp_locked_until TIMESTAMP;
+    `);
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS quran_guided_memorization (
         id SERIAL PRIMARY KEY,
         student_account_id INTEGER NOT NULL REFERENCES student_accounts(id) ON DELETE CASCADE,

@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getGame } from "../game/manager";
+import { safeFetchText, validateSafeUrl } from "../lib/url-safety";
 
 const router: IRouter = Router();
 
@@ -8,7 +9,7 @@ const shortenCache = new Map<string, string>();
 
 router.get("/shorten", async (req: Request, res: Response) => {
   const url = req.query.url as string | undefined;
-  if (!url || !url.startsWith("http")) {
+   if (!url || !(await validateSafeUrl(url))) {
     return res.status(400).json({ error: "Invalid url" });
   }
 
@@ -18,13 +19,8 @@ router.get("/shorten", async (req: Request, res: Response) => {
 
   try {
     const apiUrl = `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`;
-    const response = await fetch(apiUrl, {
-      signal: AbortSignal.timeout(5000),
-      headers: { "User-Agent": "Hasad-App/1.0" },
-    });
-    if (!response.ok) throw new Error(`is.gd ${response.status}`);
-    const short = (await response.text()).trim();
-    if (!short.startsWith("http")) throw new Error("bad response");
+     const short = (await safeFetchText(apiUrl))?.trim();
+     if (!short || !(await validateSafeUrl(short))) throw new Error("bad response");
     shortenCache.set(url, short);
     return res.json({ short });
   } catch {

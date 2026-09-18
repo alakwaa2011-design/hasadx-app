@@ -56,12 +56,12 @@ interface MessageData {
 
 // ── Inline attachment viewer ────────────────────────────────
 function AttachmentViewer({
-  attachments, initialIndex, onClose,
-}: { attachments: Attachment[]; initialIndex: number; onClose: () => void }) {
+  attachments, initialIndex, onClose, token,
+}: { attachments: Attachment[]; initialIndex: number; onClose: () => void; token: string }) {
   const { lang, dir } = useI18n();
   const [idx, setIdx] = useState(initialIndex);
   const att = attachments[idx];
-  const url = `${BASE}/api/storage${att.objectPath}`;
+  const url = `${BASE}/api/parent-portal/${encodeURIComponent(token)}/attachment/${att.objectPath.replace(/^\/objects\//, "")}`;
 
   const prev = useCallback(() => setIdx(i => Math.max(0, i - 1)), []);
   const next = useCallback(() => setIdx(i => Math.min(attachments.length - 1, i + 1)), [attachments.length]);
@@ -226,9 +226,14 @@ export default function ParentPortalPage() {
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
       if (!r.ok) return null;
-      const { uploadURL, objectPath } = await r.json();
+      const { uploadURL, objectPath, uploadTicket, finalizeURL } = await r.json();
       const up = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       if (!up.ok) return null;
+      const finalized = await fetch(`${BASE}${finalizeURL || `/api/parent-portal/${token}/finalize-attachment`}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ objectPath, uploadTicket }),
+      });
+      if (!finalized.ok) return null;
       return { name: file.name, objectPath, contentType: file.type, size: file.size };
     } catch { return null; }
   }
@@ -533,6 +538,7 @@ export default function ParentPortalPage() {
           <AttachmentViewer
             attachments={viewer.attachments}
             initialIndex={viewer.index}
+            token={token || ""}
             onClose={() => setViewer(null)}
           />
         )}

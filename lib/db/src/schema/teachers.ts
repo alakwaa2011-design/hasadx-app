@@ -50,6 +50,8 @@ export const teachersTable = pgTable("teachers", {
   // Account verification — OTP sent at registration to confirm email/phone ownership
   verificationOtp: text("verification_otp"),
   otpExpiresAt: timestamp("otp_expires_at"),
+  otpAttempts: integer("otp_attempts").notNull().default(0),
+  otpLockedUntil: timestamp("otp_locked_until"),
   verifiedAt: timestamp("verified_at"),
   // True only after completing the OTP flow (or Google login which is always verified).
   // Legacy accounts grandfathered in have this false — they see a soft nudge banner.

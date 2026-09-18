@@ -44,13 +44,19 @@ async function uploadWorksheetCellImage(file: File): Promise<string> {
     body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
   });
   if (!request.ok) throw new Error("image-upload-request-failed");
-  const { uploadURL, objectPath } = await request.json();
+  const { uploadURL, objectPath, finalizeURL, uploadTicket } = await request.json();
   const upload = await fetch(uploadURL, {
     method: "PUT",
     headers: { "Content-Type": file.type },
     body: file,
   });
   if (!upload.ok) throw new Error("image-upload-failed");
+  const finalize = await fetch(`${API_BASE}/api${finalizeURL || "/storage/uploads/finalize"}`, {
+    method: "POST", credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ objectPath, uploadTicket }),
+  });
+  if (!finalize.ok) throw new Error("image-upload-verification-failed");
   return objectPath;
 }
 const MAX_SOURCE_TEXT_LENGTH = 12000;

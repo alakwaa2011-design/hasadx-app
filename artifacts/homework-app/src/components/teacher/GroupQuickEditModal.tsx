@@ -64,13 +64,15 @@ export default function GroupQuickEditModal({ open, collection, isAdmin, lang, o
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
       if (!reqRes.ok) throw new Error("upload-url");
-      const { uploadURL, objectPath } = await reqRes.json();
+      const { uploadURL, objectPath, finalizeURL, uploadTicket } = await reqRes.json();
       const putRes = await fetch(uploadURL, {
         method: "PUT",
         headers: { "Content-Type": file.type },
         body: file,
       });
       if (!putRes.ok) throw new Error("put");
+      const finalized = await fetch(`${BASE}/api${finalizeURL || "/storage/uploads/finalize"}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ objectPath, uploadTicket }) });
+      if (!finalized.ok) throw new Error("verify");
       // Convert /objects/uploads/<id> to a fetchable URL via API
       const publicUrl = objectPath.startsWith("/")
         ? `${BASE}/api/storage${objectPath}`

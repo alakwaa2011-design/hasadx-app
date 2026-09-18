@@ -676,8 +676,11 @@ export default function TeacherSettings() {
                             body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
                           });
                           if (!reqRes.ok) throw new Error("upload_request_failed");
-                          const { uploadURL, objectPath } = await reqRes.json();
-                          await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+                          const { uploadURL, objectPath, finalizeURL, uploadTicket } = await reqRes.json();
+                          const put = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+                          if (!put.ok) throw new Error("upload_failed");
+                          const finalized = await fetch(`${API_BASE}/api${finalizeURL || "/storage/uploads/finalize"}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ objectPath, uploadTicket }) });
+                          if (!finalized.ok) throw new Error("verification_failed");
                           setSchoolLogo(objectPath);
                           toast.success(lang === "ar" ? "تم رفع الشعار — احفظ الإعدادات لتطبيقه" : "Logo uploaded — save settings to apply");
                         } catch {

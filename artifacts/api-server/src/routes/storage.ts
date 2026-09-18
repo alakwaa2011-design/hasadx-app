@@ -7,10 +7,14 @@ import { hasAiVideoAdminAccess } from "../lib/ai-video-access";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 30 * 1024 * 1024;
 
 const RequestUploadUrlBody = z.object({
   name: z.string(),
-  size: z.number(),
+  size: z.number().finite().int().positive(),
   contentType: z.string(),
 });
 
@@ -41,17 +45,17 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     res.status(400).json({ error: "Only video files are allowed" });
     return;
   }
-  const MAX_SIZE = 500 * 1024 * 1024;
+   const MAX_SIZE = MAX_VIDEO_BYTES;
   if (size > MAX_SIZE) {
     res.status(400).json({ error: "File size exceeds 500MB limit" });
     return;
   }
 
   try {
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+     const uploadURL = await objectStorageService.getObjectEntityUploadURL(`uploads/${req.session.teacherId}`);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+     res.json({ uploadURL, objectPath, uploadTicket: objectStorageService.issueUploadTicket({ objectPath, teacherId: req.session.teacherId, purpose: "video", contentType, maxBytes: MAX_VIDEO_BYTES, videoEntitled: sub.planCode !== "free" || sub.isAdmin }), finalizeURL: "/storage/uploads/finalize", metadata: { name, size, contentType } });
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
@@ -78,17 +82,17 @@ router.post("/storage/uploads/request-image-url", async (req: Request, res: Resp
     res.status(400).json({ error: "Only raster image files are allowed (JPEG/PNG/WebP/GIF/AVIF/HEIC)" });
     return;
   }
-  const MAX_SIZE = 10 * 1024 * 1024;
+   const MAX_SIZE = MAX_IMAGE_BYTES;
   if (size > MAX_SIZE) {
     res.status(400).json({ error: "Image exceeds 10MB limit" });
     return;
   }
 
   try {
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+     const uploadURL = await objectStorageService.getObjectEntityUploadURL(`uploads/${req.session.teacherId}`);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+     res.json({ uploadURL, objectPath, uploadTicket: objectStorageService.issueUploadTicket({ objectPath, teacherId: req.session.teacherId, purpose: "image", contentType, maxBytes: MAX_IMAGE_BYTES }), finalizeURL: "/storage/uploads/finalize", metadata: { name, size, contentType } });
   } catch (error) {
     req.log.error({ err: error }, "Error generating image upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
@@ -107,8 +111,8 @@ router.post("/storage/uploads/request-attachment-url", async (req: Request, res:
   }
 
   const { name, size, contentType } = parsed.data;
-  const ALLOWED = [
-    "image/",
+   const ALLOWED = [
+     "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/heic", "image/heif",
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -123,16 +127,16 @@ router.post("/storage/uploads/request-attachment-url", async (req: Request, res:
     res.status(400).json({ error: "نوع الملف غير مدعوم. المسموح به: صور، PDF، Word، Excel، PowerPoint" });
     return;
   }
-  const MAX_SIZE = 20 * 1024 * 1024;
+   const MAX_SIZE = MAX_ATTACHMENT_BYTES;
   if (size > MAX_SIZE) {
     res.status(400).json({ error: "حجم الملف يتجاوز 20MB" });
     return;
   }
 
   try {
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+     const uploadURL = await objectStorageService.getObjectEntityUploadURL(`uploads/${req.session.teacherId}`);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    res.json({ uploadURL, objectPath, uploadTicket: objectStorageService.issueUploadTicket({ objectPath, teacherId: req.session.teacherId, purpose: "attachment", contentType, maxBytes: MAX_ATTACHMENT_BYTES }), finalizeURL: "/storage/uploads/finalize", metadata: { name, size, contentType } });
   } catch (error) {
     req.log.error({ err: error }, "Error generating attachment upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
@@ -155,20 +159,54 @@ router.post("/storage/uploads/request-audio-url", async (req: Request, res: Resp
     res.status(400).json({ error: "Only audio files are allowed" });
     return;
   }
-  const MAX_SIZE = 30 * 1024 * 1024;
+   const MAX_SIZE = MAX_AUDIO_BYTES;
   if (size > MAX_SIZE) {
     res.status(400).json({ error: "Audio file exceeds 30MB limit" });
     return;
   }
 
   try {
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+     const uploadURL = await objectStorageService.getObjectEntityUploadURL(`uploads/${req.session.teacherId}`);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+    res.json({ uploadURL, objectPath, uploadTicket: objectStorageService.issueUploadTicket({ objectPath, teacherId: req.session.teacherId, purpose: "audio", contentType, maxBytes: MAX_AUDIO_BYTES }), finalizeURL: "/storage/uploads/finalize", metadata: { name, size, contentType } });
   } catch (error) {
     req.log.error({ err: error }, "Error generating audio upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+/* Direct PUT uploads are untrusted until this authenticated finalization call.
+ * The owner prefix is part of the object path issued above, so a teacher
+ * cannot finalize another teacher's reservation. */
+const FinalizeDirectUploadBody = z.object({
+  objectPath: z.string().min(1),
+  uploadTicket: z.string().min(1),
+});
+router.post("/storage/uploads/finalize", async (req: Request, res: Response) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const parsed = FinalizeDirectUploadBody.safeParse(req.body);
+  if (!parsed.success || !parsed.data.objectPath.startsWith(`/objects/uploads/${teacherId}/`)) {
+    res.status(403).json({ error: "Upload ownership could not be verified" });
+    return;
+  }
+  const { objectPath, uploadTicket } = parsed.data;
+  try {
+    const ticket = objectStorageService.verifyUploadTicket(uploadTicket, { objectPath, teacherId });
+    if (!["video", "image", "attachment", "audio"].includes(ticket.purpose) ||
+        (ticket.purpose === "video" && ticket.videoEntitled !== true)) throw new Error("INVALID_UPLOAD_TICKET");
+    const verified = await objectStorageService.verifyUploadedObject(objectPath, ticket.contentType, ticket.maxBytes);
+    res.json({ objectPath, size: verified.size, contentType: verified.contentType, finalized: true });
+  } catch (error: any) {
+    try { await objectStorageService.tryDeleteObjectEntity(objectPath); } catch { /* best effort quarantine */ }
+    const code = error?.message === "INVALID_UPLOAD_SIZE" ? 413 :
+      error?.message === "UPLOAD_TYPE_MISMATCH" ? 400 : 404;
+    res.status(code).json({ error: code === 413 ? "Uploaded object exceeds the size limit" :
+      code === 400 ? "Uploaded bytes do not match the permitted type" : "Uploaded object not found" });
   }
 });
 
@@ -185,6 +223,13 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
     const response = await objectStorageService.downloadObject(file);
     res.status(response.status);
     response.headers.forEach((value, key) => res.setHeader(key, value));
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; img-src data:");
+    const publicType = response.headers.get("content-type") || "";
+    if (/(?:svg|html|xml|javascript|xhtml)/i.test(publicType)) {
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader("Content-Disposition", "attachment");
+    }
 
     if (response.body) {
       const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
@@ -204,6 +249,20 @@ async function serveObject(req: Request, res: Response) {
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const economyVideoOwner = wildcardPath.match(/^uploads\/ai-video-economy\/(\d+)\//)?.[1];
     const advancedVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
+    const directUploadOwner = wildcardPath.match(/^uploads\/(\d+)\//)?.[1];
+    const parentUploadOwner = wildcardPath.match(/^uploads\/parent\/([a-f0-9]{32})\//)?.[1];
+    if (directUploadOwner && Number(directUploadOwner) !== req.session?.teacherId) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    if (directUploadOwner && !req.session?.teacherId) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    if (parentUploadOwner && !req.session?.teacherId) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
     const aiVideoOwner = economyVideoOwner ?? advancedVideoOwner;
     if (aiVideoOwner && Number(aiVideoOwner) !== req.session?.teacherId) {
       res.status(404).json({ error: "Object not found" });
@@ -217,7 +276,14 @@ async function serveObject(req: Request, res: Response) {
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
     const [metadata] = await objectFile.getMetadata();
-    const contentType = (metadata.contentType as string) || "application/octet-stream";
+    if ((directUploadOwner || parentUploadOwner) && (metadata.metadata?.verifiedUpload !== "true" ||
+        metadata.metadata?.verifiedGeneration !== String(metadata.generation || ""))) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    const rawContentType = (metadata.contentType as string) || "application/octet-stream";
+    const contentType = /(?:svg|html|xml|javascript|xhtml)/i.test(rawContentType)
+      ? "application/octet-stream" : rawContentType;
 
     if (contentType.startsWith("video/")) {
       const signedUrl = await objectStorageService.signFileDownloadUrl(objectFile, 3600);
@@ -237,8 +303,8 @@ async function serveObject(req: Request, res: Response) {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
     // الأنواع النشطة (SVG/HTML/XML) تُنزَّل كملف بدل عرضها في سياق نفس الموقع
-    const ACTIVE_TYPES = /svg|html|xml|javascript/i;
-    if (ACTIVE_TYPES.test(contentType)) {
+     const ACTIVE_TYPES = /svg|html|xml|javascript|xhtml/i;
+     if (ACTIVE_TYPES.test(rawContentType) || contentType === "application/octet-stream") {
       res.setHeader("Content-Disposition", "attachment");
     }
 

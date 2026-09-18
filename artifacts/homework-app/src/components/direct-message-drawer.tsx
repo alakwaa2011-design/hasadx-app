@@ -26,13 +26,15 @@ export async function uploadDmImage(file: File): Promise<string | null> {
       body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
     });
     if (!reqRes.ok) return null;
-    const { uploadURL, objectPath } = await reqRes.json();
+    const { uploadURL, objectPath, finalizeURL, uploadTicket } = await reqRes.json();
     const putRes = await fetch(uploadURL, {
       method: "PUT",
       headers: { "Content-Type": file.type },
       body: file,
     });
     if (!putRes.ok) return null;
+    const finalized = await fetch(`${API_BASE}/api${finalizeURL || "/storage/uploads/finalize"}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ objectPath, uploadTicket }) });
+    if (!finalized.ok) return null;
     return objectPath;
   } catch {
     return null;
