@@ -187,7 +187,7 @@ export default function QuranCenter({
           "quran-center-main flex-1 overflow-hidden flex-col relative md:flex",
           activeTab === "mushaf" && mobileSectionsOpen ? "hidden" : "flex",
         )}>
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 10 }}

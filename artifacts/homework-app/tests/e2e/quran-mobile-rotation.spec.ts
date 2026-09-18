@@ -222,6 +222,7 @@ test.describe("mobile Mushaf rotation", () => {
     await attachSession(context as BrowserContext, baseURL, teacher);
     await page.setViewportSize(PORTRAIT);
     await page.goto("/teacher/quran-center?tab=mushaf");
+    await expect(page.locator(".quran-center-main")).toBeVisible();
     await expectCompletePortraitPage(page);
 
     await page.setViewportSize(LANDSCAPE);
