@@ -190,10 +190,11 @@ export function QuranMadaniPageRenderer({
             return (
               <div
                 key={rowNum}
-                className="flex w-full flex-1 items-center justify-center text-[5.5cqw] leading-none mb-1 text-[#1d4432]"
+                className="mb-1 flex w-full flex-1 items-center justify-center whitespace-nowrap text-[6cqw] leading-none text-[#1d4432]"
+                style={{ fontFamily: "'Amiri', 'Traditional Arabic', serif" }}
                 aria-label="بسم الله الرحمن الرحيم"
               >
-                <span className="font-serif text-[6cqw] pb-1" translate="no">
+                <span className="pb-1" translate="no">
                   ﷽
                 </span>
               </div>
