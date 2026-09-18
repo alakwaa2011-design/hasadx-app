@@ -29,6 +29,7 @@ let fetchNextTiming: Promise<TimingResult> = Promise.resolve({
 const prefetchQuery = vi.fn(() => Promise.resolve());
 const fetchQuery = vi.fn(() => fetchNextTiming);
 const getQueryData = vi.fn(() => cachedNextTiming);
+const savePreference = vi.fn(() => Promise.resolve());
 
 vi.mock('@/lib/i18n', () => ({
   useI18n: () => ({ lang: 'ar' }),
@@ -64,11 +65,17 @@ vi.mock('@workspace/api-client-react', () => ({
   useListQuranReciters: () => ({
     data: {
       preferredRecitationId: 7,
-      reciters: [{ id: 7, name: 'Test reciter', style: 'Murattal' }],
+      reciters: [
+        { id: 7, name: 'First reciter', style: 'Murattal' },
+        { id: 8, name: 'Second reciter', style: 'Murattal' },
+      ],
     },
     refetch: vi.fn(),
   }),
-  useUpdateQuranAudioPreference: () => ({ mutateAsync: vi.fn() }),
+  useUpdateQuranAudioPreference: () => ({
+    mutateAsync: savePreference,
+    isPending: false,
+  }),
   useGetQuranAyahTimings: (_recitationId: number, _surah: number, ayah: number) => ({
     data: timingResults.get(ayah)?.data,
     isError: timingResults.get(ayah)?.isError ?? false,
@@ -100,6 +107,7 @@ function PlayerHarness() {
   const [playingAyah, setPlayingAyah] = useState<number | null>(1);
   return (
     <QuranAudioHostProvider>
+      <output data-testid="playing-ayah">{playingAyah ?? 'stopped'}</output>
       <QuranAudioPlayer
         surahs={[{ ayahs: [{}, {}] }] as never}
         surahNumber={1}
@@ -149,6 +157,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     pause.mockClear();
     play.mockClear();
     load.mockClear();
+    savePreference.mockClear();
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(pause);
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(play);
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(load);
@@ -232,5 +241,45 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await waitFor(() => expect(previous.disabled).toBe(false));
     fireEvent.click(previous);
     await waitFor(() => expect(previous.disabled).toBe(true));
+  });
+
+  it('ignores an old boundary response after the user advances the ayah', async () => {
+    let resolveTiming!: (timing: TimingResult) => void;
+    fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
+    const { view, audio } = await renderAtBoundary();
+
+    fireEvent.timeUpdate(audio);
+    expect(fetchQuery).toHaveBeenCalledTimes(1);
+
+    timingResults.set(2, { data: connectedSecond });
+    fireEvent.click(view.getByTestId('button-next-ayah'));
+    await waitFor(() => expect(view.getByTestId('playing-ayah').textContent).toBe('2'));
+    await waitFor(() => expect(pause).toHaveBeenCalled());
+    pause.mockClear();
+
+    await act(async () => resolveTiming(connectedSecond));
+
+    expect(view.getByTestId('playing-ayah').textContent).toBe('2');
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('does not let an old timing response stop a newly selected reciter', async () => {
+    let resolveTiming!: (timing: TimingResult) => void;
+    fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
+    const { view, audio } = await renderAtBoundary();
+
+    fireEvent.timeUpdate(audio);
+    expect(fetchQuery).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(view.getByTestId('button-audio-options'));
+    fireEvent.click(view.getByTestId('button-reciter-8'));
+    await waitFor(() => expect(savePreference).toHaveBeenCalledWith({ data: { recitationId: 8 } }));
+    await waitFor(() => expect(pause).toHaveBeenCalled());
+    pause.mockClear();
+
+    await act(async () => resolveTiming(connectedSecond));
+
+    expect(view.getByTestId('playing-ayah').textContent).toBe('1');
+    expect(pause).not.toHaveBeenCalled();
   });
 });
