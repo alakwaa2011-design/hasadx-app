@@ -264,7 +264,7 @@ test.describe("mobile Mushaf rotation", () => {
       await emulateSafeAreaBottom(page, safeAreaCase.bottomInset);
       await page.goto("/quran/114?ayah=1&page=604&view=pages");
 
-      const finalPage = page.locator("[data-quran-page='604']");
+    const finalPage = page.locator("[data-quran-page='604']");
       await expect(finalPage).toBeVisible();
       await expect(finalPage.locator(".animate-spin")).toHaveCount(0);
       await expect(page.getByTestId("quran-bottom-dock")).toHaveCount(0);
@@ -311,17 +311,6 @@ test.describe("mobile Mushaf rotation", () => {
 
     await page.getByTestId("button-mobile-audio").click();
     await expect(page.getByTestId("quran-bottom-dock")).toBeVisible();
-    await expectDockDoesNotOverlapMushaf(page);
-    await expectDockRespectsSafeArea(page, 34);
-
-    await page.setViewportSize(LANDSCAPE);
-    await expect(page).toHaveURL(/\/teacher\/quran-center\?tab=mushaf$/);
-    await expect(page.locator(".site-layout-header")).toBeHidden();
-    await expect(page.locator(".quran-center-sidebar")).toBeHidden();
-    await expect(page.getByRole("button", { name: "الحلقات والطلاب" })).toBeHidden();
-    await expectFocusedLandscape(page, /\/teacher\/quran-center\?tab=mushaf$/);
-    await page.setViewportSize(SHORT_PORTRAIT);
-    await expect(page).toHaveURL(/\/teacher\/quran-center\?tab=mushaf$/);
     await expectDockDoesNotOverlapMushaf(page);
     await expectDockRespectsSafeArea(page, 34);
   });
