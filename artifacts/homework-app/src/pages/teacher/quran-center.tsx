@@ -145,7 +145,7 @@ export default function QuranCenter({
             {!embedded && (
               <button
                 type="button"
-                onClick={() => setLocation("/teacher/dashboard")}
+                onClick={() => setLocation("/teacher")}
                 className="ms-auto grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-border/60 bg-background text-emerald-800 shadow-sm transition-colors hover:bg-emerald-50 md:h-8 md:w-8 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
                 aria-label={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
                 title={lang === "ar" ? "العودة إلى لوحة المعلم" : "Back to teacher dashboard"}
