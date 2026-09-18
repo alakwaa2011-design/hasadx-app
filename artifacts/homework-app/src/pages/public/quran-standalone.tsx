@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation, useParams } from "wouter";
 import { QuranPagesView } from "@/pages/teacher/quran-pages-view";
@@ -26,11 +26,15 @@ export function PublicQuranStandalone() {
   const params = useParams<{ surahNumber?: string }>();
   const [, setLocation] = useLocation();
   const savedState = useMemo(readStandaloneQuranReaderState, []);
-  const syncRequested = useMemo(
+  const [syncRequested, setSyncRequested] = useState(
     () => window.localStorage.getItem(STANDALONE_QURAN_SYNC_KEY) === "true",
-    [],
   );
-  const { data: syncedState } = useGetQuranReaderState({
+  const {
+    data: syncedState,
+    isLoading: isSyncedStateLoading,
+    isError: isSyncedStateError,
+    error: syncedStateError,
+  } = useGetQuranReaderState({
     query: {
       enabled: syncRequested,
       retry: false,
@@ -38,6 +42,16 @@ export function PublicQuranStandalone() {
       staleTime: 60 * 1000,
     },
   });
+  useEffect(() => {
+    const error = syncedStateError as {
+      status?: number;
+      response?: { status?: number };
+    } | null;
+    const status = error?.status ?? error?.response?.status;
+    if (!syncRequested || !isSyncedStateError || status !== 401) return;
+    window.localStorage.setItem(STANDALONE_QURAN_SYNC_KEY, "false");
+    setSyncRequested(false);
+  }, [isSyncedStateError, syncRequested, syncedStateError]);
   const initialPosition = resolveStandaloneReaderPosition(
     syncRequested,
     savedState.position,
@@ -80,6 +94,17 @@ export function PublicQuranStandalone() {
     ? "المصحف الشريف للقراءة والاستماع. تجربة قراءة مريحة بدون تشتيت." 
     : "The Noble Quran for reading and listening. A comfortable, distraction-free reading experience.";
 
+  if (syncRequested && isSyncedStateLoading) {
+    return (
+      <main
+        className="grid min-h-[100dvh] place-items-center bg-stone-50 text-sm font-bold text-stone-600 dark:bg-[#0a0c0b] dark:text-stone-300"
+        aria-busy="true"
+      >
+        {lang === "ar" ? "جارٍ استعادة موضع المصحف…" : "Restoring your Quran position…"}
+      </main>
+    );
+  }
+
   return (
     <>
       <Helmet>
@@ -88,7 +113,7 @@ export function PublicQuranStandalone() {
       </Helmet>
       
       <QuranPagesView
-        key={params.surahNumber ? "explicit-location" : `saved-${initialPosition?.surahNumber ?? 1}-${initialPosition?.ayahNumber ?? 1}-${initialPosition?.pageNumber ?? 1}`}
+        key={`${syncRequested ? "synced" : "local"}-${params.surahNumber ? "explicit-location" : `saved-${initialPosition?.surahNumber ?? 1}-${initialPosition?.ayahNumber ?? 1}-${initialPosition?.pageNumber ?? 1}`}`}
         initialSurah={initialSurah}
         initialAyah={validInitialAyah}
         initialPage={validInitialPage}
@@ -103,6 +128,7 @@ export function PublicQuranStandalone() {
         isIndependentPractice={false}
         embedded={false}
         standalone
+        onStandaloneSyncChange={setSyncRequested}
         liveRecitationAvailable={false}
       />
     </>

@@ -114,6 +114,7 @@ export function QuranPagesView({
   backLabel,
   embedded = false,
   standalone = false,
+  onStandaloneSyncChange,
   isIndependentPractice = false,
   liveRecitationAvailable,
   onExitEmbedded,
@@ -132,6 +133,7 @@ export function QuranPagesView({
   backLabel?: { ar: string; en: string };
   embedded?: boolean;
   standalone?: boolean;
+  onStandaloneSyncChange?: (enabled: boolean) => void;
   isIndependentPractice?: boolean;
   liveRecitationAvailable: boolean;
   onExitEmbedded?: () => void;
@@ -184,6 +186,8 @@ export function QuranPagesView({
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
   const {
+    readerState,
+    localStatePosition,
     savePosition: saveMainPosition,
     toggleBookmark,
     bookmarksMap,
@@ -218,6 +222,24 @@ export function QuranPagesView({
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const { playWord, stopWordAudio } = useQuranWordAudio();
+
+  const handleStandaloneSyncToggle = async () => {
+    const enabling = !syncEnabled;
+    const changed = await setSyncEnabled(enabling);
+    if (!changed) return;
+    onStandaloneSyncChange?.(enabling);
+    if (enabling && !localStatePosition && readerState?.position) {
+      const syncedVerse = verses.find(
+        (verse) =>
+          verse.chapter_id === readerState.position?.surahNumber
+          && verse.number === readerState.position.ayahNumber,
+      );
+      if (syncedVerse) {
+        setSelectedVerseKey(`${syncedVerse.chapter_id}:${syncedVerse.number}`);
+        setActivePage(syncedVerse.page_id);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!mobileToolsOpen) return;
@@ -887,7 +909,7 @@ export function QuranPagesView({
               <button
                 type="button"
                 disabled={isSyncing}
-                onClick={() => void setSyncEnabled(!syncEnabled)}
+                onClick={() => void handleStandaloneSyncToggle()}
                 className={cn(
                   "flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold transition-colors disabled:opacity-50",
                   syncEnabled

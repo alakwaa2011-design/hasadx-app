@@ -154,7 +154,11 @@ export function useQuranReaderState(options: {
   }, [isLocal]);
 
   useEffect(() => {
-    const status = (readerStateError as { status?: number } | null)?.status;
+    const error = readerStateError as {
+      status?: number;
+      response?: { status?: number };
+    } | null;
+    const status = error?.status ?? error?.response?.status;
     if (!isOptional || !syncEnabled || status !== 401) return;
     window.localStorage.setItem(STANDALONE_QURAN_SYNC_KEY, 'false');
     setSyncEnabledState(false);
@@ -162,6 +166,16 @@ export function useQuranReaderState(options: {
 
   const savePosition = useCallback((surahNumber: number, ayahNumber: number, pageNumber: number) => {
     if (isLocal) {
+      if (
+        isOptional
+        && !syncEnabled
+        && localState.position === null
+        && surahNumber === 1
+        && ayahNumber === 1
+        && pageNumber === 1
+      ) {
+        return;
+      }
       setLocalState((current) => {
         if (
           current.position?.surahNumber === surahNumber
@@ -222,7 +236,15 @@ export function useQuranReaderState(options: {
         }
       });
     }, 1500); // modest debounce
-  }, [isLocal, updatePositionMutation, queryClient, refetchReaderState]);
+  }, [
+    isLocal,
+    isOptional,
+    localState.position,
+    queryClient,
+    refetchReaderState,
+    syncEnabled,
+    updatePositionMutation,
+  ]);
   
   const toggleBookmark = useCallback(async (surahNumber: number, ayahNumber: number, pageNumber: number, isBookmarked: boolean) => {
       if (isLocal) {
@@ -380,6 +402,7 @@ export function useQuranReaderState(options: {
 
   return {
     readerState,
+    localStatePosition: localState.position,
     isReaderStateLoading: isLocal ? false : isReaderStateLoading,
     isReaderStateError: isLocal ? false : isReaderStateError,
     savePosition,
