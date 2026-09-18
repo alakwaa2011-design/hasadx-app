@@ -911,7 +911,7 @@ export function QuranPagesView({
 
       {!quietMode && (
         <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 shrink-0 rounded-b-2xl border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-[0_6px_20px_rgba(34,87,57,0.08)] backdrop-blur-xl transition-all duration-300 dark:bg-[#0a0c0b]/95 md:rounded-none md:shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-1 px-1 py-0.5 md:gap-3 md:px-4 md:py-3">
+          <div className="flex flex-nowrap items-center justify-between gap-0.5 px-1 py-0.5 md:flex-wrap md:gap-3 md:px-4 md:py-3">
 
             {/* Back Navigation */}
             {!embedded && !standalone && (
@@ -967,8 +967,8 @@ export function QuranPagesView({
               </button>
             )}
             {/* Mobile location shortcuts */}
-            <div className="flex min-w-0 flex-1 items-center gap-1 md:hidden">
-              <label className="quran-reader-ui-label relative flex h-9 min-w-0 flex-1 items-center justify-between gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-emerald-950 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:active:bg-emerald-950/50">
+            <div className="flex min-w-0 shrink-0 items-center gap-0.5 md:hidden">
+              <label className="quran-reader-ui-label relative flex h-9 w-[4.25rem] min-w-0 items-center justify-between gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1 text-emerald-950 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:active:bg-emerald-950/50">
                 <span className="min-w-0 truncate text-xs font-semibold">
                   {chapters.find((chapter) => chapter.id === selectedSurah)?.name
                     ? plainArabicSurahName(selectedSurah, chapters.find((chapter) => chapter.id === selectedSurah)!.name)
@@ -989,9 +989,8 @@ export function QuranPagesView({
                   ))}
                 </select>
               </label>
-              <label className="quran-reader-ui-label relative flex h-9 shrink-0 items-center gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-[11px] font-semibold text-emerald-900 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100">
+              <label className="quran-reader-ui-label relative flex h-9 shrink-0 items-center rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-[11px] font-semibold text-emerald-900 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100">
                 <span>{lang === "ar" ? `ص ${activePage}` : `p. ${activePage}`}</span>
-                <ChevronDown className="h-2.5 w-2.5 opacity-55" />
                 <select
                   value={activePage}
                   onChange={(event) => goToPage(Number(event.target.value))}
@@ -1009,7 +1008,7 @@ export function QuranPagesView({
             </div>
 
             {/* Mobile primary actions */}
-            <div className="flex shrink-0 items-center gap-1 md:hidden">
+            <div className="flex shrink-0 items-center gap-0.5 md:hidden">
               <button
                 type="button"
                 onClick={openAudioControls}
@@ -1028,7 +1027,7 @@ export function QuranPagesView({
                 type="button"
                 onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
                 data-testid="button-mobile-page-layout"
-                className="quran-reader-ui-label flex h-9 items-center gap-1 rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-[10px] font-semibold text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50"
+                className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 bg-white/55 text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50"
                 aria-label={pageLayout === "continuous"
                   ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page")
                   : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
@@ -1039,16 +1038,14 @@ export function QuranPagesView({
                 {pageLayout === "continuous"
                   ? <Rows3 className="h-4 w-4" />
                   : <BookOpen className="h-4 w-4" />}
-                <span>{pageLayout === "continuous"
-                  ? (lang === "ar" ? "صفحات" : "Pages")
-                  : (lang === "ar" ? "صفحة" : "Page")}</span>
               </button>
+              <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
               <button
                 type="button"
                 onClick={toggleMemoSession}
                 data-testid="button-mobile-memo-session"
                 className={cn(
-                  "quran-reader-ui-label flex h-9 items-center gap-1 rounded-xl border border-emerald-900/10 px-1.5 text-[11px] font-semibold transition-colors",
+                  "quran-reader-ui-label flex h-9 items-center gap-0.5 rounded-xl border border-emerald-900/10 px-1 text-[11px] font-semibold transition-colors",
                   memoSession.isActive
                     ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
                     : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
@@ -1186,7 +1183,9 @@ export function QuranPagesView({
 
               {/* 3. Tools Island */}
               <div className="flex w-full items-center justify-center gap-1 rounded-xl border border-border/40 bg-muted/30 p-1 px-2 shadow-sm md:w-auto">
-                <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
+                <div className="hidden md:block">
+                  <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
+                </div>
 
                 <div className="mx-1 h-5 w-px bg-border/50" />
                 <div className="relative">

@@ -117,10 +117,10 @@ export function QuranSearchDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:px-3"
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-900/10 bg-white/55 p-0 text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50 md:h-auto md:w-auto md:gap-2 md:border-0 md:bg-transparent md:p-2 md:text-muted-foreground md:hover:bg-muted md:hover:text-foreground md:dark:bg-transparent md:px-3"
         aria-label={lang === "ar" ? "البحث في القرآن" : "Search the Quran"}
       >
-        <Search className="h-5 w-5" />
+        <Search className="h-4.5 w-4.5 md:h-5 md:w-5" />
         <span className="hidden text-sm font-bold xl:inline">
           {lang === "ar" ? "بحث" : "Search"}
         </span>
