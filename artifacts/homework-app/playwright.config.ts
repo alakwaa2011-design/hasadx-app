@@ -89,7 +89,7 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-portrait",
-      testIgnore: /(admin-student-preview|escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence|quran-optional-sync)\.spec\.ts/,
+      testIgnore: /(admin-student-preview|escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence|quran-optional-sync|quran-mobile-rotation)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
@@ -191,6 +191,15 @@ export default defineConfig({
     {
       name: "mobile-quran-optional-sync",
       testMatch: /quran-optional-sync\.spec\.ts/,
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 },
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "mobile-quran-rotation",
+      testMatch: /quran-mobile-rotation\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },

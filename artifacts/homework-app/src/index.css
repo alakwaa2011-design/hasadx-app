@@ -740,8 +740,8 @@
 .undo-box-flash  { animation: undoBoxPop  0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
 .undo-btn-pulse  { animation: undoBtnPulse 0.32s ease-out both; }
 
-/* Phone landscape mode: keep the Mushaf inside the current route and fill the
-   viewport width for larger text. The page scrolls vertically when needed. */
+/* Phone landscape mode: keep the Mushaf inside the current route and fit one
+   complete Madani page to the viewport. No separate fullscreen URL is used. */
 @media (orientation: landscape) and (max-height: 600px) {
   .quran-focused-layout {
     height: 100dvh !important;
@@ -790,26 +790,24 @@
   .quran-reader-main {
     height: 100dvh !important;
     flex: 1 1 100% !important;
-    align-items: flex-start !important;
-    justify-content: flex-start !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: contain;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
     padding: 0 !important;
   }
 
   .quran-page-shell {
     display: block !important;
-    width: 100vw !important;
+    width: auto !important;
     max-width: none !important;
-    height: auto !important;
+    height: 100dvh !important;
     margin: 0 auto !important;
   }
 
   .quran-reader-figure {
-    width: 100vw !important;
-    max-width: none !important;
-    height: auto !important;
+    width: auto !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
     aspect-ratio: 382.677 / 547.086;
     border-radius: 0 !important;
     box-shadow: none !important;
