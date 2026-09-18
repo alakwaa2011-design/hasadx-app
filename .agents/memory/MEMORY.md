@@ -127,6 +127,7 @@
 - [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.
 - [Quran guided pause preference](quran-guided-pause-preference.md) — guided memorization must preserve the selected inter-ayah pause, including zero, instead of imposing its own delay.
 - [Quran partial hiding](quran-partial-hiding.md) — a one-ayah guided session hides alternating words; progressive range logic must not reveal the only target ayah.
+- [Quran tafsir playback follow](quran-tafsir-playback-follow.md) — tafsir follows the playing ayah unless the user locks the current explanation.
 - [Quran continuous audio handoff](quran-continuous-audio-handoff.md) — zero-pause recitation must keep chapter audio mounted and advance with prefetched timings; ayah files preload the next source.
 - [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — component tests need explicit cleanup and native DOM assertions; wrap audio consumers in their real provider.
 - [Public Quran delivery](public-quran-delivery.md) — ship the anonymous reader as an isolated /quran experience first; create a separate artifact only after shared Quran libraries exist.
