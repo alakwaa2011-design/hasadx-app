@@ -446,6 +446,22 @@ export function QuranPagesView({
     setAudioDockOpen(true);
   };
 
+  const toggleMemoSession = () => {
+    if (memoSession.isActive) {
+      endSession();
+      return;
+    }
+    const targetVerse = selectedVerseKey
+      ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
+      : selectedVerse ?? verses.find((verse) => verse.page_id === activePage);
+    if (targetVerse) {
+      setSelectedVerseKey(`${targetVerse.chapter_id}:${targetVerse.number}`);
+    }
+    setEducationSelection(null);
+    startSession();
+    setAudioDockOpen(true);
+  };
+
   const visiblePages = useMemo(() => {
     if (activePage % 2 === 0) {
       return {
@@ -859,14 +875,7 @@ export function QuranPagesView({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (memoSession.isActive) {
-                    endSession();
-                    return;
-                  }
-                  startSession();
-                  setAudioDockOpen(true);
-                }}
+                onClick={toggleMemoSession}
                 data-testid="button-mobile-memo-session"
                 className={cn(
                   "flex h-9 items-center gap-1 rounded-xl px-2 text-[11px] font-black transition-colors",
@@ -1000,14 +1009,7 @@ export function QuranPagesView({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      if (memoSession.isActive) {
-                        endSession();
-                        return;
-                      }
-                      startSession();
-                      setAudioDockOpen(true);
-                    }}
+                    onClick={toggleMemoSession}
                     data-testid="button-memo-session"
                     className={cn(
                       "hidden rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors md:flex md:flex-none md:text-sm",
