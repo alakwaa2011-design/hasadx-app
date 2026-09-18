@@ -11,10 +11,12 @@ import {
   ImageOff,
   ListPlus,
   Bookmark,
+  BookOpen,
   Volume2,
   Loader2,
   Menu,
   Mic2,
+  Rows3,
   Cloud,
   CloudOff,
   X,
@@ -965,14 +967,14 @@ export function QuranPagesView({
               </button>
             )}
             {/* Mobile location shortcuts */}
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-1 md:hidden">
-              <label className="relative flex min-w-0 max-w-32 items-center gap-1 rounded-lg px-1.5 py-1 text-emerald-900 transition-colors active:bg-emerald-50 dark:text-emerald-100 dark:active:bg-emerald-950/50">
-                <span className="truncate text-sm font-black">
+            <div className="flex min-w-0 flex-1 items-center gap-1 md:hidden">
+              <label className="quran-reader-ui-label relative flex h-9 min-w-0 flex-1 items-center justify-between gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-emerald-950 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:active:bg-emerald-950/50">
+                <span className="min-w-0 truncate text-xs font-semibold">
                   {chapters.find((chapter) => chapter.id === selectedSurah)?.name
                     ? plainArabicSurahName(selectedSurah, chapters.find((chapter) => chapter.id === selectedSurah)!.name)
                     : (lang === "ar" ? "المصحف" : "Mushaf")}
                 </span>
-                <ChevronDown className="h-3 w-3 shrink-0 opacity-55" />
+                <ChevronDown className="h-3 w-3 shrink-0 opacity-45" />
                 <select
                   value={selectedSurah}
                   onChange={(event) => goToSurah(Number(event.target.value))}
@@ -987,7 +989,7 @@ export function QuranPagesView({
                   ))}
                 </select>
               </label>
-              <label className="relative flex shrink-0 items-center gap-0.5 rounded-lg bg-muted/55 px-1.5 py-1 text-[11px] font-bold text-muted-foreground transition-colors active:bg-muted">
+              <label className="quran-reader-ui-label relative flex h-9 shrink-0 items-center gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-[11px] font-semibold text-emerald-900 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100">
                 <span>{lang === "ar" ? `ص ${activePage}` : `p. ${activePage}`}</span>
                 <ChevronDown className="h-2.5 w-2.5 opacity-55" />
                 <select
@@ -1007,13 +1009,13 @@ export function QuranPagesView({
             </div>
 
             {/* Mobile primary actions */}
-            <div className="flex shrink-0 items-center gap-0.5 md:hidden">
+            <div className="flex shrink-0 items-center gap-1 md:hidden">
               <button
                 type="button"
                 onClick={openAudioControls}
                 data-testid="button-mobile-audio"
                 className={cn(
-                  "grid h-9 w-9 place-items-center rounded-xl transition-colors",
+                  "grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 transition-colors",
                   audioDockOpen
                     ? "bg-emerald-700 text-white shadow-sm"
                     : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200",
@@ -1024,10 +1026,29 @@ export function QuranPagesView({
               </button>
               <button
                 type="button"
+                onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
+                data-testid="button-mobile-page-layout"
+                className="quran-reader-ui-label flex h-9 items-center gap-1 rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-[10px] font-semibold text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50"
+                aria-label={pageLayout === "continuous"
+                  ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page")
+                  : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
+                title={pageLayout === "continuous"
+                  ? (lang === "ar" ? "صفحة واحدة" : "Single page")
+                  : (lang === "ar" ? "صفحات متصلة" : "Continuous pages")}
+              >
+                {pageLayout === "continuous"
+                  ? <Rows3 className="h-4 w-4" />
+                  : <BookOpen className="h-4 w-4" />}
+                <span>{pageLayout === "continuous"
+                  ? (lang === "ar" ? "صفحات" : "Pages")
+                  : (lang === "ar" ? "صفحة" : "Page")}</span>
+              </button>
+              <button
+                type="button"
                 onClick={toggleMemoSession}
                 data-testid="button-mobile-memo-session"
                 className={cn(
-                  "flex h-9 items-center gap-1 rounded-xl px-2 text-[11px] font-black transition-colors",
+                  "quran-reader-ui-label flex h-9 items-center gap-1 rounded-xl border border-emerald-900/10 px-1.5 text-[11px] font-semibold transition-colors",
                   memoSession.isActive
                     ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
                     : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
@@ -1039,35 +1060,14 @@ export function QuranPagesView({
                 <ListPlus className="h-4 w-4" />
                 <span>{memoSession.isActive ? (lang === "ar" ? "إنهاء" : "End") : (lang === "ar" ? "حفظ" : "Memo")}</span>
               </button>
-              <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
-              {(canToggleCurrentBookmark || onOpenBookmarks) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (canToggleCurrentBookmark) {
-                      toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked);
-                    } else {
-                      onOpenBookmarks?.();
-                    }
-                  }}
-                  disabled={isMutatingBookmark}
-                  data-testid="button-mobile-bookmark"
-                  className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                  aria-label={lang === "ar"
-                    ? (isCurrentBookmarked ? "إزالة علامة الموضع" : "حفظ الموضع")
-                    : (isCurrentBookmarked ? "Remove bookmark" : "Save bookmark")}
-                >
-                  <Bookmark className={cn("h-4.5 w-4.5", isCurrentBookmarked && "fill-current text-emerald-700")} />
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => setMobileToolsOpen((open) => !open)}
                 className={cn(
-                  "grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors shadow-sm",
+                  "grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-900/10 transition-colors",
                   mobileToolsOpen
-                    ? "border-transparent bg-muted text-foreground"
-                    : "border-border/70 bg-background text-foreground"
+                    ? "bg-emerald-100 text-emerald-900"
+                    : "bg-white/55 text-emerald-900 dark:bg-white/5 dark:text-emerald-100"
                 )}
                 aria-expanded={mobileToolsOpen}
                 aria-label={lang === "ar" ? "المزيد من أدوات المصحف" : "More Mushaf tools"}

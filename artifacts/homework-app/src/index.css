@@ -768,6 +768,11 @@
    false empty block below a short, width-sized page. Continuous mode keeps the
    original Madani page ratio. */
 @media (max-width: 767px) and (orientation: portrait) {
+  .quran-reader-ui-label {
+    font-family: 'Readex Pro', 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    letter-spacing: 0;
+  }
+
   .quran-reader-header {
     position: absolute;
     top: calc(var(--quran-safe-area-top, env(safe-area-inset-top, 0px)) + 0.35rem);
