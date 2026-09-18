@@ -24,6 +24,7 @@ import { QuranSearchDialog } from "./quran-search-dialog";
 import {
   getGetQuranJourneyQueryKey,
   getGetQuranSurahContentQueryKey,
+  getGetCurrentTeacherQueryKey,
   useGetCurrentTeacher,
   useGetQuranSurahContent,
   useRecordMyQuranIndependentSession,
@@ -131,6 +132,7 @@ export function QuranPagesView({
     query: {
       enabled: isTeacherReader,
       retry: false,
+      queryKey: getGetCurrentTeacherQueryKey(),
     },
   });
   const isAdmin = Boolean(currentTeacher?.isAdmin) || currentTeacher?.role === "admin";
