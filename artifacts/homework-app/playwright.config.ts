@@ -89,7 +89,7 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-portrait",
-      testIgnore: /(admin-student-preview|escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence|quran-optional-sync|quran-mobile-rotation)\.spec\.ts/,
+      testIgnore: /(admin-student-preview|escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence|quran-optional-sync|quran-mobile-rotation|quran-iphone-continuous-audio)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
@@ -118,6 +118,14 @@ export default defineConfig({
         // Playwright's Linux WebKit bundle replaces LD_LIBRARY_PATH in its
         // launcher. Replit's launcher preserves the bundle paths and appends
         // the Nix-provided runtime libraries.
+        ...webkitLaunchOptions,
+      },
+    },
+    {
+      name: "iphone-webkit-quran-audio",
+      testMatch: /quran-iphone-continuous-audio\.spec\.ts/,
+      use: {
+        ...devices["iPhone 13"],
         ...webkitLaunchOptions,
       },
     },
