@@ -37,9 +37,10 @@ describe("Quran ayah timings route", () => {
     });
   });
 
-  it("requires the current Quran session", async () => {
+  it("allows anonymous readers to load verified timings", async () => {
     const response = await request(app({})).get("/api/quran/audio/1/1/1/timings");
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(200);
+    expect(getTimings).toHaveBeenCalledWith(1, 1, 1);
   });
 
   it("returns 400 for invalid identifiers and canonical verses", async () => {
@@ -62,11 +63,11 @@ describe("Quran ayah timings route", () => {
     expect((await request(app()).get("/api/quran/audio/1/1/1/timings")).status).toBe(503);
   });
 
-  it("returns normalized timings with a private immutable cache header", async () => {
+  it("returns normalized timings with a public immutable cache header", async () => {
     const response = await request(app()).get("/api/quran/audio/1/1/1/timings");
     expect(response.status).toBe(200);
     expect(response.body.synchronized).toBe(true);
-    expect(response.headers["cache-control"]).toContain("private");
+    expect(response.headers["cache-control"]).toContain("public");
     expect(response.headers["cache-control"]).toContain("immutable");
   });
 });

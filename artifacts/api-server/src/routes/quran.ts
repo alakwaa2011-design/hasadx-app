@@ -133,6 +133,13 @@ const QURAN_AUDIO_MAX_SIZE = 30 * 1024 * 1024;
 const QURAN_LIVE_AUDIO_MAX_SIZE = 1024 * 1024;
 const HAFIZ_AI_BASE_URL = "https://api.hafiz-ai.com";
 const activeQuranTranscriptions = new Set<string>();
+const publicQuranTimingsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 600,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many Quran timing requests; please try again shortly" },
+});
 type TeacherRequest = { session?: { teacherId?: number; studentAccountId?: number }; log?: { error: (error: unknown, message: string) => void } };
 
 // Canonical metadata only. No verse text is stored or returned by this API.
@@ -721,11 +728,10 @@ router.get("/quran/audio/word/:surahNumber/:ayahNumber/:wordPosition", async (re
   }
 });
 
-router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber/timings", async (req, res): Promise<void> => {
-  if (!hasQuranReaderSession(req)) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
-  }
+router.get(
+  "/quran/audio/:recitationId/:surahNumber/:ayahNumber/timings",
+  publicQuranTimingsLimiter,
+  async (req, res): Promise<void> => {
   const parsed = GetQuranAyahTimingsParams.safeParse({
     ...req.params,
     recitationId: Number(req.params.recitationId),
@@ -743,7 +749,7 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber/timings", async 
     const timings = await getQuranFoundationAyahTimings(
       parsed.data.recitationId, parsed.data.surahNumber, parsed.data.ayahNumber,
     );
-    res.setHeader("Cache-Control", "private, max-age=2592000, immutable");
+    res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
     res.json(GetQuranAyahTimingsResponse.parse(timings));
   } catch (error) {
     if (error instanceof Error && (
@@ -756,7 +762,8 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber/timings", async 
     req.log?.error(error, "Official Quran ayah timings unavailable");
     res.status(503).json({ error: "Official Quran timings are temporarily unavailable" });
   }
-});
+  },
+);
 
 router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> => {
   const parsed = GetQuranMadaniPageParams.safeParse(req.params);

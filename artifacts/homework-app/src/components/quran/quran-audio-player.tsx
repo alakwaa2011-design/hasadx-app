@@ -36,6 +36,7 @@ export interface QuranAudioPlayerProps {
   memoView?: 'show' | 'hide' | 'progressive';
   onMemoViewChange?: (view: 'show' | 'hide' | 'progressive') => void;
   onPlayingWordChange?: (wordPosition: number | null) => void;
+  preferenceStorage?: 'server' | 'local';
 }
 
 const SPEEDS = [0.75, 1, 1.25];
@@ -71,6 +72,7 @@ export function QuranAudioPlayer({
   memoView,
   onMemoViewChange,
   onPlayingWordChange,
+  preferenceStorage = 'server',
 }: QuranAudioPlayerProps) {
   const { lang } = useI18n();
   const isArabic = lang === 'ar';
@@ -147,10 +149,22 @@ export function QuranAudioPlayer({
 
   useEffect(() => {
     if (recitationId !== null || !reciterCatalog.data?.reciters.length) return;
+    let locallyPreferred: number | null = null;
+    if (preferenceStorage === 'local') {
+      try {
+        locallyPreferred = Number(window.localStorage.getItem('hasaad:standalone-quran-recitation-id'));
+      } catch {
+        locallyPreferred = null;
+      }
+    }
     setRecitationId(
-      reciterCatalog.data.preferredRecitationId ?? reciterCatalog.data.reciters[0].id,
+      (locallyPreferred && reciterCatalog.data.reciters.some((item) => item.id === locallyPreferred)
+        ? locallyPreferred
+        : null)
+      ?? (preferenceStorage === 'server' ? reciterCatalog.data.preferredRecitationId : null)
+      ?? reciterCatalog.data.reciters[0].id,
     );
-  }, [recitationId, reciterCatalog.data]);
+  }, [preferenceStorage, recitationId, reciterCatalog.data]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -801,6 +815,15 @@ export function QuranAudioPlayer({
     const previousRecitationId = recitationId;
     setRecitationId(nextRecitationId);
     setError(false);
+    if (preferenceStorage === 'local') {
+      try {
+        window.localStorage.setItem('hasaad:standalone-quran-recitation-id', String(nextRecitationId));
+        toast.success(isArabic ? 'تم حفظ القارئ المفضل على هذا الجهاز' : 'Preferred reciter saved on this device');
+      } catch {
+        toast.info(isArabic ? 'سيبقى القارئ محددًا خلال هذه الجلسة' : 'The reciter will stay selected for this session');
+      }
+      return;
+    }
     try {
       await savePreference.mutateAsync({ data: { recitationId: nextRecitationId } });
       await queryClient.invalidateQueries({ queryKey: getListQuranRecitersQueryKey() });

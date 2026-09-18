@@ -137,6 +137,10 @@ const cachedAudio = new Map<string, { value: string; expiresAt: number }>();
 const cachedWordAudio = new Map<string, { value: string; expiresAt: number }>();
 const cachedTimings = new Map<string, { value: QuranFoundationAyahTimings; expiresAt: number }>();
 const timingRequests = new Map<string, Promise<QuranFoundationAyahTimings>>();
+const cachedTimingPayloads = new Map<string, { value: unknown; expiresAt: number }>();
+const timingPayloadRequests = new Map<string, Promise<unknown>>();
+const MAX_CACHED_AYAH_TIMINGS = 2_048;
+const MAX_CACHED_TIMING_CHAPTERS = 64;
 
 const cachedEducation = new Map<string, { value: QuranFoundationAyahEducation; expiresAt: number }>();
 function credentials() {
@@ -484,6 +488,38 @@ function normalizeTimings(payload: unknown, verseKey: string, recitationId: numb
   });
 }
 
+async function getChapterTimingPayload(recitationId: number, surahNumber: number): Promise<unknown> {
+  const chapterId = await verifiedChapterReciterId(recitationId);
+  if (!chapterId) throw new Error("Quran Foundation timing mapping is unavailable");
+  const cacheKey = `${chapterId}:${surahNumber}`;
+  const cached = cachedTimingPayloads.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    cachedTimingPayloads.delete(cacheKey);
+    cachedTimingPayloads.set(cacheKey, cached);
+    return cached.value;
+  }
+  const now = Date.now();
+  for (const [key, entry] of cachedTimingPayloads) {
+    if (entry.expiresAt <= now) cachedTimingPayloads.delete(key);
+  }
+  const existing = timingPayloadRequests.get(cacheKey);
+  if (existing) return existing;
+  const request = requestContentJson(`chapter_recitations/${chapterId}/${surahNumber}?segments=true`);
+  timingPayloadRequests.set(cacheKey, request);
+  try {
+    const value = await request;
+    while (cachedTimingPayloads.size >= MAX_CACHED_TIMING_CHAPTERS) {
+      const oldestKey = cachedTimingPayloads.keys().next().value;
+      if (typeof oldestKey !== "string") break;
+      cachedTimingPayloads.delete(oldestKey);
+    }
+    cachedTimingPayloads.set(cacheKey, { value, expiresAt: Date.now() + TIMINGS_CACHE_MS });
+    return value;
+  } finally {
+    timingPayloadRequests.delete(cacheKey);
+  }
+}
+
 export async function getQuranFoundationAyahTimings(
   recitationId: number, surahNumber: number, ayahNumber: number,
 ): Promise<QuranFoundationAyahTimings> {
@@ -495,16 +531,27 @@ export async function getQuranFoundationAyahTimings(
   const verseKey = `${surahNumber}:${ayahNumber}`;
   const cacheKey = `${recitationId}:${verseKey}`;
   const cached = cachedTimings.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached && cached.expiresAt > Date.now()) {
+    cachedTimings.delete(cacheKey);
+    cachedTimings.set(cacheKey, cached);
+    return cached.value;
+  }
+  const now = Date.now();
+  for (const [key, entry] of cachedTimings) {
+    if (entry.expiresAt <= now) cachedTimings.delete(key);
+  }
   const existing = timingRequests.get(cacheKey);
   if (existing) return existing;
   const request = (async () => {
-    const chapterId = await verifiedChapterReciterId(recitationId);
-    if (!chapterId) throw new Error("Quran Foundation timing mapping is unavailable");
     const value = normalizeTimings(
-      await requestContentJson(`chapter_recitations/${chapterId}/${surahNumber}?segments=true`),
+      await getChapterTimingPayload(recitationId, surahNumber),
       verseKey, recitationId,
     );
+    while (cachedTimings.size >= MAX_CACHED_AYAH_TIMINGS) {
+      const oldestKey = cachedTimings.keys().next().value;
+      if (typeof oldestKey !== "string") break;
+      cachedTimings.delete(oldestKey);
+    }
     cachedTimings.set(cacheKey, { value, expiresAt: Date.now() + TIMINGS_CACHE_MS });
     return value;
   })();
@@ -906,6 +953,8 @@ export function resetQuranFoundationClientForTests(): void {
   cachedWordAudio.clear();
   cachedTimings.clear();
   timingRequests.clear();
+  cachedTimingPayloads.clear();
+  timingPayloadRequests.clear();
   cachedEducation.clear();
 }
 

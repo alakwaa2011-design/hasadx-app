@@ -105,6 +105,7 @@ export function QuranPagesView({
   backHref = "/teacher/quran-center?tab=mushaf",
   backLabel,
   embedded = false,
+  standalone = false,
   isIndependentPractice = false,
   onExitEmbedded,
   onOpenBookmarks,
@@ -121,13 +122,14 @@ export function QuranPagesView({
   backHref?: string;
   backLabel?: { ar: string; en: string };
   embedded?: boolean;
+  standalone?: boolean;
   isIndependentPractice?: boolean;
   onExitEmbedded?: () => void;
   onOpenBookmarks?: () => void;
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
-  const isTeacherReader = readerBasePath.startsWith("/teacher/");
+  const isTeacherReader = !standalone && readerBasePath.startsWith("/teacher/");
   const { data: currentTeacher } = useGetCurrentTeacher({
     query: {
       enabled: isTeacherReader,
@@ -166,6 +168,7 @@ export function QuranPagesView({
 
   const { savePosition: saveMainPosition, toggleBookmark, bookmarksMap, isMutatingBookmark } = useQuranReaderState({
     enabled: !isIndependentPractice && mode === null,
+    storage: standalone ? "local" : "server",
   });
 
   const [selectedVerseKey, setSelectedVerseKey] = useState<string | null>(null);
@@ -644,7 +647,7 @@ export function QuranPagesView({
                if (copyRange) {
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
-               setEducationSelection(selection);
+               setEducationSelection(standalone ? null : selection);
               if (selection.wordPosition !== null) {
                 playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
@@ -701,7 +704,7 @@ export function QuranPagesView({
           <div className="flex flex-wrap items-center justify-between gap-1 px-1 py-0.5 md:gap-3 md:px-4 md:py-3">
 
             {/* Back Navigation */}
-            {!embedded && (
+            {!embedded && !standalone && (
               <button
                 type="button"
                 onClick={() => setLocation(backHref)}
@@ -876,7 +879,7 @@ export function QuranPagesView({
 
                 {/* Practice / Memo */}
                 <div className="flex flex-1 items-center gap-2 md:flex-none">
-                  {isIndependentPractice && (
+                  {isIndependentPractice && !standalone && (
                     <button
                       type="button"
                       onClick={() => void recordIndependentPractice()}
@@ -888,7 +891,7 @@ export function QuranPagesView({
                     </button>
                   )}
 
-                  <button
+                  {!standalone && <button
                     type="button"
                     onClick={() => {
                       if (memoSession.isActive) {
@@ -907,8 +910,8 @@ export function QuranPagesView({
                     )}
                   >
                     {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
-                  </button>
-                  {LIVE_RECITATION_ENABLED && isAdmin && (
+                  </button>}
+                  {!standalone && LIVE_RECITATION_ENABLED && isAdmin && (
                     <button
                       type="button"
                       onClick={openLiveRecitation}
@@ -1220,7 +1223,7 @@ export function QuranPagesView({
         </nav>
       </main>
 
-      {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
+      {!quietMode && ((!standalone && educationSelection) || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
           className="relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col md:max-h-[58dvh]"
           data-testid="quran-bottom-dock"
@@ -1249,6 +1252,7 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
+                preferenceStorage={standalone ? "local" : "server"}
                 onPlaybackLocationChange={(nextSurah, nextAyah) => {
                   setPlayingVerseKey(`${nextSurah}:${nextAyah}`);
                   setSelectedVerseKey(`${nextSurah}:${nextAyah}`);

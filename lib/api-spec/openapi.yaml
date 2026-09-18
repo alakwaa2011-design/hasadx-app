@@ -1868,7 +1868,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/QuranAyahTimings"
         "400": { description: Invalid recitation or verse }
-        "401": { description: Not authenticated }
         "404": { description: No verified mapping or timing data }
         "503": { description: Official timing data is temporarily unavailable }
 

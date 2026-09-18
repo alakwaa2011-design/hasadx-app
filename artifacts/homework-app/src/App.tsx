@@ -107,6 +107,7 @@ const QuestionBankPage = lazy(() => import("@/pages/teacher/question-bank"));
 const UrlQrTool = lazy(() => import("@/pages/teacher/tools/url-qr"));
 const TimerTool = lazy(() => import("@/pages/teacher/tools/timer"));
 const QuranReader = lazy(() => import("@/pages/teacher/quran-reader"));
+const PublicQuranStandalone = lazy(() => import("@/pages/public/quran-standalone"));
 const TeacherSchedule = lazy(() => import("@/pages/teacher/tools/schedule/index"));
 const WhiteboardMonitor = lazy(() => import("@/pages/teacher/whiteboard-monitor"));
 const QuranCenter = lazy(() => import("@/pages/teacher/quran-center"));
@@ -359,6 +360,8 @@ function Router() {
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/verify-account" component={VerifyAccount} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/quran/:surahNumber" component={PublicQuranStandalone} />
+        <Route path="/quran" component={PublicQuranStandalone} />
         
         {/* Teacher Routes — most specific `/teacher/*` paths first; dashboard `/teacher` last */}
         {/* مسابقة ذاتية — standalone solo challenge management */}
@@ -828,14 +831,7 @@ function App() {
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                 <QuranAudioHostProvider>
                   <Router />
-                  <GlobalAiAssistant />
-                  <GlobalTeacherTimer />
-                  <GlobalActiveLessonCountdown />
-                  <GlobalPushNotificationManager />
-                  <InsufficientCreditsDialog />
-                  <PageViewTracker />
-                  <HeartbeatTracker />
-                  <NavTracker />
+                  <GlobalAppServices />
                 </QuranAudioHostProvider>
               </WouterRouter>
               <I18nAwareToaster />
@@ -844,6 +840,23 @@ function App() {
         </ThemeProvider>
       </DarkModeProvider>
     </GoogleOAuthProvider>
+  );
+}
+
+function GlobalAppServices() {
+  const [location] = useLocation();
+  if (location === "/quran" || location.startsWith("/quran/")) return null;
+  return (
+    <>
+      <GlobalAiAssistant />
+      <GlobalTeacherTimer />
+      <GlobalActiveLessonCountdown />
+      <GlobalPushNotificationManager />
+      <InsufficientCreditsDialog />
+      <PageViewTracker />
+      <HeartbeatTracker />
+      <NavTracker />
+    </>
   );
 }
 
