@@ -136,7 +136,13 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
       if (transitionIdRef.current !== transitionId || sessionRef.current !== session) return;
       const epoch = ++sourceEpochRef.current;
       const nextSurah = session.surahNumber + 1;
-      const nextStartSeconds = Math.max(0, (timing.verseStartMs ?? 0) / 1000);
+      // Chapter recordings include the basmalah before the first timed ayah
+      // (except At-Tawbah, whose recording starts directly with ayah 1).
+      // Starting at verseStartMs silently skipped that introduction.
+      const nextStartSeconds = nextSurah === 9
+        ? Math.max(0, (timing.verseStartMs ?? 0) / 1000)
+        : 0;
+      audio.autoplay = true;
       audio.src = nextSource;
       audio.load();
       audio.playbackRate = session.speed;

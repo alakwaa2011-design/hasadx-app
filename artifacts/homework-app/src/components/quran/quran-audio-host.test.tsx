@@ -123,7 +123,7 @@ describe('QuranAudioHostProvider cross-route playback', () => {
   it('loads the next chapter recording after a chapter-scoped recitation ends', async () => {
     const fetchMock = vi.fn(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve({ audioUrl: '/chapter-2.mp3' }),
+      json: () => Promise.resolve({ audioUrl: '/chapter-2.mp3', verseStartMs: 4200 }),
     }));
     globalThis.fetch = fetchMock as never;
     const view = renderActiveSession('chapter');
@@ -143,6 +143,8 @@ describe('QuranAudioHostProvider cross-route playback', () => {
     });
     expect(view.container.querySelector('audio')).toBe(audio);
     expect(audio.getAttribute('src')).toBe('/chapter-2.mp3');
+    expect(audio.autoplay).toBe(true);
+    expect(audio.currentTime).toBe(0);
     expect(play).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
