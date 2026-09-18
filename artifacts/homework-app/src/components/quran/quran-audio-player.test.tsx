@@ -183,6 +183,23 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(audio.hasAttribute('src')).toBe(true);
   });
 
+  it('restarts the current ayah timing instead of the beginning of the surah', async () => {
+    timingResults.set(1, {
+      data: {
+        ...connectedFirst,
+        verseStartMs: 250,
+        verseEndMs: 1_250,
+      },
+    });
+    const { view, audio } = await renderAtBoundary();
+    Object.defineProperty(audio, 'currentTime', { value: 9, writable: true });
+
+    fireEvent.click(view.getByTestId('button-restart-ayah'));
+
+    expect(audio.currentTime).toBe(0.25);
+    expect(play).toHaveBeenCalled();
+  });
+
   it('keeps connected audio playing when next timing finishes loading at the boundary', async () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });

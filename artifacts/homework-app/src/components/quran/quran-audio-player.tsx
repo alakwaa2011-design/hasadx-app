@@ -1242,16 +1242,16 @@ export function QuranAudioPlayer({
       )}
 
       {/* Main Control Bar */}
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-1.5 px-1 sm:flex-nowrap md:gap-4 md:px-2">
+      <div className="mx-auto flex w-full max-w-5xl flex-nowrap items-center justify-between gap-1.5 overflow-x-auto px-1 md:gap-4 md:px-2">
 
-        {/* Left: Play & Info */}
-        <div className="order-1 flex min-w-0 flex-1 basis-auto items-center gap-2 md:gap-3">
+        {/* Track information */}
+        <div className="order-1 flex min-w-[150px] flex-1 basis-auto items-center gap-2 md:gap-3">
           <button
             data-testid="button-play-pause"
             onClick={togglePlay}
             aria-label={isPlaying ? (isArabic ? 'إيقاف مؤقت' : 'Pause') : (isArabic ? 'تشغيل' : 'Play')}
             className={cn(
-              "flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95 md:h-12 md:w-12",
               memoSession?.isActive ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
             )}
           >
@@ -1309,7 +1309,7 @@ export function QuranAudioPlayer({
         </div>
 
         {/* Playback and option controls share one compact row on phones. */}
-        <div className="order-3 flex w-full basis-full items-center justify-center gap-0.5 overflow-x-auto border-t border-border/40 pt-1 sm:order-2 sm:w-auto sm:basis-auto sm:border-0 sm:pt-0 md:gap-2">
+        <div className="order-2 flex w-auto shrink-0 basis-auto flex-nowrap items-center justify-center gap-0.5 border-s border-border/40 ps-1 md:gap-2 md:ps-3">
           <div className="flex shrink-0 items-center justify-center gap-1 md:gap-2">
             <div className="flex items-center justify-center gap-1 md:gap-2" dir={isArabic ? "rtl" : "ltr"}>
               <button data-testid="button-prev-ayah" onClick={handlePrev} disabled={!playingAyah || getPrevAyah(playingAyah, effectiveStart) === null} aria-label={isArabic ? 'الآية السابقة' : 'Previous ayah'} className="flex h-10 w-10 items-center justify-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30">
