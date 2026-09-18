@@ -38,6 +38,7 @@ import { toast } from "sonner";
 
 import { QuranMadaniPageRenderer } from "./quran-madani-page";
 import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
+import { useQuranAudioHost } from "@/components/quran/quran-audio-host";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
@@ -134,6 +135,7 @@ export function QuranPagesView({
 }) {
   const { lang, dir } = useI18n();
   const [, setLocation] = useLocation();
+  const { audioRef } = useQuranAudioHost();
   const isTeacherReader = !standalone && readerBasePath.startsWith("/teacher/");
   const { data: currentTeacher } = useGetCurrentTeacher({
     query: {
@@ -695,18 +697,13 @@ export function QuranPagesView({
                 return;
               }
               setAudioDockOpen(true);
-              if (isPlaying && playingVerseKey) {
-                // If a different surah is clicked while playing, we need to stop or update the playing track
-                // Since quran-audio-player only handles playing within one surah (via surahNumber prop),
-                // we'll stop playback when jumping surahs, or seek when jumping ayahs in the same surah.
-                const clickedSurah = Number(verseKey.split(":")[0]);
-                if (clickedSurah === playingSurah) {
-                   handlePlayingAyahChange(Number(verseKey.split(":")[1]));
-                } else {
-                   setIsPlaying(false);
-                   setPlayingVerseKey(null);
-                }
-              }
+              // Pressing an ayah marker is a direct playback command. Pause the
+              // old source immediately, then let the player load and start the
+              // selected ayah even when it belongs to another surah.
+              audioRef.current?.pause();
+              setPlayingVerseKey(verseKey);
+              setIsPlaying(true);
+              setAudioDockOpen(true);
             }}
           />
         )}
