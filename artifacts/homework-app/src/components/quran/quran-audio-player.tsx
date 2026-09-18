@@ -100,6 +100,7 @@ export function QuranAudioPlayer({
     playback: hostPlayback,
     setPlayback,
     setSession,
+    setControllerAttached,
     advanceBoundary,
   } = useQuranAudioHost();
   const preloadedAyahAudioRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -122,6 +123,11 @@ export function QuranAudioPlayer({
   const timeUpdateEventRef = useRef<() => void>(() => undefined);
 
   const surahLength = surahs[surahNumber - 1]?.ayahs.length || 0;
+
+  useEffect(() => {
+    setControllerAttached(true);
+    return () => setControllerAttached(false);
+  }, [setControllerAttached]);
 
   const timingsQuery = useGetQuranAyahTimings(
     recitationId ?? 0,

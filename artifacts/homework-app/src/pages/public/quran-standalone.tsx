@@ -103,6 +103,7 @@ export function PublicQuranStandalone() {
         isIndependentPractice={false}
         embedded={false}
         standalone
+        liveRecitationAvailable={false}
       />
     </>
   );

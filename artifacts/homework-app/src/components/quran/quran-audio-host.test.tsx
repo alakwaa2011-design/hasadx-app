@@ -19,11 +19,17 @@ import {
   type QuranAudioSession,
 } from './quran-audio-host';
 
-function ActiveSession({ sourceMode }: { sourceMode: QuranAudioSession['sourceMode'] }) {
+function ActiveSession({
+  sourceMode,
+  controllerAttached = false,
+}: {
+  sourceMode: QuranAudioSession['sourceMode'];
+  controllerAttached?: boolean;
+}) {
   const { playback, setControllerAttached, setPlayback, setSession } = useQuranAudioHost();
 
   useEffect(() => {
-    setControllerAttached(false);
+    setControllerAttached(controllerAttached);
     setSession({
       recitationId: 7,
       surahNumber: 1,
@@ -40,7 +46,7 @@ function ActiveSession({ sourceMode }: { sourceMode: QuranAudioSession['sourceMo
       surahNumber: 1,
       ayahNumber: 7,
     });
-  }, [setControllerAttached, setPlayback, setSession, sourceMode]);
+  }, [controllerAttached, setControllerAttached, setPlayback, setSession, sourceMode]);
 
   return (
     <output data-testid="host-playback">
@@ -55,10 +61,13 @@ function renderActiveSession(sourceMode: QuranAudioSession['sourceMode']) {
   return render(activeSessionTree(sourceMode));
 }
 
-function activeSessionTree(sourceMode: QuranAudioSession['sourceMode']) {
+function activeSessionTree(
+  sourceMode: QuranAudioSession['sourceMode'],
+  controllerAttached = false,
+) {
   return (
     <QuranAudioHostProvider>
-      <ActiveSession sourceMode={sourceMode} />
+      <ActiveSession sourceMode={sourceMode} controllerAttached={controllerAttached} />
     </QuranAudioHostProvider>
   );
 }
@@ -156,6 +165,25 @@ describe('QuranAudioHostProvider cross-route playback', () => {
     expect(audio.currentTime).toBe(0);
     expect(view.queryByLabelText('Stop Quran')).toBeNull();
     expect(view.container.querySelectorAll('audio')).toHaveLength(1);
+  });
+
+  it('hides external controls while the full reader controller is mounted on an embedded route', async () => {
+    const view = render(activeSessionTree('ayah', true));
+
+    await waitFor(() => {
+      expect(view.getByTestId('host-playback').textContent).toBe('1:7:playing');
+    });
+    expect(view.queryByText('تلاوة القرآن')).toBeNull();
+    expect(view.queryByLabelText('Pause Quran')).toBeNull();
+    expect(view.queryByLabelText('Stop Quran')).toBeNull();
+
+    view.rerender(activeSessionTree('ayah', false));
+
+    await waitFor(() => {
+      expect(view.getByText('تلاوة القرآن')).not.toBeNull();
+      expect(view.getByLabelText('Pause Quran')).not.toBeNull();
+      expect(view.getByLabelText('Stop Quran')).not.toBeNull();
+    });
   });
 
   it('preserves one audio element and its position through route and visibility changes', async () => {

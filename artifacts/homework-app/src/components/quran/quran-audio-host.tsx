@@ -45,6 +45,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
   const [playback, setPlayback] = useState<QuranAudioPlaybackState>({
     active: false, isPlaying: false, surahNumber: null, ayahNumber: null,
   });
+  const [controllerAttached, setControllerAttachedState] = useState(false);
   const sessionRef = useRef<QuranAudioSession | null>(null);
   const sourceEpochRef = useRef(0);
   const transitionIdRef = useRef(0);
@@ -54,9 +55,12 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
   const setSession = useCallback((session: QuranAudioSession | null) => {
     sessionRef.current = session;
   }, []);
-  // Kept as a compatibility no-op for older adapters.  The host is always
-  // the sole owner of media events; controllers must not arbitrate events.
-  const setControllerAttached = useCallback((_attached: boolean) => undefined, []);
+  // The host still owns the audio element and media events. This flag only
+  // suppresses its floating fallback controls while the full reader controls
+  // are mounted, including when the reader is embedded under a non-Quran URL.
+  const setControllerAttached = useCallback((attached: boolean) => {
+    setControllerAttachedState(attached);
+  }, []);
   const advanceBoundary = useCallback(async () => {
     const audio = audioRef.current;
     const session = sessionRef.current;
@@ -237,7 +241,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
     <QuranAudioHostContext.Provider value={{ audioRef, playback, setPlayback, setSession, setControllerAttached, advanceBoundary }}>
       {children}
       <audio ref={audioRef} className="hidden" aria-hidden="true" />
-      {playback.active && !isQuranRoute && (
+      {playback.active && !isQuranRoute && !controllerAttached && (
         <div className="fixed inset-x-3 bottom-3 z-[70] mx-auto flex max-w-md items-center gap-2 rounded-2xl border border-emerald-200/70 bg-background/95 p-3 shadow-2xl backdrop-blur-xl dark:border-emerald-900/60">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-black text-foreground">
