@@ -78,6 +78,7 @@ vi.mock('@workspace/api-client-react', () => ({
 }));
 
 import { QuranAudioPlayer } from './quran-audio-player';
+import { QuranAudioHostProvider } from './quran-audio-host';
 
 const connectedFirst: TimingResult = {
   synchronized: true,
@@ -98,17 +99,19 @@ const connectedSecond: TimingResult = {
 function PlayerHarness() {
   const [playingAyah, setPlayingAyah] = useState<number | null>(1);
   return (
-    <QuranAudioPlayer
-      surahs={[{ ayahs: [{}, {}] }] as never}
-      surahNumber={1}
-      startAyah={1}
-      endAyah={2}
-      selectedAyah={1}
-      playingAyah={playingAyah}
-      onPlayingAyahChange={setPlayingAyah}
-      isPlaying
-      onIsPlayingChange={vi.fn()}
-    />
+    <QuranAudioHostProvider>
+      <QuranAudioPlayer
+        surahs={[{ ayahs: [{}, {}] }] as never}
+        surahNumber={1}
+        startAyah={1}
+        endAyah={2}
+        selectedAyah={1}
+        playingAyah={playingAyah}
+        onPlayingAyahChange={setPlayingAyah}
+        isPlaying
+        onIsPlayingChange={vi.fn()}
+      />
+    </QuranAudioHostProvider>
   );
 }
 
@@ -208,5 +211,17 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(constructed[0].src).toBe('/api/quran/audio/7/1/2');
     expect(constructed[0].preload).toBe('auto');
     expect(constructed[0].load).toHaveBeenCalledTimes(1);
+  });
+
+  it('places previous on the right and next on the left in Arabic', async () => {
+    const { getByTestId } = render(<PlayerHarness />);
+
+    const controls = getByTestId('button-prev-ayah').parentElement;
+    expect(controls).not.toBeNull();
+    expect(controls).toHaveAttribute('dir', 'rtl');
+    expect(controls?.firstElementChild).toBe(getByTestId('button-prev-ayah'));
+    expect(controls?.lastElementChild).toBe(getByTestId('button-next-ayah'));
+    expect(getByTestId('button-prev-ayah').querySelector('svg')).toHaveClass('scale-x-[-1]');
+    expect(getByTestId('button-next-ayah').querySelector('svg')).toHaveClass('scale-x-[-1]');
   });
 });
