@@ -75,6 +75,30 @@ async function expectCompletePortraitPage(page: Page) {
   expect(geometry.pageBottom).toBeLessThanOrEqual(geometry.viewportBottom + 1);
 }
 
+async function expectDockDoesNotOverlapMushaf(page: Page) {
+  const geometry = await page.locator(".quran-reader-root").evaluate((root) => {
+    const main = root.querySelector<HTMLElement>(".quran-reader-main");
+    const dock = root.querySelector<HTMLElement>(".quran-reader-dock");
+    const pageElement = main?.querySelector<HTMLElement>("[data-quran-page='604']");
+    if (!main || !dock || !pageElement) throw new Error("Mushaf dock geometry is unavailable");
+    main.scrollTop = main.scrollHeight;
+    const mainRect = main.getBoundingClientRect();
+    const dockRect = dock.getBoundingClientRect();
+    const pageRect = pageElement.getBoundingClientRect();
+    return {
+      mainBottom: mainRect.bottom,
+      dockTop: dockRect.top,
+      pageBottom: pageRect.bottom,
+      scrollBottom: main.scrollTop + main.clientHeight,
+      scrollHeight: main.scrollHeight,
+    };
+  });
+
+  expect(geometry.scrollBottom).toBeGreaterThanOrEqual(geometry.scrollHeight - 1);
+  expect(geometry.pageBottom).toBeLessThanOrEqual(geometry.mainBottom + 1);
+  expect(geometry.mainBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+}
+
 async function expectFocusedLandscape(page: Page, expectedUrl: RegExp) {
   await page.setViewportSize(LANDSCAPE);
   await expect(page).toHaveURL(expectedUrl);
@@ -160,6 +184,33 @@ test.describe("mobile Mushaf rotation", () => {
     await page.setViewportSize(PORTRAIT);
     await expect(page).toHaveURL(/\/quran(?:\/1)?(?:\?.*)?$/);
     await expectCompletePortraitPage(page);
+  });
+
+  test("keeps the final ayah clear of the closed and open audio dock on a phone", async ({ page }) => {
+    await page.setViewportSize(PORTRAIT);
+    await page.goto("/quran/114?ayah=1&page=604&view=pages");
+
+    const finalPage = page.locator("[data-quran-page='604']");
+    await expect(finalPage).toBeVisible();
+    await expect(finalPage.locator(".animate-spin")).toHaveCount(0);
+    await expect(page.getByTestId("quran-bottom-dock")).toHaveCount(0);
+
+    const closedGeometry = await page.locator(".quran-reader-root").evaluate((root) => {
+      const main = root.querySelector<HTMLElement>(".quran-reader-main");
+      if (!main) throw new Error("Mushaf viewport is unavailable");
+      const rootRect = root.getBoundingClientRect();
+      const mainRect = main.getBoundingClientRect();
+      return {
+        mainBottom: mainRect.bottom,
+        rootBottom: rootRect.bottom,
+      };
+    });
+    expect(Math.abs(closedGeometry.rootBottom - closedGeometry.mainBottom)).toBeLessThanOrEqual(1);
+    await expectCompletePortraitPage(page);
+
+    await page.getByTestId("button-mobile-audio").click();
+    await expect(page.getByTestId("quran-bottom-dock")).toBeVisible();
+    await expectDockDoesNotOverlapMushaf(page);
   });
 
   test("keeps the teacher Quran Center route and hides its shell in landscape", async ({
