@@ -14,7 +14,11 @@ interface QuranMadaniPageRendererProps {
   selectedWordId?: number | null;
   playingVerseKey?: string | null;
   playingWordPosition?: number | null;
-  isAyahConcealed?: (chapterId: number, verseNumber: number) => boolean;
+  isAyahConcealed?: (
+    chapterId: number,
+    verseNumber: number,
+    wordPosition?: number | null,
+  ) => boolean;
   onVerseClick?: (selection: {
     verseKey: string;
     wordId: number | null;
@@ -238,7 +242,11 @@ export function QuranMadaniPageRenderer({
                 const isSelectedWord = selectedWordId === w.id;
                 const isPlaying = playingVerseKey && w.verseKey === playingVerseKey;
                 const isPlayingWord = isPlaying && playingWordPosition === w.position;
-                const concealed = isAyahConcealed?.(wChapter, wVerse) ?? false;
+                const concealed = isAyahConcealed?.(
+                  wChapter,
+                  wVerse,
+                  w.type === "word" ? w.position : null,
+                ) ?? false;
 
                 return (
                   <button

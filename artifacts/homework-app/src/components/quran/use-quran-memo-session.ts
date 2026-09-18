@@ -31,15 +31,32 @@ export function useQuranMemoSession(
   
   const [revealedAyahs, setRevealedAyahs] = useState<Set<string>>(new Set());
 
-  const isAyahConcealed = useCallback((surah: number, ayah: number, playingAyahNum: number | null) => {
+  const isAyahConcealed = useCallback((
+    surah: number,
+    ayah: number,
+    playingAyahNum: number | null,
+    wordPosition: number | null = null,
+  ) => {
     if (memoView === 'show') return false;
     if (surah !== surahNumber) return false;
     if (revealedAyahs.has(`${surah}:${ayah}`)) return false;
     
     if (memoView === 'progressive') {
       const progressPoint = playingAyahNum ?? (memoSession.isActive ? memoSession.rangeStart : (wardStart ?? 1));
-      if (ayah <= progressPoint) {
-         return false;
+      if (ayah < progressPoint) {
+        return false;
+      }
+      if (
+        ayah === progressPoint
+        && memoSession.rangeStart === memoSession.rangeEnd
+      ) {
+        // A guided session targets one ayah. Hide alternating words inside that
+        // ayah; otherwise the old progressive-range rule reveals it in full.
+        // Keep the ayah marker visible by treating its null position as shown.
+        return wordPosition !== null && wordPosition % 2 === 0;
+      }
+      if (ayah === progressPoint) {
+        return false;
       }
     }
     

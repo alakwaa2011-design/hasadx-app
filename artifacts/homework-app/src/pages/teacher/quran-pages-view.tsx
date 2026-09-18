@@ -828,13 +828,20 @@ export function QuranPagesView({
             selectedWordId={educationSelection?.wordId}
             playingVerseKey={playingVerseKey}
             playingWordPosition={playingWordPosition}
-            isAyahConcealed={(chapterId, verseNumber) => isAyahConcealed(chapterId, verseNumber, playingAyahNum)}
+            isAyahConcealed={(chapterId, verseNumber, wordPosition) =>
+              isAyahConcealed(chapterId, verseNumber, playingAyahNum, wordPosition)
+            }
             onVerseClick={(selection) => {
                const verseKey = selection.verseKey;
                const chapterId = Number(verseKey.split(":")[0]);
                const verseNumber = Number(verseKey.split(":")[1]);
 
-               if (isAyahConcealed(chapterId, verseNumber, playingAyahNum)) {
+               if (isAyahConcealed(
+                 chapterId,
+                 verseNumber,
+                 playingAyahNum,
+                 selection.wordPosition,
+               )) {
                  toggleReveal(chapterId, verseNumber);
                  return;
                }
