@@ -956,11 +956,22 @@
   }
 
   .quran-reader-figure {
-    width: auto !important;
-    max-width: 100% !important;
+    width: 100% !important;
+    max-width: none !important;
     height: 100dvh !important;
-    aspect-ratio: 382.677 / 547.086;
+    aspect-ratio: auto !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+  }
+
+  .quran-reader-figure .quran-madani-page {
+    width: 100% !important;
+    height: 100dvh !important;
+    aspect-ratio: auto !important;
+    border-radius: 0 !important;
+  }
+
+  .quran-reader-figure .quran-madani-page-content {
+    padding: 3dvh 8vw !important;
   }
 }
