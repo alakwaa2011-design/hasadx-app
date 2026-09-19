@@ -780,7 +780,7 @@ logical_id = "c9812786-d0a8-485b-9c77-7a923ee97b11"
 [[outputs]]
 id = "wgIFERhqZKrkF7Ao_8zyH"
 uri = "file://brand/brand-guidelines.html"
-type = "text"
+type = "html"
 title = "دليل الهوية البصرية — Brand Guidelines"
 description = "ألوان، خطوط، نسخ الشعار، قواعد الاستخدام"
 logical_id = "dbf6ad25-3436-4fc9-9d11-a8f5533ff5f2"
@@ -1751,3 +1751,17 @@ mtime_ms = 1789275816277
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/354f1681-76f1-44a5-b7d9-6f7ae707188f/9a24b96f-de61-4e33-95a5-5298990d895c"
 storage_version_token = "1789275821189838"
 content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "FdyZczNOAjvQ1zjk4A9hj"
+uri = "file://attached_assets/sadiq-alnizam-surah-114.mp3"
+type = "audio"
+title = "سورة الناس — صادق النظام"
+description = "عينة MP3 محوّلة من الرابط المرسل، مدتها نحو 48 ثانية، جاهزة لفحص الجودة قبل ربطها بقائمة المقرئين."
+logical_id = "b8eeb630-09ba-42cc-817d-a4a551bedb73"
+content_hash = "sha256:e552e3802709d3b142edb3ab751231b0f0a8fbfe6995bd020f3b4b832a7c6502"
+size = 771885
+mtime_ms = 1789782371605
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/b8eeb630-09ba-42cc-817d-a4a551bedb73/a33daa9d-d2d9-4ba9-a150-f4bb3271090a"
+storage_version_token = "1789782394142808"
+content_type = "audio/mpeg"
