@@ -1348,7 +1348,7 @@ export function QuranAudioPlayer({
 
           {/* Actions */}
           <div className="flex shrink-0 items-center justify-center gap-0.5 border-s border-border/50 ps-1 md:gap-2 md:ps-3">
-          {memoSession && (
+          {memoSession?.isActive && (
              <button
                data-testid="button-memo-options"
                onClick={() => setActiveTab(activeTab === 'memo' ? 'none' : 'memo')}
