@@ -974,4 +974,13 @@
   .quran-reader-figure .quran-madani-page-content {
     padding: 3dvh 8vw !important;
   }
+
+  .quran-reader-figure .quran-madani-line,
+  .quran-reader-figure .quran-madani-end {
+    font-size: min(5.2cqw, 4.8dvh) !important;
+  }
+
+  .quran-reader-figure .quran-madani-bismillah {
+    font-size: min(5.8cqw, 5.2dvh) !important;
+  }
 }
