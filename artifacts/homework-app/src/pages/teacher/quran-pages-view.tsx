@@ -185,6 +185,7 @@ export function QuranPagesView({
   const swipeStartXRef = useRef<number | null>(null);
   const swipeLastXRef = useRef<number | null>(null);
   const swipeStartYRef = useRef<number | null>(null);
+  const suppressSwipeClickRef = useRef(false);
   const readerMainRef = useRef<HTMLElement | null>(null);
   const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
@@ -691,24 +692,31 @@ export function QuranPagesView({
       swipeStartXRef.current = null;
       swipeLastXRef.current = null;
       swipeStartYRef.current = null;
+      suppressSwipeClickRef.current = false;
     };
     const onTouchStart = (event: TouchEvent) => {
-      if (pageLayout === "continuous" || event.touches.length !== 1) {
+      if (event.touches.length !== 1) {
         resetSwipe();
         return;
       }
       const target = event.target;
-      if (!(target instanceof Node) || !main.contains(target)) {
+      const isToolbarTouch = target instanceof Node && toolsHeaderRef.current?.contains(target);
+      if (isToolbarTouch) {
+        didSwipeRef.current = false;
+        suppressSwipeClickRef.current = true;
+      } else if (pageLayout === "continuous" || !(target instanceof Node) || !main.contains(target)) {
         resetSwipe();
         return;
-      }
-      const quranPage = target instanceof Element ? target.closest("[data-quran-page]") : null;
-      if (!quranPage || (target instanceof Element && target.closest("input,select,textarea"))) {
-        resetSwipe();
-        return;
+      } else {
+        const quranPage = target instanceof Element ? target.closest("[data-quran-page]") : null;
+        if (!quranPage || (target instanceof Element && target.closest("input,select,textarea"))) {
+          resetSwipe();
+          return;
+        }
+        didSwipeRef.current = false;
+        suppressSwipeClickRef.current = false;
       }
       const touch = event.touches[0];
-      didSwipeRef.current = false;
       swipeStartXRef.current = touch.clientX;
       swipeLastXRef.current = touch.clientX;
       swipeStartYRef.current = touch.clientY;
@@ -724,7 +732,9 @@ export function QuranPagesView({
     const onTouchEnd = (event: TouchEvent) => {
       const startX = swipeStartXRef.current;
       const endX = event.changedTouches[0]?.clientX ?? swipeLastXRef.current;
+      const suppressClick = suppressSwipeClickRef.current;
       resetSwipe();
+      if (suppressClick) return;
       if (startX === null || endX === null) return;
       const movement = endX - startX;
       if (movement > 50) {

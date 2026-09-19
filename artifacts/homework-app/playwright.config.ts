@@ -129,6 +129,14 @@ export default defineConfig({
         ...webkitLaunchOptions,
       },
     },
+    {
+      name: "iphone-webkit-quran-swipe",
+      testMatch: /quran-page-swipe\.spec\.ts/,
+      use: {
+        ...devices["iPhone 13"],
+        ...webkitLaunchOptions,
+      },
+    },
     // Escape setup owns database-backed fixtures, so its two viewports run in
     // dedicated projects rather than sharing a worker with legacy specs that
     // close their own database pool during cleanup.
