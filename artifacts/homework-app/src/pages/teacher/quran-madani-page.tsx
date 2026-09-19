@@ -208,7 +208,7 @@ export function QuranMadaniPageRenderer({
                   style={{ fontFamily: "'qcf-v2-bismillah', sans-serif" }}
                   translate="no"
                 >
-                  ﱁﱂﱃﱄ
+                  ﱁ ﱂ ﱃ ﱄ
                 </span>
               </div>
             );

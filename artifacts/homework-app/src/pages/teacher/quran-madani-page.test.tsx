@@ -68,7 +68,7 @@ describe("QuranMadaniPageRenderer", () => {
     await waitFor(() => {
       const bismillah = screen.getByLabelText("بسم الله الرحمن الرحيم");
       expect(bismillah).toBeTruthy();
-      expect(bismillah.textContent).toBe("ﱁﱂﱃﱄ");
+      expect(bismillah.textContent).toBe("ﱁ ﱂ ﱃ ﱄ");
       expect((bismillah.firstElementChild as HTMLElement).style.fontFamily)
         .toContain("qcf-v2-bismillah");
     });
