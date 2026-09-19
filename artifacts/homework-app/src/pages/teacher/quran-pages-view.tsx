@@ -172,6 +172,8 @@ export function QuranPagesView({
   const [guidedRecitationRevealed, setGuidedRecitationRevealed] = useState(false);
   const guidedPanelRef = useRef<HTMLElement | null>(null);
   const [guidedPanelHeight, setGuidedPanelHeight] = useState(0);
+  const bottomDockRef = useRef<HTMLDivElement | null>(null);
+  const [bottomDockHeight, setBottomDockHeight] = useState(0);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
@@ -397,6 +399,26 @@ export function QuranPagesView({
       };
     });
   }, [chapters, verses]);
+
+  const bottomDockVisible = !quietMode
+    && Boolean(
+      educationSelection
+      || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0),
+    );
+
+  useEffect(() => {
+    const dock = bottomDockRef.current;
+    if (!bottomDockVisible || !dock) {
+      setBottomDockHeight(0);
+      return;
+    }
+    const updateHeight = () => setBottomDockHeight(dock.getBoundingClientRect().height);
+    updateHeight();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(dock);
+    return () => observer.disconnect();
+  }, [bottomDockVisible, educationSelection, audioDockOpen, isPlaying]);
 
   const fallbackVerse = useMemo(() => {
     return verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId) ||
@@ -1490,10 +1512,20 @@ export function QuranPagesView({
             }}
           />
         )}
+        {bottomDockHeight > 0 && (
+          <div
+            aria-hidden="true"
+            className="quran-dock-scroll-reserve hidden w-full shrink-0 max-md:block"
+            style={{
+              height: `calc(${bottomDockHeight}px + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
+            }}
+          />
+        )}
       </main>
 
-      {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
+      {bottomDockVisible && (
         <div
+          ref={bottomDockRef}
           className="quran-reader-dock relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col overflow-visible rounded-t-[22px] bg-[#fbfaf6] shadow-[0_-10px_34px_rgba(34,87,57,0.12)] ring-1 ring-emerald-950/10 dark:bg-[#111512] md:max-h-[58dvh] md:rounded-none"
           data-testid="quran-bottom-dock"
         >
