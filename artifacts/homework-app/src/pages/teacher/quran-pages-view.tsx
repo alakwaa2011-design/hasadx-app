@@ -1440,20 +1440,6 @@ export function QuranPagesView({
           </div>
         )}
 
-        {!quietMode && educationHidden && (
-          <div className="flex w-full justify-center py-1.5">
-            <button
-              type="button"
-              onClick={showEducation}
-              data-testid="button-show-quran-education"
-              className="rounded-full border border-emerald-900/15 bg-white/70 px-4 py-1.5 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-50 dark:border-white/10 dark:bg-card/70 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
-              aria-label={lang === "ar" ? "إظهار التفسير" : "Show tafsir"}
-            >
-              {lang === "ar" ? "تفسير" : "Tafsir"}
-            </button>
-          </div>
-        )}
-
         <nav
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
@@ -1526,6 +1512,8 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
+                showTafsirRestore={educationHidden}
+                onShowTafsir={showEducation}
                 onAudibleAyahChange={(audibleSurah, ayahNum) => {
                   if (ayahNum === null) {
                     setAudibleVerseKey(null);

@@ -81,6 +81,8 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
     onIsPlayingChange,
     onPlaybackLocationChange,
     onClose,
+    showTafsirRestore,
+    onShowTafsir,
   }: {
     selectedAyah: number;
     onPlayingAyahChange: (ayah: number) => void;
@@ -88,6 +90,8 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
     onIsPlayingChange: (playing: boolean) => void;
     onPlaybackLocationChange: (surah: number, ayah: number) => void;
     onClose: () => void;
+    showTafsirRestore?: boolean;
+    onShowTafsir?: () => void;
   }) => (
     <div>
       <button
@@ -119,6 +123,11 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
       <button type="button" onClick={onClose}>
         إغلاق المشغل
       </button>
+      {showTafsirRestore && (
+        <button type="button" aria-label="إظهار التفسير" onClick={onShowTafsir}>
+          تفسير
+        </button>
+      )}
     </div>
   ),
 }));
