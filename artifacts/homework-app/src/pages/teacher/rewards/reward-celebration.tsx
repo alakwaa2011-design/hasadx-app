@@ -23,6 +23,30 @@ export interface RewardCelebrationData {
   mode?: "full" | "live";
 }
 
+export function getRewardAvatarFallback(name: string): string {
+  return Array.from(name.trim())[0] || "•";
+}
+
+export function CelebrationAvatar({
+  student,
+  mode,
+}: {
+  student: RewardCelebrationStudent;
+  mode: "full" | "live";
+}) {
+  const isFull = mode === "full";
+  return (
+    <AvatarDisplay
+      avatar={student.avatar}
+      fallback={getRewardAvatarFallback(student.name)}
+      size={isFull ? "4xl" : "lg"}
+      className={isFull
+        ? "h-32 w-32 rounded-full border-[6px] border-white bg-gradient-to-br from-emerald-100 to-amber-100 object-cover object-top font-black text-5xl text-emerald-900 shadow-2xl"
+        : "h-12 w-12 rounded-full border-2 border-emerald-900 bg-gradient-to-br from-emerald-100 to-amber-100 font-black text-xl text-emerald-900"}
+    />
+  );
+}
+
 export function RewardCelebration({
   celebration,
   onComplete,
@@ -69,7 +93,7 @@ export function RewardCelebration({
               <AvatarDisplay avatar={celebration.groupAvatar} fallback={celebration.groupName?.charAt(0) || "G"} size="lg" className="h-12 w-12 border-2 border-emerald-900 rounded-xl" />
             ) : (
               visibleStudents.map((s) => (
-                <AvatarDisplay key={s.id} avatar={s.avatar} fallback={s.name.charAt(0)} size="lg" className="h-12 w-12 border-2 border-emerald-900 rounded-full" />
+                <CelebrationAvatar key={s.id} student={s} mode="live" />
               ))
             )}
           </div>
@@ -159,12 +183,7 @@ export function RewardCelebration({
                     animate={reduceMotion ? undefined : { y: [0, -10, 0] }}
                     transition={{ duration: 1.2, delay: 0.9 + index * 0.15, repeat: Infinity, ease: "easeInOut" }}
                   >
-                    <AvatarDisplay
-                      avatar={student.avatar}
-                      fallback={student.name.charAt(0)}
-                      size="4xl"
-                      className="h-32 w-32 border-[6px] border-white bg-amber-50 object-cover object-top shadow-2xl"
-                    />
+                    <CelebrationAvatar student={student} mode="full" />
                   </motion.div>
                 </motion.div>
               ))}

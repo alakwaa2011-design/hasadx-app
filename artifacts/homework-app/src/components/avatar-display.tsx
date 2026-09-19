@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { isAvatarUrl } from "@/lib/avatars";
 import { cn } from "@/lib/utils";
 
@@ -29,13 +30,16 @@ export function AvatarDisplay({
 }) {
   const value = avatar || fallback;
   const sz = sizeClasses[size];
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+  const showImage = isAvatarUrl(value) && failedAvatar !== value;
 
-  if (isAvatarUrl(value)) {
+  if (showImage) {
     return (
       <img
         src={value}
         alt=""
         loading="lazy"
+        onError={() => setFailedAvatar(value)}
         className={cn(
           sz.box,
           "rounded-full object-cover bg-white/10 border border-white/20 shrink-0 inline-block",
@@ -55,7 +59,7 @@ export function AvatarDisplay({
       )}
       style={style}
     >
-      {value}
+      {fallback}
     </span>
   );
 }
