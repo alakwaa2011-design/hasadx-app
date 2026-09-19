@@ -134,7 +134,7 @@
 - [Pending recitation release gates](pending-recitation-release-gates.md) — unverified custom reciters may appear only to reader sessions; gate catalogs, timing, and direct audio routes together.
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
-- [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait fills available space; short landscape shows a centered two-page spread without stretching QCF rows.
+- [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait stays interactive; short landscape shows one full-screen original Mushaf page, never a spread or reflow.
 - [Quran safe-area testing](quran-safe-area-testing.md) — managed Chromium lacks CDP safe-area emulation; use the reader's CSS variable seam in browser tests.
 - [Quran E2E audio routing](quran-e2e-audio-routing.md) — block Service Workers in reader contexts or Playwright audio mocks may miss direct timing requests.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.

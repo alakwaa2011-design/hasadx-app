@@ -307,7 +307,7 @@ export function QuranPagesView({
           if (preLandscapeLayoutRef.current === null) {
             preLandscapeLayoutRef.current = current;
           }
-          return "spread";
+          return "single";
         });
         return;
       }
@@ -935,7 +935,20 @@ export function QuranPagesView({
             </button>
           </div>
         ) : (
-          <QuranMadaniPageRenderer
+          <>
+            <img
+              src={pageImageUrl(page)}
+              alt={lang === "ar" ? `صفحة المصحف رقم ${page}` : `Mushaf page ${page}`}
+              className="quran-landscape-page-image hidden"
+              loading="eager"
+              decoding="async"
+              draggable={false}
+              onError={() =>
+                setFailedPages((current) => new Set(current).add(page))
+              }
+            />
+            <div className="quran-interactive-page contents">
+              <QuranMadaniPageRenderer
             pageNumber={page}
             isLastVerse={(chapterId, verseNumber) => {
               return !verses.some(
@@ -995,7 +1008,9 @@ export function QuranPagesView({
               setIsPlaying(true);
               setAudioDockOpen(true);
             }}
-          />
+              />
+            </div>
+          </>
         )}
       </figure>
     );
@@ -1467,7 +1482,6 @@ export function QuranPagesView({
             key={`${pageLayout}:${activePage}`}
             className={cn(
               "quran-page-shell quran-page-shell--paged mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
-              pageLayout === "spread" && "quran-page-shell--spread",
               pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
               turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
             )}
@@ -1480,10 +1494,10 @@ export function QuranPagesView({
           >
             {pageLayout === "spread" ? (
               <>
-                <div className="quran-spread-page quran-spread-page--right hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
-                <div className="quran-single-page h-full lg:hidden">{renderPage(activePage, "single")}</div>
+                <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
+                <div className="h-full lg:hidden">{renderPage(activePage, "single")}</div>
                 {visiblePages.left !== null && (
-                  <div className="quran-spread-page quran-spread-page--left hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
+                  <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
                 )}
               </>
             ) : (
