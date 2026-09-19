@@ -225,7 +225,7 @@ describe("Quran Foundation client", () => {
       .resolves.toMatchObject({
         recitationId: SADIQ_ALNIZAM_RECITATION_ID,
         verseKey: "114:3",
-        audioUrl: "/api/storage/objects/uploads/633f1cc9-10f4-4b70-abb2-e2443ff5cd3a.mp3",
+        audioUrl: "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3",
         verseStartMs: 11_680,
         verseEndMs: 15_920,
         synchronized: true,
@@ -233,7 +233,7 @@ describe("Quran Foundation client", () => {
     await expect(getQuranFoundationAyahTimings(SADIQ_ALNIZAM_RECITATION_ID, 113, 1))
       .rejects.toThrow("timing mapping is unavailable");
     await expect(getQuranFoundationAudioUrl(SADIQ_ALNIZAM_RECITATION_ID, 114, 1))
-      .resolves.toBe("/api/storage/objects/uploads/633f1cc9-10f4-4b70-abb2-e2443ff5cd3a.mp3");
+      .resolves.toBe("/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3");
   });
 
   it("resolves only the exact official word-by-word audio path", async () => {

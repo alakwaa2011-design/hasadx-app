@@ -18,7 +18,7 @@ const MAHER_AL_MUAIQLY_RECITATION_ID = 1_000_159;
 const MAHER_AL_MUAIQLY_AUDIO_BASE_URL = "https://everyayah.com/data/MaherAlMuaiqly128kbps";
 export const SADIQ_ALNIZAM_RECITATION_ID = 2_000_114;
 const SADIQ_ALNIZAM_AUDIO_URL =
-  "/api/storage/objects/uploads/633f1cc9-10f4-4b70-abb2-e2443ff5cd3a.mp3";
+  "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3";
 const SADIQ_ALNIZAM_TIMINGS = Object.freeze([
   { ayahNumber: 1, verseStartMs: 286, verseEndMs: 7_420 },
   { ayahNumber: 2, verseStartMs: 7_420, verseEndMs: 11_680 },
