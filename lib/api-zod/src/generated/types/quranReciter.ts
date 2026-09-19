@@ -13,4 +13,6 @@ export interface QuranReciter {
   name: string;
   /** @nullable */
   style: string | null;
+  /** False for a catalog entry awaiting rights and playback verification. */
+  available?: boolean;
 }

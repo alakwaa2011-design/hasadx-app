@@ -131,6 +131,7 @@
 - [Quran continuous audio handoff](quran-continuous-audio-handoff.md) — zero-pause recitation must keep chapter audio mounted and advance with prefetched timings; ayah files preload the next source.
 - [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — component tests need explicit cleanup and native DOM assertions; wrap audio consumers in their real provider.
 - [Public Quran delivery](public-quran-delivery.md) — ship the anonymous reader as an isolated /quran experience first; create a separate artifact only after shared Quran libraries exist.
+- [Pending recitation release gates](pending-recitation-release-gates.md) — unverified custom reciters may appear only to reader sessions; gate catalogs, timing, and direct audio routes together.
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
 - [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — embedded portrait subtracts the site header; short landscape hides every outer shell and fits one complete page.

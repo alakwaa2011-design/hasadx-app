@@ -16,6 +16,17 @@ const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
 const MAHER_AL_MUAIQLY_RECITATION_ID = 1_000_159;
 const MAHER_AL_MUAIQLY_AUDIO_BASE_URL = "https://everyayah.com/data/MaherAlMuaiqly128kbps";
+export const SADIQ_ALNIZAM_RECITATION_ID = 2_000_114;
+const SADIQ_ALNIZAM_AUDIO_URL =
+  "/api/storage/objects/uploads/633f1cc9-10f4-4b70-abb2-e2443ff5cd3a.mp3";
+const SADIQ_ALNIZAM_TIMINGS = Object.freeze([
+  { ayahNumber: 1, verseStartMs: 286, verseEndMs: 7_420 },
+  { ayahNumber: 2, verseStartMs: 7_420, verseEndMs: 11_680 },
+  { ayahNumber: 3, verseStartMs: 11_680, verseEndMs: 15_920 },
+  { ayahNumber: 4, verseStartMs: 15_920, verseEndMs: 25_720 },
+  { ayahNumber: 5, verseStartMs: 25_720, verseEndMs: 35_690 },
+  { ayahNumber: 6, verseStartMs: 35_690, verseEndMs: 42_280 },
+] as const);
 const TRUSTED_AUDIO_ORIGINS = new Set([
   VERSE_AUDIO_BASE_URL,
   "https://download.quranicaudio.com",
@@ -61,6 +72,7 @@ export type QuranFoundationReciter = {
   id: number;
   name: string;
   style: string | null;
+  available?: boolean;
 };
 
 export type QuranFoundationTimingSegment = {
@@ -289,6 +301,7 @@ function normalizeRecitationCatalog(payload: unknown): QuranFoundationReciter[] 
       id: value.id as number,
       name,
       style: typeof value.style === "string" && value.style.trim() ? value.style.trim() : null,
+      available: true,
     };
   });
   if (normalized.length < 1 || new Set(normalized.map((reciter) => reciter.id)).size !== normalized.length) {
@@ -354,6 +367,12 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
       selected.set(key, normalized);
     }
   }
+  selected.set("صادق النظام:Murattal", {
+    id: SADIQ_ALNIZAM_RECITATION_ID,
+    name: "صادق النظام",
+    style: "Murattal",
+    available: false,
+  });
   return [...selected.values()].sort((left, right) =>
     left.name.localeCompare(right.name, "ar")
     || (left.style ?? "").localeCompare(right.style ?? "", "en"));
@@ -525,6 +544,22 @@ export async function getQuranFoundationAyahTimings(
 ): Promise<QuranFoundationAyahTimings> {
   if (!Number.isInteger(recitationId) || recitationId < 1) throw new Error("Invalid Quran Foundation recitation");
   validateVerseNumbers(surahNumber, ayahNumber);
+  if (recitationId === SADIQ_ALNIZAM_RECITATION_ID) {
+    if (surahNumber !== 114) {
+      throw new Error("Quran Foundation timing mapping is unavailable");
+    }
+    const timing = SADIQ_ALNIZAM_TIMINGS.find((item) => item.ayahNumber === ayahNumber);
+    if (!timing) throw new Error("Quran Foundation verse timings are unavailable");
+    return Object.freeze({
+      recitationId,
+      verseKey: `${surahNumber}:${ayahNumber}`,
+      audioUrl: SADIQ_ALNIZAM_AUDIO_URL,
+      verseStartMs: timing.verseStartMs,
+      verseEndMs: timing.verseEndMs,
+      segments: Object.freeze([]),
+      synchronized: true,
+    });
+  }
   if (recitationId === MAHER_AL_MUAIQLY_RECITATION_ID) {
     throw new Error("Maher Al-Muaiqly standard recitation uses ayah-scoped playback");
   }
@@ -758,6 +793,13 @@ export async function getQuranFoundationAudioUrl(
 ): Promise<string> {
   if (!Number.isInteger(recitationId) || recitationId < 1) {
     throw new Error("Invalid Quran Foundation recitation");
+  }
+  if (recitationId === SADIQ_ALNIZAM_RECITATION_ID) {
+    validateVerseNumbers(surahNumber, ayahNumber);
+    if (surahNumber !== 114) {
+      throw new Error("Quran Foundation audio mapping is unavailable");
+    }
+    return SADIQ_ALNIZAM_AUDIO_URL;
   }
   const reciters = await listQuranFoundationReciters();
   if (!reciters.some((reciter) => reciter.id === recitationId)) {

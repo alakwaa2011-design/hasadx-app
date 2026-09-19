@@ -163,6 +163,8 @@ export function QuranAudioPlayer({
 
   useEffect(() => {
     if (recitationId !== null || !reciterCatalog.data?.reciters.length) return;
+    const availableReciters = reciterCatalog.data.reciters.filter((item) => item.available !== false);
+    if (availableReciters.length === 0) return;
     let locallyPreferred: number | null = null;
     if (preferenceStorage === 'local') {
       try {
@@ -172,11 +174,14 @@ export function QuranAudioPlayer({
       }
     }
     setRecitationId(
-      (locallyPreferred && reciterCatalog.data.reciters.some((item) => item.id === locallyPreferred)
+      (locallyPreferred && availableReciters.some((item) => item.id === locallyPreferred)
         ? locallyPreferred
         : null)
-      ?? (preferenceStorage === 'server' ? reciterCatalog.data.preferredRecitationId : null)
-      ?? reciterCatalog.data.reciters[0].id,
+      ?? (preferenceStorage === 'server'
+        && availableReciters.some((item) => item.id === reciterCatalog.data?.preferredRecitationId)
+        ? reciterCatalog.data.preferredRecitationId
+        : null)
+      ?? availableReciters[0].id,
     );
   }, [preferenceStorage, recitationId, reciterCatalog.data]);
 
@@ -881,6 +886,8 @@ export function QuranAudioPlayer({
 
   const selectReciter = async (nextRecitationId: number) => {
     if (nextRecitationId === recitationId) return;
+    const nextReciter = reciterCatalog.data?.reciters.find((item) => item.id === nextRecitationId);
+    if (!nextReciter || nextReciter.available === false) return;
     const previousRecitationId = recitationId;
     setRecitationId(nextRecitationId);
     setError(false);
@@ -1058,7 +1065,7 @@ export function QuranAudioPlayer({
                              <button
                                data-testid={`button-reciter-${onlyRecording.id}`}
                                onClick={() => selectReciter(onlyRecording.id)}
-                               disabled={savePreference.isPending}
+                               disabled={savePreference.isPending || onlyRecording.available === false}
                                className={cn(
                                   "w-full flex items-center justify-between p-2 rounded-md text-xs font-bold transition-all",
                                   onlyRecording.id === recitationId ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "hover:bg-muted text-foreground"
@@ -1076,7 +1083,7 @@ export function QuranAudioPlayer({
                                         key={item.id}
                                         data-testid={`button-reciter-${item.id}`}
                                         onClick={() => selectReciter(item.id)}
-                                        disabled={savePreference.isPending}
+                                        disabled={savePreference.isPending || item.available === false}
                                         className={cn(
                                            "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all border",
                                            item.id === recitationId
@@ -1085,6 +1092,11 @@ export function QuranAudioPlayer({
                                         )}
                                       >
                                         {recitationStyleLabel(item.style ?? null, isArabic) ?? (isArabic ? 'تلاوة' : 'Recitation')}
+                                        {item.available === false && (
+                                          <span className="ms-1 text-[9px] text-amber-600 dark:text-amber-400">
+                                            {isArabic ? 'قيد التحقق' : 'Pending review'}
+                                          </span>
+                                        )}
                                         {savePreference.isPending && item.id === recitationId && <Loader2 className="inline-block w-3 h-3 animate-spin ml-1 rtl:mr-1 rtl:ml-0" />}
                                       </button>
                                    ))}

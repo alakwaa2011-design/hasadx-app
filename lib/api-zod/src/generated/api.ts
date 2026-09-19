@@ -4521,7 +4521,8 @@ export const ListQuranRecitersResponse = zod.object({
   "reciters": zod.array(zod.object({
   "id": zod.int().min(1),
   "name": zod.string().min(1),
-  "style": zod.string().nullable()
+  "style": zod.string().nullable(),
+  "available": zod.boolean().optional().describe('False for a catalog entry awaiting rights and playback verification.')
 })).min(1),
   "preferredRecitationId": zod.int().min(1).nullable()
 })
@@ -4677,7 +4678,7 @@ export const GetQuranAyahTimingsParams = zod.object({
 
 
 export const getQuranAyahTimingsResponseVerseKeyRegExp = new RegExp('^\\d{1,3}:\\d{1,3}$');
-export const getQuranAyahTimingsResponseAudioUrlRegExp = new RegExp('^https://(verses\\.quran\\.foundation|download\\.quranicaudio\\.com|audio\\.qurancdn\\.com)/.+');
+export const getQuranAyahTimingsResponseAudioUrlRegExp = new RegExp('^(?:https://(verses\\.quran\\.foundation|download\\.quranicaudio\\.com|audio\\.qurancdn\\.com)/.+|/api/storage/objects/.+)');
 export const getQuranAyahTimingsResponseVerseStartMsMin = 0;
 
 export const getQuranAyahTimingsResponseVerseEndMsExclusiveMin = 0;

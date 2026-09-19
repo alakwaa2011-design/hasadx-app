@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 
-const { getTimings } = vi.hoisted(() => ({ getTimings: vi.fn() }));
+const { getTimings, getDisplayReciters } = vi.hoisted(() => ({
+  getTimings: vi.fn(),
+  getDisplayReciters: vi.fn(),
+}));
 vi.mock("../lib/quran-foundation-client", () => ({
   getQuranFoundationAyahTimings: getTimings,
   getQuranFoundationAudioUrl: vi.fn(),
@@ -11,6 +14,8 @@ vi.mock("../lib/quran-foundation-client", () => ({
   getQuranFoundationAyahEducation: vi.fn(),
   listQuranFoundationSurahs: vi.fn(),
   listQuranFoundationReciters: vi.fn(),
+  listQuranFoundationDisplayReciters: getDisplayReciters,
+  SADIQ_ALNIZAM_RECITATION_ID: 2_000_114,
 }));
 
 import quranRouter from "../routes/quran";
@@ -29,12 +34,31 @@ function app(session: { teacherId?: number; studentAccountId?: number } = { teac
 describe("Quran ayah timings route", () => {
   beforeEach(() => {
     getTimings.mockReset();
+    getDisplayReciters.mockReset();
+    getDisplayReciters.mockResolvedValue([
+      { id: 7, name: "Verified", style: "Murattal", available: true },
+      { id: 2_000_114, name: "صادق النظام", style: "Murattal", available: false },
+    ]);
     getTimings.mockResolvedValue({
       recitationId: 1, verseKey: "1:1",
       audioUrl: "https://verses.quran.foundation/chapter.mp3", verseStartMs: 0, verseEndMs: 100,
       segments: [{ wordPosition: 1, startMs: 0, endMs: 100 }],
       synchronized: true,
     });
+  });
+
+  it("does not expose an unverified sample recitation to anonymous readers", async () => {
+    const response = await request(app({})).get("/api/quran/reciters");
+    expect(response.status).toBe(200);
+    expect(response.body.reciters).toEqual([
+      { id: 7, name: "Verified", style: "Murattal", available: true },
+    ]);
+  });
+
+  it("does not serve unverified sample timings to anonymous readers even by ID", async () => {
+    const response = await request(app({})).get("/api/quran/audio/2000114/114/3/timings");
+    expect(response.status).toBe(404);
+    expect(getTimings).not.toHaveBeenCalled();
   });
 
   it("allows anonymous readers to load verified timings", async () => {

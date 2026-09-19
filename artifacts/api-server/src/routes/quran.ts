@@ -124,6 +124,7 @@ import {
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
+  SADIQ_ALNIZAM_RECITATION_ID,
 } from "../lib/quran-foundation-client";
 import { rejectStudentLiveRecitation } from "../lib/quran-live-recitation-access";
 
@@ -460,7 +461,7 @@ router.get("/quran/surahs", async (req, res): Promise<void> => {
 
 router.get("/quran/reciters", async (req, res): Promise<void> => {
   try {
-    const [reciters, preference] = await Promise.all([
+    const [catalog, preference] = await Promise.all([
       listQuranFoundationDisplayReciters(),
       studentAccountIdOf(req) !== null
         ? db.select({ preferredRecitationId: studentAccountsTable.preferredQuranRecitationId })
@@ -474,6 +475,7 @@ router.get("/quran/reciters", async (req, res): Promise<void> => {
             .limit(1)
           : Promise.resolve([]),
     ]);
+    const reciters = catalog.filter((reciter) => reciter.available !== false || hasQuranReaderSession(req));
     const preferredRecitationId = preference[0]?.preferredRecitationId ?? null;
     res.json(ListQuranRecitersResponse.parse({
       reciters,
@@ -501,7 +503,7 @@ router.patch("/quran/audio-preference", async (req, res): Promise<void> => {
   }
   try {
     const reciters = await listQuranFoundationReciters();
-    if (!reciters.some((reciter) => reciter.id === parsed.data.recitationId)) {
+    if (!reciters.some((reciter) => reciter.id === parsed.data.recitationId && reciter.available !== false)) {
       parseError(res, "Recitation is not in the trusted Quran Foundation catalog");
       return;
     }
@@ -694,6 +696,10 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
     res.status(400).json({ error: "Invalid recitation or verse" });
     return;
   }
+  if (parsed.data.recitationId === SADIQ_ALNIZAM_RECITATION_ID && !hasQuranReaderSession(req)) {
+    res.status(404).json({ error: "Quran audio is unavailable" });
+    return;
+  }
   const surah = QURAN_SURAHS[parsed.data.surahNumber - 1];
   if (!surah || parsed.data.ayahNumber > surah.ayahCount) {
     res.status(400).json({ error: "Ayah is outside the surah" });
@@ -747,6 +753,10 @@ router.get(
   });
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid recitation or verse" });
+    return;
+  }
+  if (parsed.data.recitationId === SADIQ_ALNIZAM_RECITATION_ID && !hasQuranReaderSession(req)) {
+    res.status(404).json({ error: "Verified Quran timing data is unavailable" });
     return;
   }
   const surah = QURAN_SURAHS[parsed.data.surahNumber - 1];

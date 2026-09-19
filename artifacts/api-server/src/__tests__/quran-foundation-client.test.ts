@@ -9,6 +9,7 @@ import {
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
+  SADIQ_ALNIZAM_RECITATION_ID,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
 import qcfPageOneFixture from "./fixtures/qcf-v2-page-1.json";
@@ -204,6 +205,7 @@ describe("Quran Foundation client", () => {
     const display = await listQuranFoundationDisplayReciters();
 
     expect(display.map(({ id, style }) => ({ id, style }))).toEqual([
+      { id: SADIQ_ALNIZAM_RECITATION_ID, style: "Murattal" },
       { id: 1, style: "Mujawwad" },
       { id: 2, style: "Murattal" },
       { id: 1_000_168, style: "Kids repeat" },
@@ -212,6 +214,26 @@ describe("Quran Foundation client", () => {
       { id: 1_000_006, style: "Murattal" },
     ]);
     expect(display.some((item) => item.style === "Muallim")).toBe(false);
+    expect(display.find((item) => item.id === SADIQ_ALNIZAM_RECITATION_ID)).toMatchObject({
+      name: "صادق النظام",
+      available: false,
+    });
+  });
+
+  it("keeps the Sadiq Al-Nizam sample behind the verified-surah timing contract", async () => {
+    await expect(getQuranFoundationAyahTimings(SADIQ_ALNIZAM_RECITATION_ID, 114, 3))
+      .resolves.toMatchObject({
+        recitationId: SADIQ_ALNIZAM_RECITATION_ID,
+        verseKey: "114:3",
+        audioUrl: "/api/storage/objects/uploads/633f1cc9-10f4-4b70-abb2-e2443ff5cd3a.mp3",
+        verseStartMs: 11_680,
+        verseEndMs: 15_920,
+        synchronized: true,
+      });
+    await expect(getQuranFoundationAyahTimings(SADIQ_ALNIZAM_RECITATION_ID, 113, 1))
+      .rejects.toThrow("timing mapping is unavailable");
+    await expect(getQuranFoundationAudioUrl(SADIQ_ALNIZAM_RECITATION_ID, 114, 1))
+      .resolves.toBe("/api/storage/objects/uploads/633f1cc9-10f4-4b70-abb2-e2443ff5cd3a.mp3");
   });
 
   it("resolves only the exact official word-by-word audio path", async () => {

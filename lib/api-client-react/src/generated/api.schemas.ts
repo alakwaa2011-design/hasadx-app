@@ -129,6 +129,8 @@ export interface QuranReciter {
   name: string;
   /** @nullable */
   style: string | null;
+  /** False for a catalog entry awaiting rights and playback verification. */
+  available?: boolean;
 }
 
 export interface QuranReciterCatalog {
@@ -333,7 +335,7 @@ export interface QuranAyahTimings {
   recitationId: number;
   /** @pattern ^\d{1,3}:\d{1,3}$ */
   verseKey: string;
-  /** @pattern ^https://(verses\.quran\.foundation|download\.quranicaudio\.com|audio\.qurancdn\.com)/.+ */
+  /** @pattern ^(?:https://(verses\.quran\.foundation|download\.quranicaudio\.com|audio\.qurancdn\.com)/.+|/api/storage/objects/.+) */
   audioUrl: string;
   /** @minimum 0 */
   verseStartMs: number;

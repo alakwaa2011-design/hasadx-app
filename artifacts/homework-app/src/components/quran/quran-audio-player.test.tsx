@@ -223,6 +223,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     cachedNextTiming = connectedSecond;
     timingResults.set(2, { data: connectedSecond });
     const { view, audio } = await renderAtBoundary();
+
+    const { audio } = await renderAtBoundary();
     pause.mockClear();
 
     fireEvent.timeUpdate(audio);
@@ -242,18 +244,30 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
       },
     });
     const { view, audio } = await renderAtBoundary();
-    Object.defineProperty(audio, 'currentTime', { value: 9, writable: true });
 
-    fireEvent.click(view.getByTestId('button-restart-ayah'));
+    const { audio } = await renderAtBoundary();
 
-    expect(audio.currentTime).toBe(0.25);
-    expect(play).toHaveBeenCalled();
+    fireEvent.timeUpdate(audio);
+    expect(fetchQuery).toHaveBeenCalledTimes(1);
+
+    timingResults.set(2, { data: connectedSecond });
+    fireEvent.click(view.getByTestId('button-next-ayah'));
+    await waitFor(() => expect(view.getByTestId('playing-ayah').textContent).toBe('2'));
+    await waitFor(() => expect(pause).toHaveBeenCalled());
+    pause.mockClear();
+
+    await act(async () => resolveTiming(connectedSecond));
+
+    expect(view.getByTestId('playing-ayah').textContent).toBe('2');
+    expect(pause).not.toHaveBeenCalled();
   });
 
-  it('keeps connected audio playing when next timing finishes loading at the boundary', async () => {
+  it('does not let an old timing response stop a newly selected reciter', async () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
+
+    const { audio } = await renderAtBoundary();
     pause.mockClear();
 
     fireEvent.timeUpdate(audio);
@@ -317,27 +331,9 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
       ok: true,
       json: async () => ({ audioUrl: '/next-surah.mp3' }),
     } as Response);
-    const view = render(
-      <QuranAudioHostProvider>
-        <QuranAudioPlayer
-          surahs={[
-            { ayahs: [{}, {}] },
-            { ayahs: [{}] },
-          ] as never}
-          surahNumber={1}
-          startAyah={null}
-          endAyah={null}
-          selectedAyah={2}
-          playingAyah={2}
-          onPlayingAyahChange={vi.fn()}
-          isPlaying
-          onIsPlayingChange={vi.fn()}
-          onPlaybackLocationChange={onPlaybackLocationChange}
-        />
-      </QuranAudioHostProvider>,
-    );
+    const view = render(<RepeatingPlayerHarness />);
 
-    const audio = await waitFor(() => {
+    let audio = await waitFor(() => {
       const element = view.container.querySelector('audio');
       expect(element).not.toBeNull();
       return element as HTMLAudioElement;
@@ -352,6 +348,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
+
+    const { audio } = await renderAtBoundary();
 
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
@@ -373,6 +371,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
 
+    const { audio } = await renderAtBoundary();
+
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
 
@@ -390,11 +390,20 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
 
   it('replays a synchronized ayah three times before advancing', async () => {
     const view = render(<RepeatingPlayerHarness />);
-    const audio = await waitFor(() => {
+    let audio = await waitFor(() => {
       const element = view.container.querySelector('audio');
       expect(element).not.toBeNull();
       return element as HTMLAudioElement;
     });
+
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 1, writable: true });
+    fireEvent.timeUpdate(audio);
+    await waitFor(() => expect(view.container.textContent).toContain('2/3'));
+    fireEvent.click(view.getByTestId('external-stop'));
+    await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent).toBe('stopped'));
+    fireEvent.click(view.getByTestId('external-play'));
+    await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent).toBe('1'));
+    audio = await waitFor(() => view.container.querySelector('audio') as HTMLAudioElement);
 
     for (let playCount = 1; playCount <= 3; playCount += 1) {
       Object.defineProperty(audio, 'currentTime', { configurable: true, value: 1, writable: true });
