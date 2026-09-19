@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import qcfV2Integrity from "../data/qcf-v2-page-integrity.json";
+import { objectStorageClient, parseObjectPath } from "./objectStorage";
 
 const OAUTH_BASE_URL = "https://oauth2.quran.foundation";
 const CONTENT_BASE_URL = "https://apis.quran.foundation";
@@ -28,18 +29,62 @@ const SADIQ_ALNIZAM_TIMINGS = Object.freeze([
   { ayahNumber: 6, verseStartMs: 42_280, verseEndMs: 48_216 },
 ] as const);
 export const ABU_BAKR_AL_DHABI_RECITATION_ID = 2_001_095;
-const ABU_BAKR_AL_DHABI_AUDIO_URL =
+const ABU_BAKR_AL_DHABI_TIN_AUDIO_URL =
   "/api/storage/objects/uploads/a1210437-e13f-4f8c-809f-0148d6028867.mp3";
-const ABU_BAKR_AL_DHABI_TIMINGS = Object.freeze([
-  { ayahNumber: 1, verseStartMs: 288, verseEndMs: 10_366 },
-  { ayahNumber: 2, verseStartMs: 10_366, verseEndMs: 14_864 },
-  { ayahNumber: 3, verseStartMs: 14_864, verseEndMs: 19_565 },
-  { ayahNumber: 4, verseStartMs: 19_565, verseEndMs: 29_521 },
-  { ayahNumber: 5, verseStartMs: 29_521, verseEndMs: 36_624 },
-  { ayahNumber: 6, verseStartMs: 36_624, verseEndMs: 47_393 },
-  { ayahNumber: 7, verseStartMs: 47_393, verseEndMs: 53_431 },
-  { ayahNumber: 8, verseStartMs: 53_431, verseEndMs: 61_727 },
-] as const);
+const ABU_BAKR_AL_DHABI_TIN_BOUNDARIES = Object.freeze([
+  288, 10_366, 14_864, 19_565, 29_521, 36_624, 47_393, 53_431, 61_727,
+]);
+const ABU_BAKR_AL_DHABI_MANIFEST_PATH =
+  "uploads/quran-recitation/abu-bakr-al-dhabi/verse-boundaries.json";
+let abuBakrAlDhabiManifestRequest:
+  Promise<Readonly<Record<string, readonly number[]>>> | null = null;
+
+async function loadAbuBakrAlDhabiManifest(): Promise<Readonly<Record<string, readonly number[]>>> {
+  if (abuBakrAlDhabiManifestRequest) return abuBakrAlDhabiManifestRequest;
+  abuBakrAlDhabiManifestRequest = (async () => {
+    const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+    if (!privateObjectDir) throw new Error("Quran Foundation timing mapping is unavailable");
+    const { bucketName, objectName } = parseObjectPath(
+      `${privateObjectDir}/${ABU_BAKR_AL_DHABI_MANIFEST_PATH}`,
+    );
+    const [buffer] = await objectStorageClient.bucket(bucketName).file(objectName).download();
+    const parsed = JSON.parse(buffer.toString("utf8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Quran Foundation verse timings are malformed");
+    }
+    return Object.freeze(parsed as Record<string, readonly number[]>);
+  })().catch((error) => {
+    abuBakrAlDhabiManifestRequest = null;
+    throw error;
+  });
+  return abuBakrAlDhabiManifestRequest;
+}
+
+function getAbuBakrAlDhabiAudioUrl(surahNumber: number): string {
+  if (surahNumber === 95) return ABU_BAKR_AL_DHABI_TIN_AUDIO_URL;
+  return `/api/storage/objects/uploads/quran-recitation/abu-bakr-al-dhabi/${String(surahNumber).padStart(3, "0")}.mp3`;
+}
+
+async function getAbuBakrAlDhabiVerseTiming(
+  surahNumber: number,
+  ayahNumber: number,
+): Promise<{ verseStartMs: number; verseEndMs: number } | null> {
+  const boundaries = surahNumber === 95
+    ? ABU_BAKR_AL_DHABI_TIN_BOUNDARIES
+    : (await loadAbuBakrAlDhabiManifest())[String(surahNumber)];
+  if (!boundaries || boundaries.length !== CANONICAL_AYAH_COUNTS[surahNumber - 1] + 1) return null;
+  const verseStartMs = boundaries[ayahNumber - 1];
+  const verseEndMs = boundaries[ayahNumber];
+  if (
+    !Number.isFinite(verseStartMs)
+    || !Number.isFinite(verseEndMs)
+    || verseStartMs < 0
+    || verseEndMs <= verseStartMs
+  ) {
+    return null;
+  }
+  return { verseStartMs, verseEndMs };
+}
 
 export function isUnverifiedQuranRecitation(recitationId: number): boolean {
   return recitationId === SADIQ_ALNIZAM_RECITATION_ID
@@ -585,15 +630,12 @@ export async function getQuranFoundationAyahTimings(
     });
   }
   if (recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID) {
-    if (surahNumber !== 95) {
-      throw new Error("Quran Foundation timing mapping is unavailable");
-    }
-    const timing = ABU_BAKR_AL_DHABI_TIMINGS.find((item) => item.ayahNumber === ayahNumber);
+    const timing = await getAbuBakrAlDhabiVerseTiming(surahNumber, ayahNumber);
     if (!timing) throw new Error("Quran Foundation verse timings are unavailable");
     return Object.freeze({
       recitationId,
       verseKey: `${surahNumber}:${ayahNumber}`,
-      audioUrl: ABU_BAKR_AL_DHABI_AUDIO_URL,
+      audioUrl: getAbuBakrAlDhabiAudioUrl(surahNumber),
       verseStartMs: timing.verseStartMs,
       verseEndMs: timing.verseEndMs,
       segments: Object.freeze([]),
@@ -843,10 +885,7 @@ export async function getQuranFoundationAudioUrl(
   }
   if (recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID) {
     validateVerseNumbers(surahNumber, ayahNumber);
-    if (surahNumber !== 95) {
-      throw new Error("Quran Foundation audio mapping is unavailable");
-    }
-    return ABU_BAKR_AL_DHABI_AUDIO_URL;
+    return getAbuBakrAlDhabiAudioUrl(surahNumber);
   }
   const reciters = await listQuranFoundationReciters();
   if (!reciters.some((reciter) => reciter.id === recitationId)) {
@@ -1030,6 +1069,7 @@ export async function getQuranFoundationAyahEducation(
   return value;
 }
 export function resetQuranFoundationClientForTests(): void {
+  abuBakrAlDhabiManifestRequest = null;
   cachedToken = null;
   tokenRequestPromise = null;
   cachedCatalog = null;

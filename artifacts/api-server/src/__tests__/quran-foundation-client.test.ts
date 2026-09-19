@@ -1,4 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { objectStorageDownloadMock } = vi.hoisted(() => ({
+  objectStorageDownloadMock: vi.fn(),
+}));
+
+vi.mock("../lib/objectStorage", () => ({
+  parseObjectPath: (path: string) => {
+    const parts = path.replace(/^\/+/, "").split("/");
+    return { bucketName: parts[0], objectName: parts.slice(1).join("/") };
+  },
+  objectStorageClient: {
+    bucket: () => ({
+      file: () => ({ download: objectStorageDownloadMock }),
+    }),
+  },
+}));
+
 import {
   getQuranFoundationAudioUrl,
   getQuranFoundationWordAudioUrl,
@@ -17,6 +34,7 @@ import qcfPageOneFixture from "./fixtures/qcf-v2-page-1.json";
 
 const originalClientId = process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_ID;
 const originalClientSecret = process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_SECRET;
+const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
 const AYAH_COUNTS = [
   7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98,
   135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75,
@@ -40,6 +58,11 @@ describe("Quran Foundation client", () => {
   beforeEach(() => {
     process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_ID = "test-client";
     process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_SECRET = "test-secret";
+    process.env.PRIVATE_OBJECT_DIR = "/test-bucket/private";
+    objectStorageDownloadMock.mockReset().mockResolvedValue([Buffer.from(JSON.stringify({
+      1: [441, 6_580, 12_056, 18_192, 22_204, 26_834, 32_988, 53_760],
+      94: [369, 10_116, 14_416, 19_723, 23_503, 28_282, 33_187, 37_779, 41_587],
+    }))]);
     resetQuranFoundationClientForTests();
   });
 
@@ -50,6 +73,8 @@ describe("Quran Foundation client", () => {
     else process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_ID = originalClientId;
     if (originalClientSecret === undefined) delete process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_SECRET;
     else process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_SECRET = originalClientSecret;
+    if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+    else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
   });
 
   it("authenticates server-side, normalizes all chapters, and caches the catalog", async () => {
@@ -246,7 +271,21 @@ describe("Quran Foundation client", () => {
       .resolves.toBe("/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3");
   });
 
-  it("keeps the Abu Bakr Al-Dhabi sample aligned to Surah At-Tin only", async () => {
+  it("loads Abu Bakr Al-Dhabi timings for every surah while preserving the existing At-Tin sample", async () => {
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 1, 1))
+      .resolves.toMatchObject({
+        verseKey: "1:1",
+        audioUrl: "/api/storage/objects/uploads/quran-recitation/abu-bakr-al-dhabi/001.mp3",
+        verseStartMs: 441,
+        verseEndMs: 6_580,
+      });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 94, 8))
+      .resolves.toMatchObject({
+        verseKey: "94:8",
+        audioUrl: "/api/storage/objects/uploads/quran-recitation/abu-bakr-al-dhabi/094.mp3",
+        verseStartMs: 37_779,
+        verseEndMs: 41_587,
+      });
     await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 1))
       .resolves.toMatchObject({
         recitationId: ABU_BAKR_AL_DHABI_RECITATION_ID,
@@ -258,10 +297,9 @@ describe("Quran Foundation client", () => {
       });
     await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 8))
       .resolves.toMatchObject({ verseStartMs: 53_431, verseEndMs: 61_727 });
-    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 94, 1))
-      .rejects.toThrow("timing mapping is unavailable");
     await expect(getQuranFoundationAudioUrl(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 1))
       .resolves.toBe("/api/storage/objects/uploads/a1210437-e13f-4f8c-809f-0148d6028867.mp3");
+    expect(objectStorageDownloadMock).toHaveBeenCalledTimes(1);
   });
 
   it("resolves only the exact official word-by-word audio path", async () => {
