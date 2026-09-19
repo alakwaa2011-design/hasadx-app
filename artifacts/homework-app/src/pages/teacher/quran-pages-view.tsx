@@ -1043,7 +1043,10 @@ export function QuranPagesView({
               </button>
             )}
             {/* Mobile location shortcuts */}
-            <div className="flex min-w-0 shrink-0 items-center gap-0.5 md:hidden">
+            <div className={cn(
+              "min-w-0 shrink-0 items-center gap-0.5 md:hidden",
+              mobileToolsOpen ? "hidden" : "flex",
+            )}>
               <label className="quran-reader-ui-label relative flex h-9 w-[4.25rem] min-w-0 items-center justify-between gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1 text-emerald-950 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:active:bg-emerald-950/50">
                 <span className="min-w-0 truncate text-xs font-semibold">
                   {chapters.find((chapter) => chapter.id === selectedSurah)?.name
@@ -1085,54 +1088,58 @@ export function QuranPagesView({
 
             {/* Mobile primary actions */}
             <div className="flex shrink-0 items-center gap-0.5 md:hidden">
-              <button
-                type="button"
-                onClick={openAudioControls}
-                data-testid="button-mobile-audio"
-                className={cn(
-                  "grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 transition-colors",
-                  audioDockOpen
-                    ? "bg-emerald-700 text-white shadow-sm"
-                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200",
-                )}
-                aria-label={lang === "ar" ? "فتح التلاوة واختيار القارئ" : "Open recitation and choose reciter"}
-              >
-                <Volume2 className="h-4.5 w-4.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
-                data-testid="button-mobile-page-layout"
-                className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 bg-white/55 text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50"
-                aria-label={pageLayout === "continuous"
-                  ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page")
-                  : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
-                title={pageLayout === "continuous"
-                  ? (lang === "ar" ? "صفحة واحدة" : "Single page")
-                  : (lang === "ar" ? "صفحات متصلة" : "Continuous pages")}
-              >
-                {pageLayout === "continuous"
-                  ? <Rows3 className="h-4 w-4" />
-                  : <BookOpen className="h-4 w-4" />}
-              </button>
-              <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
-              <button
-                type="button"
-                onClick={toggleMemoSession}
-                data-testid="button-mobile-memo-session"
-                className={cn(
-                  "quran-reader-ui-label flex h-9 items-center gap-0.5 rounded-xl border border-emerald-900/10 px-1 text-[11px] font-semibold transition-colors",
-                  memoSession.isActive
-                    ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
-                    : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
-                )}
-                aria-label={memoSession.isActive
-                  ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization")
-                  : (lang === "ar" ? "ابدأ الحفظ" : "Start memorization")}
-              >
-                <ListPlus className="h-4 w-4" />
-                <span>{memoSession.isActive ? (lang === "ar" ? "إنهاء" : "End") : (lang === "ar" ? "حفظ" : "Memo")}</span>
-              </button>
+              {!mobileToolsOpen && (
+                <>
+                  <button
+                    type="button"
+                    onClick={openAudioControls}
+                    data-testid="button-mobile-audio"
+                    className={cn(
+                      "grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 transition-colors",
+                      audioDockOpen
+                        ? "bg-emerald-700 text-white shadow-sm"
+                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200",
+                    )}
+                    aria-label={lang === "ar" ? "فتح التلاوة واختيار القارئ" : "Open recitation and choose reciter"}
+                  >
+                    <Volume2 className="h-4.5 w-4.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
+                    data-testid="button-mobile-page-layout"
+                    className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 bg-white/55 text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50"
+                    aria-label={pageLayout === "continuous"
+                      ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page")
+                      : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
+                    title={pageLayout === "continuous"
+                      ? (lang === "ar" ? "صفحة واحدة" : "Single page")
+                      : (lang === "ar" ? "صفحات متصلة" : "Continuous pages")}
+                  >
+                    {pageLayout === "continuous"
+                      ? <Rows3 className="h-4 w-4" />
+                      : <BookOpen className="h-4 w-4" />}
+                  </button>
+                  <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
+                  <button
+                    type="button"
+                    onClick={toggleMemoSession}
+                    data-testid="button-mobile-memo-session"
+                    className={cn(
+                      "quran-reader-ui-label flex h-9 items-center gap-0.5 rounded-xl border border-emerald-900/10 px-1 text-[11px] font-semibold transition-colors",
+                      memoSession.isActive
+                        ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
+                        : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
+                    )}
+                    aria-label={memoSession.isActive
+                      ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization")
+                      : (lang === "ar" ? "ابدأ الحفظ" : "Start memorization")}
+                  >
+                    <ListPlus className="h-4 w-4" />
+                    <span>{memoSession.isActive ? (lang === "ar" ? "إنهاء" : "End") : (lang === "ar" ? "حفظ" : "Memo")}</span>
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setMobileToolsOpen((open) => !open)}

@@ -1020,20 +1020,6 @@ export function QuranAudioPlayer({
     onIsPlayingChange(true);
   };
 
-  const cycleSpeed = () => {
-    const currentIndex = SPEEDS.indexOf(speed);
-    setSpeed(SPEEDS[(currentIndex + 1) % SPEEDS.length]);
-  };
-
-  const cycleRepeat = () => {
-    const currentIndex = REPEATS.indexOf(repeat);
-    const nextRepeat = REPEATS[(currentIndex + 1) % REPEATS.length];
-    isEndedHandledRef.current = false;
-    setCurrentAyahPlayCount(1);
-    setCurrentRangePlayCount(1);
-    setRepeat(nextRepeat);
-  };
-
   return (
     <div ref={playerRef} data-quran-audio-controller="true" className={cn(
        "relative w-full shrink-0 border-t bg-background/95 p-2 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-colors dark:shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.3)]",
@@ -1410,28 +1396,6 @@ export function QuranAudioPlayer({
                 <SkipForward className={cn("w-4 h-4 md:w-5 md:h-5 fill-current", isArabic && "scale-x-[-1]")} />
               </button>
             </div>
-            <button
-              data-testid="button-cycle-speed"
-              type="button"
-              onClick={cycleSpeed}
-              className="flex h-9 min-w-14 items-center justify-center gap-1 rounded-lg bg-muted/60 px-2 text-[11px] font-black text-foreground transition-colors hover:bg-muted"
-              aria-label={isArabic ? `سرعة التلاوة ${speed}` : `Playback speed ${speed}`}
-            >
-              <Zap className="h-3.5 w-3.5 text-amber-600" />
-              <span dir="ltr">{speed}x</span>
-            </button>
-            {!memoSession?.isActive && (
-              <button
-                data-testid="button-cycle-repeat"
-                type="button"
-                onClick={cycleRepeat}
-                className="flex h-9 min-w-14 items-center justify-center gap-1 rounded-lg bg-muted/60 px-2 text-[11px] font-black text-foreground transition-colors hover:bg-muted"
-                aria-label={isArabic ? `تكرار الآية ${repeat} مرات` : `Repeat ayah ${repeat} times`}
-              >
-                <Repeat className="h-3.5 w-3.5 text-emerald-700" />
-                <span dir="ltr">{repeat}x</span>
-              </button>
-            )}
           </div>
 
           {/* Actions */}
