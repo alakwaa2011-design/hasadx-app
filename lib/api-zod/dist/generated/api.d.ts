@@ -2220,6 +2220,16 @@ export declare const GetSubmissionDetailsResponse: zodV3.ZodObject<{
         teacherNote?: string | null | undefined;
         teacherPoints?: number | null | undefined;
     }>, "many">;
+    images: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
+        pageNumber: zodV3.ZodNumber;
+        url: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        pageNumber: number;
+        url: string;
+    }, {
+        pageNumber: number;
+        url: string;
+    }>, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
     answers: {
         id: number;
@@ -2252,6 +2262,10 @@ export declare const GetSubmissionDetailsResponse: zodV3.ZodObject<{
         teacherAdjustedPoints?: number | null | undefined;
         teacherNote?: string | null | undefined;
     };
+    images?: {
+        pageNumber: number;
+        url: string;
+    }[] | undefined;
 }, {
     answers: {
         id: number;
@@ -2284,6 +2298,10 @@ export declare const GetSubmissionDetailsResponse: zodV3.ZodObject<{
         teacherAdjustedPoints?: number | null | undefined;
         teacherNote?: string | null | undefined;
     };
+    images?: {
+        pageNumber: number;
+        url: string;
+    }[] | undefined;
 }>;
 /**
  * @summary Manually grade a single answer (teacher only)
@@ -2395,6 +2413,16 @@ export declare const UpdateAnswerGradeResponse: zodV3.ZodObject<{
         teacherNote?: string | null | undefined;
         teacherPoints?: number | null | undefined;
     }>, "many">;
+    images: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
+        pageNumber: zodV3.ZodNumber;
+        url: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        pageNumber: number;
+        url: string;
+    }, {
+        pageNumber: number;
+        url: string;
+    }>, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
     answers: {
         id: number;
@@ -2427,6 +2455,10 @@ export declare const UpdateAnswerGradeResponse: zodV3.ZodObject<{
         teacherAdjustedPoints?: number | null | undefined;
         teacherNote?: string | null | undefined;
     };
+    images?: {
+        pageNumber: number;
+        url: string;
+    }[] | undefined;
 }, {
     answers: {
         id: number;
@@ -2459,6 +2491,10 @@ export declare const UpdateAnswerGradeResponse: zodV3.ZodObject<{
         teacherAdjustedPoints?: number | null | undefined;
         teacherNote?: string | null | undefined;
     };
+    images?: {
+        pageNumber: number;
+        url: string;
+    }[] | undefined;
 }>;
 /**
  * @summary Submit feedback or suggestion
@@ -2558,13 +2594,13 @@ export declare const GetPresentationUsageResponse: zodV3.ZodObject<{
         files: zodV3.ZodNumber;
         sizeMb: zodV3.ZodNumber;
     }, "strip", zodV3.ZodTypeAny, {
-        slides: number;
         images: number;
+        slides: number;
         files: number;
         sizeMb: number;
     }, {
-        slides: number;
         images: number;
+        slides: number;
         files: number;
         sizeMb: number;
     }>;
@@ -2577,8 +2613,8 @@ export declare const GetPresentationUsageResponse: zodV3.ZodObject<{
         maxSizeMbRegular: number;
     };
     usage: {
-        slides: number;
         images: number;
+        slides: number;
         files: number;
         sizeMb: number;
     };
@@ -2591,8 +2627,8 @@ export declare const GetPresentationUsageResponse: zodV3.ZodObject<{
         maxSizeMbRegular: number;
     };
     usage: {
-        slides: number;
         images: number;
+        slides: number;
         files: number;
         sizeMb: number;
     };
@@ -2816,6 +2852,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -2824,7 +2861,6 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -2859,6 +2895,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -2867,7 +2904,6 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -2905,6 +2941,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -2913,7 +2950,6 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -2955,6 +2991,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -2963,7 +3000,6 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3025,6 +3061,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3033,7 +3070,6 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3097,6 +3133,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3105,7 +3142,6 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3237,6 +3273,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3245,7 +3282,6 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3280,6 +3316,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3288,7 +3325,6 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3326,6 +3362,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3334,7 +3371,6 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3376,6 +3412,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3384,7 +3421,6 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3446,6 +3482,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3454,7 +3491,6 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3518,6 +3554,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3526,7 +3563,6 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3664,6 +3700,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3672,7 +3709,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3707,6 +3743,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3715,7 +3752,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3753,6 +3789,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3761,7 +3798,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3803,6 +3839,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3811,7 +3848,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3859,6 +3895,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3867,7 +3904,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -3919,6 +3955,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -3927,7 +3964,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4041,6 +4077,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4049,7 +4086,6 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4084,6 +4120,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4092,7 +4129,6 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4130,6 +4166,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4138,7 +4175,6 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4180,6 +4216,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4188,7 +4225,6 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4250,6 +4286,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4258,7 +4295,6 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4322,6 +4358,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4330,7 +4367,6 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4479,6 +4515,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4487,7 +4524,6 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4522,6 +4558,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4530,7 +4567,6 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4568,6 +4604,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4576,7 +4613,6 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4618,6 +4654,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4626,7 +4663,6 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4688,6 +4724,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4696,7 +4733,6 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4760,6 +4796,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4768,7 +4805,6 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4900,6 +4936,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4908,7 +4945,6 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4943,6 +4979,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4951,7 +4988,6 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -4989,6 +5025,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -4997,7 +5034,6 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5039,6 +5075,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5047,7 +5084,6 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5109,6 +5145,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5117,7 +5154,6 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5181,6 +5217,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5189,7 +5226,6 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5393,6 +5429,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5401,7 +5438,6 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5436,6 +5472,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5444,7 +5481,6 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5482,6 +5518,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5490,7 +5527,6 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5532,6 +5568,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5540,7 +5577,6 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5602,6 +5638,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5610,7 +5647,6 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5674,6 +5710,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             title?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
+            url?: string | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
             zIndex?: number | null | undefined;
@@ -5682,7 +5719,6 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontWeight?: string | null | undefined;
             align?: "start" | "center" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
-            url?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -5740,15 +5776,15 @@ export declare const ListPresentationAssetsResponseItem: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
     createdAt: Date;
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }, {
     id: number;
     createdAt: Date;
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }>;
@@ -5762,15 +5798,15 @@ export declare const ListPresentationAssetsResponse: zodV3.ZodArray<zodV3.ZodObj
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
     createdAt: Date;
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }, {
     id: number;
     createdAt: Date;
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }>, "many">;
@@ -5790,12 +5826,12 @@ export declare const RegisterPresentationAssetBody: zodV3.ZodObject<{
     url: zodV3.ZodString;
     byteSize: zodV3.ZodOptional<zodV3.ZodNumber>;
 }, "strip", zodV3.ZodTypeAny, {
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     byteSize?: number | undefined;
 }, {
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     byteSize?: number | undefined;
 }>;
 export declare const RegisterPresentationAssetResponse: zodV3.ZodObject<{
@@ -5808,15 +5844,15 @@ export declare const RegisterPresentationAssetResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
     createdAt: Date;
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }, {
     id: number;
     createdAt: Date;
-    kind: "image" | "file";
     url: string;
+    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }>;
@@ -14280,8 +14316,8 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
     }>, "many">;
     source: zodV3.ZodEnum<["quran_foundation_qcf_v2"]>;
 }, "strip", zodV3.ZodTypeAny, {
-    source: "quran_foundation_qcf_v2";
     pageNumber: number;
+    source: "quran_foundation_qcf_v2";
     juzNumber: number;
     hizbNumber: number;
     rubElHizbNumber: number;
@@ -14301,8 +14337,8 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
         lineNumber: number;
     }[];
 }, {
-    source: "quran_foundation_qcf_v2";
     pageNumber: number;
+    source: "quran_foundation_qcf_v2";
     juzNumber: number;
     hizbNumber: number;
     rubElHizbNumber: number;
@@ -17027,15 +17063,15 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
         revision: number;
     }, {
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
         revision: number;
     }>, zodV3.ZodNull]>;
     bookmarks: zodV3.ZodArray<zodV3.ZodObject<{
@@ -17047,45 +17083,45 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
     }, "strip", zodV3.ZodTypeAny, {
         createdAt: Date;
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
     }, {
         createdAt: Date;
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     position: {
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
         revision: number;
     } | null;
     bookmarks: {
         createdAt: Date;
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
     }[];
 }, {
     position: {
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
         revision: number;
     } | null;
     bookmarks: {
         createdAt: Date;
         updatedAt: Date;
+        pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
-        pageNumber: number;
     }[];
 }>;
 export declare const updateQuranReaderPositionBodyPageNumberMax = 604;
@@ -17095,14 +17131,14 @@ export declare const UpdateQuranReaderPositionBody: zodV3.ZodObject<{
     pageNumber: zodV3.ZodNumber;
     expectedRevision: zodV3.ZodNumber;
 }, "strip", zodV3.ZodTypeAny, {
+    pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
-    pageNumber: number;
     expectedRevision: number;
 }, {
+    pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
-    pageNumber: number;
     expectedRevision: number;
 }>;
 export declare const updateQuranReaderPositionResponseSurahNumberMax = 114;
@@ -17115,15 +17151,15 @@ export declare const UpdateQuranReaderPositionResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     updatedAt: Date;
+    pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
-    pageNumber: number;
     revision: number;
 }, {
     updatedAt: Date;
+    pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
-    pageNumber: number;
     revision: number;
 }>;
 export declare const AddQuranBookmarkParams: zodV3.ZodObject<{
@@ -17155,15 +17191,15 @@ export declare const AddQuranBookmarkResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     createdAt: Date;
     updatedAt: Date;
+    pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
-    pageNumber: number;
 }, {
     createdAt: Date;
     updatedAt: Date;
+    pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
-    pageNumber: number;
 }>;
 export declare const DeleteQuranBookmarkParams: zodV3.ZodObject<{
     surahNumber: zodV3.ZodNumber;

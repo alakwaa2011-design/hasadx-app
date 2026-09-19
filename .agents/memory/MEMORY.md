@@ -139,3 +139,4 @@
 - [Quran E2E audio routing](quran-e2e-audio-routing.md) — block Service Workers in reader contexts or Playwright audio mocks may miss direct timing requests.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
 - [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.
+- [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.

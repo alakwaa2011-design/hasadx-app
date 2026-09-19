@@ -7,8 +7,10 @@
  */
 import type { Submission } from './submission';
 import type { SubmissionAnswerDetail } from './submissionAnswerDetail';
+import type { SubmissionImage } from './submissionImage';
 export interface SubmissionDetail {
     submission: Submission;
     answers: SubmissionAnswerDetail[];
+    images?: SubmissionImage[];
 }
 //# sourceMappingURL=submissionDetail.d.ts.map

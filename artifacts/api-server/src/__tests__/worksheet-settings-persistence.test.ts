@@ -133,6 +133,11 @@ const settings = {
     spacing: "relaxed",
     choiceColumns: 2,
     trueFalseLayout: "choices",
+    errorCorrectionCorrectionLines: 4,
+    errorCorrectionShowExplanation: false,
+    errorCorrectionExplanationLines: 1,
+    compareSimilaritiesLabel: "نقاط التشابه",
+    compareDifferencesLabel: "نقاط الاختلاف",
   }],
 } satisfies WorksheetSettings;
 

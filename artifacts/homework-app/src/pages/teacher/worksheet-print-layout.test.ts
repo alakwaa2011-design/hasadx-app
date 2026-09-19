@@ -77,8 +77,28 @@ describe("official worksheet question layout", () => {
     expect(source).toContain('className="ws-correction-area"');
     expect(source).toContain('className="ws-explanation-area"');
     expect(source).toContain('className="ws-word-bank"');
-    expect(source).toContain('className="ws-word-bank-items"');
     expect(source).toContain('className="ws-compare-organizer"');
+  });
+
+  it("places one word bank before the question and does not repeat it below", () => {
+    const bankBlock = source.indexOf('{q.type === "word_bank" && (');
+    const questionBlock = source.indexOf('<div className="ws-q">', bankBlock);
+    expect(bankBlock).toBeGreaterThan(-1);
+    expect(bankBlock).toBeLessThan(questionBlock);
+    expect(source).toContain("new Set(q.items.filter(Boolean))");
+    expect(source).not.toContain('className="ws-word-bank-items"');
+    expect(source).not.toContain("new Set(q.answers.filter(Boolean))");
+  });
+
+  it("lets teachers edit comparison labels and configure error-correction writing areas", () => {
+    expect(source).toContain("compareSimilaritiesLabel");
+    expect(source).toContain("compareDifferencesLabel");
+    expect(source).toContain("leftLabel: value");
+    expect(source).toContain("rightLabel: value");
+    expect(source).toContain("errorCorrectionCorrectionLines");
+    expect(source).toContain("errorCorrectionExplanationLines");
+    expect(source).toContain("errorCorrectionShowExplanation");
+    expect(source).toContain('data-testid="button-toggle-error-explanation"');
   });
 
   it("keeps rich response organizers together and direction-neutral", () => {

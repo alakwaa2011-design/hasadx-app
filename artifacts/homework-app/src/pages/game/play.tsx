@@ -4504,7 +4504,8 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[560px] mx-auto content-start" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-6 sm:pt-8 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            data-question-type={qType}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2 w-[94%] max-w-[820px] mx-auto content-center" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[560px] mx-auto content-start" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : qType === "true_false" ? "gap-3 sm:gap-4" : isSoloRef.current ? "gap-3 sm:gap-3.5" : "gap-3"} ${qType === "true_false" ? "px-0 pb-6" : isSoloRef.current ? "pt-6 sm:pt-8 pb-3" : "px-4 pb-8"} ${qType === "true_false" || (isSoloRef.current && qType !== "true_false") ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -4697,8 +4698,10 @@ export default function GamePlay() {
                   onPointerUp={(event) => handleAnswerPointerUp(event, opt.key)}
                   onClick={(event) => handleAnswerClick(event, opt.key)}
                   disabled={!!selectedAnswer}
-                  style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-[18px] font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[70px] sm:min-h-[80px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 lg:py-1.5 font-bold text-lg sm:text-xl lg:text-2xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px] lg:min-h-[52px]" : "min-h-[54px] sm:min-h-[64px] lg:min-h-[50px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  style={qType === "true_false"
+                    ? { ...btnStyle, height: "clamp(104px, 12vw, 150px)" }
+                    : btnStyle}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-[18px] font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[70px] sm:min-h-[80px] hover:brightness-110 hover:-translate-y-[1px]" : qType === "true_false" ? "rounded-[1.25rem] sm:rounded-[1.5rem] px-3 py-4 font-bold text-base sm:text-xl lg:text-2xl flex items-center justify-center text-center shadow-md" : `rounded-2xl px-3 py-2 lg:py-1.5 font-bold text-lg sm:text-xl lg:text-2xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px] lg:min-h-[52px]" : "min-h-[54px] sm:min-h-[64px] lg:min-h-[50px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span

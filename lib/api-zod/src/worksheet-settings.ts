@@ -49,6 +49,11 @@ const worksheetQuestionStyleSchema = z.object({
   matchingLeftWidth: z.number().int().min(35).max(65).optional(),
   ticTacToeStrategy: z.enum(["any_three", "corners", "full_board"]).optional(),
   ticTacToeResponseLines: z.number().int().min(0).max(20).optional(),
+  errorCorrectionCorrectionLines: z.number().int().min(0).max(12).optional(),
+  errorCorrectionShowExplanation: z.boolean().optional(),
+  errorCorrectionExplanationLines: z.number().int().min(0).max(12).optional(),
+  compareSimilaritiesLabel: z.string().trim().max(80).optional(),
+  compareDifferencesLabel: z.string().trim().max(80).optional(),
   rubric: z.string().trim().max(500).optional(),
 });
 

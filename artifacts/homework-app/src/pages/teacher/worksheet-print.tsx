@@ -136,7 +136,7 @@ function paginateByEstimate(
       case "worked_problem": return base + Math.max(4, q.steps ?? 4) * 8 + 12;
       case "extended_response": return base + Math.max(3, q.lines ?? 6) * 8;
       case "error_correction": return base + 2 * 8 + 2 * 8 + 12;
-      case "word_bank": return base + 14 + Math.max(1, q.items.length) * lineH * 1.4;
+      case "word_bank": return base + 18;
       case "compare": return base + 42;
     }
   };
@@ -252,12 +252,14 @@ export function WorksheetPrintView({
 
   // ── Local layout-editing state ─────────────────────────────────────────
   const [localQs, setLocalQs] = useState<Question[]>(data.questions);
+  const localQsRef = useRef<Question[]>(data.questions);
   const [localBreaks, setLocalBreaks] = useState<Set<string>>(
     () => new Set(data.settings.pageBreaks ?? []),
   );
   const [localQuestionStyles, setLocalQuestionStyles] = useState<QuestionStyle[]>(
     () => data.settings.questionStyles ?? [],
   );
+  const localQuestionStylesRef = useRef<QuestionStyle[]>(data.settings.questionStyles ?? []);
   const [selectedField, setSelectedField] = useState<SelectedField | null>(null);
 
   // IDs of questions that are the first in a consecutive run of the same type.
@@ -282,9 +284,12 @@ export function WorksheetPrintView({
   useEffect(() => {
     if (prevDataRef.current === data) return;
     prevDataRef.current = data;
+    localQsRef.current = data.questions;
     setLocalQs(data.questions);
     setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
-    setLocalQuestionStyles(data.settings.questionStyles ?? []);
+    const nextQuestionStyles = data.settings.questionStyles ?? [];
+    localQuestionStylesRef.current = nextQuestionStyles;
+    setLocalQuestionStyles(nextQuestionStyles);
     setSelectedField(null);
     setLayoutDirty(false);
   }, [data]);
@@ -300,14 +305,17 @@ export function WorksheetPrintView({
   }, []);
 
   const saveLayout = useCallback(() => {
-    onLayoutChange?.(localQs, [...localBreaks], localQuestionStyles);
+    onLayoutChange?.(localQsRef.current, [...localBreaks], localQuestionStylesRef.current);
     setLayoutDirty(false);
-  }, [localQs, localBreaks, localQuestionStyles, onLayoutChange]);
+  }, [localBreaks, onLayoutChange]);
 
   const discardLayoutChanges = useCallback(() => {
+    localQsRef.current = data.questions;
     setLocalQs(data.questions);
     setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
-    setLocalQuestionStyles(data.settings.questionStyles ?? []);
+    const nextQuestionStyles = data.settings.questionStyles ?? [];
+    localQuestionStylesRef.current = nextQuestionStyles;
+    setLocalQuestionStyles(nextQuestionStyles);
     setSelectedField(null);
     setLayoutDirty(false);
     setEditMode(false);
@@ -315,17 +323,20 @@ export function WorksheetPrintView({
 
   // Update a single question in-place (called by QuestionView on text blur)
   const onEditQuestion = useCallback((updated: Question) => {
-    setLocalQs(prev => prev.map(q => q.id === updated.id ? updated : q));
+    const nextQuestions = localQsRef.current.map(q => q.id === updated.id ? updated : q);
+    localQsRef.current = nextQuestions;
+    setLocalQs(nextQuestions);
     setLocalBreaks(new Set());
     setLayoutDirty(true);
   }, []);
 
   const updateQuestionStyle = useCallback((questionId: string, update: (current: QuestionStyle) => QuestionStyle) => {
-    setLocalQuestionStyles(prev => {
-      const current = prev.find(style => style.questionId === questionId) ?? { questionId };
-      const next = update(current);
-      return [...prev.filter(style => style.questionId !== questionId), next];
-    });
+    const currentStyles = localQuestionStylesRef.current;
+    const current = currentStyles.find(style => style.questionId === questionId) ?? { questionId };
+    const next = update(current);
+    const nextStyles = [...currentStyles.filter(style => style.questionId !== questionId), next];
+    localQuestionStylesRef.current = nextStyles;
+    setLocalQuestionStyles(nextStyles);
     setLocalBreaks(new Set());
     setLayoutDirty(true);
   }, []);
@@ -353,21 +364,21 @@ export function WorksheetPrintView({
     if (!dragQId) return;
     setDragOverPage(null);
     setDragQId(null);
-    setLocalQs(prevQs => {
-      const currentPages = paginateByEstimate(prevQs, fontSizePt, data.settings.columns, 190, 250, localBreaks);
-      const targetPage = currentPages[targetPageIndex];
-      if (!targetPage || targetPage.length === 0) return prevQs;
-      const targetFirstQId = targetPage[0].id;
-      if (targetFirstQId === dragQId) return prevQs;
-      const qToMove = prevQs.find(q => q.id === dragQId);
-      if (!qToMove) return prevQs;
-      const without = prevQs.filter(q => q.id !== dragQId);
-      const insertIdx = without.findIndex(q => q.id === targetFirstQId);
-      const newQs = insertIdx === -1
-        ? [...without, qToMove]
-        : [...without.slice(0, insertIdx), qToMove, ...without.slice(insertIdx)];
-      return newQs;
-    });
+    const previousQuestions = localQsRef.current;
+    const currentPages = paginateByEstimate(previousQuestions, fontSizePt, data.settings.columns, 190, 250, localBreaks);
+    const targetPage = currentPages[targetPageIndex];
+    if (!targetPage || targetPage.length === 0) return;
+    const targetFirstQId = targetPage[0].id;
+    if (targetFirstQId === dragQId) return;
+    const questionToMove = previousQuestions.find(q => q.id === dragQId);
+    if (!questionToMove) return;
+    const without = previousQuestions.filter(q => q.id !== dragQId);
+    const insertIndex = without.findIndex(q => q.id === targetFirstQId);
+    const nextQuestions = insertIndex === -1
+      ? [...without, questionToMove]
+      : [...without.slice(0, insertIndex), questionToMove, ...without.slice(insertIndex)];
+    localQsRef.current = nextQuestions;
+    setLocalQs(nextQuestions);
     setLayoutDirty(true);
   }, [dragQId, fontSizePt, data.settings.columns, localBreaks]);
 
@@ -924,11 +935,13 @@ export function WorksheetPrintView({
           onFieldChange={patch => updateFieldStyle(selectedField.questionId, selectedField.key, patch)}
           onQuestionChange={patch => updateQuestionStyle(selectedField.questionId, current => ({ ...current, ...patch }))}
           onQuestionTypeChange={type => {
-            setLocalQs(prev => prev.map(question =>
+            const nextQuestions = localQsRef.current.map(question =>
               question.id === selectedField.questionId
                 ? convertQuestionType(question, type, ar)
                 : question,
-            ));
+            );
+            localQsRef.current = nextQuestions;
+            setLocalQs(nextQuestions);
             setLocalBreaks(new Set());
             setSelectedField({ questionId: selectedField.questionId, key: "prompt" });
             setLayoutDirty(true);
@@ -936,7 +949,9 @@ export function WorksheetPrintView({
           onQuestionEdit={onEditQuestion}
           onResetField={resetSelectedStyle}
           onResetQuestion={() => {
-            setLocalQuestionStyles(prev => prev.filter(style => style.questionId !== selectedField.questionId));
+            const nextStyles = localQuestionStylesRef.current.filter(style => style.questionId !== selectedField.questionId);
+            localQuestionStylesRef.current = nextStyles;
+            setLocalQuestionStyles(nextStyles);
             setLayoutDirty(true);
           }}
         />
@@ -990,6 +1005,10 @@ export function WorksheetPrintView({
                         onSelectQuestion={() => setSelectedField({ questionId: q.id, key: "prompt" })}
                         onMatchingWidthChange={matchingLeftWidth => {
                           updateQuestionStyle(q.id, current => ({ ...current, matchingLeftWidth }));
+                          setSelectedField({ questionId: q.id, key: "prompt" });
+                        }}
+                        onQuestionStyleChange={patch => {
+                          updateQuestionStyle(q.id, current => ({ ...current, ...patch }));
                           setSelectedField({ questionId: q.id, key: "prompt" });
                         }}
                       />
@@ -1772,6 +1791,71 @@ export function QuestionFormattingToolbar({
             </select>
           </label>
         )}
+        {question.type === "error_correction" && (
+          <>
+            <label className="ws-format-type ws-format-control">
+              <span>{ar ? "أسطر التصحيح" : "Correction lines"}</span>
+              <select
+                value={questionStyle?.errorCorrectionCorrectionLines ?? 2}
+                onChange={event => onQuestionChange({ errorCorrectionCorrectionLines: Number(event.target.value) })}
+                aria-label={ar ? "عدد أسطر التصحيح" : "Number of correction lines"}
+                data-testid="select-error-correction-lines"
+              >
+                {[0, 1, 2, 3, 4, 6, 8].map(value => (
+                  <option key={value} value={value}>{value === 0 ? (ar ? "بدون أسطر" : "No lines") : value}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className={(questionStyle?.errorCorrectionShowExplanation ?? true) ? "is-active ws-format-text-btn" : "ws-format-text-btn"}
+              onClick={() => onQuestionChange({ errorCorrectionShowExplanation: !(questionStyle?.errorCorrectionShowExplanation ?? true) })}
+              aria-pressed={questionStyle?.errorCorrectionShowExplanation ?? true}
+              data-testid="button-toggle-error-explanation"
+            >
+              {(questionStyle?.errorCorrectionShowExplanation ?? true)
+                ? (ar ? "إخفاء الشرح" : "Hide explanation")
+                : (ar ? "إظهار الشرح" : "Show explanation")}
+            </button>
+            {(questionStyle?.errorCorrectionShowExplanation ?? true) && (
+              <label className="ws-format-type ws-format-control">
+                <span>{ar ? "أسطر الشرح" : "Explanation lines"}</span>
+                <select
+                  value={questionStyle?.errorCorrectionExplanationLines ?? 2}
+                  onChange={event => onQuestionChange({ errorCorrectionExplanationLines: Number(event.target.value) })}
+                  aria-label={ar ? "عدد أسطر الشرح" : "Number of explanation lines"}
+                  data-testid="select-error-explanation-lines"
+                >
+                  {[0, 1, 2, 3, 4, 6, 8].map(value => (
+                    <option key={value} value={value}>{value === 0 ? (ar ? "بدون أسطر" : "No lines") : value}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </>
+        )}
+        {question.type === "compare" && (
+          <>
+            <label className="ws-format-type ws-format-control">
+              <span>{ar ? "عنوان التشابه" : "Similarities heading"}</span>
+              <input
+                value={questionStyle?.compareSimilaritiesLabel ?? (ar ? "أوجه التشابه" : "Similarities")}
+                onChange={event => onQuestionChange({ compareSimilaritiesLabel: event.target.value })}
+                aria-label={ar ? "عنوان أوجه التشابه" : "Similarities heading"}
+                data-testid="input-compare-similarities-label"
+              />
+            </label>
+            <label className="ws-format-type ws-format-control">
+              <span>{ar ? "عنوان الاختلاف" : "Differences heading"}</span>
+              <input
+                value={questionStyle?.compareDifferencesLabel ?? (ar ? "خصائص واختلافات" : "Traits and differences")}
+                onChange={event => onQuestionChange({ compareDifferencesLabel: event.target.value })}
+                aria-label={ar ? "عنوان الخصائص والاختلافات" : "Traits and differences heading"}
+                data-testid="input-compare-differences-label"
+              />
+            </label>
+          </>
+        )}
         {(question.type === "short_answer" || question.type === "fill_blank") && (
           <label className="ws-format-type">
             <span>{ar ? "الإجابة النموذجية" : "Model answer"}</span>
@@ -1876,7 +1960,7 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onSelectQuestion, onMatchingWidthChange,
+  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onSelectQuestion, onMatchingWidthChange, onQuestionStyleChange,
 }: {
   index: string;
   q: Question;
@@ -1890,6 +1974,7 @@ function QuestionView({
   selected?: boolean;
   onSelectQuestion?: () => void;
   onMatchingWidthChange?: (leftWidth: number) => void;
+  onQuestionStyleChange?: (patch: Partial<Omit<QuestionStyle, "questionId" | "fields">>) => void;
 }) {
   const em = editMode ?? false;
   const edit = onEdit ?? (() => {});
@@ -1917,6 +2002,16 @@ function QuestionView({
     >
       {showTypeHeader && (
         <div className="ws-section-instr">{sectionInstruction(q.type, ar, questionStyle)}</div>
+      )}
+      {q.type === "word_bank" && (
+        <div className="ws-word-bank" aria-label={ar ? "بنك الكلمات" : "Word bank"}>
+          <strong>{ar ? "بنك الكلمات" : "Word bank"}</strong>
+          <div>
+            {Array.from(new Set(q.items.filter(Boolean))).map((word, i) => (
+              <MathText key={i} text={word} fallbackDirection={ar ? "rtl" : "ltr"} />
+            ))}
+          </div>
+        </div>
       )}
       <div className="ws-q">
         <div className="ws-q-head">
@@ -2127,48 +2222,65 @@ function QuestionView({
           </div>
           <div className="ws-correction-area">
             <div className="ws-response-label">{ar ? "التصحيح" : "Correction"}</div>
-            {Array.from({ length: 2 }).map((_, i) => <span className="ws-line" key={i} />)}
+            {Array.from({ length: questionStyle?.errorCorrectionCorrectionLines ?? 2 }).map((_, i) => <span className="ws-line" key={i} />)}
           </div>
-          <div className="ws-explanation-area">
-            <div className="ws-response-label">{ar ? "التفسير" : "Explanation"}</div>
-            {Array.from({ length: 2 }).map((_, i) => <span className="ws-line" key={i} />)}
-          </div>
-        </div>
-      )}
-      {q.type === "word_bank" && (
-        <div className="ws-word-bank-question">
-          <div className="ws-word-bank" aria-label={ar ? "بنك الكلمات" : "Word bank"}>
-            <strong>{ar ? "بنك الكلمات" : "Word bank"}</strong>
-            <div>
-              {Array.from(new Set(q.answers.filter(Boolean))).map((word, i) => (
-                <MathText key={i} text={word} fallbackDirection={ar ? "rtl" : "ltr"} />
-              ))}
+          {(questionStyle?.errorCorrectionShowExplanation ?? true) && (
+            <div className="ws-explanation-area">
+              <div className="ws-response-label">{ar ? "التفسير" : "Explanation"}</div>
+              {Array.from({ length: questionStyle?.errorCorrectionExplanationLines ?? 2 }).map((_, i) => <span className="ws-line" key={i} />)}
             </div>
-          </div>
-          <ol className="ws-word-bank-items">
-            {q.items.map((item, i) => (
-              <li key={i}>
-                <MathText text={item} fallbackDirection={ar ? "rtl" : "ltr"} />
-                <span className="ws-word-bank-blank" />
-              </li>
-            ))}
-          </ol>
+          )}
         </div>
       )}
       {q.type === "compare" && (
         <div className="ws-compare-organizer">
           <div className="ws-compare-panel">
-            <strong><MathText text={q.leftLabel} fallbackDirection={ar ? "rtl" : "ltr"} /></strong>
-            <span className="ws-compare-subtitle">{ar ? "خصائص واختلافات" : "Traits and differences"}</span>
+            <strong>
+              <EditSpan
+                text={q.leftLabel}
+                editMode={em}
+                onSelect={() => onSelectField?.("prompt")}
+                onCommit={value => edit({ ...q, leftLabel: value })}
+              />
+            </strong>
+            <span className="ws-compare-subtitle">
+              <EditSpan
+                text={questionStyle?.compareDifferencesLabel ?? (ar ? "خصائص واختلافات" : "Traits and differences")}
+                editMode={em}
+                onSelect={() => onSelectField?.("prompt")}
+                onCommit={value => onQuestionStyleChange?.({ compareDifferencesLabel: value })}
+              />
+            </span>
             {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
           </div>
           <div className="ws-compare-panel ws-compare-similarities">
-            <strong>{ar ? "أوجه التشابه" : "Similarities"}</strong>
+            <strong>
+              <EditSpan
+                text={questionStyle?.compareSimilaritiesLabel ?? (ar ? "أوجه التشابه" : "Similarities")}
+                editMode={em}
+                onSelect={() => onSelectField?.("prompt")}
+                onCommit={value => onQuestionStyleChange?.({ compareSimilaritiesLabel: value })}
+              />
+            </strong>
             {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
           </div>
           <div className="ws-compare-panel">
-            <strong><MathText text={q.rightLabel} fallbackDirection={ar ? "rtl" : "ltr"} /></strong>
-            <span className="ws-compare-subtitle">{ar ? "خصائص واختلافات" : "Traits and differences"}</span>
+            <strong>
+              <EditSpan
+                text={q.rightLabel}
+                editMode={em}
+                onSelect={() => onSelectField?.("prompt")}
+                onCommit={value => edit({ ...q, rightLabel: value })}
+              />
+            </strong>
+            <span className="ws-compare-subtitle">
+              <EditSpan
+                text={questionStyle?.compareDifferencesLabel ?? (ar ? "خصائص واختلافات" : "Traits and differences")}
+                editMode={em}
+                onSelect={() => onSelectField?.("prompt")}
+                onCommit={value => onQuestionStyleChange?.({ compareDifferencesLabel: value })}
+              />
+            </span>
             {Array.from({ length: 3 }).map((_, i) => <span className="ws-compare-line" key={i} />)}
           </div>
         </div>
@@ -2707,7 +2819,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         margin-bottom: 1mm;
       }
       .ws-worked-problem, .ws-extended-response, .ws-error-correction,
-      .ws-word-bank-question, .ws-compare-organizer {
+      .ws-compare-organizer {
         margin-top: 2mm;
         margin-inline-start: 9mm;
         break-inside: avoid;
@@ -2739,13 +2851,14 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-word-bank {
         border: 0.4mm solid ${TC}; border-radius: 2mm;
         padding: 2mm 3mm; text-align: center; background: ${TC}08;
+        margin: 2mm 0 3mm;
+        margin-inline-start: 9mm;
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
       .ws-word-bank > strong { display: block; color: ${TC}; font-size: 8.5pt; margin-bottom: 1mm; }
       .ws-word-bank > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 1mm 4mm; }
       .ws-word-bank > div > span { white-space: nowrap; font-weight: 700; }
-      .ws-word-bank-items { margin: 3mm 0 0; padding-inline-start: 7mm; }
-      .ws-word-bank-items li { padding: 1mm 0; min-height: 7mm; display: flex; gap: 2mm; align-items: flex-end; }
-      .ws-word-bank-items li::marker { color: ${TC}; font-weight: 800; }
       .ws-compare-organizer {
         display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) minmax(0, 1fr);
         border: 0.4mm solid ${TC}; border-radius: 2mm; overflow: hidden;

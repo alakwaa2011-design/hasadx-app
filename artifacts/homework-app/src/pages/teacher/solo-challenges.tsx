@@ -13,6 +13,7 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { Layout } from "@/components/layout";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -97,9 +98,10 @@ export default function SoloChallengesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background" dir={dir}>
+    <Layout hideFooter>
+    <div className="min-h-[calc(100vh-3rem)] bg-background sm:min-h-[calc(100vh-3.5rem)]" dir={dir}>
       {/* ── Header ── */}
-      <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-0 z-20">
+      <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-12 sm:top-14 z-20">
         <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href={user?.role === "organizer" ? "/organizer" : "/teacher"} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground group">
             {dir === "rtl" ? <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> : <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />}
@@ -313,5 +315,6 @@ export default function SoloChallengesPage() {
         )}
       </div>
     </div>
+    </Layout>
   );
 }
