@@ -136,4 +136,5 @@
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
 - [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — embedded portrait subtracts the site header; short landscape hides every outer shell and fits one complete page.
 - [Quran safe-area testing](quran-safe-area-testing.md) — managed Chromium lacks CDP safe-area emulation; use the reader's CSS variable seam in browser tests.
+- [Quran E2E audio routing](quran-e2e-audio-routing.md) — block Service Workers in reader contexts or Playwright audio mocks may miss direct timing requests.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
