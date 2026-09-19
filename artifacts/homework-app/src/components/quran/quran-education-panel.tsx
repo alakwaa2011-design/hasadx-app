@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, Check, Copy, Languages, Loader2, Lock, Share2, Unlock, X } from "lucide-react";
+import { BookOpenText, Check, Copy, EyeOff, Languages, Loader2, Lock, Share2, Unlock, X } from "lucide-react";
 import {
   getGetQuranAyahEducationQueryKey,
   useGetQuranAyahEducation,
@@ -16,11 +16,13 @@ type QuranEducationSelection = {
 export function QuranEducationPanel({
   selection,
   onClose,
+  onHide,
   locked = false,
   onToggleLock,
 }: {
   selection: QuranEducationSelection;
   onClose: () => void;
+  onHide: () => void;
   locked?: boolean;
   onToggleLock?: () => void;
 }) {
@@ -113,6 +115,15 @@ export function QuranEducationPanel({
               {lang === "ar" ? "ترجمة الكلمة" : "Word translation"}
             </button>
           )}
+          <button
+            type="button"
+            onClick={onHide}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/35 px-2.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label={lang === "ar" ? "إخفاء التفسير" : "Hide tafsir"}
+          >
+            <EyeOff className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{lang === "ar" ? "إخفاء التفسير" : "Hide tafsir"}</span>
+          </button>
           <button
             type="button"
             onClick={onToggleLock}

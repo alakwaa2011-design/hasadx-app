@@ -52,6 +52,7 @@ import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
 
 const LIVE_RECITATION_ENABLED = true;
+const QURAN_EDUCATION_HIDDEN_KEY = "quran-education-hidden";
 
 interface QComplexChapter {
   id: number;
@@ -220,6 +221,10 @@ export function QuranPagesView({
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
   const [educationLocked, setEducationLocked] = useState(false);
+  const [educationHidden, setEducationHidden] = useState(
+    () => typeof window !== "undefined"
+      && window.localStorage.getItem(QURAN_EDUCATION_HIDDEN_KEY) === "true",
+  );
   const [copiedVerseKey, setCopiedVerseKey] = useState<string | null>(null);
   const [copyRange, setCopyRange] = useState<{
     surah: number;
@@ -231,14 +236,35 @@ export function QuranPagesView({
   const { playWord, stopWordAudio } = useQuranWordAudio();
 
   useEffect(() => {
-    if (educationLocked || guidedOpen || !isPlaying || !audibleVerseKey) return;
+    if (educationHidden || educationLocked || guidedOpen || !isPlaying || !audibleVerseKey) return;
     setEducationSelection({
       verseKey: audibleVerseKey,
       wordId: null,
       wordPosition: null,
       wordText: null,
     });
-  }, [audibleVerseKey, educationLocked, guidedOpen, isPlaying]);
+  }, [audibleVerseKey, educationHidden, educationLocked, guidedOpen, isPlaying]);
+
+  const hideEducation = () => {
+    setEducationHidden(true);
+    setEducationSelection(null);
+    setEducationLocked(false);
+    window.localStorage.setItem(QURAN_EDUCATION_HIDDEN_KEY, "true");
+  };
+
+  const showEducation = () => {
+    setEducationHidden(false);
+    window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
+    const verseKey = audibleVerseKey ?? selectedVerseKey;
+    if (verseKey) {
+      setEducationSelection({
+        verseKey,
+        wordId: null,
+        wordPosition: null,
+        wordText: null,
+      });
+    }
+  };
 
   const handleStandaloneSyncToggle = async () => {
     const enabling = !syncEnabled;
@@ -906,7 +932,9 @@ export function QuranPagesView({
                if (copyRange) {
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
-               setEducationSelection(selection);
+               if (!educationHidden) {
+                 setEducationSelection(selection);
+               }
               if (selection.wordPosition !== null) {
                 playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
@@ -1460,6 +1488,19 @@ export function QuranPagesView({
         )}
       </main>
 
+      {!quietMode && educationHidden && (
+        <button
+          type="button"
+          onClick={showEducation}
+          data-testid="button-show-quran-education"
+          className="fixed bottom-[calc(1rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] end-3 z-50 inline-flex h-10 items-center gap-2 rounded-full border border-emerald-900/15 bg-[#fbfaf6]/95 px-3 text-xs font-black text-emerald-800 shadow-lg backdrop-blur-xl transition-colors hover:bg-white dark:border-white/10 dark:bg-card/95 dark:text-emerald-200"
+          aria-label={lang === "ar" ? "إظهار التفسير" : "Show tafsir"}
+        >
+          <Eye className="h-4 w-4" />
+          {lang === "ar" ? "إظهار التفسير" : "Show tafsir"}
+        </button>
+      )}
+
       {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
           className="quran-reader-dock relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col overflow-visible rounded-t-[22px] bg-[#fbfaf6] shadow-[0_-10px_34px_rgba(34,87,57,0.12)] ring-1 ring-emerald-950/10 dark:bg-[#111512] md:max-h-[58dvh] md:rounded-none"
@@ -1526,12 +1567,13 @@ export function QuranPagesView({
               />
             </div>
           )}
-          {educationSelection && (
+          {!educationHidden && educationSelection && (
             <div className="min-h-0 flex-1 overflow-y-auto">
               <QuranEducationPanel
                 key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
                 selection={educationSelection}
                 onClose={() => setEducationSelection(null)}
+                onHide={hideEducation}
                 locked={educationLocked}
                 onToggleLock={() => setEducationLocked((locked) => !locked)}
               />

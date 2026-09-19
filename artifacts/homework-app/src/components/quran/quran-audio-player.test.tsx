@@ -250,6 +250,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     const { view, audio } = await renderAtBoundary();
 
     pause.mockClear();
+    play.mockClear();
 
     fireEvent.timeUpdate(audio);
 
@@ -287,12 +288,31 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(pause).not.toHaveBeenCalled();
   });
 
-  it('does not let an old timing response stop a newly selected reciter', async () => {
+  it('does not play a stale chapter position while the selected ayah timing is loading', async () => {
+    timingResults.set(2, { isLoading: true, isFetching: true });
+    const { view } = await renderAtBoundary();
+
+    play.mockClear();
+    pause.mockClear();
+    fireEvent.click(view.getByTestId('button-next-ayah'));
+
+    await waitFor(() => expect(view.getByTestId('playing-ayah').textContent).toBe('2'));
+    expect(play).not.toHaveBeenCalled();
+    expect(pause).toHaveBeenCalled();
+
+    timingResults.set(2, { data: connectedSecond });
+    view.rerender(<PlayerHarness />);
+
+    await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not play the old chapter position after an async boundary advances the ayah', async () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
 
     pause.mockClear();
+    play.mockClear();
 
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
@@ -301,7 +321,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await act(async () => resolveTiming(connectedSecond));
 
     await waitFor(() => expect(view.container.querySelector('audio')).toBe(audio));
-    expect(pause).not.toHaveBeenCalled();
+    await waitFor(() => expect(view.getByTestId('playing-ayah').textContent).toBe('2'));
+    expect(pause).toHaveBeenCalled();
     expect(audio.hasAttribute('src')).toBe(true);
   });
 

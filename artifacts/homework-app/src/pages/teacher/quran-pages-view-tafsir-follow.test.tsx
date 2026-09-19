@@ -128,23 +128,29 @@ vi.mock("@/components/quran/quran-education-panel", () => ({
     selection,
     locked,
     onToggleLock,
+    onHide,
   }: {
     selection: { verseKey: string };
     locked: boolean;
     onToggleLock: () => void;
+    onHide: () => void;
   }) => (
     <section aria-label="لوحة التفسير">
       <output data-testid="tafsir-verse">{selection.verseKey}</output>
       <button type="button" aria-pressed={locked} onClick={onToggleLock}>
         {locked ? "فتح القفل" : "قفل التفسير"}
       </button>
+      <button type="button" onClick={onHide}>إخفاء التفسير</button>
     </section>
   ),
 }));
 
 import { QuranPagesView } from "./quran-pages-view";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 describe("QuranPagesView tafsir playback following", () => {
   it("follows playback, stays fixed while locked, resyncs when unlocked, and resets on close", async () => {
@@ -194,5 +200,37 @@ describe("QuranPagesView tafsir playback following", () => {
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     fireEvent.click(screen.getByRole("button", { name: "تشغيل الآية" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "قفل التفسير" }).getAttribute("aria-pressed")).toBe("false"));
+  });
+
+  it("keeps tafsir hidden across ayah interactions until the user shows it again", async () => {
+    render(
+      <QuranPagesView
+        initialSurah={1}
+        initialAyah={1}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("button-mobile-audio")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("button-mobile-audio"));
+    fireEvent.click(screen.getByRole("button", { name: "تشغيل الآية" }));
+    await waitFor(() => expect(screen.getByLabelText("لوحة التفسير")).toBeTruthy());
+
+    fireEvent.click(screen.getByRole("button", { name: "إخفاء التفسير" }));
+    expect(screen.queryByLabelText("لوحة التفسير")).toBeNull();
+    expect(window.localStorage.getItem("quran-education-hidden")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "الآية التالية" }));
+    fireEvent.click(screen.getByRole("button", { name: "بدأ صوت الآية التالية" }));
+    expect(screen.queryByLabelText("لوحة التفسير")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "إظهار التفسير" }));
+    await waitFor(() => expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:2"));
+    expect(window.localStorage.getItem("quran-education-hidden")).toBeNull();
   });
 });

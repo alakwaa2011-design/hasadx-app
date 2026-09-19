@@ -334,15 +334,6 @@ export function QuranAudioPlayer({
        } else if (audioRef.current && shouldRestartSameSource) {
          restartWhenTimingsReadyRef.current = null;
          audioRef.current.currentTime = data.verseStartMs / 1000;
-         if (isPlaying && !isPausedBetween) {
-           audioRef.current.playbackRate = speed;
-           void audioRef.current.play().catch(error => {
-             if (error.name !== 'AbortError') {
-               setError(true);
-               onIsPlayingChange(false);
-             }
-           });
-         }
       }
     }
   }, [
@@ -461,14 +452,33 @@ export function QuranAudioPlayer({
     }
 
     if (isPlaying && !isPausedBetween && audioSrc) {
-       if (activeSeekRef.current) {
-           if (audio.readyState < HTMLMediaElement.HAVE_METADATA) return;
-           const ct = audio.currentTime * 1000;
-           if (
-              ct < activeSeekRef.current.startMs || ct >= activeSeekRef.current.endMs
-           ) {
-              audio.currentTime = activeSeekRef.current.startMs / 1000;
-          }
+       if (timingsQuery.isLoading || timingsQuery.isFetching) {
+         audio.pause();
+         return;
+       }
+       if (timingsQuery.data?.synchronized) {
+         const seek = activeSeekRef.current;
+         const expectedUrl = new URL(timingsQuery.data.audioUrl, window.location.href).href;
+         if (
+           !seek
+           || seek.ayah !== playingAyah
+           || audio.src !== expectedUrl
+         ) {
+           audio.pause();
+           return;
+         }
+         if (audio.readyState < HTMLMediaElement.HAVE_METADATA) return;
+         const ct = audio.currentTime * 1000;
+         if (ct < seek.startMs || ct >= seek.endMs) {
+           audio.currentTime = seek.startMs / 1000;
+         }
+       } else {
+         const fallbackUrl = `/api/quran/audio/${recitationId}/${surahNumber}/${playingAyah}`;
+         const expectedUrl = new URL(fallbackUrl, window.location.href).href;
+         if (audio.src !== expectedUrl) {
+           audio.pause();
+           return;
+         }
        }
        audio.playbackRate = speed;
        const p = audio.play();
@@ -483,7 +493,20 @@ export function QuranAudioPlayer({
     } else if (audioSrc || !audio.src) {
        audio.pause();
     }
-  }, [audioRef, audioSrc, isPausedBetween, isPlaying, onIsPlayingChange, speed]);
+  }, [
+    audioRef,
+    audioSrc,
+    isPausedBetween,
+    isPlaying,
+    onIsPlayingChange,
+    playingAyah,
+    recitationId,
+    speed,
+    surahNumber,
+    timingsQuery.data,
+    timingsQuery.isFetching,
+    timingsQuery.isLoading,
+  ]);
 
   useEffect(() => {
     return () => {
