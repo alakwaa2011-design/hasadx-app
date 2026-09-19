@@ -411,10 +411,16 @@ function Router() {
         <Route path="/teacher/tools/schedule" component={TeacherSchedule} />
         <Route path="/teacher/tools/url-qr" component={UrlQrTool} />
         <Route path="/teacher/tools/timer" component={TimerTool} />
+        {/* Stable, shareable dashboard URLs. Keep specific standalone tool
+            routes above the grouped dashboard routes. */}
+        <Route path="/teacher/tools/:toolGroup" component={TeacherDashboard} />
+        <Route path="/teacher/tools" component={TeacherDashboard} />
         <Route path="/teacher/quran-reader/:surahNumber" component={QuranReader} />
         <Route path="/teacher/quran-center">
           <QuranCenter />
         </Route>
+        <Route path="/teacher/quran/:quranTab" component={TeacherDashboard} />
+        <Route path="/teacher/quran" component={TeacherDashboard} />
         <Route path="/teacher/quran-recitation/:surahNumber">
           <AdminOnly>
             <QuranRecitation />
@@ -513,6 +519,16 @@ function Router() {
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
         <Route path="/teacher/parent-messages" component={ParentMessagesPage} />
         <Route path="/teacher/messages" component={TeacherMessagesPage} />
+        <Route path="/teacher/overview" component={TeacherDashboard} />
+        <Route path="/teacher/assignments/attention" component={TeacherDashboard} />
+        <Route path="/teacher/assignments" component={TeacherDashboard} />
+        <Route path="/teacher/shared-activities" component={TeacherDashboard} />
+        <Route path="/teacher/activity-library" component={TeacherDashboard} />
+        <Route path="/teacher/competitions" component={TeacherDashboard} />
+        <Route path="/teacher/video-lessons" component={TeacherDashboard} />
+        <Route path="/teacher/statistics" component={TeacherDashboard} />
+        <Route path="/teacher/plans" component={TeacherDashboard} />
+        <Route path="/teacher/kids-board" component={TeacherDashboard} />
         <Route path="/teacher" component={TeacherDashboard} />
         {/* Parent Portal — public, no auth */}
         <Route path="/parent/:token" component={ParentPortalPage} />

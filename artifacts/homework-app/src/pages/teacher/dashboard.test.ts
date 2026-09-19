@@ -12,7 +12,12 @@
  * بهذه الاختبارات أولاً.
  */
 import { describe, it, expect } from "vitest";
-import { matchesTeacherToolQuery, parseDashboardUrlParams } from "./dashboard";
+import {
+  dashboardPathForSelection,
+  matchesTeacherToolQuery,
+  parseDashboardPathname,
+  parseDashboardUrlParams,
+} from "./dashboard";
 
 const PATH = "/teacher";
 
@@ -132,6 +137,36 @@ describe("parseDashboardUrlParams — لا معاملات", () => {
     expect(result.tab).toBeUndefined();
     expect(result.liveGamePickerId).toBeUndefined();
     expect(result.navigateTo).toBeUndefined();
+  });
+});
+
+describe("روابط أقسام لوحة المعلم", () => {
+  it("يعطي كل قسم داخلي رابطًا وصفيًا ثابتًا", () => {
+    expect(dashboardPathForSelection("assignments")).toBe("/teacher/assignments");
+    expect(dashboardPathForSelection("competitive")).toBe("/teacher/competitions");
+    expect(dashboardPathForSelection("stats")).toBe("/teacher/statistics");
+  });
+
+  it("يحفظ مجموعة الأدوات المختارة في الرابط", () => {
+    expect(dashboardPathForSelection("tools", "content"))
+      .toBe("/teacher/tools/content");
+    expect(parseDashboardPathname("/teacher/tools/content")).toEqual({
+      tab: "tools",
+      toolsSubTab: "content",
+    });
+  });
+
+  it("يحفظ قسم مركز القرآن المختار في الرابط", () => {
+    expect(dashboardPathForSelection("quran", "ai-tools", "circles"))
+      .toBe("/teacher/quran/circles");
+    expect(parseDashboardPathname("/teacher/quran/circles")).toEqual({
+      tab: "quran",
+      quranSubTab: "circles",
+    });
+  });
+
+  it("يتجاهل المسارات غير التابعة للوحة", () => {
+    expect(parseDashboardPathname("/teacher/tools/timer")).toBeNull();
   });
 });
 

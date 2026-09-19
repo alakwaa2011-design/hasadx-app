@@ -314,6 +314,62 @@ type TabId =
   | "quran"
   | "parent_messages";
 
+type ToolsSubTab = "ai-tools" | "content" | "other";
+
+export type DashboardPathSelection = {
+  tab: TabId;
+  toolsSubTab?: ToolsSubTab;
+  quranSubTab?: QuranCenterTab;
+};
+
+const DASHBOARD_TAB_PATHS: Partial<Record<TabId, string>> = {
+  overview: "/teacher",
+  attention: "/teacher/assignments/attention",
+  credits: "/teacher/plans",
+  assignments: "/teacher/assignments",
+  shared: "/teacher/shared-activities",
+  library_homework: "/teacher/activity-library",
+  competitive: "/teacher/competitions",
+  tools: "/teacher/tools/ai-tools",
+  videos: "/teacher/video-lessons",
+  stats: "/teacher/statistics",
+  kids_board: "/teacher/kids-board",
+  quran: "/teacher/quran/mushaf",
+};
+
+export function parseDashboardPathname(pathname: string): DashboardPathSelection | null {
+  const cleanPath = pathname.replace(/\/+$/, "") || "/";
+
+  const toolsMatch = cleanPath.match(/^\/teacher\/tools\/(ai-tools|content|other)$/);
+  if (toolsMatch) {
+    return { tab: "tools", toolsSubTab: toolsMatch[1] as ToolsSubTab };
+  }
+  if (cleanPath === "/teacher/tools") {
+    return { tab: "tools", toolsSubTab: "ai-tools" };
+  }
+
+  const quranMatch = cleanPath.match(/^\/teacher\/quran\/(mushaf|circles)$/);
+  if (quranMatch) {
+    return { tab: "quran", quranSubTab: quranMatch[1] as QuranCenterTab };
+  }
+  if (cleanPath === "/teacher/quran") {
+    return { tab: "quran", quranSubTab: "mushaf" };
+  }
+
+  const entry = Object.entries(DASHBOARD_TAB_PATHS).find(([, path]) => path === cleanPath);
+  return entry ? { tab: entry[0] as TabId } : null;
+}
+
+export function dashboardPathForSelection(
+  tab: TabId,
+  toolsSubTab: ToolsSubTab = "ai-tools",
+  quranSubTab: QuranCenterTab = "mushaf",
+): string | null {
+  if (tab === "tools") return `/teacher/tools/${toolsSubTab}`;
+  if (tab === "quran") return `/teacher/quran/${quranSubTab}`;
+  return DASHBOARD_TAB_PATHS[tab] ?? null;
+}
+
 interface SharedAssignment {
   id: number;
   title: string;
@@ -453,12 +509,19 @@ export function parseDashboardUrlParams(
 
 export default function TeacherDashboard() {
   const [location, setLocation] = useLocation();
+  const initialPathSelection = typeof window === "undefined"
+    ? null
+    : parseDashboardPathname(window.location.pathname);
   const [creatingGameForId, setCreatingGameForId] = useState<number | null>(
     null,
   );
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [toolsSubTab, setToolsSubTab] = useState<"ai-tools" | "content" | "other">("ai-tools");
-  const [quranSubTab, setQuranSubTab] = useState<QuranCenterTab>("mushaf");
+  const [activeTab, setActiveTab] = useState<TabId>(initialPathSelection?.tab ?? "overview");
+  const [toolsSubTab, setToolsSubTab] = useState<ToolsSubTab>(
+    initialPathSelection?.toolsSubTab ?? "ai-tools",
+  );
+  const [quranSubTab, setQuranSubTab] = useState<QuranCenterTab>(
+    initialPathSelection?.quranSubTab ?? "mushaf",
+  );
   const [quranExpanded, setQuranExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   // Kept only as a safe fallback for an already-open legacy modal. All active
@@ -522,6 +585,32 @@ export default function TeacherDashboard() {
     if (userError) setLocation("/login");
   }, [userError, setLocation]);
 
+  useEffect(() => {
+    const selection = parseDashboardPathname(location.split(/[?#]/)[0]);
+    if (!selection) return;
+    setActiveTab(selection.tab);
+    if (selection.toolsSubTab) setToolsSubTab(selection.toolsSubTab);
+    if (selection.quranSubTab) setQuranSubTab(selection.quranSubTab);
+  }, [location]);
+
+  const selectDashboardTab = (tab: TabId) => {
+    const path = dashboardPathForSelection(tab, toolsSubTab, quranSubTab);
+    setActiveTab(tab);
+    if (path) setLocation(path);
+  };
+
+  const selectToolsTab = (subTab: ToolsSubTab) => {
+    setActiveTab("tools");
+    setToolsSubTab(subTab);
+    setLocation(dashboardPathForSelection("tools", subTab, quranSubTab)!);
+  };
+
+  const selectQuranTab = (subTab: QuranCenterTab) => {
+    setActiveTab("quran");
+    setQuranSubTab(subTab);
+    setLocation(dashboardPathForSelection("quran", toolsSubTab, subTab)!);
+  };
+
   const consumeWameethDeepLink = useCallback(() => {
     setOpenWameethDeepLink(false);
   }, []);
@@ -537,8 +626,15 @@ export default function TeacherDashboard() {
       window.location.pathname,
       window.location.hash,
     );
-    if (tab) setActiveTab(tab);
-    window.history.replaceState({}, "", cleanedUrl);
+    let destinationUrl = cleanedUrl;
+    if (tab) {
+      const path = dashboardPathForSelection(tab, toolsSubTab, quranSubTab);
+      setActiveTab(tab);
+      if (path) {
+        destinationUrl = `${path}${cleanedUrl.slice(window.location.pathname.length)}`;
+      }
+    }
+    window.history.replaceState({}, "", destinationUrl);
     if (liveGamePickerId != null) {
       /* From publish-success («لعبة مباشرة» after publishing): open the SAME
          game-type picker used by the «أنشطتي» rows for that assignment. */
@@ -940,7 +1036,7 @@ export default function TeacherDashboard() {
             assignments={assignments || []}
             lang={lang}
             setLocation={setLocation}
-            onBack={() => setActiveTab("overview")}
+            onBack={() => selectDashboardTab("overview")}
           />
         )}
         {activeTab === "shared" && (
@@ -978,7 +1074,7 @@ export default function TeacherDashboard() {
             user={user}
             classroomEnabled={classroomEnabled}
             activeGroup={toolsSubTab}
-            openRewards={() => setActiveTab("rewards")}
+            openRewards={() => setLocation("/teacher/rewards")}
           />
         )}
         {activeTab === "videos" && (
@@ -1017,11 +1113,11 @@ export default function TeacherDashboard() {
           <QuranCenter
             embedded
             selectedTab={quranSubTab}
-            onSelectedTabChange={setQuranSubTab}
+            onSelectedTabChange={selectQuranTab}
           />
         )}
         {activeTab === "kids_board" && (
-          <TeacherKidsBoard embedded onBack={() => setActiveTab("overview")} />
+          <TeacherKidsBoard embedded onBack={() => selectDashboardTab("overview")} />
         )}
       </motion.div>
     </AnimatePresence>
@@ -1071,8 +1167,10 @@ export default function TeacherDashboard() {
                   key={tab.id}
                   onClick={() => {
                     if (tab.href) setLocation(tab.href);
-                     else if (tab.id === "students") setActiveTab("students");
-                    else setActiveTab(tab.id);
+                    else if (tab.id === "students") setLocation("/teacher/students");
+                    else if (tab.id === "rewards") setLocation("/teacher/rewards");
+                    else if (tab.id === "parent_messages") setLocation("/teacher/parent-messages");
+                    else selectDashboardTab(tab.id);
                   }}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
                   style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
@@ -1116,10 +1214,9 @@ export default function TeacherDashboard() {
                         if (activeTab === "tools") {
                           setToolsExpanded((prev) => !prev);
                         } else {
-                          setActiveTab("tools");
                           setToolsExpanded(true);
                           // show all groups when clicking the parent
-                          setToolsSubTab("ai-tools");
+                          selectToolsTab("ai-tools");
                           setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
                         }
                       }}
@@ -1154,8 +1251,7 @@ export default function TeacherDashboard() {
                             <button
                               key={sub.id}
                               onClick={() => {
-                                setToolsSubTab(sub.id);
-                                if (activeTab !== "tools") setActiveTab("tools");
+                                selectToolsTab(sub.id);
                                 setTimeout(() => {
                                   document.getElementById(`tools-group-${sub.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                                 }, 80);
@@ -1190,7 +1286,7 @@ export default function TeacherDashboard() {
                   key={tab.id}
                   onClick={() => {
                     if (tab.href) setLocation(tab.href);
-                    else setActiveTab(tab.id);
+                    else selectDashboardTab(tab.id);
                   }}
                   className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
                   style={active ? { background: "rgba(30,77,53,0.08)", color: "#1E4D35", fontWeight: 700 } : { color: "rgba(30,77,53,0.72)" }}
@@ -1245,8 +1341,7 @@ export default function TeacherDashboard() {
                     if (active) {
                       setQuranExpanded((expanded) => !expanded);
                     } else {
-                      setActiveTab("quran");
-                      setQuranSubTab("mushaf");
+                      selectQuranTab("mushaf");
                       setQuranExpanded(true);
                     }
                   }}
@@ -1285,7 +1380,7 @@ export default function TeacherDashboard() {
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => setQuranSubTab(item.id)}
+                          onClick={() => selectQuranTab(item.id)}
                           className="relative flex w-full items-center gap-2.5 overflow-hidden rounded-lg px-3 py-2 text-xs font-semibold transition-all"
                           style={subActive
                             ? { background: "rgba(201,160,80,0.12)", color: "#1E4D35", fontWeight: 700 }
@@ -1315,7 +1410,7 @@ export default function TeacherDashboard() {
                 <button
                   key={creditsTab.id}
                   onClick={() => {
-                    setActiveTab("credits");
+                    selectDashboardTab("credits");
                     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
                   }}
                   aria-current={active ? "page" : undefined}
@@ -1566,7 +1661,7 @@ export default function TeacherDashboard() {
                 key={tab.id}
                 onClick={() => {
                   if (tab.href) setLocation(tab.href);
-                  else setActiveTab(tab.id);
+                  else selectDashboardTab(tab.id);
                 }}
                 aria-current={active ? "page" : undefined}
                 className={cn(
