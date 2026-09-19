@@ -956,23 +956,37 @@
   }
 
   .quran-reader-figure {
+    display: flex !important;
     width: 100% !important;
     max-width: none !important;
     height: 100dvh !important;
+    align-items: stretch !important;
+    justify-content: center !important;
     aspect-ratio: auto !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
-  .quran-landscape-page-image {
-    display: block !important;
+  .quran-reader-figure .quran-madani-page {
     width: 100% !important;
     height: 100dvh !important;
-    object-fit: fill;
-    user-select: none;
+    aspect-ratio: auto !important;
+    border-radius: 0 !important;
   }
 
-  .quran-interactive-page {
-    display: none !important;
+  .quran-reader-figure .quran-madani-page-content {
+    width: min(100%, 95dvh) !important;
+    margin-right: auto;
+    margin-left: auto;
+    padding: 3dvh 2dvh !important;
+  }
+
+  .quran-reader-figure .quran-madani-line,
+  .quran-reader-figure .quran-madani-end {
+    font-size: min(5.2cqw, 4.5dvh) !important;
+  }
+
+  .quran-reader-figure .quran-madani-bismillah {
+    font-size: min(5.8cqw, 5dvh) !important;
   }
 }

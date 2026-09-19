@@ -935,20 +935,7 @@ export function QuranPagesView({
             </button>
           </div>
         ) : (
-          <>
-            <img
-              src={pageImageUrl(page)}
-              alt={lang === "ar" ? `صفحة المصحف رقم ${page}` : `Mushaf page ${page}`}
-              className="quran-landscape-page-image hidden"
-              loading="eager"
-              decoding="async"
-              draggable={false}
-              onError={() =>
-                setFailedPages((current) => new Set(current).add(page))
-              }
-            />
-            <div className="quran-interactive-page contents">
-              <QuranMadaniPageRenderer
+          <QuranMadaniPageRenderer
             pageNumber={page}
             isLastVerse={(chapterId, verseNumber) => {
               return !verses.some(
@@ -1008,9 +995,7 @@ export function QuranPagesView({
               setIsPlaying(true);
               setAudioDockOpen(true);
             }}
-              />
-            </div>
-          </>
+          />
         )}
       </figure>
     );
