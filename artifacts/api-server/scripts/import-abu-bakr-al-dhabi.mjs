@@ -13,6 +13,13 @@ const REFERENCE_RECITATION_ID = 1_000_004;
 const OUTPUT_DIR = process.env.QURAN_IMPORT_OUTPUT_DIR || "/tmp/abu-bakr-al-dhabi-import";
 const REPORT_PATH = `${OUTPUT_DIR}/manifest.json`;
 const API_BASE_URL = process.env.QURAN_IMPORT_API_BASE_URL || "http://127.0.0.1:8080/api";
+const MIN_AYAH_DURATION_MS = 700;
+const REVIEWED_BOUNDARIES = JSON.parse(
+  await readFile(new URL("./abu-bakr-al-dhabi-reviewed-boundaries.json", import.meta.url), "utf8"),
+);
+const REVIEWED_BOUNDARY_PATCHES = {
+  38: { 67: 831_100, 68: 832_700, 69: 840_200, 70: 844_600 },
+};
 const CANONICAL_AYAH_COUNTS = [
   7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98,
   135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75,
@@ -224,20 +231,39 @@ function chooseBoundaries({ surahNumber, audioDurationMs, chapterStartMs, silenc
   const rows = targets.map(() => new Float64Array(candidates.length).fill(Number.POSITIVE_INFINITY));
   const previous = targets.map(() => new Int32Array(candidates.length).fill(-1));
   for (let boundary = 0; boundary < targets.length; boundary += 1) {
+    const expectedVerseMs = boundary === 0
+      ? targets[0] - chapterStartMs
+      : targets[boundary] - targets[boundary - 1];
+    const minimumVerseMs = Math.max(MIN_AYAH_DURATION_MS, expectedVerseMs * 0.15);
     let bestPreviousCost = Number.POSITIVE_INFINITY;
     let bestPreviousIndex = -1;
+    let previousCandidate = 0;
     for (let candidate = 0; candidate < candidates.length; candidate += 1) {
-      if (boundary > 0 && candidate > 0 && rows[boundary - 1][candidate - 1] < bestPreviousCost) {
-        bestPreviousCost = rows[boundary - 1][candidate - 1];
-        bestPreviousIndex = candidate - 1;
+      while (
+        boundary > 0
+        && previousCandidate < candidate
+        && candidates[previousCandidate].endMs
+          <= candidates[candidate].endMs - minimumVerseMs
+      ) {
+        if (rows[boundary - 1][previousCandidate] < bestPreviousCost) {
+          bestPreviousCost = rows[boundary - 1][previousCandidate];
+          bestPreviousIndex = previousCandidate;
+        }
+        previousCandidate += 1;
       }
       const remainingCandidates = candidates.length - candidate - 1;
       const remainingBoundaries = targets.length - boundary - 1;
       if (remainingCandidates < remainingBoundaries) continue;
       if (boundary > 0 && bestPreviousIndex < 0) continue;
-      const expectedVerseMs = boundary === 0
-        ? targets[0] - chapterStartMs
-        : targets[boundary] - targets[boundary - 1];
+      if (boundary === 0 && candidates[candidate].endMs - chapterStartMs < MIN_AYAH_DURATION_MS) {
+        continue;
+      }
+      if (
+        boundary === targets.length - 1
+        && chapterEndMs - candidates[candidate].endMs < MIN_AYAH_DURATION_MS
+      ) {
+        continue;
+      }
       const tolerance = Math.max(1_000, expectedVerseMs * 0.45);
       const distance = Math.abs(candidates[candidate].endMs - targets[boundary]);
       const pauseReward = Math.min(candidates[candidate].durationMs, 900) / 900;
@@ -379,13 +405,46 @@ async function main() {
       sha256(localPath),
       referenceTimings(surah, CANONICAL_AYAH_COUNTS[surah - 1]),
     ]);
-    const alignment = chooseBoundaries({
-      surahNumber: surah,
-      audioDurationMs,
-      chapterStartMs,
-      silences,
-      reference,
-    });
+    const reviewedEdges = REVIEWED_BOUNDARIES[String(surah)];
+    const alignment = Array.isArray(reviewedEdges)
+      ? {
+          chapterStartMs: reviewedEdges[0],
+          chapterEndMs: reviewedEdges.at(-1),
+          bismillahEndMs: null,
+          boundaries: reviewedEdges.slice(1, -1),
+          qa: reviewedEdges.slice(1, -1).map((boundaryMs, index) => ({
+            ayahNumber: index + 1,
+            boundaryMs,
+            targetMs: reference[index].endMs,
+            offsetMs: boundaryMs - reference[index].endMs,
+            silenceDurationMs: silences.find(
+              (silence) => Math.abs(silence.endMs - boundaryMs) <= 50,
+            )?.durationMs ?? 0,
+            reviewMethod: "semantic-audio-transcription",
+          })),
+        }
+      : chooseBoundaries({
+          surahNumber: surah,
+          audioDurationMs,
+          chapterStartMs,
+          silences,
+          reference,
+        });
+    const reviewedPatches = REVIEWED_BOUNDARY_PATCHES[surah];
+    if (reviewedPatches) {
+      for (const [ayahNumberValue, boundaryMs] of Object.entries(reviewedPatches)) {
+        const ayahNumber = Number(ayahNumberValue);
+        alignment.boundaries[ayahNumber - 1] = boundaryMs;
+        alignment.qa[ayahNumber - 1] = {
+          ayahNumber,
+          boundaryMs,
+          targetMs: reference[ayahNumber - 1].endMs,
+          offsetMs: boundaryMs - reference[ayahNumber - 1].endMs,
+          silenceDurationMs: 0,
+          reviewMethod: "semantic-audio-review",
+        };
+      }
+    }
     const timings = ayahTimings(alignment, CANONICAL_AYAH_COUNTS[surah - 1]);
     const worstOffsetMs = Math.max(0, ...alignment.qa.map((item) => Math.abs(item.offsetMs)));
     const objectPath = dryRun
