@@ -1452,12 +1452,14 @@ export function QuranPagesView({
                   const nextVerseKey = `${nextSurah}:${nextAyah}`;
                   setPlayingVerseKey(nextVerseKey);
                   setSelectedVerseKey(nextVerseKey);
-                  setEducationSelection({
-                    verseKey: nextVerseKey,
-                    wordId: null,
-                    wordPosition: null,
-                    wordText: null,
-                  });
+                   if (!educationLocked) {
+                     setEducationSelection({
+                       verseKey: nextVerseKey,
+                       wordId: null,
+                       wordPosition: null,
+                       wordText: null,
+                     });
+                   }
                   setIsPlaying(true);
                   goToSurah(nextSurah);
                 }}
