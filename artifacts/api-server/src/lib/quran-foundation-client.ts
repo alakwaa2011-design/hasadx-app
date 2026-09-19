@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import qcfV2Integrity from "../data/qcf-v2-page-integrity.json";
+import abuBakrAlDhabiReviewedBoundaries from "../../scripts/abu-bakr-al-dhabi-reviewed-boundaries.json";
 import { objectStorageClient, parseObjectPath } from "./objectStorage";
 
 const OAUTH_BASE_URL = "https://oauth2.quran.foundation";
@@ -39,6 +40,12 @@ const ABU_BAKR_AL_DHABI_FATIHA_BOUNDARIES = Object.freeze([
 ]);
 const ABU_BAKR_AL_DHABI_MANIFEST_PATH =
   "uploads/quran-recitation/abu-bakr-al-dhabi/verse-boundaries.json";
+
+const ABU_BAKR_AL_DHABI_BOUNDARY_PATCHES = (
+  abuBakrAlDhabiReviewedBoundaries as unknown as {
+    $patches?: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  }
+).$patches ?? {};
 let abuBakrAlDhabiManifestRequest:
   Promise<Readonly<Record<string, readonly number[]>>> | null = null;
 
@@ -72,11 +79,15 @@ async function getAbuBakrAlDhabiVerseTiming(
   surahNumber: number,
   ayahNumber: number,
 ): Promise<{ verseStartMs: number; verseEndMs: number } | null> {
-  const boundaries = surahNumber === 1
+  const storedBoundaries = surahNumber === 1
     ? ABU_BAKR_AL_DHABI_FATIHA_BOUNDARIES
     : surahNumber === 95
       ? ABU_BAKR_AL_DHABI_TIN_BOUNDARIES
       : (await loadAbuBakrAlDhabiManifest())[String(surahNumber)];
+  const patches = ABU_BAKR_AL_DHABI_BOUNDARY_PATCHES[String(surahNumber)];
+  const boundaries = storedBoundaries && patches
+    ? storedBoundaries.map((boundary, index) => patches[String(index)] ?? boundary)
+    : storedBoundaries;
   if (!boundaries || boundaries.length !== CANONICAL_AYAH_COUNTS[surahNumber - 1] + 1) return null;
   const verseStartMs = boundaries[ayahNumber - 1];
   const verseEndMs = boundaries[ayahNumber];

@@ -62,6 +62,7 @@ describe("Quran Foundation client", () => {
     objectStorageDownloadMock.mockReset().mockResolvedValue([Buffer.from(JSON.stringify({
       1: [441, 6_580, 12_056, 18_192, 22_204, 26_834, 32_988, 53_760],
       94: [369, 10_116, 14_416, 19_723, 23_503, 28_282, 33_187, 37_779, 41_587],
+      100: [114, 9_493, 9_753, 13_460, 17_253, 24_997, 33_600, 40_276, 47_314, 55_186, 60_624, 69_669],
     }))]);
     resetQuranFoundationClientForTests();
   });
@@ -301,6 +302,27 @@ describe("Quran Foundation client", () => {
       });
     await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 8))
       .resolves.toMatchObject({ verseStartMs: 53_431, verseEndMs: 61_727 });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 100, 1))
+      .resolves.toMatchObject({ verseStartMs: 114, verseEndMs: 9_753 });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 100, 2))
+      .resolves.toMatchObject({ verseStartMs: 9_753, verseEndMs: 13_460 });
+    const correctedSurahOneHundred = await Promise.all(
+      Array.from({ length: 11 }, (_, index) =>
+        getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 100, index + 1)),
+    );
+    expect(correctedSurahOneHundred).toHaveLength(11);
+    for (const [index, timing] of correctedSurahOneHundred.entries()) {
+      expect(timing.verseEndMs - timing.verseStartMs).toBeGreaterThanOrEqual(700);
+      if (index > 0) {
+        expect(timing.verseStartMs).toBe(correctedSurahOneHundred[index - 1].verseEndMs);
+      }
+    }
+    expect(correctedSurahOneHundred[7]).toMatchObject({
+      verseStartMs: 43_163,
+      verseEndMs: 47_314,
+    });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 100, 11))
+      .resolves.toMatchObject({ verseStartMs: 60_624, verseEndMs: 69_669 });
     await expect(getQuranFoundationAudioUrl(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 1))
       .resolves.toBe("/api/storage/objects/uploads/a1210437-e13f-4f8c-809f-0148d6028867.mp3");
     expect(objectStorageDownloadMock).toHaveBeenCalledTimes(1);

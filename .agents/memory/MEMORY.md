@@ -138,3 +138,4 @@
 - [Quran safe-area testing](quran-safe-area-testing.md) — managed Chromium lacks CDP safe-area emulation; use the reader's CSS variable seam in browser tests.
 - [Quran E2E audio routing](quran-e2e-audio-routing.md) — block Service Workers in reader contexts or Playwright audio mocks may miss direct timing requests.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
+- [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.

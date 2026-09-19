@@ -17,9 +17,7 @@ const MIN_AYAH_DURATION_MS = 700;
 const REVIEWED_BOUNDARIES = JSON.parse(
   await readFile(new URL("./abu-bakr-al-dhabi-reviewed-boundaries.json", import.meta.url), "utf8"),
 );
-const REVIEWED_BOUNDARY_PATCHES = {
-  38: { 67: 831_100, 68: 832_700, 69: 840_200, 70: 844_600 },
-};
+const REVIEWED_BOUNDARY_PATCHES = REVIEWED_BOUNDARIES.$patches || {};
 const CANONICAL_AYAH_COUNTS = [
   7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98,
   135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75,
@@ -308,6 +306,12 @@ function chooseBoundaries({ surahNumber, audioDurationMs, chapterStartMs, silenc
 function ayahTimings(alignment, ayahCount) {
   const edges = [alignment.chapterStartMs, ...alignment.boundaries, alignment.chapterEndMs];
   if (edges.length !== ayahCount + 1) throw new Error("Aligned ayah count is invalid");
+  if (edges.some((edge, index) => (
+    !Number.isFinite(edge)
+    || (index > 0 && edge - edges[index - 1] < MIN_AYAH_DURATION_MS)
+  ))) {
+    throw new Error("Aligned ayah boundaries are invalid or contain an implausibly short ayah");
+  }
   return Array.from({ length: ayahCount }, (_, index) => ({
     ayahNumber: index + 1,
     verseStartMs: edges[index],
@@ -353,6 +357,12 @@ async function uploadRuntimeManifest(report) {
       chapter.timings[0].verseStartMs,
       ...chapter.timings.map((timing) => timing.verseEndMs),
     ];
+    const reviewedPatches = REVIEWED_BOUNDARY_PATCHES[surah];
+    if (reviewedPatches) {
+      for (const [edgeIndex, boundaryMs] of Object.entries(reviewedPatches)) {
+        edges[Number(edgeIndex)] = boundaryMs;
+      }
+    }
     if (edges.some((edge, index) => !Number.isFinite(edge) || (index > 0 && edge <= edges[index - 1]))) {
       throw new Error(`Runtime manifest timings are invalid at surah ${surah}`);
     }
