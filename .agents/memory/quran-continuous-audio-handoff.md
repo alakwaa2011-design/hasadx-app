@@ -11,7 +11,7 @@ Cross-surah handoff needs an explicit transition identity shared by the route, v
 
 An explicit “restart current ayah” action must use the active timing segment's `verseStartMs` when chapter audio is playing. Seeking the shared audio element to zero restarts the whole surah, not the selected ayah; standalone ayah files may still seek to zero.
 
-The shared audio element's `loadedmetadata` listener must be registered before any effect can replace its `src` and call `load()`. Cached or fast media can emit metadata before a later effect attaches, leaving a selected ayah at time zero. Guard the seek by the expected source URL so stale timing cannot move a newer source.
+The shared audio element's `loadedmetadata` listener must be registered before any effect can replace its `src` and call `load()`. For a selected timed ayah, do not call `play()` while metadata is unavailable: seek to `verseStartMs` in `loadedmetadata`, then play. Otherwise the chapter introduction becomes briefly audible while the UI already highlights the timed ayah. Cached or fast media can emit metadata before a later effect attaches, so guard the seek by the expected source URL and prevent stale timing from moving a newer source.
 
 Chapter-sized audio served through the private object route must honor single HTTP byte ranges (`206`, `Accept-Ranges`, and `Content-Range`). A client-side `currentTime` assignment cannot reliably seek a large MP3 when the server ignores `Range` and returns the whole object with `200`.
 

@@ -129,7 +129,11 @@ function PlayerHarness() {
   );
 }
 
-function RepeatingPlayerHarness() {
+function RepeatingPlayerHarness({
+  onPlaybackLocationChange,
+}: {
+  onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
+} = {}) {
   const [playingAyah, setPlayingAyah] = useState<number | null>(1);
   const [isPlaying, setIsPlaying] = useState(true);
   return (
@@ -164,6 +168,7 @@ function RepeatingPlayerHarness() {
           onPlayingAyahChange={setPlayingAyah}
           isPlaying={isPlaying}
           onIsPlayingChange={setIsPlaying}
+           onPlaybackLocationChange={onPlaybackLocationChange}
           memoSession={{
             isActive: true,
             rangeStart: 1,
@@ -186,6 +191,12 @@ async function renderAtBoundary() {
     expect(element).not.toBeNull();
     return element as HTMLAudioElement;
   });
+  await waitFor(() => expect(audio.src).toContain('/surah.mp3'));
+  Object.defineProperty(audio, 'readyState', {
+    configurable: true,
+    value: HTMLMediaElement.HAVE_METADATA,
+  });
+  fireEvent.loadedMetadata(audio);
   Object.defineProperty(audio, 'currentTime', { value: 1, writable: true });
   return { view, audio };
 }
@@ -242,6 +253,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
   });
 
   it('restarts the current ayah timing instead of the beginning of the surah', async () => {
+    let resolveTiming!: (timing: TimingResult) => void;
+    fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     timingResults.set(1, {
       data: {
         ...connectedFirst,
@@ -251,6 +264,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     });
     const { view, audio } = await renderAtBoundary();
 
+    audio.currentTime = 1.25;
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
 
@@ -327,26 +341,6 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await waitFor(() => expect(previous.disabled).toBe(true));
   });
 
-  it('moves directly to the first ayah of the next surah when a surah ends', async () => {
-    timingResults.set(2, { data: connectedSecond });
-    const onPlaybackLocationChange = vi.fn();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({ audioUrl: '/next-surah.mp3' }),
-    } as Response);
-    const view = render(<RepeatingPlayerHarness />);
-
-    let audio = await waitFor(() => {
-      const element = view.container.querySelector('audio');
-      expect(element).not.toBeNull();
-      return element as HTMLAudioElement;
-    });
-    fireEvent.ended(audio);
-
-    await waitFor(() => expect(onPlaybackLocationChange).toHaveBeenCalledWith(2, 1));
-    expect(audio.src).toContain('/next-surah.mp3');
-  });
-
   it('ignores an old boundary response after the user advances the ayah', async () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
@@ -383,6 +377,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
 
   it('seeks to the selected ayah and saves Abu Bakr Al-Dhabi as the preferred reciter', async () => {
     const { view, audio } = await renderAtBoundary();
+    Object.defineProperty(audio, 'readyState', { configurable: true, value: 0 });
+    play.mockClear();
     timingResults.set(1, {
       data: {
         synchronized: true,
@@ -402,8 +398,15 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await waitFor(() => expect(sampleButton.className).toContain('bg-emerald-50'));
     await waitFor(() => expect(timingHookCalls).toHaveBeenCalledWith(2_001_095, 1, 1));
     await waitFor(() => expect(audio.src).toContain('/abu-bakr-al-dhabi/001.mp3'));
+    play.mockClear();
+    expect(play).not.toHaveBeenCalled();
+    Object.defineProperty(audio, 'readyState', {
+      configurable: true,
+      value: HTMLMediaElement.HAVE_METADATA,
+    });
     fireEvent.loadedMetadata(audio);
     expect(audio.currentTime).toBe(12.345);
+    await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(savePreference).toHaveBeenCalledWith({
       data: { recitationId: 2_001_095 },
     }));

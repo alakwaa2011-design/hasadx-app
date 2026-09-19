@@ -352,6 +352,15 @@ export function QuranAudioPlayer({
     const activeUrl = new URL(seek.url, window.location.href).href;
     if (audio.src !== activeUrl) return;
     audio.currentTime = seek.startMs / 1000;
+    if (isPlaying && !isPausedBetween) {
+      audio.playbackRate = speed;
+      void audio.play().catch(error => {
+        if (error.name !== 'AbortError') {
+          setError(true);
+          onIsPlayingChange(false);
+        }
+      });
+    }
   };
 
   useEffect(() => {
@@ -430,10 +439,10 @@ export function QuranAudioPlayer({
 
     if (isPlaying && !isPausedBetween && audioSrc) {
        if (activeSeekRef.current) {
+           if (audio.readyState < HTMLMediaElement.HAVE_METADATA) return;
            const ct = audio.currentTime * 1000;
            if (
-             audio.readyState >= HTMLMediaElement.HAVE_METADATA
-             && (ct < activeSeekRef.current.startMs || ct >= activeSeekRef.current.endMs)
+              ct < activeSeekRef.current.startMs || ct >= activeSeekRef.current.endMs
            ) {
               audio.currentTime = activeSeekRef.current.startMs / 1000;
           }
