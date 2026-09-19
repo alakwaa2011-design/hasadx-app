@@ -295,7 +295,7 @@
   height: 0;
 }
 
-/* ============ Animations ============ */
+/* ------------ Animations ------------ */
 
 @keyframes shimmer {
   0% { background-position: -200% 0; }
@@ -485,7 +485,7 @@
   .fb-correct-once, .fb-wrong-once { animation: none !important; }
 }
 
-/* ============ Hisad Landing Identity (ported) ============ */
+/* ------------ Hisad Landing Identity (ported) ------------ */
 
 .font-display {
   font-family: 'Cairo', 'IBM Plex Sans Arabic', system-ui, sans-serif;
@@ -942,43 +942,49 @@
 
   .quran-page-shell {
     display: block !important;
-    width: calc(
-      100vw
-      - var(--quran-safe-area-left, env(safe-area-inset-left))
-      - var(--quran-safe-area-right, env(safe-area-inset-right))
-    ) !important;
+    width: 69.948dvh !important;
     max-width: none !important;
+    min-width: 0 !important;
     height: 100dvh !important;
+    overflow: hidden !important;
     margin-top: 0 !important;
-    margin-right: var(--quran-safe-area-right, env(safe-area-inset-right)) !important;
+    margin-right: auto !important;
     margin-bottom: 0 !important;
-    margin-left: var(--quran-safe-area-left, env(safe-area-inset-left)) !important;
+    margin-left: auto !important;
+    transform: translateX(calc(
+      (
+        var(--quran-safe-area-left, env(safe-area-inset-left))
+        - var(--quran-safe-area-right, env(safe-area-inset-right))
+      ) * 0.5
+    ));
   }
 
   .quran-reader-figure {
     display: flex !important;
-    width: 100% !important;
+    width: 69.948dvh !important;
     max-width: none !important;
+    min-width: 0 !important;
     height: 100dvh !important;
     align-items: stretch !important;
     justify-content: center !important;
-    aspect-ratio: auto !important;
+    aspect-ratio: 382.677 / 547.086 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
   .quran-reader-figure .quran-madani-page {
     width: 100% !important;
+    min-width: 0 !important;
     height: 100dvh !important;
-    aspect-ratio: auto !important;
+    aspect-ratio: 382.677 / 547.086 !important;
     border-radius: 0 !important;
   }
 
   .quran-reader-figure .quran-madani-page-content {
-    width: min(100%, 95dvh) !important;
+    width: 100% !important;
     margin-right: auto;
     margin-left: auto;
-    padding: 3dvh 2dvh !important;
+    padding: 9.5% 8.5% !important;
   }
 
   .quran-reader-figure .quran-madani-line,

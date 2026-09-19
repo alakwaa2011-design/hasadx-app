@@ -8,10 +8,19 @@ const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
 
 const LANDSCAPE_SAFE_AREA = { left: 47, right: 0 };
-const SHORT_PORTRAIT = { width: 390, height: 667 };
 const PORTRAIT_SAFE_AREA_CASES = [
-  { name: "short phone", bottomInset: 0 },
-  { name: "short iPhone safe area", bottomInset: 34 },
+  {
+    name: "small iPhone",
+    viewport: { width: 320, height: 568 },
+    topInset: 20,
+    bottomInset: 20,
+  },
+  {
+    name: "tall Android phone",
+    viewport: { width: 412, height: 915 },
+    topInset: 24,
+    bottomInset: 24,
+  },
 ] as const;
 
 function uniqueSuffix(): string {
@@ -87,36 +96,47 @@ async function expectDockDoesNotOverlapMushaf(page: Page) {
     const main = root.querySelector<HTMLElement>(".quran-reader-main");
     const dock = root.querySelector<HTMLElement>(".quran-reader-dock");
     const pageElement = main?.querySelector<HTMLElement>("[data-quran-page='604']");
+    const finalLine = pageElement?.querySelector<HTMLElement>(".quran-madani-page-content > :last-child");
     if (!main || !dock || !pageElement) throw new Error("Mushaf dock geometry is unavailable");
     main.scrollTop = main.scrollHeight;
     const mainRect = main.getBoundingClientRect();
     const dockRect = dock.getBoundingClientRect();
     const pageRect = pageElement.getBoundingClientRect();
+    const finalLineRect = finalLine?.getBoundingClientRect();
     return {
       mainBottom: mainRect.bottom,
       dockTop: dockRect.top,
       pageBottom: pageRect.bottom,
+      finalLineBottom: finalLineRect?.bottom ?? pageRect.bottom,
+      pageLeft: pageRect.left,
+      pageRight: pageRect.right,
+      viewportWidth: window.innerWidth,
       scrollBottom: main.scrollTop + main.clientHeight,
       scrollHeight: main.scrollHeight,
     };
   });
 
   expect(geometry.scrollBottom).toBeGreaterThanOrEqual(geometry.scrollHeight - 1);
-  expect(geometry.pageBottom).toBeLessThanOrEqual(geometry.mainBottom + 1);
-  expect(geometry.mainBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+  expect(geometry.pageLeft).toBeLessThanOrEqual(1);
+  expect(geometry.pageRight).toBeGreaterThanOrEqual(geometry.viewportWidth - 1);
+  expect(geometry.finalLineBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
+  expect(geometry.pageBottom).toBeLessThanOrEqual(geometry.dockTop + 1);
 }
 
-async function emulateSafeAreaBottom(page: Page, bottom: number) {
-  await page.addInitScript((inset) => {
+async function emulatePortraitSafeArea(page: Page, top: number, bottom: number) {
+  await page.addInitScript(({ topInset, bottomInset }) => {
     const installSafeAreaOverride = () => {
       const style = document.createElement("style");
       style.dataset.quranSafeAreaOverride = "true";
-      style.textContent = `:root { --quran-safe-area-bottom: ${inset}px !important; }`;
+      style.textContent = `:root {
+        --quran-safe-area-top: ${topInset}px !important;
+        --quran-safe-area-bottom: ${bottomInset}px !important;
+      }`;
       document.head.append(style);
     };
     if (document.head) installSafeAreaOverride();
     else document.addEventListener("DOMContentLoaded", installSafeAreaOverride, { once: true });
-  }, bottom);
+  }, { topInset: top, bottomInset: bottom });
 }
 
 async function emulateLandscapeSafeArea(page: Page, left: number, right: number) {
@@ -183,25 +203,55 @@ async function expectFocusedLandscape(
   await expect(page.locator(".quran-reader-nav")).toBeHidden();
   await expect(page.locator(".quran-reader-dock")).toBeHidden();
 
-  const geometry = await page.locator(".quran-reader-figure").first().evaluate(
-    (figure, insets) => {
-      const rect = figure.getBoundingClientRect();
+  const geometry = await page.locator(".quran-page-shell").first().evaluate(
+    (shell, insets) => {
+      const shellRect = shell.getBoundingClientRect();
+      const visiblePages = Array.from(
+        shell.querySelectorAll<HTMLElement>(".quran-reader-figure"),
+      )
+        .map((figure) => {
+          const rect = figure.getBoundingClientRect();
+          const lines = Array.from(
+            figure.querySelectorAll<HTMLElement>(".quran-madani-page-content > div"),
+          ).map((line) => line.getBoundingClientRect());
+          return {
+            rect,
+            lineCount: lines.length,
+            linesContained: lines.every(
+              (line) => line.top >= rect.top - 1 && line.bottom <= rect.bottom + 1,
+            ),
+            linesDoNotOverlap: lines.every(
+              (line, index) => index === 0 || line.top >= lines[index - 1].bottom - 1,
+            ),
+          };
+        })
+        .filter(({ rect }) => rect.width > 0 && rect.height > 0);
       return {
-        top: rect.top,
-        bottom: rect.bottom,
-        leftGap: rect.left,
-        rightGap: window.innerWidth - rect.right,
+        top: Math.min(...visiblePages.map(({ rect }) => rect.top)),
+        bottom: Math.max(...visiblePages.map(({ rect }) => rect.bottom)),
+        leftGap: shellRect.left,
+        rightGap: window.innerWidth - shellRect.right,
         safeLeft: insets.left,
         safeRight: window.innerWidth - insets.right,
-        height: rect.height,
         viewportHeight: window.innerHeight,
+        pageCount: visiblePages.length,
+        pagesHaveCanonicalRatio: visiblePages.every(
+          ({ rect }) => Math.abs(rect.width / rect.height - 382.677 / 547.086) < 0.005,
+        ),
+        pagesHaveCompleteRows: visiblePages.every(
+          ({ lineCount, linesContained, linesDoNotOverlap }) =>
+            lineCount === 15 && linesContained && linesDoNotOverlap,
+        ),
       };
     },
     safeArea,
   );
   expect(geometry.top).toBeGreaterThanOrEqual(-1);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight + 1);
-  expect(geometry.height).toBeGreaterThanOrEqual(geometry.viewportHeight - 1);
+  expect(geometry.bottom - geometry.top).toBeGreaterThanOrEqual(geometry.viewportHeight - 1);
+  expect(geometry.pageCount).toBeGreaterThanOrEqual(1);
+  expect(geometry.pagesHaveCanonicalRatio).toBe(true);
+  expect(geometry.pagesHaveCompleteRows).toBe(true);
   expect(geometry.leftGap).toBeGreaterThanOrEqual(geometry.safeLeft - 1);
   expect(geometry.rightGap).toBeGreaterThanOrEqual(safeArea.right - 1);
   const leftVisibleGap = geometry.leftGap - safeArea.left;
@@ -286,14 +336,14 @@ test.describe("mobile Mushaf rotation", () => {
   });
 
   for (const safeAreaCase of PORTRAIT_SAFE_AREA_CASES) {
-    test(`keeps page 604 complete with the audio dock closed and open on a ${safeAreaCase.name}`, async ({
+    test(`keeps page 604 complete with the player and tafsir open on a ${safeAreaCase.name}`, async ({
       page,
     }) => {
-      await page.setViewportSize(SHORT_PORTRAIT);
-      await emulateSafeAreaBottom(page, safeAreaCase.bottomInset);
+      await page.setViewportSize(safeAreaCase.viewport);
+      await emulatePortraitSafeArea(page, safeAreaCase.topInset, safeAreaCase.bottomInset);
       await page.goto("/quran/114?ayah=1&page=604&view=pages");
 
-    const finalPage = page.locator("[data-quran-page='604']");
+      const finalPage = page.locator("[data-quran-page='604']");
       await expect(finalPage).toBeVisible();
       await expect(finalPage.locator(".animate-spin")).toHaveCount(0);
       await expect(page.getByTestId("quran-bottom-dock")).toHaveCount(0);
@@ -313,16 +363,23 @@ test.describe("mobile Mushaf rotation", () => {
 
       await page.getByTestId("button-mobile-audio").click();
       await expect(page.getByTestId("quran-bottom-dock")).toBeVisible();
+      await finalPage.locator(".quran-madani-page-content button").first().click();
+      await expect(page.getByLabel("معاني الآية وتفسيرها")).toBeVisible();
       await expectDockDoesNotOverlapMushaf(page);
       await expectDockRespectsSafeArea(page, safeAreaCase.bottomInset);
+
+      const headerTop = await page.locator(".quran-reader-header").evaluate(
+        (header) => header.getBoundingClientRect().top,
+      );
+      expect(headerTop).toBeGreaterThanOrEqual(safeAreaCase.topInset);
     });
   }
 
   test("keeps page 604 above the expanded guided memorization panel on a short safe-area phone", async ({
     page,
   }) => {
-    await page.setViewportSize(SHORT_PORTRAIT);
-    await emulateSafeAreaBottom(page, 34);
+    await page.setViewportSize({ width: 390, height: 667 });
+    await emulatePortraitSafeArea(page, 20, 34);
     await page.goto("/quran/114?ayah=1&page=604&view=pages");
 
     const finalPage = page.locator("[data-quran-page='604']");
