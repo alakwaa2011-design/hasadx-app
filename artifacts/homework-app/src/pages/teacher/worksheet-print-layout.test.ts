@@ -167,7 +167,8 @@ describe("official worksheet question layout", () => {
     expect(source).toContain("questionStyle?.choiceColumns ?? 2");
     expect(source).toContain('questionStyle?.trueFalseLayout ?? "choices"');
     expect(source).toContain("اختر «صح» أو «خطأ» لكل عبارة مما يلي:");
-    expect(source).toContain("ضع علامة (✓) داخل القوس أمام العبارة الصحيحة");
+    expect(source).toContain("ضع علامة (✓) أمام العبارة الصحيحة");
+    expect(source).not.toContain("داخل القوس أمام العبارة");
   });
 
   it("applies and persists local field and question formatting", () => {

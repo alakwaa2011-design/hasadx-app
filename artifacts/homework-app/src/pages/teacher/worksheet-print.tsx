@@ -1557,7 +1557,7 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
     return ({
       mcq:          "اختر الإجابة الصحيحة من الاختيارات التالية:",
       true_false:   (questionStyle?.trueFalseLayout ?? "choices") === "mark"
-        ? "ضع علامة (✓) داخل القوس أمام العبارة الصحيحة وعلامة (✗) داخل القوس أمام العبارة الخاطئة:"
+        ? "ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:"
         : "اختر «صح» أو «خطأ» لكل عبارة مما يلي:",
       short_answer: "أجب عن الأسئلة التالية إجابةً قصيرة:",
       fill_blank:   "أكمل الفراغات التالية بالكلمة المناسبة:",
@@ -1577,7 +1577,7 @@ function sectionInstruction(type: Question["type"], ar: boolean, questionStyle?:
   return ({
     mcq:          "Choose the correct answer from the following:",
     true_false:   (questionStyle?.trueFalseLayout ?? "choices") === "mark"
-      ? "Put a tick (✓) or cross (✗) in the parentheses for each statement:"
+      ? "Put a tick (✓) before each true statement and a cross (✗) before each false statement:"
       : "Choose True or False for each statement:",
     short_answer: "Answer the following questions briefly:",
     fill_blank:   "Fill in the blanks with the appropriate word:",
