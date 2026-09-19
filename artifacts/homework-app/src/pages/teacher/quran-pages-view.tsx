@@ -191,6 +191,7 @@ export function QuranPagesView({
   const swipeStartYRef = useRef<number | null>(null);
   const suppressSwipeClickRef = useRef(false);
   const readerMainRef = useRef<HTMLElement | null>(null);
+  const continuousLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
@@ -388,6 +389,27 @@ export function QuranPagesView({
     setContinuousStartPage(activePage);
     setContinuousEndPage(Math.min(LAST_PAGE, activePage + 3));
   }, [activePage, loading, pageLayout]);
+
+  useEffect(() => {
+    if (loading || pageLayout !== "continuous" || continuousEndPage >= LAST_PAGE) return;
+    const root = readerMainRef.current;
+    const target = continuousLoadMoreRef.current;
+    if (!root || !target || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setContinuousEndPage((current) => Math.min(LAST_PAGE, current + 3));
+      },
+      {
+        root,
+        rootMargin: "0px 0px 900px 0px",
+        threshold: 0.01,
+      },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [continuousEndPage, loading, pageLayout]);
 
   useEffect(() => {
     if (!isIndependentPractice || loading) return;
@@ -1461,6 +1483,13 @@ export function QuranPagesView({
             }}
           >
             {continuousPages.map((page) => renderPage(page, "continuous"))}
+            {continuousEndPage < LAST_PAGE && (
+              <div
+                ref={continuousLoadMoreRef}
+                aria-hidden="true"
+                className="h-px w-full shrink-0"
+              />
+            )}
           </div>
         ) : (
           <div
