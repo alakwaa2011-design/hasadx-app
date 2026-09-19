@@ -381,8 +381,17 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(savePreference).not.toHaveBeenCalled();
   });
 
-  it('allows selecting the Abu Bakr Al-Dhabi session sample', async () => {
-    const { view } = await renderAtBoundary();
+  it('seeks to the selected ayah after Abu Bakr Al-Dhabi chapter metadata loads', async () => {
+    const { view, audio } = await renderAtBoundary();
+    timingResults.set(1, {
+      data: {
+        synchronized: true,
+        audioUrl: '/abu-bakr-al-dhabi/001.mp3',
+        verseStartMs: 12_345,
+        verseEndMs: 18_000,
+        segments: [],
+      },
+    });
 
     fireEvent.click(view.getByTestId('button-audio-options'));
     const sampleButton = view.getByTestId('button-reciter-2001095') as HTMLButtonElement;
@@ -392,6 +401,9 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
 
     await waitFor(() => expect(sampleButton.className).toContain('bg-emerald-50'));
     await waitFor(() => expect(timingHookCalls).toHaveBeenCalledWith(2_001_095, 1, 1));
+    await waitFor(() => expect(audio.src).toContain('/abu-bakr-al-dhabi/001.mp3'));
+    fireEvent.loadedMetadata(audio);
+    expect(audio.currentTime).toBe(12.345);
     expect(savePreference).not.toHaveBeenCalled();
   });
 

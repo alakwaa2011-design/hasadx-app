@@ -346,10 +346,21 @@ export function QuranAudioPlayer({
   ]);
 
   const handleLoadedMetadata = () => {
-    if (activeSeekRef.current && audioRef.current) {
-      audioRef.current.currentTime = activeSeekRef.current.startMs / 1000;
-    }
+    const audio = audioRef.current;
+    const seek = activeSeekRef.current;
+    if (!audio || !seek) return;
+    const activeUrl = new URL(seek.url, window.location.href).href;
+    if (audio.src !== activeUrl) return;
+    audio.currentTime = seek.startMs / 1000;
   };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const handleLoadedMetadataEvent = () => loadedMetadataEventRef.current();
+    audio.addEventListener('loadedmetadata', handleLoadedMetadataEvent);
+    return () => audio.removeEventListener('loadedmetadata', handleLoadedMetadataEvent);
+  }, [audioRef]);
 
   const handleTimeUpdate = () => {
     if (!audioRef.current) return;
@@ -737,7 +748,6 @@ export function QuranAudioPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const handleLoadedMetadataEvent = () => loadedMetadataEventRef.current();
     const handleTimeUpdateEvent = () => timeUpdateEventRef.current();
     const handlePlay = () => { setIsBuffering(false); setError(false); setIsPausedBetween(false); };
     const handleWaiting = () => setIsBuffering(true);
@@ -748,7 +758,6 @@ export function QuranAudioPlayer({
       setIsBuffering(false);
       onIsPlayingChange(false);
     };
-    audio.addEventListener("loadedmetadata", handleLoadedMetadataEvent);
     audio.addEventListener("timeupdate", handleTimeUpdateEvent);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("waiting", handleWaiting);
@@ -756,7 +765,6 @@ export function QuranAudioPlayer({
     audio.addEventListener("canplay", handleCanPlay);
     audio.addEventListener("error", handleError);
     return () => {
-      audio.removeEventListener("loadedmetadata", handleLoadedMetadataEvent);
       audio.removeEventListener("timeupdate", handleTimeUpdateEvent);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("waiting", handleWaiting);
