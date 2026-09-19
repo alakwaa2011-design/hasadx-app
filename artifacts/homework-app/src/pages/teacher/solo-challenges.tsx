@@ -101,7 +101,7 @@ export default function SoloChallengesPage() {
     <Layout hideFooter>
     <div className="min-h-[calc(100vh-3rem)] bg-background sm:min-h-[calc(100vh-3.5rem)]" dir={dir}>
       {/* ── Header ── */}
-      <div className="border-b border-border/60 bg-card/80 backdrop-blur-xl sticky top-12 sm:top-14 z-20">
+      <div className="site-layout-subheader border-b border-border/60 bg-card/80 backdrop-blur-xl sticky z-20">
         <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link href={user?.role === "organizer" ? "/organizer" : "/teacher"} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground group">
             {dir === "rtl" ? <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /> : <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />}

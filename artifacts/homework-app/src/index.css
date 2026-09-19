@@ -236,6 +236,29 @@
   }
 }
 
+/* iOS standalone mode uses a translucent status bar, so the web viewport
+   extends behind the clock, signal, and battery. Keep the platform header's
+   background under that area while moving all interactive controls below it.
+   Browsers/devices without a safe-area inset resolve this to 0px. */
+:root {
+  --site-safe-area-top: env(safe-area-inset-top, 0px);
+  --site-header-height: calc(3rem + var(--site-safe-area-top));
+}
+
+@media (min-width: 640px) {
+  :root {
+    --site-header-height: calc(3.5rem + var(--site-safe-area-top));
+  }
+}
+
+.site-layout-header {
+  padding-top: var(--site-safe-area-top);
+}
+
+.site-layout-subheader {
+  top: var(--site-header-height);
+}
+
 /* Custom Scrollbar for elegant feel */
 ::-webkit-scrollbar {
   width: 8px;

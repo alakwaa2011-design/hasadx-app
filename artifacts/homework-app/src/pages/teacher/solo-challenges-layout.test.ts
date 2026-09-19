@@ -11,6 +11,6 @@ describe("solo challenges settings layout", () => {
   it("renders inside the standard platform layout", () => {
     expect(source).toContain('import { Layout } from "@/components/layout"');
     expect(source).toContain("<Layout hideFooter>");
-    expect(source).toContain("sticky top-12 sm:top-14");
+    expect(source).toContain("site-layout-subheader");
   });
 });
