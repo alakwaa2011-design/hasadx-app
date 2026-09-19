@@ -54,7 +54,19 @@ vi.mock("@/components/quran/use-quran-word-audio", () => ({
 }));
 
 vi.mock("./quran-madani-page", () => ({
-  QuranMadaniPageRenderer: () => <div data-testid="mushaf-page" />,
+  QuranMadaniPageRenderer: ({
+    selectedVerseKey,
+    playingVerseKey,
+  }: {
+    selectedVerseKey: string | null;
+    playingVerseKey: string | null;
+  }) => (
+    <div
+      data-testid="mushaf-page"
+      data-selected-verse={selectedVerseKey ?? ""}
+      data-playing-verse={playingVerseKey ?? ""}
+    />
+  ),
 }));
 
 vi.mock("@/components/quran/quran-guided-memorization-panel", () => ({
@@ -90,15 +102,19 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
       </button>
       <button type="button" onClick={() => {
         onPlayingAyahChange(selectedAyah + 1);
-        onAudibleAyahChange(1, selectedAyah + 1);
       }}>
         الآية التالية
       </button>
+      <button type="button" onClick={() => onAudibleAyahChange(1, selectedAyah + 1)}>
+        بدأ صوت الآية التالية
+      </button>
       <button type="button" onClick={() => {
         onPlaybackLocationChange(2, 1);
-        onAudibleAyahChange(2, 1);
       }}>
         السورة التالية
+      </button>
+      <button type="button" onClick={() => onAudibleAyahChange(2, 1)}>
+        بدأ صوت السورة التالية
       </button>
       <button type="button" onClick={onClose}>
         إغلاق المشغل
@@ -152,6 +168,13 @@ describe("QuranPagesView tafsir playback following", () => {
     await waitFor(() => expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:1"));
 
     fireEvent.click(screen.getByRole("button", { name: "الآية التالية" }));
+    for (const page of screen.getAllByTestId("mushaf-page")) {
+      expect(page.getAttribute("data-selected-verse")).toBe("1:1");
+      expect(page.getAttribute("data-playing-verse")).toBe("1:1");
+    }
+    expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:1");
+
+    fireEvent.click(screen.getByRole("button", { name: "بدأ صوت الآية التالية" }));
     await waitFor(() => expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:2"));
 
     fireEvent.click(screen.getByRole("button", { name: "قفل التفسير" }));
@@ -159,6 +182,7 @@ describe("QuranPagesView tafsir playback following", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "السورة التالية" }));
     expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:2");
+    fireEvent.click(screen.getByRole("button", { name: "بدأ صوت السورة التالية" }));
 
     fireEvent.click(screen.getByRole("button", { name: "فتح القفل" }));
     await waitFor(() => expect(screen.getByTestId("tafsir-verse").textContent).toBe("2:1"));
