@@ -20,12 +20,12 @@ export const SADIQ_ALNIZAM_RECITATION_ID = 2_000_114;
 const SADIQ_ALNIZAM_AUDIO_URL =
   "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3";
 const SADIQ_ALNIZAM_TIMINGS = Object.freeze([
-  { ayahNumber: 1, verseStartMs: 286, verseEndMs: 7_420 },
-  { ayahNumber: 2, verseStartMs: 7_420, verseEndMs: 11_680 },
-  { ayahNumber: 3, verseStartMs: 11_680, verseEndMs: 15_920 },
-  { ayahNumber: 4, verseStartMs: 15_920, verseEndMs: 25_720 },
-  { ayahNumber: 5, verseStartMs: 25_720, verseEndMs: 35_690 },
-  { ayahNumber: 6, verseStartMs: 35_690, verseEndMs: 42_280 },
+  { ayahNumber: 1, verseStartMs: 286, verseEndMs: 11_680 },
+  { ayahNumber: 2, verseStartMs: 11_680, verseEndMs: 15_920 },
+  { ayahNumber: 3, verseStartMs: 15_920, verseEndMs: 25_720 },
+  { ayahNumber: 4, verseStartMs: 25_720, verseEndMs: 35_690 },
+  { ayahNumber: 5, verseStartMs: 35_690, verseEndMs: 42_280 },
+  { ayahNumber: 6, verseStartMs: 42_280, verseEndMs: 48_216 },
 ] as const);
 const TRUSTED_AUDIO_ORIGINS = new Set([
   VERSE_AUDIO_BASE_URL,

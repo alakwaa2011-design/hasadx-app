@@ -226,10 +226,14 @@ describe("Quran Foundation client", () => {
         recitationId: SADIQ_ALNIZAM_RECITATION_ID,
         verseKey: "114:3",
         audioUrl: "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3",
-        verseStartMs: 11_680,
-        verseEndMs: 15_920,
+        verseStartMs: 15_920,
+        verseEndMs: 25_720,
         synchronized: true,
       });
+    await expect(getQuranFoundationAyahTimings(SADIQ_ALNIZAM_RECITATION_ID, 114, 1))
+      .resolves.toMatchObject({ verseStartMs: 286, verseEndMs: 11_680 });
+    await expect(getQuranFoundationAyahTimings(SADIQ_ALNIZAM_RECITATION_ID, 114, 6))
+      .resolves.toMatchObject({ verseStartMs: 42_280, verseEndMs: 48_216 });
     await expect(getQuranFoundationAyahTimings(SADIQ_ALNIZAM_RECITATION_ID, 113, 1))
       .rejects.toThrow("timing mapping is unavailable");
     await expect(getQuranFoundationAudioUrl(SADIQ_ALNIZAM_RECITATION_ID, 114, 1))

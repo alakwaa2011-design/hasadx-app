@@ -30,13 +30,14 @@ const prefetchQuery = vi.fn(() => Promise.resolve());
 const fetchQuery = vi.fn(() => fetchNextTiming);
 const getQueryData = vi.fn(() => cachedNextTiming);
 const savePreference = vi.fn(() => Promise.resolve());
+const timingHookCalls = vi.fn();
 
 vi.mock('@/lib/i18n', () => ({
   useI18n: () => ({ lang: 'ar' }),
 }));
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -68,6 +69,7 @@ vi.mock('@workspace/api-client-react', () => ({
       reciters: [
         { id: 7, name: 'First reciter', style: 'Murattal' },
         { id: 8, name: 'Second reciter', style: 'Murattal' },
+        { id: 2_000_114, name: 'صادق النظام', style: 'Murattal', available: false },
       ],
     },
     refetch: vi.fn(),
@@ -76,12 +78,15 @@ vi.mock('@workspace/api-client-react', () => ({
     mutateAsync: savePreference,
     isPending: false,
   }),
-  useGetQuranAyahTimings: (_recitationId: number, _surah: number, ayah: number) => ({
-    data: timingResults.get(ayah)?.data,
-    isError: timingResults.get(ayah)?.isError ?? false,
-    isFetching: timingResults.get(ayah)?.isFetching ?? false,
-    isLoading: timingResults.get(ayah)?.isLoading ?? false,
-  }),
+  useGetQuranAyahTimings: (recitationId: number, surah: number, ayah: number) => {
+    timingHookCalls(recitationId, surah, ayah);
+    return {
+      data: timingResults.get(ayah)?.data,
+      isError: timingResults.get(ayah)?.isError ?? false,
+      isFetching: timingResults.get(ayah)?.isFetching ?? false,
+      isLoading: timingResults.get(ayah)?.isLoading ?? false,
+    };
+  },
 }));
 
 import { QuranAudioPlayer } from './quran-audio-player';
@@ -208,6 +213,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     play.mockClear();
     load.mockClear();
     savePreference.mockClear();
+    timingHookCalls.mockClear();
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(pause);
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(play);
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(load);
@@ -224,7 +230,6 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     timingResults.set(2, { data: connectedSecond });
     const { view, audio } = await renderAtBoundary();
 
-    const { audio } = await renderAtBoundary();
     pause.mockClear();
 
     fireEvent.timeUpdate(audio);
@@ -244,8 +249,6 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
       },
     });
     const { view, audio } = await renderAtBoundary();
-
-    const { audio } = await renderAtBoundary();
 
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
@@ -267,7 +270,6 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
 
-    const { audio } = await renderAtBoundary();
     pause.mockClear();
 
     fireEvent.timeUpdate(audio);
@@ -349,8 +351,6 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
 
-    const { audio } = await renderAtBoundary();
-
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
 
@@ -366,12 +366,24 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(pause).not.toHaveBeenCalled();
   });
 
+  it('plays a session-only sample without trying to save it as the preferred reciter', async () => {
+    const { view } = await renderAtBoundary();
+
+    fireEvent.click(view.getByTestId('button-audio-options'));
+    const sampleButton = view.getByTestId('button-reciter-2000114') as HTMLButtonElement;
+    expect(sampleButton.disabled).toBe(false);
+
+    fireEvent.click(sampleButton);
+
+    await waitFor(() => expect(sampleButton.className).toContain('bg-emerald-50'));
+    await waitFor(() => expect(timingHookCalls).toHaveBeenCalledWith(2_000_114, 1, 1));
+    expect(savePreference).not.toHaveBeenCalled();
+  });
+
   it('does not let an old timing response stop a newly selected reciter', async () => {
     let resolveTiming!: (timing: TimingResult) => void;
     fetchNextTiming = new Promise(resolve => { resolveTiming = resolve; });
     const { view, audio } = await renderAtBoundary();
-
-    const { audio } = await renderAtBoundary();
 
     fireEvent.timeUpdate(audio);
     expect(fetchQuery).toHaveBeenCalledTimes(1);
