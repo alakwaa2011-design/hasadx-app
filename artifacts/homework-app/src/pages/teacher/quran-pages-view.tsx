@@ -794,6 +794,9 @@ export function QuranPagesView({
       <figure
         key={page}
         data-quran-page={page}
+        data-testid="quran-mushaf-page"
+        data-page-number={page}
+        data-physical-page={physicalPage}
         className="quran-reader-figure relative mx-auto w-full overflow-hidden bg-[#fdfaf6] md:rounded-[3px] md:bg-white md:shadow-[0_20px_60px_rgba(34,87,57,0.16)] md:ring-1 md:ring-black/10"
         onClick={(event) => {
           if (didSwipeRef.current) {
@@ -812,6 +815,34 @@ export function QuranPagesView({
           if (clickedSide === "right" && canGoToPreviousSpread) goToSpread("previous");
         }}
       >
+        {physicalPage !== "continuous"
+          && (physicalPage === "left" || physicalPage === "single")
+          && canGoToNextSpread && (
+          <button
+            type="button"
+            data-testid="quran-page-turn-next-zone"
+            aria-label={lang === "ar" ? "النقر يسار الصفحة التالية" : "Click left for next page"}
+            className="absolute inset-y-0 left-0 z-30 w-[8%] cursor-pointer bg-transparent"
+            onClick={(event) => {
+              event.stopPropagation();
+              goToSpread("next");
+            }}
+          />
+        )}
+        {physicalPage !== "continuous"
+          && (physicalPage === "right" || physicalPage === "single")
+          && canGoToPreviousSpread && (
+          <button
+            type="button"
+            data-testid="quran-page-turn-previous-zone"
+            aria-label={lang === "ar" ? "النقر يمين الصفحة السابقة" : "Click right for previous page"}
+            className="absolute inset-y-0 right-0 z-30 w-[8%] cursor-pointer bg-transparent"
+            onClick={(event) => {
+              event.stopPropagation();
+              goToSpread("previous");
+            }}
+          />
+        )}
         {failed ? (
           <div className="flex aspect-[382.677/547.086] flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
             <ImageOff className="h-9 w-9" />

@@ -123,6 +123,56 @@ function PlayerHarness() {
   );
 }
 
+function RepeatingPlayerHarness() {
+  const [playingAyah, setPlayingAyah] = useState<number | null>(1);
+  const [isPlaying, setIsPlaying] = useState(true);
+  return (
+    <QuranAudioHostProvider>
+      <output data-testid="repeating-playing-ayah">{playingAyah ?? 'stopped'}</output>
+      <button
+        data-testid="external-stop"
+        onClick={() => {
+          setIsPlaying(false);
+          setPlayingAyah(null);
+        }}
+      >
+        Stop
+      </button>
+      <button
+        data-testid="external-play"
+        onClick={() => {
+          setPlayingAyah(1);
+          setIsPlaying(true);
+        }}
+      >
+        Play
+      </button>
+      {playingAyah !== null && (
+        <QuranAudioPlayer
+          surahs={[{ ayahs: [{}, {}] }] as never}
+          surahNumber={1}
+          startAyah={1}
+          endAyah={2}
+          selectedAyah={1}
+          playingAyah={playingAyah}
+          onPlayingAyahChange={setPlayingAyah}
+          isPlaying={isPlaying}
+          onIsPlayingChange={setIsPlaying}
+          memoSession={{
+            isActive: true,
+            rangeStart: 1,
+            rangeEnd: 2,
+            repeatScope: 'ayah',
+            repeatCount: 3,
+            pauseSeconds: 0,
+          }}
+          onMemoSessionChange={vi.fn()}
+        />
+      )}
+    </QuranAudioHostProvider>
+  );
+}
+
 async function renderAtBoundary() {
   const view = render(<PlayerHarness />);
   const audio = await waitFor(() => {
@@ -336,5 +386,46 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
 
     expect(view.getByTestId('playing-ayah').textContent).toBe('1');
     expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('replays a synchronized ayah three times before advancing', async () => {
+    const view = render(<RepeatingPlayerHarness />);
+    const audio = await waitFor(() => {
+      const element = view.container.querySelector('audio');
+      expect(element).not.toBeNull();
+      return element as HTMLAudioElement;
+    });
+
+    for (let playCount = 1; playCount <= 3; playCount += 1) {
+      Object.defineProperty(audio, 'currentTime', { configurable: true, value: 1, writable: true });
+      fireEvent.timeUpdate(audio);
+      await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent)
+        .toBe(playCount < 3 ? '1' : '2'));
+    }
+  });
+
+  it('resets the repeat counter after stopping and replaying the same ayah', async () => {
+    const view = render(<RepeatingPlayerHarness />);
+    let audio = await waitFor(() => {
+      const element = view.container.querySelector('audio');
+      expect(element).not.toBeNull();
+      return element as HTMLAudioElement;
+    });
+
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 1, writable: true });
+    fireEvent.timeUpdate(audio);
+    await waitFor(() => expect(view.container.textContent).toContain('2/3'));
+    fireEvent.click(view.getByTestId('external-stop'));
+    await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent).toBe('stopped'));
+    fireEvent.click(view.getByTestId('external-play'));
+    await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent).toBe('1'));
+    audio = await waitFor(() => view.container.querySelector('audio') as HTMLAudioElement);
+
+    for (let playCount = 1; playCount <= 3; playCount += 1) {
+      Object.defineProperty(audio, 'currentTime', { configurable: true, value: 1, writable: true });
+      fireEvent.timeUpdate(audio);
+      await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent)
+        .toBe(playCount < 3 ? '1' : '2'));
+    }
   });
 });

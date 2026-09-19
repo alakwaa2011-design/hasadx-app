@@ -110,6 +110,17 @@ export default defineConfig({
       },
     },
     {
+      name: "desktop-quran-pages",
+      testMatch: /quran-independent-position\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
       name: "iphone-webkit-direct-play",
       testMatch: /direct-play\.spec\.ts/,
       grep: /independent answers commit only after a completed activation/,

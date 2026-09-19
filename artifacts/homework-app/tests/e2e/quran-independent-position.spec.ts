@@ -77,6 +77,14 @@ test.beforeAll(async ({ baseURL }) => {
   );
 });
 
+test.beforeEach(async () => {
+  if (!fixture) return;
+  await pool.query(
+    "UPDATE quran_independent_positions SET page_number = 42 WHERE student_account_id = $1",
+    [fixture.accountId],
+  );
+});
+
 test.afterAll(async () => {
   if (!fixture) return;
   await pool.query("DELETE FROM student_accounts WHERE id = $1", [fixture.accountId]);
@@ -136,4 +144,47 @@ test("restores delayed text and page positions before allowing later saves", asy
   await page.getByRole("button", { name: "الصفحة التالية" }).click();
   await expect.poll(() => writes).toContainEqual({ pageNumber: 44 });
   expect(writes).not.toContainEqual({ pageNumber: 1 });
+});
+
+test("page-side clicks turn the Mushaf while Quran words do not", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  if (!fixture || !baseURL) throw new Error("Quran position fixture is unavailable");
+  await attachSession(context, baseURL, {
+    id: fixture.accountId,
+    email: "",
+    password: "",
+    cookieHeader: fixture.cookieHeader,
+  });
+
+  await page.goto("/student/quran-practice/1?view=pages");
+
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("A viewport is required");
+  const isDesktopSpread = viewport.width >= 1024;
+  const visiblePage = (pageNumber: number, physicalPage = isDesktopSpread ? "left" : "single") => page.locator(
+    `[data-testid="quran-mushaf-page"][data-page-number="${pageNumber}"][data-physical-page="${physicalPage}"]`,
+  );
+
+  await expect(visiblePage(42)).toBeVisible();
+  await visiblePage(42).getByTestId("quran-page-turn-next-zone").click();
+  const pageAfterNext = isDesktopSpread ? 44 : 43;
+  await expect(visiblePage(pageAfterNext)).toBeVisible();
+  await expect(page).toHaveURL(/(?:\?|&)page=43(?:&|$)/);
+  await page.reload();
+  await expect(visiblePage(pageAfterNext)).toBeVisible();
+
+  const previousPage = isDesktopSpread
+    ? visiblePage(43, "right")
+    : visiblePage(43);
+  await previousPage.getByTestId("quran-page-turn-previous-zone").click();
+  const pageAfterPrevious = 42;
+  await expect(visiblePage(pageAfterPrevious)).toBeVisible();
+
+  const quranWord = visiblePage(pageAfterPrevious).locator('button[title]').first();
+  await expect(quranWord).toBeVisible();
+  await quranWord.click();
+  await expect(visiblePage(pageAfterPrevious)).toBeVisible();
 });

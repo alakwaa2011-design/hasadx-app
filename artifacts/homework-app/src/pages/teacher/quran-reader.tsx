@@ -63,6 +63,7 @@ export default function QuranReader() {
   const queryEndAyah = searchParams.get('endAyah') ? parseInt(searchParams.get('endAyah')!, 10) : null;
   const queryMode = searchParams.get('mode');
   const requestedAyah = searchParams.get('ayah') ? parseInt(searchParams.get('ayah')!, 10) : null;
+  const requestedPage = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : undefined;
   // The Madani Mushaf is the single Quran reading experience. Legacy view
   // query parameters are intentionally ignored and resolve to the page view.
   const view = 'pages';
@@ -172,7 +173,7 @@ export default function QuranReader() {
 
   let surahNumber = 1;
   let computedRequestedAyah = requestedAyah;
-  let computedPageNumber: number | undefined;
+  let computedPageNumber: number | undefined = requestedPage;
 
   if (studentWard?.surahNumber) {
     surahNumber = studentWard.surahNumber;
@@ -182,7 +183,7 @@ export default function QuranReader() {
   } else if (isTeacherStandalone && !params.surahNumber && readerState?.position) {
     surahNumber = readerState.position.surahNumber;
     computedRequestedAyah = readerState.position.ayahNumber;
-    computedPageNumber = readerState.position.pageNumber;
+    computedPageNumber ??= readerState.position.pageNumber;
   } else {
     surahNumber = parseInt(params.surahNumber || '1', 10);
   }
@@ -201,7 +202,9 @@ export default function QuranReader() {
           initialPage={computedPageNumber ?? (isStudentPractice ? (independentPosition?.pageNumber ?? undefined) : undefined)}
           onNavigate={isStudentWard
             ? () => {}
-            : (loc) => setLocation(`${readerBasePath}/${loc.surah}?ayah=${loc.ayah}&view=pages`)}
+            : (loc) => setLocation(
+              `${readerBasePath}/${loc.surah}?ayah=${loc.ayah}&page=${loc.page ?? ''}&view=pages`,
+            )}
           isTaskAyah={(sId, aNum) => sId === surahNumber && startAyah !== null && endAyah !== null && aNum >= startAyah && aNum <= endAyah}
           startAyah={startAyah}
           endAyah={endAyah}
