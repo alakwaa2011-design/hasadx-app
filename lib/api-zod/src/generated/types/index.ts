@@ -223,6 +223,7 @@ export * from './startExamBody';
 export * from './submission';
 export * from './submissionAnswerDetail';
 export * from './submissionDetail';
+export * from './submissionImage';
 export * from './submissionResult';
 export * from './submitAssignmentBody';
 export * from './submitFeedbackBody';

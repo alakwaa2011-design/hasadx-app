@@ -873,6 +873,9 @@ export const GetSubmissionDetailsParams = zod.object({
   "submissionId": zod.coerce.number().int()
 })
 
+
+
+
 export const GetSubmissionDetailsResponse = zod.object({
   "submission": zod.object({
   "id": zod.int(),
@@ -904,7 +907,11 @@ export const GetSubmissionDetailsResponse = zod.object({
   "isCorrect": zod.boolean(),
   "teacherPoints": zod.number().nullish(),
   "teacherNote": zod.string().nullish()
-}))
+})),
+  "images": zod.array(zod.object({
+  "pageNumber": zod.int().min(1),
+  "url": zod.string().describe('Short-lived signed HTTPS URL for the stored page image.')
+})).optional()
 })
 
 
@@ -919,6 +926,9 @@ export const UpdateAnswerGradeBody = zod.object({
   "teacherPoints": zod.number().nullish(),
   "teacherNote": zod.string().nullish()
 })
+
+
+
 
 export const UpdateAnswerGradeResponse = zod.object({
   "submission": zod.object({
@@ -951,7 +961,11 @@ export const UpdateAnswerGradeResponse = zod.object({
   "isCorrect": zod.boolean(),
   "teacherPoints": zod.number().nullish(),
   "teacherNote": zod.string().nullish()
-}))
+})),
+  "images": zod.array(zod.object({
+  "pageNumber": zod.int().min(1),
+  "url": zod.string().describe('Short-lived signed HTTPS URL for the stored page image.')
+})).optional()
 })
 
 

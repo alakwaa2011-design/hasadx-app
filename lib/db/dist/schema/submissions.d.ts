@@ -332,8 +332,8 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
 export declare const insertSubmissionSchema: z.ZodObject<{
     totalPoints: z.ZodOptional<z.ZodNumber>;
     assignmentId: z.ZodInt;
-    studentClass: z.ZodOptional<z.ZodString>;
     studentName: z.ZodString;
+    studentClass: z.ZodOptional<z.ZodString>;
     studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     studentIdentityVerified: z.ZodOptional<z.ZodBoolean>;
     deviceFingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -353,4 +353,124 @@ export declare const insertSubmissionSchema: z.ZodObject<{
 }>;
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
 export type Submission = typeof submissionsTable.$inferSelect;
+export declare const submissionImagesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "submission_images";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "submission_images";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        submissionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "submission_id";
+            tableName: "submission_images";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        pageNumber: import("drizzle-orm/pg-core").PgColumn<{
+            name: "page_number";
+            tableName: "submission_images";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        objectPath: import("drizzle-orm/pg-core").PgColumn<{
+            name: "object_path";
+            tableName: "submission_images";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        contentType: import("drizzle-orm/pg-core").PgColumn<{
+            name: "content_type";
+            tableName: "submission_images";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "submission_images";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const insertSubmissionImageSchema: z.ZodObject<{
+    submissionId: z.ZodInt;
+    pageNumber: z.ZodInt;
+    objectPath: z.ZodString;
+    contentType: z.ZodString;
+}, {
+    out: {};
+    in: {};
+}>;
+export type InsertSubmissionImage = z.infer<typeof insertSubmissionImageSchema>;
+export type SubmissionImage = typeof submissionImagesTable.$inferSelect;
 //# sourceMappingURL=submissions.d.ts.map

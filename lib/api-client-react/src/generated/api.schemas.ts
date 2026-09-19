@@ -2278,9 +2278,17 @@ export interface SubmissionAnswerDetail {
   teacherNote?: string | null;
 }
 
+export interface SubmissionImage {
+  /** @minimum 1 */
+  pageNumber: number;
+  /** Short-lived signed HTTPS URL for the stored page image. */
+  url: string;
+}
+
 export interface SubmissionDetail {
   submission: Submission;
   answers: SubmissionAnswerDetail[];
+  images?: SubmissionImage[];
 }
 
 export interface UpdateAnswerBody {

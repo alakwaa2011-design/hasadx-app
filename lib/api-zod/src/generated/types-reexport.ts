@@ -209,6 +209,7 @@ export type * from "./types/startExamBody";
 export type * from "./types/submission";
 export type * from "./types/submissionAnswerDetail";
 export type * from "./types/submissionDetail";
+export type * from "./types/submissionImage";
 export type * from "./types/submissionResult";
 export type * from "./types/submitFeedbackBodyType";
 export type * from "./types/submitImageBody";

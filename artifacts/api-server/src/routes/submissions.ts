@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, questionsTable, submissionsTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable, studentsTable } from "@workspace/db";
+import { db, questionsTable, submissionsTable, submissionImagesTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable, studentsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
@@ -21,8 +21,11 @@ import { safeAccessCodeEqual, normalizeAccessCode } from "../lib/access-code";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { evaluateClassroomRewardEvidence, hasActiveAutomaticAssignmentGrant, lockAssignmentRewardEvidence } from "../lib/classroom-reward-evaluator";
+import { detectUploadType, ObjectStorageService } from "../lib/objectStorage";
+import { deleteSubmissionImageObjects } from "../lib/submission-image-storage";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 async function verifiedSubmissionStudentId(req: any, teacherId: number): Promise<number | null> {
   const accountId=Number(req.session?.studentAccountId);
   if(!Number.isInteger(accountId) || accountId<1) return null;
@@ -1007,7 +1010,7 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       allowMultipleAnswers?: boolean;
     }> = [];
 
-    const imageData = body.imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    const imageData = body.imageBase64.replace(/^data:image\/[\w.+-]+;base64,/, "");
 
     // imagesBase64 contains the ordered pages of one paper submission.
     // imageBase64 remains the required first page for older clients.
@@ -1028,7 +1031,7 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
           res.status(400).json({ message: "صيغة الصفحات غير صحيحة" });
           return;
         }
-        const stripped = x.replace(/^data:image\/\w+;base64,/, "");
+        const stripped = x.replace(/^data:image\/[\w.+-]+;base64,/, "");
         // يجب أن تكون base64 صالحة لصورة (نتحقق من الشكل لا المحتوى الكامل)
         if (!/^[A-Za-z0-9+/=\s]+$/.test(stripped.slice(0, 1000))) {
           res.status(400).json({ message: "إحدى الصفحات ليست صورة صالحة" });
@@ -1046,6 +1049,38 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
         return;
       }
       pageImages = cleaned;
+    }
+
+    const allowedPageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const validatedPages: Array<{
+      base64: string;
+      buffer: Buffer;
+      contentType: "image/jpeg" | "image/png" | "image/webp";
+      extension: "jpg" | "png" | "webp";
+    }> = [];
+    for (let pageIndex = 0; pageIndex < pageImages.length; pageIndex++) {
+      const rawSource = Array.isArray(rawPages) && rawPages.length > 1 ? rawPages[pageIndex] : body.imageBase64;
+      const claimedMatch = /^data:([^;,]+);base64,/i.exec(rawSource);
+      const claimedType = claimedMatch?.[1]?.toLowerCase() === "image/jpg"
+        ? "image/jpeg"
+        : claimedMatch?.[1]?.toLowerCase();
+      if (claimedType && !allowedPageTypes.has(claimedType)) {
+        res.status(400).json({ message: "نوع صورة الصفحة غير مدعوم. استخدم JPG أو PNG أو WebP." });
+        return;
+      }
+      const buffer = Buffer.from(pageImages[pageIndex], "base64");
+      const detectedType = detectUploadType(buffer, claimedType || "image/jpeg");
+      if (!detectedType || !allowedPageTypes.has(detectedType) || (claimedType && claimedType !== detectedType)) {
+        res.status(400).json({ message: "إحدى الصفحات لا تطابق نوع صورة آمنًا ومدعومًا" });
+        return;
+      }
+      const contentType = detectedType as "image/jpeg" | "image/png" | "image/webp";
+      validatedPages.push({
+        base64: pageImages[pageIndex],
+        buffer,
+        contentType,
+        extension: contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg",
+      });
     }
 
     // استخراج اسم الطالب تلقائياً من الورقة (تدفق ورقة العمل فقط).
@@ -1084,13 +1119,13 @@ ${nameLineFormat}${questions.map((q, i) => `${i + 1}: [إجابة الطالب �
 
       const messageContent: any[] = [
         { type: "text", text: imagePrompt },
-        ...pageImages.flatMap((img, pi) =>
-          pageImages.length > 1
+        ...validatedPages.flatMap((page, pi) =>
+          validatedPages.length > 1
             ? [
-                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length} من ورقة الطالب:` },
-                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } },
+                { type: "text", text: `صفحة ${pi + 1} من ${validatedPages.length} من ورقة الطالب:` },
+                { type: "image_url", image_url: { url: `data:${page.contentType};base64,${page.base64}` } },
               ]
-            : [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } }],
+            : [{ type: "image_url", image_url: { url: `data:${page.contentType};base64,${page.base64}` } }],
         ),
       ];
 
@@ -1195,13 +1230,13 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
 
       const messageContent: any[] = [
         { type: "text", text: imagePrompt },
-        ...pageImages.flatMap((img, pi) =>
-          pageImages.length > 1
+        ...validatedPages.flatMap((page, pi) =>
+          validatedPages.length > 1
             ? [
-                { type: "text", text: `صفحة ${pi + 1} من ${pageImages.length}:` },
-                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } },
+                { type: "text", text: `صفحة ${pi + 1} من ${validatedPages.length}:` },
+                { type: "image_url", image_url: { url: `data:${page.contentType};base64,${page.base64}` } },
               ]
-            : [{ type: "image_url", image_url: { url: `data:image/jpeg;base64,${img}` } }],
+            : [{ type: "image_url", image_url: { url: `data:${page.contentType};base64,${page.base64}` } }],
         ),
       ];
 
@@ -1305,19 +1340,6 @@ ${questions.map((_, i) => `${i + 1}: A أو B أو C أو D`).join("\n")}
     const totalQuestions = questions.length;
     const score = totalPointsVal > 0 ? (earnedPoints / totalPointsVal) * 100 : 0;
 
-    const notifBody2 = `${finalStudentName}${finalStudentClass ? ` (${finalStudentClass})` : ""} أرسل إجابة ورقية — ${earnedPoints}/${totalPointsVal} (${Math.round(score)}%)`;
-    try {
-      await db.insert(notificationsTable).values({
-        teacherId: assignment.teacherId,
-        assignmentId: id,
-        type: "submission",
-        title: `إجابة ورقية جديدة على "${assignment.title}"`,
-        body: notifBody2,
-      });
-    } catch (e) {
-      req.log.error({ err: e }, "Failed to create notification");
-    }
-
     let aiFeedback: string | null = null;
     try {
       const feedbackPrompt = contentLanguage === "en"
@@ -1356,41 +1378,91 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
       req.log.error({ err: e }, "AI feedback error (image)");
     }
 
+    const uploadedPages: Array<{ pageNumber: number; objectPath: string; contentType: string }> = [];
+    try {
+      for (let pageIndex = 0; pageIndex < validatedPages.length; pageIndex++) {
+        const page = validatedPages[pageIndex];
+        const objectPath = await objectStorageService.uploadBufferAsPrivate({
+          buffer: page.buffer,
+          contentType: page.contentType,
+          extension: page.extension,
+          ownerPrefix: `submission-images/${assignment.teacherId}`,
+          customMetadata: {
+            assignmentId: String(id),
+            pageNumber: String(pageIndex + 1),
+          },
+        });
+        uploadedPages.push({ pageNumber: pageIndex + 1, objectPath, contentType: page.contentType });
+      }
+    } catch (error) {
+      await deleteSubmissionImageObjects(uploadedPages.map((page) => page.objectPath), req.log);
+      req.log.error({ err: error }, "Submission image persistence failed");
+      res.status(503).json({ message: "تعذر حفظ صور الورقة. يرجى المحاولة مرة أخرى." });
+      return;
+    }
+
     const verifiedStudentId = await verifiedSubmissionStudentId(req, assignment.teacherId);
-    const submission = await db.transaction(async (tx) => {
-      if (!isOwnerTeacher) await assertAttemptAvailable(tx, id, body.deviceFingerprint);
-      const [created] = await tx.insert(submissionsTable)
-      .values({
+    let submission;
+    try {
+      submission = await db.transaction(async (tx) => {
+        if (!isOwnerTeacher) await assertAttemptAvailable(tx, id, body.deviceFingerprint);
+        const [created] = await tx.insert(submissionsTable)
+          .values({
+            assignmentId: id,
+            studentName: finalStudentName,
+            studentClass: finalStudentClass,
+            // ورقة العمل: لا نثق بأي studentId من العميل — الربط عبر مطابقة السجل فقط.
+            studentId: verifiedStudentId ?? (isWorksheetSource ? (matchedStudent?.id ?? null) : (body.studentId ?? null)),
+            studentIdentityVerified: verifiedStudentId !== null,
+            deviceFingerprint: body.deviceFingerprint || null,
+            score,
+            totalQuestions,
+            correctAnswers: correctCount,
+            earnedPoints,
+            totalPoints: totalPointsVal,
+            aiFeedback,
+          } as any)
+          .returning();
+        await tx.insert(answersTable).values(
+          answerResults.map((a) => ({
+            submissionId: created.id,
+            questionId: a.questionId,
+            selectedAnswer: a.selectedAnswer,
+            isCorrect: a.isCorrect,
+          })),
+        );
+        await tx.insert(submissionImagesTable).values(
+          uploadedPages.map((page) => ({
+            submissionId: created.id,
+            pageNumber: page.pageNumber,
+            objectPath: page.objectPath,
+            contentType: page.contentType,
+          })),
+        );
+        if (verifiedStudentId && created.studentId) await evaluateClassroomRewardEvidence(tx, {
+          teacherId: assignment.teacherId, sourceType: "assignment_submission", sourceResultId: created.id,
+          studentId: created.studentId!, completed: true, score: Number(created.earnedPoints),
+          evidenceSummary: { effectivePoints: created.earnedPoints, totalPoints: created.totalPoints },
+        });
+        return created;
+      });
+    } catch (error) {
+      await deleteSubmissionImageObjects(uploadedPages.map((page) => page.objectPath), req.log);
+      throw error;
+    }
+
+    const notifBody2 = `${finalStudentName}${finalStudentClass ? ` (${finalStudentClass})` : ""} أرسل إجابة ورقية — ${earnedPoints}/${totalPointsVal} (${Math.round(score)}%)`;
+    try {
+      await db.insert(notificationsTable).values({
+        teacherId: assignment.teacherId,
         assignmentId: id,
-        studentName: finalStudentName,
-        studentClass: finalStudentClass,
-        // ورقة العمل: لا نثق بأي studentId من العميل — الربط عبر مطابقة السجل فقط.
-        studentId: verifiedStudentId ?? (isWorksheetSource ? (matchedStudent?.id ?? null) : (body.studentId ?? null)),
-        studentIdentityVerified: verifiedStudentId !== null,
-        deviceFingerprint: body.deviceFingerprint || null,
-        score,
-        totalQuestions,
-        correctAnswers: correctCount,
-        earnedPoints,
-        totalPoints: totalPointsVal,
-        aiFeedback,
-      } as any)
-      .returning();
-    await tx.insert(answersTable).values(
-      answerResults.map((a) => ({
-        submissionId: created.id,
-        questionId: a.questionId,
-        selectedAnswer: a.selectedAnswer,
-        isCorrect: a.isCorrect,
-      })),
-    );
-    if (verifiedStudentId && created.studentId) await evaluateClassroomRewardEvidence(tx, {
-      teacherId: assignment.teacherId, sourceType: "assignment_submission", sourceResultId: created.id,
-      studentId: created.studentId!, completed: true, score: Number(created.earnedPoints),
-      evidenceSummary: { effectivePoints: created.earnedPoints, totalPoints: created.totalPoints },
-    });
-    return created;
-    });
+        type: "submission",
+        title: `إجابة ورقية جديدة على "${assignment.title}"`,
+        body: notifBody2,
+      });
+    } catch (e) {
+      req.log.error({ err: e }, "Failed to create notification");
+    }
 
     const releaseMode = assignment.resultsReleaseMode || "immediate";
     let canSeeResults = assignment.showResults;
@@ -1584,7 +1656,7 @@ router.delete("/assignments/:id/submissions", async (req, res): Promise<void> =>
   try {
     const { id } = DeleteAssignmentSubmissionsParams.parse(req.params);
     const teacherId = req.session.teacherId;
-    const deletedCount = await db.transaction(async (tx) => {
+    const deletion = await db.transaction(async (tx) => {
       const assignmentRows = (await tx.execute(sql`
         SELECT id, teacher_id
         FROM assignments
@@ -1611,7 +1683,13 @@ router.delete("/assignments/:id/submissions", async (req, res): Promise<void> =>
         }
       }
 
-      if (submissionIds.length === 0) return 0;
+      if (submissionIds.length === 0) return { deletedCount: 0, objectPaths: [] as string[] };
+
+      const imageRows = await tx
+        .select({ objectPath: submissionImagesTable.objectPath })
+        .from(submissionImagesTable)
+        .innerJoin(submissionsTable, eq(submissionImagesTable.submissionId, submissionsTable.id))
+        .where(eq(submissionsTable.assignmentId, id));
 
       await tx.execute(sql`
         UPDATE adaptive_sessions
@@ -1624,10 +1702,14 @@ router.delete("/assignments/:id/submissions", async (req, res): Promise<void> =>
         .where(eq(submissionsTable.assignmentId, id))
         .returning({ id: submissionsTable.id });
 
-      return deleted.length;
+      return {
+        deletedCount: deleted.length,
+        objectPaths: imageRows.map((row) => row.objectPath),
+      };
     });
 
-    res.json({ deletedCount });
+    await deleteSubmissionImageObjects(deletion.objectPaths, req.log);
+    res.json({ deletedCount: deletion.deletedCount });
   } catch (error: any) {
     if (error?.message === "assignment_not_found") {
       res.status(404).json({ message: "الواجب غير موجود" });
@@ -2173,6 +2255,23 @@ router.get("/submissions/:submissionId/details", async (req, res) => {
       .where(eq(answersTable.submissionId, submissionId))
       .orderBy(answersTable.id);
 
+    const storedImages = await db
+      .select({
+        pageNumber: submissionImagesTable.pageNumber,
+        objectPath: submissionImagesTable.objectPath,
+      })
+      .from(submissionImagesTable)
+      .where(eq(submissionImagesTable.submissionId, submissionId))
+      .orderBy(submissionImagesTable.pageNumber);
+
+    const images = await Promise.all(storedImages.map(async (image) => {
+      const file = await objectStorageService.getObjectEntityFile(image.objectPath);
+      return {
+        pageNumber: image.pageNumber,
+        url: await objectStorageService.signFileDownloadUrl(file, 300),
+      };
+    }));
+
     res.json({
       submission: {
         id: submission.id,
@@ -2206,6 +2305,7 @@ router.get("/submissions/:submissionId/details", async (req, res) => {
         teacherPoints: r.teacherPoints,
         teacherNote: r.teacherNote,
       })),
+      images,
     });
   } catch (error: any) {
     req.log.error({ err: error }, "Get submission details error");

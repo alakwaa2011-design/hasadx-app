@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, assignmentsTable, assignmentRevisionsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable } from "@workspace/db";
+import { db, assignmentsTable, assignmentRevisionsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, submissionImagesTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable } from "@workspace/db";
 import { eq, sql, and, ne, notInArray, inArray, isNull, isNotNull, or } from "drizzle-orm";
 import {
   CreateAssignmentBody,
@@ -15,6 +15,7 @@ import { logActivity } from "../lib/activity-logger";
 import { trackEvent } from "../lib/analytics";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { buildLegacyDuplicateCandidates } from "../lib/assignment-duplicate-detection";
+import { deleteSubmissionImageObjects } from "../lib/submission-image-storage";
 
 const UpdateAssignmentBody = z.object({
   version: z.number().int().positive(),
@@ -2115,9 +2116,16 @@ router.delete("/assignments/:id", async (req, res) => {
       return;
     }
 
+    const imageRows = await db
+      .select({ objectPath: submissionImagesTable.objectPath })
+      .from(submissionImagesTable)
+      .innerJoin(submissionsTable, eq(submissionImagesTable.submissionId, submissionsTable.id))
+      .where(eq(submissionsTable.assignmentId, id));
+
     await db.delete(notificationsTable).where(eq(notificationsTable.assignmentId, id));
     await db.delete(gameHistoryTable).where(eq(gameHistoryTable.assignmentId, id));
     await db.delete(assignmentsTable).where(eq(assignmentsTable.id, id));
+    await deleteSubmissionImageObjects(imageRows.map((row) => row.objectPath), req.log);
     res.json({ message: "تم حذف الواجب بنجاح" });
 
     logActivity({

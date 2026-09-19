@@ -10,7 +10,7 @@ import { useLocation, useRoute } from "wouter";
 import {
   ArrowRight, Camera, Image as ImageIcon, Loader2, RefreshCcw,
   CheckCircle2, XCircle, User, ListChecks, Trash2, Users, X, UserPlus, BarChart3,
-  Sparkles
+  Sparkles, Images
 } from "lucide-react";
 import { toast } from "sonner";
 import jsQR from "jsqr";
@@ -118,6 +118,18 @@ type GradeResult = {
   }>;
 };
 
+type SubmissionReview = {
+  submission: SubmissionRow & { aiFeedback?: string | null };
+  answers: Array<{
+    id: number;
+    selectedAnswer: string;
+    isCorrect: boolean;
+    teacherPoints: number | null;
+    points: number;
+  }>;
+  images: Array<{ pageNumber: number; url: string }>;
+};
+
 export default function WorksheetGrade() {
   const { t, dir } = useI18n();
   const copy = t.worksheetGrade;
@@ -161,6 +173,8 @@ export default function WorksheetGrade() {
   const [reviewIdx, setReviewIdx] = useState<number | null>(null);
 
   const [subs, setSubs] = useState<SubmissionRow[]>([]);
+  const [submissionReview, setSubmissionReview] = useState<SubmissionReview | null>(null);
+  const [reviewLoadingId, setReviewLoadingId] = useState<number | null>(null);
 
   // كاميرا المسح الضوئي (اكتشاف الحدود + التقاط تلقائي + قص وتصحيح منظور)
   const [scanning, setScanning] = useState(false);
@@ -216,6 +230,23 @@ export default function WorksheetGrade() {
       const rows = await res.json();
       setSubs(Array.isArray(rows) ? rows : []);
     } catch { /* غير حرج */ }
+  };
+
+  const openSubmissionReview = async (submissionId: number) => {
+    setReviewLoadingId(submissionId);
+    try {
+      const res = await fetch(`${API_BASE}/api/submissions/${submissionId}/details`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.message || copy.loadError);
+        return;
+      }
+      setSubmissionReview(data);
+    } catch {
+      toast.error(copy.connectionError);
+    } finally {
+      setReviewLoadingId(null);
+    }
   };
 
   /**
@@ -1191,19 +1222,69 @@ export default function WorksheetGrade() {
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {subs.map((s) => (
-                <li key={s.id} className="py-3.5 flex items-center justify-between gap-3 group">
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => void openSubmissionReview(s.id)}
+                    className="w-full py-3.5 flex items-center justify-between gap-3 group text-start"
+                  >
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{s.studentName}</p>
                     {s.studentClass && <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">{s.studentClass}</p>}
                   </div>
                   <span className="shrink-0 font-black text-slate-600 dark:text-slate-300 text-sm group-hover:text-emerald-600 transition-colors">
-                    {s.earnedPoints ?? 0} <span className="text-slate-400 text-xs font-semibold">/ {s.totalPoints ?? info?.totalPoints}</span>
+                     {reviewLoadingId === s.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <>{s.earnedPoints ?? 0} <span className="text-slate-400 text-xs font-semibold">/ {s.totalPoints ?? info?.totalPoints}</span></>}
                   </span>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </section>
+
+        {submissionReview && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setSubmissionReview(null)}
+          >
+            <div
+              dir={dir}
+              onClick={(event) => event.stopPropagation()}
+              className="w-full sm:max-w-3xl max-h-[92vh] overflow-y-auto bg-white dark:bg-[#15201B] rounded-t-[2rem] sm:rounded-3xl p-5 sm:p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between gap-4 mb-5">
+                <div>
+                  <p className="font-black text-lg text-slate-900 dark:text-white">{submissionReview.submission.studentName}</p>
+                  <p className="text-sm text-slate-500">{submissionReview.submission.earnedPoints} / {submissionReview.submission.totalPoints}</p>
+                </div>
+                <button type="button" onClick={() => setSubmissionReview(null)} aria-label={copy.close} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {submissionReview.images.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
+                    <Images className="w-4 h-4" />
+                    صور ورقة الطالب ({submissionReview.images.length})
+                  </div>
+                  {submissionReview.images.map((image) => (
+                    <figure key={image.pageNumber} className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                      <figcaption className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300">الصفحة {image.pageNumber}</figcaption>
+                      <a href={image.url} target="_blank" rel="noreferrer" className="block">
+                        <img src={image.url} alt={`صفحة ${image.pageNumber} من ورقة ${submissionReview.submission.studentName}`} className="w-full h-auto object-contain" />
+                      </a>
+                    </figure>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center text-sm text-slate-500">
+                  لا توجد صور محفوظة لهذا التسليم القديم.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, real, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, real, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { assignmentsTable } from "./assignments";
@@ -33,3 +33,19 @@ export const submissionsTable = pgTable("submissions", {
 export const insertSubmissionSchema = createInsertSchema(submissionsTable).omit({ id: true, submittedAt: true });
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
 export type Submission = typeof submissionsTable.$inferSelect;
+
+export const submissionImagesTable = pgTable("submission_images", {
+  id: serial("id").primaryKey(),
+  submissionId: integer("submission_id").notNull().references(() => submissionsTable.id, { onDelete: "cascade" }),
+  pageNumber: integer("page_number").notNull(),
+  objectPath: text("object_path").notNull(),
+  contentType: text("content_type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  submissionPageIdx: uniqueIndex("submission_images_submission_page_uq").on(t.submissionId, t.pageNumber),
+  submissionIdx: index("submission_images_submission_idx").on(t.submissionId),
+}));
+
+export const insertSubmissionImageSchema = createInsertSchema(submissionImagesTable).omit({ id: true, createdAt: true });
+export type InsertSubmissionImage = z.infer<typeof insertSubmissionImageSchema>;
+export type SubmissionImage = typeof submissionImagesTable.$inferSelect;

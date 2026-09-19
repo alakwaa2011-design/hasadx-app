@@ -4888,9 +4888,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SubmissionAnswerDetail"
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionImage"
       required:
         - submission
         - answers
+
+    SubmissionImage:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          description: Short-lived signed HTTPS URL for the stored page image.
+      required:
+        - pageNumber
+        - url
 
     UpdateAnswerBody:
       type: object

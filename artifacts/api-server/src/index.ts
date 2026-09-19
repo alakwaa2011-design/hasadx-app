@@ -53,6 +53,19 @@ import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 async function runSchemaMigrations() {
   try {
     await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS submission_images (
+        id SERIAL PRIMARY KEY,
+        submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+        page_number INTEGER NOT NULL CHECK (page_number > 0),
+        object_path TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT submission_images_submission_page_uq UNIQUE (submission_id, page_number)
+      );
+      CREATE INDEX IF NOT EXISTS submission_images_submission_idx
+        ON submission_images(submission_id);
+    `);
+    await db.execute(sql`
       ALTER TABLE teachers ADD COLUMN IF NOT EXISTS otp_attempts INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE teachers ADD COLUMN IF NOT EXISTS otp_locked_until TIMESTAMP;
     `);

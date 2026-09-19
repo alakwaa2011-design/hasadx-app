@@ -24,6 +24,7 @@ import {
   hasActiveAutomaticAssignmentGrant,
   lockAssignmentRewardEvidence,
 } from "../lib/classroom-reward-evaluator";
+import { deleteSubmissionImageObjects } from "../lib/submission-image-storage";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -887,6 +888,7 @@ router.delete("/solo-challenges/:slug/submissions", async (req, res) => {
       if (Number(challenge.teacher_id) !== teacherId) throw new Error("not_allowed");
 
       let deletedAssignmentSubmissions = 0;
+      let deletedSubmissionImagePaths: string[] = [];
       const assignmentId = challenge.assignment_id == null ? null : Number(challenge.assignment_id);
       if (assignmentId !== null) {
         const assignmentRows = (await tx.execute(sql`
@@ -915,6 +917,13 @@ router.delete("/solo-challenges/:slug/submissions", async (req, res) => {
         }
 
         if (submissionIds.length > 0) {
+          const imageRows = (await tx.execute(sql`
+            SELECT si.object_path
+            FROM submission_images si
+            INNER JOIN submissions s ON s.id = si.submission_id
+            WHERE s.assignment_id = ${assignmentId}
+          `)).rows as Array<{ object_path: string }>;
+          deletedSubmissionImagePaths = imageRows.map((row) => row.object_path);
           await tx.execute(sql`
             UPDATE adaptive_sessions
             SET submission_id = NULL
@@ -942,10 +951,16 @@ router.delete("/solo-challenges/:slug/submissions", async (req, res) => {
         deletedScores: deletedScores.length,
         deletedAttempts: deletedAttempts.length,
         deletedAssignmentSubmissions,
+        deletedSubmissionImagePaths,
       };
     });
 
-    res.json(result);
+    await deleteSubmissionImageObjects(result.deletedSubmissionImagePaths, req.log);
+    res.json({
+      deletedScores: result.deletedScores,
+      deletedAttempts: result.deletedAttempts,
+      deletedAssignmentSubmissions: result.deletedAssignmentSubmissions,
+    });
   } catch (err: any) {
     if (err?.message === "challenge_not_found") {
       return res.status(404).json({ message: "المسابقة غير موجودة" });
