@@ -8,7 +8,7 @@ import type { AnswerBody, SubmissionResult } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Input, Button, Label } from "@/components/ui-elements";
 import { fileToBase64 } from "@/lib/utils";
-import { Camera, MousePointerClick, Send, BrainCircuit, CheckCircle2, XCircle, ChevronLeft, ChevronRight, FileText, Star, GraduationCap, Lock, AlertCircle, EyeOff, Clock, Users, Volume2, VolumeX, Sparkles, Headphones, Play, Pause, Loader2, Gauge, RotateCcw, RotateCw } from "lucide-react";
+import { Camera, MousePointerClick, Send, BrainCircuit, CheckCircle2, XCircle, ChevronLeft, ChevronRight, FileText, Star, GraduationCap, Lock, AlertCircle, EyeOff, Clock, Users, Volume2, VolumeX, Sparkles, Headphones, Play, Pause, Loader2, Gauge, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -21,6 +21,28 @@ import { contentDirection } from "@/lib/content-direction";
 import { MathText } from "@/components/math-text";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const MAX_PAPER_IMAGES = 10;
+
+async function preparePaperImage(file: File): Promise<string> {
+  const dataUrl = await fileToBase64(file);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Unable to read image"));
+      image.src = dataUrl;
+    });
+    const scale = Math.min(1, 1800 / Math.max(image.width, image.height));
+    if (scale === 1 && dataUrl.startsWith("data:image/jpeg")) return dataUrl;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.82);
+  } catch {
+    return dataUrl;
+  }
+}
 
 function getDeviceFingerprint(): string {
   const key = "hw_device_fp";
@@ -539,7 +561,7 @@ export default function StudentSolve() {
   };
   const celebratedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [repeatRound, setRepeatRound] = useState<boolean>(false);
@@ -1247,13 +1269,24 @@ export default function StudentSolve() {
   const progressPct = totalCount > 0 ? (answeredCount / totalCount) * 100 : 0;
 
   const canSubmitMcq = studentName.trim() !== "" && studentClass.trim() !== "" && (nonWhiteboardCount === 0 || Object.keys(answers).length >= nonWhiteboardCount) && allMultiAnswersConfirmed;
-  const canSubmitImg = studentName.trim() !== "" && studentClass.trim() !== "" && imagePreview !== null;
+  const canSubmitImg = studentName.trim() !== "" && studentClass.trim() !== "" && imagePreviews.length > 0;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const base64 = await fileToBase64(file);
-      setImagePreview(base64);
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    const remaining = MAX_PAPER_IMAGES - imagePreviews.length;
+    if (remaining <= 0) {
+      setAccessError(t.solve.maxPaperImages);
+      return;
+    }
+    try {
+      const prepared = await Promise.all(files.slice(0, remaining).map(preparePaperImage));
+      setImagePreviews((current) => [...current, ...prepared].slice(0, MAX_PAPER_IMAGES));
+      if (files.length > remaining) setAccessError(t.solve.maxPaperImages);
+      else setAccessError("");
+    } catch {
+      setAccessError(t.solve.imageReadError);
     }
   };
 
@@ -1284,9 +1317,21 @@ export default function StudentSolve() {
 
   const handleImgSubmit = () => {
     setAccessError("");
-    if (imagePreview) {
+    if (imagePreviews.length > 0) {
       const deviceFingerprint = getDeviceFingerprint();
-      submitImg.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, imageBase64: imagePreview, accessCode: accessCode || undefined, deviceFingerprint, language: lang } } as any);
+      submitImg.mutate({
+        id,
+        data: {
+          studentName,
+          studentClass,
+          studentId: studentId || undefined,
+          imageBase64: imagePreviews[0],
+          ...(imagePreviews.length > 1 ? { imagesBase64: imagePreviews } : {}),
+          accessCode: accessCode || undefined,
+          deviceFingerprint,
+          language: lang,
+        },
+      } as any);
     }
   };
 
@@ -1971,6 +2016,7 @@ export default function StudentSolve() {
                     type="file"
                     accept="image/*"
                     capture="environment"
+                    multiple
                     className="hidden"
                     ref={fileInputRef}
                     onChange={handleImageUpload}
@@ -1978,23 +2024,50 @@ export default function StudentSolve() {
 
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    variant={imagePreview ? "outline" : "default"}
+                    variant={imagePreviews.length > 0 ? "outline" : "default"}
                     className="mx-auto"
+                    disabled={imagePreviews.length >= MAX_PAPER_IMAGES}
                   >
                     <Camera className="w-5 h-5 me-2" />
-                    {imagePreview ? t.solve.changeImage : t.solve.captureOrChoose}
+                    {imagePreviews.length > 0 ? t.solve.addAnotherImage : t.solve.captureOrChoose}
                   </Button>
+                  {imagePreviews.length > 0 && (
+                    <p className="mt-3 text-xs font-bold text-primary">
+                      {t.solve.paperImagesCount
+                        .replace("{count}", String(imagePreviews.length))
+                        .replace("{max}", String(MAX_PAPER_IMAGES))}
+                    </p>
+                  )}
                 </div>
 
-                {imagePreview && (
-                  <div className="rounded-2xl overflow-hidden border-2 border-primary/20 relative">
-                    <img src={imagePreview} alt="Preview" className="w-full max-h-[400px] object-contain bg-black/5" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                      <span className="text-white font-medium flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="w-5 h-5 text-green-400" />
-                        {t.solve.imageReady}
-                      </span>
-                    </div>
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {imagePreviews.map((imagePreview, index) => (
+                      <div key={`${index}-${imagePreview.slice(-16)}`} className="relative overflow-hidden rounded-2xl border-2 border-primary/20 bg-black/5">
+                        <img
+                          src={imagePreview}
+                          alt={`${t.solve.paperPage} ${index + 1}`}
+                          className="aspect-[3/4] w-full object-contain"
+                        />
+                        <span className="absolute start-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs font-black text-white">
+                          {index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setImagePreviews((current) => current.filter((_, pageIndex) => pageIndex !== index))}
+                          className="absolute end-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-destructive shadow-md transition-transform hover:scale-105"
+                          aria-label={`${t.solve.removePaperImage} ${index + 1}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-7">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-white">
+                            <CheckCircle2 className="h-4 w-4 text-green-400" />
+                            {t.solve.imageReady}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 

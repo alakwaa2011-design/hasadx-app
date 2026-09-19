@@ -1009,15 +1009,14 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
 
     const imageData = body.imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
-    // دعم تعدد الصفحات (ورقة العمل فقط): imagesBase64 مصفوفة صور مرتبة حسب
-    // رقم الصفحة، تُرسل كلها في نفس نداء التصحيح كإجابة طالب واحدة.
-    // الحقل خارج مخطط zod عمداً حتى لا يتأثر عقد الواجبات العادية.
+    // imagesBase64 contains the ordered pages of one paper submission.
+    // imageBase64 remains the required first page for older clients.
     const MAX_PAGES = 10;
     const MAX_PAGE_B64 = 5 * 1024 * 1024; // ~3.7MB مفكوكة لكل صفحة
     const MAX_TOTAL_B64 = 20 * 1024 * 1024; // ضمن سقف 25mb لجسم الطلب
-    const rawPages = (req.body as any)?.imagesBase64;
+    const rawPages = body.imagesBase64;
     let pageImages: string[] = [imageData];
-    if ((isWorksheetSource || isOwnerTeacher) && Array.isArray(rawPages) && rawPages.length > 1) {
+    if (Array.isArray(rawPages) && rawPages.length > 1) {
       if (rawPages.length > MAX_PAGES) {
         res.status(400).json({ message: `الحد الأقصى ${MAX_PAGES} صفحات لكل ورقة` });
         return;

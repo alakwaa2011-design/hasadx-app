@@ -749,12 +749,17 @@ export const SubmitAssignmentImageParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const submitAssignmentImageBodyImagesBase64Max = 10;
+
+
+
 export const SubmitAssignmentImageBody = zod.object({
   "studentName": zod.string(),
   "studentClass": zod.string(),
   "deviceFingerprint": zod.string(),
   "accessCode": zod.string().optional(),
-  "imageBase64": zod.string()
+  "imageBase64": zod.string(),
+  "imagesBase64": zod.array(zod.string()).min(1).max(submitAssignmentImageBodyImagesBase64Max).optional()
 })
 
 export const SubmitAssignmentImageResponse = zod.object({

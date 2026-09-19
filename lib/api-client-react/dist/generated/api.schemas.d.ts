@@ -1929,6 +1929,11 @@ export interface SubmitImageBody {
     deviceFingerprint: string;
     accessCode?: string;
     imageBase64: string;
+    /**
+       * @minItems 1
+       * @maxItems 10
+       */
+    imagesBase64?: string[];
 }
 export interface AnswerResult {
     questionId: number;

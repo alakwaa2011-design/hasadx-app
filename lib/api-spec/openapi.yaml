@@ -4684,6 +4684,12 @@ components:
           type: string
         imageBase64:
           type: string
+        imagesBase64:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: string
       required:
         - studentName
         - studentClass
