@@ -1440,6 +1440,20 @@ export function QuranPagesView({
           </div>
         )}
 
+        {!quietMode && educationHidden && (
+          <div className="flex w-full justify-center py-1.5">
+            <button
+              type="button"
+              onClick={showEducation}
+              data-testid="button-show-quran-education"
+              className="rounded-full border border-emerald-900/15 bg-white/70 px-4 py-1.5 text-xs font-black text-emerald-800 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-50 dark:border-white/10 dark:bg-card/70 dark:text-emerald-200 dark:hover:bg-emerald-950/60"
+              aria-label={lang === "ar" ? "إظهار التفسير" : "Show tafsir"}
+            >
+              {lang === "ar" ? "تفسير" : "Tafsir"}
+            </button>
+          </div>
+        )}
+
         <nav
           dir={dir}
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
@@ -1487,19 +1501,6 @@ export function QuranPagesView({
           />
         )}
       </main>
-
-      {!quietMode && educationHidden && (
-        <button
-          type="button"
-          onClick={showEducation}
-          data-testid="button-show-quran-education"
-          className="fixed bottom-[calc(1rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] end-3 z-50 inline-flex h-10 items-center gap-2 rounded-full border border-emerald-900/15 bg-[#fbfaf6]/95 px-3 text-xs font-black text-emerald-800 shadow-lg backdrop-blur-xl transition-colors hover:bg-white dark:border-white/10 dark:bg-card/95 dark:text-emerald-200"
-          aria-label={lang === "ar" ? "إظهار التفسير" : "Show tafsir"}
-        >
-          <Eye className="h-4 w-4" />
-          {lang === "ar" ? "إظهار التفسير" : "Show tafsir"}
-        </button>
-      )}
 
       {!quietMode && (educationSelection || ((audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0)) && (
         <div
