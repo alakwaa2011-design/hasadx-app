@@ -215,6 +215,7 @@ export function QuranPagesView({
     wordText: string | null;
   } | null>(null);
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
+  const [audibleVerseKey, setAudibleVerseKey] = useState<string | null>(null);
   const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
@@ -230,14 +231,14 @@ export function QuranPagesView({
   const { playWord, stopWordAudio } = useQuranWordAudio();
 
   useEffect(() => {
-    if (educationLocked || guidedOpen || !isPlaying || !playingVerseKey) return;
+    if (educationLocked || guidedOpen || !isPlaying || !audibleVerseKey) return;
     setEducationSelection({
-      verseKey: playingVerseKey,
+      verseKey: audibleVerseKey,
       wordId: null,
       wordPosition: null,
       wordText: null,
     });
-  }, [educationLocked, guidedOpen, isPlaying, playingVerseKey]);
+  }, [audibleVerseKey, educationLocked, guidedOpen, isPlaying]);
 
   const handleStandaloneSyncToggle = async () => {
     const enabling = !syncEnabled;
@@ -485,6 +486,7 @@ export function QuranPagesView({
   const handlePlayingAyahChange = (ayahNum: number | null) => {
     if (ayahNum === null) {
       setPlayingVerseKey(null);
+      setAudibleVerseKey(null);
     } else {
       const newKey = `${playingSurah}:${ayahNum}`;
       setPlayingVerseKey(newKey);
@@ -880,7 +882,7 @@ export function QuranPagesView({
             selectedVerseKey={selectedVerseKey}
             selectedVerseRange={copyRange}
             selectedWordId={educationSelection?.wordId}
-            playingVerseKey={playingVerseKey}
+            playingVerseKey={audibleVerseKey}
             playingWordPosition={playingWordPosition}
             isAyahConcealed={(chapterId, verseNumber, wordPosition) =>
               isAyahConcealed(chapterId, verseNumber, playingAyahNum, wordPosition)
@@ -1488,6 +1490,9 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
+                onAudibleAyahChange={(audibleSurah, ayahNum) => {
+                  setAudibleVerseKey(ayahNum === null ? null : `${audibleSurah}:${ayahNum}`);
+                }}
                 preferenceStorage={standalone && !syncActive ? "local" : "server"}
                 onPlaybackLocationChange={(nextSurah, nextAyah) => {
                   const nextVerseKey = `${nextSurah}:${nextAyah}`;
@@ -1517,6 +1522,7 @@ export function QuranPagesView({
                   setIsPlaying(false);
                   setAudioDockOpen(false);
                   setPlayingVerseKey(null);
+                  setAudibleVerseKey(null);
                   setSelectedVerseKey(null);
                   setEducationSelection(null);
                   setEducationLocked(false);

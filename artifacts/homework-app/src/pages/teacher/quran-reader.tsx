@@ -309,6 +309,7 @@ export function QuranTextReaderView({
 
   // Audio and Memorization State
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
+  const [audibleAyah, setAudibleAyah] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   // This is the authoritative selection while the reader is mounted. The
   // URL is only an initial/navigation hint; it must not overwrite a click.
@@ -466,6 +467,7 @@ export function QuranTextReaderView({
   // Reset audio & memo states on surah/mode change
   useEffect(() => {
     setPlayingAyah(null);
+    setAudibleAyah(null);
     setIsPlaying(false);
   }, [surahNumber, mode]);
 
@@ -478,7 +480,7 @@ export function QuranTextReaderView({
   }, [navigationKey, requestedAyah, startAyah]);
 
   useEffect(() => {
-    const ayahToReveal = playingAyah ?? selectedAyah;
+    const ayahToReveal = audibleAyah ?? selectedAyah;
     if (surahs && ayahToReveal) {
       setTimeout(() => {
         const el = document.getElementById(`ayah-${ayahToReveal}`);
@@ -491,7 +493,7 @@ export function QuranTextReaderView({
         }
       }, 100);
     }
-  }, [surahs, selectedAyah, surahNumber, playingAyah]);
+  }, [audibleAyah, surahs, selectedAyah, surahNumber]);
 
   // Independent practice has its own text position. Keep this separate from
   // teacher-assigned progress and persist it whenever the selected ayah changes.
@@ -596,7 +598,7 @@ export function QuranTextReaderView({
     const isGuidedAyah = guidedOpen && ayah.index === guidedAyah;
     const guidedConcealed = isGuidedAyah && guidedStage === 3 && !guidedRecitationRevealed;
     const concealed = guidedConcealed || isAyahConcealed(surahNumber, ayah.index, playingAyah);
-    const isPlayingThis = playingAyah === ayah.index;
+    const isPlayingThis = audibleAyah === ayah.index;
     const inTask = isTaskAyah(ayah.index);
     const playable = isAyahPlayable(ayah.index);
     
@@ -1131,6 +1133,7 @@ export function QuranTextReaderView({
           memoView={memoView}
           onMemoViewChange={setMemoView}
           onPlayingWordChange={setPlayingWord}
+          onAudibleAyahChange={(_surahNumber, ayahNumber) => setAudibleAyah(ayahNumber)}
           onPlaybackLocationChange={(nextSurah, nextAyah) => {
             setPlayingAyah(nextAyah);
             setIsPlaying(true);
@@ -1144,6 +1147,7 @@ export function QuranTextReaderView({
           onClose={() => {
             setIsPlaying(false);
             setPlayingAyah(null);
+            setAudibleAyah(null);
           }}
         />
         {isStudentWard && wardId && <QuranStudentSubmissionPanel wardId={wardId} />}

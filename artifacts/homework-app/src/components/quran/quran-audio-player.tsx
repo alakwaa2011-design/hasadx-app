@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw, SkipBack, SkipForward, Settings2, Loader2, Volume2, Repeat, Zap, RefreshCw, X, Search, BookOpen, Clock, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n';
@@ -37,6 +37,7 @@ export interface QuranAudioPlayerProps {
   memoView?: 'show' | 'hide' | 'progressive';
   onMemoViewChange?: (view: 'show' | 'hide' | 'progressive') => void;
   onPlayingWordChange?: (wordPosition: number | null) => void;
+  onAudibleAyahChange?: (surahNumber: number, ayah: number | null) => void;
   preferenceStorage?: 'server' | 'local';
 }
 
@@ -74,6 +75,7 @@ export function QuranAudioPlayer({
   memoView,
   onMemoViewChange,
   onPlayingWordChange,
+  onAudibleAyahChange,
   preferenceStorage = 'server',
 }: QuranAudioPlayerProps) {
   const { lang } = useI18n();
@@ -111,6 +113,9 @@ export function QuranAudioPlayer({
   const currentAudioSrcRef = useRef<string | undefined>(undefined);
   const lastQueryKeyRef = useRef<string>('');
   const lastAudioSurahRef = useRef(surahNumber);
+  const audibleSurahRef = useRef(surahNumber);
+  const lastAudibleAyahRef = useRef<number | null>(null);
+  const onAudibleAyahChangeRef = useRef(onAudibleAyahChange);
   const staleSurahSourceBlockedRef = useRef(false);
   const [playingWord, setPlayingWord] = useState<number | null>(null);
 
@@ -144,6 +149,17 @@ export function QuranAudioPlayer({
       }
     }
   );
+
+  useEffect(() => {
+    onAudibleAyahChangeRef.current = onAudibleAyahChange;
+  }, [onAudibleAyahChange]);
+
+  const emitAudibleAyah = useCallback((ayah: number | null) => {
+    if (lastAudibleAyahRef.current === ayah) return;
+    lastAudibleAyahRef.current = ayah;
+    onAudibleAyahChangeRef.current?.(audibleSurahRef.current, ayah);
+  }, []);
+  audibleSurahRef.current = surahNumber;
 
   useEffect(() => {
     if (memoSession?.isActive && !guidedMemorizationActive) setActiveTab('memo');
@@ -214,6 +230,7 @@ export function QuranAudioPlayer({
 
   useEffect(() => {
     if (!playingAyah || !recitationId) {
+      emitAudibleAyah(null);
       setAudioSrc(undefined);
       currentAudioSrcRef.current = undefined;
       activeSeekRef.current = null;
@@ -222,6 +239,7 @@ export function QuranAudioPlayer({
 
     const currentQueryKey = `${recitationId}-${surahNumber}-${playingAyah}`;
     if (lastQueryKeyRef.current !== currentQueryKey) {
+       emitAudibleAyah(null);
        const isSeamlessTransition = seamlessTransitionKeyRef.current === currentQueryKey;
        const surahChanged = lastAudioSurahRef.current !== surahNumber;
        const hostOwnsSurahTransition = Boolean(
@@ -381,6 +399,11 @@ export function QuranAudioPlayer({
       const { startMs, endMs, segments, ayah } = activeSeekRef.current;
 
       if (ayah !== playingAyah) return;
+      if (currentTimeMs < startMs) {
+        emitAudibleAyah(null);
+        return;
+      }
+      emitAudibleAyah(ayah);
       const entryGuard = surahEntryGuardRef.current;
       if (
         entryGuard

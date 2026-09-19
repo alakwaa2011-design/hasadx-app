@@ -13,6 +13,8 @@ An explicit “restart current ayah” action must use the active timing segment
 
 The shared audio element's `loadedmetadata` listener must be registered before any effect can replace its `src` and call `load()`. For a selected timed ayah, do not call `play()` while metadata is unavailable: seek to `verseStartMs` in `loadedmetadata`, then play. Otherwise the chapter introduction becomes briefly audible while the UI already highlights the timed ayah. Cached or fast media can emit metadata before a later effect attaches, so guard the seek by the expected source URL and prevent stale timing from moving a newer source.
 
+Requested playback state and audible highlighting are separate. The requested ayah may change immediately so timing data can load, but ayah highlight and playback-following tafsir must update only after `timeupdate` confirms the media clock reached that ayah's `verseStartMs`.
+
 Chapter-sized audio served through the private object route must honor single HTTP byte ranges (`206`, `Accept-Ranges`, and `Content-Range`). A client-side `currentTime` assignment cannot reliably seek a large MP3 when the server ignores `Range` and returns the whole object with `200`.
 
 For chapter recordings, a normal cross-surah handoff starts the next source at time zero so its recorded basmalah is heard. At-Tawbah is the exception and starts at the first ayah timing. Keep autoplay enabled on the reused media element for iOS Safari continuity.

@@ -65,12 +65,14 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
   QuranAudioPlayer: ({
     selectedAyah,
     onPlayingAyahChange,
+    onAudibleAyahChange,
     onIsPlayingChange,
     onPlaybackLocationChange,
     onClose,
   }: {
     selectedAyah: number;
     onPlayingAyahChange: (ayah: number) => void;
+    onAudibleAyahChange: (surah: number, ayah: number | null) => void;
     onIsPlayingChange: (playing: boolean) => void;
     onPlaybackLocationChange: (surah: number, ayah: number) => void;
     onClose: () => void;
@@ -81,14 +83,21 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
         onClick={() => {
           onPlayingAyahChange(selectedAyah);
           onIsPlayingChange(true);
+          onAudibleAyahChange(1, selectedAyah);
         }}
       >
         تشغيل الآية
       </button>
-      <button type="button" onClick={() => onPlayingAyahChange(selectedAyah + 1)}>
+      <button type="button" onClick={() => {
+        onPlayingAyahChange(selectedAyah + 1);
+        onAudibleAyahChange(1, selectedAyah + 1);
+      }}>
         الآية التالية
       </button>
-      <button type="button" onClick={() => onPlaybackLocationChange(2, 1)}>
+      <button type="button" onClick={() => {
+        onPlaybackLocationChange(2, 1);
+        onAudibleAyahChange(2, 1);
+      }}>
         السورة التالية
       </button>
       <button type="button" onClick={onClose}>

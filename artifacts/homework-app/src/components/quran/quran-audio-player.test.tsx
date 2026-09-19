@@ -109,7 +109,11 @@ const connectedSecond: TimingResult = {
   segments: [],
 };
 
-function PlayerHarness() {
+function PlayerHarness({
+  onAudibleAyahChange,
+}: {
+  onAudibleAyahChange?: (surahNumber: number, ayah: number | null) => void;
+} = {}) {
   const [playingAyah, setPlayingAyah] = useState<number | null>(1);
   return (
     <QuranAudioHostProvider>
@@ -124,6 +128,7 @@ function PlayerHarness() {
         onPlayingAyahChange={setPlayingAyah}
         isPlaying
         onIsPlayingChange={vi.fn()}
+        onAudibleAyahChange={onAudibleAyahChange}
       />
     </QuranAudioHostProvider>
   );
@@ -184,8 +189,10 @@ function RepeatingPlayerHarness({
   );
 }
 
-async function renderAtBoundary() {
-  const view = render(<PlayerHarness />);
+async function renderAtBoundary(
+  onAudibleAyahChange?: (surahNumber: number, ayah: number | null) => void,
+) {
+  const view = render(<PlayerHarness onAudibleAyahChange={onAudibleAyahChange} />);
   const audio = await waitFor(() => {
     const element = view.container.querySelector('audio');
     expect(element).not.toBeNull();
@@ -376,7 +383,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
   });
 
   it('seeks to the selected ayah and saves Abu Bakr Al-Dhabi as the preferred reciter', async () => {
-    const { view, audio } = await renderAtBoundary();
+    const onAudibleAyahChange = vi.fn();
+    const { view, audio } = await renderAtBoundary(onAudibleAyahChange);
     Object.defineProperty(audio, 'readyState', { configurable: true, value: 0 });
     play.mockClear();
     timingResults.set(1, {
@@ -406,7 +414,10 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     });
     fireEvent.loadedMetadata(audio);
     expect(audio.currentTime).toBe(12.345);
+    expect(onAudibleAyahChange).not.toHaveBeenCalled();
     await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
+    fireEvent.timeUpdate(audio);
+    expect(onAudibleAyahChange).toHaveBeenCalledWith(1, 1);
     await waitFor(() => expect(savePreference).toHaveBeenCalledWith({
       data: { recitationId: 2_001_095 },
     }));
