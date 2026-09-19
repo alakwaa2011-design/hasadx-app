@@ -216,6 +216,17 @@ export default defineConfig({
       },
     },
     {
+      name: "desktop-teacher-deep-links",
+      testMatch: /teacher-deep-links\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
       name: "mobile-quran-optional-sync",
       testMatch: /quran-optional-sync\.spec\.ts/,
       use: {

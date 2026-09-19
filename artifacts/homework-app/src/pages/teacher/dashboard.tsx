@@ -3007,7 +3007,7 @@ function CompetitiveTab({
 
   return (
     <>
-    <div className="space-y-10">
+    <div className="space-y-10" data-testid="teacher-competitions-page">
       <GameCatalogSection
         title={
           lang === "ar"
