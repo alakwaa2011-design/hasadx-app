@@ -179,6 +179,7 @@ export function QuranPagesView({
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
     typeof window !== "undefined" && window.innerWidth < 768 ? "single" : "spread",
   );
+  const preLandscapeLayoutRef = useRef<"spread" | "single" | "continuous" | null>(null);
   const [continuousStartPage, setContinuousStartPage] = useState(FIRST_PAGE);
   const [continuousEndPage, setContinuousEndPage] = useState(
     typeof window !== "undefined" && window.innerWidth < 768 ? Math.min(LAST_PAGE, FIRST_PAGE + 3) : FIRST_PAGE,
@@ -296,6 +297,30 @@ export function QuranPagesView({
     document.addEventListener("pointerdown", closeOnOutsidePress);
     return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
   }, [mobileToolsOpen]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const landscapeQuery = window.matchMedia("(orientation: landscape) and (max-height: 600px)");
+    const syncLandscapeLayout = () => {
+      if (landscapeQuery.matches) {
+        setPageLayout((current) => {
+          if (preLandscapeLayoutRef.current === null) {
+            preLandscapeLayoutRef.current = current;
+          }
+          return "spread";
+        });
+        return;
+      }
+      if (preLandscapeLayoutRef.current !== null) {
+        const previousLayout = preLandscapeLayoutRef.current;
+        preLandscapeLayoutRef.current = null;
+        setPageLayout(previousLayout);
+      }
+    };
+    syncLandscapeLayout();
+    landscapeQuery.addEventListener("change", syncLandscapeLayout);
+    return () => landscapeQuery.removeEventListener("change", syncLandscapeLayout);
+  }, []);
 
   useEffect(() => {
     stopWordAudio();
@@ -1442,6 +1467,7 @@ export function QuranPagesView({
             key={`${pageLayout}:${activePage}`}
             className={cn(
               "quran-page-shell quran-page-shell--paged mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
+              pageLayout === "spread" && "quran-page-shell--spread",
               pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
               turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
             )}
@@ -1454,10 +1480,10 @@ export function QuranPagesView({
           >
             {pageLayout === "spread" ? (
               <>
-                <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
-                <div className="h-full lg:hidden">{renderPage(activePage, "single")}</div>
+                <div className="quran-spread-page quran-spread-page--right hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
+                <div className="quran-single-page h-full lg:hidden">{renderPage(activePage, "single")}</div>
                 {visiblePages.left !== null && (
-                  <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
+                  <div className="quran-spread-page quran-spread-page--left hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
                 )}
               </>
             ) : (

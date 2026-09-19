@@ -941,46 +941,55 @@
   }
 
   .quran-page-shell {
-    display: block !important;
-    width: calc(
-      100vw
-      - var(--quran-safe-area-left, env(safe-area-inset-left))
-      - var(--quran-safe-area-right, env(safe-area-inset-right))
-    ) !important;
+    width: auto !important;
     max-width: none !important;
     height: 100dvh !important;
     margin-top: 0 !important;
-    margin-right: var(--quran-safe-area-right, env(safe-area-inset-right)) !important;
+    margin-right: auto !important;
     margin-bottom: 0 !important;
-    margin-left: var(--quran-safe-area-left, env(safe-area-inset-left)) !important;
+    margin-left: auto !important;
   }
 
-  .quran-reader-figure {
-    width: 100% !important;
+  .quran-page-shell--spread {
+    display: grid !important;
+    grid-template-columns: repeat(2, 69.948dvh) !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    width: 139.896dvh !important;
+  }
+
+  .quran-page-shell--spread .quran-spread-page {
+    display: block !important;
+    height: 100dvh !important;
+  }
+
+  .quran-page-shell--spread .quran-spread-page--right {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .quran-page-shell--spread .quran-spread-page--left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .quran-page-shell--spread .quran-single-page {
+    display: none !important;
+  }
+
+  .quran-page-shell--spread .quran-reader-figure {
+    width: 69.948dvh !important;
     max-width: none !important;
     height: 100dvh !important;
-    aspect-ratio: auto !important;
+    aspect-ratio: 382.677 / 547.086 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
 
-  .quran-reader-figure .quran-madani-page {
+  .quran-page-shell--spread .quran-madani-page {
     width: 100% !important;
     height: 100dvh !important;
-    aspect-ratio: auto !important;
+    aspect-ratio: 382.677 / 547.086 !important;
     border-radius: 0 !important;
-  }
-
-  .quran-reader-figure .quran-madani-page-content {
-    padding: 3dvh 8vw !important;
-  }
-
-  .quran-reader-figure .quran-madani-line,
-  .quran-reader-figure .quran-madani-end {
-    font-size: min(5.2cqw, 4.8dvh) !important;
-  }
-
-  .quran-reader-figure .quran-madani-bismillah {
-    font-size: min(5.8cqw, 5.2dvh) !important;
   }
 }
