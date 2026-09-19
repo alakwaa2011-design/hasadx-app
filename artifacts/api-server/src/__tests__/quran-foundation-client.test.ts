@@ -9,6 +9,7 @@ import {
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
+  ABU_BAKR_AL_DHABI_RECITATION_ID,
   SADIQ_ALNIZAM_RECITATION_ID,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
@@ -205,6 +206,7 @@ describe("Quran Foundation client", () => {
     const display = await listQuranFoundationDisplayReciters();
 
     expect(display.map(({ id, style }) => ({ id, style }))).toEqual([
+      { id: ABU_BAKR_AL_DHABI_RECITATION_ID, style: "Murattal" },
       { id: SADIQ_ALNIZAM_RECITATION_ID, style: "Murattal" },
       { id: 1, style: "Mujawwad" },
       { id: 2, style: "Murattal" },
@@ -216,6 +218,10 @@ describe("Quran Foundation client", () => {
     expect(display.some((item) => item.style === "Muallim")).toBe(false);
     expect(display.find((item) => item.id === SADIQ_ALNIZAM_RECITATION_ID)).toMatchObject({
       name: "صادق النظام",
+      available: false,
+    });
+    expect(display.find((item) => item.id === ABU_BAKR_AL_DHABI_RECITATION_ID)).toMatchObject({
+      name: "أبوبكر الظبي",
       available: false,
     });
   });
@@ -238,6 +244,24 @@ describe("Quran Foundation client", () => {
       .rejects.toThrow("timing mapping is unavailable");
     await expect(getQuranFoundationAudioUrl(SADIQ_ALNIZAM_RECITATION_ID, 114, 1))
       .resolves.toBe("/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3");
+  });
+
+  it("keeps the Abu Bakr Al-Dhabi sample aligned to Surah At-Tin only", async () => {
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 1))
+      .resolves.toMatchObject({
+        recitationId: ABU_BAKR_AL_DHABI_RECITATION_ID,
+        verseKey: "95:1",
+        audioUrl: "/api/storage/objects/uploads/a1210437-e13f-4f8c-809f-0148d6028867.mp3",
+        verseStartMs: 288,
+        verseEndMs: 10_366,
+        synchronized: true,
+      });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 8))
+      .resolves.toMatchObject({ verseStartMs: 53_431, verseEndMs: 61_727 });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 94, 1))
+      .rejects.toThrow("timing mapping is unavailable");
+    await expect(getQuranFoundationAudioUrl(ABU_BAKR_AL_DHABI_RECITATION_ID, 95, 1))
+      .resolves.toBe("/api/storage/objects/uploads/a1210437-e13f-4f8c-809f-0148d6028867.mp3");
   });
 
   it("resolves only the exact official word-by-word audio path", async () => {

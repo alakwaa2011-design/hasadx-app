@@ -124,7 +124,7 @@ import {
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
-  SADIQ_ALNIZAM_RECITATION_ID,
+  isUnverifiedQuranRecitation,
 } from "../lib/quran-foundation-client";
 import { rejectStudentLiveRecitation } from "../lib/quran-live-recitation-access";
 
@@ -696,7 +696,7 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
     res.status(400).json({ error: "Invalid recitation or verse" });
     return;
   }
-  if (parsed.data.recitationId === SADIQ_ALNIZAM_RECITATION_ID && !hasQuranReaderSession(req)) {
+  if (isUnverifiedQuranRecitation(parsed.data.recitationId) && !hasQuranReaderSession(req)) {
     res.status(404).json({ error: "Quran audio is unavailable" });
     return;
   }
@@ -755,7 +755,7 @@ router.get(
     res.status(400).json({ error: "Invalid recitation or verse" });
     return;
   }
-  if (parsed.data.recitationId === SADIQ_ALNIZAM_RECITATION_ID && !hasQuranReaderSession(req)) {
+  if (isUnverifiedQuranRecitation(parsed.data.recitationId) && !hasQuranReaderSession(req)) {
     res.status(404).json({ error: "Verified Quran timing data is unavailable" });
     return;
   }

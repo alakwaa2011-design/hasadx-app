@@ -27,6 +27,24 @@ const SADIQ_ALNIZAM_TIMINGS = Object.freeze([
   { ayahNumber: 5, verseStartMs: 35_690, verseEndMs: 42_280 },
   { ayahNumber: 6, verseStartMs: 42_280, verseEndMs: 48_216 },
 ] as const);
+export const ABU_BAKR_AL_DHABI_RECITATION_ID = 2_001_095;
+const ABU_BAKR_AL_DHABI_AUDIO_URL =
+  "/api/storage/objects/uploads/a1210437-e13f-4f8c-809f-0148d6028867.mp3";
+const ABU_BAKR_AL_DHABI_TIMINGS = Object.freeze([
+  { ayahNumber: 1, verseStartMs: 288, verseEndMs: 10_366 },
+  { ayahNumber: 2, verseStartMs: 10_366, verseEndMs: 14_864 },
+  { ayahNumber: 3, verseStartMs: 14_864, verseEndMs: 19_565 },
+  { ayahNumber: 4, verseStartMs: 19_565, verseEndMs: 29_521 },
+  { ayahNumber: 5, verseStartMs: 29_521, verseEndMs: 36_624 },
+  { ayahNumber: 6, verseStartMs: 36_624, verseEndMs: 47_393 },
+  { ayahNumber: 7, verseStartMs: 47_393, verseEndMs: 53_431 },
+  { ayahNumber: 8, verseStartMs: 53_431, verseEndMs: 61_727 },
+] as const);
+
+export function isUnverifiedQuranRecitation(recitationId: number): boolean {
+  return recitationId === SADIQ_ALNIZAM_RECITATION_ID
+    || recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID;
+}
 const TRUSTED_AUDIO_ORIGINS = new Set([
   VERSE_AUDIO_BASE_URL,
   "https://download.quranicaudio.com",
@@ -373,6 +391,12 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
     style: "Murattal",
     available: false,
   });
+  selected.set("أبوبكر الظبي:Murattal", {
+    id: ABU_BAKR_AL_DHABI_RECITATION_ID,
+    name: "أبوبكر الظبي",
+    style: "Murattal",
+    available: false,
+  });
   return [...selected.values()].sort((left, right) =>
     left.name.localeCompare(right.name, "ar")
     || (left.style ?? "").localeCompare(right.style ?? "", "en"));
@@ -554,6 +578,22 @@ export async function getQuranFoundationAyahTimings(
       recitationId,
       verseKey: `${surahNumber}:${ayahNumber}`,
       audioUrl: SADIQ_ALNIZAM_AUDIO_URL,
+      verseStartMs: timing.verseStartMs,
+      verseEndMs: timing.verseEndMs,
+      segments: Object.freeze([]),
+      synchronized: true,
+    });
+  }
+  if (recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID) {
+    if (surahNumber !== 95) {
+      throw new Error("Quran Foundation timing mapping is unavailable");
+    }
+    const timing = ABU_BAKR_AL_DHABI_TIMINGS.find((item) => item.ayahNumber === ayahNumber);
+    if (!timing) throw new Error("Quran Foundation verse timings are unavailable");
+    return Object.freeze({
+      recitationId,
+      verseKey: `${surahNumber}:${ayahNumber}`,
+      audioUrl: ABU_BAKR_AL_DHABI_AUDIO_URL,
       verseStartMs: timing.verseStartMs,
       verseEndMs: timing.verseEndMs,
       segments: Object.freeze([]),
@@ -800,6 +840,13 @@ export async function getQuranFoundationAudioUrl(
       throw new Error("Quran Foundation audio mapping is unavailable");
     }
     return SADIQ_ALNIZAM_AUDIO_URL;
+  }
+  if (recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID) {
+    validateVerseNumbers(surahNumber, ayahNumber);
+    if (surahNumber !== 95) {
+      throw new Error("Quran Foundation audio mapping is unavailable");
+    }
+    return ABU_BAKR_AL_DHABI_AUDIO_URL;
   }
   const reciters = await listQuranFoundationReciters();
   if (!reciters.some((reciter) => reciter.id === recitationId)) {

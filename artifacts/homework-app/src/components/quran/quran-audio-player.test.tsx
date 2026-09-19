@@ -70,6 +70,7 @@ vi.mock('@workspace/api-client-react', () => ({
         { id: 7, name: 'First reciter', style: 'Murattal' },
         { id: 8, name: 'Second reciter', style: 'Murattal' },
         { id: 2_000_114, name: 'صادق النظام', style: 'Murattal', available: false },
+        { id: 2_001_095, name: 'أبوبكر الظبي', style: 'Murattal', available: false },
       ],
     },
     refetch: vi.fn(),
@@ -377,6 +378,20 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
 
     await waitFor(() => expect(sampleButton.className).toContain('bg-emerald-50'));
     await waitFor(() => expect(timingHookCalls).toHaveBeenCalledWith(2_000_114, 1, 1));
+    expect(savePreference).not.toHaveBeenCalled();
+  });
+
+  it('allows selecting the Abu Bakr Al-Dhabi session sample', async () => {
+    const { view } = await renderAtBoundary();
+
+    fireEvent.click(view.getByTestId('button-audio-options'));
+    const sampleButton = view.getByTestId('button-reciter-2001095') as HTMLButtonElement;
+    expect(sampleButton.disabled).toBe(false);
+
+    fireEvent.click(sampleButton);
+
+    await waitFor(() => expect(sampleButton.className).toContain('bg-emerald-50'));
+    await waitFor(() => expect(timingHookCalls).toHaveBeenCalledWith(2_001_095, 1, 1));
     expect(savePreference).not.toHaveBeenCalled();
   });
 
