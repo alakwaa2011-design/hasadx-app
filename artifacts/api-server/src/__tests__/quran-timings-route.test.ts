@@ -18,7 +18,7 @@ vi.mock("../lib/quran-foundation-client", () => ({
   SADIQ_ALNIZAM_RECITATION_ID: 2_000_114,
   ABU_BAKR_AL_DHABI_RECITATION_ID: 2_001_095,
   isUnverifiedQuranRecitation: (recitationId: number) =>
-    recitationId === 2_000_114 || recitationId === 2_001_095,
+    recitationId === 2_000_114,
 }));
 
 import quranRouter from "../routes/quran";
@@ -41,7 +41,7 @@ describe("Quran ayah timings route", () => {
     getDisplayReciters.mockResolvedValue([
       { id: 7, name: "Verified", style: "Murattal", available: true },
       { id: 2_000_114, name: "صادق النظام", style: "Murattal", available: false },
-      { id: 2_001_095, name: "أبوبكر الظبي", style: "Murattal", available: false },
+      { id: 2_001_095, name: "أبوبكر الظبي", style: "Murattal", available: true },
     ]);
     getTimings.mockResolvedValue({
       recitationId: 1, verseKey: "1:1",
@@ -56,13 +56,14 @@ describe("Quran ayah timings route", () => {
     expect(response.status).toBe(200);
     expect(response.body.reciters).toEqual([
       { id: 7, name: "Verified", style: "Murattal", available: true },
+      { id: 2_001_095, name: "أبوبكر الظبي", style: "Murattal", available: true },
     ]);
   });
 
-  it("does not serve unverified sample timings to anonymous readers even by ID", async () => {
+  it("keeps only the unverified sample hidden while serving Abu Bakr Al-Dhabi officially", async () => {
     expect((await request(app({})).get("/api/quran/audio/2000114/114/3/timings")).status).toBe(404);
-    expect((await request(app({})).get("/api/quran/audio/2001095/95/1/timings")).status).toBe(404);
-    expect(getTimings).not.toHaveBeenCalled();
+    expect((await request(app({})).get("/api/quran/audio/2001095/95/1/timings")).status).toBe(200);
+    expect(getTimings).toHaveBeenCalledWith(2_001_095, 95, 1);
   });
 
   it("allows anonymous readers to load verified timings", async () => {

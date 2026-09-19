@@ -87,8 +87,7 @@ async function getAbuBakrAlDhabiVerseTiming(
 }
 
 export function isUnverifiedQuranRecitation(recitationId: number): boolean {
-  return recitationId === SADIQ_ALNIZAM_RECITATION_ID
-    || recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID;
+  return recitationId === SADIQ_ALNIZAM_RECITATION_ID;
 }
 const TRUSTED_AUDIO_ORIGINS = new Set([
   VERSE_AUDIO_BASE_URL,
@@ -440,7 +439,7 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
     id: ABU_BAKR_AL_DHABI_RECITATION_ID,
     name: "أبوبكر الظبي",
     style: "Murattal",
-    available: false,
+    available: true,
   });
   return [...selected.values()].sort((left, right) =>
     left.name.localeCompare(right.name, "ar")

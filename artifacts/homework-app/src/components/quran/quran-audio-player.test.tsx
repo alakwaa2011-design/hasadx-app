@@ -70,7 +70,7 @@ vi.mock('@workspace/api-client-react', () => ({
         { id: 7, name: 'First reciter', style: 'Murattal' },
         { id: 8, name: 'Second reciter', style: 'Murattal' },
         { id: 2_000_114, name: 'صادق النظام', style: 'Murattal', available: false },
-        { id: 2_001_095, name: 'أبوبكر الظبي', style: 'Murattal', available: false },
+        { id: 2_001_095, name: 'أبوبكر الظبي', style: 'Murattal', available: true },
       ],
     },
     refetch: vi.fn(),
@@ -381,7 +381,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(savePreference).not.toHaveBeenCalled();
   });
 
-  it('seeks to the selected ayah after Abu Bakr Al-Dhabi chapter metadata loads', async () => {
+  it('seeks to the selected ayah and saves Abu Bakr Al-Dhabi as the preferred reciter', async () => {
     const { view, audio } = await renderAtBoundary();
     timingResults.set(1, {
       data: {
@@ -404,7 +404,9 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await waitFor(() => expect(audio.src).toContain('/abu-bakr-al-dhabi/001.mp3'));
     fireEvent.loadedMetadata(audio);
     expect(audio.currentTime).toBe(12.345);
-    expect(savePreference).not.toHaveBeenCalled();
+    await waitFor(() => expect(savePreference).toHaveBeenCalledWith({
+      data: { recitationId: 2_001_095 },
+    }));
   });
 
   it('does not let an old timing response stop a newly selected reciter', async () => {

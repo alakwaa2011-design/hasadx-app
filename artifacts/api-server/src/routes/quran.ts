@@ -502,7 +502,7 @@ router.patch("/quran/audio-preference", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const reciters = await listQuranFoundationReciters();
+    const reciters = await listQuranFoundationDisplayReciters();
     if (!reciters.some((reciter) => reciter.id === parsed.data.recitationId && reciter.available !== false)) {
       parseError(res, "Recitation is not in the trusted Quran Foundation catalog");
       return;

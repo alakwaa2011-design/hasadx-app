@@ -247,7 +247,7 @@ describe("Quran Foundation client", () => {
     });
     expect(display.find((item) => item.id === ABU_BAKR_AL_DHABI_RECITATION_ID)).toMatchObject({
       name: "أبوبكر الظبي",
-      available: false,
+      available: true,
     });
   });
 
