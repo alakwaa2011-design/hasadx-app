@@ -34,6 +34,9 @@ const ABU_BAKR_AL_DHABI_TIN_AUDIO_URL =
 const ABU_BAKR_AL_DHABI_TIN_BOUNDARIES = Object.freeze([
   288, 10_366, 14_864, 19_565, 29_521, 36_624, 47_393, 53_431, 61_727,
 ]);
+const ABU_BAKR_AL_DHABI_FATIHA_BOUNDARIES = Object.freeze([
+  6_556, 12_050, 18_192, 22_131, 26_828, 32_986, 38_585, 53_760,
+]);
 const ABU_BAKR_AL_DHABI_MANIFEST_PATH =
   "uploads/quran-recitation/abu-bakr-al-dhabi/verse-boundaries.json";
 let abuBakrAlDhabiManifestRequest:
@@ -69,9 +72,11 @@ async function getAbuBakrAlDhabiVerseTiming(
   surahNumber: number,
   ayahNumber: number,
 ): Promise<{ verseStartMs: number; verseEndMs: number } | null> {
-  const boundaries = surahNumber === 95
-    ? ABU_BAKR_AL_DHABI_TIN_BOUNDARIES
-    : (await loadAbuBakrAlDhabiManifest())[String(surahNumber)];
+  const boundaries = surahNumber === 1
+    ? ABU_BAKR_AL_DHABI_FATIHA_BOUNDARIES
+    : surahNumber === 95
+      ? ABU_BAKR_AL_DHABI_TIN_BOUNDARIES
+      : (await loadAbuBakrAlDhabiManifest())[String(surahNumber)];
   if (!boundaries || boundaries.length !== CANONICAL_AYAH_COUNTS[surahNumber - 1] + 1) return null;
   const verseStartMs = boundaries[ayahNumber - 1];
   const verseEndMs = boundaries[ayahNumber];

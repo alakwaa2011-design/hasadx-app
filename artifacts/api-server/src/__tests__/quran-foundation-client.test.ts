@@ -276,9 +276,13 @@ describe("Quran Foundation client", () => {
       .resolves.toMatchObject({
         verseKey: "1:1",
         audioUrl: "/api/storage/objects/uploads/quran-recitation/abu-bakr-al-dhabi/001.mp3",
-        verseStartMs: 441,
-        verseEndMs: 6_580,
+        verseStartMs: 6_556,
+        verseEndMs: 12_050,
       });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 1, 6))
+      .resolves.toMatchObject({ verseStartMs: 32_986, verseEndMs: 38_585 });
+    await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 1, 7))
+      .resolves.toMatchObject({ verseStartMs: 38_585, verseEndMs: 53_760 });
     await expect(getQuranFoundationAyahTimings(ABU_BAKR_AL_DHABI_RECITATION_ID, 94, 8))
       .resolves.toMatchObject({
         verseKey: "94:8",

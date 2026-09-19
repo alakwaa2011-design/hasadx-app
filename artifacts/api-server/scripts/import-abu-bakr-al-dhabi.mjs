@@ -336,6 +336,10 @@ async function uploadRuntimeManifest(report) {
   if (!privateDir) throw new Error("PRIVATE_OBJECT_DIR is not configured");
   const boundaries = {};
   for (let surah = 1; surah <= 114; surah += 1) {
+    if (surah === 1) {
+      boundaries[surah] = [6_556, 12_050, 18_192, 22_131, 26_828, 32_986, 38_585, 53_760];
+      continue;
+    }
     if (surah === 95) {
       boundaries[surah] = [288, 10_366, 14_864, 19_565, 29_521, 36_624, 47_393, 53_431, 61_727];
       continue;
