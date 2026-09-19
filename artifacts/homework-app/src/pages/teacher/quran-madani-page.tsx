@@ -163,6 +163,9 @@ export function QuranMadaniPageRenderer({
   const firstPagesContentStartRow = firstPagesContent
     ? Math.max(1, Math.floor((rows.length - firstPagesContent.length) / 2) + 1)
     : null;
+  const firstPagesBismillahRow = pageNumber === 2 && firstPagesContentStartRow
+    ? firstPagesContentStartRow - 1
+    : null;
 
   return (
     <div
@@ -183,7 +186,9 @@ export function QuranMadaniPageRenderer({
             ? firstPagesContent[firstPageLineIndex]
             : data.lines.find((l) => l.lineNumber === rowNum);
           const decoration = firstPagesContent
-            ? undefined
+            ? rowNum === firstPagesBismillahRow
+              ? { kind: "bismillah" as const, surahNumber: 2 }
+              : undefined
             : pageLayout.decorations.get(rowNum);
 
           if (decoration?.kind === "surah") {
@@ -194,12 +199,16 @@ export function QuranMadaniPageRenderer({
             return (
               <div
                 key={rowNum}
-                className="mb-1 flex w-full flex-1 items-center justify-center whitespace-nowrap text-[6cqw] leading-none text-[#1d4432]"
-                style={{ fontFamily: "'Amiri', 'Traditional Arabic', serif" }}
+                className="mb-1 flex w-full flex-1 items-center justify-center"
                 aria-label="بسم الله الرحمن الرحيم"
               >
-                <span className="pb-1" translate="no">
-                  ﷽
+                <span
+                  aria-hidden="true"
+                  className="whitespace-nowrap text-[5.8cqw] leading-none text-black"
+                  style={{ fontFamily: "'qcf-v2-bismillah', sans-serif" }}
+                  translate="no"
+                >
+                  ﱁﱂﱃﱄ
                 </span>
               </div>
             );

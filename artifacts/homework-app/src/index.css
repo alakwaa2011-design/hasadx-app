@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Use the original QCF V2 text glyphs from Al-Fatiha for every surah basmala.
+   This keeps it selectable text while matching the imported Mushaf style. */
+@font-face {
+  font-family: "qcf-v2-bismillah";
+  src:
+    url("https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p1.woff2") format("woff2"),
+    url("https://static.qurancdn.com/fonts/quran/hafs/v2/woff2/p1.woff2") format("woff2");
+  font-display: block;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @keyframes quran-page-turn-next {
