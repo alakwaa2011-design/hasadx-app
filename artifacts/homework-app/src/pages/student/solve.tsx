@@ -1338,6 +1338,12 @@ export default function StudentSolve() {
   const showModeToggle = submissionMode === "both" && hasElectronicQuestions;
   const showElectronic = (submissionMode === "electronic" || submissionMode === "both") && hasElectronicQuestions;
   const showPaper = submissionMode === "paper" || submissionMode === "both";
+  // Public student links must not expose the AI grading workflow. Keep the
+  // paper upload available, but show the student only a neutral upload prompt.
+  const canShowSmartGrading =
+    !!currentTeacher &&
+    !!assignment &&
+    Number((assignment as any).teacherId) === Number((currentTeacher as any).id);
 
   return (
     <Layout>
@@ -2003,14 +2009,26 @@ export default function StudentSolve() {
                 </div>
 
                 <div className="bg-primary/5 border-2 border-primary/20 border-dashed rounded-2xl p-8 text-center">
-                  <BrainCircuit className="w-14 h-14 mx-auto text-primary mb-4 opacity-80" />
-                  <h3 className="text-xl font-bold mb-2">{t.solve.smartGrading}</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto mb-6 text-sm">
-                    {t.solve.smartGradingDesc}
-                    {assignment.hasModelImage && (
-                      <span className="block mt-2 text-primary font-bold">{t.solve.modelAnswerNote}</span>
-                    )}
-                  </p>
+                  {canShowSmartGrading ? (
+                    <>
+                      <BrainCircuit className="w-14 h-14 mx-auto text-primary mb-4 opacity-80" />
+                      <h3 className="text-xl font-bold mb-2">{t.solve.smartGrading}</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto mb-6 text-sm">
+                        {t.solve.smartGradingDesc}
+                        {assignment.hasModelImage && (
+                          <span className="block mt-2 text-primary font-bold">{t.solve.modelAnswerNote}</span>
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-14 h-14 mx-auto text-primary mb-4 opacity-80" />
+                      <h3 className="text-xl font-bold mb-2">{t.solve.paperUploadTitle}</h3>
+                      <p className="text-muted-foreground max-w-md mx-auto mb-6 text-sm">
+                        {t.solve.paperUploadDescription}
+                      </p>
+                    </>
+                  )}
 
                   <input
                     type="file"
@@ -2079,7 +2097,7 @@ export default function StudentSolve() {
                   >
                     {isSubmitting
                       ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <><Send className="w-5 h-5 me-2" /> {t.solve.submitAndGrade}</>
+                       : <><Send className="w-5 h-5 me-2" /> {canShowSmartGrading ? t.solve.submitAndGrade : t.solve.paperSubmit}</>
                     }
                   </Button>
                 )}
