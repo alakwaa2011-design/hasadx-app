@@ -13,8 +13,10 @@ An explicit “restart current ayah” action must use the active timing segment
 
 The shared audio element's `loadedmetadata` listener must be registered before any effect can replace its `src` and call `load()`. Cached or fast media can emit metadata before a later effect attaches, leaving a selected ayah at time zero. Guard the seek by the expected source URL so stale timing cannot move a newer source.
 
+Chapter-sized audio served through the private object route must honor single HTTP byte ranges (`206`, `Accept-Ranges`, and `Content-Range`). A client-side `currentTime` assignment cannot reliably seek a large MP3 when the server ignores `Range` and returns the whole object with `200`.
+
 For chapter recordings, a normal cross-surah handoff starts the next source at time zero so its recorded basmalah is heard. At-Tawbah is the exception and starts at the first ayah timing. Keep autoplay enabled on the reused media element for iOS Safari continuity.
 
-**Why:** Treating every ayah boundary like a source change caused gaps. Separately, shared host/player ownership and media-event races caused chapter recordings to retain an old offset or start at zero instead of the selected ayah.
+**Why:** Treating every ayah boundary like a source change caused gaps. Separately, shared host/player ownership, media-event races, and ignored byte ranges caused chapter recordings to retain an old offset or start at zero instead of the selected ayah.
 
 **How to apply:** Distinguish chapter-audio timing handoffs from real source changes and explicit pauses. Keep one provider-owned `ended` path, lock source transitions until real progress, and make route/player views adopt the provider's source instead of reloading it. Test 112:4→113:1 naturally in a real browser and sample the first 500ms in-page; also verify 8→9 does not insert a basmalah.

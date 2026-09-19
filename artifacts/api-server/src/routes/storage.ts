@@ -9,6 +9,7 @@ import {
   teacherHasLegacyObjectReference,
   teacherHasParentAttachmentReference,
 } from "../lib/legacy-object-access";
+import { parseHttpByteRange } from "../lib/http-byte-range";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -367,9 +368,23 @@ async function serveObject(req: Request, res: Response) {
 
     const totalSize = parseInt(String(metadata.size || 0), 10);
 
-    res.status(200);
+    const byteRange = parseHttpByteRange(req.get("range"), totalSize);
+    res.setHeader("Accept-Ranges", "bytes");
+    if (byteRange === "invalid") {
+      res.setHeader("Content-Range", `bytes */${totalSize}`);
+      res.status(416).end();
+      return;
+    }
+
+    if (byteRange) {
+      res.status(206);
+      res.setHeader("Content-Range", `bytes ${byteRange.start}-${byteRange.end}/${totalSize}`);
+      res.setHeader("Content-Length", byteRange.end - byteRange.start + 1);
+    } else {
+      res.status(200);
+      if (totalSize > 0) res.setHeader("Content-Length", totalSize);
+    }
     res.setHeader("Content-Type", contentType);
-    if (totalSize > 0) res.setHeader("Content-Length", totalSize);
     res.setHeader("Cache-Control", "private, max-age=3600");
     // دفاع ضد stored XSS: المحتوى المرفوع من المستخدمين لا يُنفَّذ أبداً كسكربت —
     // CSP يمنع تنفيذ أي سكربت داخل SVG/HTML مخزن، وnosniff يمنع تخمين النوع
@@ -381,7 +396,9 @@ async function serveObject(req: Request, res: Response) {
       res.setHeader("Content-Disposition", "attachment");
     }
 
-    const stream = objectFile.createReadStream();
+    const stream = objectFile.createReadStream(byteRange
+      ? { start: byteRange.start, end: byteRange.end }
+      : undefined);
     stream.on("error", (err) => {
       req.log.error({ err }, "Stream error serving object");
       if (!res.headersSent) res.status(500).end();
