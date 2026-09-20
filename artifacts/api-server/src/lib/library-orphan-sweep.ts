@@ -6,20 +6,20 @@ import {
 import { and, gte, inArray, lt } from "drizzle-orm";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
-import { LIBRARY_PENDING_UPLOAD_TTL_MS } from "./library-constants";
+import {
+  LIBRARY_PENDING_UPLOAD_TTL_MS,
+  LIBRARY_UPLOAD_OWNER_PREFIX,
+} from "./library-constants";
 
 const PENDING_UPLOAD_TTL_MS = LIBRARY_PENDING_UPLOAD_TTL_MS;
 const SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 5 * 60 * 1000;
 const DB_BATCH_SIZE = 500;
-const PROTECTED_NON_LIBRARY_UPLOAD_PREFIXES = [
-  "/objects/uploads/quran-recitation/",
-] as const;
+const LIBRARY_OBJECT_PATH_PREFIX =
+  `/objects/uploads/${LIBRARY_UPLOAD_OWNER_PREFIX}/`;
 
-export function isProtectedNonLibraryUpload(objectPath: string): boolean {
-  return PROTECTED_NON_LIBRARY_UPLOAD_PREFIXES.some((prefix) =>
-    objectPath.startsWith(prefix),
-  );
+export function isLibraryOwnedUpload(objectPath: string): boolean {
+  return objectPath.startsWith(LIBRARY_OBJECT_PATH_PREFIX);
 }
 
 export interface LibraryOrphanSweepResult {
@@ -40,7 +40,7 @@ export async function sweepOrphanLibraryUploads(): Promise<LibraryOrphanSweepRes
   const svc = new ObjectStorageService();
   let files;
   try {
-    files = await svc.listUploadObjects();
+    files = await svc.listUploadObjects(LIBRARY_UPLOAD_OWNER_PREFIX);
   } catch (err) {
     logger.error({ err }, "library orphan sweep: failed to list blobs");
     result.errors += 1;
@@ -61,10 +61,7 @@ export async function sweepOrphanLibraryUploads(): Promise<LibraryOrphanSweepRes
       : NaN;
     if (Number.isFinite(created) && created < cutoff) {
       const objectPath = svc.toNormalizedObjectPath(f);
-      if (
-        objectPath.startsWith("/objects/")
-        && !isProtectedNonLibraryUpload(objectPath)
-      ) {
+      if (isLibraryOwnedUpload(objectPath)) {
         candidates.push({ file: f, objectPath });
       }
     }

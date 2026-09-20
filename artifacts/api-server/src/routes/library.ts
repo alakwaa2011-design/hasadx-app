@@ -12,7 +12,10 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import mammoth from "mammoth";
 import JSZip from "jszip";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { LIBRARY_PENDING_UPLOAD_TTL_MS } from "../lib/library-constants";
+import {
+  LIBRARY_PENDING_UPLOAD_TTL_MS,
+  libraryUploadOwnerPrefix,
+} from "../lib/library-constants";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
@@ -269,7 +272,9 @@ router.post("/library/uploads/request-url", requireAuth, async (req: any, res: R
         return;
       }
     }
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL(
+      libraryUploadOwnerPrefix(teacherId),
+    );
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
     // Clean up expired pending uploads opportunistically
