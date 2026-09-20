@@ -14,6 +14,8 @@ import {
 } from "@workspace/api-client-react";
 import chapters from "@/data/quran/qcomplex/chapters.json";
 import verses from "@/data/quran/qcomplex/verses.json";
+import { QuranBookmarksPanel } from "@/components/quran/quran-bookmarks-panel";
+import { X } from "lucide-react";
 
 const isTaskAyah = () => false;
 const parseBoundedInteger = (value: string | null | undefined, min: number, max: number) =>
@@ -29,6 +31,7 @@ export function PublicQuranStandalone() {
   const [syncRequested, setSyncRequested] = useState(
     () => window.localStorage.getItem(STANDALONE_QURAN_SYNC_KEY) === "true",
   );
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const {
     data: syncedState,
     isLoading: isSyncedStateLoading,
@@ -188,9 +191,47 @@ export function PublicQuranStandalone() {
         isIndependentPractice={false}
         embedded={false}
         standalone
+        onOpenBookmarks={() => setBookmarksOpen(true)}
         onStandaloneSyncChange={setSyncRequested}
         liveRecitationAvailable={false}
       />
+      {bookmarksOpen && (
+        <div className="fixed inset-0 z-[80]" dir={lang === "ar" ? "rtl" : "ltr"}>
+          <button
+            type="button"
+            aria-label={lang === "ar" ? "إغلاق العلامات" : "Close bookmarks"}
+            className="absolute inset-0 bg-emerald-950/25 backdrop-blur-[2px]"
+            onClick={() => setBookmarksOpen(false)}
+          />
+          <aside className="absolute inset-y-0 end-0 w-[min(92vw,390px)] overflow-y-auto border-s border-emerald-900/10 bg-[#fffdf8] p-4 shadow-2xl dark:border-white/10 dark:bg-[#101411] md:p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-emerald-950 dark:text-emerald-50">
+                  {lang === "ar" ? "العلامات المحفوظة" : "Saved bookmarks"}
+                </h2>
+                <p className="mt-1 text-xs font-semibold text-emerald-800/65 dark:text-emerald-200/65">
+                  {lang === "ar" ? "انتقل مباشرة إلى أي موضع حفظته" : "Jump directly to any saved position"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBookmarksOpen(false)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-200 dark:hover:bg-white/10"
+                aria-label={lang === "ar" ? "إغلاق" : "Close"}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <QuranBookmarksPanel
+              storage="optional"
+              onNavigate={(location) => {
+                handleNavigate(location);
+                setBookmarksOpen(false);
+              }}
+            />
+          </aside>
+        </div>
+      )}
     </>
   );
 }

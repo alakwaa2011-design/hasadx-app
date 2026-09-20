@@ -406,6 +406,7 @@ export function useQuranReaderState(options: {
 
   return {
     readerState,
+    bookmarks: isLocal ? localState.bookmarks : (readerState?.bookmarks ?? []),
     localStatePosition: localState.position,
     isReaderStateLoading: isLocal ? false : isReaderStateLoading,
     isReaderStateError: isLocal ? false : isReaderStateError,

@@ -9,17 +9,18 @@ import { useEffect, useState } from 'react';
 interface QuranBookmarksPanelProps {
   onNavigate: (location: { surah: number; ayah: number; page?: number }) => void;
   className?: string;
+  storage?: 'server' | 'local' | 'optional';
 }
 
-export function QuranBookmarksPanel({ onNavigate, className }: QuranBookmarksPanelProps) {
+export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' }: QuranBookmarksPanelProps) {
   const { lang, dir } = useI18n();
   const {
-    readerState,
+    bookmarks,
     isReaderStateLoading,
     isReaderStateError,
     toggleBookmark,
     isMutatingBookmark,
-  } = useQuranReaderState({ enabled: true });
+  } = useQuranReaderState({ enabled: true, storage });
   const [surahNames, setSurahNames] = useState<Record<number, string>>({});
 
   useEffect(() => {
@@ -55,8 +56,6 @@ export function QuranBookmarksPanel({ onNavigate, className }: QuranBookmarksPan
     );
   }
 
-  const bookmarks = readerState?.bookmarks || [];
-
   if (bookmarks.length === 0) {
     return (
       <div className="flex h-48 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
@@ -69,19 +68,22 @@ export function QuranBookmarksPanel({ onNavigate, className }: QuranBookmarksPan
   }
 
   // Sort bookmarks by updatedAt descending
-  const sortedBookmarks = [...bookmarks].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
+  const sortedBookmarks = [...bookmarks].sort((a, b) => {
+    const firstUpdatedAt = 'updatedAt' in a ? new Date(a.updatedAt as string).getTime() : 0;
+    const secondUpdatedAt = 'updatedAt' in b ? new Date(b.updatedAt as string).getTime() : 0;
+    return secondUpdatedAt - firstUpdatedAt;
+  });
 
   return (
     <div className={`space-y-3 ${className || ''}`} dir={dir}>
       {sortedBookmarks.map((bookmark) => {
         const surahName = surahNames[bookmark.surahNumber] || bookmark.surahNumber.toString();
-        const date = new Date(bookmark.updatedAt);
-        const timeAgo = formatDistanceToNow(date, {
-          addSuffix: true,
-          locale: lang === 'ar' ? arSA : enUS,
-        });
+        const timeAgo = 'updatedAt' in bookmark
+          ? formatDistanceToNow(new Date(bookmark.updatedAt as string), {
+              addSuffix: true,
+              locale: lang === 'ar' ? arSA : enUS,
+            })
+          : null;
 
         return (
           <div
@@ -105,7 +107,7 @@ export function QuranBookmarksPanel({ onNavigate, className }: QuranBookmarksPan
                       ? `الآية ${bookmark.ayahNumber} • صفحة ${bookmark.pageNumber}`
                       : `Ayah ${bookmark.ayahNumber} • Page ${bookmark.pageNumber}`}
                   </span>
-                  <span className="mt-1 text-xs text-muted-foreground">{timeAgo}</span>
+                  {timeAgo && <span className="mt-1 text-xs text-muted-foreground">{timeAgo}</span>}
                 </div>
               </button>
               

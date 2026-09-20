@@ -1,72 +1,177 @@
-import { Bookmark, Hand, Layers3, Sparkles, X } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Hand, Layers3, Sparkles, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+type TargetRect = Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width" | "height">;
 
 export function QuranReaderTips({
   lang,
   onDismiss,
+  onStepChange,
 }: {
   lang: "ar" | "en";
   onDismiss: () => void;
+  onStepChange?: (step: number) => void;
 }) {
-  const tips = lang === "ar"
+  const steps = useMemo(() => lang === "ar"
     ? [
-        { icon: Hand, title: "نطق الكلمة", body: "اضغط مطولًا على أي كلمة لسماع نطقها. اللمسة الخفيفة تحددها فقط." },
-        { icon: Sparkles, title: "خيارات الآية", body: "اضغط على رقم الآية للتلاوة والتفسير والنسخ وإضافة علامة." },
-        { icon: Bookmark, title: "العلامات", body: "افتح قائمة الأدوات للوصول إلى علاماتك والعودة إليها بسرعة." },
-        { icon: Layers3, title: "الحفظ التدريجي", body: "ابدأ من زر الحفظ: استماع، قراءة، إخفاء، تسميع ثم تقييم." },
+        {
+          icon: Sparkles,
+          title: "خيارات الآية",
+          body: "اضغط على رقم الآية لفتح التلاوة والتفسير والنسخ وإضافة علامة.",
+          selector: '[data-quran-tour="ayah-action"]',
+        },
+        {
+          icon: Layers3,
+          title: "الحفظ التدريجي",
+          body: "ابدأ رحلة مرتبة: استماع، قراءة، إخفاء، تسميع ثم تقييم.",
+          selector: '[data-testid="button-memo-session"], [data-testid="button-mobile-memo-session"]',
+        },
+        {
+          icon: Hand,
+          title: "نطق الكلمة",
+          body: "اضغط مطولًا على أي كلمة ثم ارفع إصبعك لسماع نطقها. يمكنك السحب بأمان للتنقل.",
+          selector: '[data-quran-tour="word"]',
+        },
+        {
+          icon: Bookmark,
+          title: "علاماتك داخل المصحف",
+          body: "احفظ موضعك وافتح كل العلامات من هنا للعودة إليه مباشرة.",
+          selector: '[data-testid="button-mobile-open-bookmarks"], [data-testid="button-bookmark-actions"]',
+        },
       ]
     : [
-        { icon: Hand, title: "Word pronunciation", body: "Press and hold a word to hear it. A light tap only selects it." },
-        { icon: Sparkles, title: "Ayah actions", body: "Tap an ayah number for recitation, tafsir, copying, and bookmarks." },
-        { icon: Bookmark, title: "Bookmarks", body: "Open the tools menu to view bookmarks and return to them quickly." },
-        { icon: Layers3, title: "Guided memorization", body: "Use Memorize for listening, reading, hiding, reciting, and review." },
-      ];
+        {
+          icon: Sparkles,
+          title: "Ayah actions",
+          body: "Tap an ayah number for recitation, tafsir, copying, and bookmarks.",
+          selector: '[data-quran-tour="ayah-action"]',
+        },
+        {
+          icon: Layers3,
+          title: "Guided memorization",
+          body: "Follow a clear path: listen, read, hide, recite, then review.",
+          selector: '[data-testid="button-memo-session"], [data-testid="button-mobile-memo-session"]',
+        },
+        {
+          icon: Hand,
+          title: "Word pronunciation",
+          body: "Press and hold a word, then release to hear it. Swiping remains safe.",
+          selector: '[data-quran-tour="word"]',
+        },
+        {
+          icon: Bookmark,
+          title: "Bookmarks in the reader",
+          body: "Save your place and open all bookmarks here to return instantly.",
+          selector: '[data-testid="button-mobile-open-bookmarks"], [data-testid="button-bookmark-actions"]',
+        },
+      ], [lang]);
+  const [step, setStep] = useState(0);
+  const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+
+  useEffect(() => {
+    onStepChange?.(step);
+    let target: HTMLElement | undefined;
+    const updateTargetRect = () => {
+      if (target) setTargetRect(target.getBoundingClientRect());
+    };
+    const findTarget = () => {
+      const candidates = Array.from(document.querySelectorAll<HTMLElement>(steps[step].selector));
+      target = candidates.find((element) => {
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      });
+      if (!target) {
+        setTargetRect(null);
+        return;
+      }
+      target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      window.setTimeout(updateTargetRect, 180);
+    };
+    const timer = window.setTimeout(findTarget, 80);
+    window.addEventListener("resize", updateTargetRect);
+    window.addEventListener("scroll", updateTargetRect, true);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", updateTargetRect);
+      window.removeEventListener("scroll", updateTargetRect, true);
+    };
+  }, [onStepChange, step, steps]);
+
+  const current = steps[step];
+  const Icon = current.icon;
+  const cardWidth = Math.min(336, window.innerWidth - 24);
+  const cardLeft = targetRect
+    ? Math.min(window.innerWidth - cardWidth - 12, Math.max(12, targetRect.left + targetRect.width / 2 - cardWidth / 2))
+    : Math.max(12, (window.innerWidth - cardWidth) / 2);
+  const cardTop = targetRect
+    ? (targetRect.bottom + 190 < window.innerHeight
+        ? targetRect.bottom + 14
+        : Math.max(12, targetRect.top - 190))
+    : Math.max(16, window.innerHeight / 2 - 90);
 
   return (
-    <aside
-      className="fixed inset-x-3 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[70] mx-auto max-w-xl overflow-hidden rounded-2xl border border-emerald-900/10 bg-[#fffdf8]/95 shadow-2xl shadow-emerald-950/15 backdrop-blur-xl dark:border-white/10 dark:bg-[#101411]/95"
-      aria-label={lang === "ar" ? "تلميحات استخدام المصحف" : "Quran reader tips"}
-      dir={lang === "ar" ? "rtl" : "ltr"}
-    >
-      <div className="flex items-center justify-between border-b border-emerald-900/10 px-4 py-3 dark:border-white/10">
-        <div>
-          <p className="text-sm font-extrabold text-emerald-950 dark:text-emerald-50">
-            {lang === "ar" ? "اكتشف مصحف حصاد" : "Discover Hasaad Quran"}
-          </p>
-          <p className="mt-0.5 text-[11px] text-emerald-800/70 dark:text-emerald-200/70">
-            {lang === "ar" ? "أربع حركات تجعل القراءة أسهل" : "Four gestures that make reading easier"}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="grid h-8 w-8 place-items-center rounded-full text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-200 dark:hover:bg-white/10"
-          aria-label={lang === "ar" ? "إغلاق التلميحات" : "Close tips"}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="grid gap-2 p-3 sm:grid-cols-2">
-        {tips.map(({ icon: Icon, title, body }) => (
-          <div key={title} className="flex gap-3 rounded-xl bg-emerald-900/[0.045] p-3 dark:bg-white/[0.055]">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-700 text-white shadow-sm dark:bg-emerald-600">
-              <Icon className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-emerald-950 dark:text-emerald-50">{title}</p>
-              <p className="mt-1 text-[11px] leading-5 text-emerald-900/70 dark:text-emerald-100/70">{body}</p>
-            </div>
+    <div className="fixed inset-0 z-[90]" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div className="absolute inset-0 bg-emerald-950/20 backdrop-blur-[1px]" />
+      {targetRect && (
+        <div
+          className="pointer-events-none fixed rounded-xl ring-4 ring-amber-400 ring-offset-4 ring-offset-[#fffdf8] transition-all duration-200 dark:ring-offset-[#101411]"
+          style={{
+            top: targetRect.top,
+            left: targetRect.left,
+            width: targetRect.width,
+            height: targetRect.height,
+          }}
+        />
+      )}
+      <aside
+        className="fixed overflow-hidden rounded-2xl border border-emerald-900/10 bg-[#fffdf8] shadow-2xl shadow-emerald-950/20 dark:border-white/10 dark:bg-[#101411]"
+        style={{ top: cardTop, left: cardLeft, width: cardWidth }}
+        aria-live="polite"
+      >
+        <div className="flex items-start gap-3 p-4">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-700 text-white">
+            <Icon className="h-5 w-5" />
           </div>
-        ))}
-      </div>
-      <div className="px-3 pb-3">
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="h-9 w-full rounded-xl bg-emerald-700 text-xs font-extrabold text-white transition-colors hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
-        >
-          {lang === "ar" ? "فهمت، ابدأ القراءة" : "Got it, start reading"}
-        </button>
-      </div>
-    </aside>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                  {lang === "ar" ? `${step + 1} من ${steps.length}` : `${step + 1} of ${steps.length}`}
+                </p>
+                <h2 className="mt-0.5 text-sm font-black text-emerald-950 dark:text-emerald-50">{current.title}</h2>
+              </div>
+              <button type="button" onClick={onDismiss} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-200 dark:hover:bg-white/10" aria-label={lang === "ar" ? "تخطي التعليمات" : "Skip tour"}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs font-medium leading-5 text-emerald-900/70 dark:text-emerald-100/70">{current.body}</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between border-t border-emerald-900/10 px-4 py-3 dark:border-white/10">
+          <button type="button" onClick={onDismiss} className="text-xs font-bold text-emerald-800/65 dark:text-emerald-200/65">
+            {lang === "ar" ? "تخطي" : "Skip"}
+          </button>
+          <div className="flex items-center gap-2">
+            {step > 0 && (
+              <button type="button" onClick={() => setStep((currentStep) => currentStep - 1)} className="inline-flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-200 dark:hover:bg-white/10">
+                <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                {lang === "ar" ? "السابق" : "Back"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => step === steps.length - 1 ? onDismiss() : setStep((currentStep) => currentStep + 1)}
+              className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-700 px-3 text-xs font-black text-white hover:bg-emerald-800"
+            >
+              {step === steps.length - 1
+                ? (lang === "ar" ? "ابدأ القراءة" : "Start reading")
+                : (lang === "ar" ? "التالي" : "Next")}
+              {step < steps.length - 1 && <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />}
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
   );
 }

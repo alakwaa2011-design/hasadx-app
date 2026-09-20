@@ -333,6 +333,7 @@ export function QuranMadaniPageRenderer({
                   <button
                     key={w.id || i}
                     data-verse-key={w.verseKey}
+                    data-quran-tour={w.type === "end" ? "ayah-action" : "word"}
                     title={w.text}
                     aria-label={
                       lang === "ar"

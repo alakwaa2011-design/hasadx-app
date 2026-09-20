@@ -2236,7 +2236,15 @@ export function QuranPagesView({
         }}
       />
       {showReaderTips && !guidedOpen && (
-        <QuranReaderTips lang={lang} onDismiss={dismissReaderTips} />
+        <QuranReaderTips
+          lang={lang}
+          onDismiss={dismissReaderTips}
+          onStepChange={(step) => {
+            if (step === 3 && window.innerWidth < 768) {
+              setMobileToolsOpen(true);
+            }
+          }}
+        />
       )}
 
       <QuranInstallExperience
