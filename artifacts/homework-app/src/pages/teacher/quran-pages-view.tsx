@@ -1508,29 +1508,31 @@ export function QuranPagesView({
                   <option value="continuous">{lang === "ar" ? "متصلة" : "Continuous"}</option>
                 </select>
 
-                <button
-                  type="button"
-                  onClick={() => adjustZoom(-10)}
-                  disabled={zoom <= MIN_ZOOM}
-                  data-testid="button-zoom-out"
-                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
-                  aria-label={lang === "ar" ? "تصغير الصفحة" : "Zoom out"}
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </button>
-                <span className="min-w-9 text-center text-xs font-bold text-muted-foreground">
-                  {zoom}%
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustZoom(10)}
-                  disabled={zoom >= MAX_ZOOM}
-                  data-testid="button-zoom-in"
-                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
-                  aria-label={lang === "ar" ? "تكبير الصفحة" : "Zoom in"}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
+                <div className="hidden items-center md:flex">
+                  <button
+                    type="button"
+                    onClick={() => adjustZoom(-10)}
+                    disabled={zoom <= MIN_ZOOM}
+                    data-testid="button-zoom-out"
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
+                    aria-label={lang === "ar" ? "تصغير الصفحة" : "Zoom out"}
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <span className="min-w-9 text-center text-xs font-bold text-muted-foreground">
+                    {zoom}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => adjustZoom(10)}
+                    disabled={zoom >= MAX_ZOOM}
+                    data-testid="button-zoom-in"
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
+                    aria-label={lang === "ar" ? "تكبير الصفحة" : "Zoom in"}
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                </div>
 
                 <div className="mx-1 hidden h-5 w-px bg-border/50 md:block" />
 
