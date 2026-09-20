@@ -12,6 +12,15 @@ const PENDING_UPLOAD_TTL_MS = LIBRARY_PENDING_UPLOAD_TTL_MS;
 const SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 5 * 60 * 1000;
 const DB_BATCH_SIZE = 500;
+const PROTECTED_NON_LIBRARY_UPLOAD_PREFIXES = [
+  "/objects/uploads/quran-recitation/",
+] as const;
+
+export function isProtectedNonLibraryUpload(objectPath: string): boolean {
+  return PROTECTED_NON_LIBRARY_UPLOAD_PREFIXES.some((prefix) =>
+    objectPath.startsWith(prefix),
+  );
+}
 
 export interface LibraryOrphanSweepResult {
   scanned: number;
@@ -52,7 +61,10 @@ export async function sweepOrphanLibraryUploads(): Promise<LibraryOrphanSweepRes
       : NaN;
     if (Number.isFinite(created) && created < cutoff) {
       const objectPath = svc.toNormalizedObjectPath(f);
-      if (objectPath.startsWith("/objects/")) {
+      if (
+        objectPath.startsWith("/objects/")
+        && !isProtectedNonLibraryUpload(objectPath)
+      ) {
         candidates.push({ file: f, objectPath });
       }
     }
