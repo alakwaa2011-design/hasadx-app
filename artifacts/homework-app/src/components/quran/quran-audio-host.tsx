@@ -61,6 +61,15 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
   const setControllerAttached = useCallback((attached: boolean) => {
     setControllerAttachedState(attached);
   }, []);
+  const samePlaybackLocation = (
+    current: QuranAudioSession | null,
+    expected: QuranAudioSession,
+  ): current is QuranAudioSession => Boolean(
+    current
+    && current.recitationId === expected.recitationId
+    && current.surahNumber === expected.surahNumber
+    && current.ayahNumber === expected.ayahNumber,
+  );
   const advanceBoundary = useCallback(async () => {
     const audio = audioRef.current;
     const session = sessionRef.current;
@@ -133,7 +142,13 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
       };
       const nextSource = timing.audioUrl ?? timing.audio_url;
       if (!nextSource) throw new Error("audio unavailable");
-      if (transitionIdRef.current !== transitionId || sessionRef.current !== session) return;
+      if (transitionIdRef.current !== transitionId) return;
+      const latestSession = sessionRef.current;
+      if (!samePlaybackLocation(latestSession, session)) {
+        boundaryLockedRef.current = false;
+        unlockSourceRef.current = null;
+        return;
+      }
       const epoch = ++sourceEpochRef.current;
       const nextSurah = session.surahNumber + 1;
       // Chapter recordings include the basmalah before the first timed ayah
@@ -149,7 +164,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
       unlockSourceRef.current = new URL(nextSource, window.location.href).href;
       unlockAtSecondsRef.current = nextStartSeconds + 0.25;
       sessionRef.current = {
-        ...session,
+        ...latestSession,
         surahNumber: nextSurah,
         ayahNumber: 1,
         surahLength: chapters[nextSurah - 1]?.verse_count ?? session.surahLength,
@@ -159,7 +174,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
         if (sourceEpochRef.current !== epoch || transitionIdRef.current !== transitionId) return;
         audio.currentTime = nextStartSeconds;
         setPlayback({ active: true, isPlaying: true, surahNumber: nextSurah, ayahNumber: 1 });
-        session.onPlaybackLocationChange?.(nextSurah, 1);
+        latestSession.onPlaybackLocationChange?.(nextSurah, 1);
       } catch {
         if (sourceEpochRef.current === epoch && transitionIdRef.current === transitionId) {
           boundaryLockedRef.current = false;

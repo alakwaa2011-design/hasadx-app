@@ -150,7 +150,7 @@ export function PublicQuranStandalone() {
       </Helmet>
       
       <QuranPagesView
-        key={`${syncRequested ? "synced" : "local"}-${params.surahNumber ? "explicit-location" : `saved-${initialPosition?.surahNumber ?? 1}-${initialPosition?.ayahNumber ?? 1}-${initialPosition?.pageNumber ?? 1}`}`}
+        key={syncRequested ? "synced" : "local"}
         initialSurah={initialSurah}
         initialAyah={validInitialAyah}
         initialPage={validInitialPage}

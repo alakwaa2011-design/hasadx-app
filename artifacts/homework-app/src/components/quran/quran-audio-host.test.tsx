@@ -22,9 +22,13 @@ import {
 function ActiveSession({
   sourceMode,
   controllerAttached = false,
+  sessionRevision = 0,
+  onPlaybackLocationChange,
 }: {
   sourceMode: QuranAudioSession['sourceMode'];
   controllerAttached?: boolean;
+  sessionRevision?: number;
+  onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
 }) {
   const { playback, setControllerAttached, setPlayback, setSession } = useQuranAudioHost();
 
@@ -39,6 +43,7 @@ function ActiveSession({
       unrestricted: true,
       sourceMode,
       speed: 1,
+      onPlaybackLocationChange,
     });
     setPlayback({
       active: true,
@@ -46,7 +51,15 @@ function ActiveSession({
       surahNumber: 1,
       ayahNumber: 7,
     });
-  }, [controllerAttached, setControllerAttached, setPlayback, setSession, sourceMode]);
+  }, [
+    controllerAttached,
+    onPlaybackLocationChange,
+    sessionRevision,
+    setControllerAttached,
+    setPlayback,
+    setSession,
+    sourceMode,
+  ]);
 
   return (
     <output data-testid="host-playback">
@@ -147,6 +160,55 @@ describe('QuranAudioHostProvider cross-route playback', () => {
     expect(audio.currentTime).toBe(0);
     expect(play).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('finishes a chapter transition when the controller refreshes the same playback session', async () => {
+    let resolveFetch!: (value: {
+      ok: true;
+      json: () => Promise<{ audioUrl: string; verseStartMs: number }>;
+    }) => void;
+    const fetchMock = vi.fn(() => new Promise(resolve => {
+      resolveFetch = resolve;
+    }));
+    globalThis.fetch = fetchMock as never;
+    const firstLocationChange = vi.fn();
+    const refreshedLocationChange = vi.fn();
+    const view = render(
+      <QuranAudioHostProvider>
+        <ActiveSession
+          sourceMode="chapter"
+          sessionRevision={0}
+          onPlaybackLocationChange={firstLocationChange}
+        />
+      </QuranAudioHostProvider>,
+    );
+    const audio = view.container.querySelector('audio') as HTMLAudioElement;
+
+    await waitFor(() => {
+      expect(view.getByTestId('host-playback').textContent).toBe('1:7:playing');
+    });
+    fireEvent.ended(audio);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    view.rerender(
+      <QuranAudioHostProvider>
+        <ActiveSession
+          sourceMode="chapter"
+          sessionRevision={1}
+          onPlaybackLocationChange={refreshedLocationChange}
+        />
+      </QuranAudioHostProvider>,
+    );
+    resolveFetch({
+      ok: true,
+      json: () => Promise.resolve({ audioUrl: '/chapter-2.mp3', verseStartMs: 0 }),
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('host-playback').textContent).toBe('2:1:playing');
+    });
+    expect(firstLocationChange).not.toHaveBeenCalled();
+    expect(refreshedLocationChange).toHaveBeenCalledWith(2, 1);
   });
 
   it('shows external controls off the Quran route and stops the shared session cleanly', async () => {

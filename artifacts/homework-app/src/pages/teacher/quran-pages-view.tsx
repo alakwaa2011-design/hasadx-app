@@ -193,6 +193,8 @@ export function QuranPagesView({
   const suppressSwipeClickRef = useRef(false);
   const readerMainRef = useRef<HTMLElement | null>(null);
   const continuousLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const playbackAutoNavigationRef = useRef(false);
+  const playbackAutoNavigationTimeoutRef = useRef<number | null>(null);
   const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
 
@@ -222,6 +224,7 @@ export function QuranPagesView({
   } | null>(null);
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
   const [audibleVerseKey, setAudibleVerseKey] = useState<string | null>(null);
+  const [playbackFollowSuspended, setPlaybackFollowSuspended] = useState(false);
   const [playingWordPosition, setPlayingWordPosition] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
@@ -393,7 +396,7 @@ export function QuranPagesView({
   }, [guidedOpen, guidedStage, guidedVerseKey]);
 
   useEffect(() => {
-    if (!isPlaying || !audibleVerseKey) return;
+    if (!isPlaying || !audibleVerseKey || playbackFollowSuspended) return;
     let secondFrame = 0;
     const firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(() => {
@@ -409,6 +412,14 @@ export function QuranPagesView({
           bounds.top >= topReadingEdge &&
           bounds.bottom <= Math.max(topReadingEdge + 80, bottomReadingEdge);
         if (!isVisible) {
+          playbackAutoNavigationRef.current = true;
+          if (playbackAutoNavigationTimeoutRef.current !== null) {
+            window.clearTimeout(playbackAutoNavigationTimeoutRef.current);
+          }
+          playbackAutoNavigationTimeoutRef.current = window.setTimeout(() => {
+            playbackAutoNavigationRef.current = false;
+            playbackAutoNavigationTimeoutRef.current = null;
+          }, 800);
           verseElement.scrollIntoView({ block: "center", behavior: "smooth" });
         }
       });
@@ -417,7 +428,15 @@ export function QuranPagesView({
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
-  }, [activePage, audibleVerseKey, bottomDockHeight, isPlaying, pageLayout]);
+  }, [activePage, audibleVerseKey, bottomDockHeight, isPlaying, pageLayout, playbackFollowSuspended]);
+
+  useEffect(() => {
+    return () => {
+      if (playbackAutoNavigationTimeoutRef.current !== null) {
+        window.clearTimeout(playbackAutoNavigationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -661,8 +680,12 @@ export function QuranPagesView({
     if (ayahNum === null) {
       setPlayingVerseKey(null);
       setAudibleVerseKey(null);
+      setPlaybackFollowSuspended(false);
     } else {
       const newKey = `${playingSurah}:${ayahNum}`;
+      if (playingVerseKey === null) {
+        setPlaybackFollowSuspended(false);
+      }
       setPlayingVerseKey(newKey);
     }
   };
@@ -801,6 +824,39 @@ export function QuranPagesView({
     };
   }, [activePage]);
 
+  const playbackPage = useMemo(() => {
+    const playbackKey = audibleVerseKey ?? playingVerseKey;
+    if (!playbackKey) return null;
+    const [surah, ayah] = playbackKey.split(":").map(Number);
+    return verses.find(
+      verse => verse.chapter_id === surah && verse.number === ayah,
+    )?.page_id ?? null;
+  }, [audibleVerseKey, playingVerseKey, verses]);
+
+  const isPageVisibleFromAnchor = (
+    anchorPage: number,
+    targetPage: number,
+    layout: "spread" | "single" | "continuous" = pageLayout,
+  ) => {
+    if (layout === "continuous") {
+      return targetPage >= anchorPage && targetPage <= Math.min(LAST_PAGE, anchorPage + 3);
+    }
+    if (layout === "single") return anchorPage === targetPage;
+    const spreadStart = anchorPage % 2 === 0 ? anchorPage - 1 : anchorPage;
+    return targetPage === spreadStart || targetPage === spreadStart + 1;
+  };
+
+  const beginPlaybackAutoNavigation = () => {
+    playbackAutoNavigationRef.current = true;
+    if (playbackAutoNavigationTimeoutRef.current !== null) {
+      window.clearTimeout(playbackAutoNavigationTimeoutRef.current);
+    }
+    playbackAutoNavigationTimeoutRef.current = window.setTimeout(() => {
+      playbackAutoNavigationRef.current = false;
+      playbackAutoNavigationTimeoutRef.current = null;
+    }, 800);
+  };
+
   // Clear selection if navigating away from the page, unless we are currently playing.
   useEffect(() => {
     if (!selectedVerseKey || isPlaying) return;
@@ -835,8 +891,20 @@ export function QuranPagesView({
     ? currentSpreadStart > FIRST_PAGE
     : activePage > FIRST_PAGE;
 
-  const goToPage = (page: number) => {
+  const goToPage = (page: number, source: "manual" | "playback" = "manual") => {
     const nextPage = Math.min(Math.max(page, FIRST_PAGE), LAST_PAGE);
+    if (source === "playback" && playbackFollowSuspended) {
+      if (pageLayout === "continuous") {
+        setContinuousStartPage(current => Math.min(current, nextPage));
+        setContinuousEndPage(current => Math.max(current, nextPage));
+      }
+      return;
+    }
+    if (source === "playback") {
+      beginPlaybackAutoNavigation();
+    } else if (isPlaying && playbackPage !== null) {
+      setPlaybackFollowSuspended(!isPageVisibleFromAnchor(nextPage, playbackPage));
+    }
     if (nextPage === activePage) return;
     const nextVerse = verses.find((verse) => verse.page_id === nextPage);
     setTurnDirection(nextPage > activePage ? "next" : "previous");
@@ -846,6 +914,7 @@ export function QuranPagesView({
       setContinuousEndPage(Math.min(LAST_PAGE, nextPage + 3));
     }
     if (!isPlaying) {
+      setPlaybackFollowSuspended(false);
       setAudioDockOpen(false);
       setEducationSelection(null);
       setSelectedVerseKey(null);
@@ -972,12 +1041,24 @@ export function QuranPagesView({
     };
   }, [activePage, loading, pageLayout]);
 
-  const goToSurah = (chapterId: number) => {
+  const goToSurah = (chapterId: number, source: "manual" | "playback" = "manual") => {
     const firstVerse = verses.find(
       (verse) => verse.chapter_id === chapterId && verse.number === 1,
     );
     if (!firstVerse) return;
     const nextPage = firstVerse.page_id;
+    if (source === "playback" && playbackFollowSuspended) {
+      if (pageLayout === "continuous") {
+        setContinuousStartPage(current => Math.min(current, nextPage));
+        setContinuousEndPage(current => Math.max(current, nextPage));
+      }
+      return;
+    }
+    if (source === "playback") {
+      beginPlaybackAutoNavigation();
+    } else if (isPlaying && playbackPage !== null) {
+      setPlaybackFollowSuspended(!isPageVisibleFromAnchor(nextPage, playbackPage));
+    }
     setTurnDirection(nextPage >= activePage ? "next" : "previous");
     setActivePage(nextPage);
     if (pageLayout === "continuous") {
@@ -985,6 +1066,7 @@ export function QuranPagesView({
       setContinuousEndPage(Math.min(LAST_PAGE, nextPage + 3));
     }
     if (!isPlaying) {
+      setPlaybackFollowSuspended(false);
       setAudioDockOpen(false);
       setEducationSelection(null);
       setSelectedVerseKey(null);
@@ -1669,6 +1751,13 @@ export function QuranPagesView({
           }, null);
           if (nearestPage && nearestPage.page !== activePage) {
             setActivePage(nearestPage.page);
+            if (
+              isPlaying
+              && playbackPage !== null
+              && !playbackAutoNavigationRef.current
+            ) {
+              setPlaybackFollowSuspended(nearestPage.page !== playbackPage);
+            }
           }
         }}
       >
@@ -1804,17 +1893,28 @@ export function QuranPagesView({
                 onShowTafsir={showEducation}
                 onAudibleAyahChange={(audibleSurah, ayahNum) => {
                   if (ayahNum === null) {
-                    setAudibleVerseKey(null);
+                    setPlayingWordPosition(null);
                     return;
                   }
                   const audibleKey = `${audibleSurah}:${ayahNum}`;
                   setAudibleVerseKey(audibleKey);
                   setSelectedVerseKey(audibleKey);
+                  if (!educationHidden && !educationLocked) {
+                    setEducationSelection({
+                      verseKey: audibleKey,
+                      wordId: null,
+                      wordPosition: null,
+                      wordText: null,
+                    });
+                  }
                   const audibleVerse = verses.find(
                     verse => verse.chapter_id === audibleSurah && verse.number === ayahNum,
                   );
-                  if (audibleVerse && audibleVerse.page_id !== activePage) {
-                    goToPage(audibleVerse.page_id);
+                  if (
+                    audibleVerse
+                    && !isPageVisibleFromAnchor(activePage, audibleVerse.page_id)
+                  ) {
+                    goToPage(audibleVerse.page_id, "playback");
                   }
                 }}
                 preferenceStorage={standalone && !syncActive ? "local" : "server"}
@@ -1822,14 +1922,14 @@ export function QuranPagesView({
                   const nextVerseKey = `${nextSurah}:${nextAyah}`;
                   setPlayingVerseKey(nextVerseKey);
                   setIsPlaying(true);
-                  goToSurah(nextSurah);
+                  goToSurah(nextSurah, "playback");
                 }}
                 onSurahEnd={() => {
                   if (playingSurah < 114 && startAyah === null && endAyah === null && !memoSession?.isActive) {
                     const nextSurah = playingSurah + 1;
                     setPlayingVerseKey(`${nextSurah}:1`);
                     setIsPlaying(true);
-                    goToSurah(nextSurah);
+                    goToSurah(nextSurah, "playback");
                   }
                 }}
                 onClose={() => {
@@ -1837,6 +1937,7 @@ export function QuranPagesView({
                   setAudioDockOpen(false);
                   setPlayingVerseKey(null);
                   setAudibleVerseKey(null);
+                  setPlaybackFollowSuspended(false);
                   setSelectedVerseKey(null);
                   setEducationSelection(null);
                   setEducationLocked(false);
@@ -1852,7 +1953,19 @@ export function QuranPagesView({
                 onClose={() => setEducationSelection(null)}
                 onHide={hideEducation}
                 locked={educationLocked}
-                onToggleLock={() => setEducationLocked((locked) => !locked)}
+                onToggleLock={() => {
+                  setEducationLocked((locked) => {
+                    if (locked && audibleVerseKey) {
+                      setEducationSelection({
+                        verseKey: audibleVerseKey,
+                        wordId: null,
+                        wordPosition: null,
+                        wordText: null,
+                      });
+                    }
+                    return !locked;
+                  });
+                }}
               />
             </div>
           )}

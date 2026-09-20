@@ -112,6 +112,12 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
       <button type="button" onClick={() => onAudibleAyahChange(1, selectedAyah + 1)}>
         بدأ صوت الآية التالية
       </button>
+      <button type="button" onClick={() => onAudibleAyahChange(1, null)}>
+        فاصل بين الآيات
+      </button>
+      <button type="button" onClick={() => onAudibleAyahChange(2, 142)}>
+        بدأ صوت آية في صفحة أخرى
+      </button>
       <button type="button" onClick={() => {
         onPlaybackLocationChange(2, 1);
       }}>
@@ -179,6 +185,7 @@ describe("QuranPagesView tafsir playback following", () => {
     await waitFor(() => expect(screen.getByTestId("button-mobile-audio")).toBeTruthy());
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     fireEvent.click(screen.getByRole("button", { name: "تشغيل الآية" }));
+    fireEvent.click(screen.getByRole("button", { name: "إظهار التفسير" }));
 
     await waitFor(() => expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:1"));
 
@@ -228,6 +235,7 @@ describe("QuranPagesView tafsir playback following", () => {
     await waitFor(() => expect(screen.getByTestId("button-mobile-audio")).toBeTruthy());
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     fireEvent.click(screen.getByRole("button", { name: "تشغيل الآية" }));
+    fireEvent.click(screen.getByRole("button", { name: "إظهار التفسير" }));
     await waitFor(() => expect(screen.getByLabelText("لوحة التفسير")).toBeTruthy());
 
     fireEvent.click(screen.getByRole("button", { name: "إخفاء التفسير" }));
@@ -241,5 +249,50 @@ describe("QuranPagesView tafsir playback following", () => {
     fireEvent.click(screen.getByRole("button", { name: "إظهار التفسير" }));
     await waitFor(() => expect(screen.getByTestId("tafsir-verse").textContent).toBe("1:2"));
     expect(window.localStorage.getItem("quran-education-hidden")).toBeNull();
+  });
+
+  it("keeps the audible highlight through timing gaps and manual page browsing", async () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    });
+
+    render(
+      <QuranPagesView
+        initialSurah={1}
+        initialAyah={1}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("button-mobile-audio")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("button-mobile-audio"));
+    fireEvent.click(screen.getByRole("button", { name: "تشغيل الآية" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mushaf-page").getAttribute("data-playing-verse")).toBe("1:1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "فاصل بين الآيات" }));
+    expect(screen.getByTestId("mushaf-page").getAttribute("data-playing-verse")).toBe("1:1");
+
+    fireEvent.change(screen.getByTestId("select-mobile-page"), { target: { value: "10" } });
+    await waitFor(() => {
+      expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("10");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "بدأ صوت آية في صفحة أخرى" }));
+    expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("10");
+
+    fireEvent.change(screen.getByTestId("select-mobile-page"), { target: { value: "22" } });
+    await waitFor(() => {
+      expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("22");
+      expect(screen.getByTestId("mushaf-page").getAttribute("data-playing-verse")).toBe("2:142");
+    });
   });
 });

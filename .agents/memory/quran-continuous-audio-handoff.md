@@ -9,6 +9,8 @@ The app-root Quran audio host owns the persistent media element and enough sessi
 
 Cross-surah handoff needs an explicit transition identity shared by the route, visible player, persistent host, and audio source. The host must seek the new source to its ayah start after `play()` succeeds and before publishing the new location; browsers can retain the previous source's `currentTime` across `src` replacement. A correct URL is insufficient: verify the player label, highlighted ayah, education panel, source, and media time. Same-page boundaries such as 112→113→114 are the strongest regression case.
 
+Async boundary transitions must compare stable playback identity (reciter, surah, ayah), never the session object's reference. React may refresh callbacks and replace an otherwise equivalent session while the next-surah timing request is pending; reference equality then aborts a valid handoff and can leave the boundary lock stuck.
+
 An explicit “restart current ayah” action must use the active timing segment's `verseStartMs` when chapter audio is playing. Seeking the shared audio element to zero restarts the whole surah, not the selected ayah; standalone ayah files may still seek to zero.
 
 The shared audio element's `loadedmetadata` listener must be registered before any effect can replace its `src` and call `load()`. For a selected timed ayah, do not call `play()` while metadata is unavailable: seek to `verseStartMs` in `loadedmetadata`, then play. Otherwise the chapter introduction becomes briefly audible while the UI already highlights the timed ayah. Cached or fast media can emit metadata before a later effect attaches, so guard the seek by the expected source URL and prevent stale timing from moving a newer source.
