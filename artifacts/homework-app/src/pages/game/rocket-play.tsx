@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, VolumeX, Loader2, CheckCircle2, XCircle, Send, Trophy } from "lucide-react";
@@ -1538,8 +1538,6 @@ export default function RocketPlay() {
   const questionArrivalCountRef = useRef(0); // increments every time a new question arrives
 
   // Shuffled question display (options reordered each question)
-  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
-  const [optionMapping, setOptionMapping] = useState<number[]>([]); // displayIdx → originalIdx
   const wrongAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Rank tracking
@@ -1590,20 +1588,24 @@ export default function RocketPlay() {
   const advanceModeRef = useRef(advanceMode);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { advanceModeRef.current = advanceMode; }, [advanceMode]);
-  useEffect(() => {
+  const { shuffledOptions, optionMapping } = useMemo(() => {
     if (!currentQ || currentQ.type === "fill_blank") {
-      setShuffledOptions(currentQ?.options || []);
-      setOptionMapping((currentQ?.options || []).map((_, i) => i));
-      return;
+      const options = currentQ?.options || [];
+      return {
+        shuffledOptions: options,
+        optionMapping: options.map((_, i) => i),
+      };
     }
     const indices = currentQ.options.map((_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-    setShuffledOptions(indices.map(i => currentQ.options[i]));
-    setOptionMapping(indices);
-  }, [shuffleTick]); // eslint-disable-line react-hooks/exhaustive-deps
+    return {
+      shuffledOptions: indices.map(i => currentQ.options[i]),
+      optionMapping: indices,
+    };
+  }, [currentQ, shuffleTick]);
 
   // Race timer — counts down once gameTimeLeft is set; race auto-ends server-side at 0.
   useEffect(() => {
@@ -1664,7 +1666,13 @@ export default function RocketPlay() {
             if (res.activeQuestion) {
               setCurrentQ(res.activeQuestion);
               setQuestionStartTime(Date.now());
+              setFeedback(null);
+              setFillAnswer("");
+              setEncouragement(null);
+              setChosenWrongIdx(null);
               setShuffleTick(c => c + 1);
+              submittedQuestionIdxRef.current = null;
+              submittingRef.current = false;
             }
           } else if (st === "finished") {
             setPhase("finished");
@@ -1725,8 +1733,8 @@ export default function RocketPlay() {
       setEncouragement(null);
       setChosenWrongIdx(null);
       setShuffleTick(c => c + 1);
-      // Allow the player to answer again — even if the server re-served the
-      // same question idx after a wrong answer (per_player phase replay).
+      // Every arrival is a fresh attempt. Wrong questions may return later
+      // through the server's spaced-review queue.
       submittedQuestionIdxRef.current = null;
       submittingRef.current = false;
       if (typeof q.phase === "number" && q.phase !== prevGamePhaseRef.current) {
@@ -2907,7 +2915,17 @@ function QuestionPanel({
         {/* Corner brackets */}
         <div style={{ position: "absolute", top: 8, insetInlineStart: 8, width: 14, height: 14, borderTop: `2px solid ${CYAN}66`, borderInlineStart: `2px solid ${CYAN}66`, borderStartStartRadius: 6 }} />
         <div style={{ position: "absolute", bottom: 8, insetInlineEnd: 8, width: 14, height: 14, borderBottom: `2px solid ${CYAN}66`, borderInlineEnd: `2px solid ${CYAN}66`, borderEndEndRadius: 6 }} />
-        <p style={{ color: "#fff", fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.65, textShadow: "0 1px 5px rgba(0,0,0,0.6)" }}>
+        <p style={{
+          color: "#fff",
+          fontSize: 18,
+          fontWeight: 800,
+          margin: 0,
+          lineHeight: 1.65,
+          textAlign: currentQ.text.length > 100 ? "start" : "center",
+          whiteSpace: "pre-wrap",
+          overflowWrap: "anywhere",
+          textShadow: "0 1px 5px rgba(0,0,0,0.6)",
+        }}>
           {currentQ.text}
         </p>
         {currentQ.imageUrl && (
@@ -2921,6 +2939,7 @@ function QuestionPanel({
               objectFit: "contain",
               background: "rgba(0,0,0,0.25)",
               display: "block",
+              marginInline: "auto",
             }}
           />
         )}

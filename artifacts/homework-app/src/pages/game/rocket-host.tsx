@@ -601,7 +601,16 @@ export default function RocketHost() {
               </p>
               {hostQuestion && (
                 <div style={{ margin: 0 }}>
-                  <p style={{ margin: 0, color: "#fff", fontSize: 14, lineHeight: 1.45, fontWeight: 600 }}>
+                  <p style={{
+                    margin: 0,
+                    color: "#fff",
+                    fontSize: 14,
+                    lineHeight: 1.45,
+                    fontWeight: 600,
+                    textAlign: hostQuestion.text.length > 100 ? "start" : "center",
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}>
                     <span style={{ opacity: 0.65, marginInlineEnd: 8 }}>#{hostQuestion.index + 1}</span>
                     {hostQuestion.text}
                   </p>

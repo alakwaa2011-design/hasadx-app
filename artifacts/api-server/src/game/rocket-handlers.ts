@@ -1,6 +1,11 @@
 import { Server } from "socket.io";
 import { logger } from "../lib/logger";
 import { randomBytes } from "crypto";
+import {
+  chooseNextRocketQuestion,
+  scheduleRocketQuestionRetry,
+  type RocketRetryEntry,
+} from "./rocket-question-flow";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -27,7 +32,8 @@ export interface RocketPlayer {
   wrongCount: number;
   currentQuestionIdx: number; // current question index (cycles)
   totalAnswered: number;      // total questions answered (for cycle calc)
-  wrongIndices: number[];     // queue of wrong question indices to retry
+  retryQueue: RocketRetryEntry[];
+  recentQuestionIndices: number[];
   questionStartTime?: number;
   finished: boolean;
   finishedAt?: number;
@@ -204,7 +210,8 @@ function resetPlayerForRace(p: RocketPlayer, game: RocketGame) {
   p.wrongCount = 0;
   p.totalAnswered = 0;
   p.streak = 0;
-  p.wrongIndices = [];
+  p.retryQueue = [];
+  p.recentQuestionIndices = [];
   p.questionStartTime = undefined;
   p.lastAnsweredSyncIdx = undefined;
   p.finished = false;
@@ -301,12 +308,16 @@ function startCruiseLoop(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
  * tracker (never reset mid-race) — name kept for backward compatibility.
  */
 function nextQuestionIdx(game: RocketGame, player: RocketPlayer): number {
-  const total = game.questions.length;
-  if (total === 0) return 0;
-  for (let i = 0; i < total; i++) {
-    if (!player.clearedInPhase.has(i)) return i;
-  }
-  return player.totalAnswered % total;
+  const next = chooseNextRocketQuestion({
+    totalQuestions: game.questions.length,
+    currentQuestionIndex: player.currentQuestionIdx,
+    totalAnswered: player.totalAnswered,
+    clearedIndices: player.clearedInPhase,
+    retryQueue: player.retryQueue,
+    recentQuestionIndices: player.recentQuestionIndices,
+  });
+  player.retryQueue = next.retryQueue;
+  return next.questionIndex;
 }
 
 /**
@@ -650,7 +661,8 @@ export function setupRocketSocket(io: Server) {
             wrongCount: 0,
             currentQuestionIdx: game.state === "racing" && game.advanceMode === "host_sync" ? game.syncQuestionIdx : 0,
             totalAnswered: 0,
-            wrongIndices: [],
+            retryQueue: [],
+            recentQuestionIndices: [],
             finished: false,
             streak: 0,
             currentPhase: 0,
@@ -797,7 +809,8 @@ export function setupRocketSocket(io: Server) {
               ? game.syncQuestionIdx
               : 0,
           totalAnswered: 0,
-          wrongIndices: [],
+          retryQueue: [],
+          recentQuestionIndices: [],
           finished: false,
           streak: 0,
           clearedInPhase: new Set<number>(),
@@ -951,9 +964,19 @@ export function setupRocketSocket(io: Server) {
           // correct answer, then decays back to base via the cruise loop.
           player.velocity = usingBoost ? 6 : 4;
           player.velocityBoostUntil = Date.now() + 6000;
+          if (game.advanceMode === "per_player") {
+            player.retryQueue = player.retryQueue.filter((entry) => entry.index !== qIdx);
+          }
         } else {
           player.wrongCount += 1;
           player.streak = 0;
+          if (game.advanceMode === "per_player") {
+            player.retryQueue = scheduleRocketQuestionRetry(
+              player.retryQueue,
+              qIdx,
+              player.totalAnswered,
+            );
+          }
           // No backward motion — rockets keep cruising. Wrong answers only
           // break the streak; the player still drifts forward at base velocity.
           altitudeChange = 0;
@@ -994,6 +1017,8 @@ export function setupRocketSocket(io: Server) {
           player.totalAnswered += 1;
           player.currentQuestionIdx = game.syncQuestionIdx;
         } else {
+          player.recentQuestionIndices.push(qIdx);
+          player.recentQuestionIndices = player.recentQuestionIndices.slice(-4);
           player.totalAnswered += 1;
           player.currentQuestionIdx = nextQuestionIdx(game, player);
         }
