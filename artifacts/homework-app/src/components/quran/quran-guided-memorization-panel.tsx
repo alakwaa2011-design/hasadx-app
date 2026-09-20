@@ -21,14 +21,10 @@ interface QuranGuidedMemorizationPanelProps {
   surahName: string;
   ayahNumber: number;
   isPlaying: boolean;
-  repeatScope: "ayah" | "range";
   repeatCount: number | "continuous";
-  rangeStart: number;
-  rangeEnd: number;
   recitationRevealed: boolean;
   onClose: () => void;
   onStageChange: (stage: GuidedMemorizationStage) => void;
-  onRepeatScopeChange: (scope: "ayah" | "range") => void;
   onRepeatCountChange: (count: number | "continuous") => void;
   onReplay: () => void;
   onRevealRecitation: () => void;
@@ -53,14 +49,10 @@ export function QuranGuidedMemorizationPanel({
   surahName,
   ayahNumber,
   isPlaying,
-  repeatScope,
   repeatCount,
-  rangeStart,
-  rangeEnd,
   recitationRevealed,
   onClose,
   onStageChange,
-  onRepeatScopeChange,
   onRepeatCountChange,
   onReplay,
   onRevealRecitation,
@@ -151,16 +143,8 @@ export function QuranGuidedMemorizationPanel({
       <div className="mt-4">
         {stage === 0 && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-black/[0.035] p-1 dark:bg-white/[0.06]">
-              <button type="button" onClick={() => onRepeatScopeChange("ayah")} className={cn("min-h-10 rounded-lg px-2 text-xs font-black", repeatScope === "ayah" ? "bg-white text-[#0B4B35] shadow-sm dark:bg-emerald-900/60 dark:text-emerald-100" : "text-muted-foreground")}>
-                {ar ? "تكرار الآية" : "Repeat ayah"}
-              </button>
-              <button type="button" disabled={rangeStart === rangeEnd} onClick={() => onRepeatScopeChange("range")} className={cn("min-h-10 rounded-lg px-2 text-xs font-black disabled:opacity-40", repeatScope === "range" ? "bg-white text-[#0B4B35] shadow-sm dark:bg-emerald-900/60 dark:text-emerald-100" : "text-muted-foreground")}>
-                {ar ? `تكرار النطاق ${rangeStart}–${rangeEnd}` : `Repeat range ${rangeStart}–${rangeEnd}`}
-              </button>
-            </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-black text-muted-foreground">{ar ? "عدد التكرار" : "Repeat count"}</span>
+              <span className="text-xs font-black text-muted-foreground">{ar ? "تكرار الآية" : "Repeat ayah"}</span>
               <div className="flex items-center rounded-xl bg-black/[0.035] p-1 dark:bg-white/[0.06]" dir="ltr">
                 {[1, 3, 5, 10, "continuous" as const].map((count) => (
                   <button

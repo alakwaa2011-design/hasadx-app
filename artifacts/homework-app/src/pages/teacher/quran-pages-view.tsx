@@ -685,10 +685,9 @@ export function QuranPagesView({
       setMemoSession((session) => ({
         ...session,
         isActive: true,
+        repeatScope: "ayah",
       }));
-      const replayAyah = memoSession.repeatScope === "range"
-        ? memoSession.rangeStart
-        : Number(guidedVerseKey.split(":")[1]);
+      const replayAyah = Number(guidedVerseKey.split(":")[1]);
       setPlayingVerseKey(`${guidedVerseKey.split(":")[0]}:${replayAyah}`);
       setIsPlaying(true);
       return;
@@ -699,9 +698,9 @@ export function QuranPagesView({
       setMemoSession((session) => ({
         ...session,
         isActive: true,
-        repeatScope: "range",
+        repeatScope: "ayah",
       }));
-      setPlayingVerseKey(`${guidedVerseKey.split(":")[0]}:${memoSession.rangeStart}`);
+      setPlayingVerseKey(guidedVerseKey);
       setIsPlaying(true);
       return;
     }
@@ -730,15 +729,11 @@ export function QuranPagesView({
 
   const replayGuidedRecitation = () => {
     if (!guidedVerseKey) return;
-    const surah = guidedVerseKey.split(":")[0];
-    const replayAyah = memoSession.repeatScope === "range"
-      ? memoSession.rangeStart
-      : Number(guidedVerseKey.split(":")[1]);
     audioRef.current?.pause();
     setIsPlaying(false);
     setPlayingVerseKey(null);
     window.requestAnimationFrame(() => {
-      setPlayingVerseKey(`${surah}:${replayAyah}`);
+      setPlayingVerseKey(guidedVerseKey);
       setIsPlaying(true);
     });
   };
@@ -1781,17 +1776,11 @@ export function QuranPagesView({
         surahName={chapters.find((chapter) => chapter.id === Number(guidedVerseKey?.split(":")[0]))?.name ?? ""}
         ayahNumber={Number(guidedVerseKey?.split(":")[1]) || selectedAyah}
         isPlaying={isPlaying}
-        repeatScope={memoSession.repeatScope}
         repeatCount={memoSession.repeatCount}
-        rangeStart={memoSession.rangeStart}
-        rangeEnd={memoSession.rangeEnd}
         recitationRevealed={guidedRecitationRevealed}
         lang={lang}
         onClose={closeGuidedMemorization}
         onStageChange={setGuidedStageAndPlayback}
-        onRepeatScopeChange={(repeatScope) => {
-          setMemoSession((session) => ({ ...session, repeatScope }));
-        }}
         onRepeatCountChange={(repeatCount) => {
           setMemoSession((session) => ({ ...session, repeatCount }));
         }}
