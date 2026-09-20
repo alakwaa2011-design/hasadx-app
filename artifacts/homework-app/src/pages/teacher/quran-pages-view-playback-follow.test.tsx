@@ -306,6 +306,45 @@ describe.each([
 });
 
 describe("QuranPagesView playback following in desktop spread view", () => {
+  it("returns to the previous page pair when repeated audio starts there", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+
+    render(
+      <QuranPagesView
+        initialSurah={2}
+        initialAyah={6}
+        initialPage={3}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("3");
+      expect(screen.getAllByTestId("mushaf-page-3").length).toBeGreaterThan(0);
+      expect(screen.getByTestId("mushaf-page-4")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId("button-mobile-audio"));
+    fireEvent.click(screen.getByRole("button", { name: "تشغيل" }));
+    fireEvent.click(screen.getByRole("button", { name: "بدأ تكرار المقطع" }));
+
+    await waitFor(() => {
+      expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("2");
+      expect(screen.getByTestId("mushaf-page-1")).toBeTruthy();
+      expect(screen.getAllByTestId("mushaf-page-2").some(
+        page => page.getAttribute("data-selected-verse") === "2:5"
+          && page.getAttribute("data-playing-verse") === "2:5",
+      )).toBe(true);
+      expect(screen.getByTestId("audio-player").getAttribute("data-playing")).toBe("true");
+    });
+  });
+
   it("moves to the next page pair while keeping repeated audio visible and playing", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
 
