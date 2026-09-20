@@ -1927,7 +1927,14 @@ export function QuranPagesView({
                   const nextVerseKey = `${nextSurah}:${nextAyah}`;
                   setPlayingVerseKey(nextVerseKey);
                   setIsPlaying(true);
-                  goToSurah(nextSurah, "playback");
+                  const nextVerse = verses.find(
+                    verse => verse.chapter_id === nextSurah && verse.number === nextAyah,
+                  );
+                  if (nextVerse) {
+                    goToPage(nextVerse.page_id, "playback");
+                  } else {
+                    goToSurah(nextSurah, "playback");
+                  }
                 }}
                 onSurahEnd={() => {
                   if (playingSurah < 114 && startAyah === null && endAyah === null && !memoSession?.isActive) {

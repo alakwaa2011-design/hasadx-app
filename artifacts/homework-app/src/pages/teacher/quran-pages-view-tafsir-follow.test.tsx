@@ -341,7 +341,9 @@ describe("QuranPagesView tafsir playback following", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByTestId("quran-mushaf-page")).toHaveLength(2);
+      expect(screen.getAllByTestId("quran-mushaf-page").filter(
+        page => ["right", "left"].includes(page.getAttribute("data-physical-page") ?? ""),
+      )).toHaveLength(2);
     });
     const leftPage = screen.getAllByTestId("quran-mushaf-page").find(
       page => page.getAttribute("data-physical-page") === "left",
@@ -349,7 +351,10 @@ describe("QuranPagesView tafsir playback following", () => {
     expect(leftPage).toBeTruthy();
     fireEvent.click(leftPage!, { clientX: -1 });
     await waitFor(() => {
-      expect(screen.getAllByTestId("quran-mushaf-page")[0].getAttribute("data-page-number")).toBe("3");
+      expect(screen.getAllByTestId("quran-mushaf-page").some(
+        page => page.getAttribute("data-physical-page") === "right"
+          && page.getAttribute("data-page-number") === "3",
+      )).toBe(true);
     });
   });
 });

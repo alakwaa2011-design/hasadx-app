@@ -192,6 +192,16 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
       >
         بدء السورة التالية
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          onIsPlayingChange(true);
+          onPlaybackLocationChange(2, 286);
+          onAudibleAyahChange(2, 286);
+        }}
+      >
+        إعادة نهاية السورة السابقة
+      </button>
       <button type="button" onClick={() => {
         onIsPlayingChange(true);
         onAudibleAyahChange(1, 7);
@@ -338,6 +348,50 @@ describe.each([
 });
 
 describe("QuranPagesView playback following in desktop spread view", () => {
+  it("returns across the previous surah boundary while keeping the repeated ayah visible and playing", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+
+    render(
+      <QuranPagesView
+        initialSurah={3}
+        initialAyah={1}
+        initialPage={50}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("50");
+      expect(screen.getByTestId("mushaf-page-49")).toBeTruthy();
+      expect(screen.getAllByTestId("mushaf-page-50").some(
+        page => page.getAttribute("data-selected-verse") === "3:1",
+      )).toBe(true);
+    });
+
+    fireEvent.click(screen.getByTestId("button-mobile-audio"));
+    const playerInstance = screen.getByTestId("audio-player").getAttribute("data-instance");
+    fireEvent.click(screen.getByRole("button", { name: "بدء السورة التالية" }));
+    fireEvent.click(screen.getByRole("button", { name: "إعادة نهاية السورة السابقة" }));
+
+    await waitFor(() => {
+      expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("49");
+      expect(screen.getAllByTestId("mushaf-page-49").some(
+        page => page.getAttribute("data-selected-verse") === "2:286"
+          && page.getAttribute("data-playing-verse") === "2:286",
+      )).toBe(true);
+      expect(screen.getByTestId("mushaf-page-50")).toBeTruthy();
+      expect(screen.getByTestId("audio-player").getAttribute("data-surah")).toBe("2");
+      expect(screen.getByTestId("audio-player").getAttribute("data-playing")).toBe("true");
+      expect(screen.getByTestId("audio-player").getAttribute("data-instance")).toBe(playerInstance);
+    });
+  });
+
   it("returns to the previous page pair when repeated audio starts there", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
 
