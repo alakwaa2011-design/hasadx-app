@@ -67,6 +67,9 @@ interface Route {
   canonicalPath: string; // e.g. "/about"
   ogTitle?: string;
   ogDescription?: string;
+  ogImage?: string;
+  ogImageAlt?: string;
+  ogSiteName?: string;
   jsonLd?: object[];
   quranPwa?: boolean;
   bodyHtml: string; // injected inside #root
@@ -392,6 +395,9 @@ const routes: Route[] = [
     canonicalPath: "/quran",
     ogTitle: "مصحف حصاد",
     ogDescription: "اقرأ واستمع واحفظ القرآن الكريم عبر مصحف حصاد.",
+    ogImage: `${SITE}/quran-share.png`,
+    ogImageAlt: "أيقونة مصحف حصاد",
+    ogSiteName: "مصحف حصاد",
     quranPwa: true,
     jsonLd: [
       {
@@ -515,10 +521,25 @@ async function main() {
     html = setMeta(html, "property", "og:title", ogTitle);
     html = setMeta(html, "property", "og:description", ogDesc);
     html = setMeta(html, "property", "og:url", ogUrl);
+    if (route.ogImage) {
+      html = setMeta(html, "property", "og:image", route.ogImage);
+      html = setMeta(html, "property", "og:image:secure_url", route.ogImage);
+      html = setMeta(html, "property", "og:image:width", "1200");
+      html = setMeta(html, "property", "og:image:height", "630");
+      html = setMeta(html, "property", "og:image:type", "image/png");
+      html = setMeta(html, "property", "og:image:alt", route.ogImageAlt ?? ogTitle);
+    }
+    if (route.ogSiteName) {
+      html = setMeta(html, "property", "og:site_name", route.ogSiteName);
+    }
 
     // Twitter
     html = setMeta(html, "name", "twitter:title", ogTitle);
     html = setMeta(html, "name", "twitter:description", ogDesc);
+    if (route.ogImage) {
+      html = setMeta(html, "name", "twitter:image", route.ogImage);
+      html = setMeta(html, "name", "twitter:image:alt", route.ogImageAlt ?? ogTitle);
+    }
 
     if (route.quranPwa) {
       html = setLinkHref(html, "manifest", "/quran-manifest.json");
