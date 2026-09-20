@@ -206,7 +206,7 @@ export default function QuranCenter({
                   startAyah={null}
                   endAyah={null}
                   mode={null}
-                  liveRecitationAvailable
+                  liveRecitationAvailable={false}
                   embedded
                   onExitEmbedded={() => setMobileSectionsOpen(true)}
                   onOpenBookmarks={() => setBookmarksOpen(true)}

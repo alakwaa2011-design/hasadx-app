@@ -56,7 +56,6 @@ import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
 
-const LIVE_RECITATION_ENABLED = true;
 const QURAN_EDUCATION_HIDDEN_KEY = "quran-education-hidden";
 
 interface QComplexChapter {
@@ -1575,7 +1574,7 @@ export function QuranPagesView({
     </button>
   ) : null;
 
-  const liveRecitationButton = !standalone && LIVE_RECITATION_ENABLED && isAdmin ? (
+  const liveRecitationButton = !standalone && liveRecitationAvailable && isAdmin ? (
     <button
       type="button"
       onClick={openLiveRecitation}

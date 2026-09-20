@@ -142,3 +142,4 @@
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.
 - [Shared upload cleanup scope](shared-upload-cleanup-scope.md) — cleanup jobs must enumerate only their own namespace; table references cannot prove ownership of every object under shared uploads.
 - [Quran ayah action ergonomics](quran-ayah-action-ergonomics.md) — ayah-number tap and long-press share one action surface; reciter and repeat controls stay directly visible in the player.
+- [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.

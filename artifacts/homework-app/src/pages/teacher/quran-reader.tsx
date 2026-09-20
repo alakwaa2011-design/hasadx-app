@@ -218,7 +218,7 @@ export default function QuranReader() {
               }
             : undefined}
           isIndependentPractice={isStudentPractice}
-          liveRecitationAvailable={!isStudentReader}
+          liveRecitationAvailable={false}
         />
         {isStudentWard && studentWardId && <QuranStudentSubmissionPanel wardId={studentWardId} />}
       </>
