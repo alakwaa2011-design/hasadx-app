@@ -226,10 +226,7 @@ export function QuranPagesView({
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioDockOpen, setAudioDockOpen] = useState(false);
   const [educationLocked, setEducationLocked] = useState(false);
-  const [educationHidden, setEducationHidden] = useState(
-    () => typeof window !== "undefined"
-      && window.localStorage.getItem(QURAN_EDUCATION_HIDDEN_KEY) === "true",
-  );
+  const [educationHidden, setEducationHidden] = useState(true);
   const [copiedVerseKey, setCopiedVerseKey] = useState<string | null>(null);
   const [copyRange, setCopyRange] = useState<{
     surah: number;
@@ -291,16 +288,6 @@ export function QuranPagesView({
       sentinel = null;
     };
   }, []);
-
-  useEffect(() => {
-    if (educationHidden || educationLocked || guidedOpen || !isPlaying || !audibleVerseKey) return;
-    setEducationSelection({
-      verseKey: audibleVerseKey,
-      wordId: null,
-      wordPosition: null,
-      wordText: null,
-    });
-  }, [audibleVerseKey, educationHidden, educationLocked, guidedOpen, isPlaying]);
 
   const hideEducation = () => {
     setEducationHidden(true);
@@ -1137,9 +1124,6 @@ export function QuranPagesView({
                if (copyRange) {
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
-               if (!educationHidden) {
-                 setEducationSelection(selection);
-               }
               if (selection.wordPosition !== null) {
                 playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
@@ -1740,7 +1724,7 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
-                showTafsirRestore={educationHidden}
+                showTafsirRestore={!guidedOpen}
                 onShowTafsir={showEducation}
                 onAudibleAyahChange={(audibleSurah, ayahNum) => {
                   if (ayahNum === null) {
