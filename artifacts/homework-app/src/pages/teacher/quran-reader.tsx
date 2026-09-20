@@ -358,8 +358,8 @@ export function QuranTextReaderView({
     setMemoSession(session => ({
       ...session,
       isActive: true,
-      rangeStart: startAyah ?? safeAyah,
-      rangeEnd: Math.max(startAyah ?? safeAyah, endAyah ?? safeAyah),
+      rangeStart: safeAyah,
+      rangeEnd: safeAyah,
       repeatScope: 'ayah',
       repeatCount: 3,
     }));
@@ -392,15 +392,16 @@ export function QuranTextReaderView({
       setMemoSession(session => ({
         ...session,
         isActive: true,
-        repeatScope: 'ayah',
+        repeatScope: 'range',
+        rangeEnd: guidedAyah,
       }));
-      setPlayingAyah(guidedAyah);
+      setPlayingAyah(memoSession.rangeStart);
       setIsPlaying(true);
     } else {
       setIsPlaying(false);
       setPlayingAyah(null);
     }
-  }, [guidedAyah, guidedOpen, guidedStage, randomizePartialHide, setMemoSession, setMemoView]);
+  }, [guidedAyah, guidedOpen, guidedStage, memoSession.rangeStart, randomizePartialHide, setMemoSession, setMemoView]);
 
   const closeGuidedMemorization = useCallback(() => {
     setGuidedOpen(false);
@@ -1098,6 +1099,11 @@ export function QuranTextReaderView({
             dispatchPosition({ type: "click", ayah: nextAyah });
             navigateTo({ surah: surahNumber, ayah: nextAyah });
             setGuidedAyah(nextAyah);
+            setMemoSession(session => ({
+              ...session,
+              rangeEnd: nextAyah,
+              repeatScope: "ayah",
+            }));
             setGuidedStage(0);
             setGuidedRecitationRevealed(false);
             setGuidedRevealedWords(new Set());

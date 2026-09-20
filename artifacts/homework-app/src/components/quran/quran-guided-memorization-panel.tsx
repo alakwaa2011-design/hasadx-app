@@ -1,7 +1,6 @@
 import type { Ref } from "react";
 import {
   BookOpenCheck,
-  ChevronRight,
   CheckCircle2,
   EyeOff,
   Headphones,
@@ -97,8 +96,15 @@ export function QuranGuidedMemorizationPanel({
           const active = index === stage;
           const complete = index < stage;
           return (
-            <div key={item.en} className="min-w-0 text-center">
-              <div
+            <button
+              key={item.en}
+              type="button"
+              onClick={() => onStageChange(index as GuidedMemorizationStage)}
+              className="min-w-0 rounded-xl py-1 text-center transition-colors hover:bg-black/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/50 dark:hover:bg-white/[0.06]"
+              aria-current={active ? "step" : undefined}
+              aria-label={ar ? `الانتقال إلى خطوة ${item.ar}` : `Go to ${item.en} step`}
+            >
+              <span
                 className={cn(
                   "mx-auto grid h-8 w-8 place-items-center rounded-full border transition-colors",
                   active && "border-[#0B4B35] bg-[#0B4B35] text-white",
@@ -107,11 +113,11 @@ export function QuranGuidedMemorizationPanel({
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
-              </div>
+              </span>
               <span className={cn("mt-1 block truncate text-[9px] font-bold", active ? "text-[#0B4B35] dark:text-emerald-200" : "text-muted-foreground")}>
                 {ar ? item.ar : item.en}
               </span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -204,12 +210,6 @@ export function QuranGuidedMemorizationPanel({
               {ar ? "أتقنتها" : "Mastered"}
             </button>
           </div>
-        )}
-        {stage > 0 && (
-          <button type="button" onClick={() => onStageChange((stage - 1) as GuidedMemorizationStage)} className="mt-2 flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl text-xs font-black text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10">
-            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
-            {ar ? "الرجوع إلى الخطوة السابقة" : "Back to previous step"}
-          </button>
         )}
       </div>
     </aside>

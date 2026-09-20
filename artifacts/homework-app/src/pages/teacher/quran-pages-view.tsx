@@ -698,9 +698,10 @@ export function QuranPagesView({
       setMemoSession((session) => ({
         ...session,
         isActive: true,
-        repeatScope: "ayah",
+        repeatScope: "range",
+        rangeEnd: Number(guidedVerseKey.split(":")[1]),
       }));
-      setPlayingVerseKey(guidedVerseKey);
+      setPlayingVerseKey(`${guidedVerseKey.split(":")[0]}:${memoSession.rangeStart}`);
       setIsPlaying(true);
       return;
     }
@@ -723,7 +724,7 @@ export function QuranPagesView({
     setSilentReadWordPosition(1);
     const interval = window.setInterval(() => {
       setSilentReadWordPosition((position) => position === null || position >= wordCount ? 1 : position + 1);
-    }, 720);
+    }, 1150);
     return () => window.clearInterval(interval);
   }, [guidedOpen, guidedStage, guidedVerseKey, selectedAyahText]);
 
@@ -751,8 +752,6 @@ export function QuranPagesView({
       return;
     }
     const targetKey = `${targetVerse.chapter_id}:${targetVerse.number}`;
-    const guidedRangeStart = startAyah ?? targetVerse.number;
-    const guidedRangeEnd = endAyah ?? targetVerse.number;
     setSelectedVerseKey(targetKey);
     setPlayingVerseKey(targetKey);
     setGuidedVerseKey(targetKey);
@@ -763,8 +762,8 @@ export function QuranPagesView({
     setMemoSession((session) => ({
       ...session,
       isActive: true,
-      rangeStart: guidedRangeStart,
-      rangeEnd: Math.max(guidedRangeStart, guidedRangeEnd),
+      rangeStart: targetVerse.number,
+      rangeEnd: targetVerse.number,
       repeatScope: "ayah",
       repeatCount: 3,
     }));
@@ -1814,7 +1813,6 @@ export function QuranPagesView({
           setMemoSession((session) => ({
             ...session,
             isActive: true,
-            rangeStart: nextVerse.number,
             rangeEnd: nextVerse.number,
             repeatScope: "ayah",
             repeatCount: 3,

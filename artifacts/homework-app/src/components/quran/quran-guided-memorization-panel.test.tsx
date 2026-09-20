@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { QuranGuidedMemorizationPanel } from "./quran-guided-memorization-panel";
 
 function renderPanel(overrides: Partial<React.ComponentProps<typeof QuranGuidedMemorizationPanel>> = {}) {
@@ -9,14 +9,10 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof QuranGuidedM
     surahName: "الفاتحة",
     ayahNumber: 1,
     isPlaying: false,
-    repeatScope: "ayah",
     repeatCount: 3,
-    rangeStart: 1,
-    rangeEnd: 7,
     recitationRevealed: false,
     onClose: vi.fn(),
     onStageChange: vi.fn(),
-    onRepeatScopeChange: vi.fn(),
     onRepeatCountChange: vi.fn(),
     onReplay: vi.fn(),
     onRevealRecitation: vi.fn(),
@@ -28,21 +24,22 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof QuranGuidedM
   return props;
 }
 
+afterEach(cleanup);
+
 describe("QuranGuidedMemorizationPanel", () => {
-  it("lets the learner choose the repeat scope and count", () => {
+  it("lets the learner choose the ayah repeat count without showing a range control", () => {
     const props = renderPanel();
 
-    fireEvent.click(screen.getByRole("button", { name: "تكرار النطاق 1–7" }));
+    expect(screen.queryByRole("button", { name: /تكرار النطاق/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "5" }));
 
-    expect(props.onRepeatScopeChange).toHaveBeenCalledWith("range");
     expect(props.onRepeatCountChange).toHaveBeenCalledWith(5);
   });
 
-  it("supports returning from assessment to the linking step", () => {
+  it("uses the stage icons for direct navigation", () => {
     const props = renderPanel({ stage: 5 });
 
-    fireEvent.click(screen.getByRole("button", { name: "الرجوع إلى الخطوة السابقة" }));
+    fireEvent.click(screen.getByRole("button", { name: "الانتقال إلى خطوة اربط" }));
 
     expect(props.onStageChange).toHaveBeenCalledWith(4);
   });
