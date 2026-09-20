@@ -68,6 +68,7 @@ interface Route {
   ogTitle?: string;
   ogDescription?: string;
   jsonLd?: object[];
+  quranPwa?: boolean;
   bodyHtml: string; // injected inside #root
 }
 
@@ -383,6 +384,31 @@ const routes: Route[] = [
       ${P("يمكن للمعلمين إنشاء تحديات إسلامية مخصصة لطلابهم، ومتابعة تقدم كل طالب في المسابقات الإسلامية عبر لوحة التحكم.")}
     `),
   },
+  {
+    path: "quran",
+    title: "مصحف حصاد | قراءة واستماع وحفظ",
+    description:
+      "مصحف حصاد للقراءة والاستماع والحفظ في تجربة عربية هادئة ومستقلة.",
+    canonicalPath: "/quran",
+    ogTitle: "مصحف حصاد",
+    ogDescription: "اقرأ واستمع واحفظ القرآن الكريم عبر مصحف حصاد.",
+    quranPwa: true,
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "مصحف حصاد",
+        url: `${SITE}/quran`,
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Web, iOS, Android",
+        inLanguage: "ar",
+      },
+    ],
+    bodyHtml: wrapRoot(`
+      ${H1("مصحف حصاد")}
+      ${P("مصحف إلكتروني مستقل للقراءة والاستماع والحفظ، مصمم لتجربة هادئة ومريحة على الهاتف واللوحي والحاسوب.")}
+    `),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -412,6 +438,15 @@ function setCanonical(html: string, href: string): string {
   const tag = `<link rel="canonical" href="${href}">`;
   if (re.test(html)) return html.replace(re, tag);
   return html.replace("</head>", `  ${tag}\n</head>`);
+}
+
+function setLinkHref(html: string, rel: string, href: string): string {
+  const escaped = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(<link\\s[^>]*rel="${escaped}"[^>]*href=")[^"]*("[^>]*>)`, "i");
+  const re2 = new RegExp(`(<link\\s[^>]*href=")[^"]*("[^>]*rel="${escaped}"[^>]*>)`, "i");
+  if (re.test(html)) return html.replace(re, `$1${href}$2`);
+  if (re2.test(html)) return html.replace(re2, `$1${href}$2`);
+  return html.replace("</head>", `  <link rel="${rel}" href="${href}">\n</head>`);
 }
 
 function injectJsonLd(html: string, schemas: object[]): string {
@@ -484,6 +519,14 @@ async function main() {
     // Twitter
     html = setMeta(html, "name", "twitter:title", ogTitle);
     html = setMeta(html, "name", "twitter:description", ogDesc);
+
+    if (route.quranPwa) {
+      html = setLinkHref(html, "manifest", "/quran-manifest.json");
+      html = setLinkHref(html, "apple-touch-icon", "/icons/quran-hasaad-180.png");
+      html = setLinkHref(html, "icon", "/icons/quran-hasaad-192.png");
+      html = setMeta(html, "name", "apple-mobile-web-app-title", "مصحف حصاد");
+      html = setMeta(html, "name", "theme-color", "#123D2E");
+    }
 
     // JSON-LD
     if (route.jsonLd?.length) {
