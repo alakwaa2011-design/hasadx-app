@@ -295,4 +295,61 @@ describe("QuranPagesView tafsir playback following", () => {
       expect(screen.getByTestId("mushaf-page").getAttribute("data-playing-verse")).toBe("2:142");
     });
   });
+
+  it("uses swipe-only page navigation on phones while retaining edge clicks on laptops", async () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+    });
+    const view = render(
+      <QuranPagesView
+        initialSurah={1}
+        initialAyah={1}
+        initialPage={1}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("1");
+    });
+    fireEvent.click(screen.getByTestId("quran-mushaf-page"), { clientX: -1 });
+    expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("1");
+
+    view.unmount();
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1024,
+    });
+    render(
+      <QuranPagesView
+        initialSurah={1}
+        initialAyah={1}
+        initialPage={1}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("quran-mushaf-page")).toHaveLength(2);
+    });
+    const leftPage = screen.getAllByTestId("quran-mushaf-page").find(
+      page => page.getAttribute("data-physical-page") === "left",
+    );
+    expect(leftPage).toBeTruthy();
+    fireEvent.click(leftPage!, { clientX: -1 });
+    await waitFor(() => {
+      expect(screen.getAllByTestId("quran-mushaf-page")[0].getAttribute("data-page-number")).toBe("3");
+    });
+  });
 });

@@ -1099,6 +1099,9 @@ export function QuranPagesView({
             didSwipeRef.current = false;
             return;
           }
+          // On phones, page navigation is swipe-only. Taps remain available
+          // for words and controls without accidentally turning the page.
+          if (window.innerWidth < 768) return;
           const target = event.target;
           if (target instanceof Element && target.closest("button,a,input,select,textarea,[role='button']")) return;
 
@@ -1118,9 +1121,10 @@ export function QuranPagesView({
             type="button"
             data-testid="quran-page-turn-next-zone"
             aria-label={lang === "ar" ? "النقر يسار الصفحة التالية" : "Click left for next page"}
-            className="absolute inset-y-0 left-0 z-30 w-[8%] cursor-pointer bg-transparent"
+            className="absolute inset-y-0 left-0 z-30 hidden w-[8%] cursor-pointer bg-transparent md:block"
             onClick={(event) => {
               event.stopPropagation();
+              if (window.innerWidth < 768) return;
               goToSpread("next");
             }}
           />
@@ -1132,9 +1136,10 @@ export function QuranPagesView({
             type="button"
             data-testid="quran-page-turn-previous-zone"
             aria-label={lang === "ar" ? "النقر يمين الصفحة السابقة" : "Click right for previous page"}
-            className="absolute inset-y-0 right-0 z-30 w-[8%] cursor-pointer bg-transparent"
+            className="absolute inset-y-0 right-0 z-30 hidden w-[8%] cursor-pointer bg-transparent md:block"
             onClick={(event) => {
               event.stopPropagation();
+              if (window.innerWidth < 768) return;
               goToSpread("previous");
             }}
           />
