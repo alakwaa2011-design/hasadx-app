@@ -817,6 +817,13 @@
     background: rgb(255 253 248 / 82%);
     box-shadow: 0 5px 18px rgb(34 87 57 / 9%);
     backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .dark .quran-reader-header {
+    border-color: rgb(110 231 183 / 18%);
+    background: rgb(10 28 21 / 94%);
+    box-shadow: 0 7px 22px rgb(0 0 0 / 28%);
   }
 
   .quran-reader-header > div:first-child {
