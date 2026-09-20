@@ -71,7 +71,13 @@ vi.mock("./quran-madani-page", () => ({
       data-selected-verse={selectedVerseKey ?? ""}
       data-playing-verse={playingVerseKey ?? ""}
     >
-      {pageNumber === 2 && <span data-verse-key="2:5">الآية الخامسة</span>}
+      {pageNumber === 1 && <span data-verse-key="1:7">آخر الفاتحة</span>}
+      {pageNumber === 2 && (
+        <>
+          <span data-verse-key="2:1">أول البقرة</span>
+          <span data-verse-key="2:5">الآية الخامسة</span>
+        </>
+      )}
       {pageNumber === 49 && <span data-verse-key="2:286">آخر آية من البقرة</span>}
       {pageNumber === 50 && (
         <span
@@ -106,6 +112,8 @@ vi.mock("./quran-madani-page", () => ({
           الآية السادسة
         </span>
       )}
+      {pageNumber === 603 && <span data-verse-key="111:5">آخر المسد</span>}
+      {pageNumber === 604 && <span data-verse-key="112:1">أول الإخلاص</span>}
     </div>
   ),
 }));
@@ -183,6 +191,30 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
         }}
       >
         بدء السورة التالية
+      </button>
+      <button type="button" onClick={() => {
+        onIsPlayingChange(true);
+        onAudibleAyahChange(1, 7);
+      }}>
+        صوت الصفحة الأولى
+      </button>
+      <button type="button" onClick={() => {
+        onIsPlayingChange(true);
+        onAudibleAyahChange(2, 1);
+      }}>
+        صوت الصفحة الثانية
+      </button>
+      <button type="button" onClick={() => {
+        onIsPlayingChange(true);
+        onAudibleAyahChange(111, 5);
+      }}>
+        صوت الصفحة قبل الأخيرة
+      </button>
+      <button type="button" onClick={() => {
+        onIsPlayingChange(true);
+        onAudibleAyahChange(112, 1);
+      }}>
+        صوت الصفحة الأخيرة
       </button>
     </div>
     );
@@ -411,6 +443,90 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       expect(screen.getByTestId("mushaf-page-4")).toBeTruthy();
       expect(screen.getByTestId("audio-player").getAttribute("data-playing")).toBe("true");
       expect(scrollIntoView).toHaveBeenCalled();
+    });
+  });
+
+  it.each([
+    {
+      label: "first",
+      initialSurah: 1,
+      initialAyah: 7,
+      initialPage: 1,
+      firstPage: 1,
+      secondPage: 2,
+      firstAudio: "صوت الصفحة الأولى",
+      secondAudio: "صوت الصفحة الثانية",
+      firstVerse: "1:7",
+      secondVerse: "2:1",
+      forbiddenPage: 0,
+    },
+    {
+      label: "last",
+      initialSurah: 111,
+      initialAyah: 5,
+      initialPage: 603,
+      firstPage: 603,
+      secondPage: 604,
+      firstAudio: "صوت الصفحة قبل الأخيرة",
+      secondAudio: "صوت الصفحة الأخيرة",
+      firstVerse: "111:5",
+      secondVerse: "112:1",
+      forbiddenPage: 605,
+    },
+  ])("keeps playback inside the $label Mushaf spread during transitions and repeats", async ({
+    initialSurah,
+    initialAyah,
+    initialPage,
+    firstPage,
+    secondPage,
+    firstAudio,
+    secondAudio,
+    firstVerse,
+    secondVerse,
+    forbiddenPage,
+  }) => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+
+    render(
+      <QuranPagesView
+        initialSurah={initialSurah}
+        initialAyah={initialAyah}
+        initialPage={initialPage}
+        onNavigate={vi.fn()}
+        isTaskAyah={() => false}
+        startAyah={null}
+        endAyah={null}
+        mode={null}
+        liveRecitationAvailable={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect(screen.getAllByTestId(`mushaf-page-${firstPage}`).length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId(`mushaf-page-${secondPage}`).length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByTestId("button-mobile-audio"));
+    fireEvent.click(await screen.findByRole("button", { name: secondAudio }));
+
+    await waitFor(() => {
+      expect(screen.queryAllByTestId(`mushaf-page-${forbiddenPage}`)).toHaveLength(0);
+      expect(screen.getAllByTestId(`mushaf-page-${secondPage}`).some(
+        page => page.getAttribute("data-selected-verse") === secondVerse
+          && page.getAttribute("data-playing-verse") === secondVerse,
+      )).toBe(true);
+      expect(screen.getByTestId("audio-player").getAttribute("data-playing")).toBe("true");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: firstAudio }));
+    await waitFor(() => {
+      expect(screen.queryAllByTestId(`mushaf-page-${forbiddenPage}`)).toHaveLength(0);
+      expect(screen.getAllByTestId(`mushaf-page-${firstPage}`).some(
+        page => page.getAttribute("data-selected-verse") === firstVerse
+          && page.getAttribute("data-playing-verse") === firstVerse,
+      )).toBe(true);
+      expect(screen.getByTestId("audio-player").getAttribute("data-playing")).toBe("true");
     });
   });
 });
