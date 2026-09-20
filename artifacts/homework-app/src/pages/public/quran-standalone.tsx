@@ -103,7 +103,21 @@ export function PublicQuranStandalone() {
   const canonicalVersePage = verses.find(
     (verse) => verse.chapter_id === initialSurah && verse.number === validInitialAyah,
   )?.page_id;
-  const validInitialPage = requestedPage === canonicalVersePage ? requestedPage : undefined;
+  const requestedPageVerse = requestedPage
+    ? verses.find((verse) => verse.page_id === requestedPage)
+    : undefined;
+  const routeNeedsPageNormalization = Boolean(
+    requestedPage
+    && requestedPageVerse
+    && requestedPage !== canonicalVersePage,
+  );
+  const validInitialPage = requestedPage;
+  const resolvedInitialSurah = routeNeedsPageNormalization
+    ? requestedPageVerse!.chapter_id
+    : initialSurah;
+  const resolvedInitialAyah = routeNeedsPageNormalization
+    ? requestedPageVerse!.number
+    : validInitialAyah;
 
   const handleNavigate = useCallback((nav: { surah: number; ayah: number; page?: number }) => {
     const newParams = new URLSearchParams();
@@ -116,6 +130,15 @@ export function PublicQuranStandalone() {
     // Use replace: true so scrolling through pages doesn't spam the browser history
     setLocation(`/quran/${nav.surah}?${newParams.toString()}`, { replace: true });
   }, [setLocation]);
+
+  useEffect(() => {
+    if (!routeNeedsPageNormalization || !requestedPage || !requestedPageVerse) return;
+    handleNavigate({
+      surah: requestedPageVerse.chapter_id,
+      ayah: requestedPageVerse.number,
+      page: requestedPage,
+    });
+  }, [handleNavigate, requestedPage, requestedPageVerse, routeNeedsPageNormalization]);
 
   const title = lang === "ar" ? "مصحف حصاد" : "Hasaad Quran";
   const description = lang === "ar" 
@@ -151,8 +174,8 @@ export function PublicQuranStandalone() {
       
       <QuranPagesView
         key={syncRequested ? "synced" : "local"}
-        initialSurah={initialSurah}
-        initialAyah={validInitialAyah}
+        initialSurah={resolvedInitialSurah}
+        initialAyah={resolvedInitialAyah}
         initialPage={validInitialPage}
         onNavigate={handleNavigate}
         isTaskAyah={isTaskAyah}

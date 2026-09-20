@@ -54,6 +54,12 @@ export function QuranMadaniPageRenderer({
   const longPressTimeoutRef = useRef<number | null>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
   const isLongPressRef = useRef(false);
+  const longPressSelectionRef = useRef<{
+    verseKey: string;
+    wordId: number | null;
+    wordPosition: number | null;
+    wordText: string | null;
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -82,11 +88,11 @@ export function QuranMadaniPageRenderer({
   ) => {
     startPosRef.current = { x, y };
     isLongPressRef.current = false;
+    longPressSelectionRef.current = selection;
     cancelLongPress();
     longPressTimeoutRef.current = window.setTimeout(() => {
       longPressTimeoutRef.current = null;
       isLongPressRef.current = true;
-      onVerseAction?.(selection);
     }, 400);
   };
 
@@ -96,7 +102,17 @@ export function QuranMadaniPageRenderer({
       || Math.abs(y - startPosRef.current.y) > 10
     ) {
       cancelLongPress();
+      isLongPressRef.current = false;
+      longPressSelectionRef.current = null;
     }
+  };
+
+  const finishLongPress = () => {
+    cancelLongPress();
+    if (isLongPressRef.current && longPressSelectionRef.current) {
+      onVerseAction?.(longPressSelectionRef.current);
+    }
+    longPressSelectionRef.current = null;
   };
 
   const { data, isLoading, isError } = useGetQuranMadaniPage(pageNumber, {
@@ -337,7 +353,7 @@ export function QuranMadaniPageRenderer({
                       if (e.pointerType === "mouse") cancelLongPressOnMove(e.clientX, e.clientY);
                     }}
                     onPointerUp={(e) => {
-                      if (e.pointerType === "mouse") cancelLongPress();
+                      if (e.pointerType === "mouse") finishLongPress();
                     }}
                     onPointerCancel={(e) => {
                       if (e.pointerType === "mouse") cancelLongPress();
@@ -356,7 +372,7 @@ export function QuranMadaniPageRenderer({
                       const touch = e.touches[0];
                       if (touch) cancelLongPressOnMove(touch.clientX, touch.clientY);
                     }}
-                    onTouchEnd={cancelLongPress}
+                    onTouchEnd={finishLongPress}
                     onTouchCancel={cancelLongPress}
                     onClick={(e) => {
                       if (isLongPressRef.current) {

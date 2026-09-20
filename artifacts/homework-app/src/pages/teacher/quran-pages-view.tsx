@@ -55,8 +55,10 @@ import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
+import { QuranReaderTips } from "@/components/quran/quran-reader-tips";
 
 const QURAN_EDUCATION_HIDDEN_KEY = "quran-education-hidden";
+const QURAN_READER_TIPS_KEY = "quran-reader-tips-seen-v1";
 
 interface QComplexChapter {
   id: number;
@@ -196,6 +198,7 @@ export function QuranPagesView({
   const swipeStartYRef = useRef<number | null>(null);
   const suppressSwipeClickRef = useRef(false);
   const readerMainRef = useRef<HTMLElement | null>(null);
+  const continuousProgrammaticNavigationRef = useRef(false);
   const continuousLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const playbackAutoNavigationRef = useRef(false);
   const playbackAutoNavigationTimeoutRef = useRef<number | null>(null);
@@ -243,6 +246,9 @@ export function QuranPagesView({
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const [ayahActionVerseKey, setAyahActionVerseKey] = useState<string | null>(null);
+  const [showReaderTips, setShowReaderTips] = useState(
+    () => typeof window !== "undefined" && window.localStorage.getItem(QURAN_READER_TIPS_KEY) !== "true",
+  );
   const { playWord, stopWordAudio } = useQuranWordAudio();
   const [installManualOpen, setInstallManualOpen] = useState(false);
   const { platform, isInstallable } = useQuranInstall();
@@ -917,8 +923,16 @@ export function QuranPagesView({
     setTurnDirection(nextPage > activePage ? "next" : "previous");
     setActivePage(nextPage);
     if (pageLayout === "continuous") {
+      continuousProgrammaticNavigationRef.current = true;
       setContinuousStartPage(nextPage);
       setContinuousEndPage(Math.min(LAST_PAGE, nextPage + 3));
+      window.requestAnimationFrame(() => {
+        if (readerMainRef.current) readerMainRef.current.scrollTop = 0;
+        window.requestAnimationFrame(() => {
+          if (readerMainRef.current) readerMainRef.current.scrollTop = 0;
+          continuousProgrammaticNavigationRef.current = false;
+        });
+      });
     }
     if (!isPlaying) {
       setPlaybackFollowSuspended(false);
@@ -972,6 +986,11 @@ export function QuranPagesView({
         ? currentPage + step
         : currentPage - step,
     );
+  };
+
+  const dismissReaderTips = () => {
+    window.localStorage.setItem(QURAN_READER_TIPS_KEY, "true");
+    setShowReaderTips(false);
   };
 
   useEffect(() => {
@@ -1304,7 +1323,9 @@ export function QuranPagesView({
           ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
           : "text-emerald-700 hover:bg-emerald-900/5 dark:text-emerald-400 dark:hover:bg-white/10",
       )}
-      title={lang === "ar" ? "المزامنة" : "Sync"}
+      title={lang === "ar"
+        ? "مزامنة آخر موضع والعلامات والتفضيلات"
+        : "Sync your reading position, bookmarks, and preferences"}
     >
       {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : syncEnabled ? <Cloud className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}
       <span className="hidden sm:inline">
@@ -1454,7 +1475,7 @@ export function QuranPagesView({
   );
 
   const searchDialogWrapped = (
-    <div className="flex shrink-0 items-center">
+    <div className="flex shrink-0 items-center" onPointerDown={() => setMobileToolsOpen(false)}>
       <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
     </div>
   );
@@ -1471,7 +1492,7 @@ export function QuranPagesView({
         {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       </button>
       {copyActionsOpen && (
-        <div className="absolute end-0 top-10 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95">
+        <div className="fixed inset-x-3 top-24 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10">
           <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/10">
             <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount} آيات` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
@@ -1498,7 +1519,7 @@ export function QuranPagesView({
         <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
       </button>
       {bookmarkActionsOpen && (
-        <div className="absolute end-0 top-10 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95">
+        <div className="fixed inset-x-3 top-24 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10">
           {canToggleCurrentBookmark && (
             <button type="button" disabled={isMutatingBookmark}
               onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
@@ -1521,7 +1542,12 @@ export function QuranPagesView({
   const quietModeButton = (
     <button
       type="button"
-      onClick={() => setQuietMode(true)}
+      onClick={() => {
+        setQuietMode(true);
+        toast.info(lang === "ar"
+          ? "تم تشغيل وضع القراءة الهادئ — اضغط إظهار الأدوات للخروج"
+          : "Quiet reading is on — use Show tools to exit");
+      }}
       data-testid="button-quiet-mode"
       className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
       aria-label={lang === "ar" ? "وضع القراءة الهادئ" : "Quiet mode"}
@@ -1603,7 +1629,7 @@ export function QuranPagesView({
           : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
       )}
     >
-      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ" : "Memorize")}
+      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ التدريجي" : "Guided memorization")}
     </button>
   );
 
@@ -1619,7 +1645,7 @@ export function QuranPagesView({
           : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
       )}
     >
-      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ" : "Memorize")}
+      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ التدريجي" : "Guided memorization")}
     </button>
   );
 
@@ -1650,7 +1676,10 @@ export function QuranPagesView({
       {quietMode && (
         <button
           type="button"
-          onClick={() => setQuietMode(false)}
+          onClick={() => {
+            setQuietMode(false);
+            toast.info(lang === "ar" ? "عادت أدوات المصحف" : "Quran tools are visible");
+          }}
           className="quran-reader-quiet-exit fixed bottom-6 end-6 z-50 rounded-full bg-emerald-800 p-3 text-white opacity-40 shadow-lg transition-opacity hover:opacity-100"
           aria-label={lang === "ar" ? "إظهار الأدوات" : "Show controls"}
         >
@@ -1742,6 +1771,9 @@ export function QuranPagesView({
             {/* Mobile Expanded Area */}
             {mobileToolsOpen && (
               <div className="mt-2 flex flex-col gap-2 rounded-xl border border-emerald-900/10 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/50">
+                <p className="px-1 text-[10px] font-extrabold text-emerald-800/60 dark:text-emerald-200/60">
+                  {lang === "ar" ? "طريقة العرض" : "Reading view"}
+                </p>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex h-9 w-32 shrink-0 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                     {juzSelect}
@@ -1751,7 +1783,10 @@ export function QuranPagesView({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-emerald-900/10 pt-2 dark:border-white/10">
+                <p className="border-t border-emerald-900/10 px-1 pt-2 text-[10px] font-extrabold text-emerald-800/60 dark:border-white/10 dark:text-emerald-200/60">
+                  {lang === "ar" ? "أدوات القراءة" : "Reading tools"}
+                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-1">
                     {installButton}
                     {copyDropdown}
@@ -1804,6 +1839,7 @@ export function QuranPagesView({
         )}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
+          if (continuousProgrammaticNavigationRef.current) return;
           const container = event.currentTarget;
           if (container.scrollHeight - container.scrollTop - container.clientHeight < 700) {
             setContinuousEndPage((current) => Math.min(LAST_PAGE, current + 3));
@@ -1817,6 +1853,14 @@ export function QuranPagesView({
           }, null);
           if (nearestPage && nearestPage.page !== activePage) {
             setActivePage(nearestPage.page);
+            const nearestVerse = verses.find((verse) => verse.page_id === nearestPage.page);
+            if (nearestVerse) {
+              onNavigate({
+                surah: nearestVerse.chapter_id,
+                ayah: nearestVerse.number,
+                page: nearestPage.page,
+              });
+            }
             if (
               isPlaying
               && playbackPage !== null
@@ -1826,6 +1870,21 @@ export function QuranPagesView({
             }
           }
         }}
+        onKeyDown={(event) => {
+          if (
+            event.target instanceof HTMLInputElement
+            || event.target instanceof HTMLSelectElement
+            || event.target instanceof HTMLTextAreaElement
+          ) return;
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            goToSpread("next");
+          } else if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            goToSpread("previous");
+          }
+        }}
+        tabIndex={0}
       >
         {pageLayout === "continuous" ? (
           <div
@@ -1878,7 +1937,7 @@ export function QuranPagesView({
           aria-label={lang === "ar" ? "التنقل بين صفحات المصحف" : "Mushaf page navigation"}
           className={cn(
             "quran-reader-nav mx-auto mt-1 hidden w-full max-w-[1032px] items-center justify-between gap-2 border-t border-emerald-900/10 px-1 pt-1 dark:border-white/10 md:mt-6 md:flex md:gap-3 md:pt-5",
-            pageLayout === "continuous" && "hidden md:flex",
+            pageLayout === "continuous" && "md:hidden",
           )}
           style={{ width: pageLayout === "spread" ? `${zoom}%` : "100%" }}
         >
@@ -1910,6 +1969,13 @@ export function QuranPagesView({
             <ChevronRight className="h-4 w-4 rtl:rotate-180 md:h-5 md:w-5" />
           </button>
         </nav>
+        {pageLayout === "continuous" && (
+          <p className="mx-auto mt-4 hidden rounded-full bg-emerald-900/5 px-4 py-2 text-xs font-bold text-emerald-800/70 dark:bg-white/5 dark:text-emerald-200/70 md:block">
+            {lang === "ar"
+              ? "مرّر لمتابعة القراءة — يتحدّث رقم الصفحة والرابط تلقائيًا"
+              : "Scroll to continue reading — the page number and link update automatically"}
+          </p>
+        )}
         {guidedPanelHeight > 0 && (
           <div
             aria-hidden="true"
@@ -2105,7 +2171,7 @@ export function QuranPagesView({
         onOpenChange={(open) => {
           if (!open) setAyahActionVerseKey(null);
         }}
-        verseKey={ayahActionVerseKey || "1:1"}
+        verseKey={ayahActionVerseKey ?? selectedVerseKey ?? `${selectedSurah}:${selectedAyah}`}
         isBookmarked={ayahActionVerseKey ? bookmarksMap.has(ayahActionVerseKey) : false}
         onPlay={() => {
           if (!ayahActionVerseKey) return;
@@ -2153,6 +2219,7 @@ export function QuranPagesView({
           if (!ayahActionVerseKey) return;
           const [chapterId, verseNumber] = ayahActionVerseKey.split(":").map(Number);
           const pageId = verses.find(v => v.chapter_id === chapterId && v.number === verseNumber)?.page_id ?? activePage;
+          setSelectedVerseKey(ayahActionVerseKey);
           toggleBookmark(chapterId, verseNumber, pageId, bookmarksMap.has(ayahActionVerseKey));
         }}
         onTafsir={() => {
@@ -2168,6 +2235,9 @@ export function QuranPagesView({
           window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
         }}
       />
+      {showReaderTips && !guidedOpen && (
+        <QuranReaderTips lang={lang} onDismiss={dismissReaderTips} />
+      )}
 
       <QuranInstallExperience
         standalone={standalone}

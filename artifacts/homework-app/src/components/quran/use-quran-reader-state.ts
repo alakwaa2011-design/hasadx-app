@@ -101,7 +101,7 @@ export function useQuranReaderState(options: {
     refetch: refetchReaderState,
   } = useGetQuranReaderState({
     query: {
-      enabled: options.enabled && options.storage !== 'local',
+      enabled: options.enabled && options.storage !== 'local' && (!isOptional || syncEnabled),
       queryKey: getGetQuranReaderStateQueryKey(),
       staleTime: 60 * 1000,
       retry: false,
@@ -264,21 +264,25 @@ export function useQuranReaderState(options: {
           return next;
         });
         toast.success(lang === 'ar'
-          ? (isBookmarked ? 'تمت إزالة العلامة المرجعية' : 'تم حفظ العلامة المرجعية')
-          : (isBookmarked ? 'Bookmark removed' : 'Bookmark saved'));
+          ? `${isBookmarked ? 'تمت إزالة العلامة' : 'تمت إضافة علامة'} — السورة ${surahNumber}، الآية ${ayahNumber}`
+          : `${isBookmarked ? 'Bookmark removed' : 'Bookmark added'} — Surah ${surahNumber}, ayah ${ayahNumber}`);
         return;
       }
       try {
         if (isBookmarked) {
           await deleteBookmarkMutation.mutateAsync({ surahNumber, ayahNumber });
-          toast.success(lang === 'ar' ? 'تمت إزالة العلامة المرجعية' : 'Bookmark removed');
+          toast.success(lang === 'ar'
+            ? `تمت إزالة العلامة — السورة ${surahNumber}، الآية ${ayahNumber}`
+            : `Bookmark removed — Surah ${surahNumber}, ayah ${ayahNumber}`);
         } else {
           await addBookmarkMutation.mutateAsync({
             surahNumber,
             ayahNumber,
             data: { pageNumber }
           });
-          toast.success(lang === 'ar' ? 'تم حفظ العلامة المرجعية' : 'Bookmark saved');
+          toast.success(lang === 'ar'
+            ? `تمت إضافة علامة — السورة ${surahNumber}، الآية ${ayahNumber}`
+            : `Bookmark added — Surah ${surahNumber}, ayah ${ayahNumber}`);
         }
         await queryClient.invalidateQueries({ queryKey: getGetQuranReaderStateQueryKey() });
       } catch (err) {

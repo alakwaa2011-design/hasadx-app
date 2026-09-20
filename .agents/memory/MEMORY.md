@@ -135,6 +135,7 @@
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
 - [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait and landscape both stay interactive; short landscape uses one full-screen paper with height-sized QCF content.
+- [Quran continuous navigation](quran-continuous-navigation.md) — manual jumps in continuous mode must freeze scroll observation and reset scrollTop, or browser anchoring can cascade through pages.
 - [Quran safe-area testing](quran-safe-area-testing.md) — managed Chromium lacks CDP safe-area emulation; use the reader's CSS variable seam in browser tests.
 - [Quran E2E audio routing](quran-e2e-audio-routing.md) — block Service Workers in reader contexts or Playwright audio mocks may miss direct timing requests.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
