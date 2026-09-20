@@ -1151,6 +1151,363 @@ export function QuranPagesView({
     );
   }
 
+  const backButtonDesktop = !embedded && !standalone ? (
+    <button
+      type="button"
+      onClick={() => setLocation(backHref)}
+      className="hidden h-9 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:inline-flex"
+    >
+      <ChevronLeft className="h-4 w-4 rtl:hidden" />
+      <ChevronRight className="h-4 w-4 ltr:hidden" />
+      <span>
+        {backLabel
+          ? (lang === "ar" ? backLabel.ar : backLabel.en)
+          : (lang === "ar" ? "العودة" : "Back")}
+      </span>
+    </button>
+  ) : null;
+
+  const backButtonMobile = !embedded && !standalone ? (
+    <button
+      type="button"
+      onClick={() => setLocation(backHref)}
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:hidden"
+      aria-label={lang === "ar" ? "العودة" : "Back"}
+    >
+      <ChevronLeft className="h-4 w-4 rtl:hidden" />
+      <ChevronRight className="h-4 w-4 ltr:hidden" />
+    </button>
+  ) : null;
+
+  const exitEmbeddedButton = embedded && onExitEmbedded ? (
+    <button
+      type="button"
+      onClick={onExitEmbedded}
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:hidden"
+      aria-label={lang === "ar" ? "العودة" : "Back"}
+    >
+      <ChevronLeft className="h-4 w-4 rtl:hidden" />
+      <ChevronRight className="h-4 w-4 ltr:hidden" />
+    </button>
+  ) : null;
+
+  const syncButton = standalone && canSync ? (
+    <button
+      type="button"
+      disabled={isSyncing}
+      onClick={() => void handleStandaloneSyncToggle()}
+      className={cn(
+        "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors disabled:opacity-50",
+        syncEnabled
+          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
+          : "text-emerald-700 hover:bg-emerald-900/5 dark:text-emerald-400 dark:hover:bg-white/10",
+      )}
+      title={lang === "ar" ? "المزامنة" : "Sync"}
+    >
+      {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : syncEnabled ? <Cloud className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}
+      <span className="hidden sm:inline">
+        {lang === "ar" ? (syncEnabled ? "مزامنة مفعّلة" : "المزامنة") : (syncEnabled ? "Sync on" : "Sync")}
+      </span>
+    </button>
+  ) : null;
+
+  const surahSelect = (
+    <div className="relative flex h-full min-w-0 flex-1 items-center lg:flex-none">
+      <select
+        value={selectedSurah}
+        onChange={(event) => goToSurah(Number(event.target.value))}
+        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10 lg:text-sm"
+        aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
+        data-testid="select-surah"
+      >
+        {chapters.map((chapter) => (
+          <option key={chapter.id} value={chapter.id} className="bg-background text-foreground">
+            {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
+    </div>
+  );
+
+  const juzSelect = (
+    <div className="relative flex h-full min-w-0 flex-1 items-center lg:flex-none">
+      <select
+        value={activePageMeta?.part_id ?? FIRST_PAGE}
+        onChange={(event) => goToJuz(Number(event.target.value))}
+        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10 lg:text-sm"
+        aria-label={lang === "ar" ? "اختيار الجزء" : "Choose juz"}
+        data-testid="select-juz"
+      >
+        {parts.map((part) => (
+          <option key={part.id} value={part.id} className="bg-background text-foreground">
+            {lang === "ar" ? `الجزء ${part.id}` : `Juz ${part.id}`}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
+    </div>
+  );
+
+  const pageSelect = (
+    <div className="relative flex h-full min-w-0 flex-1 items-center lg:flex-none">
+      <select
+        value={activePage}
+        onChange={(event) => goToPage(Number(event.target.value))}
+        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10 lg:text-sm"
+        aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
+        data-testid="select-page"
+      >
+        {pages.map((page) => (
+          <option key={page.id} value={page.id} className="bg-background text-foreground">
+            {lang === "ar" ? `صفحة ${page.id}` : `Page ${page.id}`}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
+    </div>
+  );
+
+  const mobileSurahSelect = (
+    <div className="relative flex h-full min-w-0 flex-1 items-center">
+      <select
+        value={selectedSurah}
+        onChange={(event) => goToSurah(Number(event.target.value))}
+        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-5 ps-2 text-[11px] font-bold text-emerald-950 outline-none cursor-pointer dark:text-emerald-100"
+        aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
+        data-testid="select-mobile-surah"
+      >
+        {chapters.map((chapter) => (
+          <option key={chapter.id} value={chapter.id}>
+            {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute end-1 h-3 w-3 text-emerald-900/40 dark:text-emerald-100/40" />
+    </div>
+  );
+
+  const mobilePageSelect = (
+    <div className="relative flex h-full min-w-0 shrink-0 items-center">
+      <select
+        value={activePage}
+        onChange={(event) => goToPage(Number(event.target.value))}
+        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-5 ps-2 text-[11px] font-bold text-emerald-950 outline-none cursor-pointer dark:text-emerald-100"
+        aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
+        data-testid="select-mobile-page"
+      >
+        {pages.map((page) => (
+          <option key={page.id} value={page.id}>
+            {lang === "ar" ? `ص ${page.id}` : `p. ${page.id}`}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute end-1 h-3 w-3 text-emerald-900/40 dark:text-emerald-100/40" />
+    </div>
+  );
+
+  const layoutSelectDesktop = (
+    <div className="relative flex h-full flex-1 items-center">
+      <select
+        value={pageLayout}
+        onChange={(event) => changePageLayout(event.target.value as "spread" | "single" | "continuous")}
+        data-testid="select-page-layout"
+        className="h-full w-full appearance-none rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10"
+        aria-label={lang === "ar" ? "طريقة عرض الصفحات" : "Page layout"}
+      >
+        <option value="spread" className="bg-background text-foreground">{lang === "ar" ? "صفحتان" : "Spread"}</option>
+        <option value="single" className="bg-background text-foreground">{lang === "ar" ? "صفحة" : "Single"}</option>
+        <option value="continuous" className="bg-background text-foreground">{lang === "ar" ? "متصلة" : "Continuous"}</option>
+      </select>
+      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
+    </div>
+  );
+
+  const zoomControlsDesktop = (
+    <div className="flex h-full shrink-0 items-center gap-0.5 px-1">
+      <button
+        type="button"
+        onClick={() => adjustZoom(-10)}
+        disabled={zoom <= MIN_ZOOM}
+        data-testid="button-zoom-out"
+        className="grid h-7 w-7 place-items-center rounded text-emerald-800 transition-colors hover:bg-emerald-900/5 disabled:opacity-35 dark:text-emerald-300 dark:hover:bg-white/10"
+        aria-label={lang === "ar" ? "تصغير" : "Zoom out"}
+      >
+        <ZoomOut className="h-4 w-4" />
+      </button>
+      <span className="min-w-9 text-center text-[11px] font-bold text-emerald-950 dark:text-emerald-100">
+        {zoom}%
+      </span>
+      <button
+        type="button"
+        onClick={() => adjustZoom(10)}
+        disabled={zoom >= MAX_ZOOM}
+        data-testid="button-zoom-in"
+        className="grid h-7 w-7 place-items-center rounded text-emerald-800 transition-colors hover:bg-emerald-900/5 disabled:opacity-35 dark:text-emerald-300 dark:hover:bg-white/10"
+        aria-label={lang === "ar" ? "تكبير" : "Zoom in"}
+      >
+        <ZoomIn className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  const searchDialogWrapped = (
+    <div className="flex shrink-0 items-center">
+      <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
+    </div>
+  );
+
+  const copyDropdown = (
+    <div className="relative flex shrink-0">
+      <button
+        type="button"
+        onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); }}
+        data-testid="button-copy-actions"
+        className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+        aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}
+      >
+        {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+      </button>
+      {copyActionsOpen && (
+        <div className="absolute end-0 top-10 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95">
+          <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/10">
+            <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount} آيات` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
+          </button>
+          <button type="button" onClick={toggleMultiCopy}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 dark:hover:bg-white/10">
+            {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
+            {lang === "ar" ? (copyRange ? "إلغاء التحديد" : "تحديد آيات") : (copyRange ? "Cancel" : "Select ayahs")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const bookmarkDropdown = (canToggleCurrentBookmark || onOpenBookmarks) ? (
+    <div className="relative flex shrink-0">
+      <button
+        type="button"
+        onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); }}
+        data-testid="button-bookmark-actions"
+        className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+        aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}
+      >
+        <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
+      </button>
+      {bookmarkActionsOpen && (
+        <div className="absolute end-0 top-10 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95">
+          {canToggleCurrentBookmark && (
+            <button type="button" disabled={isMutatingBookmark}
+              onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/10">
+              <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
+              {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "حفظ العلامة") : (isCurrentBookmarked ? "Remove" : "Save")}
+            </button>
+          )}
+          {onOpenBookmarks && (
+            <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 dark:hover:bg-white/10">
+              <Bookmark className="h-4 w-4" />{lang === "ar" ? "كل العلامات" : "All bookmarks"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const quietModeButton = (
+    <button
+      type="button"
+      onClick={() => setQuietMode(true)}
+      data-testid="button-quiet-mode"
+      className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+      aria-label={lang === "ar" ? "وضع القراءة الهادئ" : "Quiet mode"}
+    >
+      <EyeOff className="h-4 w-4" />
+    </button>
+  );
+
+  const audioButtonMobile = !audioDockOpen ? (
+    <button
+      type="button"
+      onClick={openAudioControls}
+      data-testid="button-mobile-audio"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:hidden"
+      aria-label={lang === "ar" ? "التلاوة" : "Recitation"}
+    >
+      <Volume2 className="h-4.5 w-4.5" />
+    </button>
+  ) : null;
+
+  const recordPracticeButton = isIndependentPractice && !standalone ? (
+    <button
+      type="button"
+      onClick={() => void recordIndependentPractice()}
+      disabled={recordSession.isPending}
+      data-testid="button-record-practice"
+      className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-emerald-700 px-3 text-xs font-bold text-white transition-colors hover:bg-emerald-800 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700 lg:text-sm"
+    >
+      {lang === "ar" ? "تسجيل الجلسة" : "Record"}
+    </button>
+  ) : null;
+
+  const liveRecitationButton = !standalone && LIVE_RECITATION_ENABLED && isAdmin ? (
+    <button
+      type="button"
+      onClick={openLiveRecitation}
+      data-testid="button-live-recitation"
+      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white transition-colors hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 lg:text-sm"
+    >
+      <Mic2 className="h-4 w-4" />
+      <span className="hidden sm:inline">{lang === "ar" ? "تسميع مباشر" : "Live recitation"}</span>
+    </button>
+  ) : null;
+
+  const memoButton = (
+    <button
+      type="button"
+      onClick={toggleMemoSession}
+      data-testid="button-memo-session"
+      className={cn(
+        "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-3 text-xs font-bold transition-colors lg:text-sm",
+        guidedOpen
+          ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900/70"
+          : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
+      )}
+    >
+      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ" : "Memorize")}
+    </button>
+  );
+
+  const memoButtonMobile = (
+    <button
+      type="button"
+      onClick={toggleMemoSession}
+      data-testid="button-mobile-memo-session"
+      className={cn(
+        "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-2.5 text-xs font-bold transition-colors lg:hidden",
+        guidedOpen
+          ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900/70"
+          : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
+      )}
+    >
+      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ" : "Memorize")}
+    </button>
+  );
+
+  const layoutToggleButtonMobile = (
+    <button
+      type="button"
+      onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
+      data-testid="button-mobile-page-layout"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:hidden"
+      aria-label={pageLayout === "continuous" ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page") : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
+    >
+      {pageLayout === "continuous" ? <Rows3 className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
+    </button>
+  );
+
   return (
     <div
       className={cn(
@@ -1175,395 +1532,114 @@ export function QuranPagesView({
       )}
 
       {!quietMode && (
-        <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 shrink-0 rounded-b-2xl border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-[0_6px_20px_rgba(34,87,57,0.08)] backdrop-blur-xl transition-all duration-300 dark:bg-[#0a0c0b]/95 lg:rounded-none lg:shadow-sm">
-          <div className="flex flex-nowrap items-center justify-between gap-0.5 px-1 py-0.5 lg:flex-wrap lg:gap-3 lg:px-4 lg:py-3">
+        <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-sm backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-[#0a0c0b]/95">
+          {/* Desktop Toolbar */}
+          <div className="mx-auto hidden w-full max-w-[1400px] flex-row items-center justify-between gap-4 px-4 py-2 lg:flex">
+            {/* Left: System & Location */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {backButtonDesktop}
+                {syncButton}
+              </div>
 
-            {/* Back Navigation */}
-            {!embedded && !standalone && (
-              <button
-                type="button"
-                onClick={() => setLocation(backHref)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-emerald-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300 lg:h-auto lg:w-auto lg:justify-start lg:rounded-none lg:hover:bg-transparent"
-              >
-                <ChevronLeft className="h-5 w-5 rtl:hidden" />
-                <ChevronRight className="h-5 w-5 ltr:hidden" />
-                <span className="hidden lg:inline">
-                  {backLabel
-                    ? (lang === "ar" ? backLabel.ar : backLabel.en)
-                    : (lang === "ar" ? "العودة إلى إسلاميات حصاد" : "Back to Hasaad Islamic")}
-                </span>
-              </button>
-            )}
-            {standalone && canSync && (
-              <button
-                type="button"
-                disabled={isSyncing}
-                onClick={() => void handleStandaloneSyncToggle()}
-                className={cn(
-                  "flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold transition-colors disabled:opacity-50",
-                  syncEnabled
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                    : "bg-stone-100 text-stone-600 dark:bg-stone-900 dark:text-stone-300",
-                )}
-                aria-pressed={syncEnabled}
-                title={lang === "ar"
-                  ? (syncEnabled ? "إيقاف المزامنة بين الأجهزة" : "مزامنة العلامات والموضع والقارئ بين الأجهزة")
-                  : (syncEnabled ? "Turn off sync across devices" : "Sync bookmarks, position, and reciter across devices")}
-              >
-                {isSyncing
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : syncEnabled
-                    ? <Cloud className="h-4 w-4" />
-                    : <CloudOff className="h-4 w-4" />}
-                <span className="hidden sm:inline">
-                  {lang === "ar" ? (syncEnabled ? "المزامنة مفعّلة" : "تفعيل المزامنة") : (syncEnabled ? "Sync on" : "Turn on sync")}
-                </span>
-              </button>
-            )}
-            {embedded && onExitEmbedded && (
-              <button
-                type="button"
-                onClick={onExitEmbedded}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 lg:hidden dark:text-emerald-400 dark:hover:bg-emerald-950/50"
-                aria-label={lang === "ar" ? "العودة إلى أقسام إسلاميات حصاد" : "Back to Hasaad Islamic sections"}
-              >
-                <ChevronLeft className="h-5 w-5 rtl:hidden" />
-                <ChevronRight className="h-5 w-5 ltr:hidden" />
-              </button>
-            )}
-            {/* Mobile location shortcuts */}
-            <div className={cn(
-              "min-w-0 shrink-0 items-center gap-0.5 lg:hidden",
-              mobileToolsOpen ? "hidden" : "flex",
-            )}>
-              <label className="quran-reader-ui-label relative flex h-9 w-[4.25rem] min-w-0 items-center justify-between gap-0.5 rounded-xl border border-emerald-900/10 bg-white/55 px-1 text-emerald-950 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:active:bg-emerald-950/50">
-                <span className="min-w-0 truncate text-xs font-semibold">
-                  {chapters.find((chapter) => chapter.id === selectedSurah)?.name
-                    ? plainArabicSurahName(selectedSurah, chapters.find((chapter) => chapter.id === selectedSurah)!.name)
-                    : (lang === "ar" ? "المصحف" : "Mushaf")}
-                </span>
-                <ChevronDown className="h-3 w-3 shrink-0 opacity-45" />
-                <select
-                  value={selectedSurah}
-                  onChange={(event) => goToSurah(Number(event.target.value))}
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
-                  data-testid="select-mobile-surah"
-                >
-                  {chapters.map((chapter) => (
-                    <option key={chapter.id} value={chapter.id}>
-                      {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="quran-reader-ui-label relative flex h-9 shrink-0 items-center rounded-xl border border-emerald-900/10 bg-white/55 px-1.5 text-[11px] font-semibold text-emerald-900 transition-colors active:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100">
-                <span>{lang === "ar" ? `ص ${activePage}` : `p. ${activePage}`}</span>
-                <select
-                  value={activePage}
-                  onChange={(event) => goToPage(Number(event.target.value))}
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
-                  data-testid="select-mobile-page"
-                >
-                  {pages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {lang === "ar" ? `صفحة ${page.id}` : `Page ${page.id}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+                {surahSelect}
+                <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
+                {juzSelect}
+                <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
+                {pageSelect}
+              </div>
             </div>
 
-            {/* Mobile primary actions */}
-            <div className="flex shrink-0 items-center gap-0.5 lg:hidden">
-              {!mobileToolsOpen && (
-                <>
-                  {!audioDockOpen && (
-                    <button
-                      type="button"
-                      onClick={openAudioControls}
-                      data-testid="button-mobile-audio"
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 bg-emerald-50 text-emerald-800 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200"
-                      aria-label={lang === "ar" ? "فتح التلاوة واختيار القارئ" : "Open recitation and choose reciter"}
-                      title={lang === "ar" ? "فتح مشغل التلاوة واختيار القارئ" : "Open recitation player and choose reciter"}
-                    >
-                      <Volume2 className="h-4.5 w-4.5" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
-                    data-testid="button-mobile-page-layout"
-                    className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-900/10 bg-white/55 text-emerald-900 transition-colors hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-emerald-950/50"
-                    aria-label={pageLayout === "continuous"
-                      ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page")
-                      : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
-                    title={pageLayout === "continuous"
-                      ? (lang === "ar" ? "صفحة واحدة" : "Single page")
-                      : (lang === "ar" ? "صفحات متصلة" : "Continuous pages")}
-                  >
-                    {pageLayout === "continuous"
-                      ? <Rows3 className="h-4 w-4" />
-                      : <BookOpen className="h-4 w-4" />}
-                  </button>
-                  <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
-                  <button
-                    type="button"
-                    onClick={toggleMemoSession}
-                    data-testid="button-mobile-memo-session"
-                    className={cn(
-                      "quran-reader-ui-label flex h-9 items-center rounded-xl border border-emerald-900/10 px-1.5 text-[11px] font-semibold transition-colors",
-                      guidedOpen
-                        ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
-                        : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
-                    )}
-                    aria-label={guidedOpen
-                      ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization")
-                      : (lang === "ar" ? "ابدأ الحفظ" : "Start memorization")}
-                  >
-                    <span>{guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization") : (lang === "ar" ? "ابدأ الحفظ" : "Start memorizing")}</span>
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => setMobileToolsOpen((open) => !open)}
-                className={cn(
-                  "grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-900/10 transition-colors",
-                  mobileToolsOpen
-                    ? "bg-emerald-100 text-emerald-900"
-                    : "bg-white/55 text-emerald-900 dark:bg-white/5 dark:text-emerald-100"
-                )}
-                aria-expanded={mobileToolsOpen}
-                aria-label={lang === "ar" ? "المزيد من أدوات المصحف" : "More Mushaf tools"}
-              >
-                {mobileToolsOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-              </button>
-            </div>
-
-            {/* Expansion Area (Flex on Desktop, toggled on Mobile) */}
-            <div className={cn(
-              "w-full lg:w-auto flex-col lg:flex-row lg:flex-1 items-stretch lg:items-center justify-end gap-2 lg:gap-4",
-              mobileToolsOpen ? "flex" : "hidden lg:flex"
-            )}>
-              {/* 1. Location Selectors */}
-              <div className="flex items-center w-full lg:w-auto rounded-xl bg-muted/30 p-1 border border-border/40 shadow-sm">
-                <div className="relative flex min-w-0 flex-1 items-center lg:flex-none">
-                  <select
-                    value={selectedSurah}
-                    onChange={(event) => goToSurah(Number(event.target.value))}
-                    className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 lg:text-sm"
-                    aria-label={lang === "ar" ? "اختيار السورة" : "Choose surah"}
-                    data-testid="select-surah"
-                  >
-                    {chapters.map((chapter) => (
-                      <option key={chapter.id} value={chapter.id} className="bg-background">
-                        {chapter.id}. {lang === "ar" ? plainArabicSurahName(chapter.id, chapter.name) : chapter.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-
-                <div className="h-5 w-px shrink-0 bg-border/50" />
-
-                <div className="relative flex min-w-0 flex-1 items-center lg:flex-none">
-                  <select
-                    value={activePageMeta?.part_id ?? FIRST_PAGE}
-                    onChange={(event) => goToJuz(Number(event.target.value))}
-                    className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 lg:text-sm"
-                    aria-label={lang === "ar" ? "اختيار الجزء" : "Choose juz"}
-                    data-testid="select-juz"
-                  >
-                    {parts.map((part) => (
-                      <option key={part.id} value={part.id} className="bg-background">
-                        {lang === "ar" ? `الجزء ${part.id}` : `Juz ${part.id}`}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-muted-foreground" />
-                </div>
-
-                <div className="h-5 w-px shrink-0 bg-border/50" />
-
-                <div className="relative flex min-w-0 flex-1 items-center lg:flex-none">
-                  <select
-                    value={activePage}
-                    onChange={(event) => goToPage(Number(event.target.value))}
-                    className="w-full appearance-none truncate bg-transparent py-1.5 pe-8 ps-3 text-xs font-bold text-foreground outline-none hover:bg-black/5 cursor-pointer rounded-lg dark:hover:bg-white/5 lg:text-sm"
-                    aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
-                    data-testid="select-page"
-                  >
-                    {pages.map((page) => (
-                      <option key={page.id} value={page.id} className="bg-background">
-                        {lang === "ar" ? `صفحة ${page.id}` : `Page ${page.id}`}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-muted-foreground" />
-                </div>
+            {/* Right: Tools & Actions */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+                {layoutSelectDesktop}
+                <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
+                {zoomControlsDesktop}
               </div>
 
-              {/* 2. Practice/Memo Actions & View Toggle */}
-              <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:flex-nowrap">
-
-                {/* Practice / Memo */}
-                <div className="flex flex-1 items-center gap-2 lg:flex-none">
-                  {isIndependentPractice && !standalone && (
-                    <button
-                      type="button"
-                      onClick={() => void recordIndependentPractice()}
-                      disabled={recordSession.isPending}
-                      data-testid="button-record-practice"
-                      className="flex-1 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition-colors hover:bg-emerald-800 disabled:opacity-50 lg:flex-none lg:text-sm"
-                    >
-                      {lang === "ar" ? "تسجيل الجلسة" : "Record"}
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={toggleMemoSession}
-                    data-testid="button-memo-session"
-                    className={cn(
-                      "hidden rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors lg:flex lg:flex-none lg:text-sm",
-                      guidedOpen
-                        ? "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-100"
-                        : "border-border/60 bg-white text-foreground hover:bg-muted dark:bg-card"
-                    )}
-                  >
-                    {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
-                  </button>
-                  {!standalone && LIVE_RECITATION_ENABLED && isAdmin && (
-                    <button
-                      type="button"
-                      onClick={openLiveRecitation}
-                      data-testid="button-live-recitation"
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white shadow-sm transition-colors hover:bg-emerald-800 lg:flex-none lg:text-sm"
-                    >
-                      <Mic2 className="h-4 w-4" />
-                      {lang === "ar" ? "تسميع مباشر" : "Live recitation"}
-                    </button>
-                  )}
-                </div>
-
+              <div className="flex items-center gap-0.5">
+                {searchDialogWrapped}
+                {copyDropdown}
+                {bookmarkDropdown}
+                {quietModeButton}
               </div>
 
-              {/* 3. Tools Island */}
-              <div className="flex w-full items-center justify-center gap-1 rounded-xl border border-border/40 bg-muted/30 p-1 px-2 shadow-sm lg:w-auto">
-                <div className="hidden lg:block">
-                  <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
-                </div>
+              <div className="h-5 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
 
-                <div className="mx-1 h-5 w-px bg-border/50" />
-                <div className="relative">
-                  <button type="button" onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); }}
-                    data-testid="button-copy-actions" className="grid h-8 w-8 place-items-center rounded-lg text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200"
-                    aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}>
-                    {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </button>
-                  {copyActionsOpen && (
-                    <div className="absolute end-0 top-10 z-50 flex min-w-36 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl">
-                      <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
-                        <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount} آيات` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
-                      </button>
-                      <button type="button" onClick={toggleMultiCopy}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
-                        {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
-                        {lang === "ar" ? (copyRange ? "إلغاء التحديد" : "تحديد آيات") : (copyRange ? "Cancel" : "Select ayahs")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {(canToggleCurrentBookmark || onOpenBookmarks) && (
-                  <div className="relative">
-                    <button type="button" onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); }}
-                      data-testid="button-bookmark-actions" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}>
-                      <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current text-emerald-700")} />
-                    </button>
-                    {bookmarkActionsOpen && (
-                      <div className="absolute end-0 top-10 z-50 flex min-w-40 flex-col gap-1 rounded-xl border bg-background p-1.5 shadow-xl">
-                        {canToggleCurrentBookmark && (
-                          <button type="button" disabled={isMutatingBookmark}
-                            onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
-                            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted disabled:opacity-50">
-                            <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
-                            {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "حفظ العلامة") : (isCurrentBookmarked ? "Remove" : "Save")}
-                          </button>
-                        )}
-                        {onOpenBookmarks && (
-                          <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
-                            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold hover:bg-muted">
-                            <Bookmark className="h-4 w-4" />{lang === "ar" ? "كل العلامات" : "All bookmarks"}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="mx-1 h-5 w-px bg-border/50" />
-
-                <select
-                  value={pageLayout}
-                  onChange={(event) => changePageLayout(event.target.value as "spread" | "single" | "continuous")}
-                  data-testid="select-page-layout"
-                  aria-label={lang === "ar" ? "طريقة عرض الصفحات" : "Page layout"}
-                  className="h-8 rounded-lg bg-transparent px-2 text-xs font-bold text-muted-foreground outline-none hover:bg-muted hover:text-foreground"
-                >
-                  <option value="spread">{lang === "ar" ? "صفحتان" : "Spread"}</option>
-                  <option value="single">{lang === "ar" ? "صفحة واحدة" : "Single page"}</option>
-                  <option value="continuous">{lang === "ar" ? "متصلة" : "Continuous"}</option>
-                </select>
-
-                <div className="hidden items-center md:flex">
-                  <button
-                    type="button"
-                    onClick={() => adjustZoom(-10)}
-                    disabled={zoom <= MIN_ZOOM}
-                    data-testid="button-zoom-out"
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
-                    aria-label={lang === "ar" ? "تصغير الصفحة" : "Zoom out"}
-                  >
-                    <ZoomOut className="h-4 w-4" />
-                  </button>
-                  <span className="min-w-9 text-center text-xs font-bold text-muted-foreground">
-                    {zoom}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => adjustZoom(10)}
-                    disabled={zoom >= MAX_ZOOM}
-                    data-testid="button-zoom-in"
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-35"
-                    aria-label={lang === "ar" ? "تكبير الصفحة" : "Zoom in"}
-                  >
-                    <ZoomIn className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="mx-1 hidden h-5 w-px bg-border/50 md:block" />
-
-                <button
-                  type="button"
-                  onClick={() => setQuietMode(true)}
-                  data-testid="button-quiet-mode"
-                  className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex"
-                  aria-label={lang === "ar" ? "وضع القراءة الهادئ" : "Quiet mode"}
-                >
-                  <EyeOff className="h-4 w-4" />
-                </button>
+              <div className="flex items-center gap-2">
+                {recordPracticeButton}
+                {memoButton}
+                {liveRecitationButton}
               </div>
-
             </div>
           </div>
 
+          {/* Mobile Toolbar */}
+          <div className="flex w-full flex-col px-2 py-2 lg:hidden">
+            <div className="flex w-full items-center justify-between gap-1">
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                {exitEmbeddedButton || backButtonMobile}
+                <div className="flex h-9 min-w-0 flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+                  {mobileSurahSelect}
+                  <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
+                  {mobilePageSelect}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-0.5">
+                {audioButtonMobile}
+                {layoutToggleButtonMobile}
+                {searchDialogWrapped}
+                {memoButtonMobile}
+                <button
+                  type="button"
+                  onClick={() => setMobileToolsOpen((open) => !open)}
+                  className={cn(
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors",
+                    mobileToolsOpen
+                      ? "bg-emerald-900/10 text-emerald-950 dark:bg-white/10 dark:text-emerald-100"
+                      : "text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+                  )}
+                  aria-expanded={mobileToolsOpen}
+                  aria-label={lang === "ar" ? "المزيد من أدوات المصحف" : "More Mushaf tools"}
+                >
+                  {mobileToolsOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Expanded Area */}
+            {mobileToolsOpen && (
+              <div className="mt-2 flex flex-col gap-2 rounded-xl border border-emerald-900/10 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/50">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex h-9 w-32 shrink-0 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+                    {juzSelect}
+                  </div>
+                  <div className="flex h-9 min-w-[120px] flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+                    {layoutSelectDesktop}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-emerald-900/10 pt-2 dark:border-white/10">
+                  <div className="flex items-center gap-1">
+                    {copyDropdown}
+                    {bookmarkDropdown}
+                    {quietModeButton}
+                    {syncButton}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {recordPracticeButton}
+                    {liveRecitationButton}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {startAyah !== null && endAyah !== null && (
-            <div className="border-y border-emerald-200/50 bg-emerald-50 px-2 py-1 text-center text-xs font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100 md:px-4 md:py-2 md:text-sm">
+            <div className="border-y border-emerald-200/50 bg-emerald-50 px-2 py-1 text-center text-[11px] font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100 md:px-4 md:py-2 md:text-sm">
               {lang === "ar"
                 ? `مهمة ${mode === "memorization" ? "حفظ" : "مراجعة"}: الآيات ${startAyah} إلى ${endAyah}`
                 : `${mode === "memorization" ? "Memorization" : "Review"} task: ayahs ${startAyah}–${endAyah}`}
