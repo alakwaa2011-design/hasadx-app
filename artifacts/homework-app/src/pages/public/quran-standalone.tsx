@@ -52,6 +52,34 @@ export function PublicQuranStandalone() {
     window.localStorage.setItem(STANDALONE_QURAN_SYNC_KEY, "false");
     setSyncRequested(false);
   }, [isSyncedStateError, syncRequested, syncedStateError]);
+  useEffect(() => {
+    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+    const appleIcon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const previous = {
+      manifest: manifest?.getAttribute("href"),
+      appleTitle: appleTitle?.getAttribute("content"),
+      appleIcon: appleIcon?.getAttribute("href"),
+      favicon: favicon?.getAttribute("href"),
+      themeColor: themeColor?.getAttribute("content"),
+    };
+
+    manifest?.setAttribute("href", "/quran-manifest.json");
+    appleTitle?.setAttribute("content", "مصحف حصاد");
+    appleIcon?.setAttribute("href", "/icons/quran-hasaad-180.png");
+    favicon?.setAttribute("href", "/icons/quran-hasaad-192.png");
+    themeColor?.setAttribute("content", "#123D2E");
+
+    return () => {
+      if (previous.manifest) manifest?.setAttribute("href", previous.manifest);
+      if (previous.appleTitle) appleTitle?.setAttribute("content", previous.appleTitle);
+      if (previous.appleIcon) appleIcon?.setAttribute("href", previous.appleIcon);
+      if (previous.favicon) favicon?.setAttribute("href", previous.favicon);
+      if (previous.themeColor) themeColor?.setAttribute("content", previous.themeColor);
+    };
+  }, []);
   const initialPosition = resolveStandaloneReaderPosition(
     syncRequested,
     savedState.position,
@@ -89,7 +117,7 @@ export function PublicQuranStandalone() {
     setLocation(`/quran/${nav.surah}?${newParams.toString()}`, { replace: true });
   }, [setLocation]);
 
-  const title = lang === "ar" ? "المصحف الشريف" : "The Noble Quran";
+  const title = lang === "ar" ? "مصحف حصاد" : "Hasaad Quran";
   const description = lang === "ar" 
     ? "المصحف الشريف للقراءة والاستماع. تجربة قراءة مريحة بدون تشتيت." 
     : "The Noble Quran for reading and listening. A comfortable, distraction-free reading experience.";

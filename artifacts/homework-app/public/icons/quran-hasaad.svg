@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">مصحف حصاد</title>
+  <rect width="512" height="512" rx="112" fill="#123D2E"/>
+  <path d="M256 64C171 64 101 133 101 219v197c0 18 14 32 32 32h246c18 0 32-14 32-32V219C411 133 341 64 256 64Z" fill="#1E5A43"/>
+  <path d="M256 86c-70 0-127 57-127 127v205h254V213c0-70-57-127-127-127Z" fill="#F8F1DF"/>
+  <path d="M256 86c-38 0-74 17-98 47 25-14 57-22 98-22s73 8 98 22c-24-30-60-47-98-47Z" fill="#D7B866"/>
+  <path d="M151 190c36-17 70-17 105 3v173c-34-20-69-21-105-4V190Z" fill="#FFFDF7"/>
+  <path d="M361 190c-36-17-70-17-105 3v173c34-20 69-21 105-4V190Z" fill="#FFF9EA"/>
+  <path d="M256 193v173" fill="none" stroke="#D7B866" stroke-width="8" stroke-linecap="round"/>
+  <path d="M172 226c22-7 42-5 62 4M172 259c22-7 42-5 62 4M172 292c22-7 42-5 62 4M278 230c20-9 40-11 62-4M278 263c20-9 40-11 62-4M278 296c20-9 40-11 62-4" fill="none" stroke="#1E5A43" stroke-width="7" stroke-linecap="round" opacity=".78"/>
+  <path d="M243 363h26v70l-13-10-13 10v-70Z" fill="#D7B866"/>
+  <path d="M130 418h252" fill="none" stroke="#D7B866" stroke-width="10" stroke-linecap="round"/>
+</svg>
