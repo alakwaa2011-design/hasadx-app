@@ -37,6 +37,7 @@ import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { seedStaticArenaIfNeeded } from "./seedStaticArena";
 import { startPasswordResetCleanupJob } from "./lib/password-reset-cleanup";
 import { startLibraryOrphanSweepJob } from "./lib/library-orphan-sweep";
+import { startLegacyLibraryMigrationJob } from "./lib/library-legacy-migration";
 import { startActivityLogsCleanupJob } from "./lib/activity-logger";
 import { startOnlineSessionsCleanupJob } from "./lib/analytics";
 import { XP_MIGRATION_SQL } from "@workspace/db";
@@ -52,6 +53,31 @@ import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 
 async function runSchemaMigrations() {
   try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS teacher_library_object_migrations (
+        file_id INTEGER PRIMARY KEY,
+        teacher_id INTEGER NOT NULL,
+        source_path TEXT NOT NULL,
+        target_path TEXT,
+        source_generation TEXT,
+        state TEXT NOT NULL DEFAULT 'pending'
+          CHECK (state IN ('pending', 'copied', 'committed')),
+        cleaned_at TIMESTAMPTZ,
+        blocked_at TIMESTAMPTZ,
+        attempt_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE teacher_library_object_migrations
+        ADD COLUMN IF NOT EXISTS blocked_at TIMESTAMPTZ;
+      ALTER TABLE teacher_library_object_migrations
+        ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE teacher_library_object_migrations
+        ADD COLUMN IF NOT EXISTS last_error TEXT;
+      CREATE INDEX IF NOT EXISTS teacher_library_object_migrations_cleanup_idx
+        ON teacher_library_object_migrations(cleaned_at, file_id);
+    `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS submission_images (
         id SERIAL PRIMARY KEY,
@@ -2592,6 +2618,7 @@ httpServer.listen(port, () => {
       setKidsReady(true);
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
+      startLegacyLibraryMigrationJob();
       startActivityLogsCleanupJob();
       startOnlineSessionsCleanupJob();
       startEmailOutboxWorker();

@@ -337,6 +337,83 @@ export class ObjectStorageService {
     return files;
   }
 
+  async copyObjectEntityToOwner(
+    sourcePath: string,
+    ownerPrefix: string,
+    stableName: string,
+    expectedSourceGeneration?: string,
+  ): Promise<{ objectPath: string; sourceGeneration: string }> {
+    const normalizedPrefix = ownerPrefix.replace(/^\/+|\/+$/g, "");
+    if (!normalizedPrefix || !/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(normalizedPrefix)) {
+      throw new Error("Invalid object owner prefix");
+    }
+    if (!/^[A-Za-z0-9_-]+$/.test(stableName)) {
+      throw new Error("Invalid stable object name");
+    }
+
+    const source = await this.getObjectEntityFile(sourcePath);
+    const [sourceMetadata] = await source.getMetadata();
+    const sourceGeneration = String(sourceMetadata.generation || "");
+    if (!sourceGeneration) throw new Error("INVALID_SOURCE_GENERATION");
+    if (
+      expectedSourceGeneration !== undefined &&
+      sourceGeneration !== expectedSourceGeneration
+    ) {
+      throw new Error("MIGRATION_SOURCE_GENERATION_CHANGED");
+    }
+    const pinnedSource = source.bucket.file(source.name, {
+      generation: sourceGeneration,
+    });
+
+    let dir = this.getPrivateObjectDir();
+    if (!dir.endsWith("/")) dir = `${dir}/`;
+    const { bucketName, objectName } = parseObjectPath(
+      `${dir}uploads/${normalizedPrefix}/${stableName}`,
+    );
+    const destination = objectStorageClient.bucket(bucketName).file(objectName);
+    const [destinationExists] = await destination.exists();
+    if (!destinationExists) {
+      await pinnedSource.copy(destination, {
+        preconditionOpts: { ifGenerationMatch: 0 },
+        metadata: {
+          libraryMigrationSourcePath: sourcePath,
+          libraryMigrationSourceGeneration: sourceGeneration,
+        },
+      });
+    } else {
+      const [destinationMetadata] = await destination.getMetadata();
+      const custom = (destinationMetadata.metadata || {}) as Record<string, string>;
+      if (
+        custom.libraryMigrationSourcePath !== sourcePath ||
+        custom.libraryMigrationSourceGeneration !== sourceGeneration
+      ) {
+        throw new Error("MIGRATION_DESTINATION_CONFLICT");
+      }
+    }
+
+    return {
+      objectPath: this.toNormalizedObjectPath(destination),
+      sourceGeneration,
+    };
+  }
+
+  async deleteObjectEntityGeneration(
+    objectPath: string,
+    generation: string,
+  ): Promise<boolean> {
+    try {
+      const file = await this.getObjectEntityFile(objectPath);
+      await file.delete({
+        ignoreNotFound: true,
+        ifGenerationMatch: Number(generation),
+      });
+      return true;
+    } catch (err) {
+      if (err instanceof ObjectNotFoundError) return false;
+      throw err;
+    }
+  }
+
   toNormalizedObjectPath(file: File): string {
     return this.normalizeObjectEntityPath(
       `https://storage.googleapis.com/${file.bucket.name}/${file.name}`,
