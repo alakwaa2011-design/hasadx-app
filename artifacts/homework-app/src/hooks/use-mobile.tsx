@@ -4,9 +4,16 @@ const MOBILE_BREAKPOINT = 768
 const LG_BREAKPOINT = 1024
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    return window.innerWidth < MOBILE_BREAKPOINT
+  })
 
   React.useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+      return
+    }
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
     const onChange = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
@@ -16,7 +23,7 @@ export function useIsMobile() {
     return () => mql.removeEventListener("change", onChange)
   }, [])
 
-  return !!isMobile
+  return isMobile
 }
 
 /* True for mobile + tablet (under Tailwind's `lg` breakpoint).

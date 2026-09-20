@@ -35,6 +35,7 @@ import {
   getGetCurrentTeacherQueryKey,
   useGetCurrentTeacher,
   useGetQuranSurahContent,
+  getQuranSurahContent,
   useRecordMyQuranIndependentSession,
   useUpdateMyQuranIndependentPosition,
 } from "@workspace/api-client-react";
@@ -49,6 +50,7 @@ import {
   type GuidedMemorizationStage,
 } from "@/components/quran/quran-guided-memorization-panel";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
+import { QuranAyahActionSurface } from "@/components/quran/quran-ayah-action-surface";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
@@ -241,6 +243,7 @@ export function QuranPagesView({
   } | null>(null);
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
+  const [ayahActionVerseKey, setAyahActionVerseKey] = useState<string | null>(null);
   const { playWord, stopWordAudio } = useQuranWordAudio();
   const [installManualOpen, setInstallManualOpen] = useState(false);
   const { platform, isInstallable } = useQuranInstall();
@@ -1191,6 +1194,9 @@ export function QuranPagesView({
             isAyahConcealed={(chapterId, verseNumber, wordPosition) =>
               isAyahConcealed(chapterId, verseNumber, playingAyahNum, wordPosition)
             }
+            onVerseAction={(verseKey) => {
+              setAyahActionVerseKey(verseKey);
+            }}
             onVerseClick={(selection) => {
                const verseKey = selection.verseKey;
                const chapterId = Number(verseKey.split(":")[0]);
@@ -1544,6 +1550,19 @@ export function QuranPagesView({
     </button>
   ) : null;
 
+  const audioButtonDesktop = !audioDockOpen ? (
+    <button
+      type="button"
+      onClick={openAudioControls}
+      data-testid="button-desktop-audio"
+      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+      aria-label={lang === "ar" ? "فتح مشغل التلاوة" : "Open recitation player"}
+    >
+      <Volume2 className="h-4 w-4" />
+      <span>{lang === "ar" ? "التلاوة" : "Recitation"}</span>
+    </button>
+  ) : null;
+
   const recordPracticeButton = isIndependentPractice && !standalone ? (
     <button
       type="button"
@@ -1674,6 +1693,7 @@ export function QuranPagesView({
               <div className="h-5 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
 
               <div className="flex items-center gap-2">
+                {audioButtonDesktop}
                 {recordPracticeButton}
                 {memoButton}
                 {liveRecitationButton}
@@ -2055,6 +2075,75 @@ export function QuranPagesView({
           setIsPlaying(true);
           if (nextVerse.page_id !== activePage) goToPage(nextVerse.page_id);
           toast.success(lang === "ar" ? "ننتقل إلى الآية التالية" : "Moving to the next ayah");
+        }}
+      />
+
+      <QuranAyahActionSurface
+        open={ayahActionVerseKey !== null}
+        onOpenChange={(open) => {
+          if (!open) setAyahActionVerseKey(null);
+        }}
+        verseKey={ayahActionVerseKey || "1:1"}
+        isBookmarked={ayahActionVerseKey ? bookmarksMap.has(ayahActionVerseKey) : false}
+        onPlay={() => {
+          if (!ayahActionVerseKey) return;
+          setSelectedVerseKey(ayahActionVerseKey);
+          setEducationSelection(null);
+          setAudioDockOpen(true);
+          audioRef.current?.pause();
+          setPlayingVerseKey(ayahActionVerseKey);
+          setIsPlaying(true);
+        }}
+        onCopy={async () => {
+          if (!ayahActionVerseKey) return;
+          const [chapterId, verseNumber] = ayahActionVerseKey.split(":").map(Number);
+          try {
+            const content = await queryClient.fetchQuery({
+              queryKey: getGetQuranSurahContentQueryKey(chapterId),
+              queryFn: () => getQuranSurahContent(chapterId)
+            });
+            const ayah = content?.ayahs?.find((a: any) => a.index === verseNumber);
+            if (!ayah) return;
+            const ayahStrNumber = String(ayah.index).replace(
+              /\d/g,
+              (digit) => "٠١٢٣٤٥٦٧٨٩"[Number(digit)],
+            );
+            const copiedText = `${ayah.text} ﴿${ayahStrNumber}﴾`;
+            await navigator.clipboard.writeText(copiedText);
+            setCopiedVerseKey(ayahActionVerseKey);
+            toast.success(lang === "ar" ? "تم نسخ الآية" : "Ayah copied");
+            window.setTimeout(
+              () => setCopiedVerseKey((current) => current === ayahActionVerseKey ? null : current),
+              1800,
+            );
+          } catch (e) {
+            toast.error(lang === "ar" ? "تعذر نسخ الآية" : "Could not copy ayah");
+          }
+        }}
+        onMultiCopy={() => {
+          if (!ayahActionVerseKey) return;
+          const [chapterId, verseNumber] = ayahActionVerseKey.split(":").map(Number);
+          setSelectedVerseKey(ayahActionVerseKey);
+          setCopyRange({ surah: chapterId, startAyah: verseNumber, endAyah: verseNumber });
+          toast.info(lang === "ar" ? "اضغط الآن على الآية الأخيرة" : "Now tap the last ayah");
+        }}
+        onBookmark={() => {
+          if (!ayahActionVerseKey) return;
+          const [chapterId, verseNumber] = ayahActionVerseKey.split(":").map(Number);
+          const pageId = verses.find(v => v.chapter_id === chapterId && v.number === verseNumber)?.page_id ?? activePage;
+          toggleBookmark(chapterId, verseNumber, pageId, bookmarksMap.has(ayahActionVerseKey));
+        }}
+        onTafsir={() => {
+          if (!ayahActionVerseKey) return;
+          setSelectedVerseKey(ayahActionVerseKey);
+          setEducationSelection({
+            verseKey: ayahActionVerseKey,
+            wordId: null,
+            wordPosition: null,
+            wordText: null,
+          });
+          setEducationHidden(false);
+          window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
         }}
       />
 

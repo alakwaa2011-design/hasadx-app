@@ -141,3 +141,4 @@
 - [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.
 - [Shared upload cleanup scope](shared-upload-cleanup-scope.md) — cleanup jobs must enumerate only their own namespace; table references cannot prove ownership of every object under shared uploads.
+- [Quran ayah action ergonomics](quran-ayah-action-ergonomics.md) — ayah-number tap and long-press share one action surface; reciter and repeat controls stay directly visible in the player.

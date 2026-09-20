@@ -1058,35 +1058,6 @@ export function QuranAudioPlayer({
                  </div>
                </div>
 
-               {!memoSession?.isActive && (
-                 <div className="flex items-center justify-between gap-3">
-                   <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
-                     <Repeat className="w-4 h-4" />
-                     <span>{isArabic ? 'التكرار' : 'Repeat'}</span>
-                   </div>
-                   <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
-                     {REPEATS.map(r => (
-                       <button
-                         key={r}
-                         data-testid={`button-repeat-${r}`}
-                         onClick={() => {
-                           isEndedHandledRef.current = false;
-                           setRepeat(r);
-                           setCurrentAyahPlayCount(1);
-                           setCurrentRangePlayCount(1);
-                         }}
-                         className={cn(
-                            "min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all",
-                           repeat === r ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground"
-                         )}
-                       >
-                         {r}x
-                       </button>
-                     ))}
-                   </div>
-                 </div>
-               )}
-
                 {memoSession && onMemoSessionChange && !guidedMemorizationActive && (
                   <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
                     <div className="flex items-center justify-between gap-3">
@@ -1426,7 +1397,15 @@ export function QuranAudioPlayer({
                   </button>
                </div>
             ) : (
-               <div className="flex items-center gap-2 mt-0.5 text-[10px] md:text-xs font-semibold text-muted-foreground">
+               <button
+                 type="button"
+                 data-testid="button-current-reciter"
+                 onClick={() => {
+                   setActiveTab('settings');
+                   void reciterCatalog.refetch();
+                 }}
+                 className="flex items-center gap-2 mt-0.5 text-[10px] md:text-xs font-semibold text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+               >
                  <span className="truncate max-w-[120px] sm:max-w-[200px]">
                    {reciterCatalog.isLoading
                      ? (isArabic ? 'تحميل...' : 'Loading...')
@@ -1453,7 +1432,7 @@ export function QuranAudioPlayer({
                      </span>
                    </>
                  )}
-               </div>
+               </button>
             )}
           </div>
         </div>
@@ -1485,6 +1464,28 @@ export function QuranAudioPlayer({
               aria-label={isArabic ? 'إظهار التفسير' : 'Show tafsir'}
             >
               {isArabic ? 'تفسير' : 'Tafsir'}
+            </button>
+          )}
+          {!memoSession?.isActive && (
+            <button
+              data-testid="button-audio-repeat"
+              onClick={() => {
+                const currentIndex = REPEATS.indexOf(repeat);
+                const nextIndex = (currentIndex + 1) % REPEATS.length;
+                const nextRepeat = REPEATS[nextIndex];
+                isEndedHandledRef.current = false;
+                setRepeat(nextRepeat);
+                setCurrentAyahPlayCount(1);
+                setCurrentRangePlayCount(1);
+              }}
+              aria-label={isArabic ? 'تكرار الآية' : 'Repeat ayah'}
+              className={cn(
+                "flex h-10 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:text-xs",
+                repeat > 1 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "hover:bg-muted text-muted-foreground"
+              )}
+            >
+              <Repeat className="h-4 w-4" />
+              <span className="inline" dir="ltr">{repeat}x</span>
             </button>
           )}
           <button

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useGetQuranMadaniPage, getGetQuranMadaniPageQueryKey } from "@workspace/api-client-react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ interface QuranMadaniPageRendererProps {
     wordPosition: number | null;
     wordText: string | null;
   }) => void;
+  onVerseAction?: (verseKey: string) => void;
 }
 
 export function QuranMadaniPageRenderer({
@@ -39,9 +40,23 @@ export function QuranMadaniPageRenderer({
   playingWordPosition,
   isAyahConcealed,
   onVerseClick,
+  onVerseAction,
 }: QuranMadaniPageRendererProps) {
   const { lang } = useI18n();
   const [fontState, setFontState] = useState<"loading" | "ready" | "error">("loading");
+
+  // Custom long press tracking
+  const longPressTimeoutRef = useRef<number | null>(null);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const isLongPressRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimeoutRef.current !== null) {
+        window.clearTimeout(longPressTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const { data, isLoading, isError } = useGetQuranMadaniPage(pageNumber, {
     query: {
@@ -268,12 +283,60 @@ export function QuranMadaniPageRenderer({
                         : `${w.text}, ayah ${w.verseKey.split(":")[1]}`
                     }
                     aria-pressed={Boolean(isSelected || isInSelectedRange || isPlaying)}
-                    onClick={() => onVerseClick?.({
-                      verseKey: w.verseKey,
-                      wordId: w.type === "word" ? w.id : null,
-                      wordPosition: w.type === "word" ? w.position : null,
-                      wordText: w.type === "word" ? w.text : null,
-                    })}
+                    onPointerDown={(e) => {
+                      if (e.pointerType === "mouse" && e.button !== 0) return;
+                      startPosRef.current = { x: e.clientX, y: e.clientY };
+                      isLongPressRef.current = false;
+                      if (longPressTimeoutRef.current !== null) {
+                        window.clearTimeout(longPressTimeoutRef.current);
+                      }
+                      longPressTimeoutRef.current = window.setTimeout(() => {
+                        longPressTimeoutRef.current = null;
+                        isLongPressRef.current = true;
+                        onVerseAction?.(w.verseKey);
+                      }, 400);
+                    }}
+                    onPointerMove={(e) => {
+                      if (longPressTimeoutRef.current !== null) {
+                        if (
+                          Math.abs(e.clientX - startPosRef.current.x) > 10 ||
+                          Math.abs(e.clientY - startPosRef.current.y) > 10
+                        ) {
+                          window.clearTimeout(longPressTimeoutRef.current);
+                          longPressTimeoutRef.current = null;
+                        }
+                      }
+                    }}
+                    onPointerUp={() => {
+                      if (longPressTimeoutRef.current !== null) {
+                        window.clearTimeout(longPressTimeoutRef.current);
+                        longPressTimeoutRef.current = null;
+                      }
+                    }}
+                    onPointerCancel={() => {
+                      if (longPressTimeoutRef.current !== null) {
+                        window.clearTimeout(longPressTimeoutRef.current);
+                        longPressTimeoutRef.current = null;
+                      }
+                    }}
+                    onClick={(e) => {
+                      if (isLongPressRef.current) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        isLongPressRef.current = false;
+                        return;
+                      }
+                      if (w.type === "end") {
+                        onVerseAction?.(w.verseKey);
+                        return;
+                      }
+                      onVerseClick?.({
+                        verseKey: w.verseKey,
+                        wordId: w.type === "word" ? w.id : null,
+                        wordPosition: w.type === "word" ? w.position : null,
+                        wordText: w.type === "word" ? w.text : null,
+                      });
+                    }}
                     type="button"
                     className={cn(
                       "relative m-0 inline-block whitespace-nowrap cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
