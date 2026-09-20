@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { Volume2, VolumeX, ChevronDown, ChevronUp, Rocket, Users } from "lucide-react";
 import { NORMAL_AVATARS as AVATARS, DEFAULT_AVATAR } from "@/lib/avatars";
+import { AvatarDisplay } from "@/components/avatar-display";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -384,7 +385,7 @@ export default function RocketJoin() {
                 }}
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>
-                  <span style={{ fontSize: 28 }}>{avatar}</span>
+                  <AvatarDisplay avatar={avatar} size="lg" fallback={avatar} />
                   <span style={{ fontSize: 13 }}>{ar ? "اختر الأفاتار" : "Choose avatar"}</span>
                 </span>
                 {avatarPickerOpen ? <ChevronUp size={18} color="rgba(255,255,255,0.6)" /> : <ChevronDown size={18} color="rgba(255,255,255,0.6)" />}
@@ -411,9 +412,10 @@ export default function RocketJoin() {
                           key={a}
                           type="button"
                           onClick={() => { setAvatar(a); setAvatarPickerOpen(false); }}
+                          aria-label={ar ? "اختيار هذا الأفاتار" : "Choose this avatar"}
                           style={{
-                            fontSize: 22,
-                            padding: "8px 0",
+                            minHeight: 54,
+                            padding: 6,
                             borderRadius: 10,
                             border: avatar === a ? `2px solid ${GOLD}` : "2px solid transparent",
                             background: avatar === a ? `${GOLD}28` : "rgba(255,255,255,0.06)",
@@ -421,7 +423,12 @@ export default function RocketJoin() {
                             cursor: "pointer",
                           }}
                         >
-                          {a}
+                          <img
+                            src={a}
+                            alt=""
+                            loading="lazy"
+                            style={{ width: 38, height: 38, display: "block", margin: "0 auto", objectFit: "cover", borderRadius: 8 }}
+                          />
                         </button>
                       ))}
                     </div>

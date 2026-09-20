@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 import { QuestionImage } from "@/components/game/question-image";
+import { AvatarDisplay } from "@/components/avatar-display";
 
 const GOLD = "#D9A521";
 const CYAN = "#54d8ff";
@@ -1282,7 +1283,7 @@ function HorizontalRocketLanesStrip({
               <span style={{ opacity: 0.9 }}>#{idx + 1}</span>
               {medals ? <span aria-hidden>{medals}</span> : null}
               {variant === "mobile"
-                ? <span style={{ fontSize: 12 }} aria-hidden>{p.avatar}</span>
+                ? <AvatarDisplay avatar={p.avatar} size="sm" fallback={p.avatar} />
                 : (
                   <span style={{
                     overflow: "hidden",
@@ -2314,7 +2315,7 @@ export default function RocketPlay() {
                   color: "#fff", fontSize: 13, fontWeight: 700,
                 }}
               >
-                <span>{p.avatar}</span>
+                <AvatarDisplay avatar={p.avatar} size="md" fallback={p.avatar} />
                 <span>{p.name}</span>
                 {p.name === queryName && <span style={{ color: GOLD, fontSize: 11 }}>({ar ? "أنت" : "you"})</span>}
               </motion.div>
@@ -2540,7 +2541,8 @@ export default function RocketPlay() {
                           {rankEmoji}
                         </span>
                         <span style={{ fontSize: 9, color: isMe ? GOLD : "rgba(255,255,255,0.6)", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {p.avatar} {p.name}
+                          <AvatarDisplay avatar={p.avatar} size="xs" fallback={p.avatar} />
+                          {p.name}
                         </span>
                         {pOrbit > 0 && (
                           <span style={{ fontSize: 7, color: "#88ffee", fontWeight: 900 }}>🌀{pOrbit}</span>
@@ -2695,7 +2697,8 @@ export default function RocketPlay() {
                             maxWidth: compact ? 72 : 80, overflow: "hidden", textOverflow: "ellipsis",
                             border: isMe ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
                           }}>
-                            #{idx + 1}{lanes > 1 ? " " : ""}{rankEmoji}{p.avatar} {p.name}
+                            #{idx + 1}{lanes > 1 ? " " : ""}{rankEmoji}{" "}
+                            <AvatarDisplay avatar={p.avatar} size="xs" fallback={p.avatar} /> {p.name}
                           </span>
                           {pOrbit > 0 && (
                             <span style={{ fontSize: 8, fontWeight: 900, color: "#88ffee", background: "rgba(0,200,180,0.25)", padding: "1px 5px", borderRadius: 999, border: "1px solid rgba(0,200,180,0.4)" }}>
@@ -3316,7 +3319,7 @@ function FinishedScreen({
                     transition={{ repeat: Infinity, duration: 2.2, delay: podIdx * 0.3 }}
                     style={{ fontSize: rank === 1 ? 30 : 24, position: "relative", filter: `drop-shadow(0 3px 8px rgba(0,0,0,0.5))` }}
                   >
-                    {p.avatar}
+                    <AvatarDisplay avatar={p.avatar} size={rank === 1 ? "xl" : "lg"} fallback={p.avatar} />
                   </motion.span>
                   <p style={{ color: "#fff", fontWeight: 800, fontSize: rank === 1 ? 14 : 12, margin: "4px 0 2px", textAlign: "center", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", position: "relative", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                     {p.name}
@@ -3391,7 +3394,7 @@ function FinishedScreen({
                 }}>
                   {rankMedal || idx + 1}
                 </span>
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{p.avatar}</span>
+                <AvatarDisplay avatar={p.avatar} size="md" fallback={p.avatar} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>

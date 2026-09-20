@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 import { QuestionImage } from "@/components/game/question-image";
+import { AvatarDisplay } from "@/components/avatar-display";
 
 const GREEN = "#225739";
 const GOLD = "#D9A521";
@@ -563,7 +564,7 @@ export default function RocketHost() {
                     display: "flex", alignItems: "center", gap: 8,
                   }}
                 >
-                  <span style={{ fontSize: 22 }}>{p.avatar}</span>
+                  <AvatarDisplay avatar={p.avatar} size="lg" fallback={p.avatar} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{
                       margin: 0, color: "#fff", fontSize: 13, fontWeight: 700,
@@ -719,7 +720,8 @@ export default function RocketHost() {
                         whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis",
                         display: "inline-flex", alignItems: "center", gap: 4,
                       }}>
-                        {p.avatar} {p.name}
+                        <AvatarDisplay avatar={p.avatar} size="xs" fallback={p.avatar} />
+                        {p.name}
                         {powerBadgeCount > 0 && <span style={{ color: GOLD, fontWeight: 900 }}>⚡{powerBadgeCount}</span>}
                         {p.finished && p.finishRank ? ` 🏆${p.finishRank}` : ""}
                       </span>
@@ -774,7 +776,7 @@ export default function RocketHost() {
                     }}>
                       {idx + 1}
                     </span>
-                    <span style={{ fontSize: 20 }}>{p.avatar}</span>
+                    <AvatarDisplay avatar={p.avatar} size="md" fallback={p.avatar} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {p.name}
@@ -867,7 +869,7 @@ export default function RocketHost() {
                   }}>
                     {idx + 1}
                   </span>
-                  <span style={{ fontSize: 28 }}>{p.avatar}</span>
+                  <AvatarDisplay avatar={p.avatar} size="xl" fallback={p.avatar} />
                   <div style={{ flex: 1 }}>
                     <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 16 }}>{p.name}</p>
                     <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
