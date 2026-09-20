@@ -25,7 +25,12 @@ interface QuranMadaniPageRendererProps {
     wordPosition: number | null;
     wordText: string | null;
   }) => void;
-  onVerseAction?: (verseKey: string) => void;
+  onVerseAction?: (selection: {
+    verseKey: string;
+    wordId: number | null;
+    wordPosition: number | null;
+    wordText: string | null;
+  }) => void;
 }
 
 export function QuranMadaniPageRenderer({
@@ -57,6 +62,42 @@ export function QuranMadaniPageRenderer({
       }
     };
   }, []);
+
+  const cancelLongPress = () => {
+    if (longPressTimeoutRef.current !== null) {
+      window.clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const startLongPress = (
+    x: number,
+    y: number,
+    selection: {
+      verseKey: string;
+      wordId: number | null;
+      wordPosition: number | null;
+      wordText: string | null;
+    },
+  ) => {
+    startPosRef.current = { x, y };
+    isLongPressRef.current = false;
+    cancelLongPress();
+    longPressTimeoutRef.current = window.setTimeout(() => {
+      longPressTimeoutRef.current = null;
+      isLongPressRef.current = true;
+      onVerseAction?.(selection);
+    }, 400);
+  };
+
+  const cancelLongPressOnMove = (x: number, y: number) => {
+    if (
+      Math.abs(x - startPosRef.current.x) > 10
+      || Math.abs(y - startPosRef.current.y) > 10
+    ) {
+      cancelLongPress();
+    }
+  };
 
   const { data, isLoading, isError } = useGetQuranMadaniPage(pageNumber, {
     query: {
@@ -284,41 +325,39 @@ export function QuranMadaniPageRenderer({
                     }
                     aria-pressed={Boolean(isSelected || isInSelectedRange || isPlaying)}
                     onPointerDown={(e) => {
-                      if (e.pointerType === "mouse" && e.button !== 0) return;
-                      startPosRef.current = { x: e.clientX, y: e.clientY };
-                      isLongPressRef.current = false;
-                      if (longPressTimeoutRef.current !== null) {
-                        window.clearTimeout(longPressTimeoutRef.current);
-                      }
-                      longPressTimeoutRef.current = window.setTimeout(() => {
-                        longPressTimeoutRef.current = null;
-                        isLongPressRef.current = true;
-                        onVerseAction?.(w.verseKey);
-                      }, 400);
+                      if (e.pointerType !== "mouse" || e.button !== 0) return;
+                      startLongPress(e.clientX, e.clientY, {
+                        verseKey: w.verseKey,
+                        wordId: w.type === "word" ? w.id : null,
+                        wordPosition: w.type === "word" ? w.position : null,
+                        wordText: w.type === "word" ? w.text : null,
+                      });
                     }}
                     onPointerMove={(e) => {
-                      if (longPressTimeoutRef.current !== null) {
-                        if (
-                          Math.abs(e.clientX - startPosRef.current.x) > 10 ||
-                          Math.abs(e.clientY - startPosRef.current.y) > 10
-                        ) {
-                          window.clearTimeout(longPressTimeoutRef.current);
-                          longPressTimeoutRef.current = null;
-                        }
-                      }
+                      if (e.pointerType === "mouse") cancelLongPressOnMove(e.clientX, e.clientY);
                     }}
-                    onPointerUp={() => {
-                      if (longPressTimeoutRef.current !== null) {
-                        window.clearTimeout(longPressTimeoutRef.current);
-                        longPressTimeoutRef.current = null;
-                      }
+                    onPointerUp={(e) => {
+                      if (e.pointerType === "mouse") cancelLongPress();
                     }}
-                    onPointerCancel={() => {
-                      if (longPressTimeoutRef.current !== null) {
-                        window.clearTimeout(longPressTimeoutRef.current);
-                        longPressTimeoutRef.current = null;
-                      }
+                    onPointerCancel={(e) => {
+                      if (e.pointerType === "mouse") cancelLongPress();
                     }}
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0];
+                      if (!touch) return;
+                      startLongPress(touch.clientX, touch.clientY, {
+                        verseKey: w.verseKey,
+                        wordId: w.type === "word" ? w.id : null,
+                        wordPosition: w.type === "word" ? w.position : null,
+                        wordText: w.type === "word" ? w.text : null,
+                      });
+                    }}
+                    onTouchMove={(e) => {
+                      const touch = e.touches[0];
+                      if (touch) cancelLongPressOnMove(touch.clientX, touch.clientY);
+                    }}
+                    onTouchEnd={cancelLongPress}
+                    onTouchCancel={cancelLongPress}
                     onClick={(e) => {
                       if (isLongPressRef.current) {
                         e.preventDefault();
@@ -327,7 +366,12 @@ export function QuranMadaniPageRenderer({
                         return;
                       }
                       if (w.type === "end") {
-                        onVerseAction?.(w.verseKey);
+                        onVerseAction?.({
+                          verseKey: w.verseKey,
+                          wordId: null,
+                          wordPosition: null,
+                          wordText: null,
+                        });
                         return;
                       }
                       onVerseClick?.({

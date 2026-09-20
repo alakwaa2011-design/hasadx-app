@@ -1,5 +1,11 @@
 import * as React from "react";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Dialog,
   DialogContent,
@@ -106,6 +112,11 @@ export function QuranAyahActionSurface({
         <DrawerContent className="px-4">
           <DrawerHeader className="px-0">
             <DrawerTitle className="text-center">{title}</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              {lang === "ar"
+                ? "اختر إجراءً للآية المحددة"
+                : "Choose an action for the selected ayah"}
+            </DrawerDescription>
           </DrawerHeader>
           {content}
         </DrawerContent>

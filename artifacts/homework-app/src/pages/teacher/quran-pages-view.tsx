@@ -1193,8 +1193,14 @@ export function QuranPagesView({
             isAyahConcealed={(chapterId, verseNumber, wordPosition) =>
               isAyahConcealed(chapterId, verseNumber, playingAyahNum, wordPosition)
             }
-            onVerseAction={(verseKey) => {
-              setAyahActionVerseKey(verseKey);
+            onVerseAction={(selection) => {
+              const [chapterId, verseNumber] = selection.verseKey.split(":").map(Number);
+              setSelectedVerseKey(selection.verseKey);
+              if (selection.wordPosition !== null) {
+                playWord(chapterId, verseNumber, selection.wordPosition);
+                return;
+              }
+              setAyahActionVerseKey(selection.verseKey);
             }}
             onVerseClick={(selection) => {
                const verseKey = selection.verseKey;
@@ -1222,7 +1228,6 @@ export function QuranPagesView({
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
               if (selection.wordPosition !== null) {
-                playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
               }
               setAudioDockOpen(true);
