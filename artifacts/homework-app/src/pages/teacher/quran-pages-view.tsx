@@ -406,6 +406,33 @@ export function QuranPagesView({
   }, [guidedOpen, guidedStage, guidedVerseKey]);
 
   useEffect(() => {
+    if (!isPlaying || !audibleVerseKey) return;
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        const verseElement = Array.from(
+          readerMainRef.current?.querySelectorAll<HTMLElement>("[data-verse-key]") ?? [],
+        ).find((element) => element.dataset.verseKey === audibleVerseKey);
+        if (!verseElement) return;
+
+        const bounds = verseElement.getBoundingClientRect();
+        const topReadingEdge = 88;
+        const bottomReadingEdge = window.innerHeight - bottomDockHeight - 24;
+        const isVisible =
+          bounds.top >= topReadingEdge &&
+          bounds.bottom <= Math.max(topReadingEdge + 80, bottomReadingEdge);
+        if (!isVisible) {
+          verseElement.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [activePage, audibleVerseKey, bottomDockHeight, isPlaying, pageLayout]);
+
+  useEffect(() => {
     let mounted = true;
 
     Promise.all([
@@ -740,10 +767,11 @@ export function QuranPagesView({
   };
 
   const toggleMemoSession = () => {
-    if (guidedOpen || memoSession.isActive) {
+    if (guidedOpen) {
       closeGuidedMemorization();
       return;
     }
+    if (memoSession.isActive) endSession();
     const targetVerse = selectedVerseKey
       ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
       : selectedVerse ?? verses.find((verse) => verse.page_id === activePage);
@@ -769,6 +797,35 @@ export function QuranPagesView({
     }));
     setMemoView("show");
     setIsPlaying(true);
+    setAudioDockOpen(true);
+  };
+
+  const toggleSegmentRepeat = () => {
+    if (memoSession.isActive && !guidedOpen) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+      endSession();
+      return;
+    }
+    const targetVerse = selectedVerseKey
+      ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
+      : selectedVerse ?? verses.find((verse) => verse.page_id === activePage);
+    if (!targetVerse) return;
+    if (guidedOpen) closeGuidedMemorization();
+    const targetKey = `${targetVerse.chapter_id}:${targetVerse.number}`;
+    setSelectedVerseKey(targetKey);
+    setPlayingVerseKey(targetKey);
+    setEducationSelection(null);
+    setMemoView("show");
+    setMemoSession((session) => ({
+      ...session,
+      isActive: true,
+      rangeStart: targetVerse.number,
+      rangeEnd: targetVerse.number,
+      repeatScope: "range",
+      repeatCount: 3,
+    }));
+    setIsPlaying(false);
     setAudioDockOpen(true);
   };
 
@@ -1301,16 +1358,30 @@ export function QuranPagesView({
                     onClick={toggleMemoSession}
                     data-testid="button-mobile-memo-session"
                     className={cn(
-                      "quran-reader-ui-label flex h-9 items-center rounded-xl border border-emerald-900/10 px-2 text-[11px] font-semibold transition-colors",
-                      memoSession.isActive
+                      "quran-reader-ui-label flex h-9 items-center rounded-xl border border-emerald-900/10 px-1.5 text-[11px] font-semibold transition-colors",
+                      guidedOpen
                         ? "bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100"
                         : "bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200",
                     )}
-                    aria-label={memoSession.isActive
+                    aria-label={guidedOpen
                       ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization")
                       : (lang === "ar" ? "ابدأ الحفظ" : "Start memorization")}
                   >
-                    <span>{memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization") : (lang === "ar" ? "ابدأ الحفظ" : "Start memorizing")}</span>
+                    <span>{guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End memorization") : (lang === "ar" ? "ابدأ الحفظ" : "Start memorizing")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleSegmentRepeat}
+                    data-testid="button-mobile-segment-repeat"
+                    aria-label={lang === "ar" ? "تكرار المقطع" : "Repeat segment"}
+                    className={cn(
+                      "quran-reader-ui-label flex h-9 items-center rounded-xl border border-emerald-900/10 px-2 text-[11px] font-semibold transition-colors",
+                      memoSession.isActive && !guidedOpen
+                        ? "bg-emerald-700 text-white dark:bg-emerald-600"
+                        : "bg-white/55 text-emerald-900 hover:bg-emerald-50 dark:bg-white/5 dark:text-emerald-100",
+                    )}
+                  >
+                    {lang === "ar" ? "مقطع" : "Segment"}
                   </button>
                 </>
               )}
@@ -1416,12 +1487,25 @@ export function QuranPagesView({
                     data-testid="button-memo-session"
                     className={cn(
                       "hidden rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors lg:flex lg:flex-none lg:text-sm",
-                      memoSession.isActive
+                      guidedOpen
                         ? "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-100"
                         : "border-border/60 bg-white text-foreground hover:bg-muted dark:bg-card"
                     )}
                   >
-                    {memoSession.isActive ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
+                    {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "ابدأ الحفظ" : "Start Memorizing")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleSegmentRepeat}
+                    data-testid="button-segment-repeat"
+                    className={cn(
+                      "hidden rounded-xl border px-3 py-2 text-xs font-black shadow-sm transition-colors lg:flex lg:flex-none lg:text-sm",
+                      memoSession.isActive && !guidedOpen
+                        ? "border-emerald-700 bg-emerald-700 text-white dark:border-emerald-600 dark:bg-emerald-600"
+                        : "border-border/60 bg-white text-foreground hover:bg-muted dark:bg-card",
+                    )}
+                  >
+                    {lang === "ar" ? "تكرار المقطع" : "Repeat segment"}
                   </button>
                   {!standalone && LIVE_RECITATION_ENABLED && isAdmin && (
                     <button

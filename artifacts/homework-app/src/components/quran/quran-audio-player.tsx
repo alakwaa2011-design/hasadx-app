@@ -1180,7 +1180,7 @@ export function QuranAudioPlayer({
                <div className="flex items-center justify-between">
                  <div className="flex items-center gap-1.5">
                    <BookOpen className="w-4 h-4 text-amber-600" />
-                   <span className="font-bold text-sm text-foreground">{isArabic ? 'جلسة الحفظ والتكرار' : 'Memorization Session'}</span>
+                    <span className="font-bold text-sm text-foreground">{isArabic ? 'تكرار المقطع' : 'Repeat segment'}</span>
                  </div>
                   <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                    <X className="w-4 h-4" />
@@ -1190,10 +1190,10 @@ export function QuranAudioPlayer({
                {memoSession && onMemoSessionChange && (
                  <div className="space-y-3">
                    <div className="flex items-center justify-between gap-2">
-                     <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'النطاق' : 'Range'}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'المقطع' : 'Segment'}</span>
                      <div className="flex items-center bg-muted/50 rounded-lg border border-border/50 p-0.5">
                         <div className="flex items-center px-2 py-1 gap-1">
-                          <span className="text-[10px] text-muted-foreground">{isArabic ? 'من' : 'From'}</span>
+                           <span className="text-[10px] text-muted-foreground">{isArabic ? 'آية البداية' : 'Start ayah'}</span>
                           <select
                             data-testid="select-memo-start"
                             value={memoSession.rangeStart}
@@ -1207,7 +1207,7 @@ export function QuranAudioPlayer({
                         </div>
                         <div className="w-px h-3 bg-border/50 mx-1"></div>
                         <div className="flex items-center px-2 py-1 gap-1">
-                          <span className="text-[10px] text-muted-foreground">{isArabic ? 'إلى' : 'To'}</span>
+                           <span className="text-[10px] text-muted-foreground">{isArabic ? 'آية النهاية' : 'End ayah'}</span>
                           <select
                             data-testid="select-memo-end"
                             value={memoSession.rangeEnd}
@@ -1223,27 +1223,7 @@ export function QuranAudioPlayer({
                    </div>
 
                    <div className="flex items-center justify-between gap-2">
-                     <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'تكرار' : 'Repeat'}</span>
-                     <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
-                       <button
-                          data-testid="button-memo-scope-ayah"
-                          onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'ayah' })}
-                           className={cn("min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'ayah' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                       >
-                          {isArabic ? 'الآية' : 'Ayah'}
-                       </button>
-                       <button
-                          data-testid="button-memo-scope-range"
-                          onClick={() => onMemoSessionChange({ ...memoSession, repeatScope: 'range' })}
-                           className={cn("min-h-8 px-3 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatScope === 'range' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                       >
-                          {isArabic ? 'النطاق' : 'Range'}
-                       </button>
-                     </div>
-                   </div>
-
-                   <div className="flex items-center justify-between gap-2">
-                     <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'المرات' : 'Count'}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'عدد التكرارات' : 'Repeat count'}</span>
                      <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
                        {MEMO_REPEAT_COUNTS.map(val => (
                          <button
@@ -1423,7 +1403,7 @@ export function QuranAudioPlayer({
                )}
              >
                 <Repeat className="h-4 w-4" />
-                 <span className="hidden sm:inline">{isArabic ? 'تكرار' : 'Repeat'}</span>
+                  <span>{isArabic ? 'تكرار المقطع' : 'Repeat segment'}</span>
                {memoSession.isActive && <span className="absolute -top-0.5 -end-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-background"></span>}
              </button>
           )}
