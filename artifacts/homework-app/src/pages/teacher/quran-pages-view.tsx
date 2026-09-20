@@ -22,10 +22,13 @@ import {
   X,
   ZoomIn,
   ZoomOut,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { QuranSearchDialog } from "./quran-search-dialog";
+import { QuranInstallExperience } from "@/components/quran/quran-install-invite";
+import { useQuranInstall } from "@/components/quran/use-quran-install";
 import {
   getGetQuranJourneyQueryKey,
   getGetQuranSurahContentQueryKey,
@@ -239,6 +242,8 @@ export function QuranPagesView({
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const { playWord, stopWordAudio } = useQuranWordAudio();
+  const [installManualOpen, setInstallManualOpen] = useState(false);
+  const { platform, isInstallable } = useQuranInstall();
 
   useEffect(() => {
     type WakeLockSentinelLike = {
@@ -1515,6 +1520,18 @@ export function QuranPagesView({
     </button>
   );
 
+  const installButton = standalone && isInstallable ? (
+    <button
+      type="button"
+      onClick={() => setInstallManualOpen(true)}
+      data-testid="button-install-pwa"
+      className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+      aria-label={lang === "ar" ? "تثبيت التطبيق" : "Install App"}
+    >
+      <Download className="h-4 w-4" />
+    </button>
+  ) : null;
+
   const audioButtonMobile = !audioDockOpen ? (
     <button
       type="button"
@@ -1647,6 +1664,7 @@ export function QuranPagesView({
               </div>
 
               <div className="flex items-center gap-0.5">
+                {installButton}
                 {searchDialogWrapped}
                 {copyDropdown}
                 {bookmarkDropdown}
@@ -1711,6 +1729,7 @@ export function QuranPagesView({
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-emerald-900/10 pt-2 dark:border-white/10">
                   <div className="flex items-center gap-1">
+                    {installButton}
                     {copyDropdown}
                     {bookmarkDropdown}
                     {quietModeButton}
@@ -2037,6 +2056,14 @@ export function QuranPagesView({
           if (nextVerse.page_id !== activePage) goToPage(nextVerse.page_id);
           toast.success(lang === "ar" ? "ننتقل إلى الآية التالية" : "Moving to the next ayah");
         }}
+      />
+
+      <QuranInstallExperience
+        standalone={standalone}
+        isPlaying={isPlaying}
+        isDockOpen={audioDockOpen || guidedOpen || !educationHidden}
+        manualOpen={installManualOpen}
+        onManualOpenChange={setInstallManualOpen}
       />
     </div>
   );
