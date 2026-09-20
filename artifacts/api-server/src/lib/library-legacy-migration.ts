@@ -91,7 +91,9 @@ export async function migrateLegacyLibraryUploads(): Promise<void> {
   const records = (await db.execute(sql`
     SELECT file_id, teacher_id, source_path, target_path, source_generation, state
     FROM teacher_library_object_migrations
-    WHERE cleaned_at IS NULL AND blocked_at IS NULL
+    WHERE cleaned_at IS NULL
+      AND blocked_at IS NULL
+      AND manually_closed_at IS NULL
     ORDER BY updated_at, file_id
     LIMIT ${BATCH_SIZE}
   `)).rows as Array<{
@@ -228,7 +230,10 @@ export async function migrateLegacyLibraryUploads(): Promise<void> {
       if (err instanceof ObjectNotFoundError) {
         await db.execute(sql`
           UPDATE teacher_library_object_migrations
-          SET blocked_at = NOW(), updated_at = NOW()
+          SET blocked_at = NOW(),
+              last_error = 'source object is missing',
+              attempt_count = attempt_count + 1,
+              updated_at = NOW()
           WHERE file_id = ${record.fileId} AND cleaned_at IS NULL
         `);
         logger.warn(

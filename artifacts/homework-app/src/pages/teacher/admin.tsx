@@ -7,7 +7,7 @@ import {
   Shield, ShieldOff, Trash2, Ban, CheckCircle2, GraduationCap, Phone,
   Mail, BarChart3, HelpCircle, UserX, Crown, Eye, ChevronDown, Copy,
   Globe, FileText, Settings2, Palette, RotateCcw, Type, Link2, Zap, Gamepad2,
-  MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
+  MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot, Wrench,
   CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy, Coins, Menu,
 } from "lucide-react";
 import { HasadCreditsSystem, PricingVisibilityControl } from "@/components/admin/hasad-credits-system";
@@ -17,6 +17,7 @@ import { RewardsTab } from "@/components/admin/rewards-tab";
 import { MessagesTab } from "@/components/admin/messages-tab";
 import { AiCostReportTab } from "@/components/admin/ai-cost-report-tab";
 import { AdminOnOffPill } from "@/components/admin/admin-on-off-pill";
+import { LibraryMigrationTab } from "@/components/admin/library-migration-tab";
 import { useThemeUpdater, type SocialLink } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { Switch } from "@/components/ui/switch";
@@ -91,7 +92,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "activity-log" | "rewards" | "realtime" | "messages" | "hasad-credits" | "new-pricing" | "ai-cost";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "activity-log" | "rewards" | "realtime" | "messages" | "hasad-credits" | "new-pricing" | "ai-cost" | "library-migrations";
 
 /** التبويبات القديمة المُلغاة — أي وصول إليها عبر URL يُعاد توجيهه للتبويب الموحد */
 const LEGACY_CREDIT_TABS = ["billing", "credits", "new-credits"];
@@ -1457,6 +1458,7 @@ export default function AdminPage() {
         { key: "ai-chat"      as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats",     icon: Sparkles      },
         { key: "realtime"     as Tab, label: lang === "ar" ? "اللحظي"          : "Realtime",     icon: Activity      },
         { key: "activity-log" as Tab, label: lang === "ar" ? "سجل النشاط"      : "Activity Log", icon: FileCheck     },
+        { key: "library-migrations" as Tab, label: lang === "ar" ? "صيانة المكتبة" : "Library Maintenance", icon: Wrench },
         { key: "appearance"   as Tab, label: t.admin.tabAppearance,                              icon: Palette       },
         { key: "__hidden__"   as Tab, label: lang === "ar" ? "المخفي"          : "Hidden",       icon: Eye, href: "/admin/hidden" },
       ],
@@ -4110,6 +4112,7 @@ export default function AdminPage() {
         {activeTab === "ai-chat" && <AdminAiChatTab lang={lang} />}
 
         {activeTab === "activity-log" && <ActivityTab lang={lang} />}
+        {activeTab === "library-migrations" && <LibraryMigrationTab lang={lang} />}
         {activeTab === "realtime" && <RealtimeTab lang={lang} />}
 
         {activeTab === "letrly" && <AdminLetrlyTab lang={lang} />}

@@ -57,6 +57,14 @@ const DisplayLevelOverrideSchema = z
   })
   .strict();
 
+const LegacyMigrationFileParamSchema = z.object({
+  fileId: z.coerce.number().int().positive(),
+});
+
+const LegacyMigrationCloseSchema = z.object({
+  note: z.string().trim().min(3).max(500),
+}).strict();
+
 const router: IRouter = Router();
 
 router.get("/stats/public", async (req, res) => {
@@ -162,6 +170,136 @@ router.get("/admin/teachers", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Failed to list teachers");
     res.status(500).json({ message: "حدث خطأ أثناء جلب بيانات المعلمين" });
+  }
+});
+
+router.get("/admin/library-legacy-migrations", async (req, res): Promise<void> => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await db.execute(sql`
+      SELECT
+        m.file_id,
+        m.teacher_id,
+        t.name AS teacher_name,
+        t.email AS teacher_email,
+        f.name AS file_name,
+        m.source_path,
+        m.target_path,
+        m.state,
+        m.attempt_count,
+        m.last_error,
+        m.blocked_at,
+        m.updated_at
+      FROM teacher_library_object_migrations m
+      LEFT JOIN teachers t ON t.id = m.teacher_id
+      LEFT JOIN teacher_library_files f ON f.id = m.file_id
+      WHERE m.blocked_at IS NOT NULL
+        AND m.cleaned_at IS NULL
+        AND m.manually_closed_at IS NULL
+      ORDER BY m.blocked_at DESC, m.file_id DESC
+    `);
+    res.json({
+      count: result.rows.length,
+      records: result.rows.map((row: any) => ({
+        fileId: row.file_id,
+        teacherId: row.teacher_id,
+        teacherName: row.teacher_name,
+        teacherEmail: row.teacher_email,
+        fileName: row.file_name,
+        sourcePath: row.source_path,
+        targetPath: row.target_path,
+        state: row.state,
+        attemptCount: row.attempt_count,
+        lastError: row.last_error,
+        blockedAt: row.blocked_at,
+        updatedAt: row.updated_at,
+      })),
+    });
+  } catch (err) {
+    req.log.error(err, "Failed to list blocked legacy library migrations");
+    res.status(500).json({ message: "تعذر جلب سجلات ترحيل المكتبة المتوقفة" });
+  }
+});
+
+router.post("/admin/library-legacy-migrations/:fileId/retry", async (req, res): Promise<void> => {
+  const params = LegacyMigrationFileParamSchema.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ message: "معرّف الملف غير صالح" });
+    return;
+  }
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const adminTeacherId = req.session.teacherId as number;
+    const outcome = await db.transaction(async (tx) => {
+      const updated = await tx.execute(sql`
+        UPDATE teacher_library_object_migrations
+        SET blocked_at = NULL,
+            last_error = NULL,
+            updated_at = TO_TIMESTAMP(0)
+        WHERE file_id = ${params.data.fileId}
+          AND blocked_at IS NOT NULL
+          AND cleaned_at IS NULL
+          AND manually_closed_at IS NULL
+        RETURNING file_id
+      `);
+      if (updated.rows.length === 0) return false;
+      await tx.execute(sql`
+        INSERT INTO teacher_library_migration_audit_logs
+          (file_id, admin_teacher_id, action)
+        VALUES (${params.data.fileId}, ${adminTeacherId}, 'retry')
+      `);
+      return true;
+    });
+    if (!outcome) {
+      res.status(409).json({ message: "السجل لم يعد متوقفًا أو تم إغلاقه" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err, "Failed to retry legacy library migration");
+    res.status(500).json({ message: "تعذرت إعادة محاولة الترحيل" });
+  }
+});
+
+router.post("/admin/library-legacy-migrations/:fileId/close", async (req, res): Promise<void> => {
+  const params = LegacyMigrationFileParamSchema.safeParse(req.params);
+  const body = LegacyMigrationCloseSchema.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ message: "يلزم إدخال سبب إغلاق واضح" });
+    return;
+  }
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const adminTeacherId = req.session.teacherId as number;
+    const outcome = await db.transaction(async (tx) => {
+      const updated = await tx.execute(sql`
+        UPDATE teacher_library_object_migrations
+        SET manually_closed_at = NOW(),
+            manually_closed_by = ${adminTeacherId},
+            manual_closure_note = ${body.data.note},
+            updated_at = NOW()
+        WHERE file_id = ${params.data.fileId}
+          AND blocked_at IS NOT NULL
+          AND cleaned_at IS NULL
+          AND manually_closed_at IS NULL
+        RETURNING file_id
+      `);
+      if (updated.rows.length === 0) return false;
+      await tx.execute(sql`
+        INSERT INTO teacher_library_migration_audit_logs
+          (file_id, admin_teacher_id, action, note)
+        VALUES (${params.data.fileId}, ${adminTeacherId}, 'manual_close', ${body.data.note})
+      `);
+      return true;
+    });
+    if (!outcome) {
+      res.status(409).json({ message: "السجل لم يعد متوقفًا أو تم إغلاقه" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err, "Failed to manually close legacy library migration");
+    res.status(500).json({ message: "تعذر إغلاق حالة الترحيل" });
   }
 });
 

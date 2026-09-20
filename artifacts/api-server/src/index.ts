@@ -75,8 +75,24 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS attempt_count INTEGER NOT NULL DEFAULT 0;
       ALTER TABLE teacher_library_object_migrations
         ADD COLUMN IF NOT EXISTS last_error TEXT;
+      ALTER TABLE teacher_library_object_migrations
+        ADD COLUMN IF NOT EXISTS manually_closed_at TIMESTAMPTZ;
+      ALTER TABLE teacher_library_object_migrations
+        ADD COLUMN IF NOT EXISTS manually_closed_by INTEGER;
+      ALTER TABLE teacher_library_object_migrations
+        ADD COLUMN IF NOT EXISTS manual_closure_note TEXT;
       CREATE INDEX IF NOT EXISTS teacher_library_object_migrations_cleanup_idx
         ON teacher_library_object_migrations(cleaned_at, file_id);
+      CREATE TABLE IF NOT EXISTS teacher_library_migration_audit_logs (
+        id BIGSERIAL PRIMARY KEY,
+        file_id INTEGER NOT NULL,
+        admin_teacher_id INTEGER NOT NULL,
+        action TEXT NOT NULL CHECK (action IN ('retry', 'manual_close')),
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS teacher_library_migration_audit_file_idx
+        ON teacher_library_migration_audit_logs(file_id, created_at DESC);
     `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS submission_images (
