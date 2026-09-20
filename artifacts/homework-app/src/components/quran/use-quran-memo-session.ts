@@ -30,6 +30,12 @@ export function useQuranMemoSession(
   );
   
   const [revealedAyahs, setRevealedAyahs] = useState<Set<string>>(new Set());
+  const [partialHideSeed, setPartialHideSeed] = useState(() => Math.floor(Math.random() * 1_000_000_000));
+
+  const randomizePartialHide = useCallback(() => {
+    setPartialHideSeed(Math.floor(Math.random() * 1_000_000_000));
+    setRevealedAyahs(new Set());
+  }, []);
 
   const isAyahConcealed = useCallback((
     surah: number,
@@ -50,10 +56,13 @@ export function useQuranMemoSession(
         ayah === progressPoint
         && memoSession.rangeStart === memoSession.rangeEnd
       ) {
-        // A guided session targets one ayah. Hide alternating words inside that
-        // ayah; otherwise the old progressive-range rule reveals it in full.
-        // Keep the ayah marker visible by treating its null position as shown.
-        return wordPosition !== null && wordPosition % 2 === 0;
+        if (wordPosition === null) return false;
+        // Keep the random choice stable while the learner is on this step, then
+        // generate a fresh pattern each time partial hiding is entered.
+        let hash = partialHideSeed ^ (surah * 73_856_093) ^ (ayah * 19_349_663) ^ (wordPosition * 83_492_791);
+        hash = Math.imul(hash ^ (hash >>> 16), 2_246_822_507);
+        hash = Math.imul(hash ^ (hash >>> 13), 3_266_489_909);
+        return ((hash ^ (hash >>> 16)) >>> 0) % 100 < 48;
       }
       if (ayah === progressPoint) {
         return false;
@@ -61,7 +70,7 @@ export function useQuranMemoSession(
     }
     
     return true;
-  }, [memoView, revealedAyahs, memoSession.isActive, memoSession.rangeStart, surahNumber, wardStart]);
+  }, [memoView, revealedAyahs, memoSession.isActive, memoSession.rangeStart, partialHideSeed, surahNumber, wardStart]);
 
   const toggleReveal = useCallback((surah: number, ayah: number) => {
     setRevealedAyahs(prev => {
@@ -107,6 +116,7 @@ export function useQuranMemoSession(
     memoSession, setMemoSession,
     memoView, setMemoView,
     isAyahConcealed, toggleReveal, resetReveal,
+    randomizePartialHide,
     startSession, endSession
   };
 }

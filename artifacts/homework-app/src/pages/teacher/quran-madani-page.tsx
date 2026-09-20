@@ -260,6 +260,7 @@ export function QuranMadaniPageRenderer({
                 return (
                   <button
                     key={w.id || i}
+                    data-verse-key={w.verseKey}
                     title={w.text}
                     aria-label={
                       lang === "ar"

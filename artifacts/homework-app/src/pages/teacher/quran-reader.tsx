@@ -344,7 +344,7 @@ export function QuranTextReaderView({
   const { 
     memoSession, setMemoSession, 
     memoView, setMemoView, 
-    isAyahConcealed, toggleReveal, resetReveal,
+    isAyahConcealed, toggleReveal, resetReveal, randomizePartialHide,
     startSession, endSession
   } = useQuranMemoSession(surahNumber, selectedAyah, startAyah, endAyah, mode);
 
@@ -358,15 +358,15 @@ export function QuranTextReaderView({
     setMemoSession(session => ({
       ...session,
       isActive: true,
-      rangeStart: safeAyah,
-      rangeEnd: safeAyah,
+      rangeStart: startAyah ?? safeAyah,
+      rangeEnd: Math.max(startAyah ?? safeAyah, endAyah ?? safeAyah),
       repeatScope: 'ayah',
       repeatCount: 3,
     }));
     setMemoView('show');
     setPlayingAyah(safeAyah);
     setIsPlaying(true);
-  }, [selectedAyah, setMemoSession, setMemoView]);
+  }, [endAyah, selectedAyah, setMemoSession, setMemoView, startAyah]);
 
   useEffect(() => {
     if (guidedMemorizationSignal <= 0) return;
@@ -379,22 +379,27 @@ export function QuranTextReaderView({
     setGuidedRecitationRevealed(false);
     setGuidedRevealedWords(new Set());
     setMemoView('show');
+    if (guidedStage === 2) randomizePartialHide();
     if (guidedStage === 0) {
       setMemoSession(session => ({
         ...session,
         isActive: true,
-        rangeStart: guidedAyah,
-        rangeEnd: guidedAyah,
-        repeatScope: 'ayah',
-        repeatCount: 3,
       }));
-      setPlayingAyah(guidedAyah);
+      setPlayingAyah(memoSession.repeatScope === 'range' ? memoSession.rangeStart : guidedAyah);
+      setIsPlaying(true);
+    } else if (guidedStage === 4) {
+      setMemoSession(session => ({
+        ...session,
+        isActive: true,
+        repeatScope: 'range',
+      }));
+      setPlayingAyah(memoSession.rangeStart);
       setIsPlaying(true);
     } else {
       setIsPlaying(false);
       setPlayingAyah(null);
     }
-  }, [guidedAyah, guidedOpen, guidedStage, setMemoSession, setMemoView]);
+  }, [guidedAyah, guidedOpen, guidedStage, memoSession.rangeStart, memoSession.repeatScope, randomizePartialHide, setMemoSession, setMemoView]);
 
   const closeGuidedMemorization = useCallback(() => {
     setGuidedOpen(false);
@@ -1013,10 +1018,16 @@ export function QuranTextReaderView({
         surahName={surah.name}
         ayahNumber={guidedAyah}
         isPlaying={isPlaying}
+        repeatScope={memoSession.repeatScope}
+        repeatCount={memoSession.repeatCount}
+        rangeStart={memoSession.rangeStart}
+        rangeEnd={memoSession.rangeEnd}
         recitationRevealed={guidedRecitationRevealed}
         lang={lang}
         onClose={closeGuidedMemorization}
         onStageChange={setGuidedStage}
+        onRepeatScopeChange={(repeatScope) => setMemoSession((session) => ({ ...session, repeatScope }))}
+        onRepeatCountChange={(repeatCount) => setMemoSession((session) => ({ ...session, repeatCount }))}
         onReplay={() => {
           setPlayingAyah(guidedAyah);
           setIsPlaying(true);
