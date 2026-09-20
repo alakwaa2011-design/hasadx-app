@@ -63,7 +63,7 @@ export function QuranAyahActionSurface({
     },
     {
       icon: Bookmark,
-      label: lang === "ar" ? (isBookmarked ? "إزالة العلامة" : "حفظ") : (isBookmarked ? "Remove Bookmark" : "Bookmark"),
+      label: lang === "ar" ? (isBookmarked ? "إزالة العلامة" : "علامة") : (isBookmarked ? "Remove Bookmark" : "Bookmark"),
       onClick: onBookmark,
       testId: "action-bookmark",
       active: isBookmarked,

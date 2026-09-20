@@ -1504,7 +1504,7 @@ export function QuranPagesView({
               onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/10">
               <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
-              {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "حفظ العلامة") : (isCurrentBookmarked ? "Remove" : "Save")}
+              {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "إضافة علامة") : (isCurrentBookmarked ? "Remove" : "Add bookmark")}
             </button>
           )}
           {onOpenBookmarks && (
@@ -1760,6 +1760,24 @@ export function QuranPagesView({
                     {syncButton}
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      data-testid="button-mobile-open-bookmarks"
+                      onClick={() => {
+                        if (onOpenBookmarks) {
+                          setMobileToolsOpen(false);
+                          setBookmarkActionsOpen(false);
+                          onOpenBookmarks();
+                          return;
+                        }
+                        setCopyActionsOpen(false);
+                        setBookmarkActionsOpen(true);
+                      }}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-emerald-900/5 px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
+                    >
+                      <Bookmark className="h-4 w-4" />
+                      <span>{lang === "ar" ? "العلامات" : "Bookmarks"}</span>
+                    </button>
                     {recordPracticeButton}
                     {liveRecitationButton}
                   </div>
