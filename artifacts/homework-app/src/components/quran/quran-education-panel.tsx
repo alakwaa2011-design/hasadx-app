@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, Check, Copy, EyeOff, Languages, Loader2, Lock, Share2, Unlock, X } from "lucide-react";
+import { BookOpenText, Check, Copy, EyeOff, Loader2, Lock, Share2, Unlock, X } from "lucide-react";
 import {
   getGetQuranAyahEducationQueryKey,
   useGetQuranAyahEducation,
@@ -105,38 +105,6 @@ export function QuranEducationPanel({
               {lang === "ar" ? `سورة ${surahNumber}، الآية ${ayahNumber}` : `Surah ${surahNumber}, ayah ${ayahNumber}`}
             </p>
           </div>
-          {selection.wordPosition !== null && (
-            <>
-              <button
-                type="button"
-                aria-pressed={tab === "meaning"}
-                onClick={() => setTab("meaning")}
-                className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] font-bold transition-colors",
-                  tab === "meaning"
-                    ? "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
-                    : "border-border bg-muted/35 text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <BookOpenText className="h-3.5 w-3.5" />
-                {lang === "ar" ? "معنى الكلمة" : "Meaning"}
-              </button>
-              <button
-                type="button"
-                aria-pressed={tab === "translation"}
-                onClick={() => setTab("translation")}
-                className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] font-bold transition-colors",
-                  tab === "translation"
-                    ? "border-sky-600 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100"
-                    : "border-border bg-muted/35 text-muted-foreground hover:bg-muted",
-                )}
-              >
-                <Languages className="h-3.5 w-3.5" />
-                {lang === "ar" ? "ترجمة" : "Translation"}
-              </button>
-            </>
-          )}
           <button
             type="button"
             onClick={onHide}
@@ -193,6 +161,31 @@ export function QuranEducationPanel({
           </button>
         </div>
 
+        {selection.wordPosition !== null && (
+          <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-emerald-950/[0.04] p-1 dark:bg-white/[0.06]">
+            {([
+              ["meaning", lang === "ar" ? "معنى الكلمة" : "Meaning"],
+              ["translation", lang === "ar" ? "الترجمة" : "Translation"],
+              ["tafsir", lang === "ar" ? "التفسير" : "Tafsir"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={tab === value}
+                onClick={() => setTab(value)}
+                className={cn(
+                  "h-8 min-w-0 rounded-lg px-1.5 text-[11px] font-bold transition-colors sm:text-xs",
+                  tab === value
+                    ? "bg-emerald-700 text-white shadow-sm dark:bg-emerald-600"
+                    : "text-emerald-800 hover:bg-emerald-900/[0.07] dark:text-emerald-200 dark:hover:bg-white/10",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="mt-2 max-h-[22dvh] min-h-16 overflow-y-auto overscroll-contain pe-1">
           {query.isLoading ? (
             <div className="flex min-h-20 items-center justify-center text-emerald-700">
@@ -207,11 +200,13 @@ export function QuranEducationPanel({
             </div>
           ) : tab === "meaning" ? (
             query.data.selectedWord?.arabicMeaning ? (
-              <div className="rounded-xl bg-amber-50/70 px-3 py-2 dark:bg-amber-950/30">
-                <p className="mb-1 text-base font-black text-foreground">
-                  {query.data.selectedWord.text}
-                </p>
-                <p className="text-sm font-semibold leading-7 text-foreground/80">
+              <div className="rounded-xl bg-emerald-50/70 px-3 py-2.5 dark:bg-emerald-950/30">
+                <div className="mb-1.5 max-w-full overflow-x-auto pb-0.5">
+                  <p className="w-max whitespace-nowrap text-lg font-black leading-8 text-emerald-950 dark:text-emerald-100">
+                    {query.data.selectedWord.text}
+                  </p>
+                </div>
+                <p className="break-words text-sm font-semibold leading-7 text-foreground/80">
                   {query.data.selectedWord.arabicMeaning.text}
                 </p>
               </div>
@@ -224,11 +219,13 @@ export function QuranEducationPanel({
             )
           ) : tab === "translation" ? (
             query.data.selectedWord ? (
-              <div className="rounded-xl bg-muted/35 px-3 py-2">
-                <p className="mb-1 text-base font-black text-foreground">
-                  {query.data.selectedWord.text}
-                </p>
-                <p className="text-sm leading-6 text-foreground/80">
+              <div className="rounded-xl bg-emerald-50/70 px-3 py-2.5 dark:bg-emerald-950/30">
+                <div className="mb-1.5 max-w-full overflow-x-auto pb-0.5">
+                  <p className="w-max whitespace-nowrap text-lg font-black leading-8 text-emerald-950 dark:text-emerald-100">
+                    {query.data.selectedWord.text}
+                  </p>
+                </div>
+                <p className="break-words text-sm leading-7 text-foreground/80">
                   {query.data.selectedWord.meaning}
                 </p>
               </div>
