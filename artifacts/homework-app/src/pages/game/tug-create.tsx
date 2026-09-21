@@ -81,15 +81,17 @@ export default function TugCreate() {
 
   // Auto-load from presentation deep-link
   useEffect(() => {
+    let active = true;
     const aid = new URLSearchParams(window.location.search).get("assignmentId");
-    if (!aid) return;
+    if (!aid) return () => { active = false; };
     const parsedId = parseInt(aid, 10);
-    if (Number.isNaN(parsedId)) return;
+    if (Number.isNaN(parsedId)) return () => { active = false; };
     (async () => {
       try {
         const r = await fetch(`${API_BASE}/api/assignments/${parsedId}`, { credentials: "include" });
-        if (!r.ok) return;
+        if (!active || !r.ok) return;
         const data = await r.json();
+        if (!active) return;
         const qs = ((data.questions || []) as any[])
           .flatMap(q => {
             const normalized = normalizeGameQuestion(q, { trueLabel: ar ? "صح" : "True", falseLabel: ar ? "خطأ" : "False" });
@@ -109,6 +111,7 @@ export default function TugCreate() {
         }
       } catch { /* ignore */ }
     })();
+    return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
