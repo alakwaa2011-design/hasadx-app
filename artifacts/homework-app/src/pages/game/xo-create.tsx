@@ -12,6 +12,7 @@ import { toast } from "@/components/ui/sonner";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
 import { useSmartBack } from "@/lib/nav-history";
+import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 import {
   XoName,
   XoTitle,
@@ -72,6 +73,12 @@ export default function XoCreate() {
   const [isShared, setIsShared] = useState(false);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
   const loadedSavedGameRef = useRef(false);
+  const loadedAssignmentRef = useRef<number | null>(null);
+  const [assignmentLoading, setAssignmentLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const assignmentId = Number(new URLSearchParams(window.location.search).get("assignmentId"));
+    return Number.isInteger(assignmentId) && assignmentId > 0;
+  });
   const savedActivityIdRef = useRef<number | string | null>(null);
 
   const handleFlowBack = () => {
@@ -85,6 +92,76 @@ export default function XoCreate() {
   useEffect(() => {
     setTeamX(current => normalizeXoTeamName(current, "x", ar ? "ar" : "en"));
     setTeamO(current => normalizeXoTeamName(current, "o", ar ? "ar" : "en"));
+  // The assignment deep-link is read once per page entry. Keeping this effect
+  // one-shot also prevents a language toggle during the request from cancelling
+  // the load and leaving the loading screen mounted.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const rawAssignmentId = new URLSearchParams(window.location.search).get("assignmentId");
+    const assignmentId = Number(rawAssignmentId);
+    if (!Number.isInteger(assignmentId) || assignmentId <= 0 || loadedAssignmentRef.current === assignmentId) {
+      return;
+    }
+
+    loadedAssignmentRef.current = assignmentId;
+    let cancelled = false;
+    setAssignmentLoading(true);
+
+    void (async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || ""}/api/assignments/${assignmentId}`,
+          { credentials: "include" },
+        );
+        if (!response.ok) throw new Error("assignment-load-failed");
+
+        const data = await response.json();
+        const normalized = ((data.questions || []) as any[]).flatMap((question) => {
+          const prepared = normalizeGameQuestion(question, {
+            trueLabel: ar ? "صح" : "True",
+            falseLabel: ar ? "خطأ" : "False",
+          });
+          return prepared ? [prepared] : [];
+        });
+        const restored = toXoQuestions(normalized).filter((question) =>
+          question.text.trim()
+          && question.options.length >= 2
+          && question.options.length <= 4
+          && question.options.every((option) => option.trim())
+          && Number.isInteger(question.correct)
+          && question.correct >= 0
+          && question.correct < question.options.length,
+        );
+
+        if (restored.length < 2) {
+          throw new Error("assignment-not-enough-questions");
+        }
+        if (cancelled) return;
+
+        setQuestions(restored.slice(0, 20));
+        setQuestionSource("assignment");
+        setTitle(typeof data.title === "string" && data.title.trim() ? data.title.trim() : null);
+        setSetupStep("settings");
+        toast.success(
+          ar ? `تم تحميل ${restored.length} سؤال من الواجب` : `Loaded ${restored.length} assignment questions`,
+        );
+      } catch (error) {
+        if (cancelled) return;
+        toast.error(
+          error instanceof Error && error.message === "assignment-not-enough-questions"
+            ? (ar ? "يحتاج الواجب إلى سؤالين مدعومين على الأقل للعبة X O" : "The assignment needs at least two supported questions for X O")
+            : (ar ? "تعذّر تحميل أسئلة الواجب" : "Could not load the assignment questions"),
+        );
+      } finally {
+        if (!cancelled) setAssignmentLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [ar]);
 
   useEffect(() => {
@@ -206,6 +283,23 @@ export default function XoCreate() {
         : (ar ? "تعذر حفظ اللعبة أو إنشاء رابطها" : "Could not save the game or create its link"));
     }
   };
+
+  if (assignmentLoading) {
+    return (
+      <Layout>
+        <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
+          <div className="mx-auto flex min-h-[50vh] max-w-2xl items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+              <p className="font-bold text-foreground">
+                {ar ? "جارٍ تحميل أسئلة الواجب…" : "Loading assignment questions…"}
+              </p>
+            </div>
+          </div>
+        </main>
+      </Layout>
+    );
+  }
 
   if (setupStep === "questions" || !questions.length) {
     return (
