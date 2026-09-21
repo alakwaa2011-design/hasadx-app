@@ -4819,6 +4819,10 @@ export const getQuranAyahEducationResponseVerseKeyRegExp = new RegExp('^\\d{1,3}
 
 
 
+
+
+
+
 export const GetQuranAyahEducationResponse = zod.object({
   "surahNumber": zod.int().min(1).max(getQuranAyahEducationResponseSurahNumberMax),
   "ayahNumber": zod.int().min(1).max(getQuranAyahEducationResponseAyahNumberMax),
@@ -4833,7 +4837,16 @@ export const GetQuranAyahEducationResponse = zod.object({
   "name": zod.string().min(1),
   "provider": zod.string().min(1),
   "version": zod.string().min(1)
+}),
+  "arabicMeaning": zod.union([zod.object({
+  "text": zod.string().min(1),
+  "source": zod.object({
+  "id": zod.int().nullable(),
+  "name": zod.string().min(1),
+  "provider": zod.string().min(1),
+  "version": zod.string().min(1)
 })
+}),zod.null()])
 }),zod.null()]),
   "tafsir": zod.object({
   "text": zod.string().min(1),

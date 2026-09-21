@@ -640,7 +640,14 @@ describe("Quran Foundation client", () => {
           resource_id: 16,
           text: "الله <span class=\"green\">الحي القيوم</span>",
         },
-      }), { status: 200 }));
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(`
+        <div class="tafsir arabic">
+          <div class=ar lang=ar>
+            <p><span class="qpc-hafs">﴿لَآ﴾</span>: حرفُ نَفْيٍ.</p>
+          </div>
+        </div>
+      `, { status: 200, headers: { "Content-Type": "text/html" } }));
     vi.stubGlobal("fetch", fetchMock);
 
     const first = await getQuranFoundationAyahEducation(2, 255, 2);
@@ -661,8 +668,17 @@ describe("Quran Foundation client", () => {
     });
     expect(first.tafsir.text).toBe("الله الحي القيوم");
     expect(first.tafsir.source).toMatchObject({ id: 16, name: "التفسير الميسر" });
+    expect(first.selectedWord?.arabicMeaning).toEqual({
+      text: "حرفُ نَفْيٍ.",
+      source: {
+        id: 519,
+        name: "الميسر في غريب القرآن",
+        provider: "Quranic Universal Library (QUL)",
+        version: "Tafsir resource 519",
+      },
+    });
     expect(second).toBe(first);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("rejects noncanonical ayah numbers before requesting sourced content", async () => {

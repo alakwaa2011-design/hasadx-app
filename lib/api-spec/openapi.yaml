@@ -2899,7 +2899,19 @@ components:
         meaning: { type: string, minLength: 1 }
         source:
           $ref: "#/components/schemas/QuranEducationSource"
-      required: [id, position, text, meaning, source]
+        arabicMeaning:
+          anyOf:
+            - $ref: "#/components/schemas/QuranArabicWordMeaning"
+            - type: "null"
+      required: [id, position, text, meaning, source, arabicMeaning]
+
+    QuranArabicWordMeaning:
+      type: object
+      properties:
+        text: { type: string, minLength: 1 }
+        source:
+          $ref: "#/components/schemas/QuranEducationSource"
+      required: [text, source]
 
     QuranAyahTafsir:
       type: object

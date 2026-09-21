@@ -15,19 +15,21 @@ type QuranEducationSelection = {
 
 export function QuranEducationPanel({
   selection,
+  initialTab = "tafsir",
   onClose,
   onHide,
   locked = false,
   onToggleLock,
 }: {
   selection: QuranEducationSelection;
+  initialTab?: "meaning" | "translation" | "tafsir";
   onClose: () => void;
   onHide: () => void;
   locked?: boolean;
   onToggleLock?: () => void;
 }) {
   const { lang } = useI18n();
-  const [tab, setTab] = useState<"translation" | "tafsir">("tafsir");
+  const [tab, setTab] = useState<"meaning" | "translation" | "tafsir">(initialTab);
   const [copied, setCopied] = useState(false);
   const [surahNumber, ayahNumber] = selection.verseKey.split(":").map(Number);
   const query = useGetQuranAyahEducation(
@@ -48,16 +50,20 @@ export function QuranEducationPanel({
   );
 
   useEffect(() => {
-    setTab(selection.wordPosition === null ? "tafsir" : "translation");
+    setTab(selection.wordPosition === null ? "tafsir" : initialTab);
     setCopied(false);
-  }, [selection.verseKey, selection.wordPosition]);
+  }, [initialTab, selection.verseKey, selection.wordPosition]);
 
-  const source = tab === "translation"
-    ? query.data?.selectedWord?.source
-    : query.data?.tafsir.source;
-  const displayedText = tab === "translation"
-    ? query.data?.selectedWord?.meaning
-    : query.data?.tafsir.text;
+  const source = tab === "meaning"
+    ? query.data?.selectedWord?.arabicMeaning?.source
+    : tab === "translation"
+      ? query.data?.selectedWord?.source
+      : query.data?.tafsir.source;
+  const displayedText = tab === "meaning"
+    ? query.data?.selectedWord?.arabicMeaning?.text
+    : tab === "translation"
+      ? query.data?.selectedWord?.meaning
+      : query.data?.tafsir.text;
 
   const copyDisplayedText = async () => {
     if (!displayedText) return;
@@ -100,20 +106,36 @@ export function QuranEducationPanel({
             </p>
           </div>
           {selection.wordPosition !== null && (
-            <button
-              type="button"
-              aria-pressed={tab === "translation"}
-              onClick={() => setTab((current) => current === "translation" ? "tafsir" : "translation")}
-              className={cn(
-                "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-bold transition-colors",
-                tab === "translation"
-                  ? "border-emerald-700 bg-emerald-700 text-white"
-                  : "border-border bg-muted/35 text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Languages className="h-3.5 w-3.5" />
-              {lang === "ar" ? "معاني القرآن" : "Quran meanings"}
-            </button>
+            <>
+              <button
+                type="button"
+                aria-pressed={tab === "meaning"}
+                onClick={() => setTab("meaning")}
+                className={cn(
+                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] font-bold transition-colors",
+                  tab === "meaning"
+                    ? "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+                    : "border-border bg-muted/35 text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <BookOpenText className="h-3.5 w-3.5" />
+                {lang === "ar" ? "معنى الكلمة" : "Meaning"}
+              </button>
+              <button
+                type="button"
+                aria-pressed={tab === "translation"}
+                onClick={() => setTab("translation")}
+                className={cn(
+                  "inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] font-bold transition-colors",
+                  tab === "translation"
+                    ? "border-sky-600 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100"
+                    : "border-border bg-muted/35 text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Languages className="h-3.5 w-3.5" />
+                {lang === "ar" ? "ترجمة" : "Translation"}
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -183,6 +205,23 @@ export function QuranEducationPanel({
                 ? "تعذر تحميل محتوى موثق الآن، لذلك لن نعرض معنى أو تفسيرًا بلا مصدر."
                 : "Sourced content is unavailable, so no unsourced meaning or tafsir is shown."}
             </div>
+          ) : tab === "meaning" ? (
+            query.data.selectedWord?.arabicMeaning ? (
+              <div className="rounded-xl bg-amber-50/70 px-3 py-2 dark:bg-amber-950/30">
+                <p className="mb-1 text-base font-black text-foreground">
+                  {query.data.selectedWord.text}
+                </p>
+                <p className="text-sm font-semibold leading-7 text-foreground/80">
+                  {query.data.selectedWord.arabicMeaning.text}
+                </p>
+              </div>
+            ) : (
+              <p className="rounded-xl bg-muted/50 px-4 py-3 text-sm font-bold leading-7 text-muted-foreground">
+                {lang === "ar"
+                  ? "لا يورد المرجع شرحًا مستقلًا لهذه الكلمة في هذا الموضع."
+                  : "The reference does not provide a separate meaning for this word here."}
+              </p>
+            )
           ) : tab === "translation" ? (
             query.data.selectedWord ? (
               <div className="rounded-xl bg-muted/35 px-3 py-2">

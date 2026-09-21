@@ -37,6 +37,10 @@ const sourcedResponse = {
     text: "ٱللَّهُ",
     meaning: "الله الحي القيوم",
     source: { id: 16, name: "التفسير الميسر", provider: "Quran Foundation", version: "Content API v4" },
+    arabicMeaning: {
+      text: "المعبود بحق",
+      source: { id: 519, name: "الميسر في غريب القرآن", provider: "Quranic Universal Library (QUL)", version: "Tafsir resource 519" },
+    },
   },
   tafsir: {
     text: "الله الحي القيوم",

@@ -287,6 +287,12 @@ export interface QuranEducationSource {
   version: string;
 }
 
+export interface QuranArabicWordMeaning {
+  /** @minLength 1 */
+  text: string;
+  source: QuranEducationSource;
+}
+
 export interface QuranWordContext {
   id: number;
   /** @minimum 1 */
@@ -296,6 +302,7 @@ export interface QuranWordContext {
   /** @minLength 1 */
   meaning: string;
   source: QuranEducationSource;
+  arabicMeaning: QuranArabicWordMeaning | null;
 }
 
 export interface QuranAyahTafsir {

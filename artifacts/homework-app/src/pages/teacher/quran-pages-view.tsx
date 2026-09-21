@@ -230,6 +230,7 @@ export function QuranPagesView({
     wordPosition: number | null;
     wordText: string | null;
   } | null>(null);
+  const [educationInitialTab, setEducationInitialTab] = useState<"meaning" | "translation" | "tafsir">("tafsir");
   const [playingVerseKey, setPlayingVerseKey] = useState<string | null>(null);
   const [audibleVerseKey, setAudibleVerseKey] = useState<string | null>(null);
   const [playbackFollowSuspended, setPlaybackFollowSuspended] = useState(false);
@@ -329,6 +330,7 @@ export function QuranPagesView({
   };
 
   const showEducation = () => {
+    setEducationInitialTab("tafsir");
     setEducationHidden(false);
     window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
     const verseKey = audibleVerseKey ?? selectedVerseKey;
@@ -2069,6 +2071,7 @@ export function QuranPagesView({
                   setAudibleVerseKey(audibleKey);
                   setSelectedVerseKey(audibleKey);
                   if (!educationHidden && !educationLocked) {
+                     setEducationInitialTab("tafsir");
                     setEducationSelection({
                       verseKey: audibleKey,
                       wordId: null,
@@ -2126,6 +2129,7 @@ export function QuranPagesView({
               <QuranEducationPanel
                 key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
                 selection={educationSelection}
+                initialTab={educationInitialTab}
                 onClose={hideEducation}
                 onHide={hideEducation}
                 locked={educationLocked}
@@ -2277,6 +2281,7 @@ export function QuranPagesView({
         }}
         onTafsir={() => {
           if (!ayahActionVerseKey) return;
+          setEducationInitialTab("tafsir");
           setSelectedVerseKey(ayahActionVerseKey);
           setEducationSelection({
             verseKey: ayahActionVerseKey,
@@ -2302,6 +2307,7 @@ export function QuranPagesView({
         }}
         onMeaning={() => {
           if (!wordAction) return;
+          setEducationInitialTab("meaning");
           setEducationSelection({
             verseKey: wordAction.verseKey,
             wordId: wordAction.wordId,
@@ -2313,6 +2319,7 @@ export function QuranPagesView({
         }}
         onTranslation={() => {
           if (!wordAction) return;
+          setEducationInitialTab("translation");
           setEducationSelection({
             verseKey: wordAction.verseKey,
             wordId: wordAction.wordId,

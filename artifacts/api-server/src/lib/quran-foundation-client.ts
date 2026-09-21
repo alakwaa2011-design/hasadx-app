@@ -14,6 +14,7 @@ const AUDIO_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
 const TIMINGS_CACHE_MS = 30 * 24 * 60 * 60 * 1_000;
 
 const EDUCATION_CACHE_MS = 24 * 60 * 60 * 1_000;
+const QUL_GHARIB_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
 const MAHER_AL_MUAIQLY_RECITATION_ID = 1_000_159;
@@ -204,6 +205,10 @@ export type QuranFoundationAyahEducation = {
     text: string;
     meaning: string;
     source: typeof WORD_BY_WORD_SOURCE;
+    arabicMeaning: {
+      text: string;
+      source: typeof QUL_GHARIB_SOURCE;
+    } | null;
   } | null;
   tafsir: {
     text: string;
@@ -233,6 +238,79 @@ const MAX_CACHED_AYAH_TIMINGS = 2_048;
 const MAX_CACHED_TIMING_CHAPTERS = 64;
 
 const cachedEducation = new Map<string, { value: QuranFoundationAyahEducation; expiresAt: number }>();
+const cachedQulGharib = new Map<string, {
+  value: Array<{ phrase: string; meaning: string }>;
+  expiresAt: number;
+}>();
+
+function normalizeArabicLookup(value: string): string {
+  return value
+    .replace(/[﴿﴾۞۩]/g, "")
+    .replace(/[\u0610-\u061A\u0640\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/[^\u0621-\u063A\u0641-\u064A]/g, "");
+}
+
+function decodeQulHtml(value: string): string {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_match, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function getQulGharibEntries(
+  surahNumber: number,
+  ayahNumber: number,
+): Promise<Array<{ phrase: string; meaning: string }>> {
+  const verseKey = `${surahNumber}:${ayahNumber}`;
+  const cached = cachedQulGharib.get(verseKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const response = await fetch(
+    `https://qul.tarteel.ai/resources/tafsir/519?ayah=${encodeURIComponent(verseKey)}`,
+    {
+      headers: { Accept: "text/html", "User-Agent": "Hasaad-Quran-Reader/1.0" },
+      redirect: "error",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    },
+  );
+  if (!response.ok) throw new Error(`QUL Gharib request failed with status ${response.status}`);
+  const html = await response.text();
+  const tafsirBlock = html.match(/<div class="tafsir arabic">([\s\S]*?)<\/div>\s*<\/div>/i)?.[1] ?? "";
+  const entries = Array.from(
+    tafsirBlock.matchAll(/<p>\s*<span[^>]*>([\s\S]*?)<\/span>\s*:\s*([\s\S]*?)<\/p>/gi),
+    (match) => ({
+      phrase: decodeQulHtml(match[1]),
+      meaning: decodeQulHtml(match[2]),
+    }),
+  ).filter((entry) => entry.phrase && entry.meaning);
+  cachedQulGharib.set(verseKey, {
+    value: entries,
+    expiresAt: Date.now() + QUL_GHARIB_CACHE_MS,
+  });
+  return entries;
+}
+
+async function getQulArabicWordMeaning(
+  surahNumber: number,
+  ayahNumber: number,
+  wordText: string,
+): Promise<{ text: string; source: typeof QUL_GHARIB_SOURCE } | null> {
+  try {
+    const normalizedWord = normalizeArabicLookup(wordText);
+    const entries = await getQulGharibEntries(surahNumber, ayahNumber);
+    const exact = entries.find((entry) => {
+      const phrase = normalizeArabicLookup(entry.phrase);
+      return phrase === normalizedWord || phrase.includes(normalizedWord) || normalizedWord.includes(phrase);
+    });
+    return exact ? { text: exact.meaning, source: QUL_GHARIB_SOURCE } : null;
+  } catch {
+    return null;
+  }
+}
 function credentials() {
   const clientId = process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_ID?.trim();
   const clientSecret = process.env.QURAN_FOUNDATION_PRODUCTION_CLIENT_SECRET?.trim();
@@ -1067,6 +1145,13 @@ export async function getQuranFoundationAyahEducation(
     && (selectedTranslation as { language_name?: unknown }).language_name === "english"
       ? (selectedTranslation as { text: string }).text.trim()
       : null;
+  const arabicMeaning = selectedValue
+    ? await getQulArabicWordMeaning(
+        surahNumber,
+        ayahNumber,
+        (selectedValue.text_uthmani as string).trim(),
+      )
+    : null;
   const value: QuranFoundationAyahEducation = {
     surahNumber,
     ayahNumber,
@@ -1077,6 +1162,7 @@ export async function getQuranFoundationAyahEducation(
       text: (selectedValue.text_uthmani as string).trim(),
       meaning: sourcedWordMeaning,
       source: WORD_BY_WORD_SOURCE,
+      arabicMeaning,
     } : null,
     tafsir: { text: tafsirText, source: TAFSIR_MUYASSAR_SOURCE },
   };
@@ -1100,6 +1186,7 @@ export function resetQuranFoundationClientForTests(): void {
   cachedTimingPayloads.clear();
   timingPayloadRequests.clear();
   cachedEducation.clear();
+  cachedQulGharib.clear();
 }
 
 function plainText(value: string): string {
@@ -1126,6 +1213,13 @@ const WORD_BY_WORD_SOURCE = {
   name: "Quran.com Word-by-Word Translation",
   provider: "Quran Foundation",
   version: "Content API v4 · English",
+} as const;
+
+const QUL_GHARIB_SOURCE = {
+  id: 519,
+  name: "الميسر في غريب القرآن",
+  provider: "Quranic Universal Library (QUL)",
+  version: "Tafsir resource 519",
 } as const;
 
 function validateVerseNumbers(surahNumber: number, ayahNumber: number): void {

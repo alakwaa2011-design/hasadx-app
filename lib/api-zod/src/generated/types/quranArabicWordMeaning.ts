@@ -5,17 +5,10 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { QuranArabicWordMeaning } from './quranArabicWordMeaning';
 import type { QuranEducationSource } from './quranEducationSource';
 
-export interface QuranWordContext {
-  id: number;
-  /** @minimum 1 */
-  position: number;
+export interface QuranArabicWordMeaning {
   /** @minLength 1 */
   text: string;
-  /** @minLength 1 */
-  meaning: string;
   source: QuranEducationSource;
-  arabicMeaning: QuranArabicWordMeaning | null;
 }

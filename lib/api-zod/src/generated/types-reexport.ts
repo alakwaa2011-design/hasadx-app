@@ -110,6 +110,7 @@ export type * from "./types/presentationTierWithUsage";
 export type * from "./types/presentationUsage";
 export type * from "./types/question";
 export type * from "./types/questionQuestionType";
+export type * from "./types/quranArabicWordMeaning";
 export type * from "./types/quranAudioPreference";
 export type * from "./types/quranAudioPreferenceInput";
 export type * from "./types/quranAyahEducation";
