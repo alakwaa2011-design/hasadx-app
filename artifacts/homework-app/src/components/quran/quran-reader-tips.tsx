@@ -5,10 +5,12 @@ type TargetRect = Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width" | 
 
 export function QuranReaderTips({
   lang,
+  suspended = false,
   onDismiss,
   onStepChange,
 }: {
   lang: "ar" | "en";
+  suspended?: boolean;
   onDismiss: () => void;
   onStepChange?: (step: number) => void;
 }) {
@@ -116,7 +118,12 @@ export function QuranReaderTips({
     : Math.max(16, window.innerHeight / 2 - 90);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[60]" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div
+      data-testid="quran-reader-tips"
+      aria-hidden={suspended}
+      className={`pointer-events-none fixed inset-0 z-[60] ${suspended ? "invisible" : ""}`}
+      dir={lang === "ar" ? "rtl" : "ltr"}
+    >
       <div className="absolute inset-0 bg-emerald-950/15 backdrop-blur-[1px]" />
       {targetRect && (
         <div

@@ -23,10 +23,15 @@ test.describe("public Quran mobile page geometry", () => {
   test("keeps the final Mushaf line above the audio player and action cards on screen", async ({
     page,
   }) => {
-    await page.addInitScript(() => localStorage.setItem("hw_lang", "ar"));
+    await page.addInitScript(() => {
+      localStorage.setItem("hw_lang", "ar");
+      localStorage.removeItem("quran-reader-tips-seen-v1");
+    });
     await page.goto(`/quran/2?page=${FIXED_PAGE}&view=pages`);
 
     await expect(page.getByTestId("select-mobile-page")).toHaveValue(String(FIXED_PAGE));
+    const readerTips = page.getByTestId("quran-reader-tips");
+    await expect(readerTips).toBeVisible();
     await page.getByTestId("button-mobile-page-layout").click();
     await expect(page.getByTestId("button-mobile-page-layout")).toHaveAttribute(
       "aria-label",
@@ -73,8 +78,9 @@ test.describe("public Quran mobile page geometry", () => {
     const word = mushafPage.locator('[data-quran-tour="word"]').first();
     await word.evaluate((element: HTMLButtonElement) => element.click());
     await expectHorizontallyInsideViewport(page.getByTestId("quran-word-action-popover"), page);
-    await page.getByRole("button", { name: "إغلاق خيارات الكلمة" })
-      .evaluate((element: HTMLButtonElement) => element.click());
+    await expect(readerTips).toBeHidden();
+    await page.getByTestId("word-action-meaning").click();
+    await expect(page.getByTestId("quran-word-action-popover")).toBeHidden();
 
     const ayahMarker = mushafPage.locator('[data-quran-tour="ayah-action"]').first();
     const markerCenter = await ayahMarker.evaluate((element) => {
@@ -93,5 +99,10 @@ test.describe("public Quran mobile page geometry", () => {
       pointerType: "mouse",
     });
     await expectHorizontallyInsideViewport(page.getByTestId("ayah-action-popover"), page);
+    await expect(readerTips).toBeHidden();
+    await page.getByTestId("action-copy").click();
+    await page.getByTestId("action-copy-current").click();
+    await expect(page.getByTestId("ayah-action-popover")).toBeHidden();
+    await expect(readerTips).toBeVisible();
   });
 });

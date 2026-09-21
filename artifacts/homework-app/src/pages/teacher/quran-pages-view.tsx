@@ -2369,6 +2369,7 @@ export function QuranPagesView({
       {showReaderTips && !guidedOpen && (
         <QuranReaderTips
           lang={lang}
+          suspended={ayahActionVerseKey !== null || wordAction !== null}
           onDismiss={dismissReaderTips}
           onStepChange={(step) => {
             if (step === 3 && window.innerWidth < 768) {
