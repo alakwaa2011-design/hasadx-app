@@ -250,7 +250,7 @@ export function QuranMadaniPageRenderer({
     >
       <div
         className="quran-madani-page-content relative z-20 flex h-full w-full flex-col px-[8.5%] py-[9.5%]"
-        style={{ fontFamily: `'${fontName}', sans-serif` }}
+        style={{ fontFamily: `'${fontName}'` }}
       >
         {rows.map((rowNum) => {
           const firstPageLineIndex = firstPagesContentStartRow
@@ -278,8 +278,8 @@ export function QuranMadaniPageRenderer({
               >
                 <span
                   aria-hidden="true"
-                  className="quran-madani-bismillah whitespace-nowrap text-[5.8cqw] leading-none text-black"
-                  style={{ fontFamily: "'qcf-v2-bismillah', sans-serif" }}
+                  className="quran-madani-bismillah whitespace-nowrap overflow-visible text-[5.8cqw] leading-none text-black"
+                  style={{ fontFamily: "'qcf-v2-bismillah'" }}
                   translate="no"
                 >
                   ﱁ ﱂ ﱃ ﱄ
@@ -311,7 +311,7 @@ export function QuranMadaniPageRenderer({
             <div
               key={rowNum}
               className={cn(
-                "quran-madani-line flex w-full flex-1 items-center text-[5.2cqw] leading-none",
+                "quran-madani-line flex min-h-0 w-full flex-1 items-center overflow-visible text-[5.2cqw] leading-none",
                 isCentered ? "justify-center gap-[0.2cqw]" : "justify-between"
               )}
             >
@@ -405,7 +405,7 @@ export function QuranMadaniPageRenderer({
                     }}
                     type="button"
                     className={cn(
-                      "relative m-0 inline-block whitespace-nowrap cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
+                      "relative m-0 inline-block whitespace-nowrap overflow-visible cursor-pointer appearance-none rounded-sm border-none bg-transparent p-0 outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
                       w.type === "end" ? "quran-madani-end text-[5.2cqw]" : "",
                       // Apply standard color or highlight colors
                       isSelectedWord

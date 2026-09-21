@@ -1289,7 +1289,7 @@ export default function TugPlay() {
 
           {/* On desktop lg+, keep the slight overlap with the arena (-mt-3).
               On mobile, the status row sits between; no overlap needed. */}
-          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full lg:-mt-3">
+          <div className="flex-1 flex flex-col min-w-0 max-w-xl lg:max-w-6xl mx-auto w-full lg:-mt-3">
             <AnimatePresence mode="wait">
 
               {phase === "lobby" && (
@@ -1407,7 +1407,7 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-3 lg:p-4 mb-1.5 lg:mb-2 text-center border-2 text-white shadow-lg backdrop-blur-sm ${
+                  <div className={`mx-auto w-full max-w-xl lg:max-w-5xl rounded-2xl p-3 lg:p-4 mb-1.5 lg:mb-2 text-center border-2 text-white shadow-lg backdrop-blur-sm ${
                     phase === "round-end" && roundData
                       ? "border-[#D9A521]/60"
                       : isPowerQ

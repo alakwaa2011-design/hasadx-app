@@ -63,6 +63,7 @@
 - [Configured admin promotion](configured-admin-promotion.md) — admin allowlisted emails must be promoted during auth/session refresh, not only server startup.
 - [Tug mystery boxes](tug-mystery-boxes.md) — gifts are team-level; device mode is server-authoritative, while board mode uses the local reducer with equivalent effects.
 - [Tug timed matches](tug-timed-matches.md) — timed mode uses one shared match clock, repeats questions, and ends both teams together; question mode keeps its existing finish rules.
+- [Tug launch presentation](tug-launch-presentation.md) — show board and student-device launch as equal visible choices; desktop setup and waiting screens follow Wameeth's wide layout.
 - [Safe in-app back navigation](safe-in-app-back-navigation.md) — route-level back uses the internal app stack with deterministic fallbacks; state-level form back remains local.
 - [Question images across games](question-images-across-games.md) — preserve imageUrl through every question transform and resolve storage paths at render time; failed sources must explain themselves.
 - [Game question compatibility](game-question-compatibility.md) — button-based games accept MCQ with 2–4 nonempty options plus true/false; typed answers require a renderer with text input.
@@ -143,4 +144,5 @@
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.
 - [Shared upload cleanup scope](shared-upload-cleanup-scope.md) — cleanup jobs must enumerate only their own namespace; table references cannot prove ownership of every object under shared uploads.
 - [Quran ayah action ergonomics](quran-ayah-action-ergonomics.md) — ayah-number tap opens actions; word pronunciation requires a stationary long-press, while light word taps stay silent.
+- [QCF page line metrics](qcf-page-line-metrics.md) — never use normal line-height for page fonts; their oversized glyph bounds push canonical 15-line pages past the paper.
 - [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.

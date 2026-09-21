@@ -1874,6 +1874,9 @@ export function QuranPagesView({
 
       <main
         ref={readerMainRef}
+        style={{
+          "--quran-dock-height": `${bottomDockHeight}px`,
+        } as React.CSSProperties}
         className={cn(
           "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
           guidedOpen && "quran-reader-main--guided touch-pan-y overscroll-contain",
@@ -2023,15 +2026,6 @@ export function QuranPagesView({
             className="quran-guided-scroll-reserve w-full shrink-0"
             style={{
               height: `calc(${guidedPanelHeight}px + 1.5rem + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
-            }}
-          />
-        )}
-        {bottomDockHeight > 0 && (
-          <div
-            aria-hidden="true"
-            className="quran-dock-scroll-reserve hidden w-full shrink-0 max-md:block"
-            style={{
-              height: `calc(${bottomDockHeight}px + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
             }}
           />
         )}

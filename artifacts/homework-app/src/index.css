@@ -856,6 +856,11 @@
       var(--quran-safe-area-top, env(safe-area-inset-top, 0px))
       + 3.6rem
     );
+    padding-bottom: calc(
+      var(--quran-dock-height, 0px)
+      + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px))
+      + 0.5rem
+    );
   }
 
   /* The Mushaf paper owns the full phone width and height. Reader controls
@@ -863,7 +868,19 @@
      page gives the user enough real scroll range to reveal the final lines. */
   .quran-reader-main {
     width: 100%;
-    padding: 0 !important;
+    padding-top: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: calc(
+      var(--quran-dock-height, 0px)
+      + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px))
+      + 0.5rem
+    ) !important;
+    scroll-padding-bottom: calc(
+      var(--quran-dock-height, 0px)
+      + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px))
+      + 0.5rem
+    );
     overscroll-behavior-y: contain;
   }
 
