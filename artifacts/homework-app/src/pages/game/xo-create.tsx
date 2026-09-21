@@ -162,7 +162,10 @@ export default function XoCreate() {
     return () => {
       cancelled = true;
     };
-  }, [ar]);
+  // Read the deep link once per page entry. A locale hydration change must not
+  // cancel the request and leave the assignment marked as already loaded.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
