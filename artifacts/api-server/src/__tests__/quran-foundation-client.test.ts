@@ -27,6 +27,7 @@ import {
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
   ABU_BAKR_AL_DHABI_RECITATION_ID,
+  MAHMOUD_ALI_AL_BANNA_RECITATION_ID,
   SADIQ_ALNIZAM_RECITATION_ID,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
@@ -240,6 +241,7 @@ describe("Quran Foundation client", () => {
       { id: 8, style: "Mujawwad" },
       { id: 9, style: "Murattal" },
       { id: 1_000_006, style: "Murattal" },
+      { id: MAHMOUD_ALI_AL_BANNA_RECITATION_ID, style: "Murattal" },
     ]);
     expect(display.some((item) => item.style === "Muallim")).toBe(false);
     expect(display.find((item) => item.id === SADIQ_ALNIZAM_RECITATION_ID)).toMatchObject({
@@ -248,6 +250,11 @@ describe("Quran Foundation client", () => {
     });
     expect(display.find((item) => item.id === ABU_BAKR_AL_DHABI_RECITATION_ID)).toMatchObject({
       name: "أبوبكر الظبي",
+      available: true,
+    });
+    expect(display.find((item) => item.id === MAHMOUD_ALI_AL_BANNA_RECITATION_ID)).toMatchObject({
+      name: "محمود علي البنا",
+      style: "Murattal",
       available: true,
     });
   });
@@ -270,6 +277,15 @@ describe("Quran Foundation client", () => {
       .rejects.toThrow("timing mapping is unavailable");
     await expect(getQuranFoundationAudioUrl(SADIQ_ALNIZAM_RECITATION_ID, 114, 1))
       .resolves.toBe("/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3");
+  });
+
+  it("serves Mahmoud Ali Al-Banna as a complete ayah-scoped Murattal recitation", async () => {
+    await expect(getQuranFoundationAyahTimings(MAHMOUD_ALI_AL_BANNA_RECITATION_ID, 2, 255))
+      .rejects.toThrow("ayah-scoped playback");
+    await expect(getQuranFoundationAudioUrl(MAHMOUD_ALI_AL_BANNA_RECITATION_ID, 1, 1))
+      .resolves.toBe("https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps/001001.mp3");
+    await expect(getQuranFoundationAudioUrl(MAHMOUD_ALI_AL_BANNA_RECITATION_ID, 114, 6))
+      .resolves.toBe("https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps/114006.mp3");
   });
 
   it("loads Abu Bakr Al-Dhabi timings for every surah while preserving the existing At-Tin sample", async () => {

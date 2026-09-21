@@ -19,6 +19,9 @@ const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
 const MAHER_AL_MUAIQLY_RECITATION_ID = 1_000_159;
 const MAHER_AL_MUAIQLY_AUDIO_BASE_URL = "https://everyayah.com/data/MaherAlMuaiqly128kbps";
+export const MAHMOUD_ALI_AL_BANNA_RECITATION_ID = 2_000_032;
+const MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL =
+  "https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps";
 export const SADIQ_ALNIZAM_RECITATION_ID = 2_000_114;
 const SADIQ_ALNIZAM_AUDIO_URL =
   "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3";
@@ -535,6 +538,12 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
     style: "Murattal",
     available: true,
   });
+  selected.set("محمود علي البنا:Murattal", {
+    id: MAHMOUD_ALI_AL_BANNA_RECITATION_ID,
+    name: "محمود علي البنا",
+    style: "Murattal",
+    available: true,
+  });
   return [...selected.values()].sort((left, right) =>
     left.name.localeCompare(right.name, "ar")
     || (left.style ?? "").localeCompare(right.style ?? "", "en"));
@@ -735,8 +744,11 @@ export async function getQuranFoundationAyahTimings(
       synchronized: true,
     });
   }
-  if (recitationId === MAHER_AL_MUAIQLY_RECITATION_ID) {
-    throw new Error("Maher Al-Muaiqly standard recitation uses ayah-scoped playback");
+  if (
+    recitationId === MAHER_AL_MUAIQLY_RECITATION_ID
+    || recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID
+  ) {
+    throw new Error("This standard recitation uses ayah-scoped playback");
   }
   const verseKey = `${surahNumber}:${ayahNumber}`;
   const cacheKey = `${recitationId}:${verseKey}`;
@@ -979,6 +991,16 @@ export async function getQuranFoundationAudioUrl(
   if (recitationId === ABU_BAKR_AL_DHABI_RECITATION_ID) {
     validateVerseNumbers(surahNumber, ayahNumber);
     return getAbuBakrAlDhabiAudioUrl(surahNumber);
+  }
+  if (recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID) {
+    validateVerseNumbers(surahNumber, ayahNumber);
+    const fileName = `${String(surahNumber).padStart(3, "0")}${String(ayahNumber).padStart(3, "0")}.mp3`;
+    const value = `${MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL}/${fileName}`;
+    cachedAudio.set(`${recitationId}:${surahNumber}:${ayahNumber}`, {
+      value,
+      expiresAt: Date.now() + AUDIO_CACHE_MS,
+    });
+    return value;
   }
   const reciters = await listQuranFoundationReciters();
   if (!reciters.some((reciter) => reciter.id === recitationId)) {
