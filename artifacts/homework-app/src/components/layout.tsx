@@ -249,6 +249,8 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
   const dmUnreadCount = useDmUnreadCount(!!user && !isTeacherAdmin);
   const { colorScheme, setColorScheme } = useDarkMode();
   const toggleLang = () => setLang(lang === "ar" ? "en" : "ar");
+  const languageSwitchLabel =
+    lang === "ar" ? "Switch to English" : "التبديل إلى العربية";
   const cycleColorScheme = () => {
     const next: Record<string, "dark" | "system" | "light"> = {
       light: "dark",
@@ -608,8 +610,8 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
                     <button
                       onClick={toggleLang}
                       className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                      aria-label={lang === "ar" ? "English" : "العربية"}
-                      title={lang === "ar" ? "English" : "Arabic"}
+                      aria-label={languageSwitchLabel}
+                      title={languageSwitchLabel}
                     >
                       <Languages className="w-4 h-4" />
                     </button>
@@ -663,6 +665,8 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
                         <button
                           onClick={toggleLang}
                           className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+                          aria-label={languageSwitchLabel}
+                          title={languageSwitchLabel}
                         >
                           <Languages className="w-4 h-4" />
                         </button>
