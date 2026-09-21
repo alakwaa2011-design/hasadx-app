@@ -371,6 +371,11 @@ export default function EscapeCreate() {
                 ? "غرفة هروب تعليمية: فكّكوا الأقفال بالإجابات الصحيحة واهربوا قبل انتهاء الوقت!"
                 : "An educational escape room: break the locks with correct answers and escape before time runs out!"}
             </motion.p>
+            {sourceTitle && (
+              <p className="mt-2 text-sm font-black text-white">
+                {sourceTitle} · {questions.length} {ar ? "أسئلة" : "questions"}
+              </p>
+            )}
             {/* Lock types strip */}
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
               className="mt-4 flex flex-wrap items-center justify-center gap-2">

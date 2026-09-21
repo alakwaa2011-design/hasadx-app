@@ -182,6 +182,7 @@ export default function WheelCreate() {
   const [activeSource, setActiveSource] = useState<QuestionSource | null>(null);
   const [segmentsEditorOpen, setSegmentsEditorOpen] = useState(false);
   const loadedSavedGameRef = useRef(false);
+  const loadedAssignmentRef = useRef(false);
 
   // Import from assignment
   const [importOpen, setImportOpen] = useState(false);
@@ -667,7 +668,7 @@ export default function WheelCreate() {
       setSegments(applyPointsSettings(applyBonusSettings(newSegs), config.pointsMode, config.uniformPoints));
       setActiveSource("assignment");
       setSegmentsEditorOpen(false);
-      setSetupStep("source");
+      setSetupStep("settings");
       // Always apply title, subject, grade from the selected assignment
       if (data.title) setTitle(data.title);
       if (data.subject) setSubject(data.subject);
@@ -680,6 +681,15 @@ export default function WheelCreate() {
       setImportingId(null);
     }
   };
+
+  useEffect(() => {
+    const assignmentId = Number(new URLSearchParams(window.location.search).get("assignmentId"));
+    if (!Number.isInteger(assignmentId) || assignmentId <= 0 || loadedAssignmentRef.current) return;
+    loadedAssignmentRef.current = true;
+    void importFromAssignment(assignmentId);
+    // The dashboard deep link is read once. Subsequent source changes are user-driven.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isSupportedBankQuestion = (question: BankQuestion) => {
     if (question.questionType === "true_false") return !!question.text && !!question.correctAnswer;
@@ -1020,7 +1030,17 @@ export default function WheelCreate() {
             <motion.main key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
               <section className="rounded-3xl p-4 sm:p-5 border border-primary/15" style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}0d, ${BRAND_GOLD}14)` }}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div><p className="text-xs font-black tracking-wide uppercase" style={{ color: BRAND_PRIMARY }}>{w.wheelReady}</p><h2 className="text-lg sm:text-xl font-black text-foreground mt-1">{title || w.addGameTitle}</h2><p className="text-xs text-muted-foreground mt-1">{w.readySummary.replace("{segments}", String(segments.length)).replace("{teams}", String(config.teamCount))}</p></div>
+                  <div>
+                    <p className="text-xs font-black tracking-wide uppercase" style={{ color: BRAND_PRIMARY }}>{w.wheelReady}</p>
+                    <h2 className="text-lg sm:text-xl font-black text-foreground mt-1">{title || w.addGameTitle}</h2>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activeSource === "assignment"
+                        ? (lang === "ar"
+                            ? `${segments.filter(segment => segment.kind === "question").length} سؤال من الواجب`
+                            : `${segments.filter(segment => segment.kind === "question").length} assignment questions`)
+                        : w.readySummary.replace("{segments}", String(segments.length)).replace("{teams}", String(config.teamCount))}
+                    </p>
+                  </div>
                 </div>
               </section>
               {editingTemplateId !== null && (

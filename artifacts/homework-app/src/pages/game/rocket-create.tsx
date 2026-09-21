@@ -505,6 +505,11 @@ export default function RocketCreate() {
                    className="w-full bg-background border rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-primary"
                    maxLength={60}
                  />
+                 {title && (
+                   <p className="mt-2 text-xs font-bold text-white/70">
+                     {questions.length} {ar ? "أسئلة من الواجب" : "assignment questions"}
+                   </p>
+                 )}
                </div>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                  <div>
