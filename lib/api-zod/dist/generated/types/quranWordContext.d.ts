@@ -5,6 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { QuranArabicWordMeaning } from './quranArabicWordMeaning';
 import type { QuranEducationSource } from './quranEducationSource';
 export interface QuranWordContext {
     id: number;
@@ -15,5 +16,6 @@ export interface QuranWordContext {
     /** @minLength 1 */
     meaning: string;
     source: QuranEducationSource;
+    arabicMeaning: QuranArabicWordMeaning | null;
 }
 //# sourceMappingURL=quranWordContext.d.ts.map

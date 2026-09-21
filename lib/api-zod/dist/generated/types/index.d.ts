@@ -122,6 +122,7 @@ export * from './presentationTierWithUsage';
 export * from './presentationUsage';
 export * from './question';
 export * from './questionQuestionType';
+export * from './quranArabicWordMeaning';
 export * from './quranAudioPreference';
 export * from './quranAudioPreferenceInput';
 export * from './quranAyahEducation';

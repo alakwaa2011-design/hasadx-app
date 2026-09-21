@@ -7,7 +7,7 @@ import {
   Play, Clock, Swords, ArrowRight, Link2, Users, ListChecks, Monitor, Smartphone, CircleCheck,
   Check, X, Loader2, FileText, BookOpen,
   GraduationCap, Trash2, Search, Gift, Snowflake,
-  Timer, Copy
+  Timer, Copy, Settings2, ChevronDown
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
@@ -31,36 +31,8 @@ interface TugQuestion {
   imageUrl?: string | null;
 }
 
-interface BankQuestion {
-  id: number;
-  subject: string;
-  text: string;
-  optionA: string | null;
-  optionB: string | null;
-  optionC: string | null;
-  optionD: string | null;
-  correctAnswer: string | null;
-  points: number;
-  tags: string | null;
-  imageUrl?: string | null;
-  questionType?: string | null;
-}
 
-const correctAnswerToIndex = (ca: string | null): number => {
-  if (!ca) return 0;
-  return { A: 0, B: 1, C: 2, D: 3 }[ca.toUpperCase()] ?? 0;
-};
 
-const bankToTug = (bq: BankQuestion): TugQuestion => ({
-  text: bq.text,
-  options: bq.questionType === "true_false"
-    ? ["صح", "خطأ"]
-    : [bq.optionA, bq.optionB, bq.optionC, bq.optionD].filter((option): option is string => !!option?.trim()),
-  correct: bq.questionType === "true_false"
-    ? (bq.correctAnswer === "false" || bq.correctAnswer === "B" ? 1 : 0)
-    : correctAnswerToIndex(bq.correctAnswer),
-  imageUrl: bq.imageUrl || null,
-});
 
 const savedSettings = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -88,6 +60,8 @@ export default function TugCreate() {
   const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
   const [readyOpen, setReadyOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showLaunchOptions, setShowLaunchOptions] = useState(false);
   // Activity title carried into Class Mode's top banner (assignment title when known).
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
 
@@ -98,20 +72,6 @@ export default function TugCreate() {
     }
     setLocation("/");
   };
-
-  // Bank
-  const [bankOpen, setBankOpen] = useState(false);
-  const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([]);
-  const [bankLoading, setBankLoading] = useState(false);
-  const [bankSearch, setBankSearch] = useState("");
-  const [bankSelected, setBankSelected] = useState<Set<number>>(new Set());
-
-  // Assignments
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number; isOwn?: boolean; ownerName?: string | null }[]>([]);
-  const [assignLoading, setAssignLoading] = useState(false);
-  const [assignImporting, setAssignImporting] = useState<number | null>(null);
-
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
@@ -243,100 +203,6 @@ export default function TugCreate() {
       setCopyingLink(false);
     }
   };
-
-  // Bank
-  const loadBank = useCallback(async () => {
-    setBankLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/question-bank`, { credentials: "include" });
-      if (res.status === 401) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setBankOpen(false); return; }
-      if (res.ok) {
-        const data = await res.json();
-        setBankQuestions(data.filter((q: BankQuestion) =>
-          !!q.correctAnswer && (
-            q.questionType === "true_false"
-            || [q.optionA, q.optionB, q.optionC, q.optionD].filter(option => !!option?.trim()).length >= 2
-          )));
-      }
-    } catch { /* ignore */ } finally { setBankLoading(false); }
-  }, [ar]);
-
-  useEffect(() => {
-    if (bankOpen) { loadBank(); setBankSelected(new Set()); setBankSearch(""); }
-  }, [bankOpen, loadBank]);
-
-  const importBankSelected = () => {
-    const selected = bankQuestions.filter(q => bankSelected.has(q.id));
-    if (selected.length === 0) return;
-    const merged = [...questions, ...selected.map(bankToTug)].slice(0, 20);
-    setQuestions(merged);
-    setQuestionCount(merged.length);
-    setSelectedSource("bank");
-    setBankOpen(false);
-    toast.success(ar ? `تم استيراد ${selected.length} سؤال!` : `Imported ${selected.length} questions!`);
-  };
-
-  // Assignments
-  const loadAssignments = useCallback(async () => {
-    setAssignLoading(true);
-    try {
-      const meRes = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
-      if (!meRes.ok) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setAssignOpen(false); return; }
-      const me = await meRes.json();
-      const teacherId = me.teacherId || me.id;
-      const res = await fetch(`${API_BASE}/api/assignments?teacherId=${teacherId}&include=shared`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setAssignments(data.filter((a: { questionCount: number }) => a.questionCount > 0));
-      }
-    } catch { /* ignore */ } finally { setAssignLoading(false); }
-  }, [ar]);
-
-
-  useEffect(() => {
-    if (assignOpen) { loadAssignments(); }
-  }, [assignOpen, loadAssignments]);
-
-  const importAllFromAssignment = async (assignmentId: number, assignmentTitle: string) => {
-    setAssignImporting(assignmentId);
-    try {
-      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
-      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
-      const data = await res.json();
-      const qs = (data.questions || []).flatMap((q: any) => {
-        const normalized = normalizeGameQuestion(q, { trueLabel: ar ? "صح" : "True", falseLabel: ar ? "خطأ" : "False" });
-        return normalized ? [{
-          text: normalized.text,
-          options: normalized.options,
-          correct: normalized.correct,
-          imageUrl: normalized.imageUrl,
-        }] : [];
-      });
-      if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار أو صح وخطأ في هذا الواجب" : "No choice or true/false questions found"); return; }
-      const sliced = qs.slice(0, 20);
-      setQuestions(sliced);
-      setQuestionCount(sliced.length);
-      setSelectedSource("assignment");
-      setSourceTitle(assignmentTitle);
-      setAssignOpen(false);
-      toast.success(ar ? `تم استيراد ${qs.length} سؤال من "${assignmentTitle}"` : `Imported ${qs.length} questions from "${assignmentTitle}"`);
-    } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
-    finally { setAssignImporting(null); }
-  };
-
-  const filteredBank = bankSearch.trim()
-    ? bankQuestions.filter(q => q.text.includes(bankSearch) || q.subject.includes(bankSearch) || (q.tags && q.tags.includes(bankSearch)))
-    : bankQuestions;
-
-  const groupedBank = filteredBank.reduce<Record<string, BankQuestion[]>>((acc, q) => {
-    const key = q.subject || (ar ? "بدون مادة" : "No subject");
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(q);
-    return acc;
-  }, {});
-
-  const optionLetters = ["أ", "ب", "ج", "د"];
-
   if (setupStep === "questions") {
     return (
       <Layout>
@@ -347,15 +213,16 @@ export default function TugCreate() {
           <UnifiedQuestionSourceFlow
             gameTitle={ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
             gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط المنافسة وابدأ اللعب." : "Prepare questions, configure the competition, then start."}
-            gameIcon={<Link2 className="h-8 w-8 text-[#0B4B35]" />}
+            gameIcon={<Swords className="h-8 w-8 text-[#0B4B35]" />}
             accentColor="#0B4B35"
             tugPresentation
+            floatingAssignmentContinue
             header={
               <div className="rounded-3xl border border-[#0B4B35]/10 bg-white px-4 py-4 shadow-sm sm:px-6" dir={dir}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0B4B35] text-white shadow-sm">
-                      <Link2 className="h-5 w-5" />
+                      <Swords className="h-5 w-5" />
                     </div>
                     <div>
                       <h1 className="text-lg font-black text-[#0B4B35] sm:text-xl">{ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}</h1>
@@ -364,7 +231,7 @@ export default function TugCreate() {
                   </div>
                   <div className="flex items-center justify-between gap-2 rounded-2xl bg-[#FAF8F0] px-3 py-2" style={{ direction: "ltr" }}>
                     <span className="flex items-center gap-1.5 text-xs font-black text-red-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-red-500" />{ar ? "الأحمر" : "Red"}</span>
-                    <Link2 className="h-4 w-4 text-[#D9AA25]" />
+                    <Swords className="h-4 w-4 text-slate-300" />
                     <span className="flex items-center gap-1.5 text-xs font-black text-blue-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-blue-500" />{ar ? "الأزرق" : "Blue"}</span>
                   </div>
                 </div>
@@ -422,665 +289,297 @@ export default function TugCreate() {
 
   return (
     <Layout>
-        <div className="min-h-screen bg-[#FAF8F0]" dir={dir}>
-          <div className="mx-auto max-w-3xl px-4 pt-5 sm:px-6">
-            <GameFlowBackButton onBack={handleFlowBack} />
-          </div>
-          <div className="mx-auto max-w-3xl px-4 pb-2 pt-5 sm:px-6">
-            <div className="rounded-3xl border border-[#0B4B35]/10 bg-white px-4 py-4 shadow-sm sm:px-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0B4B35] text-white">
-                    <Link2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-black text-[#0B4B35] sm:text-xl">{ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}</h1>
-                    <p className="mt-0.5 text-xs font-medium text-slate-500">{ar ? "اضبط المنافسة ثم انتقل لبدء اللعب" : "Set the match, then get ready to start"}</p>
-                  </div>
+      <div className="min-h-screen bg-[#FAF8F0]" dir={dir}>
+        <div className="mx-auto max-w-3xl px-4 pt-5 sm:px-6">
+          <GameFlowBackButton onBack={handleFlowBack} />
+        </div>
+        <div className="mx-auto max-w-3xl px-4 pb-2 pt-5 sm:px-6">
+          <div className="rounded-3xl border border-[#0B4B35]/10 bg-white px-4 py-4 shadow-sm sm:px-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0B4B35] text-white">
+                  <Swords className="h-5 w-5" />
                 </div>
-                <div className="flex items-center justify-between gap-2 rounded-2xl bg-[#FAF8F0] px-3 py-2" style={{ direction: "ltr" }}>
-                  <span className="flex items-center gap-1.5 text-xs font-black text-red-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-red-500" />{ar ? "الأحمر" : "Red"}</span>
-                  <Link2 className="h-4 w-4 text-[#D9AA25]" />
-                  <span className="flex items-center gap-1.5 text-xs font-black text-blue-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-blue-500" />{ar ? "الأزرق" : "Blue"}</span>
+                <div>
+                  <h1 className="text-lg font-black text-[#0B4B35] sm:text-xl">{ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}</h1>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">{ar ? "اضبط المنافسة ثم انتقل لبدء اللعب" : "Set the match, then get ready to start"}</p>
                 </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 rounded-2xl bg-[#FAF8F0] px-3 py-2" style={{ direction: "ltr" }}>
+                <span className="flex items-center gap-1.5 text-xs font-black text-red-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-red-500" />{ar ? "الأحمر" : "Red"}</span>
+                <Swords className="h-4 w-4 text-slate-300" />
+                <span className="flex items-center gap-1.5 text-xs font-black text-blue-700" style={{ direction: dir }}><span className="h-2 w-2 rounded-full bg-blue-500" />{ar ? "الأزرق" : "Blue"}</span>
               </div>
             </div>
           </div>
-        {/* ══════════════════════════════════════════════════════
-            MAIN CONTENT
-        ══════════════════════════════════════════════════════ */}
-          <div className="mx-auto max-w-3xl px-4 py-5 pb-8 sm:px-6">
+        </div>
+
+        <div className="mx-auto max-w-3xl px-4 py-5 pb-8 sm:px-6">
           <div className="mb-6 flex justify-center">
-              <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-[#0B4B35]/10 bg-white p-1 shadow-sm">
-                <span className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-[11px] font-bold text-[#0B4B35] sm:text-xs"><CircleCheck className="h-3.5 w-3.5" />{ar ? "الأسئلة" : "Questions"}</span>
-                <span className="rounded-xl bg-[#0B4B35] px-2 py-2 text-center text-[11px] font-black text-white shadow-sm sm:text-xs">{ar ? "إعدادات اللعبة" : "Settings"}</span>
-                <span className="rounded-xl px-2 py-2 text-center text-[11px] font-bold text-slate-400 sm:text-xs">{ar ? "الاستعداد والبدء" : "Ready"}</span>
+            <div className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-[#0B4B35]/10 bg-white p-1 shadow-sm">
+              <span className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-[11px] font-bold text-[#0B4B35] sm:text-xs"><CircleCheck className="h-3.5 w-3.5" />{ar ? "الأسئلة" : "Questions"}</span>
+              <span className="rounded-xl bg-[#0B4B35] px-2 py-2 text-center text-[11px] font-black text-white shadow-sm sm:text-xs">{ar ? "إعدادات اللعبة" : "Settings"}</span>
+              <span className="rounded-xl px-2 py-2 text-center text-[11px] font-bold text-slate-400 sm:text-xs">{ar ? "الاستعداد والبدء" : "Ready"}</span>
             </div>
           </div>
 
-          {/* Two-column grid.
-              In RTL: first child → physical RIGHT (Settings), second → physical LEFT (Source).
-              This matches the reference image layout. */}
           <div className="grid grid-cols-1 gap-5 mb-5 max-w-3xl mx-auto">
-
-            {/* ── SETTINGS CARD — first child (RIGHT in RTL) ── */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-              className="bg-white rounded-3xl p-6 sm:p-7"
-              style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
-
-              <h2 className="text-base font-black text-gray-800 mb-5">
-                {ar ? "إعدادات اللعبة" : "Game Settings"}
-              </h2>
-
-              {/* End Mode row */}
-              <div className="mb-5 rounded-2xl border border-emerald-100/70 bg-emerald-50/30 p-4">
-                <p className="mb-3 text-sm font-bold text-gray-800">{ar ? "نهاية المنافسة" : "Match End Mode"}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setEndMode("questions")}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-colors"
-                    style={{
-                      borderColor: endMode === "questions" ? "#0B4B35" : "transparent",
-                      background: endMode === "questions" ? "#ffffff" : "transparent",
-                      boxShadow: endMode === "questions" ? "0 2px 8px rgba(11,75,53,0.12)" : "none",
-                    }}
-                  >
-                    <ListChecks className="h-5 w-5" style={{ color: endMode === "questions" ? "#0B4B35" : "#9ca3af" }} />
-                    <span className="text-xs font-bold" style={{ color: endMode === "questions" ? "#0B4B35" : "#6b7280" }}>
-                      {ar ? "انتهاء الأسئلة" : "Questions Finish"}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setEndMode("time")}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-colors"
-                    style={{
-                      borderColor: endMode === "time" ? "#0B4B35" : "transparent",
-                      background: endMode === "time" ? "#ffffff" : "transparent",
-                      boxShadow: endMode === "time" ? "0 2px 8px rgba(11,75,53,0.12)" : "none",
-                    }}
-                  >
-                    <Timer className="h-5 w-5" style={{ color: endMode === "time" ? "#0B4B35" : "#9ca3af" }} />
-                    <span className="text-xs font-bold" style={{ color: endMode === "time" ? "#0B4B35" : "#6b7280" }}>
-                      {ar ? "وقت محدد" : "Time Limit"}
-                    </span>
-                  </button>
-                </div>
-
-                <AnimatePresence>
-                  {endMode === "time" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3 flex items-center justify-between border-t border-emerald-100/60 pt-3">
-                        <span className="text-xs font-bold text-gray-700">
-                          {ar ? "مدة اللعب (دقائق):" : "Match duration (minutes):"}
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={60}
-                          value={matchDurationMinutes === "" ? "" : matchDurationMinutes}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "") {
-                              setMatchDurationMinutes(v as any);
-                            } else {
-                              setMatchDurationMinutes(Math.max(1, Math.min(60, Number(v))));
-                            }
-                          }}
-                          onBlur={() => {
-                            if (matchDurationMinutes === "") setMatchDurationMinutes(2);
-                          }}
-                          className="w-16 rounded-lg border-2 border-emerald-200 bg-white px-2 py-1 text-center text-sm font-black text-[#0B4B35] outline-none transition-colors focus:border-[#0B4B35]"
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Duration row */}
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2 shrink-0">
-                  <Clock className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm font-bold text-gray-700">{ar ? "وقت السؤال" : "Time per question"}</span>
-                </div>
-                <div className="flex gap-1 bg-gray-100 rounded-xl p-1 ms-3">
-                  {[10, 15, 20, 30].map(s => (
-                    <button key={s} onClick={() => setDuration(s)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
-                      style={{
-                        background: duration === s ? "#16a34a" : "transparent",
-                        color: duration === s ? "#fff" : "#6b7280",
-                      }}>
-                      {s}{ar ? "ث" : "s"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Auto advance row */}
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex-1 min-w-0 me-4">
-                  <p className="text-sm font-bold text-gray-700">
-                    {ar ? "التقدم التلقائي بعد كل سؤال" : "Auto-advance after each question"}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {ar ? "الانتقال تلقائياً للسؤال التالي بعد الإجابة" : "Move to next question automatically"}
-                  </p>
-                </div>
-                <button onClick={() => setAutoAdvance(!autoAdvance)}
-                  className="relative w-11 h-6 rounded-full transition-colors shrink-0"
-                  style={{ background: autoAdvance ? "#16a34a" : "#d1d5db" }}>
-                  <motion.div
-                    animate={{ x: autoAdvance ? (dir === "rtl" ? -19 : 19) : 2 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
-                    style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
-                  />
-                </button>
-              </div>
-
-              {/* Mystery Box settings */}
-              <div className="mb-5 rounded-2xl border border-purple-100 bg-purple-50/60 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Gift className="h-5 w-5 shrink-0 text-purple-600" />
-                    <div>
-                      <p className="text-sm font-black text-gray-800">{ar ? "صندوق المفاجآت" : "Mystery Box"}</p>
-                      <p className="mt-0.5 text-xs text-gray-500">{ar ? "هدايا جماعية تدعم الفريق أثناء اللعب" : "Team gifts that can change the match"}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setGiftsEnabled((v) => !v)}
-                    aria-label={ar ? "تفعيل صندوق المفاجآت" : "Enable Mystery Box"}
-                    className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-                    style={{ background: giftsEnabled ? "#7c3aed" : "#d1d5db" }}>
-                    <motion.div
-                      animate={{ x: giftsEnabled ? (dir === "rtl" ? -19 : 19) : 2 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      className="absolute top-1 h-4 w-4 rounded-full bg-white shadow"
-                      style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
-                    />
-                  </button>
-                </div>
-
-                {giftsEnabled && (
-                  <div className="mt-4 grid gap-3 border-t border-purple-100 pt-4 sm:grid-cols-2">
-                    <div>
-                      <p className="mb-2 text-xs font-black text-gray-700">{ar ? "يظهر الصندوق بعد" : "Award a box after"}</p>
-                      <div className="flex gap-1 rounded-xl bg-white p-1">
-                        {([1, 2, 3] as const).map((count) => (
-                          <button key={count} onClick={() => setGiftEveryCorrect(count)}
-                            className="flex-1 rounded-lg px-2 py-1.5 text-xs font-black transition-all"
-                            style={{
-                              background: giftEveryCorrect === count ? "#7c3aed" : "transparent",
-                              color: giftEveryCorrect === count ? "#fff" : "#6b7280",
-                            }}>
-                            {count} {ar ? (count === 1 ? "إجابة صحيحة" : "إجابات صحيحة") : "correct"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="mb-2 flex items-center gap-1 text-xs font-black text-gray-700">
-                        <Snowflake className="h-3.5 w-3.5 text-cyan-600" />
-                        {ar ? "مدة التجميد" : "Freeze duration"}
-                      </p>
-                      <div className="flex gap-1 rounded-xl bg-white p-1">
-                        {[3, 5, 7, 10].map((seconds) => (
-                          <button key={seconds} onClick={() => setFreezeDuration(seconds)}
-                            className="flex-1 rounded-lg px-2 py-1.5 text-xs font-black transition-all"
-                            style={{
-                              background: freezeDuration === seconds ? "#0891b2" : "transparent",
-                              color: freezeDuration === seconds ? "#fff" : "#6b7280",
-                            }}>
-                            {seconds}{ar ? "ث" : "s"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Question count row */}
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <ListChecks className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm font-bold text-gray-700">{ar ? "عدد الأسئلة" : "Question count"}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setQuestionCount(c => Math.max(1, c - 1))}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold text-gray-600 transition-colors hover:bg-gray-100"
-                    style={{ border: "1.5px solid #d1d5db" }}>
-                    −
-                  </button>
-                  <span className="w-9 text-center text-lg font-black text-gray-900 tabular-nums">{questionCount}</span>
-                  <button onClick={() => setQuestionCount(c => Math.min(20, c + 1))}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold text-gray-600 transition-colors hover:bg-gray-100"
-                    style={{ border: "1.5px solid #d1d5db" }}>
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Target class */}
+            {/* Top Summary Card */}
+            <div className="bg-white rounded-2xl border border-[#0B4B35]/10 p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-bold text-gray-700">{ar ? "الصف المستهدف" : "Target class"}</span>
-                  </div>
-                  <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 outline-none ms-3"
-                    style={{ minWidth: 130 }}>
-                    <option value="">{ar ? "بدون صف — دخول عام بالرابط" : "No class — anyone with the link"}</option>
-                    {gradeLevels.map(g => (
-                      <option key={g.gradeLevel} value={g.gradeLevel}>
-                        {g.gradeLevel} ({g.count})
-                      </option>
-                    ))}
-                  </select>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
-              className="rounded-3xl bg-white p-4 sm:p-5"
-              style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.05)" }}
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-black text-[#225739]">
-                    {questions.length}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-gray-800">{ar ? "الأسئلة جاهزة للإعداد" : "Questions ready for setup"}</p>
-                    <p className="truncate text-xs text-gray-500">{sourceTitle || (ar ? "مجموعة أسئلة مختارة" : "Prepared question set")}</p>
-                  </div>
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-xl bg-[#0B4B35]/5 flex items-center justify-center">
+                     <ListChecks className="w-5 h-5 text-[#0B4B35]" />
+                   </div>
+                   <div>
+                     <h3 className="font-bold text-sm text-gray-800">{sourceTitle || (ar ? 'أسئلة مخصصة' : 'Custom Questions')}</h3>
+                     <p className="text-xs text-gray-500 font-medium">{questionCount} {ar ? 'سؤال' : 'Questions'}</p>
+                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSetupStep("questions")}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#225739]/25 px-4 text-sm font-bold text-[#225739] transition-colors hover:bg-emerald-50"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                  {ar ? "تغيير المصدر" : "Change source"}
+                <button onClick={() => setSetupStep("questions")} data-testid="button-edit-questions" className="text-xs font-bold text-[#0B4B35] hover:text-emerald-700 transition-colors bg-[#0B4B35]/5 px-3 py-1.5 rounded-lg">
+                  {ar ? 'تعديل' : 'Edit'}
                 </button>
               </div>
-            </motion.div>
+            </div>
 
-            {/* ── SOURCE CARD — second child (LEFT in RTL) ── */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-              className="hidden bg-white rounded-3xl p-6 sm:p-7 flex flex-col"
-              style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
+            {/* Main Settings Card */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-[#0B4B35]/10 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#0B4B35]/[0.02] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-              <h2 className="text-base font-black text-gray-800 mb-4">
-                {ar ? "اختر مصدر الأسئلة" : "Question Source"}
+              <h2 className="text-sm font-black text-gray-800 flex items-center gap-2 mb-5">
+                <Clock className="w-4 h-4 text-[#0B4B35]" />
+                {ar ? "قواعد المنافسة" : "Match Rules"}
               </h2>
 
-              {/* Assignment source card */}
-              <button onClick={() => setAssignOpen(true)}
-                className="w-full flex items-center gap-4 p-4 rounded-[18px] mb-3 border-2 text-start transition-all hover:shadow-md active:scale-[0.98]"
-                style={{
-                  background: selectedSource === "assignment" ? "#fffbeb" : "#fffdf7",
-                  borderColor: selectedSource === "assignment" ? "#f59e0b" : "#fde8b4",
-                  minHeight: 110,
-                }}>
-                <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: "linear-gradient(135deg, #fef3c7, #fde68a)" }}>
-                  <FileText className="w-7 h-7" style={{ color: "#d97706" }} />
-                  {selectedSource === "assignment" && (
-                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-amber-500">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-gray-800">{ar ? "من واجب" : "From Assignment"}</p>
-                  <p className="text-xs text-gray-400 mt-1">{ar ? "الأسئلة من الواجبات" : "Questions from assignments"}</p>
-                </div>
-                <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
-                  style={{ borderColor: selectedSource === "assignment" ? "#f59e0b" : "#d1d5db" }}>
-                  {selectedSource === "assignment" && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  )}
-                </div>
-              </button>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <button
+                  onClick={() => setEndMode("questions")}
+                  className={`relative p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${endMode === "questions" ? "border-[#0B4B35] bg-[#0B4B35]/5 text-[#0B4B35]" : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"}`}
+                  data-testid="button-endmode-questions"
+                >
+                  {endMode === "questions" && <Check className="absolute top-2 right-2 w-4 h-4 text-[#0B4B35]" />}
+                  <ListChecks className="h-5 w-5" />
+                  <span className="text-xs font-bold">{ar ? "حتى انتهاء الأسئلة" : "Questions Finish"}</span>
+                </button>
+                <button
+                  onClick={() => setEndMode("time")}
+                  className={`relative p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${endMode === "time" ? "border-[#0B4B35] bg-[#0B4B35]/5 text-[#0B4B35]" : "border-gray-100 bg-gray-50 text-gray-500 hover:border-gray-200"}`}
+                  data-testid="button-endmode-time"
+                >
+                  {endMode === "time" && <Check className="absolute top-2 right-2 w-4 h-4 text-[#0B4B35]" />}
+                  <Timer className="h-5 w-5" />
+                  <span className="text-xs font-bold">{ar ? "وقت محدد للمباراة" : "Time Limit"}</span>
+                </button>
+              </div>
 
-              {/* Bank source card */}
-              <button onClick={() => setBankOpen(true)}
-                className="w-full flex items-center gap-4 p-4 rounded-[18px] mb-4 border-2 text-start transition-all hover:shadow-md active:scale-[0.98]"
-                style={{
-                  background: selectedSource === "bank" ? "#eff6ff" : "#f8fbff",
-                  borderColor: selectedSource === "bank" ? "#3b82f6" : "#bfdbfe",
-                  minHeight: 110,
-                }}>
-                <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: "linear-gradient(135deg, #dbeafe, #bfdbfe)" }}>
-                  <BookOpen className="w-7 h-7" style={{ color: "#2563eb" }} />
-                  {selectedSource === "bank" && (
-                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-blue-600">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-gray-800">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {bankQuestions.length > 0
-                      ? `${bankQuestions.length} ${ar ? "سؤال متاح" : "available"}`
-                      : (ar ? "الأسئلة من بنك الأسئلة" : "Questions from the bank")}
-                  </p>
-                </div>
-                <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
-                  style={{ borderColor: selectedSource === "bank" ? "#3b82f6" : "#d1d5db" }}>
-                  {selectedSource === "bank" && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  )}
-                </div>
-              </button>
-
-              {/* Questions loaded strip */}
               <AnimatePresence>
-                {questions.length > 0 && (
+                {endMode === "time" && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-auto">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                      style={{ background: "#f0fdf4", border: "1.5px solid #bbf7d0" }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
-                        style={{ background: "#16a34a" }}>
-                        {questions.length}
-                      </div>
-                      <p className="text-sm font-bold text-green-700 flex-1">
-                        {ar ? `${questions.length} سؤال محمّل جاهز للانطلاق!` : `${questions.length} questions ready!`}
-                      </p>
-                      <button
-                        onClick={() => { setQuestions([]); setSelectedSource(null); setSourceTitle(null); setQuestionCount(10); }}
-                        className="p-1.5 rounded-lg hover:bg-red-100 transition-colors text-red-400 shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden mb-5"
+                  >
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-[#0B4B35]/5 border border-[#0B4B35]/10">
+                      <span className="text-sm font-bold text-gray-700">
+                        {ar ? "مدة اللعب (دقائق):" : "Match duration (minutes):"}
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={matchDurationMinutes === "" ? "" : matchDurationMinutes}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setMatchDurationMinutes(v === "" ? "" : Math.max(1, Math.min(60, Number(v))));
+                        }}
+                        onBlur={() => {
+                          if (matchDurationMinutes === "") setMatchDurationMinutes(2);
+                        }}
+                        data-testid="input-match-duration"
+                        className="w-16 rounded-xl border-2 border-[#0B4B35]/20 bg-white px-2 py-1 text-center text-sm font-black text-[#0B4B35] outline-none transition-colors focus:border-[#0B4B35]"
+                      />
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {questions.length === 0 && (
-                <p className="text-xs text-gray-400 text-center mt-auto pt-2">
-                  {ar ? "اختر مصدر الأسئلة أولاً لتفعيل الزر" : "Pick a source first"}
-                </p>
-              )}
-            </motion.div>
-          </div>
-
-          {/* ── Ready checkpoint — launch is still deferred to the next action. ── */}
-          <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-5" />
-          <div className="flex justify-center mb-5">
-            <motion.button
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => setReadyOpen(true)}
-              disabled={creating || questions.length === 0}
-              className="flex items-center justify-center gap-3 font-black text-lg text-white transition-all"
-              style={{
-                width: "min(820px, 100%)",
-                height: 64,
-                borderRadius: 18,
-                background: questions.length > 0
-                  ? "#0B4B35"
-                  : "#d1d5db",
-                boxShadow: questions.length > 0 ? "0 6px 20px rgba(11,75,53,0.2)" : "none",
-                cursor: questions.length > 0 ? "pointer" : "not-allowed",
-              }}
-            >
-              {creating ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> {ar ? "جاري الإنشاء..." : "Creating..."}</>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" fill="currentColor" />
-                  {ar
-                    ? questions.length > 0 ? "إلى الاستعداد والبدء" : "أضف أسئلة أولاً"
-                    : questions.length > 0 ? "Continue to ready" : "Add questions first"}
-                </>
-              )}
-            </motion.button>
-          </div>
-
-          {/* ── BOTTOM INFO STRIP ── */}
-          <div className="flex flex-wrap justify-center gap-3">
-            {[
-              { icon: <Users className="h-4 w-4" />, text: ar ? "تتحدد الفرق عند الدخول" : "Teams are set when players join" },
-              { icon: <Swords className="h-4 w-4" />, text: ar ? "يفوز من يصل للنهاية أولاً" : "First team to finish wins" },
-              { icon: <Link2 className="h-4 w-4" />, text: ar ? "يُنشأ الرابط بعد البدء" : "A share link is created when you start" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
-                style={{
-                  background: "#ffffff",
-                  border: "1.5px solid #e5eee9",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                }}>
-                <span className="text-[#0B4B35]">{item.icon}</span>
-                <span className="text-xs font-medium text-gray-500">{item.text}</span>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </div>
-
-      <Dialog open={readyOpen} onOpenChange={setReadyOpen}>
-        <DialogContent className="max-w-xl overflow-hidden rounded-3xl border-0 p-0" dir={dir}>
-          <DialogTitle className="sr-only">{ar ? "طريقة اللعب" : "How to play"}</DialogTitle>
-          <DialogDescription className="sr-only">{ar ? "اختر طريقة بدء منافسة شد الحبل." : "Choose how to start the tug-of-war match."}</DialogDescription>
-          <div className="bg-[#0B4B35] px-6 py-6 text-white">
-            <h2 className="text-2xl font-black">{ar ? "طريقة اللعب" : "How to play"}</h2>
-            <p className="mt-1 text-sm font-medium text-white/75">{ar ? "اختر طريقة بدء المنافسة." : "Choose how to start the match."}</p>
-          </div>
-
-          <div className="bg-[#FAF8F0] p-5 sm:p-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={startClassMode}
-                disabled={creating || copyingLink}
-                className="flex min-h-[7.25rem] flex-col items-start justify-center gap-2 rounded-2xl bg-[#0B4B35] px-5 text-start text-white shadow-sm transition-colors hover:bg-[#083d2c] disabled:opacity-60"
-              >
-                <span className="flex items-center gap-2 text-base font-black">
-                  <Monitor className="h-5 w-5" />
-                  {ar ? "على السبورة" : "On the board"}
-                </span>
-                <span className="text-xs font-medium text-white/75">
-                  {ar ? "فريقان يتنافسان على السبورة نفسها" : "Two teams compete on the same board"}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={creating || copyingLink}
-                className="flex min-h-[7.25rem] flex-col items-start justify-center gap-2 rounded-2xl border-2 border-[#0B4B35]/20 bg-white px-5 text-start text-[#0B4B35] transition-colors hover:bg-[#0B4B35]/5 disabled:opacity-60"
-              >
-                <span className="flex items-center gap-2 text-base font-black">
-                  {creating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Smartphone className="h-5 w-5" />}
-                  {creating ? (ar ? "جاري الإنشاء..." : "Creating...") : (ar ? "على الأجهزة" : "On devices")}
-                </span>
-                {!creating && (
-                  <span className="text-xs font-medium text-slate-500">
-                    {ar
-                      ? "شارك رمز الدخول لينضم المشاركون."
-                      : "Share the access code so players can join."}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                disabled={creating || copyingLink}
-                className="sm:col-span-2 flex min-h-[5rem] flex-row items-center justify-between gap-4 rounded-2xl border-2 border-emerald-600/20 bg-emerald-50/50 px-5 py-4 text-start text-[#0B4B35] transition-colors hover:bg-emerald-50 disabled:opacity-60"
-              >
-                <div className="flex flex-col gap-1.5">
-                  <span className="flex items-center gap-2 text-base font-black">
-                    {copyingLink ? <Loader2 className="h-5 w-5 animate-spin" /> : <Copy className="h-5 w-5" />}
-                    {copyingLink ? (ar ? "جاري النسخ..." : "Copying...") : (ar ? "نسخ رابط للعب المباشر" : "Copy Direct Play Link")}
-                  </span>
-                  <span className="text-xs font-medium text-emerald-700/80">
-                    {ar
-                      ? "احفظ اللعبة وانسخ رابطاً يمكن للطلاب استخدامه للعب في أي وقت دون الحاجة لفتح العرض."
-                      : "Save the game and copy a link students can use anytime without launching a live session."}
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Bank modal ── */}
-      <AnimatePresence>
-        {bankOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setBankOpen(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
-              dir={dir} onClick={e => e.stopPropagation()}>
-              <div className="p-5 shrink-0 text-white"
-                style={{ background: "linear-gradient(135deg, #0ea5e9, #3b82f6)" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    <h2 className="font-black text-lg">{ar ? "بنك الأسئلة" : "Question Bank"}</h2>
-                  </div>
-                  <button onClick={() => setBankOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20"><X className="w-5 h-5" /></button>
-                </div>
-              </div>
-              <div className="p-4 border-b shrink-0">
-                <div className="relative">
-                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input value={bankSearch} onChange={e => setBankSearch(e.target.value)}
-                    placeholder={ar ? "بحث..." : "Search..."}
-                    className="w-full text-sm py-2.5 ps-9 pe-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 outline-none text-gray-800 dark:text-gray-200 dark:bg-gray-800" />
-                </div>
-                {bankSelected.size > 0 && (
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-600">{ar ? `تم اختيار ${bankSelected.size}` : `${bankSelected.size} selected`}</span>
-                    <button onClick={importBankSelected}
-                      className="py-1.5 px-4 rounded-lg text-white text-xs font-bold"
-                      style={{ background: BLUE }}>
-                      <Check className="w-3 h-3 inline me-1" />
-                      {ar ? "استيراد" : "Import"}
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-sm font-bold text-gray-700">{ar ? "وقت السؤال الواحد" : "Time per question"}</span>
+                <div className="flex gap-1 bg-gray-100/80 rounded-xl p-1">
+                  {[10, 15, 20, 30].map(s => (
+                    <button key={s} onClick={() => setDuration(s)}
+                      data-testid={`button-duration-${s}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${duration === s ? "bg-[#0B4B35] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                    >
+                      {s}{ar ? "ث" : "s"}
                     </button>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {bankLoading && <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500" /></div>}
-                {!bankLoading && filteredBank.length === 0 && <p className="text-center py-12 text-sm text-gray-400">{ar ? "لا توجد أسئلة" : "No questions"}</p>}
-                {Object.entries(groupedBank).map(([subject, subjectQs]) => (
-                  <div key={subject}>
-                    <div className="py-1 px-2 mb-2 rounded-lg" style={{ background: `${BLUE}15` }}>
-                      <span className="text-xs font-black uppercase tracking-wide" style={{ color: BLUE }}>{subject} ({subjectQs.length})</span>
-                    </div>
-                    <div className="space-y-2">
-                      {subjectQs.map(bq => {
-                        const checked = bankSelected.has(bq.id);
-                        return (
-                          <div key={bq.id} onClick={() => { const n = new Set(bankSelected); if (n.has(bq.id)) n.delete(bq.id); else n.add(bq.id); setBankSelected(n); }}
-                            className="p-3 rounded-xl border-2 cursor-pointer transition-all"
-                            style={{ borderColor: checked ? BLUE : "#e5e7eb", background: checked ? `${BLUE}10` : "#fff" }}>
-                            <div className="flex items-start gap-2">
-                              <div className="w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
-                                style={{ borderColor: checked ? BLUE : "#d1d5db", background: checked ? BLUE : "#fff" }}>
-                                {checked && <Check className="w-3 h-3 text-white" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-tight">{bq.text}</p>
-                                <div className="mt-1.5 grid grid-cols-2 gap-1">
-                                  {[bq.optionA, bq.optionB, bq.optionC, bq.optionD].map((opt, i) => (
-                                    <span key={i} className="text-xs px-2 py-0.5 rounded truncate"
-                                      style={{
-                                        background: bq.correctAnswer === ["A","B","C","D"][i] ? "#dcfce7" : "#f3f4f6",
-                                        color: bq.correctAnswer === ["A","B","C","D"][i] ? "#15803d" : "#6b7280",
-                                        fontWeight: bq.correctAnswer === ["A","B","C","D"][i] ? "700" : "400",
-                                      }}>
-                                      {optionLetters[i]}) {opt || "—"}
-                                    </span>
-                                  ))}
+            </motion.div>
+
+            {/* Advanced Settings */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-white rounded-3xl border border-[#0B4B35]/10 overflow-hidden shadow-sm">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                data-testid="button-toggle-advanced"
+                aria-expanded={showAdvanced}
+                aria-controls="tug-advanced-settings"
+                className="w-full flex items-center justify-between p-5 sm:p-6 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+              >
+                <span className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                  <Settings2 className="w-4 h-4 text-gray-400" />
+                  {ar ? "إعدادات متقدمة" : "Advanced Settings"}
+                </span>
+                <motion.div animate={{ rotate: showAdvanced ? (dir === 'rtl' ? 180 : -180) : 0 }} className="text-gray-400">
+                  <ChevronDown className="w-4 h-4" />
+                </motion.div>
+              </button>
+
+              <AnimatePresence>
+                {showAdvanced && (
+                  <motion.div id="tug-advanced-settings" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <div className="p-5 sm:p-6 pt-0 flex flex-col gap-6 bg-gray-50/50">
+
+                      {gradeLevels.length > 0 && (
+                        <div>
+                          <span className="block text-sm font-bold text-gray-700 mb-2">{ar ? "الفصل المستهدف (اختياري)" : "Target Class (Optional)"}</span>
+                          <select value={targetClass} onChange={e => setTargetClass(e.target.value)} data-testid="select-target-class" className="w-full bg-white border-2 border-gray-200 rounded-xl p-3 text-sm font-bold text-gray-700 outline-none focus:border-[#0B4B35] transition-colors appearance-none">
+                            <option value="">{ar ? "بدون صف — دخول عام بالرابط" : "No Class — Public Link Access"}</option>
+                            {gradeLevels.map(g => (
+                              <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel} ({g.count})</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="block text-sm font-bold text-gray-700">{ar ? "التقدم التلقائي" : "Auto Advance"}</span>
+                          <span className="text-xs font-medium text-gray-500 mt-0.5 block">{ar ? "الانتقال للسؤال التالي بعد الإجابة مباشرة" : "Move to next question after answering"}</span>
+                        </div>
+                        <button onClick={() => setAutoAdvance(!autoAdvance)} data-testid="button-auto-advance" className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${autoAdvance ? "bg-[#0B4B35]" : "bg-gray-300"}`}>
+                          <motion.div animate={{ x: autoAdvance ? (dir === 'rtl' ? -20 : 20) : (dir === 'rtl' ? -2 : 2) }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                        <div>
+                          <span className="block text-sm font-bold text-gray-700">{ar ? "مشاركة اللعبة مع المعلمين" : "Share with teachers"}</span>
+                          <span className="text-xs font-medium text-gray-500 mt-0.5 block">{ar ? "السماح للآخرين بنسخ هذه اللعبة" : "Allow others to copy this game"}</span>
+                        </div>
+                        <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} />
+                      </div>
+
+                      <div className="border border-gray-200 rounded-2xl p-4 bg-white">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-gray-800">{ar ? "الهدايا والمفاجآت" : "Gifts & Surprises"}</span>
+                          <button onClick={() => setGiftsEnabled(!giftsEnabled)} data-testid="button-gifts-enabled" className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${giftsEnabled ? "bg-amber-500" : "bg-gray-300"}`}>
+                            <motion.div animate={{ x: giftsEnabled ? (dir === 'rtl' ? -20 : 20) : (dir === 'rtl' ? -2 : 2) }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4">{ar ? "تظهر هدايا للفريق أثناء اللعب مثل مضاعفة النقاط أو تجميد الفريق الآخر" : "Gifts like double points or freeze effect appear during play"}</p>
+
+                        <AnimatePresence>
+                          {giftsEnabled && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                              <div className="pt-3 border-t border-gray-100 flex flex-col gap-4">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <span className="text-xs font-bold text-gray-600">{ar ? "ظهور الهدية كل:" : "Gift appears every:"}</span>
+                                  <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+                                    {[1, 2, 3].map(n => (
+                                      <button key={n} onClick={() => setGiftEveryCorrect(n as 1|2|3)} data-testid={`button-gift-freq-${n}`} className={`px-2 py-1 rounded text-[11px] sm:text-xs font-black transition-colors ${giftEveryCorrect === n ? "bg-white shadow-sm text-amber-600" : "text-gray-500 hover:text-gray-700"}`}>
+                                        {n} {ar ? "أسئلة" : "questions"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                  <span className="text-xs font-bold text-gray-600">{ar ? "مدة تجميد الخصم:" : "Freeze duration:"}</span>
+                                  <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+                                    {[3, 5, 7, 10].map(s => (
+                                      <button key={s} onClick={() => setFreezeDuration(s)} data-testid={`button-freeze-dur-${s}`} className={`px-2 py-1 rounded text-[11px] sm:text-xs font-black transition-colors ${freezeDuration === s ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
+                                        {s}{ar ? "ث" : "s"}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t shrink-0 flex gap-2">
-                <button onClick={() => setBankOpen(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm">{ar ? "إلغاء" : "Cancel"}</button>
-                <button onClick={importBankSelected} disabled={bankSelected.size === 0}
-                  className="flex-1 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-40"
-                  style={{ background: BLUE }}>
-                  {ar ? `استيراد (${bankSelected.size})` : `Import (${bankSelected.size})`}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
 
-      {/* ── Assignments modal ── */}
-      <AnimatePresence>
-        {assignOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setAssignOpen(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
-              dir={dir} onClick={e => e.stopPropagation()}>
-              <div className="p-5 shrink-0 text-white"
-                style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    <h2 className="font-black text-lg">{ar ? "اختر واجباً" : "Select Assignment"}</h2>
-                  </div>
-                  <button onClick={() => setAssignOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20"><X className="w-5 h-5" /></button>
-                </div>
-                <p className="text-white/80 text-xs mt-1">{ar ? "اضغط على الواجب لاستيراد جميع أسئلته مباشرة" : "Tap an assignment to import all its questions"}</p>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {assignLoading && <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-500" /></div>}
-                {!assignLoading && assignments.length === 0 && <p className="text-center py-12 text-sm text-gray-400">{ar ? "لا توجد واجبات" : "No assignments"}</p>}
-                {assignments.map(a => (
-                  <motion.button key={a.id} whileTap={{ scale: 0.97 }}
-                    onClick={() => importAllFromAssignment(a.id, a.title)}
-                    disabled={assignImporting !== null}
-                    className="w-full p-4 rounded-2xl border-2 flex items-center gap-3 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-start"
-                    style={{ borderColor: "#f59e0b", background: assignImporting === a.id ? "#fef3c7" : "#fff" }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>
-                      {assignImporting === a.id
-                        ? <Loader2 className="w-5 h-5 text-white animate-spin" />
-                        : <FileText className="w-5 h-5 text-white" />}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-gray-800 dark:text-gray-100 truncate">{a.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
-                    </div>
-                    <Check className="w-5 h-5 text-amber-500 shrink-0" />
-                  </motion.button>
-                ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Actions Card: Red vs Blue Launch */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-2 flex flex-col gap-3">
+              <button
+                onClick={handleCreate}
+                disabled={creating || copyingLink}
+                data-testid="button-host-game"
+                className="w-full bg-blue-500 text-white hover:bg-blue-600 p-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-sm disabled:opacity-70 font-black text-sm sm:text-base h-14 relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-white" />}
+                {ar ? "بدء المنافسة كمعلم" : "Host Match"}
+              </button>
+
+              <div className="bg-white rounded-3xl border border-[#0B4B35]/10 overflow-hidden shadow-sm">
+                <button
+                  onClick={() => setShowLaunchOptions(!showLaunchOptions)}
+                  data-testid="button-toggle-launch-options"
+                  aria-expanded={showLaunchOptions}
+                  aria-controls="tug-launch-options"
+                  className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                    <Settings2 className="w-4 h-4 text-gray-400" />
+                    {ar ? "خيارات التشغيل والمشاركة" : "Launch & Share Options"}
+                  </span>
+                  <motion.div animate={{ rotate: showLaunchOptions ? (dir === 'rtl' ? 180 : -180) : 0 }} className="text-gray-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </motion.div>
+                </button>
+                <AnimatePresence>
+                  {showLaunchOptions && (
+                    <motion.div id="tug-launch-options" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <div className="p-4 pt-0 bg-gray-50/50 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          onClick={startClassMode}
+                          disabled={creating}
+                          data-testid="button-start-class-mode"
+                          className="relative overflow-hidden group bg-red-500 text-white p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-red-600 transition-all shadow-sm disabled:opacity-70 h-24"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <Monitor className="w-7 h-7" />
+                          <span className="font-black text-sm">{ar ? "عرض على السبورة" : "Board Mode"}</span>
+                        </button>
+                        <button
+                          onClick={handleCopyLink}
+                          disabled={copyingLink || creating}
+                          data-testid="button-copy-link"
+                          className="bg-white border-2 border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition-colors shadow-sm disabled:opacity-70 font-black text-sm h-24"
+                        >
+                          {copyingLink ? <Loader2 className="w-7 h-7 animate-spin" /> : <Link2 className="w-7 h-7" />}
+                          <span>{ar ? "نسخ رابط اللعبة" : "Copy Game Link"}</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      </div>
     </Layout>
   );
 }

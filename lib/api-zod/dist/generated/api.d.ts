@@ -14409,6 +14409,41 @@ export declare const GetQuranAyahEducationResponse: zodV3.ZodObject<{
             version: string;
             provider: string;
         }>;
+        arabicMeaning: zodV3.ZodUnion<[zodV3.ZodObject<{
+            text: zodV3.ZodString;
+            source: zodV3.ZodObject<{
+                id: zodV3.ZodNullable<zodV3.ZodNumber>;
+                name: zodV3.ZodString;
+                provider: zodV3.ZodString;
+                version: zodV3.ZodString;
+            }, "strip", zodV3.ZodTypeAny, {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            }, {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            }>;
+        }, "strip", zodV3.ZodTypeAny, {
+            text: string;
+            source: {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            };
+        }, {
+            text: string;
+            source: {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            };
+        }>, zodV3.ZodNull]>;
     }, "strip", zodV3.ZodTypeAny, {
         id: number;
         text: string;
@@ -14420,6 +14455,15 @@ export declare const GetQuranAyahEducationResponse: zodV3.ZodObject<{
         };
         position: number;
         meaning: string;
+        arabicMeaning: {
+            text: string;
+            source: {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            };
+        } | null;
     }, {
         id: number;
         text: string;
@@ -14431,6 +14475,15 @@ export declare const GetQuranAyahEducationResponse: zodV3.ZodObject<{
         };
         position: number;
         meaning: string;
+        arabicMeaning: {
+            text: string;
+            source: {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            };
+        } | null;
     }>, zodV3.ZodNull]>;
     tafsir: zodV3.ZodObject<{
         text: zodV3.ZodString;
@@ -14482,6 +14535,15 @@ export declare const GetQuranAyahEducationResponse: zodV3.ZodObject<{
         };
         position: number;
         meaning: string;
+        arabicMeaning: {
+            text: string;
+            source: {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            };
+        } | null;
     } | null;
     tafsir: {
         text: string;
@@ -14507,6 +14569,15 @@ export declare const GetQuranAyahEducationResponse: zodV3.ZodObject<{
         };
         position: number;
         meaning: string;
+        arabicMeaning: {
+            text: string;
+            source: {
+                name: string;
+                id: number | null;
+                version: string;
+                provider: string;
+            };
+        } | null;
     } | null;
     tafsir: {
         text: string;
