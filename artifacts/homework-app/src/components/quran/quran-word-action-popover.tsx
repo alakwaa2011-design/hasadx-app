@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BookOpenText, Volume2 } from "lucide-react";
+import { BookOpenText, Languages, Volume2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 type AnchorRect = {
@@ -18,6 +18,7 @@ interface QuranWordActionPopoverProps {
   onOpenChange: (open: boolean) => void;
   onPronounce: () => void;
   onMeaning: () => void;
+  onTranslation: () => void;
 }
 
 export function QuranWordActionPopover({
@@ -27,6 +28,7 @@ export function QuranWordActionPopover({
   onOpenChange,
   onPronounce,
   onMeaning,
+  onTranslation,
 }: QuranWordActionPopoverProps) {
   const { lang, dir } = useI18n();
   const cardRef = React.useRef<HTMLDivElement | null>(null);
@@ -35,7 +37,7 @@ export function QuranWordActionPopover({
   React.useLayoutEffect(() => {
     if (!open) return;
     const updatePosition = () => {
-      const width = cardRef.current?.offsetWidth ?? Math.min(236, window.innerWidth - 24);
+      const width = cardRef.current?.offsetWidth ?? Math.min(310, window.innerWidth - 24);
       const height = cardRef.current?.offsetHeight ?? 92;
       const anchor = anchorRect ?? {
         top: window.innerHeight / 2,
@@ -76,13 +78,13 @@ export function QuranWordActionPopover({
         role="dialog"
         data-testid="quran-word-action-popover"
         aria-label={lang === "ar" ? `خيارات كلمة ${wordText}` : `${wordText} actions`}
-        className="fixed w-[min(236px,calc(100vw-24px))] rounded-2xl border border-emerald-900/10 bg-[#fffdf8]/98 p-2 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl dark:border-white/10 dark:bg-[#101411]/98"
+        className="fixed w-[min(310px,calc(100vw-24px))] rounded-2xl border border-emerald-900/10 bg-[#fffdf8]/98 p-2 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl dark:border-white/10 dark:bg-[#101411]/98"
         style={position}
       >
         <p className="truncate px-1 pb-1.5 text-center text-sm font-black text-emerald-950 dark:text-emerald-50">
           {wordText}
         </p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           <button
             type="button"
             data-testid="word-action-pronounce"
@@ -106,6 +108,18 @@ export function QuranWordActionPopover({
           >
             <BookOpenText className="h-4 w-4" />
             {lang === "ar" ? "معنى الكلمة" : "Meaning"}
+          </button>
+          <button
+            type="button"
+            data-testid="word-action-translation"
+            onClick={() => {
+              onTranslation();
+              onOpenChange(false);
+            }}
+            className="flex min-h-11 items-center justify-center gap-1 rounded-xl bg-sky-50 px-1 text-[11px] font-black text-sky-900 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-100"
+          >
+            <Languages className="h-4 w-4" />
+            {lang === "ar" ? "ترجمة" : "Translation"}
           </button>
         </div>
       </div>

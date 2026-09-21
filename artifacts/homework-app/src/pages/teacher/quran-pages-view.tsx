@@ -2311,6 +2311,17 @@ export function QuranPagesView({
           setEducationHidden(false);
           window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
         }}
+        onTranslation={() => {
+          if (!wordAction) return;
+          setEducationSelection({
+            verseKey: wordAction.verseKey,
+            wordId: wordAction.wordId,
+            wordPosition: wordAction.wordPosition,
+            wordText: wordAction.wordText,
+          });
+          setEducationHidden(false);
+          window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
+        }}
       />
       {copyRange && (
         <aside
