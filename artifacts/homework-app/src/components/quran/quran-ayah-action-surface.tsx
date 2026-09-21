@@ -83,8 +83,8 @@ export function QuranAyahActionSurface({
   ];
 
   const content = (
-    <div className="pb-6 pt-4" dir={dir}>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="pb-3 pt-2" dir={dir}>
+      <div className="grid grid-cols-4 gap-1">
         {actions.map((action, i) => (
           <button
             key={i}
@@ -93,15 +93,15 @@ export function QuranAyahActionSurface({
               action.onClick();
               if (!action.keepOpen) onOpenChange(false);
             }}
-            className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl p-3 text-emerald-950 transition-colors hover:bg-emerald-50 active:bg-emerald-100 dark:text-emerald-50 dark:hover:bg-emerald-950 dark:active:bg-emerald-900"
+            className="flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl px-1.5 py-2 text-emerald-950 transition-colors hover:bg-emerald-50 active:bg-emerald-100 dark:text-emerald-50 dark:hover:bg-emerald-950 dark:active:bg-emerald-900"
           >
             <div className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400",
+              "flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400",
               action.active && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
             )}>
-              <action.icon className="h-5 w-5" />
+              <action.icon className="h-4 w-4" />
             </div>
-            <span className="text-center text-xs font-medium">{action.label}</span>
+            <span className="line-clamp-1 text-center text-[11px] font-bold">{action.label}</span>
           </button>
         ))}
       </div>
