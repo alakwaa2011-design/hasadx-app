@@ -48,7 +48,7 @@ export function QuranEducationPanel({
   );
 
   useEffect(() => {
-    setTab("tafsir");
+    setTab(selection.wordPosition === null ? "tafsir" : "translation");
     setCopied(false);
   }, [selection.verseKey, selection.wordPosition]);
 
@@ -90,7 +90,7 @@ export function QuranEducationPanel({
     <section
       className="relative z-30 shrink-0 border-t border-emerald-900/10 bg-white shadow-[0_-10px_30px_rgba(34,87,57,0.1)] dark:border-white/10 dark:bg-card"
       dir="rtl"
-      aria-label={lang === "ar" ? "معاني الآية وتفسيرها" : "Ayah meanings and tafsir"}
+      aria-label={lang === "ar" ? "كتاب معاني القرآن" : "Quran meanings"}
     >
       <div className="mx-auto w-full max-w-5xl px-3 py-2.5 md:px-5 md:py-3">
         <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function QuranEducationPanel({
               )}
             >
               <Languages className="h-3.5 w-3.5" />
-              {lang === "ar" ? "ترجمة الكلمة" : "Word translation"}
+              {lang === "ar" ? "معاني القرآن" : "Quran meanings"}
             </button>
           )}
           <button
@@ -189,7 +189,7 @@ export function QuranEducationPanel({
                 <p className="mb-1 text-base font-black text-foreground">
                   {query.data.selectedWord.text}
                 </p>
-                <p className="text-sm leading-6 text-foreground/80" dir="ltr">
+                <p className="text-sm leading-6 text-foreground/80">
                   {query.data.selectedWord.meaning}
                 </p>
               </div>

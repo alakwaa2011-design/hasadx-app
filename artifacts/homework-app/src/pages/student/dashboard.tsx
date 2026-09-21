@@ -1010,7 +1010,7 @@ export default function StudentDashboard() {
                       </h3>
                       <p className="mt-1 text-sm font-semibold leading-6 text-emerald-900/65 dark:text-emerald-200/70">
                         {lang === "ar"
-                          ? "اقرأ صفحات المصحف، استمع للآيات، وابدأ جلسة الحفظ التدريجي."
+                          ? "اقرأ صفحات المصحف، استمع للآيات، وابدأ جلسة «حفظني»."
                           : "Read Mushaf pages, listen to ayahs, and start guided memorization."}
                       </p>
                     </div>

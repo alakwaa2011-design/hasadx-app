@@ -6,6 +6,8 @@ import {
   Headphones,
   Mic2,
   Link2,
+  Pause,
+  Play,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -26,6 +28,7 @@ interface QuranGuidedMemorizationPanelProps {
   onStageChange: (stage: GuidedMemorizationStage) => void;
   onRepeatCountChange: (count: number | "continuous") => void;
   onReplay: () => void;
+  onTogglePlayback: () => void;
   onRevealRecitation: () => void;
   onAssess: (result: "mastered" | "review") => void;
   isAssessing?: boolean;
@@ -54,6 +57,7 @@ export function QuranGuidedMemorizationPanel({
   onStageChange,
   onRepeatCountChange,
   onReplay,
+  onTogglePlayback,
   onRevealRecitation,
   onAssess,
   isAssessing,
@@ -69,25 +73,36 @@ export function QuranGuidedMemorizationPanel({
       data-testid="quran-guided-memorization-panel"
       className="fixed inset-x-3 bottom-[calc(0.75rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] z-[70] mx-auto max-h-[min(52dvh,31rem)] w-auto max-w-md overflow-y-auto rounded-[1.75rem] border border-emerald-900/10 bg-[#fffdf8]/95 p-4 shadow-[0_24px_80px_rgba(11,75,53,0.24)] backdrop-blur-xl dark:border-emerald-300/10 dark:bg-[#10251d]/95 sm:inset-x-auto sm:bottom-[calc(1.25rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] sm:end-5 sm:w-[390px] sm:p-5"
       dir={ar ? "rtl" : "ltr"}
-      aria-label={ar ? "جلسة الحفظ التدريجي" : "Guided memorization session"}
+      aria-label={ar ? "جلسة حفظني" : "Memorize me session"}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-wider text-amber-600">
-            {ar ? "الحفظ التدريجي" : "Guided memorization"}
+            {ar ? "حفظني" : "Memorize me"}
           </p>
           <h2 className="mt-1 text-base font-black text-[#0B4B35] dark:text-emerald-100">
             {ar ? `سورة ${surahName} · الآية ${ayahNumber}` : `${surahName} · Ayah ${ayahNumber}`}
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
-          aria-label={ar ? "إغلاق جلسة الحفظ" : "Close memorization session"}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            data-testid="button-guided-play-pause"
+            onClick={onTogglePlayback}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-100 text-[#0B4B35] transition-colors hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-100"
+            aria-label={isPlaying ? (ar ? "إيقاف التلاوة" : "Pause recitation") : (ar ? "تشغيل التلاوة" : "Play recitation")}
+          >
+            {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current" />}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+            aria-label={ar ? "إغلاق جلسة الحفظ" : "Close memorization session"}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-6 gap-1" aria-label={ar ? "مراحل الجلسة" : "Session stages"}>

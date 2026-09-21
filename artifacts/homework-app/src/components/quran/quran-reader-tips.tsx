@@ -22,7 +22,7 @@ export function QuranReaderTips({
         },
         {
           icon: Layers3,
-          title: "الحفظ التدريجي",
+          title: "حفظني",
           body: "ابدأ رحلة مرتبة: استماع، قراءة، إخفاء، تسميع ثم تقييم.",
           selector: '[data-testid="button-memo-session"], [data-testid="button-mobile-memo-session"]',
         },
@@ -48,7 +48,7 @@ export function QuranReaderTips({
         },
         {
           icon: Layers3,
-          title: "Guided memorization",
+          title: "Memorize me",
           body: "Follow a clear path: listen, read, hide, recite, then review.",
           selector: '[data-testid="button-memo-session"], [data-testid="button-mobile-memo-session"]',
         },

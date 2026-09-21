@@ -38,8 +38,6 @@ export interface QuranAudioPlayerProps {
   onMemoViewChange?: (view: 'show' | 'hide' | 'progressive') => void;
   onPlayingWordChange?: (wordPosition: number | null) => void;
   onAudibleAyahChange?: (surahNumber: number, ayah: number | null) => void;
-  showTafsirRestore?: boolean;
-  onShowTafsir?: () => void;
   preferenceStorage?: 'server' | 'local';
 }
 
@@ -78,8 +76,6 @@ export function QuranAudioPlayer({
   onMemoViewChange,
   onPlayingWordChange,
   onAudibleAyahChange,
-  showTafsirRestore = false,
-  onShowTafsir,
   preferenceStorage = 'server',
 }: QuranAudioPlayerProps) {
   const { lang } = useI18n();
@@ -1455,17 +1451,6 @@ export function QuranAudioPlayer({
 
           {/* Actions */}
           <div className="flex shrink-0 items-center justify-center gap-0.5 border-s border-border/50 ps-1 md:gap-2 md:ps-3">
-          {showTafsirRestore && onShowTafsir && (
-            <button
-              type="button"
-              data-testid="button-show-quran-education"
-              onClick={onShowTafsir}
-              className="flex h-10 items-center justify-center rounded-lg px-2 text-[10px] font-bold text-emerald-700 transition-colors hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40 md:text-xs"
-              aria-label={isArabic ? 'إظهار التفسير' : 'Show tafsir'}
-            >
-              {isArabic ? 'تفسير' : 'Tafsir'}
-            </button>
-          )}
           {!memoSession?.isActive && (
             <button
               data-testid="button-audio-repeat"

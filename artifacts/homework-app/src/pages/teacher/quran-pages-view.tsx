@@ -51,6 +51,7 @@ import {
 } from "@/components/quran/quran-guided-memorization-panel";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import { QuranAyahActionSurface } from "@/components/quran/quran-ayah-action-surface";
+import { QuranWordActionPopover } from "@/components/quran/quran-word-action-popover";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
@@ -253,6 +254,13 @@ export function QuranPagesView({
     bottom: number;
     width: number;
     height: number;
+  } | null>(null);
+  const [wordAction, setWordAction] = useState<{
+    verseKey: string;
+    wordId: number;
+    wordPosition: number;
+    wordText: string;
+    anchorRect: { top: number; left: number; right: number; bottom: number; width: number; height: number };
   } | null>(null);
   const [showReaderTips, setShowReaderTips] = useState(
     () => typeof window !== "undefined" && window.localStorage.getItem(QURAN_READER_TIPS_KEY) !== "true",
@@ -817,7 +825,9 @@ export function QuranPagesView({
     setGuidedStage(0);
     setGuidedRecitationRevealed(false);
     setGuidedOpen(true);
+    setEducationHidden(true);
     setEducationSelection(null);
+    setEducationLocked(false);
     setMemoSession((session) => ({
       ...session,
       isActive: true,
@@ -1267,6 +1277,15 @@ export function QuranPagesView({
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
               if (selection.wordPosition !== null) {
+                 if (selection.wordId !== null && selection.wordText && selection.anchorRect) {
+                   setWordAction({
+                     verseKey,
+                     wordId: selection.wordId,
+                     wordPosition: selection.wordPosition,
+                     wordText: selection.wordText,
+                     anchorRect: selection.anchorRect,
+                   });
+                 }
                 return;
               }
               setAudioDockOpen(true);
@@ -1649,7 +1668,7 @@ export function QuranPagesView({
           : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
       )}
     >
-      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ التدريجي" : "Guided memorization")}
+      {guidedOpen ? (lang === "ar" ? "إنهاء حفظني" : "End Memorize me") : (lang === "ar" ? "حفظني" : "Memorize me")}
     </button>
   );
 
@@ -1665,7 +1684,7 @@ export function QuranPagesView({
           : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
       )}
     >
-      {guidedOpen ? (lang === "ar" ? "إنهاء الحفظ" : "End Memo") : (lang === "ar" ? "الحفظ التدريجي" : "Guided memorization")}
+      {guidedOpen ? (lang === "ar" ? "إنهاء حفظني" : "End Memorize me") : (lang === "ar" ? "حفظني" : "Memorize me")}
     </button>
   );
 
@@ -2041,8 +2060,6 @@ export function QuranPagesView({
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
-                showTafsirRestore={!guidedOpen}
-                onShowTafsir={showEducation}
                 onAudibleAyahChange={(audibleSurah, ayahNum) => {
                   if (ayahNum === null) {
                     setPlayingWordPosition(null);
@@ -2109,7 +2126,7 @@ export function QuranPagesView({
               <QuranEducationPanel
                 key={`${educationSelection.verseKey}:${educationSelection.wordPosition ?? 0}`}
                 selection={educationSelection}
-                onClose={() => setEducationSelection(null)}
+                onClose={hideEducation}
                 onHide={hideEducation}
                 locked={educationLocked}
                 onToggleLock={() => {
@@ -2144,6 +2161,22 @@ export function QuranPagesView({
         onStageChange={setGuidedStageAndPlayback}
         onRepeatCountChange={(repeatCount) => {
           setMemoSession((session) => ({ ...session, repeatCount }));
+        }}
+        onTogglePlayback={() => {
+          if (isPlaying) {
+            audioRef.current?.pause();
+            setIsPlaying(false);
+            return;
+          }
+          if (guidedVerseKey && !playingVerseKey) {
+            setPlayingVerseKey(guidedVerseKey);
+          }
+          setIsPlaying(true);
+          window.requestAnimationFrame(() => {
+            void audioRef.current?.play().catch(() => {
+              setIsPlaying(false);
+            });
+          });
         }}
         onReplay={replayGuidedRecitation}
         onRevealRecitation={() => {
@@ -2250,6 +2283,30 @@ export function QuranPagesView({
             wordId: null,
             wordPosition: null,
             wordText: null,
+          });
+          setEducationHidden(false);
+          window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
+        }}
+      />
+      <QuranWordActionPopover
+        open={wordAction !== null}
+        wordText={wordAction?.wordText ?? ""}
+        anchorRect={wordAction?.anchorRect ?? null}
+        onOpenChange={(open) => {
+          if (!open) setWordAction(null);
+        }}
+        onPronounce={() => {
+          if (!wordAction) return;
+          const [chapterId, verseNumber] = wordAction.verseKey.split(":").map(Number);
+          playWord(chapterId, verseNumber, wordAction.wordPosition);
+        }}
+        onMeaning={() => {
+          if (!wordAction) return;
+          setEducationSelection({
+            verseKey: wordAction.verseKey,
+            wordId: wordAction.wordId,
+            wordPosition: wordAction.wordPosition,
+            wordText: wordAction.wordText,
           });
           setEducationHidden(false);
           window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);

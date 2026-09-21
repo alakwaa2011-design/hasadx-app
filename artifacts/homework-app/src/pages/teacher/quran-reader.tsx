@@ -1026,6 +1026,7 @@ export function QuranTextReaderView({
         onClose={closeGuidedMemorization}
         onStageChange={setGuidedStage}
         onRepeatCountChange={(repeatCount) => setMemoSession((session) => ({ ...session, repeatCount }))}
+        onTogglePlayback={() => setIsPlaying((playing) => !playing)}
         onReplay={() => {
           setPlayingAyah(guidedAyah);
           setIsPlaying(true);

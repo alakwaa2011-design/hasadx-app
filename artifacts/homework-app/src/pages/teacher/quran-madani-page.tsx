@@ -24,6 +24,7 @@ interface QuranMadaniPageRendererProps {
     wordId: number | null;
     wordPosition: number | null;
     wordText: string | null;
+    anchorRect?: { top: number; left: number; right: number; bottom: number; width: number; height: number };
   }) => void;
   onVerseAction?: (selection: {
     verseKey: string;
@@ -399,6 +400,7 @@ export function QuranMadaniPageRenderer({
                         wordId: w.type === "word" ? w.id : null,
                         wordPosition: w.type === "word" ? w.position : null,
                         wordText: w.type === "word" ? w.text : null,
+                        anchorRect: e.currentTarget.getBoundingClientRect(),
                       });
                     }}
                     type="button"
