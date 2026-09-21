@@ -92,9 +92,6 @@ export default function XoCreate() {
   useEffect(() => {
     setTeamX(current => normalizeXoTeamName(current, "x", ar ? "ar" : "en"));
     setTeamO(current => normalizeXoTeamName(current, "o", ar ? "ar" : "en"));
-  // The assignment deep-link is read once per page entry. Keeping this effect
-  // one-shot also prevents a language toggle during the request from cancelling
-  // the load and leaving the loading screen mounted.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

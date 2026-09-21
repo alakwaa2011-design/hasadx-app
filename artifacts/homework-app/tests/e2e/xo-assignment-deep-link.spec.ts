@@ -7,11 +7,22 @@ test.describe("X O assignment deep links", () => {
     await page.addInitScript(() => localStorage.setItem("hw_lang", "ar"));
   });
 
-  test("keeps the assignment attached and opens its setup", async ({ page }) => {
+  test("keeps a delayed assignment attached when the language changes", async ({ page }) => {
     const assignmentId = 1501;
     const title = "واجب X O المرتبط";
+    await page.setViewportSize({ width: 1280, height: 800 });
+    let releaseAssignmentResponse!: () => void;
+    const assignmentResponseReleased = new Promise<void>((resolve) => {
+      releaseAssignmentResponse = resolve;
+    });
+    let markAssignmentRequested!: () => void;
+    const assignmentRequested = new Promise<void>((resolve) => {
+      markAssignmentRequested = resolve;
+    });
 
     await page.route(`**/api/assignments/${assignmentId}`, async (route) => {
+      markAssignmentRequested();
+      await assignmentResponseReleased;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -43,14 +54,24 @@ test.describe("X O assignment deep links", () => {
     });
 
     await page.goto(`/game/xo/create?assignmentId=${assignmentId}`);
+    await assignmentRequested;
+    await expect(page.getByText("جارٍ تحميل أسئلة الواجب…", { exact: true })).toBeVisible();
 
     await expect(page).toHaveURL(
       new RegExp(`/game/xo/create\\?assignmentId=${assignmentId}$`),
     );
-    await expect(page.getByRole("heading", { name: "إعداد X O" })).toBeVisible();
+    await page.getByRole("button", { name: "EN", exact: true }).click();
+    await expect(page.getByText("Loading assignment questions…", { exact: true })).toBeVisible();
+
+    releaseAssignmentResponse();
+
+    await expect(page.getByRole("heading", { name: "X O setup" })).toBeVisible();
     await expect(page.getByText(title, { exact: true })).toBeVisible();
-    await expect(page.getByText("3 أسئلة", { exact: true })).toBeVisible();
-    await expect(page.getByText("نمط اللعب", { exact: true })).toBeVisible();
+    await expect(page.getByText("3 Questions", { exact: true })).toBeVisible();
+    await expect(page.getByText("Play mode", { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(
+      new RegExp(`/game/xo/create\\?assignmentId=${assignmentId}$`),
+    );
   });
 
   test("without an assignment stays on question source selection", async ({ page }) => {
