@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BookOpenText, Languages, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 type AnchorRect = {
@@ -81,7 +81,7 @@ export function QuranWordActionPopover({
         className="fixed w-[min(310px,calc(100vw-24px))] rounded-2xl border border-emerald-900/10 bg-[#fffdf8]/98 p-3 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl dark:border-white/10 dark:bg-[#101411]/98"
         style={position}
       >
-        <p className="truncate px-2 pb-2.5 text-center text-[15px] font-black text-emerald-950 dark:text-emerald-50 border-b border-emerald-900/5 dark:border-white/5 mb-2.5">
+        <p className="quran-reader-ui-label mb-2.5 overflow-x-auto whitespace-nowrap border-b border-emerald-900/5 px-2 pb-2.5 text-center text-base font-black leading-8 text-emerald-950 dark:border-white/5 dark:text-emerald-50">
           {wordText}
         </p>
         <div className="grid grid-cols-3 gap-2">
@@ -92,7 +92,7 @@ export function QuranWordActionPopover({
               onPronounce();
               onOpenChange(false);
             }}
-            className="flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-900/5 px-2 text-emerald-950 transition-colors hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-50 dark:hover:bg-white/10"
+            className="quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-900/[0.07] px-2 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
           >
             <Volume2 className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
             <span className="text-xs font-bold">{lang === "ar" ? "نطق" : "Pronounce"}</span>
@@ -104,10 +104,9 @@ export function QuranWordActionPopover({
               onMeaning();
               onOpenChange(false);
             }}
-            className="flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-xl bg-amber-50 px-2 text-amber-900 transition-colors hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-100"
+            className="quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center rounded-xl bg-emerald-900/[0.07] px-1.5 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
           >
-            <BookOpenText className="h-4 w-4" />
-            <span className="text-xs font-bold">{lang === "ar" ? "معنى الكلمة" : "Meaning"}</span>
+            <span className="whitespace-nowrap text-xs font-bold">{lang === "ar" ? "معنى الكلمة" : "Meaning"}</span>
           </button>
           <button
             type="button"
@@ -116,10 +115,9 @@ export function QuranWordActionPopover({
               onTranslation();
               onOpenChange(false);
             }}
-            className="flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-xl bg-sky-50 px-2 text-sky-900 transition-colors hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-100"
+            className="quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center rounded-xl bg-emerald-900/[0.07] px-1.5 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
           >
-            <Languages className="h-4 w-4" />
-            <span className="text-xs font-bold">{lang === "ar" ? "ترجمة" : "Translation"}</span>
+            <span className="whitespace-nowrap text-xs font-bold">{lang === "ar" ? "ترجمة" : "Translation"}</span>
           </button>
         </div>
       </div>

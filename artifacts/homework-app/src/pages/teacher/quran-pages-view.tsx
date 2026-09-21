@@ -1262,7 +1262,15 @@ export function QuranPagesView({
               }
               setSelectedVerseKey(selection.verseKey);
               if (selection.wordPosition !== null) {
-                playWord(chapterId, verseNumber, selection.wordPosition);
+                if (selection.wordId !== null && selection.wordText && selection.anchorRect) {
+                  setWordAction({
+                    verseKey: selection.verseKey,
+                    wordId: selection.wordId,
+                    wordPosition: selection.wordPosition,
+                    wordText: selection.wordText,
+                    anchorRect: selection.anchorRect,
+                  });
+                }
                 return;
               }
               setAyahActionAnchor(selection.anchorRect ?? null);
@@ -1294,15 +1302,6 @@ export function QuranPagesView({
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
               if (selection.wordPosition !== null) {
-                 if (selection.wordId !== null && selection.wordText && selection.anchorRect) {
-                   setWordAction({
-                     verseKey,
-                     wordId: selection.wordId,
-                     wordPosition: selection.wordPosition,
-                     wordText: selection.wordText,
-                     anchorRect: selection.anchorRect,
-                   });
-                 }
                 return;
               }
               setAudioDockOpen(true);

@@ -61,6 +61,7 @@ export function QuranMadaniPageRenderer({
     wordId: number | null;
     wordPosition: number | null;
     wordText: string | null;
+    anchorRect?: { top: number; left: number; right: number; bottom: number; width: number; height: number };
   } | null>(null);
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export function QuranMadaniPageRenderer({
       wordId: number | null;
       wordPosition: number | null;
       wordText: string | null;
+      anchorRect?: { top: number; left: number; right: number; bottom: number; width: number; height: number };
     },
   ) => {
     startPosRef.current = { x, y };
@@ -95,7 +97,7 @@ export function QuranMadaniPageRenderer({
     longPressTimeoutRef.current = window.setTimeout(() => {
       longPressTimeoutRef.current = null;
       isLongPressRef.current = true;
-    }, 400);
+    }, 320);
   };
 
   const cancelLongPressOnMove = (x: number, y: number) => {
@@ -350,6 +352,7 @@ export function QuranMadaniPageRenderer({
                         wordId: w.type === "word" ? w.id : null,
                         wordPosition: w.type === "word" ? w.position : null,
                         wordText: w.type === "word" ? w.text : null,
+                       anchorRect: e.currentTarget.getBoundingClientRect(),
                       });
                     }}
                     onPointerMove={(e) => {
@@ -369,6 +372,7 @@ export function QuranMadaniPageRenderer({
                         wordId: w.type === "word" ? w.id : null,
                         wordPosition: w.type === "word" ? w.position : null,
                         wordText: w.type === "word" ? w.text : null,
+                         anchorRect: e.currentTarget.getBoundingClientRect(),
                       });
                     }}
                     onTouchMove={(e) => {
