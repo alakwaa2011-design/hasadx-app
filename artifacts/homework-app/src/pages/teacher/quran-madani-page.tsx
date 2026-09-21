@@ -30,6 +30,7 @@ interface QuranMadaniPageRendererProps {
     wordId: number | null;
     wordPosition: number | null;
     wordText: string | null;
+    anchorRect?: { top: number; left: number; right: number; bottom: number; width: number; height: number };
   }) => void;
 }
 
@@ -383,11 +384,13 @@ export function QuranMadaniPageRenderer({
                         return;
                       }
                       if (w.type === "end") {
+                        const anchorRect = e.currentTarget.getBoundingClientRect();
                         onVerseAction?.({
                           verseKey: w.verseKey,
                           wordId: null,
                           wordPosition: null,
                           wordText: null,
+                          anchorRect,
                         });
                         return;
                       }

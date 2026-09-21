@@ -246,6 +246,14 @@ export function QuranPagesView({
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const [ayahActionVerseKey, setAyahActionVerseKey] = useState<string | null>(null);
+  const [ayahActionAnchor, setAyahActionAnchor] = useState<{
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [showReaderTips, setShowReaderTips] = useState(
     () => typeof window !== "undefined" && window.localStorage.getItem(QURAN_READER_TIPS_KEY) !== "true",
   );
@@ -1230,6 +1238,7 @@ export function QuranPagesView({
                 playWord(chapterId, verseNumber, selection.wordPosition);
                 return;
               }
+              setAyahActionAnchor(selection.anchorRect ?? null);
               setAyahActionVerseKey(selection.verseKey);
             }}
             onVerseClick={(selection) => {
@@ -2183,6 +2192,7 @@ export function QuranPagesView({
           if (!open) setAyahActionVerseKey(null);
         }}
         verseKey={ayahActionVerseKey ?? selectedVerseKey ?? `${selectedSurah}:${selectedAyah}`}
+        anchorRect={ayahActionAnchor}
         isBookmarked={ayahActionVerseKey ? bookmarksMap.has(ayahActionVerseKey) : false}
         onPlay={() => {
           if (!ayahActionVerseKey) return;

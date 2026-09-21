@@ -1,5 +1,5 @@
 import { Bookmark, ChevronLeft, ChevronRight, Hand, Layers3, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type TargetRect = Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width" | "height">;
 
@@ -67,9 +67,14 @@ export function QuranReaderTips({
       ], [lang]);
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  const onStepChangeRef = useRef(onStepChange);
 
   useEffect(() => {
-    onStepChange?.(step);
+    onStepChangeRef.current = onStepChange;
+  }, [onStepChange]);
+
+  useEffect(() => {
+    onStepChangeRef.current?.(step);
     let target: HTMLElement | undefined;
     const updateTargetRect = () => {
       if (target) setTargetRect(target.getBoundingClientRect());
@@ -96,7 +101,7 @@ export function QuranReaderTips({
       window.removeEventListener("resize", updateTargetRect);
       window.removeEventListener("scroll", updateTargetRect, true);
     };
-  }, [onStepChange, step, steps]);
+  }, [step, steps]);
 
   const current = steps[step];
   const Icon = current.icon;
@@ -111,8 +116,8 @@ export function QuranReaderTips({
     : Math.max(16, window.innerHeight / 2 - 90);
 
   return (
-    <div className="fixed inset-0 z-[90]" dir={lang === "ar" ? "rtl" : "ltr"}>
-      <div className="absolute inset-0 bg-emerald-950/20 backdrop-blur-[1px]" />
+    <div className="pointer-events-none fixed inset-0 z-[90]" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div className="absolute inset-0 bg-emerald-950/15 backdrop-blur-[1px]" />
       {targetRect && (
         <div
           className="pointer-events-none fixed rounded-xl ring-4 ring-amber-400 ring-offset-4 ring-offset-[#fffdf8] transition-all duration-200 dark:ring-offset-[#101411]"
@@ -125,13 +130,13 @@ export function QuranReaderTips({
         />
       )}
       <aside
-        className="fixed overflow-hidden rounded-2xl border border-emerald-900/10 bg-[#fffdf8] shadow-2xl shadow-emerald-950/20 dark:border-white/10 dark:bg-[#101411]"
+        className="pointer-events-auto fixed overflow-hidden rounded-2xl border border-emerald-900/10 bg-[#fffdf8] shadow-2xl shadow-emerald-950/20 dark:border-white/10 dark:bg-[#101411]"
         style={{ top: cardTop, left: cardLeft, width: cardWidth }}
         aria-live="polite"
       >
-        <div className="flex items-start gap-3 p-4">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-700 text-white">
-            <Icon className="h-5 w-5" />
+        <div className="flex items-start gap-2.5 p-3">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-700 text-white">
+            <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
@@ -145,10 +150,10 @@ export function QuranReaderTips({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="mt-1.5 text-xs font-medium leading-5 text-emerald-900/70 dark:text-emerald-100/70">{current.body}</p>
+            <p className="mt-1 text-[11px] font-medium leading-[1.15rem] text-emerald-900/70 dark:text-emerald-100/70">{current.body}</p>
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-emerald-900/10 px-4 py-3 dark:border-white/10">
+        <div className="flex items-center justify-between border-t border-emerald-900/10 px-3 py-2 dark:border-white/10">
           <button type="button" onClick={onDismiss} className="text-xs font-bold text-emerald-800/65 dark:text-emerald-200/65">
             {lang === "ar" ? "تخطي" : "Skip"}
           </button>
