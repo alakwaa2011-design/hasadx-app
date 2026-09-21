@@ -183,6 +183,7 @@ export function QuranPagesView({
   const bottomDockRef = useRef<HTMLDivElement | null>(null);
   const [bottomDockHeight, setBottomDockHeight] = useState(0);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
+  const [toolsHeaderHeight, setToolsHeaderHeight] = useState(0);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
     typeof window !== "undefined" && window.innerWidth < 768 ? "single" : "spread",
@@ -595,6 +596,20 @@ export function QuranPagesView({
     observer.observe(dock);
     return () => observer.disconnect();
   }, [bottomDockVisible, educationSelection, audioDockOpen, isPlaying]);
+
+  useEffect(() => {
+    const header = toolsHeaderRef.current;
+    if (quietMode || !header) {
+      setToolsHeaderHeight(0);
+      return;
+    }
+    const updateHeight = () => setToolsHeaderHeight(header.getBoundingClientRect().height);
+    updateHeight();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [loading, mobileToolsOpen, quietMode, startAyah, endAyah]);
 
   const fallbackVerse = useMemo(() => {
     return verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId) ||
@@ -1930,6 +1945,15 @@ export function QuranPagesView({
         }}
         tabIndex={0}
       >
+        {!quietMode && toolsHeaderHeight > 0 && (
+          <div
+            aria-hidden="true"
+            className="quran-reader-top-reserve hidden w-full shrink-0 max-md:block"
+            style={{
+              height: `calc(${toolsHeaderHeight}px + var(--quran-safe-area-top, env(safe-area-inset-top, 0px)) + 0.85rem)`,
+            }}
+          />
+        )}
         {pageLayout === "continuous" ? (
           <div
             className="quran-page-shell mx-auto flex w-full flex-col gap-1 transition-[width,max-width] duration-200"
@@ -2026,6 +2050,15 @@ export function QuranPagesView({
             className="quran-guided-scroll-reserve w-full shrink-0"
             style={{
               height: `calc(${guidedPanelHeight}px + 1.5rem + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)))`,
+            }}
+          />
+        )}
+        {bottomDockHeight > 0 && (
+          <div
+            aria-hidden="true"
+            className="quran-bottom-dock-scroll-reserve hidden w-full shrink-0 max-md:block"
+            style={{
+              height: `calc(${bottomDockHeight}px + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)) + 0.5rem)`,
             }}
           />
         )}

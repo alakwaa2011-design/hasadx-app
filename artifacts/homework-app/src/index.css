@@ -851,29 +851,16 @@
     aspect-ratio: auto !important;
   }
 
-  .quran-page-shell--paged .quran-madani-page-content {
-    padding-top: calc(
-      var(--quran-safe-area-top, env(safe-area-inset-top, 0px))
-      + 3.6rem
-    );
-    padding-bottom: calc(
-      var(--quran-dock-height, 0px)
-      + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px))
-      + 0.5rem
-    );
-  }
-
-  /* The Mushaf paper owns the full phone width and height. Reader controls
-     float above it; when a bottom dock opens, the measured spacer below the
-     page gives the user enough real scroll range to reveal the final lines. */
+  /* Keep the canonical page geometry independent from floating controls.
+     Dedicated reserve elements before and after the paper provide scroll room
+     for the toolbar and dock without compressing the 15 Mushaf rows. */
   .quran-reader-main {
     width: 100%;
     padding-top: 0 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
     padding-bottom: calc(
-      var(--quran-dock-height, 0px)
-      + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px))
+      var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px))
       + 0.5rem
     ) !important;
     scroll-padding-bottom: calc(
