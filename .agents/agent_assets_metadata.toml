@@ -1765,3 +1765,31 @@ mtime_ms = 1789782371605
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/b8eeb630-09ba-42cc-817d-a4a551bedb73/a33daa9d-d2d9-4ba9-a150-f4bb3271090a"
 storage_version_token = "1789782394142808"
 content_type = "audio/mpeg"
+
+[[outputs]]
+id = "l20Kzg-v1B39T0fC_ss3D"
+uri = "file://screenshots/design-preview-home-1440-full.png"
+type = "image"
+title = "معاينة Home Page — Desktop 1440px"
+description = "لقطة كاملة للصفحة العربية في مسار المعاينة الداخلي."
+logical_id = "291a7a35-b866-4ab1-867c-7fcf6f817442"
+content_hash = "sha256:abe417f02dde79e41240ff1d0d6754013e7529c5ba644a40e9e39d08d76e980d"
+size = 1271436
+mtime_ms = 1790094603075
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/291a7a35-b866-4ab1-867c-7fcf6f817442/10a0e3f2-e1bc-4437-a3e9-ea7652cb1919"
+storage_version_token = "1790094782989934"
+content_type = "image/png"
+
+[[outputs]]
+id = "-MC1YivblT4LNjJvyPVM-"
+uri = "file://screenshots/design-preview-home-390-full.png"
+type = "image"
+title = "معاينة Home Page — Mobile 390px"
+description = "لقطة كاملة للصفحة العربية على عرض هاتف 390px."
+logical_id = "f66625a1-e334-4f5d-8293-17041ae9568e"
+content_hash = "sha256:fa804d023ec550de627802d13d679d3a867db521bb6e5bd17d71359e7247ba5e"
+size = 573574
+mtime_ms = 1790094620572
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/f66625a1-e334-4f5d-8293-17041ae9568e/74a4ff11-ca79-4afb-85fa-4bbb5d7362e8"
+storage_version_token = "1790094786062381"
+content_type = "image/png"
