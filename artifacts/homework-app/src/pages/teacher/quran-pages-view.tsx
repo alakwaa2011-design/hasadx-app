@@ -198,6 +198,7 @@ export function QuranPagesView({
   const swipeStartXRef = useRef<number | null>(null);
   const swipeLastXRef = useRef<number | null>(null);
   const swipeStartYRef = useRef<number | null>(null);
+  const swipePointerIdRef = useRef<number | null>(null);
   const suppressSwipeClickRef = useRef(false);
   const readerMainRef = useRef<HTMLElement | null>(null);
   const continuousProgrammaticNavigationRef = useRef(false);
@@ -206,6 +207,7 @@ export function QuranPagesView({
   const playbackAutoNavigationTimeoutRef = useRef<number | null>(null);
   const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
 
   const {
     readerState,
@@ -223,6 +225,10 @@ export function QuranPagesView({
     enabled: !isIndependentPractice && mode === null,
     storage: standalone ? "optional" : "server",
   });
+  const bookmarkedVerseKeys = useMemo(
+    () => new Set(bookmarksMap.keys()),
+    [bookmarksMap],
+  );
 
   const [selectedVerseKey, setSelectedVerseKey] = useState<string | null>(null);
   const [educationSelection, setEducationSelection] = useState<{
@@ -1036,47 +1042,61 @@ export function QuranPagesView({
       swipeStartXRef.current = null;
       swipeLastXRef.current = null;
       swipeStartYRef.current = null;
+      swipePointerIdRef.current = null;
       suppressSwipeClickRef.current = false;
+      setSwipeOffset(0);
     };
-    const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 1) {
-        resetSwipe();
-        return;
-      }
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" || !event.isPrimary) return;
       const target = event.target;
-      const isToolbarTouch = target instanceof Node && toolsHeaderRef.current?.contains(target);
-      if (isToolbarTouch) {
-        didSwipeRef.current = false;
-        suppressSwipeClickRef.current = true;
-      } else if (pageLayout === "continuous" || !(target instanceof Node) || !main.contains(target)) {
+      if (pageLayout === "continuous" || !(target instanceof Node) || !main.contains(target)) {
         resetSwipe();
         return;
-      } else {
-        const quranPage = target instanceof Element ? target.closest("[data-quran-page]") : null;
-        if (!quranPage || (target instanceof Element && target.closest("input,select,textarea"))) {
-          resetSwipe();
-          return;
-        }
-        didSwipeRef.current = false;
-        suppressSwipeClickRef.current = false;
       }
-      const touch = event.touches[0];
-      swipeStartXRef.current = touch.clientX;
-      swipeLastXRef.current = touch.clientX;
-      swipeStartYRef.current = touch.clientY;
+      const quranPage = target instanceof Element
+        ? target.closest("[data-quran-page], .quran-page-shell--paged")
+        : null;
+      if (!quranPage || (target instanceof Element && target.closest("input,select,textarea"))) {
+        resetSwipe();
+        return;
+      }
+      didSwipeRef.current = false;
+      suppressSwipeClickRef.current = false;
+      swipePointerIdRef.current = event.pointerId;
+      swipeStartXRef.current = event.clientX;
+      swipeLastXRef.current = event.clientX;
+      swipeStartYRef.current = event.clientY;
+      try {
+        main.setPointerCapture(event.pointerId);
+      } catch {
+        // Some embedded browsers do not allow capture for synthetic or
+        // already-captured touch pointers; bubbling events still drive swipe.
+      }
     };
-    const onTouchMove = (event: TouchEvent) => {
-      if (swipeStartXRef.current === null || event.touches.length !== 1) return;
-      const touch = event.touches[0];
-      swipeLastXRef.current = touch.clientX;
-      const horizontal = Math.abs(touch.clientX - swipeStartXRef.current);
-      const vertical = Math.abs(touch.clientY - (swipeStartYRef.current ?? touch.clientY));
-      if (horizontal > 12 && horizontal > vertical) event.preventDefault();
+    const onPointerMove = (event: PointerEvent) => {
+      if (swipePointerIdRef.current !== event.pointerId || swipeStartXRef.current === null) return;
+      swipeLastXRef.current = event.clientX;
+      const movement = event.clientX - swipeStartXRef.current;
+      const horizontal = Math.abs(movement);
+      const vertical = Math.abs(event.clientY - (swipeStartYRef.current ?? event.clientY));
+      if (horizontal > 12 && horizontal > vertical) {
+        event.preventDefault();
+        const resistedOffset = Math.sign(movement) * Math.min(64, horizontal * 0.42);
+        setSwipeOffset(resistedOffset);
+      }
     };
-    const onTouchEnd = (event: TouchEvent) => {
+    const onPointerEnd = (event: PointerEvent) => {
+      if (swipePointerIdRef.current !== event.pointerId) return;
       const startX = swipeStartXRef.current;
-      const endX = event.changedTouches[0]?.clientX ?? swipeLastXRef.current;
+      const endX = event.clientX ?? swipeLastXRef.current;
       const suppressClick = suppressSwipeClickRef.current;
+      if (main.hasPointerCapture(event.pointerId)) {
+        try {
+          main.releasePointerCapture(event.pointerId);
+        } catch {
+          // The browser may release touch capture before pointerup.
+        }
+      }
       resetSwipe();
       if (suppressClick) return;
       if (startX === null || endX === null) return;
@@ -1089,16 +1109,27 @@ export function QuranPagesView({
         goToSpread("previous");
       }
     };
+    const onPointerCancel = (event: PointerEvent) => {
+      if (swipePointerIdRef.current !== event.pointerId) return;
+      if (main.hasPointerCapture(event.pointerId)) {
+        try {
+          main.releasePointerCapture(event.pointerId);
+        } catch {
+          // The browser may release touch capture before pointercancel.
+        }
+      }
+      resetSwipe();
+    };
 
-    document.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
-    document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
-    document.addEventListener("touchend", onTouchEnd, { capture: true, passive: true });
-    document.addEventListener("touchcancel", resetSwipe, { capture: true, passive: true });
+    main.addEventListener("pointerdown", onPointerDown);
+    main.addEventListener("pointermove", onPointerMove);
+    main.addEventListener("pointerup", onPointerEnd);
+    main.addEventListener("pointercancel", onPointerCancel);
     return () => {
-      document.removeEventListener("touchstart", onTouchStart, true);
-      document.removeEventListener("touchmove", onTouchMove, true);
-      document.removeEventListener("touchend", onTouchEnd, true);
-      document.removeEventListener("touchcancel", resetSwipe, true);
+      main.removeEventListener("pointerdown", onPointerDown);
+      main.removeEventListener("pointermove", onPointerMove);
+      main.removeEventListener("pointerup", onPointerEnd);
+      main.removeEventListener("pointercancel", onPointerCancel);
     };
   }, [activePage, loading, pageLayout]);
 
@@ -1244,6 +1275,7 @@ export function QuranPagesView({
             selectedWordId={educationSelection?.wordId}
             playingVerseKey={guidedOpen && guidedStage === 1 ? guidedVerseKey : audibleVerseKey}
             playingWordPosition={guidedOpen && guidedStage === 1 ? silentReadWordPosition : playingWordPosition}
+            bookmarkedVerseKeys={bookmarkedVerseKeys}
             isAyahConcealed={(chapterId, verseNumber, wordPosition) =>
               isAyahConcealed(chapterId, verseNumber, playingAyahNum, wordPosition)
             }
@@ -1892,8 +1924,9 @@ export function QuranPagesView({
           "--quran-dock-height": `${bottomDockHeight}px`,
         } as React.CSSProperties}
         className={cn(
-          "quran-reader-main flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
-          guidedOpen && "quran-reader-main--guided touch-pan-y overscroll-contain",
+          "quran-reader-main relative flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
+          (guidedOpen || pageLayout !== "continuous") && "touch-pan-y",
+          guidedOpen && "quran-reader-main--guided overscroll-contain",
         )}
         onScroll={(event) => {
           if (pageLayout !== "continuous") return;
@@ -1953,6 +1986,28 @@ export function QuranPagesView({
             }}
           />
         )}
+        {swipeOffset !== 0 && pageLayout !== "continuous" && (
+          <div
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute top-1/2 z-50 flex -translate-y-1/2 items-center gap-1 rounded-full border border-emerald-900/10 bg-[#fffdf8]/92 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-[#101411]/92 dark:text-emerald-200",
+              swipeOffset > 0 ? "left-2" : "right-2",
+            )}
+            style={{ opacity: Math.min(1, Math.abs(swipeOffset) / 34) }}
+          >
+            {swipeOffset > 0 ? (
+              <>
+                <ChevronRight className="h-3.5 w-3.5" />
+                <span>{lang === "ar" ? "الصفحة التالية" : "Next page"}</span>
+              </>
+            ) : (
+              <>
+                <span>{lang === "ar" ? "الصفحة السابقة" : "Previous page"}</span>
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </>
+            )}
+          </div>
+        )}
         {pageLayout === "continuous" ? (
           <div
             className="quran-page-shell mx-auto flex w-full flex-col gap-1 transition-[width,max-width] duration-200"
@@ -1973,16 +2028,36 @@ export function QuranPagesView({
         ) : (
           <div
             key={`${pageLayout}:${activePage}`}
+            onAnimationEnd={(event) => {
+              if (event.currentTarget !== event.target) return;
+              if (
+                event.animationName === "quran-page-turn-next"
+                || event.animationName === "quran-page-turn-previous"
+              ) {
+                setTurnDirection(null);
+              }
+            }}
             className={cn(
               "quran-page-shell quran-page-shell--paged mx-auto grid grid-cols-1 items-start gap-1 transition-[width,max-width] duration-200 md:gap-3",
               pageLayout === "spread" && "lg:grid-cols-2 lg:gap-3",
-              turnDirection === "next" ? "quran-page-turn-next" : "quran-page-turn-previous",
+              turnDirection === "next"
+                ? "quran-page-turn-next"
+                : turnDirection === "previous"
+                  ? "quran-page-turn-previous"
+                  : undefined,
             )}
             style={{
               width: `${zoom}%`,
               maxWidth: pageLayout === "spread"
                 ? `${Math.round(10.32 * zoom)}px`
                 : `${Math.round(7.2 * zoom)}px`,
+              transform: swipeOffset === 0
+                ? undefined
+                : `perspective(1400px) translate3d(${swipeOffset}px, 0, 0) rotateY(${swipeOffset * -0.035}deg) scale(0.994)`,
+              transformOrigin: swipeOffset > 0 ? "right center" : "left center",
+              transition: swipeOffset === 0
+                ? undefined
+                : "none",
             }}
           >
             {pageLayout === "spread" ? (

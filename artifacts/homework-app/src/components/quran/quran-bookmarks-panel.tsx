@@ -22,6 +22,7 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
     isMutatingBookmark,
   } = useQuranReaderState({ enabled: true, storage });
   const [surahNames, setSurahNames] = useState<Record<number, string>>({});
+  const [areSurahNamesReady, setAreSurahNamesReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -33,11 +34,12 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
         names[s.index] = s.name;
       });
       setSurahNames(names);
+      setAreSurahNamesReady(true);
     });
     return () => { mounted = false; };
   }, []);
 
-  if (isReaderStateLoading) {
+  if (isReaderStateLoading || !areSurahNamesReady) {
     return (
       <div className="flex h-40 items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-emerald-700" />
@@ -77,7 +79,8 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
   return (
     <div className={`space-y-3 ${className || ''}`} dir={dir}>
       {sortedBookmarks.map((bookmark) => {
-        const surahName = surahNames[bookmark.surahNumber] || bookmark.surahNumber.toString();
+        const surahName = surahNames[bookmark.surahNumber]
+          ?? (lang === 'ar' ? 'اسم السورة غير متاح' : 'Unknown surah');
         const timeAgo = 'updatedAt' in bookmark
           ? formatDistanceToNow(new Date(bookmark.updatedAt as string), {
               addSuffix: true,

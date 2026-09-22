@@ -81,7 +81,7 @@ export function QuranWordActionPopover({
         className="fixed w-[min(310px,calc(100vw-24px))] rounded-2xl border border-emerald-900/10 bg-[#fffdf8]/98 p-3 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl dark:border-white/10 dark:bg-[#101411]/98"
         style={position}
       >
-        <p className="quran-reader-ui-label mb-2.5 overflow-x-auto whitespace-nowrap border-b border-emerald-900/5 px-2 pb-2.5 text-center text-base font-black leading-8 text-emerald-950 dark:border-white/5 dark:text-emerald-50">
+        <p className="quran-word-action-text mb-2.5 overflow-x-auto whitespace-nowrap border-b border-emerald-900/5 px-2 pb-2.5 text-center text-[17px] font-bold leading-9 text-emerald-950 dark:border-white/5 dark:text-emerald-50">
           {wordText}
         </p>
         <div className="grid grid-cols-3 gap-2">

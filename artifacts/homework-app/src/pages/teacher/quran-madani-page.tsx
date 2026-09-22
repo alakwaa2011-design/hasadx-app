@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useGetQuranMadaniPage, getGetQuranMadaniPageQueryKey } from "@workspace/api-client-react";
-import { Loader2 } from "lucide-react";
+import { Bookmark, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -14,6 +14,7 @@ interface QuranMadaniPageRendererProps {
   selectedWordId?: number | null;
   playingVerseKey?: string | null;
   playingWordPosition?: number | null;
+  bookmarkedVerseKeys?: ReadonlySet<string>;
   isAyahConcealed?: (
     chapterId: number,
     verseNumber: number,
@@ -45,6 +46,7 @@ export function QuranMadaniPageRenderer({
   selectedWordId,
   playingVerseKey,
   playingWordPosition,
+  bookmarkedVerseKeys,
   isAyahConcealed,
   onVerseClick,
   onVerseAction,
@@ -327,6 +329,7 @@ export function QuranMadaniPageRenderer({
                 const isSelectedWord = selectedWordId === w.id;
                 const isPlaying = playingVerseKey && w.verseKey === playingVerseKey;
                 const isPlayingWord = isPlaying && playingWordPosition === w.position;
+                const isBookmarkedVerse = w.type === "end" && bookmarkedVerseKeys?.has(w.verseKey);
                 const concealed = isAyahConcealed?.(
                   wChapter,
                   wVerse,
@@ -341,8 +344,8 @@ export function QuranMadaniPageRenderer({
                     title={w.text}
                     aria-label={
                       lang === "ar"
-                        ? `${w.text}، الآية ${w.verseKey.split(":")[1]}`
-                        : `${w.text}, ayah ${w.verseKey.split(":")[1]}`
+                        ? `${w.text}، الآية ${w.verseKey.split(":")[1]}${isBookmarkedVerse ? "، محفوظة في العلامات" : ""}`
+                        : `${w.text}, ayah ${w.verseKey.split(":")[1]}${isBookmarkedVerse ? ", bookmarked" : ""}`
                     }
                     aria-pressed={Boolean(isSelected || isInSelectedRange || isPlaying)}
                     onPointerDown={(e) => {
@@ -430,6 +433,12 @@ export function QuranMadaniPageRenderer({
                     style={concealed ? { userSelect: 'none' } : {}}
                   >
                     {w.glyph}
+                    {isBookmarkedVerse && (
+                      <Bookmark
+                        aria-hidden="true"
+                        className="absolute -right-[0.8cqw] -top-[1.2cqw] h-[2.8cqw] w-[2.8cqw] fill-emerald-600 text-emerald-700 drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]"
+                      />
+                    )}
                   </button>
                 );
               })}
