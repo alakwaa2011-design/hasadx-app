@@ -1795,22 +1795,23 @@ export default function Home() {
     {
       title: lang === "ar" ? "١. أنشئ" : "1. Create",
       desc: lang === "ar"
-        ? "حوّل فكرة الدرس إلى نشاط أو واجب أو عرض جاهز للتخصيص."
-        : "Turn a lesson idea into an activity, assignment, or deck you can customize.",
+        ? "ابدأ من فكرة بسيطة وحوّلها إلى خطة درس أو خريطة ذهنية أو ورقة عمل أو عرض تفاعلي."
+        : "Turn a simple idea into a lesson plan, mind map, worksheet, or interactive presentation.",
     },
     {
       title: lang === "ar" ? "٢. اعرض" : "2. Present",
       desc: lang === "ar"
-        ? "اعرض المحتوى بطريقة تفاعلية، ثم شاركه برابط واحد."
-        : "Present the content interactively, then share it with one link.",
+        ? "قدّم المحتوى بثقة عبر عرض تفاعلي أو فيديو تعليمي أو مسابقة حية، وشارك التجربة برابط واحد."
+        : "Present through an interactive deck, video lesson, or live quiz, then share the experience with one link.",
     },
     {
       title: lang === "ar" ? "٣. تفاعل" : "3. Engage",
       desc: lang === "ar"
-        ? "تابع المشاركة والنتائج والتسليمات من لوحة واضحة."
-        : "Follow participation, results, and submissions from one clear dashboard.",
+        ? "تابع المشاركة والنتائج والتسليمات من لوحة واضحة، واستخدمها لتعرف ما يحتاجه طلابك."
+        : "Follow participation, results, and submissions from one clear dashboard to see what learners need next.",
     },
   ];
+  const hasVisibleStats = Boolean(stats && !stats.hidden);
   return (
     <Layout>
       <AnimatePresence>
@@ -3548,21 +3549,30 @@ export default function Home() {
         {/* -------------- FLOW + LIVE STATS -------------- */}
         <section id="how-it-works" className="order-4 border-t border-border/60 bg-[#fbfcf8]" style={{ order: 4 }}>
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-            <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-              <div className="soft-card rounded-[30px] p-6 sm:p-8">
-                <p className="text-sm font-black text-[hsl(145,55%,32%)]">
-                  {lang === "ar" ? "مسار حصاد" : "The Hasad path"}
-                </p>
-                <h3 className="mt-2 font-display-display text-[1.85rem] font-black text-foreground sm:text-[2.25rem]">
-                  {lang === "ar" ? "أنشئ ← اعرض ← تفاعل" : "Create ← Present ← Engage"}
-                </h3>
-                <div className="mt-7 space-y-4">
+            <div className={`grid gap-6 ${hasVisibleStats ? "lg:grid-cols-[0.92fr_1.08fr]" : ""}`}>
+              <div className={`soft-card rounded-[30px] p-6 sm:p-8 ${!hasVisibleStats ? "lg:p-10" : ""}`}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-[hsl(145,55%,32%)]">
+                      {lang === "ar" ? "مسار حصاد" : "The Hasad path"}
+                    </p>
+                    <h3 className="mt-2 font-display-display text-[1.85rem] font-black text-foreground sm:text-[2.25rem]">
+                      {lang === "ar" ? "أنشئ ← اعرض ← تفاعل" : "Create ← Present ← Engage"}
+                    </h3>
+                  </div>
+                  <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-end">
+                    {lang === "ar"
+                      ? "منصة واحدة تساعدك على تحويل الفكرة إلى تجربة تعليمية يشارك فيها كل طالب."
+                      : "One platform to turn an idea into a learning experience every student can join."}
+                  </p>
+                </div>
+                <div className={`mt-7 grid gap-4 ${!hasVisibleStats ? "lg:grid-cols-3" : ""}`}>
                   {flowSteps.map((step, i) => (
                     <div
                       key={step.title}
-                      className="flex gap-4 rounded-[22px] border border-border/70 bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(43,83,59,0.08)]"
+                      className={`flex gap-4 rounded-[22px] border border-border/70 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(43,83,59,0.08)] ${!hasVisibleStats ? "lg:min-h-[176px] lg:flex-col lg:gap-5" : ""}`}
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[hsl(145,55%,93%)] text-base font-black text-[hsl(145,55%,28%)]">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[hsl(145,55%,93%)] text-base font-black text-[hsl(145,55%,28%)] lg:h-12 lg:w-12">
                         {i + 1}
                       </div>
                       <div>
