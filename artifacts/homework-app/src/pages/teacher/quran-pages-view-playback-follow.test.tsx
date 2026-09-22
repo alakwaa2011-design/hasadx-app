@@ -266,6 +266,9 @@ describe.each([
 
     await waitFor(() => expect(screen.getByTestId("button-mobile-audio")).toBeTruthy());
     await waitFor(() => {
+      expect(screen.getByTestId("button-mobile-audio").getAttribute("title")).toBe("التلاوة");
+    });
+    await waitFor(() => {
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("2");
       expect(screen.getByTestId("mushaf-page-2").getAttribute("data-selected-verse")).toBe("2:5");
     });

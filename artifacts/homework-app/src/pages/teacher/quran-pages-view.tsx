@@ -57,6 +57,7 @@ import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
 import { useQuranWordAudio } from "@/components/quran/use-quran-word-audio";
 import { QuranReaderTips } from "@/components/quran/quran-reader-tips";
+import { getGuidedVerseScrollDelta } from "@/components/quran/quran-guided-visibility";
 
 const QURAN_EDUCATION_HIDDEN_KEY = "quran-education-hidden";
 const QURAN_READER_TIPS_KEY = "quran-reader-tips-seen-v1";
@@ -183,6 +184,7 @@ export function QuranPagesView({
   const bottomDockRef = useRef<HTMLDivElement | null>(null);
   const [bottomDockHeight, setBottomDockHeight] = useState(0);
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
+  const quranReaderRootRef = useRef<HTMLDivElement | null>(null);
   const [toolsHeaderHeight, setToolsHeaderHeight] = useState(0);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
@@ -424,14 +426,33 @@ export function QuranPagesView({
   useEffect(() => {
     if (!guidedOpen || !guidedVerseKey) return;
     const frame = window.requestAnimationFrame(() => {
+      const reader = readerMainRef.current;
       const verseElement = Array.from(
-        readerMainRef.current?.querySelectorAll<HTMLElement>("[data-verse-key]") ?? [],
+        reader?.querySelectorAll<HTMLElement>("[data-verse-key]") ?? [],
       ).find((element) => element.dataset.verseKey === guidedVerseKey);
-      if (!verseElement) return;
-      verseElement.scrollIntoView({ block: "start", behavior: "smooth" });
+      if (!reader || !verseElement) return;
+
+      const verseBounds = verseElement.getBoundingClientRect();
+      const readerBounds = reader.getBoundingClientRect();
+      const panelTop = guidedPanelRef.current?.getBoundingClientRect().top ?? null;
+      const delta = getGuidedVerseScrollDelta(
+        {
+          top: verseBounds.top,
+          bottom: verseBounds.bottom,
+          height: verseBounds.height,
+        },
+        {
+          top: readerBounds.top,
+          bottom: readerBounds.bottom,
+          height: readerBounds.height,
+        },
+        panelTop,
+      );
+      if (delta === null) return;
+      reader.scrollBy({ top: delta, behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [guidedOpen, guidedStage, guidedVerseKey]);
+  }, [guidedOpen, guidedPanelHeight, guidedStage, guidedVerseKey, toolsHeaderHeight]);
 
   useEffect(() => {
     if (!isPlaying || !audibleVerseKey || playbackFollowSuspended) return;
@@ -1033,6 +1054,47 @@ export function QuranPagesView({
     window.localStorage.setItem(QURAN_READER_TIPS_KEY, "true");
     setShowReaderTips(false);
   };
+
+  useEffect(() => {
+    const root = quranReaderRootRef.current;
+    if (!root) return;
+
+    const syncTooltips = (scope: ParentNode) => {
+      const controls = [
+        ...(scope instanceof HTMLButtonElement ? [scope] : []),
+        ...scope.querySelectorAll<HTMLButtonElement>("button"),
+      ];
+      for (const control of controls) {
+        const label = control.getAttribute("aria-label")?.trim()
+          || control.textContent?.replace(/\s+/g, " ").trim();
+        if (!label) continue;
+        if (!control.title || control.dataset.quranAutoTooltip === "true") {
+          control.title = label;
+          control.dataset.quranAutoTooltip = "true";
+        }
+      }
+    };
+
+    syncTooltips(root);
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "attributes" && mutation.target instanceof HTMLButtonElement) {
+          syncTooltips(mutation.target);
+          continue;
+        }
+        for (const node of mutation.addedNodes) {
+          if (node instanceof HTMLElement) syncTooltips(node);
+        }
+      }
+    });
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["aria-label"],
+    });
+    return () => observer.disconnect();
+  }, [lang, loading]);
 
   useEffect(() => {
     const main = readerMainRef.current;
@@ -1763,6 +1825,7 @@ export function QuranPagesView({
 
   return (
     <div
+      ref={quranReaderRootRef}
       className={cn(
         "quran-reader-root relative flex flex-col bg-[#eeeae2] font-sans transition-colors duration-300 dark:bg-[#0a0c0b]",
         embedded
