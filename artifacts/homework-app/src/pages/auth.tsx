@@ -12,7 +12,7 @@ import { Input, Button, Label } from "@/components/ui-elements";
 import {
   Loader2, Mail, Lock, User, AlertCircle, Eye, EyeOff,
   ChevronDown, Shield, BookOpen, BarChart2, Trophy, Users, ArrowLeft,
-  GraduationCap, Crown, ShieldCheck, RotateCcw, Phone,
+  GraduationCap, ShieldCheck, RotateCcw, Phone,
 } from "lucide-react";
 import {
   InputOTP,
@@ -1258,7 +1258,7 @@ export default function Auth() {
     );
   }
 
-  // For new registrations we present a 3-button role picker (student / teacher / organizer)
+  // For new registrations we present a two-option account picker (student / teacher)
   // before showing the actual form. Login flows skip this entirely.
   if (!isLogin && registerRole === null) {
     return (
@@ -1283,29 +1283,28 @@ export default function Auth() {
             </div>
 
             <div className="space-y-3">
-              {/* Student — go straight to PIN entry. The /game/join page also
-                  links to "create a student account" for those who want one. */}
+              {/* Student — sign in with an email or username. */}
               <button
                 type="button"
-                onClick={() => setLocation("/game/join")}
+                onClick={() => setLocation("/student/login")}
                 className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5"
                 style={{
-                  background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 100%)",
+                  background: "linear-gradient(135deg,#5b21b6 0%,#7c3aed 100%)",
                   color: "#fff",
-                  boxShadow: "0 10px 28px -10px rgba(30,77,53,0.55)",
+                  boxShadow: "0 10px 28px -10px rgba(91,33,182,0.55)",
                 }}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}>
-                    <GraduationCap className="w-6 h-6" style={{ color: "#E8A80E" }} />
+                    style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.28)" }}>
+                    <GraduationCap className="w-6 h-6" style={{ color: "#ede9fe" }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-extrabold text-base">
-                      {lang === "ar" ? "أنا طالب / مشارك" : "I'm a student / participant"}
+                      {lang === "ar" ? "أنا طالب" : "I'm a student"}
                     </p>
                     <p className="text-white/80 text-xs mt-0.5">
-                      {lang === "ar" ? "انضم بـ PIN واحصد نقاطك" : "Join with a PIN and collect points"}
+                      {lang === "ar" ? "سجّل بالبريد الإلكتروني أو اسم المستخدم" : "Sign in with your email or username"}
                     </p>
                   </div>
                   <ArrowLeft className="w-4 h-4 text-white/70 shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
@@ -1340,33 +1339,6 @@ export default function Auth() {
                 </div>
               </button>
 
-              {/* Organizer */}
-              <button
-                type="button"
-                onClick={() => setRegisterRole("organizer")}
-                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5"
-                style={{
-                  background: "linear-gradient(135deg,#0a1628 0%,#1e3a5f 100%)",
-                  color: "#fff",
-                  boxShadow: "0 10px 28px -10px rgba(30,58,95,0.55)",
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}>
-                    <Crown className="w-6 h-6" style={{ color: "#E8A80E" }} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-extrabold text-base">
-                      {lang === "ar" ? "أنا منظّم فعاليات" : "I'm an event organizer"}
-                    </p>
-                    <p className="text-white/80 text-xs mt-0.5">
-                      {lang === "ar" ? "مسابقات حية، تحدّيات، وفعاليات كبرى" : "Live contests, challenges & big events"}
-                    </p>
-                  </div>
-                  <ArrowLeft className="w-4 h-4 text-white/70 shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
-                </div>
-              </button>
             </div>
 
             <Link
