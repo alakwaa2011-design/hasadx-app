@@ -1035,7 +1035,8 @@ router.get("/quran/reader-state", async (req, res): Promise<void> => {
       pageNumber: quranReaderPositionsTable.pageNumber, revision: quranReaderPositionsTable.revision, updatedAt: quranReaderPositionsTable.updatedAt })
       .from(quranReaderPositionsTable).where(ownerFilter).limit(1),
     db.select({ surahNumber: quranBookmarksTable.surahNumber, ayahNumber: quranBookmarksTable.ayahNumber,
-      pageNumber: quranBookmarksTable.pageNumber, createdAt: quranBookmarksTable.createdAt, updatedAt: quranBookmarksTable.updatedAt })
+      pageNumber: quranBookmarksTable.pageNumber, category: quranBookmarksTable.category,
+      createdAt: quranBookmarksTable.createdAt, updatedAt: quranBookmarksTable.updatedAt })
       .from(quranBookmarksTable).where(bookmarkFilter)
       .orderBy(desc(quranBookmarksTable.createdAt), desc(quranBookmarksTable.id)),
   ]);
@@ -1118,14 +1119,22 @@ router.put("/quran/reader-state/bookmarks/:surahNumber/:ayahNumber", async (req,
   const conflictTargetWhere = owner.studentAccountId !== null
     ? sql`${quranBookmarksTable.studentAccountId} IS NOT NULL`
     : sql`${quranBookmarksTable.teacherId} IS NOT NULL`;
-  const [bookmark] = await db.insert(quranBookmarksTable).values({ ...owner, surahNumber, ayahNumber, pageNumber: parsed.data.pageNumber })
+  const category = parsed.data.category ?? "stopped_here";
+  const [bookmark] = await db.insert(quranBookmarksTable).values({
+    ...owner,
+    surahNumber,
+    ayahNumber,
+    pageNumber: parsed.data.pageNumber,
+    category,
+  })
     .onConflictDoUpdate({
       target: conflictTarget,
       targetWhere: conflictTargetWhere,
-      set: { pageNumber: parsed.data.pageNumber, updatedAt: new Date() },
+      set: { pageNumber: parsed.data.pageNumber, category, updatedAt: new Date() },
     })
     .returning({ surahNumber: quranBookmarksTable.surahNumber, ayahNumber: quranBookmarksTable.ayahNumber,
-      pageNumber: quranBookmarksTable.pageNumber, createdAt: quranBookmarksTable.createdAt, updatedAt: quranBookmarksTable.updatedAt });
+      pageNumber: quranBookmarksTable.pageNumber, category: quranBookmarksTable.category,
+      createdAt: quranBookmarksTable.createdAt, updatedAt: quranBookmarksTable.updatedAt });
   res.json(bookmark);
 });
 

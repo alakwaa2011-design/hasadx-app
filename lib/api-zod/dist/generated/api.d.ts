@@ -17149,6 +17149,7 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         surahNumber: zodV3.ZodNumber;
         ayahNumber: zodV3.ZodNumber;
         pageNumber: zodV3.ZodNumber;
+        category: zodV3.ZodEnum<["stopped_here", "review", "similar", "repeated_mistake", "ask_teacher"]>;
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
@@ -17157,12 +17158,14 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
+        category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
     }, {
         createdAt: Date;
         updatedAt: Date;
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
+        category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     position: {
@@ -17178,6 +17181,7 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
+        category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
     }[];
 }, {
     position: {
@@ -17193,6 +17197,7 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
+        category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
     }[];
 }>;
 export declare const updateQuranReaderPositionBodyPageNumberMax = 604;
@@ -17246,10 +17251,13 @@ export declare const AddQuranBookmarkParams: zodV3.ZodObject<{
 export declare const addQuranBookmarkBodyPageNumberMax = 604;
 export declare const AddQuranBookmarkBody: zodV3.ZodObject<{
     pageNumber: zodV3.ZodNumber;
+    category: zodV3.ZodOptional<zodV3.ZodEnum<["stopped_here", "review", "similar", "repeated_mistake", "ask_teacher"]>>;
 }, "strip", zodV3.ZodTypeAny, {
     pageNumber: number;
+    category?: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher" | undefined;
 }, {
     pageNumber: number;
+    category?: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher" | undefined;
 }>;
 export declare const addQuranBookmarkResponseSurahNumberMax = 114;
 export declare const addQuranBookmarkResponsePageNumberMax = 604;
@@ -17257,6 +17265,7 @@ export declare const AddQuranBookmarkResponse: zodV3.ZodObject<{
     surahNumber: zodV3.ZodNumber;
     ayahNumber: zodV3.ZodNumber;
     pageNumber: zodV3.ZodNumber;
+    category: zodV3.ZodEnum<["stopped_here", "review", "similar", "repeated_mistake", "ask_teacher"]>;
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
@@ -17265,12 +17274,14 @@ export declare const AddQuranBookmarkResponse: zodV3.ZodObject<{
     pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
+    category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
 }, {
     createdAt: Date;
     updatedAt: Date;
     pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
+    category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
 }>;
 export declare const DeleteQuranBookmarkParams: zodV3.ZodObject<{
     surahNumber: zodV3.ZodNumber;

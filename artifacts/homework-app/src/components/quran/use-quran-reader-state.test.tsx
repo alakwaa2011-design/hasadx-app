@@ -71,13 +71,13 @@ describe('useQuranReaderState', () => {
     const { result } = renderHook(() => useQuranReaderState(), { wrapper });
 
     await act(async () => {
-      await result.current.toggleBookmark(1, 1, 1, false);
+      await result.current.toggleBookmark(1, 1, 1, false, 'review');
     });
 
     expect(mockAddBookmark).toHaveBeenCalledWith({
       surahNumber: 1,
       ayahNumber: 1,
-      data: { pageNumber: 1 }
+      data: { pageNumber: 1, category: 'review' }
     });
     
     await act(async () => {
@@ -119,13 +119,14 @@ describe('useQuranReaderState', () => {
     );
 
     act(() => result.current.savePosition(2, 5, 3));
-    await act(async () => result.current.toggleBookmark(2, 5, 3, false));
+    await act(async () => result.current.toggleBookmark(2, 5, 3, false, 'similar'));
 
     expect(readStandaloneQuranReaderState()).toEqual({
       position: { surahNumber: 2, ayahNumber: 5, pageNumber: 3 },
-      bookmarks: [{ surahNumber: 2, ayahNumber: 5, pageNumber: 3 }],
+      bookmarks: [{ surahNumber: 2, ayahNumber: 5, pageNumber: 3, category: 'similar' }],
     });
     expect(result.current.bookmarksMap.has('2:5')).toBe(true);
+    expect(result.current.bookmarksMap.get('2:5')).toBe('similar');
     expect(updatePosition).not.toHaveBeenCalled();
     expect(addBookmark).not.toHaveBeenCalled();
     expect(deleteBookmark).not.toHaveBeenCalled();

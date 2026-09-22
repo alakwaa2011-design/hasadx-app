@@ -6004,6 +6004,7 @@ export const GetQuranReaderStateResponse = zod.object({
   "surahNumber": zod.int().min(1).max(getQuranReaderStateResponseBookmarksItemSurahNumberMax),
   "ayahNumber": zod.int().min(1),
   "pageNumber": zod.int().min(1).max(getQuranReaderStateResponseBookmarksItemPageNumberMax),
+  "category": zod.enum(['stopped_here', 'review', 'similar', 'repeated_mistake', 'ask_teacher']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }))
@@ -6049,7 +6050,8 @@ export const addQuranBookmarkBodyPageNumberMax = 604;
 
 
 export const AddQuranBookmarkBody = zod.object({
-  "pageNumber": zod.int().min(1).max(addQuranBookmarkBodyPageNumberMax)
+  "pageNumber": zod.int().min(1).max(addQuranBookmarkBodyPageNumberMax),
+  "category": zod.enum(['stopped_here', 'review', 'similar', 'repeated_mistake', 'ask_teacher']).optional()
 })
 
 export const addQuranBookmarkResponseSurahNumberMax = 114;
@@ -6063,6 +6065,7 @@ export const AddQuranBookmarkResponse = zod.object({
   "surahNumber": zod.int().min(1).max(addQuranBookmarkResponseSurahNumberMax),
   "ayahNumber": zod.int().min(1),
   "pageNumber": zod.int().min(1).max(addQuranBookmarkResponsePageNumberMax),
+  "category": zod.enum(['stopped_here', 'review', 'similar', 'repeated_mistake', 'ask_teacher']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })

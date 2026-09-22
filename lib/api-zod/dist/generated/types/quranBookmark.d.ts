@@ -5,6 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { QuranBookmarkCategory } from './quranBookmarkCategory';
 export interface QuranBookmark {
     /**
        * @minimum 1
@@ -18,6 +19,7 @@ export interface QuranBookmark {
        * @maximum 604
        */
     pageNumber: number;
+    category: QuranBookmarkCategory;
     createdAt: Date;
     updatedAt: Date;
 }

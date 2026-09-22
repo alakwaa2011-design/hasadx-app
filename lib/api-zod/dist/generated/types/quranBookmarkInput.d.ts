@@ -5,11 +5,13 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { QuranBookmarkInputCategory } from './quranBookmarkInputCategory';
 export interface QuranBookmarkInput {
     /**
        * @minimum 1
        * @maximum 604
        */
     pageNumber: number;
+    category?: QuranBookmarkInputCategory;
 }
 //# sourceMappingURL=quranBookmarkInput.d.ts.map

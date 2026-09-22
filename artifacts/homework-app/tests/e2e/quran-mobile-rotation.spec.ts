@@ -295,6 +295,8 @@ test.describe("mobile Mushaf rotation", () => {
         surah_number INTEGER NOT NULL,
         ayah_number INTEGER NOT NULL,
         page_number INTEGER NOT NULL,
+        category TEXT NOT NULL DEFAULT 'stopped_here'
+          CHECK (category IN ('stopped_here', 'review', 'similar', 'repeated_mistake', 'ask_teacher')),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT quran_bookmarks_exactly_one_owner

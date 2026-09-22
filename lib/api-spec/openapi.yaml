@@ -5839,11 +5839,14 @@ components:
         updatedAt: { type: string, format: date-time }
     QuranBookmark:
       type: object
-      required: [surahNumber, ayahNumber, pageNumber, createdAt, updatedAt]
+      required: [surahNumber, ayahNumber, pageNumber, category, createdAt, updatedAt]
       properties:
         surahNumber: { type: integer, minimum: 1, maximum: 114 }
         ayahNumber: { type: integer, minimum: 1 }
         pageNumber: { type: integer, minimum: 1, maximum: 604 }
+        category:
+          type: string
+          enum: [stopped_here, review, similar, repeated_mistake, ask_teacher]
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     QuranReaderState:
@@ -5876,3 +5879,6 @@ components:
       required: [pageNumber]
       properties:
         pageNumber: { type: integer, minimum: 1, maximum: 604 }
+        category:
+          type: string
+          enum: [stopped_here, review, similar, repeated_mistake, ask_teacher]

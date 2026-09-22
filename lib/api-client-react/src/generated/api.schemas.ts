@@ -3034,6 +3034,17 @@ export interface QuranReaderPosition {
   updatedAt: string;
 }
 
+export type QuranBookmarkCategory = typeof QuranBookmarkCategory[keyof typeof QuranBookmarkCategory];
+
+
+export const QuranBookmarkCategory = {
+  stopped_here: 'stopped_here',
+  review: 'review',
+  similar: 'similar',
+  repeated_mistake: 'repeated_mistake',
+  ask_teacher: 'ask_teacher',
+} as const;
+
 export interface QuranBookmark {
   /**
      * @minimum 1
@@ -3047,6 +3058,7 @@ export interface QuranBookmark {
      * @maximum 604
      */
   pageNumber: number;
+  category: QuranBookmarkCategory;
   createdAt: string;
   updatedAt: string;
 }
@@ -3074,12 +3086,24 @@ export interface QuranReaderPositionConflict {
   currentRevision: number;
 }
 
+export type QuranBookmarkInputCategory = typeof QuranBookmarkInputCategory[keyof typeof QuranBookmarkInputCategory];
+
+
+export const QuranBookmarkInputCategory = {
+  stopped_here: 'stopped_here',
+  review: 'review',
+  similar: 'similar',
+  repeated_mistake: 'repeated_mistake',
+  ask_teacher: 'ask_teacher',
+} as const;
+
 export interface QuranBookmarkInput {
   /**
      * @minimum 1
      * @maximum 604
      */
   pageNumber: number;
+  category?: QuranBookmarkInputCategory;
 }
 
 export type AdminHideAssignmentBody = {

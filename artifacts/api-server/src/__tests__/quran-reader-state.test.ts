@@ -50,6 +50,13 @@ describe("Quran reader state validation and ownership boundary", () => {
     expect(response.status).toBe(400);
   });
 
+  it("rejects an unsupported specialized bookmark category", async () => {
+    const response = await request(appWithSession({ teacherId: 10 }))
+      .put("/api/quran/reader-state/bookmarks/2/1")
+      .send({ pageNumber: 2, category: "important" });
+    expect(response.status).toBe(400);
+  });
+
   it("does not expose another owner through the unified endpoint", async () => {
     const response = await request(appWithSession({ teacherId: 10 })).get("/api/quran/reader-state");
     expect(response.status).toBe(200);

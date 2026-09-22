@@ -2,6 +2,8 @@ import * as React from "react";
 import { Bookmark, BookOpen, Copy, Layers, Play } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { QuranBookmarkCategoryPicker } from "./quran-bookmark-category-picker";
+import type { QuranBookmarkCategory } from "./quran-bookmark-categories";
 
 type AnchorRect = {
   top: number;
@@ -18,10 +20,11 @@ interface QuranAyahActionSurfaceProps {
   verseKey: string;
   anchorRect?: AnchorRect | null;
   isBookmarked: boolean;
+  bookmarkCategory?: QuranBookmarkCategory | null;
   onPlay: () => void;
   onCopy: () => void;
   onMultiCopy: () => void;
-  onBookmark: () => void;
+  onBookmark: (category?: QuranBookmarkCategory) => void;
   onTafsir: () => void;
 }
 
@@ -31,6 +34,7 @@ export function QuranAyahActionSurface({
   verseKey,
   anchorRect,
   isBookmarked,
+  bookmarkCategory,
   onPlay,
   onCopy,
   onMultiCopy,
@@ -39,11 +43,15 @@ export function QuranAyahActionSurface({
 }: QuranAyahActionSurfaceProps) {
   const { lang, dir } = useI18n();
   const [copyOptionsOpen, setCopyOptionsOpen] = React.useState(false);
+  const [bookmarkOptionsOpen, setBookmarkOptionsOpen] = React.useState(false);
   const cardRef = React.useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = React.useState({ top: 96, left: 12 });
 
   React.useEffect(() => {
-    if (!open) setCopyOptionsOpen(false);
+    if (!open) {
+      setCopyOptionsOpen(false);
+      setBookmarkOptionsOpen(false);
+    }
   }, [open]);
 
   React.useLayoutEffect(() => {
@@ -51,7 +59,7 @@ export function QuranAyahActionSurface({
     const updatePosition = () => {
       const card = cardRef.current;
       const width = card?.offsetWidth ?? Math.min(340, window.innerWidth - 24);
-      const height = card?.offsetHeight ?? (copyOptionsOpen ? 188 : 112);
+      const height = card?.offsetHeight ?? ((copyOptionsOpen || bookmarkOptionsOpen) ? 280 : 112);
       const anchor = anchorRect ?? {
         top: window.innerHeight / 2,
         bottom: window.innerHeight / 2,
@@ -75,7 +83,7 @@ export function QuranAyahActionSurface({
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [anchorRect, copyOptionsOpen, open]);
+  }, [anchorRect, bookmarkOptionsOpen, copyOptionsOpen, open]);
 
   if (!open) return null;
 
@@ -85,14 +93,21 @@ export function QuranAyahActionSurface({
     {
       icon: Bookmark,
       label: lang === "ar" ? (isBookmarked ? "إزالة" : "علامة") : (isBookmarked ? "Remove" : "Bookmark"),
-      onClick: onBookmark,
+      onClick: () => {
+        setCopyOptionsOpen(false);
+        setBookmarkOptionsOpen(true);
+      },
       testId: "action-bookmark",
       active: isBookmarked,
+      keepOpen: true,
     },
     {
       icon: Copy,
       label: lang === "ar" ? "نسخ" : "Copy",
-      onClick: () => setCopyOptionsOpen(true),
+      onClick: () => {
+        setBookmarkOptionsOpen(false);
+        setCopyOptionsOpen(true);
+      },
       testId: "action-copy",
       keepOpen: true,
     },
@@ -162,6 +177,24 @@ export function QuranAyahActionSurface({
               <Layers className="h-4 w-4" />
               {lang === "ar" ? "عدة آيات" : "Multiple ayahs"}
             </button>
+          </div>
+        )}
+        {bookmarkOptionsOpen && (
+          <div className="mt-2 border-t border-emerald-900/5 pt-2 dark:border-white/5">
+            <p className="mb-2 px-1 text-[11px] font-bold text-muted-foreground">
+              {lang === "ar" ? "اختر نوع العلامة" : "Choose bookmark type"}
+            </p>
+            <QuranBookmarkCategoryPicker
+              selectedCategory={bookmarkCategory}
+              onSelect={(category) => {
+                onBookmark(category);
+                onOpenChange(false);
+              }}
+              onRemove={isBookmarked ? () => {
+                onBookmark();
+                onOpenChange(false);
+              } : undefined}
+            />
           </div>
         )}
       </div>

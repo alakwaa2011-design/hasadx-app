@@ -146,3 +146,4 @@
 - [Quran ayah action ergonomics](quran-ayah-action-ergonomics.md) — ayah-number tap opens actions; word pronunciation requires a stationary long-press, while light word taps stay silent.
 - [QCF page line metrics](qcf-page-line-metrics.md) — never use normal line-height for page fonts; their oversized glyph bounds push canonical 15-line pages past the paper.
 - [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.
+- [Quran specialized bookmarks](quran-specialized-bookmarks.md) — each ayah has one categorized bookmark; old or missing categories normalize to “stopped here.”

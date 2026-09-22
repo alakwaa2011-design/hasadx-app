@@ -5,6 +5,12 @@ import { arSA, enUS } from 'date-fns/locale';
 import { useQuranReaderState } from './use-quran-reader-state';
 import { parseQuranXml } from '@/lib/quran-parser';
 import { useEffect, useState } from 'react';
+import {
+  QURAN_BOOKMARK_CATEGORIES,
+  normalizeQuranBookmarkCategory,
+  quranBookmarkCategoryLabel,
+  type QuranBookmarkCategory,
+} from './quran-bookmark-categories';
 
 interface QuranBookmarksPanelProps {
   onNavigate: (location: { surah: number; ayah: number; page?: number }) => void;
@@ -23,6 +29,7 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
   } = useQuranReaderState({ enabled: true, storage });
   const [surahNames, setSurahNames] = useState<Record<number, string>>({});
   const [areSurahNamesReady, setAreSurahNamesReady] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | QuranBookmarkCategory>('all');
 
   useEffect(() => {
     let mounted = true;
@@ -70,14 +77,51 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
   }
 
   // Sort bookmarks by updatedAt descending
-  const sortedBookmarks = [...bookmarks].sort((a, b) => {
+  const sortedBookmarks = [...bookmarks]
+    .filter((bookmark) =>
+      categoryFilter === 'all'
+      || normalizeQuranBookmarkCategory(bookmark.category) === categoryFilter
+    )
+    .sort((a, b) => {
     const firstUpdatedAt = 'updatedAt' in a ? new Date(a.updatedAt as string).getTime() : 0;
     const secondUpdatedAt = 'updatedAt' in b ? new Date(b.updatedAt as string).getTime() : 0;
     return secondUpdatedAt - firstUpdatedAt;
-  });
+    });
 
   return (
     <div className={`space-y-3 ${className || ''}`} dir={dir}>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <button
+          type="button"
+          onClick={() => setCategoryFilter('all')}
+          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+            categoryFilter === 'all'
+              ? 'bg-emerald-700 text-white'
+              : 'bg-muted text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {lang === 'ar' ? 'الكل' : 'All'}
+        </button>
+        {QURAN_BOOKMARK_CATEGORIES.map((category) => (
+          <button
+            key={category}
+            type="button"
+            onClick={() => setCategoryFilter(category)}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+              categoryFilter === category
+                ? 'bg-emerald-700 text-white'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {quranBookmarkCategoryLabel(category, lang)}
+          </button>
+        ))}
+      </div>
+      {sortedBookmarks.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm font-bold text-muted-foreground">
+          {lang === 'ar' ? 'لا توجد علامات من هذا النوع' : 'No bookmarks of this type'}
+        </div>
+      )}
       {sortedBookmarks.map((bookmark) => {
         const surahName = surahNames[bookmark.surahNumber]
           ?? (lang === 'ar' ? 'اسم السورة غير متاح' : 'Unknown surah');
@@ -87,6 +131,7 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
               locale: lang === 'ar' ? arSA : enUS,
             })
           : null;
+        const category = normalizeQuranBookmarkCategory(bookmark.category);
 
         return (
           <div
@@ -109,6 +154,9 @@ export function QuranBookmarksPanel({ onNavigate, className, storage = 'server' 
                     {lang === 'ar' 
                       ? `الآية ${bookmark.ayahNumber} • صفحة ${bookmark.pageNumber}`
                       : `Ayah ${bookmark.ayahNumber} • Page ${bookmark.pageNumber}`}
+                  </span>
+                  <span className="mt-1 w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                    {quranBookmarkCategoryLabel(category, lang)}
                   </span>
                   {timeAgo && <span className="mt-1 text-xs text-muted-foreground">{timeAgo}</span>}
                 </div>

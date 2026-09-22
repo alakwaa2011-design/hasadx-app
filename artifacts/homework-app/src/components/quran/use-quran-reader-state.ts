@@ -12,6 +12,11 @@ import {
 } from '@workspace/api-client-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n';
+import {
+  normalizeQuranBookmarkCategory,
+  quranBookmarkCategoryLabel,
+  type QuranBookmarkCategory,
+} from './quran-bookmark-categories';
 
 export interface StandaloneQuranReaderState {
   position: {
@@ -23,6 +28,7 @@ export interface StandaloneQuranReaderState {
     surahNumber: number;
     ayahNumber: number;
     pageNumber: number;
+    category: QuranBookmarkCategory;
   }>;
 }
 
@@ -60,11 +66,18 @@ export function readStandaloneQuranReaderState(): StandaloneQuranReaderState {
             pageNumber: position.pageNumber,
           }
         : null,
-      bookmarks: bookmarks.filter((bookmark) =>
-        Number.isInteger(bookmark?.surahNumber)
-        && Number.isInteger(bookmark?.ayahNumber)
-        && Number.isInteger(bookmark?.pageNumber)
-      ),
+      bookmarks: bookmarks
+        .filter((bookmark) =>
+          Number.isInteger(bookmark?.surahNumber)
+          && Number.isInteger(bookmark?.ayahNumber)
+          && Number.isInteger(bookmark?.pageNumber)
+        )
+        .map((bookmark) => ({
+          surahNumber: bookmark.surahNumber,
+          ayahNumber: bookmark.ayahNumber,
+          pageNumber: bookmark.pageNumber,
+          category: normalizeQuranBookmarkCategory(bookmark.category),
+        })),
     };
   } catch {
     return EMPTY_STANDALONE_STATE;
@@ -246,10 +259,17 @@ export function useQuranReaderState(options: {
     updatePositionMutation,
   ]);
   
-  const toggleBookmark = useCallback(async (surahNumber: number, ayahNumber: number, pageNumber: number, isBookmarked: boolean) => {
+  const toggleBookmark = useCallback(async (
+    surahNumber: number,
+    ayahNumber: number,
+    pageNumber: number,
+    isBookmarked: boolean,
+    category?: QuranBookmarkCategory,
+  ) => {
+      const shouldRemove = isBookmarked && category === undefined;
       if (isLocal) {
         setLocalState((current) => {
-          const bookmarks = isBookmarked
+          const bookmarks = shouldRemove
             ? current.bookmarks.filter((bookmark) =>
                 bookmark.surahNumber !== surahNumber || bookmark.ayahNumber !== ayahNumber
               )
@@ -257,19 +277,19 @@ export function useQuranReaderState(options: {
                 ...current.bookmarks.filter((bookmark) =>
                   bookmark.surahNumber !== surahNumber || bookmark.ayahNumber !== ayahNumber
                 ),
-                { surahNumber, ayahNumber, pageNumber },
+                { surahNumber, ayahNumber, pageNumber, category: category ?? 'stopped_here' },
               ];
           const next = { ...current, bookmarks };
           persistStandaloneQuranReaderState(next);
           return next;
         });
         toast.success(lang === 'ar'
-          ? `${isBookmarked ? 'تمت إزالة العلامة' : 'تمت إضافة علامة'} — السورة ${surahNumber}، الآية ${ayahNumber}`
-          : `${isBookmarked ? 'Bookmark removed' : 'Bookmark added'} — Surah ${surahNumber}, ayah ${ayahNumber}`);
+          ? `${shouldRemove ? 'تمت إزالة العلامة' : `تم الحفظ: ${quranBookmarkCategoryLabel(category ?? 'stopped_here', lang)}`} — السورة ${surahNumber}، الآية ${ayahNumber}`
+          : `${shouldRemove ? 'Bookmark removed' : `Saved: ${quranBookmarkCategoryLabel(category ?? 'stopped_here', lang)}`} — Surah ${surahNumber}, ayah ${ayahNumber}`);
         return;
       }
       try {
-        if (isBookmarked) {
+        if (shouldRemove) {
           await deleteBookmarkMutation.mutateAsync({ surahNumber, ayahNumber });
           toast.success(lang === 'ar'
             ? `تمت إزالة العلامة — السورة ${surahNumber}، الآية ${ayahNumber}`
@@ -278,11 +298,11 @@ export function useQuranReaderState(options: {
           await addBookmarkMutation.mutateAsync({
             surahNumber,
             ayahNumber,
-            data: { pageNumber }
+            data: { pageNumber, category: category ?? 'stopped_here' }
           });
           toast.success(lang === 'ar'
-            ? `تمت إضافة علامة — السورة ${surahNumber}، الآية ${ayahNumber}`
-            : `Bookmark added — Surah ${surahNumber}, ayah ${ayahNumber}`);
+            ? `تم الحفظ: ${quranBookmarkCategoryLabel(category ?? 'stopped_here', lang)} — السورة ${surahNumber}، الآية ${ayahNumber}`
+            : `Saved: ${quranBookmarkCategoryLabel(category ?? 'stopped_here', lang)} — Surah ${surahNumber}, ayah ${ayahNumber}`);
         }
         await queryClient.invalidateQueries({ queryKey: getGetQuranReaderStateQueryKey() });
       } catch (err) {
@@ -291,14 +311,14 @@ export function useQuranReaderState(options: {
   }, [addBookmarkMutation, deleteBookmarkMutation, isLocal, queryClient, lang]);
 
   const bookmarksMap = useMemo(() => {
-    const map = new Map<string, boolean>();
+    const map = new Map<string, QuranBookmarkCategory>();
     if (isLocal) {
       localState.bookmarks.forEach((bookmark) => {
-        map.set(`${bookmark.surahNumber}:${bookmark.ayahNumber}`, true);
+        map.set(`${bookmark.surahNumber}:${bookmark.ayahNumber}`, bookmark.category);
       });
     } else if (readerState?.bookmarks) {
       readerState.bookmarks.forEach(b => {
-        map.set(`${b.surahNumber}:${b.ayahNumber}`, true);
+        map.set(`${b.surahNumber}:${b.ayahNumber}`, normalizeQuranBookmarkCategory(b.category));
       });
     }
     return map;
@@ -313,19 +333,20 @@ export function useQuranReaderState(options: {
       if (enabled) {
         const local = readStandaloneQuranReaderState();
         const serverBookmarks = readerState?.bookmarks ?? [];
-        const mergedBookmarks = new Map<string, { surahNumber: number; ayahNumber: number; pageNumber: number }>();
+        const mergedBookmarks = new Map<string, { surahNumber: number; ayahNumber: number; pageNumber: number; category: QuranBookmarkCategory }>();
         for (const bookmark of [...serverBookmarks, ...local.bookmarks]) {
           mergedBookmarks.set(`${bookmark.surahNumber}:${bookmark.ayahNumber}`, {
             surahNumber: bookmark.surahNumber,
             ayahNumber: bookmark.ayahNumber,
             pageNumber: bookmark.pageNumber,
+            category: normalizeQuranBookmarkCategory(bookmark.category),
           });
         }
         await Promise.all(Array.from(mergedBookmarks.values()).map((bookmark) =>
           addBookmarkMutation.mutateAsync({
             surahNumber: bookmark.surahNumber,
             ayahNumber: bookmark.ayahNumber,
-            data: { pageNumber: bookmark.pageNumber },
+            data: { pageNumber: bookmark.pageNumber, category: bookmark.category },
           })
         ));
         if (local.position) {
@@ -374,7 +395,12 @@ export function useQuranReaderState(options: {
           bookmarks: Array.from(new Map(
             [...localState.bookmarks, ...(readerState?.bookmarks ?? [])].map((bookmark) => [
               `${bookmark.surahNumber}:${bookmark.ayahNumber}`,
-              { surahNumber: bookmark.surahNumber, ayahNumber: bookmark.ayahNumber, pageNumber: bookmark.pageNumber },
+              {
+                surahNumber: bookmark.surahNumber,
+                ayahNumber: bookmark.ayahNumber,
+                pageNumber: bookmark.pageNumber,
+                category: normalizeQuranBookmarkCategory(bookmark.category),
+              },
             ]),
           ).values()),
         });

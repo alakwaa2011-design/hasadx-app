@@ -864,6 +864,7 @@ export function QuranTextReaderView({
                     ayahNumber={selectedAyah}
                     pageNumber={activeLocation.page}
                     isBookmarked={bookmarksMap.has(`${surahNumber}:${selectedAyah}`)}
+                    category={bookmarksMap.get(`${surahNumber}:${selectedAyah}`)}
                     onToggle={toggleBookmark}
                     disabled={isMutatingBookmark}
                   />

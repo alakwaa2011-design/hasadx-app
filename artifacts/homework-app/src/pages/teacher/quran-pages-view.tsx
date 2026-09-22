@@ -51,6 +51,7 @@ import {
 } from "@/components/quran/quran-guided-memorization-panel";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import { QuranAyahActionSurface } from "@/components/quran/quran-ayah-action-surface";
+import { QuranBookmarkCategoryPicker } from "@/components/quran/quran-bookmark-category-picker";
 import { QuranWordActionPopover } from "@/components/quran/quran-word-action-popover";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
@@ -720,6 +721,7 @@ export function QuranPagesView({
   const copyCount = copyRangeEnd - copyRangeStart + 1;
   const currentCopyKey = `${selectedSurah}:${copyRangeStart}-${copyRangeEnd}`;
   const isCurrentBookmarked = bookmarksMap.has(`${selectedSurah}:${selectedAyah}`);
+  const currentBookmarkCategory = bookmarksMap.get(`${selectedSurah}:${selectedAyah}`);
   const canToggleCurrentBookmark = !isIndependentPractice && mode === null && Boolean(fallbackVerse);
 
   const {
@@ -1683,12 +1685,19 @@ export function QuranPagesView({
       {bookmarkActionsOpen && (
         <div className="fixed inset-x-3 top-24 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10">
           {canToggleCurrentBookmark && (
-            <button type="button" disabled={isMutatingBookmark}
-              onClick={() => { toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked); setBookmarkActionsOpen(false); }}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/10">
-              <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
-              {lang === "ar" ? (isCurrentBookmarked ? "إزالة العلامة" : "إضافة علامة") : (isCurrentBookmarked ? "Remove" : "Add bookmark")}
-            </button>
+            <QuranBookmarkCategoryPicker
+              selectedCategory={currentBookmarkCategory}
+              disabled={isMutatingBookmark}
+              className="min-w-72"
+              onSelect={(category) => {
+                toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked, category);
+                setBookmarkActionsOpen(false);
+              }}
+              onRemove={isCurrentBookmarked ? () => {
+                toggleBookmark(selectedSurah, selectedAyah, canonicalPage, true);
+                setBookmarkActionsOpen(false);
+              } : undefined}
+            />
           )}
           {onOpenBookmarks && (
             <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
@@ -2408,6 +2417,7 @@ export function QuranPagesView({
         verseKey={ayahActionVerseKey ?? selectedVerseKey ?? `${selectedSurah}:${selectedAyah}`}
         anchorRect={ayahActionAnchor}
         isBookmarked={ayahActionVerseKey ? bookmarksMap.has(ayahActionVerseKey) : false}
+        bookmarkCategory={ayahActionVerseKey ? bookmarksMap.get(ayahActionVerseKey) : null}
         onPlay={() => {
           if (!ayahActionVerseKey) return;
           setSelectedVerseKey(ayahActionVerseKey);
@@ -2449,12 +2459,18 @@ export function QuranPagesView({
           setSelectedVerseKey(ayahActionVerseKey);
           setCopyRange({ surah: chapterId, startAyah: verseNumber, endAyah: verseNumber });
         }}
-        onBookmark={() => {
+        onBookmark={(category) => {
           if (!ayahActionVerseKey) return;
           const [chapterId, verseNumber] = ayahActionVerseKey.split(":").map(Number);
           const pageId = verses.find(v => v.chapter_id === chapterId && v.number === verseNumber)?.page_id ?? activePage;
           setSelectedVerseKey(ayahActionVerseKey);
-          toggleBookmark(chapterId, verseNumber, pageId, bookmarksMap.has(ayahActionVerseKey));
+          toggleBookmark(
+            chapterId,
+            verseNumber,
+            pageId,
+            bookmarksMap.has(ayahActionVerseKey),
+            category,
+          );
         }}
         onTafsir={() => {
           if (!ayahActionVerseKey) return;

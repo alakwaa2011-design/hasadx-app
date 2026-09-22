@@ -1,4 +1,4 @@
-import { bigint, check, integer, pgTable, serial, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, check, integer, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { teachersTable } from "./teachers";
 import { studentAccountsTable } from "./student-accounts";
@@ -25,10 +25,12 @@ export const quranBookmarksTable = pgTable("quran_bookmarks", {
   surahNumber: integer("surah_number").notNull(),
   ayahNumber: integer("ayah_number").notNull(),
   pageNumber: integer("page_number").notNull(),
+  category: text("category").notNull().default("stopped_here"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   ownerCheck: check("quran_bookmarks_exactly_one_owner", sql`num_nonnulls(${table.teacherId}, ${table.studentAccountId}) = 1`),
+  categoryCheck: check("quran_bookmarks_category_valid", sql`${table.category} IN ('stopped_here', 'review', 'similar', 'repeated_mistake', 'ask_teacher')`),
   teacherVerseUnique: uniqueIndex("quran_bookmarks_teacher_verse_uq").on(table.teacherId, table.surahNumber, table.ayahNumber).where(sql`${table.teacherId} IS NOT NULL`),
   studentVerseUnique: uniqueIndex("quran_bookmarks_student_verse_uq").on(table.studentAccountId, table.surahNumber, table.ayahNumber).where(sql`${table.studentAccountId} IS NOT NULL`),
 }));
