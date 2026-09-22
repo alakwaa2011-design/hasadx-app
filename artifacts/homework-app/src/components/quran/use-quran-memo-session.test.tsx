@@ -31,6 +31,8 @@ describe("useQuranMemoSession", () => {
     expect(firstPattern).toContain(true);
     expect(firstPattern).toContain(false);
     expect(result.current.isAyahConcealed(1, 1, null, null)).toBe(false);
+    expect(result.current.isAyahConcealed(1, 2, 1, 1)).toBe(false);
+    expect(result.current.isAyahConcealed(1, 3, 99, 1)).toBe(false);
   });
 
   it("creates a fresh partial-hide pattern when the guided step restarts", () => {

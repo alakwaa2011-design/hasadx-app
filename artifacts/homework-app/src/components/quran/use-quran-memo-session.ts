@@ -48,15 +48,8 @@ export function useQuranMemoSession(
     if (revealedAyahs.has(`${surah}:${ayah}`)) return false;
     
     if (memoView === 'progressive') {
-      const progressPoint = playingAyahNum ?? (memoSession.isActive ? memoSession.rangeStart : (wardStart ?? 1));
-      if (ayah < progressPoint) {
-        return false;
-      }
-      if (
-        ayah === progressPoint
-        && memoSession.rangeStart === memoSession.rangeEnd
-      ) {
-        if (wordPosition === null) return false;
+      if (memoSession.rangeStart === memoSession.rangeEnd) {
+        if (ayah !== memoSession.rangeStart || wordPosition === null) return false;
         // Keep the random choice stable while the learner is on this step, then
         // generate a fresh pattern each time partial hiding is entered.
         let hash = partialHideSeed ^ (surah * 73_856_093) ^ (ayah * 19_349_663) ^ (wordPosition * 83_492_791);
@@ -64,13 +57,18 @@ export function useQuranMemoSession(
         hash = Math.imul(hash ^ (hash >>> 13), 3_266_489_909);
         return ((hash ^ (hash >>> 16)) >>> 0) % 100 < 48;
       }
+
+      const progressPoint = playingAyahNum ?? (memoSession.isActive ? memoSession.rangeStart : (wardStart ?? 1));
+      if (ayah < progressPoint) {
+        return false;
+      }
       if (ayah === progressPoint) {
         return false;
       }
     }
     
     return true;
-  }, [memoView, revealedAyahs, memoSession.isActive, memoSession.rangeStart, partialHideSeed, surahNumber, wardStart]);
+  }, [memoView, revealedAyahs, memoSession.isActive, memoSession.rangeEnd, memoSession.rangeStart, partialHideSeed, surahNumber, wardStart]);
 
   const toggleReveal = useCallback((surah: number, ayah: number) => {
     setRevealedAyahs(prev => {
