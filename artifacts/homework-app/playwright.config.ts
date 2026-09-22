@@ -110,6 +110,17 @@ export default defineConfig({
       },
     },
     {
+      name: "desktop-landing-motivation",
+      testMatch: /landing-motivation-board\.spec\.ts/,
+      use: {
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
       name: "desktop-quran-pages",
       testMatch: /quran-independent-position\.spec\.ts/,
       use: {
