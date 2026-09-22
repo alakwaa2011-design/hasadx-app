@@ -3557,16 +3557,21 @@ export default function Home() {
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
             <div className={`grid gap-6 ${hasVisibleStats ? "lg:grid-cols-[0.92fr_1.08fr]" : ""}`}>
               <div className={`soft-card rounded-[30px] p-6 sm:p-8 ${!hasVisibleStats ? "lg:p-10" : ""}`}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className={`grid gap-5 ${!hasVisibleStats ? "lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)] lg:items-center lg:gap-12" : ""}`}>
                   <div>
                     <p className="text-sm font-black text-[hsl(145,55%,32%)]">
                       {lang === "ar" ? "مسار حصاد" : "The Hasad path"}
                     </p>
-                    <h3 className="mt-2 font-display-display text-[2.35rem] font-black leading-[1.12] tracking-tight text-foreground sm:text-[3rem] lg:text-[3.35rem]">
-                      {lang === "ar" ? "أنشئ ← شارك ← تفاعل ← حلّل" : "Create ← Share ← Engage ← Analyze"}
+                    <h3 className="mt-2 font-display-display text-[2.35rem] font-black leading-[1.12] tracking-tight text-foreground sm:text-[3rem] lg:text-[3rem] xl:text-[3.15rem]">
+                      <span className="block">
+                        {lang === "ar" ? "أنشئ ← شارك" : "Create ← Share"}
+                      </span>
+                      <span className="block">
+                        {lang === "ar" ? "تفاعل ← حلّل" : "Engage ← Analyze"}
+                      </span>
                     </h3>
                   </div>
-                  <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-end sm:text-[1.05rem]">
+                  <p className={`text-start text-base leading-8 text-muted-foreground sm:text-[1.05rem] ${!hasVisibleStats ? "lg:flex lg:min-h-[112px] lg:items-center lg:rounded-[22px] lg:border lg:border-[hsl(145,30%,88%)] lg:bg-[hsl(145,45%,97%)] lg:px-6 lg:py-5" : "max-w-xl"}`}>
                     {lang === "ar"
                       ? "منصة واحدة تساعدك على تحويل الفكرة إلى تجربة تعليمية، ثم قياس أثرها بتقارير واضحة."
                       : "One platform to turn an idea into a learning experience, then measure its impact with clear reports."}
