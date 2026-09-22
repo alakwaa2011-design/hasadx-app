@@ -1,114 +1,70 @@
 import { Link } from "wouter";
-import { BookOpen, Brain, FileText, Presentation, Video } from "lucide-react";
+import { BookOpen, Brain, FileText, Presentation, Video, MonitorPlay, ArrowLeft, ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { motion } from "framer-motion";
 
 export function ToolsSection() {
   const { lang, dir } = useI18n();
   const isAr = lang === "ar";
-  
-  const tools = isAr ? [
-    {
-      title: "مولّد خطة الدرس",
-      desc: "حوّل أهداف الدرس إلى خطة واضحة قابلة للتخصيص.",
-      Icon: BookOpen,
-      href: "/teacher/lesson-plans/create", // mapped to existing creation route
-    },
-    {
-      title: "مولّد الخريطة الذهنية",
-      desc: "حوّل أي موضوع إلى خريطة ذهنية بصرية في لحظات.",
-      Icon: Brain,
-      href: "/teacher/mindmap/create",
-    },
-    {
-      title: "ورقة عمل",
-      desc: "صمّم ورقة عمل احترافية للطباعة بمساعدة الذكاء الاصطناعي.",
-      Icon: FileText,
-      href: "/teacher/worksheets/create",
-    },
-    {
-      title: "عرض تفاعلي",
-      desc: "أنشئ عرضاً تفاعلياً يجمع الشرائح والأسئلة والأنشطة.",
-      Icon: Presentation,
-      href: "/teacher/presentations/new",
-    },
-    {
-      title: "درس فيديو",
-      desc: "أضف أسئلة إلى لحظات محددة داخل الفيديو.",
-      Icon: Video,
-      href: "/teacher/video-lesson/new",
-    },
-  ] : [
-    {
-      title: "Lesson Plan Generator",
-      desc: "Turn your goals into a clear, customizable plan.",
-      Icon: BookOpen,
-      href: "/teacher/lesson-plans/create",
-    },
-    {
-      title: "Mind Map Generator",
-      desc: "Turn any topic into a visual mind map in seconds.",
-      Icon: Brain,
-      href: "/teacher/mindmap/create",
-    },
-    {
-      title: "Worksheet Builder",
-      desc: "Design professional print-ready worksheets with AI.",
-      Icon: FileText,
-      href: "/teacher/worksheets/create",
-    },
-    {
-      title: "Interactive Presentation",
-      desc: "Create an interactive presentation combining slides, questions, and activities.",
-      Icon: Presentation,
-      href: "/teacher/presentations/new",
-    },
-    {
-      title: "Video Lesson",
-      desc: "Add questions to specific moments inside a video.",
-      Icon: Video,
-      href: "/teacher/video-lesson/new",
-    },
-  ];
 
-  const tones = [
-    "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]",
-    "bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)]",
-    "bg-[hsl(220,75%,95%)] text-[hsl(220,55%,42%)]",
-    "bg-[hsl(280,55%,95%)] text-[hsl(280,40%,42%)]",
-    "bg-[hsl(160,55%,93%)] text-[hsl(160,55%,28%)]",
+  const tools = isAr ? [
+    { title: "مولّد خطة الدرس", icon: BookOpen, desc: "حوّل أهدافك إلى خطة واضحة", href: "/teacher/lesson-plans/create" },
+    { title: "مولّد الخريطة الذهنية", icon: Brain, desc: "لخّص أي موضوع بصرياً", href: "/teacher/mindmap/create" },
+    { title: "عرض تفاعلي", icon: Presentation, desc: "شرائح وأسئلة في مكان واحد", href: "/teacher/presentations/new" },
+    { title: "فيديو تفاعلي", icon: Video, desc: "أضف أسئلة داخل الفيديو", href: "/teacher/video-lesson/new" },
+    { title: "الشرح الذكي", icon: MonitorPlay, desc: "لوحة تفاعلية لشرح أعمق", href: "/teacher/smart-board" },
+    { title: "ورقة عمل", icon: FileText, desc: "صمّم أوراق عمل احترافية", href: "/teacher/worksheets/create" },
+  ] : [
+    { title: "Lesson Plan Generator", icon: BookOpen, desc: "Turn goals into clear plans", href: "/teacher/lesson-plans/create" },
+    { title: "Mind Map Generator", icon: Brain, desc: "Summarize visually", href: "/teacher/mindmap/create" },
+    { title: "Interactive Presentation", icon: Presentation, desc: "Slides & questions together", href: "/teacher/presentations/new" },
+    { title: "Interactive Video", icon: Video, desc: "Embed questions in videos", href: "/teacher/video-lesson/new" },
+    { title: "Smart Explanation", icon: MonitorPlay, desc: "Interactive board for deep dive", href: "/teacher/smart-board" },
+    { title: "Worksheet", icon: FileText, desc: "Design professional sheets", href: "/teacher/worksheets/create" },
   ];
 
   return (
-    <section id="tools" className="border-t border-border bg-[#fbfcf8] dark:bg-background py-16 sm:py-24" dir={dir}>
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mb-12">
-          <p className="text-sm font-black text-primary">
-            {isAr ? "أدوات المعلم" : "Teacher tools"}
+    <section id="tools" className="py-20 lg:py-32 bg-background border-t border-border/50" dir={dir}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <p className="text-sm font-black text-primary mb-3">
+            {isAr ? "أدوات المعلم" : "Teacher Tools"}
           </p>
-          <h2 className="mt-2 text-3xl font-black text-foreground sm:text-4xl">
-            {isAr ? "أدوات حصاد الذكية للمعلم" : "Hasad's smart tools for teachers"}
+          <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4">
+            {isAr ? "كل ما يحتاجه المعلم في منصة واحدة" : "Everything a teacher needs in one platform"}
           </h2>
-          <p className="mt-3 text-lg leading-8 text-muted-foreground font-medium">
+          <p className="text-lg text-muted-foreground font-medium">
             {isAr
-              ? "خطط لدرسك، اصنع محتواك، وشارك المتعلمين من مكان واحد."
-              : "Plan lessons, create content, and engage learners from one place."}
+              ? "أدوات أساسية صُممت بعناية لتوفير وقتك وزيادة جودة تفاعل المتعلمين."
+              : "Essential tools carefully designed to save your time and increase learners' interaction quality."}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {tools.map((tool, i) => (
-            <Link
-              href={tool.href}
-              key={tool.title}
-              className="bg-card group rounded-3xl p-6 border border-border shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:border-primary/20"
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
             >
-              <div className={`inline-flex rounded-xl p-3 mb-4 transition group-hover:scale-110 ${tones[i % tones.length]}`}>
-                <tool.Icon className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-2">{tool.title}</h3>
-              <p className="text-sm text-muted-foreground font-medium leading-relaxed">{tool.desc}</p>
-            </Link>
+              <Link href={tool.href} className="block h-full bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-md transition-all hover:-translate-y-1 group">
+                <div className="w-14 h-14 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center mb-5 group-hover:bg-primary group-hover:text-primary-foreground transition-colors text-primary">
+                  <tool.icon className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">{tool.title}</h3>
+                <p className="text-muted-foreground font-medium">{tool.desc}</p>
+              </Link>
+            </motion.div>
           ))}
+        </div>
+
+        <div className="flex justify-center">
+          <Link href="/register" className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-secondary text-secondary-foreground font-black text-lg hover:bg-secondary/90 transition-all hover:-translate-y-1 shadow-lg shadow-secondary/20">
+            {isAr ? "استكشف جميع أدوات المعلم" : "Explore all teacher tools"}
+            {isAr ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+          </Link>
         </div>
       </div>
     </section>

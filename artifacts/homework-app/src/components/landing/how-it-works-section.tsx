@@ -1,113 +1,59 @@
+import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
-import { usePublicStats } from "@/lib/landing-api";
+import { Edit3, Share2, Users2 } from "lucide-react";
 
 export function HowItWorksSection() {
   const { lang, dir } = useI18n();
   const isAr = lang === "ar";
-  const stats = usePublicStats();
 
-  const flowSteps = [
-    {
-      title: isAr ? "١. أنشئ" : "1. Create",
-      desc: isAr
-        ? "حوّل فكرة الدرس إلى نشاط أو واجب أو عرض جاهز للتخصيص."
-        : "Turn a lesson idea into an activity, assignment, or deck you can customize.",
-    },
-    {
-      title: isAr ? "٢. اعرض" : "2. Present",
-      desc: isAr
-        ? "اعرض المحتوى بطريقة تفاعلية، ثم شاركه برابط واحد."
-        : "Present the content interactively, then share it with one link.",
-    },
-    {
-      title: isAr ? "٣. تفاعل" : "3. Engage",
-      desc: isAr
-        ? "تابع المشاركة والنتائج والتسليمات من لوحة واضحة."
-        : "Follow participation, results, and submissions from one clear dashboard.",
-    },
+  const steps = isAr ? [
+    { title: "أنشئ نشاط", desc: "صمم العرض أو النشاط باستخدام الأدوات الذكية.", icon: Edit3 },
+    { title: "شارك الرابط", desc: "شارك الرمز أو الرابط مع المتعلمين بسهولة.", icon: Share2 },
+    { title: "ابدأ التفاعل", desc: "تابع مشاركة المتعلمين ونتائجهم فورياً.", icon: Users2 }
+  ] : [
+    { title: "Create Activity", desc: "Design the presentation or activity with smart tools.", icon: Edit3 },
+    { title: "Share Link", desc: "Share the code or link with learners easily.", icon: Share2 },
+    { title: "Start Interaction", desc: "Track learners' participation and results instantly.", icon: Users2 }
   ];
 
   return (
-    <section id="how-it-works" className="border-t border-border bg-[#fbfcf8] dark:bg-background py-16 sm:py-24" dir={dir}>
-      <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
-          <div className="bg-card border border-border shadow-sm rounded-3xl p-8 sm:p-10">
-            <p className="text-sm font-black text-primary">
-              {isAr ? "مسار حصاد" : "The Hasad path"}
-            </p>
-            <h3 className="mt-2 text-3xl font-black text-foreground sm:text-4xl">
-              {isAr ? "أنشئ ← اعرض ← تفاعل" : "Create ← Present ← Engage"}
-            </h3>
-            <div className="mt-8 space-y-4">
-              {flowSteps.map((step, i) => (
-                <div
-                  key={step.title}
-                  className="flex gap-5 rounded-2xl border border-border bg-background p-5 transition hover:-translate-y-1 hover:shadow-md"
-                >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-lg font-black text-primary">
-                    {i + 1}
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-black text-foreground">
-                      {step.title}
-                    </h4>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground font-medium">
-                      {step.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+    <section className="py-20 lg:py-32 bg-[#225739] text-white relative overflow-hidden" dir={dir}>
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
 
-          {!stats?.hidden && stats && (
-            <div className="bg-card border border-border shadow-sm rounded-3xl p-8 sm:p-10 flex flex-col justify-center">
-              <p className="text-sm font-black text-primary">
-                {isAr ? "إحصائيات نشطة" : "Active Stats"}
-              </p>
-              <h3 className="mt-2 text-3xl font-black text-foreground sm:text-4xl mb-8">
-                {isAr ? "حصاد ينمو مع كل صفّ جديد" : "Hasaad grows with every new class"}
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl p-6 text-center border border-emerald-100 dark:border-emerald-900">
-                  <div className="text-4xl font-black text-primary mb-2">
-                    {stats.teacherCount.toLocaleString(isAr ? "ar-EG" : "en-US")}
-                  </div>
-                  <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
-                    {isAr ? "معلم ومعلمة" : "Teachers"}
-                  </div>
-                </div>
-                
-                <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-6 text-center border border-amber-100 dark:border-amber-900">
-                  <div className="text-4xl font-black text-secondary mb-2">
-                    {stats.studentCount.toLocaleString(isAr ? "ar-EG" : "en-US")}
-                  </div>
-                  <div className="text-sm font-bold text-amber-800 dark:text-amber-300">
-                    {isAr ? "طالب مشارك" : "Students"}
-                  </div>
-                </div>
-                
-                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-6 text-center border border-blue-100 dark:border-blue-900">
-                  <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mb-2">
-                    {stats.assignmentCount.toLocaleString(isAr ? "ar-EG" : "en-US")}
-                  </div>
-                  <div className="text-sm font-bold text-blue-800 dark:text-blue-300">
-                    {isAr ? "نشاط ودرس" : "Activities"}
-                  </div>
-                </div>
-                
-                <div className="bg-purple-50 dark:bg-purple-950/20 rounded-2xl p-6 text-center border border-purple-100 dark:border-purple-900">
-                  <div className="text-4xl font-black text-purple-600 dark:text-purple-400 mb-2">
-                    {stats.submissionCount.toLocaleString(isAr ? "ar-EG" : "en-US")}
-                  </div>
-                  <div className="text-sm font-bold text-purple-800 dark:text-purple-300">
-                    {isAr ? "إجابة مسجلة" : "Submissions"}
-                  </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl relative z-10">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <p className="text-sm font-black text-emerald-200 mb-3 tracking-widest uppercase">
+            {isAr ? "طريقة العمل" : "How it works"}
+          </p>
+          <h2 className="text-3xl md:text-4xl font-black mb-6">
+            {isAr ? "٣ خطوات بسيطة لحصة لا تُنسى" : "3 simple steps for an unforgettable class"}
+          </h2>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 relative">
+          <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-emerald-700/50" />
+
+          {steps.map((step, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.15 }}
+              className="relative text-center"
+            >
+              <div className="w-24 h-24 mx-auto bg-emerald-800 border-4 border-[#225739] rounded-2xl flex items-center justify-center mb-6 relative z-10 shadow-xl">
+                <step.icon className="w-10 h-10 text-secondary" />
+                <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-secondary text-secondary-foreground font-black flex items-center justify-center border-2 border-[#225739]">
+                  {idx + 1}
                 </div>
               </div>
-            </div>
-          )}
+              <h3 className="text-2xl font-black mb-3">{step.title}</h3>
+              <p className="text-emerald-100/80 font-medium leading-relaxed max-w-xs mx-auto text-lg">
+                {step.desc}
+              </p>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
