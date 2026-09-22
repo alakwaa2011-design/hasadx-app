@@ -1309,6 +1309,10 @@ export function QuranPagesView({
               setAyahActionVerseKey(selection.verseKey);
             }}
             onVerseClick={(selection) => {
+               if (didSwipeRef.current) {
+                 didSwipeRef.current = false;
+                 return;
+               }
                const verseKey = selection.verseKey;
                const chapterId = Number(verseKey.split(":")[0]);
                const verseNumber = Number(verseKey.split(":")[1]);
@@ -1334,6 +1338,15 @@ export function QuranPagesView({
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
               if (selection.wordPosition !== null) {
+                 if (selection.wordId !== null && selection.wordText && selection.anchorRect) {
+                   setWordAction({
+                     verseKey: selection.verseKey,
+                     wordId: selection.wordId,
+                     wordPosition: selection.wordPosition,
+                     wordText: selection.wordText,
+                     anchorRect: selection.anchorRect,
+                   });
+                 }
                 return;
               }
               setAudioDockOpen(true);

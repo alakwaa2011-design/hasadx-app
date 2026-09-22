@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const pageData = {
@@ -72,5 +72,28 @@ describe("QuranMadaniPageRenderer", () => {
       expect((bismillah.firstElementChild as HTMLElement).style.fontFamily)
         .toContain("qcf-v2-bismillah");
     });
+  });
+
+  it("selects a word with one click", async () => {
+    const onVerseClick = vi.fn();
+    render(
+      <QuranMadaniPageRenderer
+        pageNumber={2}
+        isLastVerse={() => false}
+        fallbackImageUrl="/page-2.png"
+        onVerseClick={onVerseClick}
+      />,
+    );
+
+    const words = await screen.findAllByRole("button", { name: /الٓمٓ، الآية/ });
+    fireEvent.click(words[0]);
+
+    expect(onVerseClick).toHaveBeenCalledTimes(1);
+    expect(onVerseClick).toHaveBeenCalledWith(expect.objectContaining({
+      verseKey: "2:1",
+      wordId: 1,
+      wordPosition: 1,
+      wordText: "الٓمٓ",
+    }));
   });
 });

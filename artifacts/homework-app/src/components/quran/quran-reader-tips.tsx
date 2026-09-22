@@ -30,8 +30,8 @@ export function QuranReaderTips({
         },
         {
           icon: Hand,
-          title: "نطق الكلمة",
-          body: "اضغط مطولًا على أي كلمة ثم ارفع إصبعك لسماع نطقها. يمكنك السحب بأمان للتنقل.",
+          title: "خيارات الكلمة",
+          body: "المس أي كلمة مرة واحدة لفتح النطق والترجمة والمعنى. ويمكنك السحب بأمان للتنقل.",
           selector: '[data-quran-tour="word"]',
         },
         {
@@ -56,8 +56,8 @@ export function QuranReaderTips({
         },
         {
           icon: Hand,
-          title: "Word pronunciation",
-          body: "Press and hold a word, then release to hear it. Swiping remains safe.",
+          title: "Word actions",
+          body: "Tap a word once to open pronunciation, translation, and meaning. Swiping remains safe.",
           selector: '[data-quran-tour="word"]',
         },
         {
