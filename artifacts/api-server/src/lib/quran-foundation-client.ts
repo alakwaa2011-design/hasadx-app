@@ -116,14 +116,14 @@ const TRUSTED_AUDIO_ORIGINS = new Set([
   "https://everyayah.com",
 ]);
 const CHAPTER_PUBLIC_ID_BASE = 1_000_000;
+const HIDDEN_CHAPTER_RECITER_IDS = new Set([175]);
 const ARABIC_CHAPTER_RECITER_NAMES: Readonly<Record<number, string>> = Object.freeze({
-  158: "عبدالله علي جابر",
+  158: "علي عبدالله جابر",
   159: "ماهر المعيقلي",
   160: "بندر بليلة",
   161: "خليفة الطنيجي",
   173: "مشاري راشد العفاسي",
   174: "ياسر الدوسري",
-  175: "عبدالله حمد أبو شريدة",
   176: "أحمد عبدالحميد طاحون - تجريبي",
 });
 
@@ -479,6 +479,7 @@ export async function listQuranFoundationReciters(): Promise<QuranFoundationReci
   const chapterReciters = await listQuranFoundationChapterReciters();
   const usedIds = new Set(value.map((reciter) => reciter.id));
   for (const chapter of chapterReciters) {
+    if (HIDDEN_CHAPTER_RECITER_IDS.has(chapter.chapterReciterId)) continue;
     const publicId = chapterPublicId(chapter.chapterReciterId);
     if (usedIds.has(publicId)) throw new Error("Quran recitation ID namespace collision");
     const localizedName = ARABIC_CHAPTER_RECITER_NAMES[chapter.chapterReciterId] ?? chapter.name;

@@ -204,6 +204,33 @@ describe("Quran Foundation client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("uses the corrected Ali Jaber name and hides Abdullah Abu Shuraida", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        recitations: [{ id: 7, reciter_name: "مشاري العفاسي", style: "Murattal" }],
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        reciters: [
+          { id: 158, reciter_name: "Ali Jaber", style: "Murattal" },
+          { id: 175, reciter_name: "Abdullah Hamed Abu Shuraida", style: "Murattal" },
+        ],
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const catalog = await listQuranFoundationReciters();
+
+    expect(catalog).toContainEqual(expect.objectContaining({
+      id: 1_000_158,
+      name: "علي عبدالله جابر",
+    }));
+    expect(catalog.some((reciter) => reciter.id === 1_000_175)).toBe(false);
+    expect(catalog.some((reciter) => /أبو شريدة|Abu Shuraida/i.test(reciter.name))).toBe(false);
+  });
+
   it("shows only verified recitation styles and keeps child-repeat distinct from Muallim", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({

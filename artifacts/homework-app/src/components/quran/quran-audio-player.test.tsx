@@ -31,6 +31,7 @@ const fetchQuery = vi.fn(() => fetchNextTiming);
 const getQueryData = vi.fn(() => cachedNextTiming);
 const savePreference = vi.fn(() => Promise.resolve());
 const timingHookCalls = vi.fn();
+let preferredRecitationId = 7;
 
 vi.mock('@/lib/i18n', () => ({
   useI18n: () => ({ lang: 'ar' }),
@@ -65,10 +66,11 @@ vi.mock('@workspace/api-client-react', () => ({
   ) => ({ recitationId, surah, ayah, ...options as object }),
   useListQuranReciters: () => ({
     data: {
-      preferredRecitationId: 7,
+      preferredRecitationId,
       reciters: [
         { id: 7, name: 'First reciter', style: 'Murattal' },
         { id: 8, name: 'Second reciter', style: 'Murattal' },
+        { id: 2_000_032, name: 'محمود علي البنا', style: 'Murattal', available: true },
         { id: 2_000_114, name: 'صادق النظام', style: 'Murattal', available: false },
         { id: 2_001_095, name: 'أبوبكر الظبي', style: 'Murattal', available: true },
       ],
@@ -215,6 +217,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
   const OriginalAudio = globalThis.Audio;
 
   beforeEach(() => {
+    preferredRecitationId = 7;
     timingResults.clear();
     timingResults.set(1, { data: connectedFirst });
     cachedNextTiming = undefined;
@@ -258,6 +261,22 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(view.container.querySelector('audio')).toBe(audio);
     expect(pause).not.toHaveBeenCalled();
     expect(audio.hasAttribute('src')).toBe(true);
+  });
+
+  it('falls back to ayah-scoped audio for Mahmoud Ali Al-Banna', async () => {
+    preferredRecitationId = 2_000_032;
+    timingResults.set(1, { isError: true });
+
+    const view = render(<PlayerHarness />);
+    const audio = await waitFor(() => {
+      const element = view.container.querySelector('audio');
+      expect(element).not.toBeNull();
+      return element as HTMLAudioElement;
+    });
+
+    await waitFor(() => {
+      expect(audio.src).toContain('/api/quran/audio/2000032/1/1');
+    });
   });
 
   it('restarts the current ayah timing instead of the beginning of the surah', async () => {
