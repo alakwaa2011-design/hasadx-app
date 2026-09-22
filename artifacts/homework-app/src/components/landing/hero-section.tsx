@@ -2,7 +2,9 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import interactivePresentationImg from "@/assets/landing/interactive-presentation.png";
+import motivationBoardImg from "@/assets/landing/motivation-board.webp";
+import tugOfWarImg from "@/assets/landing/tug-of-war.png";
+import reportsImg from "@/assets/landing/reports.png";
 
 export function HeroSection() {
   const { lang, dir } = useI18n();
@@ -14,7 +16,7 @@ export function HeroSection() {
       <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="flex flex-col items-center text-center max-w-4xl mx-auto mb-16">
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto mb-12 md:mb-16">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -65,22 +67,55 @@ export function HeroSection() {
           </motion.div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          className="relative max-w-5xl mx-auto"
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 h-full pointer-events-none" style={{ top: '60%' }} />
-          <div className="rounded-2xl md:rounded-[2rem] overflow-hidden border border-border shadow-2xl bg-card">
+        {/* Hero Visual Composition */}
+        <div className="relative max-w-5xl mx-auto w-full h-[340px] sm:h-[400px] md:h-[500px] lg:h-[600px] mt-8">
+          {/* Main Dominant Image (Motivation Board) */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+            className="absolute z-10 top-0 sm:top-8 md:top-12 left-4 right-4 sm:left-[10%] sm:right-[10%] md:left-[15%] md:right-[15%] bottom-[110px] sm:bottom-0 rounded-2xl sm:rounded-b-none sm:rounded-t-[2.5rem] overflow-hidden border border-border shadow-2xl bg-card"
+          >
             <img
-              src={interactivePresentationImg}
-              alt={isAr ? "العرض التفاعلي في حصاد" : "Interactive Presentation in Hasaad"}
-              className="w-full h-auto object-cover"
+              src={motivationBoardImg}
+              alt={isAr ? "لوحة التحفيز" : "Motivation Board"}
+              className="w-full h-full object-cover object-top"
               fetchPriority="high"
             />
-          </div>
-        </motion.div>
+          </motion.div>
+
+          {/* Floating Image 1 (Tug of War Game) */}
+          <motion.div
+            initial={{ opacity: 0, x: 20, y: 20 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+            className="absolute z-20 bottom-0 sm:bottom-8 md:bottom-16 left-4 sm:left-0 w-[44%] sm:w-[40%] md:w-[38%] h-[130px] sm:h-auto rounded-xl md:rounded-2xl overflow-hidden border-[3px] sm:border-[4px] md:border-[6px] border-background shadow-2xl bg-card sm:rotate-[-3deg] hover:rotate-0 transition-transform"
+          >
+            <img
+              src={tugOfWarImg}
+              alt={isAr ? "لعبة شد الحبل" : "Tug of War"}
+              className="w-full h-full sm:h-auto object-cover object-center"
+              loading="lazy"
+              decoding="async"
+            />
+          </motion.div>
+
+          {/* Floating Image 2 (Reports) */}
+          <motion.div
+            initial={{ opacity: 0, x: -20, y: -20 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
+            className="absolute z-20 sm:z-0 bottom-0 sm:bottom-auto right-4 sm:right-0 sm:top-0 md:top-4 w-[44%] sm:w-[45%] md:w-[42%] h-[130px] sm:h-auto rounded-xl md:rounded-2xl overflow-hidden border-[3px] sm:border-[4px] md:border-[6px] border-background shadow-xl bg-card sm:rotate-[3deg] hover:rotate-0 transition-transform opacity-95 hover:opacity-100 hover:z-30"
+          >
+            <img
+              src={reportsImg}
+              alt={isAr ? "التقارير" : "Reports"}
+              className="w-full h-full sm:h-auto object-cover object-center"
+              loading="lazy"
+              decoding="async"
+            />
+          </motion.div>
+        </div>
       </div>
     </section>
   );
