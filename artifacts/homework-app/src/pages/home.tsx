@@ -1735,59 +1735,6 @@ export default function Home() {
 
   const gameCards = allGameCards.filter((g) => g.visible);
 
-  const heroQuizChoices: { badge: string; label: string; correct?: boolean }[] =
-    lang === "ar"
-      ? [
-          { badge: "أ", label: "المشتري", correct: true },
-          { badge: "ب", label: "الأرض" },
-          { badge: "ج", label: "المريخ" },
-          { badge: "د", label: "عطارد" },
-        ]
-      : [
-          { badge: "A", label: "Jupiter", correct: true },
-          { badge: "B", label: "Earth" },
-          { badge: "C", label: "Mars" },
-          { badge: "D", label: "Mercury" },
-        ];
-  const heroFeatures = lang === "ar" ? [
-    {
-      title: "مسابقات مباشرة",
-      desc: "سؤال، وقت، ترتيب، وتفاعل لحظي داخل الصف.",
-      Icon: Trophy,
-      tone: "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]",
-    },
-    {
-      title: "واجبات واختبارات",
-      desc: "إنشاء أسرع ومتابعة أوضح من واجهة واحدة.",
-      Icon: ClipboardList,
-      tone: "bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)]",
-    },
-    {
-      title: "كود  من 6 أرقام",
-      desc: "واضح وسريع ليستخدمه الطالب دائمًا دون تعقيد.",
-      Icon: Users,
-      tone: "bg-[hsl(220,75%,95%)] text-[hsl(220,55%,42%)]",
-    },
-  ] : [
-    {
-      title: "Live quizzes",
-      desc: "Questions, timing, rankings, and instant participation.",
-      Icon: Trophy,
-      tone: "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]",
-    },
-    {
-      title: "Assignments and tests",
-      desc: "Create faster and follow progress from one place.",
-      Icon: ClipboardList,
-      tone: "bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)]",
-    },
-    {
-      title: "Six-digit join code",
-      desc: "A simple, familiar way for students to enter.",
-      Icon: Users,
-      tone: "bg-[hsl(220,75%,95%)] text-[hsl(220,55%,42%)]",
-    },
-  ];
   const tools = lang === "ar" ? [
     {
       title: "مولّد خطة الدرس",
@@ -2017,7 +1964,7 @@ export default function Home() {
                 margin: "clamp(12px,2vh,24px) auto clamp(24px,2vw,32px)",
                 padding: "16px 20px 0",
               }}
-              className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-10"
+               className="grid grid-cols-1 items-center gap-8"
             >
               <div className="text-center lg:text-start">
               {/* Badge */}
@@ -2155,75 +2102,6 @@ export default function Home() {
               </motion.div>
               </div>
 
-              <div className="relative mx-auto hidden w-full max-w-[650px] lg:block">
-                <div className="overflow-hidden rounded-[28px] border border-[hsl(145,30%,84%)] bg-white shadow-[0_28px_64px_rgba(43,83,59,0.16)]">
-                  <div className="flex items-center justify-between border-b border-[hsl(145,30%,90%)] bg-[#f7faf7] px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs font-black text-[#1b6b3f]">
-                      <Presentation className="h-4 w-4" />
-                      {lang === "ar" ? "عرض تفاعلي" : "Interactive presentation"}
-                    </div>
-                    <span className="rounded-lg bg-[#0b4b35] px-2.5 py-1 text-[10px] font-bold text-white">
-                      {lang === "ar" ? "مشاركة" : "Share"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-[74px_1fr] bg-[#f5f7f4]">
-                    <div className="space-y-2 border-e border-[hsl(145,30%,88%)] p-2.5">
-                      {[1, 2, 3, 4].map((slide) => (
-                        <div
-                          key={slide}
-                          className={`flex h-11 items-center justify-center rounded-lg text-[10px] font-black ${
-                            slide === 1
-                              ? "bg-[#0b4b35] text-white"
-                              : "border border-[hsl(145,30%,84%)] bg-white text-[#6b8877]"
-                          }`}
-                        >
-                          {slide}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-4">
-                      <div className="rounded-2xl bg-[#0b4b35] px-5 py-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-                        <p className="text-[10px] font-bold text-[#e6c585]">
-                          {lang === "ar" ? "علوم · النظام الشمسي" : "Science · The Solar System"}
-                        </p>
-                        <h2 className="mt-2 text-xl font-black text-white">
-                          {lang === "ar" ? "رحلة عبر النظام الشمسي" : "A Journey Through the Solar System"}
-                        </h2>
-                        <p className="mt-2 text-sm font-bold text-white/90">
-                          {lang === "ar"
-                            ? "ما أكبر كواكب المجموعة الشمسية؟"
-                            : "Which is the largest planet in the Solar System?"}
-                        </p>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {heroQuizChoices.map((choice) => (
-                          <div
-                            key={choice.badge}
-                            className={`flex items-center gap-2 rounded-xl border px-2.5 py-2 text-xs font-bold ${
-                              choice.correct
-                                ? "border-[#63ba82] bg-[#ebf8ed] text-[#0b4b35]"
-                                : "border-[hsl(145,25%,86%)] bg-white text-[#486655]"
-                            }`}
-                          >
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] shadow-sm">
-                              {choice.badge}
-                            </span>
-                            {choice.label}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-px border-t border-[hsl(145,30%,88%)] bg-[hsl(145,30%,88%)]">
-                    {heroFeatures.map((feature) => (
-                      <div key={feature.title} className="bg-white px-3 py-3 text-center">
-                        <feature.Icon className={`mx-auto h-4 w-4 ${feature.tone.split(" ")[1]}`} />
-                        <p className="mt-1 text-[10px] font-black text-[#1b4b35]">{feature.title}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </motion.section>
 
             {/* ===== JOIN CARD ===== */}
