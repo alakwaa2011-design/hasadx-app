@@ -7,6 +7,7 @@ import { PresentSection } from "@/components/landing/present-section";
 import { ToolsSection } from "@/components/landing/tools-section";
 import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { ReportsSection } from "@/components/landing/reports-section";
+import { MotivationSection } from "@/components/landing/motivation-section";
 import { JoinGameSection } from "@/components/landing/join-game-section";
 import { GamesSection } from "@/components/landing/games-section";
 import { CTASection } from "@/components/landing/cta-section";
@@ -35,6 +36,7 @@ export default function Home() {
         <ToolsSection />
         <HowItWorksSection />
         <ReportsSection />
+        <MotivationSection />
         <JoinGameSection />
         <GamesSection />
         <CTASection />
