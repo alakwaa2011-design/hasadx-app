@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useGetQuranMadaniPage, getGetQuranMadaniPageQueryKey } from "@workspace/api-client-react";
 import { Bookmark, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,73 +53,6 @@ export function QuranMadaniPageRenderer({
 }: QuranMadaniPageRendererProps) {
   const { lang } = useI18n();
   const [fontState, setFontState] = useState<"loading" | "ready" | "error">("loading");
-
-  // Custom long press tracking
-  const longPressTimeoutRef = useRef<number | null>(null);
-  const startPosRef = useRef({ x: 0, y: 0 });
-  const isLongPressRef = useRef(false);
-  const longPressSelectionRef = useRef<{
-    verseKey: string;
-    wordId: number | null;
-    wordPosition: number | null;
-    wordText: string | null;
-    anchorRect?: { top: number; left: number; right: number; bottom: number; width: number; height: number };
-  } | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (longPressTimeoutRef.current !== null) {
-        window.clearTimeout(longPressTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const cancelLongPress = () => {
-    if (longPressTimeoutRef.current !== null) {
-      window.clearTimeout(longPressTimeoutRef.current);
-      longPressTimeoutRef.current = null;
-    }
-  };
-
-  const startLongPress = (
-    x: number,
-    y: number,
-    selection: {
-      verseKey: string;
-      wordId: number | null;
-      wordPosition: number | null;
-      wordText: string | null;
-      anchorRect?: { top: number; left: number; right: number; bottom: number; width: number; height: number };
-    },
-  ) => {
-    startPosRef.current = { x, y };
-    isLongPressRef.current = false;
-    longPressSelectionRef.current = selection;
-    cancelLongPress();
-    longPressTimeoutRef.current = window.setTimeout(() => {
-      longPressTimeoutRef.current = null;
-      isLongPressRef.current = true;
-    }, 320);
-  };
-
-  const cancelLongPressOnMove = (x: number, y: number) => {
-    if (
-      Math.abs(x - startPosRef.current.x) > 10
-      || Math.abs(y - startPosRef.current.y) > 10
-    ) {
-      cancelLongPress();
-      isLongPressRef.current = false;
-      longPressSelectionRef.current = null;
-    }
-  };
-
-  const finishLongPress = () => {
-    cancelLongPress();
-    if (isLongPressRef.current && longPressSelectionRef.current) {
-      onVerseAction?.(longPressSelectionRef.current);
-    }
-    longPressSelectionRef.current = null;
-  };
 
   const { data, isLoading, isError } = useGetQuranMadaniPage(pageNumber, {
     query: {
@@ -348,49 +281,7 @@ export function QuranMadaniPageRenderer({
                         : `${w.text}, ayah ${w.verseKey.split(":")[1]}${isBookmarkedVerse ? ", bookmarked" : ""}`
                     }
                     aria-pressed={Boolean(isSelected || isInSelectedRange || isPlaying)}
-                    onPointerDown={(e) => {
-                      if (e.pointerType !== "mouse" || e.button !== 0) return;
-                      startLongPress(e.clientX, e.clientY, {
-                        verseKey: w.verseKey,
-                        wordId: w.type === "word" ? w.id : null,
-                        wordPosition: w.type === "word" ? w.position : null,
-                        wordText: w.type === "word" ? w.text : null,
-                       anchorRect: e.currentTarget.getBoundingClientRect(),
-                      });
-                    }}
-                    onPointerMove={(e) => {
-                      if (e.pointerType === "mouse") cancelLongPressOnMove(e.clientX, e.clientY);
-                    }}
-                    onPointerUp={(e) => {
-                      if (e.pointerType === "mouse") finishLongPress();
-                    }}
-                    onPointerCancel={(e) => {
-                      if (e.pointerType === "mouse") cancelLongPress();
-                    }}
-                    onTouchStart={(e) => {
-                      const touch = e.touches[0];
-                      if (!touch) return;
-                      startLongPress(touch.clientX, touch.clientY, {
-                        verseKey: w.verseKey,
-                        wordId: w.type === "word" ? w.id : null,
-                        wordPosition: w.type === "word" ? w.position : null,
-                        wordText: w.type === "word" ? w.text : null,
-                         anchorRect: e.currentTarget.getBoundingClientRect(),
-                      });
-                    }}
-                    onTouchMove={(e) => {
-                      const touch = e.touches[0];
-                      if (touch) cancelLongPressOnMove(touch.clientX, touch.clientY);
-                    }}
-                    onTouchEnd={finishLongPress}
-                    onTouchCancel={cancelLongPress}
                     onClick={(e) => {
-                      if (isLongPressRef.current) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        isLongPressRef.current = false;
-                        return;
-                      }
                       if (w.type === "end") {
                         const anchorRect = e.currentTarget.getBoundingClientRect();
                         onVerseAction?.({

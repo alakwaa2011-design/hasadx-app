@@ -1333,9 +1333,18 @@ export function QuranPagesView({
                if (copyRange) {
                  setCopyRange((current) => current ? { ...current, endAyah: verseNumber } : current);
                }
-              if (selection.wordPosition !== null) {
-                return;
-              }
+               if (selection.wordPosition !== null) {
+                 if (selection.wordId !== null && selection.wordText && selection.anchorRect) {
+                   setWordAction({
+                     verseKey: selection.verseKey,
+                     wordId: selection.wordId,
+                     wordPosition: selection.wordPosition,
+                     wordText: selection.wordText,
+                     anchorRect: selection.anchorRect,
+                   });
+                 }
+                 return;
+               }
               setAudioDockOpen(true);
               // Pressing an ayah marker is a direct playback command. Pause the
               // old source immediately, then let the player load and start the
