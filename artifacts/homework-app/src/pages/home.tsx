@@ -1966,7 +1966,7 @@ export default function Home() {
               }}
                className="grid grid-cols-1 items-center gap-8"
             >
-              <div className="text-center lg:text-start">
+              <div className="mx-auto w-full max-w-5xl text-center">
               {/* Badge */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.92 }}
@@ -2011,7 +2011,7 @@ export default function Home() {
                 style={{
                   fontSize: "clamp(28px,5.5vw,64px)",
                   lineHeight: 1.25,
-                  margin: "0 0 clamp(12px,2vh,18px)",
+                   margin: "0 auto clamp(12px,2vh,18px)",
                   color: "#103d2a",
                   fontWeight: 900,
                   maxWidth: "820px",
@@ -2067,7 +2067,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, ease: "easeOut", delay: 0.34 }}
-                className="mx-auto max-w-xl text-sm leading-7 text-[#275c43] sm:text-[0.96rem]"
+                 className="mx-auto max-w-2xl text-sm leading-7 text-[#275c43] sm:text-[0.96rem]"
               >
                 {lang === "ar"
                   ? "أدوات عربية تساعد المعلم على إعداد درسه وصناعة المحتوى والأنشطة والتفاعل مع المشاركين."
@@ -2078,7 +2078,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, ease: "easeOut", delay: 0.42 }}
-                className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start"
+                 className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row"
               >
                 <Link
                   href="/register?role=teacher"
