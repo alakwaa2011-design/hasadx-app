@@ -1793,22 +1793,28 @@ export default function Home() {
   ];
   const flowSteps = [
     {
-      title: lang === "ar" ? "١. أنشئ" : "1. Create",
+      title: lang === "ar" ? "١. أنشئ النشاط" : "1. Create the activity",
       desc: lang === "ar"
-        ? "ابدأ من فكرة بسيطة وحوّلها إلى خطة درس أو خريطة ذهنية أو ورقة عمل أو عرض تفاعلي."
-        : "Turn a simple idea into a lesson plan, mind map, worksheet, or interactive presentation.",
+        ? "حوّل فكرتك إلى درس أو واجب أو عرض تفاعلي جاهز للمشاركة."
+        : "Turn your idea into a lesson, assignment, or interactive presentation ready to share.",
     },
     {
-      title: lang === "ar" ? "٢. اعرض" : "2. Present",
+      title: lang === "ar" ? "٢. شارك الرابط" : "2. Share the link",
       desc: lang === "ar"
-        ? "قدّم المحتوى بثقة عبر عرض تفاعلي أو فيديو تعليمي أو مسابقة حية، وشارك التجربة برابط واحد."
-        : "Present through an interactive deck, video lesson, or live quiz, then share the experience with one link.",
+        ? "أرسل الرابط أو رمز الدخول ليصل طلابك إلى التجربة بسهولة."
+        : "Send one link or access code so your students can join with ease.",
     },
     {
-      title: lang === "ar" ? "٣. تفاعل" : "3. Engage",
+      title: lang === "ar" ? "٣. ابدأ التفاعل" : "3. Start engaging",
       desc: lang === "ar"
-        ? "تابع المشاركة والنتائج والتسليمات من لوحة واضحة، واستخدمها لتعرف ما يحتاجه طلابك."
-        : "Follow participation, results, and submissions from one clear dashboard to see what learners need next.",
+        ? "قدّم المحتوى بطريقة ممتعة وتابع مشاركة الطلاب لحظة بلحظة."
+        : "Present engaging content and follow student participation in real time.",
+    },
+    {
+      title: lang === "ar" ? "٤. راجع التقارير" : "4. Review reports",
+      desc: lang === "ar"
+        ? "حلّل نسبة النجاح والدرجات والتسليمات لتعرف ما يحتاج إلى تحسين."
+        : "Analyze success rates, scores, and submissions to see what needs improvement.",
     },
   ];
   const hasVisibleStats = Boolean(stats && !stats.hidden);
@@ -3556,30 +3562,30 @@ export default function Home() {
                     <p className="text-sm font-black text-[hsl(145,55%,32%)]">
                       {lang === "ar" ? "مسار حصاد" : "The Hasad path"}
                     </p>
-                    <h3 className="mt-2 font-display-display text-[1.85rem] font-black text-foreground sm:text-[2.25rem]">
-                      {lang === "ar" ? "أنشئ ← اعرض ← تفاعل" : "Create ← Present ← Engage"}
+                    <h3 className="mt-2 font-display-display text-[2.35rem] font-black leading-[1.12] tracking-tight text-foreground sm:text-[3rem] lg:text-[3.35rem]">
+                      {lang === "ar" ? "أنشئ ← شارك ← تفاعل ← حلّل" : "Create ← Share ← Engage ← Analyze"}
                     </h3>
                   </div>
-                  <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-end">
+                  <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-end sm:text-[1.05rem]">
                     {lang === "ar"
-                      ? "منصة واحدة تساعدك على تحويل الفكرة إلى تجربة تعليمية يشارك فيها كل طالب."
-                      : "One platform to turn an idea into a learning experience every student can join."}
+                      ? "منصة واحدة تساعدك على تحويل الفكرة إلى تجربة تعليمية، ثم قياس أثرها بتقارير واضحة."
+                      : "One platform to turn an idea into a learning experience, then measure its impact with clear reports."}
                   </p>
                 </div>
-                <div className={`mt-7 grid gap-4 ${!hasVisibleStats ? "lg:grid-cols-3" : ""}`}>
+                <div className={`mt-8 grid gap-4 ${!hasVisibleStats ? "lg:grid-cols-4" : ""}`}>
                   {flowSteps.map((step, i) => (
                     <div
                       key={step.title}
-                      className={`flex gap-4 rounded-[22px] border border-border/70 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(43,83,59,0.08)] ${!hasVisibleStats ? "lg:min-h-[176px] lg:flex-col lg:gap-5" : ""}`}
+                      className={`flex gap-4 rounded-[24px] border border-border/70 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(43,83,59,0.08)] ${!hasVisibleStats ? "lg:min-h-[205px] lg:flex-col lg:gap-5 lg:p-6" : ""}`}
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[hsl(145,55%,93%)] text-base font-black text-[hsl(145,55%,28%)] lg:h-12 lg:w-12">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[hsl(145,55%,93%)] text-lg font-black text-[hsl(145,55%,28%)] lg:h-14 lg:w-14">
                         {i + 1}
                       </div>
                       <div>
-                        <h4 className="text-[1rem] font-black text-foreground">
+                        <h4 className="text-[1.08rem] font-black tracking-tight text-foreground sm:text-[1.2rem]">
                           {step.title}
                         </h4>
-                        <p className="mt-1.5 text-sm leading-7 text-muted-foreground">
+                        <p className="mt-2 text-[0.9rem] leading-7 text-muted-foreground sm:text-[0.95rem]">
                           {step.desc}
                         </p>
                       </div>
