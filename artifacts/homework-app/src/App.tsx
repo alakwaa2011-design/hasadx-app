@@ -49,7 +49,6 @@ function AdminOnly({
   return <>{children}</>;
 }
 
-const DesignPreviewHome = lazy(() => import("@/pages/design-preview/home"));
 const Home = lazy(() => import("@/pages/home"));
 const Auth = lazy(() => import("@/pages/auth"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
@@ -353,8 +352,6 @@ function Router() {
         <Route path="/features/escape-room"      component={FeatureEscapeRoom} />
         <Route path="/features/lesson-plan-ai"   component={FeatureLessonPlanAI} />
         <Route path="/marwan-personal-assistant" component={MarwanPersonalAssistantLandingPage} />
-
-        <Route path="/design-preview/home" component={DesignPreviewHome} />
 
         <Route path="/" component={Home} />
         <Route path="/login" component={Auth} />
