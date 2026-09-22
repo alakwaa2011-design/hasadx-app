@@ -64,6 +64,38 @@ export function usePublicContent() {
   return { assignments, loading };
 }
 
+export interface SubscriptionPlan {
+  id: number;
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  priceMinor: number | null;
+  currency: string;
+  billingPeriodDays: number | null;
+  monthlyCredits: number | null;
+  rolloverCap: number | null;
+}
+
+export interface SubscriptionPlansResponse {
+  plans: SubscriptionPlan[];
+  pricingPageVisible: boolean;
+  paymentsEnabled: boolean;
+}
+
+export function usePublicPricing() {
+  const [data, setData] = useState<SubscriptionPlansResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/subscriptions/plans`)
+      .then((r) => r.json())
+      .catch(() => null)
+      .then((d) => setData(d))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { data, loading };
+}
 export function useTeacherAssignments(teacherId: number | null) {
   const [ownAssignments, setOwnAssignments] = useState<TeacherAssignment[]>([]);
   const [ownLoading, setOwnLoading] = useState(false);
