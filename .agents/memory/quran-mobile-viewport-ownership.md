@@ -7,7 +7,7 @@ In portrait, the focused Quran route must be a fixed viewport flex column: the s
 
 The portrait phone toolbar floats over the reader. Measure it after Quran loading completes and add a separate top spacer before the paper using the safe area plus toolbar height; never add that reserve to the Madani page's internal padding.
 
-When a fixed guided-memorization card or bottom reader dock covers the lower page, add a measured flex spacer after the page so the reader becomes vertically scrollable. Never add dock height to the Madani page padding: that compresses all 15 rows into the upper part of the paper. Bottom padding on the reader is also insufficient because border-box sizing subtracts it from the content area instead of increasing scroll range.
+When a fixed guided-memorization card or bottom reader dock covers the lower page, add a measured flex spacer after the page so the reader becomes vertically scrollable. After the guided card is measured, opening it, resizing it, changing its stage, or changing its target ayah must scroll the target ayah into the readable region above the card. Never add dock height to the Madani page padding: that compresses all 15 rows into the upper part of the paper. Bottom padding on the reader is also insufficient because border-box sizing subtracts it from the content area instead of increasing scroll range.
 
 **Why:** Giving the embedded Quran Center `100dvh` below an existing site header clipped its bottom lines. Sizing interactive QCF text from the full landscape width made words form vertical columns or merged rows; a two-page spread and replacing the reader with a static page image were explicitly rejected.
 
