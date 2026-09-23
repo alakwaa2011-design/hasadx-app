@@ -499,12 +499,22 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     if (channel === "email") {
       const verifyLink = rawVerifyToken ? buildVerifyEmailUrl(req, rawVerifyToken) : undefined;
       const { html, text } = buildOtpEmail(teacher.name, otp, verifyLink);
-      void sendEmail({
+      const delivery = await sendEmail({
         to: email!,
         subject: "تأكيد البريد الإلكتروني — منصة حصاد",
         html,
         text,
-      }).catch((err) => req.log.error({ err }, "OTP email send failed"));
+      });
+      if (!delivery.delivered) {
+        req.log.warn(
+          { teacherId: teacher.id, reason: delivery.reason },
+          "OTP email not delivered",
+        );
+        res.status(502).json({
+          message: "تعذّر إرسال رمز التفعيل بالبريد. يرجى المحاولة بعد قليل.",
+        });
+        return;
+      }
     } else {
       if (isSmsConfigured()) {
         void sendSms(
@@ -1931,8 +1941,22 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     if (channel === "email") {
       const verifyLink = rawVerifyToken ? buildVerifyEmailUrl(req, rawVerifyToken) : undefined;
       const { html, text } = buildOtpEmail(teacher.name, otp, verifyLink);
-      void sendEmail({ to: teacher.email!, subject: "تأكيد البريد الإلكتروني — منصة حصاد", html, text })
-        .catch((err) => req.log.error({ err }, "OTP resend email failed"));
+      const delivery = await sendEmail({
+        to: teacher.email!,
+        subject: "تأكيد البريد الإلكتروني — منصة حصاد",
+        html,
+        text,
+      });
+      if (!delivery.delivered) {
+        req.log.warn(
+          { teacherId: teacher.id, reason: delivery.reason },
+          "OTP resend email not delivered",
+        );
+        res.status(502).json({
+          message: "تعذّر إرسال رمز التفعيل بالبريد. يرجى المحاولة بعد قليل.",
+        });
+        return;
+      }
     } else if (isSmsConfigured() && teacher.phone) {
       void sendSms(teacher.phone, `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`)
         .catch((err) => req.log.error({ err }, "OTP resend SMS failed"));
