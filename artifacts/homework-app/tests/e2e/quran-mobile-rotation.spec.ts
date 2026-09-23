@@ -392,6 +392,30 @@ test.describe("mobile Mushaf rotation", () => {
     expect(toolbarControlsTop).toBeGreaterThanOrEqual(topInset);
   });
 
+  test("allows two-finger zoom in portrait and landscape", async ({ page }) => {
+    await page.setViewportSize(PORTRAIT);
+    await page.goto("/quran/114?ayah=1&page=604&view=pages");
+
+    const reader = page.locator(".quran-reader-main");
+    await expect(reader).toBeVisible();
+    const portraitTouchAction = await reader.evaluate(
+      (element) => getComputedStyle(element).touchAction,
+    );
+    expect(portraitTouchAction).toContain("pan-y");
+    expect(portraitTouchAction).toContain("pinch-zoom");
+
+    await page.setViewportSize(LANDSCAPE);
+    const landscapeTouchAction = await reader.evaluate(
+      (element) => getComputedStyle(element).touchAction,
+    );
+    expect(landscapeTouchAction).toContain("pan-y");
+    expect(landscapeTouchAction).toContain("pinch-zoom");
+
+    const viewportContent = await page.locator('meta[name="viewport"]').getAttribute("content");
+    expect(viewportContent).not.toMatch(/user-scalable\s*=\s*no/i);
+    expect(viewportContent).not.toMatch(/maximum-scale\s*=\s*1(?:\.0+)?(?:,|$)/i);
+  });
+
   test("keeps page 604 above the expanded guided memorization panel on a short safe-area phone", async ({
     page,
   }) => {

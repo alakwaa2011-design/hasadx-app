@@ -2010,7 +2010,7 @@ export function QuranPagesView({
         } as React.CSSProperties}
         className={cn(
           "quran-reader-main relative flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",
-          (guidedOpen || pageLayout !== "continuous") && "touch-pan-y",
+          (guidedOpen || pageLayout !== "continuous") && "touch-pan-y touch-pinch-zoom",
           guidedOpen && "quran-reader-main--guided overscroll-contain",
         )}
         onScroll={(event) => {
