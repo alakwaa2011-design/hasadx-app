@@ -12,11 +12,10 @@
  * module imported by the integration test suite connects to the test database,
  * not the production one.
  */
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const execFileAsync = promisify(execFile);
+const SCHEMA_SETUP_TIMEOUT_MS = 60_000;
 
 function useTestDatabase(): string {
   const testUrl = process.env.TEST_DATABASE_URL;
@@ -47,14 +46,52 @@ const testDatabaseUrl = useTestDatabase();
 export default async function setupIntegrationDatabase() {
   const workspaceRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 
-  await execFileAsync(
-    "pnpm",
-    ["--filter", "@workspace/db", "run", "push-force"],
-    {
-      cwd: workspaceRoot,
-      env: { ...process.env, DATABASE_URL: testDatabaseUrl },
-    },
-  );
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      "pnpm",
+      ["--filter", "@workspace/db", "run", "push-force"],
+      {
+        cwd: workspaceRoot,
+        env: { ...process.env, DATABASE_URL: testDatabaseUrl },
+        // drizzle-kit can still ask rename questions with --force. Closing stdin
+        // makes that condition terminate instead of leaving Vitest at 0 tests.
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    let output = "";
+    const collect = (chunk: Buffer) => {
+      output += chunk.toString();
+      process.stderr.write(chunk);
+    };
+    child.stdout.on("data", collect);
+    child.stderr.on("data", collect);
+
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(
+        new Error(
+          `[setup-integration] Test schema setup did not finish within ${SCHEMA_SETUP_TIMEOUT_MS / 1000}s.\n${output}`,
+        ),
+      );
+    }, SCHEMA_SETUP_TIMEOUT_MS);
+
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("close", (code, signal) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(
+        new Error(
+          `[setup-integration] Test schema setup failed (${signal ?? `exit ${code}`}).\n${output}`,
+        ),
+      );
+    });
+  });
 
   process.env.VITEST_INTEGRATION_DATABASE_READY = "true";
   return () => {

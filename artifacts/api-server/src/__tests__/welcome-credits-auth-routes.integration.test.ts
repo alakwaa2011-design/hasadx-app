@@ -546,7 +546,7 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
 
     const duplicate = await request(app)
       .post("/api/auth/register")
-      .send({ name: "Duplicate", email: email.toLowerCase(), password: PASSWORD });
+      .send({ name: "Duplicate", email: email.toLowerCase(), password: "different-password" });
     expect(duplicate.status).toBe(409);
   });
 

@@ -50,6 +50,9 @@ export default defineConfig({
     ],
     globalSetup: ["src/__tests__/setup-integration.ts"],
     setupFiles: ["src/__tests__/setup-integration.ts"],
+    reporters: ["verbose"],
+    hookTimeout: 90_000,
+    testTimeout: 15_000,
     // الملفات تتشارك قاعدة الاختبار وتعدّل صف basic في plans — التنفيذ التسلسلي يمنع التداخل
     fileParallelism: false,
   },
