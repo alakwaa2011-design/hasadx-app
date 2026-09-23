@@ -9,7 +9,7 @@ import {
   trustedDevicesTable,
   pushSubscriptionsTable,
 } from "@workspace/db";
-import { eq, ne, or, and, isNull, gt, sql } from "drizzle-orm";
+import { eq, ne, or, and, isNull, gt, lte, sql } from "drizzle-orm";
 import {
   RegisterTeacherBody,
   LoginTeacherBody,
@@ -452,6 +452,84 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
       .limit(1);
 
     if (existing.length > 0) {
+      const teacher = existing[0];
+      const canRecoverPendingRegistration =
+        !teacher.emailVerified &&
+        !teacher.verifiedAt &&
+        !teacher.googleId &&
+        await bcrypt.compare(body.password, teacher.passwordHash);
+
+      if (canRecoverPendingRegistration) {
+        const otp = generateOtp();
+        const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+        const rawVerifyToken = teacher.email ? crypto.randomBytes(32).toString("hex") : null;
+        const resendEligibleAt = new Date(
+          Date.now() + OTP_TTL_MS - OTP_RESEND_COOLDOWN_MS,
+        );
+
+        const [updated] = await db
+          .update(teachersTable)
+          .set({
+            verificationOtp: hashOtp(otp),
+            otpExpiresAt,
+            otpAttempts: 0,
+            otpLockedUntil: null,
+            emailVerifyToken: rawVerifyToken,
+            emailVerifyTokenExpiresAt: rawVerifyToken ? otpExpiresAt : null,
+          })
+          .where(and(
+            eq(teachersTable.id, teacher.id),
+            eq(teachersTable.emailVerified, false),
+            isNull(teachersTable.verifiedAt),
+            isNull(teachersTable.googleId),
+            or(
+              isNull(teachersTable.otpExpiresAt),
+              lte(teachersTable.otpExpiresAt, resendEligibleAt),
+            ),
+          ))
+          .returning({ id: teachersTable.id });
+
+        if (!updated) {
+          res.status(429).json({ message: "يرجى الانتظار دقيقة قبل إعادة الإرسال" });
+          return;
+        }
+
+        const identifier = teacher.email || teacher.phone!;
+        const channel = teacher.email ? "email" : "sms";
+        if (channel === "email") {
+          const verifyLink = rawVerifyToken ? buildVerifyEmailUrl(req, rawVerifyToken) : undefined;
+          const { html, text } = buildOtpEmail(teacher.name, otp, verifyLink);
+          const delivery = await sendEmail({
+            to: teacher.email!,
+            subject: "تأكيد البريد الإلكتروني — منصة حصاد",
+            html,
+            text,
+          });
+          if (!delivery.delivered) {
+            req.log.warn(
+              { teacherId: teacher.id, reason: delivery.reason },
+              "OTP registration recovery email not delivered",
+            );
+            res.status(502).json({
+              message: "تعذّر إرسال رمز التفعيل بالبريد. يرجى المحاولة بعد قليل.",
+            });
+            return;
+          }
+        } else if (isSmsConfigured() && teacher.phone) {
+          void sendSms(
+            teacher.phone,
+            `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`,
+          ).catch((err) => req.log.error({ err }, "OTP registration recovery SMS failed"));
+        }
+
+        res.status(201).json({
+          needsVerification: true,
+          identifier,
+          channel,
+        });
+        return;
+      }
+
       res.status(409).json({ message: "البريد الإلكتروني أو رقم الهاتف مسجل مسبقاً" });
       return;
     }
@@ -1912,6 +1990,9 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     const otp = generateOtp();
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
     const rawVerifyToken = teacher.email ? crypto.randomBytes(32).toString("hex") : null;
+    const resendEligibleAt = new Date(
+      Date.now() + OTP_TTL_MS - OTP_RESEND_COOLDOWN_MS,
+    );
 
     const updated = await db
       .update(teachersTable)
@@ -1928,6 +2009,10 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
         eq(teachersTable.emailVerified, false),
         isNull(teachersTable.verifiedAt),
         isNull(teachersTable.googleId),
+        or(
+          isNull(teachersTable.otpExpiresAt),
+          lte(teachersTable.otpExpiresAt, resendEligibleAt),
+        ),
       ))
       .returning({ id: teachersTable.id });
 

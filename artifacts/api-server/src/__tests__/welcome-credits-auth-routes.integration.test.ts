@@ -407,6 +407,69 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
     expect(serializedLogs).not.toContain(otp);
   });
 
+  it("AUTH4AA — يستطيع صاحب التسجيل المعلّق استعادته دون تجاوز مهلة الإرسال أو كشف حالته", async () => {
+    const email = `${RUN_ID}_register_delivery_recovery@test.local`;
+    sendEmailMock.mockClear();
+    sendEmailMock
+      .mockResolvedValueOnce({ delivered: false, reason: "provider_rejected_registration" })
+      .mockResolvedValueOnce({ delivered: true });
+
+    const first = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Recovery Owner", email, password: PASSWORD });
+    expect(first.status).toBe(502);
+
+    const row = await db.execute(sql`
+      SELECT id FROM teachers WHERE lower(email) = ${email.toLowerCase()} LIMIT 1
+    `);
+    const tid = Number((row.rows[0] as any).id);
+    tids.push(tid);
+    const before = await getVerificationCredentials(tid);
+
+    const tooSoon = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Recovery Owner", email, password: PASSWORD });
+    expect(tooSoon.status).toBe(429);
+    expect(await getVerificationCredentials(tid)).toEqual(before);
+
+    const wrongPassword = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Recovery Owner", email, password: "wrong-password" });
+    expect(wrongPassword.status).toBe(409);
+    expect(wrongPassword.body).toEqual({
+      message: "البريد الإلكتروني أو رقم الهاتف مسجل مسبقاً",
+    });
+
+    await db.execute(sql`
+      UPDATE teachers
+      SET otp_expires_at = NOW() + INTERVAL '8 minutes'
+      WHERE id = ${tid}
+    `);
+
+    const recovery = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Recovery Owner", email, password: PASSWORD });
+    expect(recovery.status).toBe(201);
+    expect(recovery.body).toEqual({
+      needsVerification: true,
+      identifier: email,
+      channel: "email",
+    });
+
+    const after = await getVerificationCredentials(tid);
+    expect(after.verification_otp).not.toBe(before.verification_otp);
+    expect(after.email_verify_token).not.toBe(before.email_verify_token);
+    expect(sendEmailMock).toHaveBeenCalledTimes(2);
+
+    const sentMessage = sendEmailMock.mock.calls.at(-1)?.[0];
+    const otp = `${sentMessage?.text ?? sentMessage?.html ?? ""}`.match(/\b\d{6}\b/)?.[0];
+    expect(otp).toBeDefined();
+    const verification = await request(app)
+      .post("/api/auth/verify-otp")
+      .send({ identifier: email, otp });
+    expect(verification.status).toBe(200);
+  });
+
   it("AUTH4B — رفض مزوّد البريد إعادة الإرسال يعيد 502 ويسجل السبب فقط", async () => {
     const t = await createUnverifiedTeacher("resend_delivery_rejected", {
       otp: "454545",
