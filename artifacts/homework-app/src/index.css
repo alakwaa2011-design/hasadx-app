@@ -291,6 +291,8 @@
 :root {
   --site-safe-area-top: env(safe-area-inset-top, 0px);
   --site-header-height: calc(3rem + var(--site-safe-area-top));
+  --quran-safe-area-top: env(safe-area-inset-top, 0px);
+  --quran-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @media (min-width: 640px) {
@@ -899,6 +901,7 @@
 
   .quran-page-shell--paged .quran-madani-page {
     aspect-ratio: 382.677 / 547.086 !important;
+    min-height: var(--quran-page-min-height, 0px) !important;
   }
 
   /* Keep the canonical page geometry independent from floating controls.

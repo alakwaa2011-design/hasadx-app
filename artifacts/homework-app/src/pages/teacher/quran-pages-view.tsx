@@ -187,6 +187,7 @@ export function QuranPagesView({
   const toolsHeaderRef = useRef<HTMLElement | null>(null);
   const quranReaderRootRef = useRef<HTMLDivElement | null>(null);
   const [toolsHeaderHeight, setToolsHeaderHeight] = useState(0);
+  const [readerViewportHeight, setReaderViewportHeight] = useState(0);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pageLayout, setPageLayout] = useState<"spread" | "single" | "continuous">(
     typeof window !== "undefined" && window.innerWidth < 768 ? "single" : "spread",
@@ -638,6 +639,20 @@ export function QuranPagesView({
     observer.observe(header);
     return () => observer.disconnect();
   }, [loading, mobileToolsOpen, quietMode, startAyah, endAyah]);
+
+  useEffect(() => {
+    const reader = readerMainRef.current;
+    if (!reader) {
+      setReaderViewportHeight(0);
+      return;
+    }
+    const updateHeight = () => setReaderViewportHeight(reader.getBoundingClientRect().height);
+    updateHeight();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(reader);
+    return () => observer.disconnect();
+  }, [loading]);
 
   const fallbackVerse = useMemo(() => {
     return verses.find((verse) => verse.page_id === activePage && verse.chapter_id === activeChapterId) ||
@@ -2007,6 +2022,8 @@ export function QuranPagesView({
         ref={readerMainRef}
         style={{
           "--quran-dock-height": `${bottomDockHeight}px`,
+          "--quran-tools-header-height": `${toolsHeaderHeight}px`,
+          "--quran-page-min-height": `${Math.max(0, readerViewportHeight - toolsHeaderHeight - 22)}px`,
         } as React.CSSProperties}
         className={cn(
           "quran-reader-main relative flex min-h-0 flex-1 flex-col items-start overflow-auto bg-[#fdfaf6] px-1.5 py-2 dark:bg-[#0a0c0b] md:bg-transparent md:px-8 md:py-8 md:dark:bg-transparent",

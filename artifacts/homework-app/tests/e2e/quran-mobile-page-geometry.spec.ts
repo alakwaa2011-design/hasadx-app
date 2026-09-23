@@ -37,6 +37,27 @@ test.describe("public Quran mobile page geometry", () => {
     await expect(mushafPage.locator(".quran-madani-line")).toHaveCount(15);
     await page.evaluate(() => document.fonts.ready);
 
+    const initialGeometry = await page.locator(".quran-reader-main").evaluate((reader) => {
+      const paper = reader.querySelector<HTMLElement>(".quran-madani-page");
+      const header = document.querySelector<HTMLElement>(".quran-reader-header");
+      if (!paper || !header) return null;
+      const readerRect = reader.getBoundingClientRect();
+      const paperRect = paper.getBoundingClientRect();
+      const headerRect = header.getBoundingClientRect();
+      return {
+        readerBottom: readerRect.bottom,
+        paperTop: paperRect.top,
+        paperBottom: paperRect.bottom,
+        headerBottom: headerRect.bottom,
+      };
+    });
+    expect(initialGeometry).not.toBeNull();
+    if (initialGeometry) {
+      expect(initialGeometry.paperTop).toBeGreaterThanOrEqual(initialGeometry.headerBottom);
+      expect(initialGeometry.paperBottom).toBeLessThanOrEqual(initialGeometry.readerBottom + 0.5);
+      expect(initialGeometry.paperBottom).toBeGreaterThanOrEqual(initialGeometry.readerBottom - 60);
+    }
+
     await page.getByTestId("button-mobile-memo-session").click();
     await expect(page.getByTestId("quran-guided-memorization-panel")).toBeVisible();
 
