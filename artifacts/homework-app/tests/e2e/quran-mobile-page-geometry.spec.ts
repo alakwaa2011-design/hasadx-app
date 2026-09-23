@@ -46,9 +46,29 @@ test.describe("public Quran mobile page geometry", () => {
         `[data-testid="quran-mushaf-page"][data-page-number="${FIXED_PAGE}"]`,
       );
       await expect(mushafPage).toBeVisible();
-      await mushafPage.scrollIntoViewIfNeeded();
       await expect(mushafPage.locator(".quran-madani-line")).toHaveCount(15);
       await page.evaluate(() => document.fonts.ready);
+
+      const initialGeometry = await page.locator(".quran-reader-main").evaluate((reader) => {
+        const paper = reader.querySelector<HTMLElement>(".quran-madani-page");
+        if (!paper) return null;
+        const readerRect = reader.getBoundingClientRect();
+        const paperRect = paper.getBoundingClientRect();
+        return {
+          readerTop: readerRect.top,
+          readerBottom: readerRect.bottom,
+          paperTop: paperRect.top,
+          paperBottom: paperRect.bottom,
+          scrollTop: reader.scrollTop,
+        };
+      });
+
+      expect(initialGeometry).not.toBeNull();
+      if (initialGeometry) {
+        expect(initialGeometry.scrollTop).toBe(0);
+        expect(initialGeometry.paperTop).toBeGreaterThanOrEqual(initialGeometry.readerTop);
+        expect(initialGeometry.paperBottom).toBeLessThanOrEqual(initialGeometry.readerBottom + 0.5);
+      }
 
       await page.getByTestId("button-mobile-audio").click();
       const audioDock = page.getByTestId("quran-bottom-dock");
