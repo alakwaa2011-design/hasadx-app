@@ -22,6 +22,41 @@ async function expectHorizontallyInsideViewport(locator: Locator, page: Page) {
 }
 
 test.describe("public Quran mobile page geometry", () => {
+  test("keeps Mushaf rows readable when Memorize me opens", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+      localStorage.setItem("hw_lang", "ar");
+      localStorage.setItem("quran-reader-tips-seen-v1", "true");
+    });
+    await page.goto("/quran/76?ayah=8&page=579&view=pages");
+
+    const mushafPage = page.locator(
+      '[data-testid="quran-mushaf-page"][data-page-number="579"]',
+    );
+    await expect(mushafPage).toBeVisible();
+    await expect(mushafPage.locator(".quran-madani-line")).toHaveCount(15);
+    await page.evaluate(() => document.fonts.ready);
+
+    await page.getByTestId("button-mobile-memo-session").click();
+    await expect(page.getByTestId("quran-guided-memorization-panel")).toBeVisible();
+
+    const rowGeometry = await mushafPage.locator(".quran-madani-line").evaluateAll((rows) =>
+      rows.map((row) => {
+        const rect = row.getBoundingClientRect();
+        const fontSize = Number.parseFloat(getComputedStyle(row).fontSize);
+        return { top: rect.top, bottom: rect.bottom, height: rect.height, fontSize };
+      }),
+    );
+
+    for (let index = 0; index < rowGeometry.length; index += 1) {
+      const row = rowGeometry[index];
+      expect(row.height).toBeGreaterThanOrEqual(row.fontSize * 0.8);
+      if (index > 0) {
+        expect(row.top).toBeGreaterThanOrEqual(rowGeometry[index - 1].bottom - 0.5);
+      }
+    }
+  });
+
   for (const viewport of MOBILE_VIEWPORTS) {
     test(`keeps the final Mushaf line above the audio player without horizontal overflow at ${viewport.width}px`, async ({
       page,
