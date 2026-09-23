@@ -25,6 +25,7 @@ const { sendEmailMock } = vi.hoisted(() => ({
   // Auth route coverage must never send mail to a real provider.
   sendEmailMock: vi.fn().mockResolvedValue({ delivered: true }),
 }));
+const logWarnMock = vi.fn();
 vi.mock("../lib/google-verify", () => ({
   verifyGoogleIdToken: vi.fn(async () => ({ ...googleProfile })),
 }));
@@ -83,7 +84,7 @@ function makeApp() {
       callback();
     });
     mostRecentSession = session;
-    req.log = { info: () => {}, warn: () => {}, error: () => {} };
+    req.log = { info: () => {}, warn: logWarnMock, error: () => {} };
     next();
   });
   app.use("/api", authRouter);
@@ -371,6 +372,76 @@ describe.skipIf(!RUN_INTEGRATION)("منح رصيد الترحيب من مسار�
     expect(after.email_verify_token_expires_at).not.toEqual(before.email_verify_token_expires_at);
     expect(sendEmailMock).toHaveBeenCalledOnce();
     expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({ to: t.email }));
+  });
+
+  it("AUTH4A — رفض مزوّد البريد تسجيل الحساب يعيد 502 ويسجل السبب فقط", async () => {
+    const email = `${RUN_ID}_register_delivery_rejected@test.local`;
+    const rejectionReason = "provider_rejected_registration";
+    sendEmailMock.mockResolvedValueOnce({ delivered: false, reason: rejectionReason });
+    logWarnMock.mockClear();
+
+    const registration = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Delivery Failure", email, password: PASSWORD });
+
+    expect(registration.status).toBe(502);
+    expect(registration.body).toEqual({
+      message: "تعذّر إرسال رمز التفعيل بالبريد. يرجى المحاولة بعد قليل.",
+    });
+
+    const row = await db.execute(sql`
+      SELECT id FROM teachers WHERE lower(email) = ${email.toLowerCase()} LIMIT 1
+    `);
+    const tid = Number((row.rows[0] as any).id);
+    tids.push(tid);
+
+    const sentMessage = sendEmailMock.mock.calls.at(-1)?.[0];
+    const otp = `${sentMessage?.text ?? sentMessage?.html ?? ""}`.match(/\b\d{6}\b/)?.[0];
+    const serializedLogs = JSON.stringify(logWarnMock.mock.calls);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      { teacherId: tid, reason: rejectionReason },
+      "OTP email not delivered",
+    );
+    expect(serializedLogs).not.toContain(email);
+    expect(otp).toBeDefined();
+    expect(serializedLogs).not.toContain(otp);
+  });
+
+  it("AUTH4B — رفض مزوّد البريد إعادة الإرسال يعيد 502 ويسجل السبب فقط", async () => {
+    const t = await createUnverifiedTeacher("resend_delivery_rejected", {
+      otp: "454545",
+      token: "old-rejected-token",
+    });
+    tids.push(t.id);
+    await db.execute(sql`
+      UPDATE teachers
+      SET otp_expires_at = NOW() - INTERVAL '31 minutes',
+          email_verify_token_expires_at = NOW() - INTERVAL '31 minutes'
+      WHERE id = ${t.id}
+    `);
+    const rejectionReason = "provider_rejected_resend";
+    sendEmailMock.mockResolvedValueOnce({ delivered: false, reason: rejectionReason });
+    logWarnMock.mockClear();
+
+    const resend = await request(app)
+      .post("/api/auth/resend-otp")
+      .send({ identifier: t.email });
+
+    expect(resend.status).toBe(502);
+    expect(resend.body).toEqual({
+      message: "تعذّر إرسال رمز التفعيل بالبريد. يرجى المحاولة بعد قليل.",
+    });
+
+    const sentMessage = sendEmailMock.mock.calls.at(-1)?.[0];
+    const otp = `${sentMessage?.text ?? sentMessage?.html ?? ""}`.match(/\b\d{6}\b/)?.[0];
+    const serializedLogs = JSON.stringify(logWarnMock.mock.calls);
+    expect(logWarnMock).toHaveBeenCalledWith(
+      { teacherId: t.id, reason: rejectionReason },
+      "OTP resend email not delivered",
+    );
+    expect(serializedLogs).not.toContain(t.email);
+    expect(otp).toBeDefined();
+    expect(serializedLogs).not.toContain(otp);
   });
 
   it("AUTH5 — الدخول والتحقق لا يتأثران بحالة أحرف البريد أو المسافات الخارجية", async () => {
