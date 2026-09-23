@@ -834,6 +834,16 @@
   padding-bottom: var(--quran-safe-area-bottom, env(safe-area-inset-bottom));
 }
 
+/* iPad and other portrait tablets still use the compact Quran toolbar, but
+   they sit above the phone-only breakpoint below. Keep the controls beneath
+   the operating-system status area while allowing the header background to
+   extend naturally behind it. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .quran-reader-header {
+    padding-top: var(--quran-safe-area-top, env(safe-area-inset-top, 0px));
+  }
+}
+
 /* On portrait phones, a paged Mushaf should use the reader's full available
    height. The 15 canonical rows then expand vertically instead of leaving a
    false empty block below a short, width-sized page. Continuous mode keeps the

@@ -377,6 +377,21 @@ test.describe("mobile Mushaf rotation", () => {
     });
   }
 
+  test("keeps the compact Quran toolbar below the iPad status area", async ({ page }) => {
+    const topInset = 24;
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await emulatePortraitSafeArea(page, topInset, 20);
+    await page.goto("/quran/114?ayah=1&page=604&view=pages");
+
+    const header = page.locator(".quran-reader-header");
+    await expect(header).toBeVisible();
+    const toolbarControlsTop = await page.getByTestId("button-mobile-audio").evaluate(
+      (control) => control.getBoundingClientRect().top,
+    );
+
+    expect(toolbarControlsTop).toBeGreaterThanOrEqual(topInset);
+  });
+
   test("keeps page 604 above the expanded guided memorization panel on a short safe-area phone", async ({
     page,
   }) => {
