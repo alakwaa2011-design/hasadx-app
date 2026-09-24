@@ -380,8 +380,8 @@ test.describe("mobile Mushaf rotation", () => {
   test("spreads the Mushaf rows through the safe reading area", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await emulatePortraitSafeArea(page, 24, 34);
-    await page.goto("/quran/79?ayah=1&page=584&view=pages");
-    const paper = page.locator("[data-quran-page='584'] .quran-madani-page");
+    await page.goto("/quran/76?ayah=8&page=579&view=pages");
+    const paper = page.locator("[data-quran-page='579'] .quran-madani-page");
     await expect(paper).toBeVisible();
     const rows = paper.locator(".quran-madani-page-content > div");
     await expect(rows).toHaveCount(15);
@@ -405,9 +405,10 @@ test.describe("mobile Mushaf rotation", () => {
     });
     expect(geometry.headerTop).toBeGreaterThanOrEqual(24);
     expect(geometry.firstLineTop).toBeGreaterThan(geometry.headerBottom);
+    expect(geometry.firstLineTop).toBeLessThanOrEqual(geometry.headerBottom + 35);
     expect(geometry.rowTops.every((top, index) => index === 0 || top > geometry.rowTops[index - 1])).toBe(true);
     expect(geometry.lastLineBottom).toBeLessThanOrEqual(geometry.viewportBottom - 34);
-    expect(geometry.lastLineBottom).toBeGreaterThan(geometry.viewportBottom - 170);
+    expect(geometry.lastLineBottom).toBeGreaterThan(geometry.viewportBottom - 34 - 75);
     expect(geometry.paperBottom).toBeLessThanOrEqual(geometry.readerBottom + 1);
   });
 

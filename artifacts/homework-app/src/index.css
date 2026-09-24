@@ -903,6 +903,14 @@
     height: var(--quran-page-height, auto) !important;
   }
 
+  /* A width-based 9.5% inset leaves oversized blank bands once the paper is
+     stretched to the phone's available height. The toolbar reserve and device
+     bottom inset already provide the safety margin outside the paper. */
+  .quran-page-shell--paged .quran-madani-page-content {
+    padding-top: 3.5% !important;
+    padding-bottom: 3.5% !important;
+  }
+
   /* Keep the canonical page geometry independent from floating controls.
      Dedicated reserve elements before and after the paper provide scroll room
      for the toolbar and dock without compressing the 15 Mushaf rows. */

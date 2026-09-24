@@ -14,3 +14,9 @@ For portrait paged reading, an extended paper needs a **definite height**, not o
 **Why:** Measuring only the paper's bottom incorrectly passed while the final text row was hundreds of pixels above the safe bottom edge.
 
 **How to apply:** Measure first and last text rows as well as the paper; subtract the actual toolbar reserve and device bottom padding from the reader viewport. Never compress below the natural width-derived page height on short screens—allow vertical scrolling instead.
+
+On taller portrait phones, percentage `padding-top` and `padding-bottom` resolve against the **page width**, not its stretched height. The default page insets can leave a large empty band even after the paper and flex rows fill their available height. Use tighter insets only for portrait paged reading; leave continuous and landscape page geometry unchanged.
+
+**Why:** A test that permitted the last row to sit 170px above the viewport bottom passed while users still saw substantial empty space.
+
+**How to apply:** Assert both the first text row's distance below the toolbar and the last text row's distance above the protected bottom edge on the affected page, not just that the paper fits the viewport.
