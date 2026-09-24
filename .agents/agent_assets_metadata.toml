@@ -1835,3 +1835,17 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_intro_final.mp3"
 type = "audio"
 title = "تعليق افتتاح مختصر وواضح"
 description = "Text-to-speech audio: وقتك للطلاب. حصاد يُسهِّل التحضير."
+
+[[outputs]]
+id = "LVrIakjib5OwPcD-7Ardo"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_tug_winner.mp3"
+type = "audio"
+title = "تعليق فوز الفريق الأزرق"
+description = "Text-to-speech audio: والفوز للفريق الأزرق!"
+
+[[outputs]]
+id = "vLa_Jy2ipMHlwofgLGVkj"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_tug_teams.mp3"
+type = "audio"
+title = "تعليق مواجهة شد الحبل"
+description = "Text-to-speech audio: فريقان، وسؤال لكل فريق!"

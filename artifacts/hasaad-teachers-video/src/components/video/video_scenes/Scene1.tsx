@@ -36,7 +36,7 @@ export function Scene1() {
         </AnimatePresence>
       </div>
       <motion.div className="feature-tag" initial={{ opacity: 0, y: 20 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 20 }} transition={{ duration: 0.4 }}>من حصاد ← إلى طلابك</motion.div>
-      <div className="shot-bottomline"><span>حضّر بذكاء</span><span>01 / 03</span></div>
+      <div className="shot-bottomline"><span>حضّر بذكاء</span><span>01 / 04</span></div>
     </motion.section>
   );
 }

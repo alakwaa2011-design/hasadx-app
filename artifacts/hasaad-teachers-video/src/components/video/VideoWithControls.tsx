@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Pause, Play, Repeat, Volume2, VolumeX } from 'l
 import VideoTemplate, { SCENE_DURATIONS } from './VideoTemplate';
 import { useSceneControls } from './useSceneControls';
 
-const TITLES = ['الافتتاح', 'ورقة العمل', 'الخريطة الذهنية', 'لعبة وميض', 'حصاد'];
+const TITLES = ['الافتتاح', 'ورقة العمل', 'الخريطة الذهنية', 'لعبة وميض', 'شد الحبل', 'حصاد'];
 const format = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
 
 function PlaybackProgress({ keys, activeIndex, activeDuration, activeStartTime, totalDuration, tick, paused, jump }: {

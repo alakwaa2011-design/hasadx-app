@@ -33,7 +33,7 @@ export function Scene2() {
         <Footage file="map-result" />
         <span>انظر كيف تتصل المفاهيم</span>
       </motion.div>
-      <div className="shot-bottomline dark-line"><span>نظّم المحتوى</span><span>02 / 03</span></div>
+      <div className="shot-bottomline dark-line"><span>نظّم المحتوى</span><span>02 / 04</span></div>
     </motion.section>
   );
 }

@@ -148,3 +148,4 @@
 - [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.
 - [Quran specialized bookmarks](quran-specialized-bookmarks.md) — each ayah has one categorized bookmark; old or missing categories normalize to “stopped here.”
 - [Browser film audio startup](browser-film-audio-startup.md) — canplay and paused=false do not mean narration has started; pre-roll the same audio element before the recording clock.
+- [Screen-recording crop motion](screen-recording-crop-motion.md) — a fixed crop may lose content when the recording itself zooms; inspect every chosen source moment before publishing.
