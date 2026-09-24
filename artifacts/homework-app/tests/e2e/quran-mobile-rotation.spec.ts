@@ -203,7 +203,8 @@ async function expectFocusedLandscape(
   await expect(page.locator(".quran-reader-header")).toBeHidden();
   await expect(page.locator(".quran-reader-nav")).toBeHidden();
   await expect(page.locator(".quran-reader-dock")).toBeHidden();
-  await expect(page.locator('[data-physical-page="single"]')).toBeVisible();
+  await expect(page.locator('[data-physical-page="right"]')).toBeVisible();
+  await expect(page.locator('[data-physical-page="left"]')).toBeVisible();
 
   const geometry = await page.locator(".quran-page-shell").first().evaluate(
     (shell, insets) => {
@@ -224,9 +225,12 @@ async function expectFocusedLandscape(
                 && line.left >= rect.left - 1 && line.right <= rect.right + 1,
             ),
             linesDoNotOverlap: lines.every(
-              (line, index) => index === 0 || index === 8 || line.top >= lines[index - 1].bottom - 1,
+              (line, index) => index === 0 || line.top >= lines[index - 1].bottom - 1,
             ),
-            columnsInReadingOrder: lines.length === 15 && lines[0].left > lines[8].left,
+            linesStayOnPage: lines.length === 15 && lines.every(
+              (line) => line.left >= rect.left - 1 && line.right <= rect.right + 1,
+            ),
+            side: figure.dataset.physicalPage,
           };
         })
         .filter(({ rect }) => rect.width > 0 && rect.height > 0);
@@ -239,12 +243,13 @@ async function expectFocusedLandscape(
         safeRight: window.innerWidth - insets.right,
         viewportHeight: window.innerHeight,
         pageCount: visiblePages.length,
-        pageFillsWidth: visiblePages.every(
-          ({ rect }) => Math.abs(rect.width - shellRect.width) <= 2,
-        ),
+        spreadFillsWidth: visiblePages.every(
+          ({ rect }) => Math.abs(rect.width * 2 - shellRect.width) <= 2,
+        ) && Math.abs(visiblePages[0].rect.left - visiblePages[1].rect.right) <= 2
+          && visiblePages[0].side === "right" && visiblePages[1].side === "left",
         pagesHaveCompleteRows: visiblePages.every(
-          ({ lineCount, linesContained, linesDoNotOverlap, columnsInReadingOrder }) =>
-            lineCount === 15 && linesContained && linesDoNotOverlap && columnsInReadingOrder,
+          ({ lineCount, linesContained, linesDoNotOverlap, linesStayOnPage }) =>
+            lineCount === 15 && linesContained && linesDoNotOverlap && linesStayOnPage,
         ),
       };
     },
@@ -253,8 +258,8 @@ async function expectFocusedLandscape(
   expect(geometry.top).toBeGreaterThanOrEqual(-1);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight + 1);
   expect(geometry.bottom - geometry.top).toBeGreaterThanOrEqual(geometry.viewportHeight - 1);
-  expect(geometry.pageCount).toBe(1);
-  expect(geometry.pageFillsWidth).toBe(true);
+  expect(geometry.pageCount).toBe(2);
+  expect(geometry.spreadFillsWidth).toBe(true);
   expect(geometry.pagesHaveCompleteRows).toBe(true);
   expect(geometry.leftGap).toBeGreaterThanOrEqual(geometry.safeLeft - 1);
   expect(geometry.rightGap).toBeGreaterThanOrEqual(safeArea.right - 1);
@@ -341,7 +346,7 @@ test.describe("mobile Mushaf rotation", () => {
     await expectCompletePortraitPage(page);
   });
 
-  test("fills the landscape iPad with two columns of the current page", async ({ page }) => {
+  test("fills the landscape iPad with two complete pages", async ({ page }) => {
     await page.setViewportSize({ width: 820, height: 1180 });
     await page.goto("/quran/76?ayah=8&page=579&view=pages");
     await expectFocusedLandscape(

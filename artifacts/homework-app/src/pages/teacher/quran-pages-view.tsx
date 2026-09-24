@@ -393,7 +393,7 @@ export function QuranPagesView({
           if (preLandscapeLayoutRef.current === null) {
             preLandscapeLayoutRef.current = current;
           }
-          return "single";
+          return "spread";
         });
         return;
       }
@@ -2172,10 +2172,10 @@ export function QuranPagesView({
           >
             {pageLayout === "spread" ? (
               <>
-                <div className="hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
-                <div className="h-full lg:hidden">{renderPage(activePage, "single")}</div>
+                <div className="quran-spread-right-page hidden lg:block">{renderPage(visiblePages.right, "right")}</div>
+                <div className="quran-spread-mobile-page h-full lg:hidden">{renderPage(activePage, "single")}</div>
                 {visiblePages.left !== null && (
-                  <div className="hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
+                  <div className="quran-spread-left-page hidden lg:block">{renderPage(visiblePages.left, "left")}</div>
                 )}
               </>
             ) : (
