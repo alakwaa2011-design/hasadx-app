@@ -954,9 +954,10 @@
   }
 }
 
-/* Phone landscape mode: keep the Mushaf inside the current route and fit one
-   complete Madani page to the viewport. No separate fullscreen URL is used. */
-@media (orientation: landscape) and (max-height: 600px) {
+/* Touch landscape: reflow the current page's 15 physical lines into two
+   reading columns. A portrait-ratio paper uses only a narrow center strip;
+   scaling all QCF glyphs to the full landscape width instead breaks rows. */
+@media (orientation: landscape) and (max-height: 900px) and (any-pointer: coarse) {
   .quran-focused-layout {
     height: 100dvh !important;
     min-height: 100dvh !important;
@@ -997,6 +998,7 @@
   .quran-reader-header,
   .quran-reader-nav,
   .quran-reader-dock,
+  .quran-guided-scroll-reserve,
   [data-testid="quran-guided-memorization-panel"],
   .quran-reader-quiet-exit {
     display: none !important;
@@ -1011,9 +1013,9 @@
     padding: 0 !important;
   }
 
-  .quran-page-shell {
+  .quran-page-shell--paged {
     display: block !important;
-    width: 69.948dvh !important;
+    width: calc(100dvw - var(--quran-safe-area-left, env(safe-area-inset-left, 0px)) - var(--quran-safe-area-right, env(safe-area-inset-right, 0px))) !important;
     max-width: none !important;
     min-width: 0 !important;
     height: 100dvh !important;
@@ -1032,13 +1034,13 @@
 
   .quran-reader-figure {
     display: flex !important;
-    width: 69.948dvh !important;
+    width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
     height: 100dvh !important;
     align-items: stretch !important;
     justify-content: center !important;
-    aspect-ratio: 382.677 / 547.086 !important;
+    aspect-ratio: auto !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
@@ -1047,20 +1049,29 @@
     width: 100% !important;
     min-width: 0 !important;
     height: 100dvh !important;
-    aspect-ratio: 382.677 / 547.086 !important;
+    aspect-ratio: auto !important;
     border-radius: 0 !important;
   }
 
   .quran-reader-figure .quran-madani-page-content {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+    grid-auto-flow: column;
+    column-gap: 4%;
     width: 100% !important;
     margin-right: auto;
     margin-left: auto;
-    padding: 9.5% 8.5% !important;
+    padding: max(6px, 2dvh) 4% !important;
   }
 
   .quran-reader-figure .quran-madani-line,
   .quran-reader-figure .quran-madani-end {
-    font-size: min(5.2cqw, 4.5dvh) !important;
+    font-size: min(2.35cqw, 4.8dvh) !important;
+  }
+
+  .quran-reader-figure .quran-madani-bismillah {
+    font-size: min(2.6cqw, 5dvh) !important;
   }
 
   .quran-reader-figure .quran-madani-bismillah {

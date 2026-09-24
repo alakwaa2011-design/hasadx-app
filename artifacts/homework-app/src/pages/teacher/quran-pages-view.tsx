@@ -386,7 +386,7 @@ export function QuranPagesView({
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
-    const landscapeQuery = window.matchMedia("(orientation: landscape) and (max-height: 600px)");
+    const landscapeQuery = window.matchMedia("(orientation: landscape) and (max-height: 900px) and (any-pointer: coarse)");
     const syncLandscapeLayout = () => {
       if (landscapeQuery.matches) {
         setPageLayout((current) => {

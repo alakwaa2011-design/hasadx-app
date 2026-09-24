@@ -196,12 +196,14 @@ async function expectFocusedLandscape(
   page: Page,
   expectedUrl: RegExp,
   safeArea = { left: 0, right: 0 },
+  viewport = LANDSCAPE,
 ) {
-  await page.setViewportSize(LANDSCAPE);
+  await page.setViewportSize(viewport);
   await expect(page).toHaveURL(expectedUrl);
   await expect(page.locator(".quran-reader-header")).toBeHidden();
   await expect(page.locator(".quran-reader-nav")).toBeHidden();
   await expect(page.locator(".quran-reader-dock")).toBeHidden();
+  await expect(page.locator('[data-physical-page="single"]')).toBeVisible();
 
   const geometry = await page.locator(".quran-page-shell").first().evaluate(
     (shell, insets) => {
@@ -218,11 +220,13 @@ async function expectFocusedLandscape(
             rect,
             lineCount: lines.length,
             linesContained: lines.every(
-              (line) => line.top >= rect.top - 1 && line.bottom <= rect.bottom + 1,
+              (line) => line.top >= rect.top - 1 && line.bottom <= rect.bottom + 1
+                && line.left >= rect.left - 1 && line.right <= rect.right + 1,
             ),
             linesDoNotOverlap: lines.every(
-              (line, index) => index === 0 || line.top >= lines[index - 1].bottom - 1,
+              (line, index) => index === 0 || index === 8 || line.top >= lines[index - 1].bottom - 1,
             ),
+            columnsInReadingOrder: lines.length === 15 && lines[0].left > lines[8].left,
           };
         })
         .filter(({ rect }) => rect.width > 0 && rect.height > 0);
@@ -235,12 +239,12 @@ async function expectFocusedLandscape(
         safeRight: window.innerWidth - insets.right,
         viewportHeight: window.innerHeight,
         pageCount: visiblePages.length,
-        pagesHaveCanonicalRatio: visiblePages.every(
-          ({ rect }) => Math.abs(rect.width / rect.height - 382.677 / 547.086) < 0.005,
+        pageFillsWidth: visiblePages.every(
+          ({ rect }) => Math.abs(rect.width - shellRect.width) <= 2,
         ),
         pagesHaveCompleteRows: visiblePages.every(
-          ({ lineCount, linesContained, linesDoNotOverlap }) =>
-            lineCount === 15 && linesContained && linesDoNotOverlap,
+          ({ lineCount, linesContained, linesDoNotOverlap, columnsInReadingOrder }) =>
+            lineCount === 15 && linesContained && linesDoNotOverlap && columnsInReadingOrder,
         ),
       };
     },
@@ -249,8 +253,8 @@ async function expectFocusedLandscape(
   expect(geometry.top).toBeGreaterThanOrEqual(-1);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight + 1);
   expect(geometry.bottom - geometry.top).toBeGreaterThanOrEqual(geometry.viewportHeight - 1);
-  expect(geometry.pageCount).toBeGreaterThanOrEqual(1);
-  expect(geometry.pagesHaveCanonicalRatio).toBe(true);
+  expect(geometry.pageCount).toBe(1);
+  expect(geometry.pageFillsWidth).toBe(true);
   expect(geometry.pagesHaveCompleteRows).toBe(true);
   expect(geometry.leftGap).toBeGreaterThanOrEqual(geometry.safeLeft - 1);
   expect(geometry.rightGap).toBeGreaterThanOrEqual(safeArea.right - 1);
@@ -335,6 +339,19 @@ test.describe("mobile Mushaf rotation", () => {
     await page.setViewportSize(PORTRAIT);
     await expect(page).toHaveURL(/\/quran(?:\/1)?(?:\?.*)?$/);
     await expectCompletePortraitPage(page);
+  });
+
+  test("fills the landscape iPad with two columns of the current page", async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await page.goto("/quran/76?ayah=8&page=579&view=pages");
+    await expectFocusedLandscape(
+      page,
+      /\/quran\/76(?:\?.*)?$/,
+      { left: 0, right: 0 },
+      { width: 1180, height: 820 },
+    );
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await expect(page.locator(".quran-reader-header")).toBeVisible();
   });
 
   for (const safeAreaCase of PORTRAIT_SAFE_AREA_CASES) {
