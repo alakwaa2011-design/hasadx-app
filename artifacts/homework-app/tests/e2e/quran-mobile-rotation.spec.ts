@@ -377,6 +377,40 @@ test.describe("mobile Mushaf rotation", () => {
     });
   }
 
+  test("spreads the Mushaf rows through the safe reading area", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await emulatePortraitSafeArea(page, 24, 34);
+    await page.goto("/quran/79?ayah=1&page=584&view=pages");
+    const paper = page.locator("[data-quran-page='584'] .quran-madani-page");
+    await expect(paper).toBeVisible();
+    const rows = paper.locator(".quran-madani-page-content > div");
+    await expect(rows).toHaveCount(15);
+    await page.evaluate(() => document.fonts.ready);
+
+    const geometry = await paper.evaluate((element) => {
+      const reader = element.closest<HTMLElement>(".quran-reader-main");
+      const header = document.querySelector<HTMLElement>(".quran-reader-header");
+      const lines = [...element.querySelectorAll<HTMLElement>(".quran-madani-line")];
+      if (!reader || !header || lines.length < 10) throw new Error("Mushaf geometry unavailable");
+      return {
+        headerTop: header.getBoundingClientRect().top,
+        headerBottom: header.getBoundingClientRect().bottom,
+        firstLineTop: lines[0].getBoundingClientRect().top,
+        lastLineBottom: lines.at(-1)!.getBoundingClientRect().bottom,
+        paperBottom: element.getBoundingClientRect().bottom,
+        readerBottom: reader.getBoundingClientRect().bottom,
+        viewportBottom: window.innerHeight,
+        rowTops: lines.map((row) => row.getBoundingClientRect().top),
+      };
+    });
+    expect(geometry.headerTop).toBeGreaterThanOrEqual(24);
+    expect(geometry.firstLineTop).toBeGreaterThan(geometry.headerBottom);
+    expect(geometry.rowTops.every((top, index) => index === 0 || top > geometry.rowTops[index - 1])).toBe(true);
+    expect(geometry.lastLineBottom).toBeLessThanOrEqual(geometry.viewportBottom - 34);
+    expect(geometry.lastLineBottom).toBeGreaterThan(geometry.viewportBottom - 170);
+    expect(geometry.paperBottom).toBeLessThanOrEqual(geometry.readerBottom + 1);
+  });
+
   test("keeps the compact Quran toolbar below the iPad status area", async ({ page }) => {
     const topInset = 24;
     await page.setViewportSize({ width: 820, height: 1180 });

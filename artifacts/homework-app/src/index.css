@@ -846,10 +846,9 @@
   }
 }
 
-/* On portrait phones, a paged Mushaf should use the reader's full available
-   height. The 15 canonical rows then expand vertically instead of leaving a
-   false empty block below a short, width-sized page. Continuous mode keeps the
-   original Madani page ratio. */
+/* On portrait phones the paged Mushaf uses a measured height, never just a
+   min-height: the 15 flex rows need a definite parent height to spread out.
+   Continuous mode keeps the original Madani page ratio. */
 @media (max-width: 767px) and (orientation: portrait) {
   .quran-reader-ui-label {
     font-family: 'Readex Pro', 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
@@ -901,7 +900,7 @@
 
   .quran-page-shell--paged .quran-madani-page {
     aspect-ratio: 382.677 / 547.086 !important;
-    min-height: var(--quran-page-min-height, 0px) !important;
+    height: var(--quran-page-height, auto) !important;
   }
 
   /* Keep the canonical page geometry independent from floating controls.
