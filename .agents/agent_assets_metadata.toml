@@ -1765,3 +1765,73 @@ mtime_ms = 1789782371605
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/b8eeb630-09ba-42cc-817d-a4a551bedb73/a33daa9d-d2d9-4ba9-a150-f4bb3271090a"
 storage_version_token = "1789782394142808"
 content_type = "audio/mpeg"
+
+[[outputs]]
+id = "Y5F9EPt6rUO4unE9Ld5pK"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/bg_music.mp3"
+type = "audio"
+title = "حصاد موسيقى الإعلان"
+description = "Generated music: Original warm uplifting instrumental music for a short Arabic teacher productivity advertisement. Modern understated groove, piano arpeggio, soft oud-like plucked accents, muted hand…"
+
+[[outputs]]
+id = "6gl60Y7xkw9t0d2auA1Mj"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_0.mp3"
+type = "audio"
+title = "حصاد تعليق 1"
+description = "Text-to-speech audio: وقتك للطلاب، لا لزحمة التحضير."
+
+[[outputs]]
+id = "iwaKVpDgV23ojRrkJf39r"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_1.mp3"
+type = "audio"
+title = "حصاد تعليق 2"
+description = "Text-to-speech audio: في حصاد، يتحول موضوع واحد إلى ورقة عمل جاهزة."
+
+[[outputs]]
+id = "ebuy1fuOXGhYXoATMv7nD"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_4.mp3"
+type = "audio"
+title = "حصاد تعليق 5"
+description = "Text-to-speech audio: حصاد. وقت أقل للتحضير، وتفاعل أكبر. سجّل الآن."
+
+[[outputs]]
+id = "PXTKq2xyKdidHI367jKtu"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_3.mp3"
+type = "audio"
+title = "حصاد تعليق 4"
+description = "Text-to-speech audio: ثم يصبح السؤال تحدّيًا يشارك فيه طلابك، حتى اللحظة الأخيرة."
+
+[[outputs]]
+id = "es7geJONQMwRtojNY3hPy"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_2.mp3"
+type = "audio"
+title = "حصاد تعليق 3"
+description = "Text-to-speech audio: وتنتظم الأفكار في خريطة ذهنية واضحة."
+
+[[outputs]]
+id = "MyZPgi11J3EtNGLpT8rO6"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_4_2.mp3"
+type = "audio"
+title = "حصاد دعوة التسجيل"
+description = "Text-to-speech audio: حصاد. سجّل الآن، وابدأ التفاعل."
+
+[[outputs]]
+id = "IXJbtWxCISGdHF3gyAV4F"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_intro_clear.mp3"
+type = "audio"
+title = "تعليق افتتاح حصاد واضح"
+description = "Text-to-speech audio: وقتك للطلاب. والتحضير على حصاد."
+
+[[outputs]]
+id = "90Cm87wNWpCOUk5MMO_Te"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_outro_kasra.mp3"
+type = "audio"
+title = "دعوة حصاد مع كسرة الجيم"
+description = "Text-to-speech audio: حصاد. سَجِّلْ الآن، وابدأ التفاعل."
+
+[[outputs]]
+id = "PbSQLrcYs04kryqEaNGQn"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_intro_final.mp3"
+type = "audio"
+title = "تعليق افتتاح مختصر وواضح"
+description = "Text-to-speech audio: وقتك للطلاب. حصاد يُسهِّل التحضير."

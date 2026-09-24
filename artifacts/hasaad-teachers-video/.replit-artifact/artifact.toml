@@ -1,0 +1,29 @@
+kind = "video"
+videoAspectRatio = "9:16"
+previewPath = "/hasaad-teachers-video/"
+title = "حصاد للمعلمين — إعلان عمودي"
+description = "إعلان عربي عمودي للمعلمين، يعرض ورقة العمل ووميض والخريطة الذهنية بتسجيلات حقيقية وتعليق يدعو للتسجيل."
+version = "1.0.0"
+id = "artifacts/hasaad-teachers-video"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/hasaad-teachers-video/" ]
+localPort = 19659
+
+[services.development]
+run = "pnpm --filter @workspace/hasaad-teachers-video run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hasaad-teachers-video", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/hasaad-teachers-video/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19659"
+BASE_PATH = "/hasaad-teachers-video/"
