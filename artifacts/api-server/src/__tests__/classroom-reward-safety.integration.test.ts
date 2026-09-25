@@ -134,6 +134,31 @@ suite("classroom reward PostgreSQL concurrency safety",()=>{
     if(accountId)await db.execute(sql`DELETE FROM student_accounts WHERE id=${accountId}`);
   });
 
+  it("shows a new class and its zero-point student in the roster and live board", async () => {
+    const className = `صف جديد/أ ${nonce}`;
+    const studentName = `طالب جديد ${nonce}`;
+    await db.execute(sql`INSERT INTO teacher_classes(teacher_id,name) VALUES (${teacherId},${className})`);
+    const student = (await db.execute(sql`
+      INSERT INTO students(name,teacher_id,student_class,grade_level)
+      VALUES (${studentName},${teacherId},${className},${className}) RETURNING id
+    `)).rows[0];
+    const classes = await request(teacherApp()).get("/api/teacher/classes");
+    expect(classes.status).toBe(200);
+    expect(classes.body).toEqual(expect.arrayContaining([expect.objectContaining({name: className})]));
+
+    const path = `/api/classroom-rewards/classes/${encodeURIComponent(className)}`;
+    const roster = await request(teacherApp()).get(path);
+    expect(roster.status).toBe(200);
+    expect(roster.body.students).toEqual(expect.arrayContaining([
+      expect.objectContaining({id: Number(student.id), name: studentName, points: 0}),
+    ]));
+    const board = await request(teacherApp()).get(`${path}/board`);
+    expect(board.status).toBe(200);
+    expect(board.body.students).toEqual(expect.arrayContaining([
+      expect.objectContaining({id: Number(student.id), name: studentName, points: 0}),
+    ]));
+  });
+
   it("grants exactly once under concurrent calls and retries a failed receipt",async()=>{
     const evidence={teacherId,ruleId,sourceType:"assignment_submission" as const,sourceResultId:submissionId,studentId,completed:true,score:1,evidenceSummary:{effectivePoints:1}};
     await Promise.all([db.transaction(tx=>evaluateClassroomRewardEvidence(tx,evidence)),db.transaction(tx=>evaluateClassroomRewardEvidence(tx,evidence))]);

@@ -149,3 +149,4 @@
 - [Quran specialized bookmarks](quran-specialized-bookmarks.md) — each ayah has one categorized bookmark; old or missing categories normalize to “stopped here.”
 - [Browser film audio startup](browser-film-audio-startup.md) — canplay and paused=false do not mean narration has started; pre-roll the same audio element before the recording clock.
 - [Screen-recording crop motion](screen-recording-crop-motion.md) — a fixed crop may lose content when the recording itself zooms; inspect every chosen source moment before publishing.
+- [Wouter encoded route params](wouter-encoded-route-params.md) — decode reserved characters from the raw URL once; decoding Wouter params again can corrupt literal percent sequences.

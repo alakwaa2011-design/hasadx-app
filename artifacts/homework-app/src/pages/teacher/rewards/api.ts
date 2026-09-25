@@ -156,7 +156,8 @@ export const useGetClassRewards = (className?: string, options?: { refetchInterv
     queryKey: ["classroom-rewards", "classes", className],
     queryFn: () => fetcher(`/api/classroom-rewards/classes/${encodeURIComponent(className!)}`),
     enabled: !!className,
-    refetchInterval: options?.refetchInterval,
+    refetchOnWindowFocus: true,
+    refetchInterval: options?.refetchInterval ?? 10_000,
   });
 };
 
@@ -615,6 +616,8 @@ export const useGetTeacherClasses = () => {
   return useQuery({
     queryKey: ["teacher", "classes"],
     queryFn: () => fetcher(`/api/teacher/classes`),
+    refetchOnWindowFocus: true,
+    refetchInterval: 15_000,
   });
 };
 

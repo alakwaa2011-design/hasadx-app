@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -671,6 +672,11 @@ function ClassBlock({
 export default function StudentsPage() {
   const [, setLocation] = useLocation();
   const { lang, t, dir } = useI18n();
+  const queryClient = useQueryClient();
+  const refreshRewardLists = () => {
+    void queryClient.invalidateQueries({ queryKey: ["teacher", "classes"] });
+    void queryClient.invalidateQueries({ queryKey: ["classroom-rewards"] });
+  };
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -872,7 +878,7 @@ export default function StudentsPage() {
       if (!student) return;
       const newFolder = student.gradeLevel || UNGROUPED;
       try {
-        await fetch(`${API_BASE}/api/students/${studentId}`, {
+        const res = await fetch(`${API_BASE}/api/students/${studentId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -881,6 +887,8 @@ export default function StudentsPage() {
             studentClass: newFolder === UNGROUPED ? null : newFolder,
           }),
         });
+        if (!res.ok) throw new Error("Could not save student class");
+        refreshRewardLists();
       } catch {
         toast.error(t.teacherStudents.saveChangeError);
         fetchStudents();
@@ -897,6 +905,7 @@ export default function StudentsPage() {
         setStudents([]);
         setFolderOrder([]);
         setExpandedFolders(new Set());
+        refreshRewardLists();
         toast.success(t.teacherStudents.allDeleted);
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -929,6 +938,7 @@ export default function StudentsPage() {
           delete next[folder];
           return next;
         });
+        refreshRewardLists();
         toast.success(t.teacherStudents.classDeleted);
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -971,6 +981,7 @@ export default function StudentsPage() {
           if (next.has(oldName)) { next.delete(oldName); next.add(newName); }
           return next;
         });
+        refreshRewardLists();
         toast.success(t.teacherStudents.classRenamed);
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -1007,6 +1018,7 @@ export default function StudentsPage() {
       }, 10000);
       setShowAddClass(false);
       setNewClassName("");
+      refreshRewardLists();
       toast.success(t.teacherStudents.classCreated.replace("{name}", name));
     } catch {
       toast.error(t.teacherStudents.genericError);
@@ -1205,6 +1217,7 @@ export default function StudentsPage() {
         setEditingStudent(null);
         setForm({ name: "", parentPhone: "", parentName: "", parentEmail: "", notes: "", accountUsername: "" });
         fetchStudents();
+        refreshRewardLists();
       } else {
         toast.error(data.message || t.teacherStudents.genericError);
       }
@@ -1220,6 +1233,7 @@ export default function StudentsPage() {
       const res = await fetch(`${API_BASE}/api/students/${id}`, { method: "DELETE", credentials: "include" });
       if (res.ok) {
         setStudents((prev) => prev.filter((s) => s.id !== id));
+        refreshRewardLists();
         toast.success(t.teacherStudents.studentDeleted);
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -1244,6 +1258,7 @@ export default function StudentsPage() {
             s.id === id ? { ...s, gradeLevel: folder, studentClass: folder } : s
           )
         );
+        refreshRewardLists();
         toast.success(t.teacherStudents.moved);
       } else {
         toast.error(t.teacherStudents.genericError);
@@ -1318,6 +1333,7 @@ export default function StudentsPage() {
         setBulkText("");
         setShowBulkForm(false);
         fetchStudents();
+        refreshRewardLists();
       } else {
         toast.error(t.teacherStudents.genericError);
       }
@@ -1377,6 +1393,7 @@ export default function StudentsPage() {
       toast.success(data.message || t.teacherStudents.studentsImported.replace("{count}", String(data.saved)));
       setShowBulkForm(false);
       fetchStudents();
+      refreshRewardLists();
     } catch {
       toast.error(t.teacherStudents.connectionError);
     } finally {

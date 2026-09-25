@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
+import { classNameFromPath } from "./class-route";
 import { Layout } from "@/components/layout";
 import { AvatarDisplay } from "@/components/avatar-display";
 import {
@@ -91,9 +92,11 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const params = useParams<{ className?: string }>();
   const [, setLocation] = useLocation();
   const [embeddedClass, setEmbeddedClass] = useState<string>();
-  const currentClass = params.className || embeddedClass;
+  const currentClass = params.className
+    ? classNameFromPath(typeof window === "undefined" ? "" : window.location.pathname, params.className)
+    : embeddedClass;
 
-  const { data: classesList, isLoading: loadingClasses } = useGetTeacherClasses();
+  const { data: classesList, isLoading: loadingClasses, isError: classesError, refetch: refetchClasses } = useGetTeacherClasses();
   const classOptions = useMemo(
     () => ((classesList ?? []) as TeacherClassOption[])
       .map((item) => item.className || item.name)
@@ -101,7 +104,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     [classesList],
   );
 
-  const { data: classData, isLoading: loadingStudents } = useGetClassRewards(currentClass);
+  const { data: classData, isLoading: loadingStudents, isError: studentsError, refetch: refetchStudents } = useGetClassRewards(currentClass);
   const { data: groupsData } = useGetRewardGroups(currentClass);
   const { data: rewardTypesData } = useGetRewardTypes();
   const { data: weeklySummary, isLoading: weeklySummaryLoading, isError: weeklySummaryError } = useGetRewardSummary(currentClass, "week");
@@ -494,6 +497,13 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               <Loader2 className="animate-spin" size={34} />
               <p className="font-bold">{r("نجهّز صفوفك…", "Preparing your classes…")}</p>
             </div>
+          ) : classesError && !classesList ? (
+            <div role="alert" className="rounded-2xl border border-rose-200 bg-white p-8 text-center font-bold text-rose-800">
+              <p>{r("تعذر تحميل الصفوف. لم تُحذف صفوفك؛ حاول التحديث.", "Could not load classes. Your classes have not been deleted.")}</p>
+              <button type="button" onClick={() => void refetchClasses()} className="mt-4 rounded-xl bg-emerald-800 px-5 py-2 text-white">
+                {r("إعادة المحاولة", "Try again")}
+              </button>
+            </div>
           ) : classOptions.length > 0 ? (
             <section className="relative w-full overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/60 to-amber-50 p-6 text-center shadow-sm sm:p-10">
               <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-emerald-200/35 blur-3xl" />
@@ -572,6 +582,19 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
               </button>
             </section>
           )}
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (studentsError && !classData) {
+    return (
+      <PageContainer embedded={embedded}>
+        <div role="alert" className="mx-auto mt-12 max-w-lg rounded-2xl border border-rose-200 bg-white p-8 text-center font-bold text-rose-800">
+          <p>{r("تعذر تحميل طلاب هذا الصف. حاول التحديث.", "Could not load the students in this class.")}</p>
+          <button type="button" onClick={() => void refetchStudents()} className="mt-4 rounded-xl bg-emerald-800 px-5 py-2 text-white">
+            {r("إعادة المحاولة", "Try again")}
+          </button>
         </div>
       </PageContainer>
     );

@@ -33,9 +33,9 @@ export function Scene3() {
         </AnimatePresence>
       </div>
       <motion.div className="game-label" initial={{ opacity: 0 }} animate={{ opacity: beat >= 1 ? 1 : 0 }}>
-        {beat >= 4 ? 'من المنافسة إلى لحظة الإنجاز' : beat >= 2 ? 'سؤال. اختيار. حماس.' : 'مفاجأة وراء كل جولة'}
+        {beat >= 4 ? 'من المنافسة إلى لحظة الإنجاز' : beat >= 2 ? 'فرديًا أو ضمن فريق' : 'مفاجأة وراء كل جولة'}
       </motion.div>
-      <div className="shot-bottomline"><span>شارِك طلابك اللعب</span><span>03 / 04</span></div>
+      <div className="shot-bottomline"><span>على السبورة أو أجهزة الطلاب</span><span>03 / 04</span></div>
     </motion.section>
   );
 }
