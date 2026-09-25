@@ -1,54 +1,105 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import VideoWithControls from '@/components/video/VideoWithControls';
+import './audio-gate.css';
 
 export default function App() {
-  const [media, setMedia] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [media, setMedia] = useState<'loading' | 'gesture' | 'ready' | 'error'>('loading');
   const [muted, setMuted] = useState(false);
-  const [preloadMuted, setPreloadMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const attemptRef = useRef(0);
+  const warmRef = useRef(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  const beginPlayback = useCallback((retry = false) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const attempt = ++attemptRef.current;
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    setMedia('loading');
+    if (retry && audio.error) audio.load();
+    // Must be called directly from the tap handler on iOS, with no await,
+    // animation frame, or React effect between the gesture and play().
+    try {
+      audio.play().catch(() => {
+        if (attemptRef.current === attempt && !warmRef.current) {
+          if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+          setMedia(audio.error ? 'error' : 'gesture');
+        }
+      });
+    } catch {
+      if (attemptRef.current === attempt) setMedia(audio.error ? 'error' : 'gesture');
+    }
+    timeoutRef.current = window.setTimeout(() => {
+      if (attemptRef.current === attempt && !warmRef.current) setMedia('gesture');
+    }, 12000);
+  }, []);
+
   useEffect(() => {
     // Let the SAME audio element play through a silent 2-second preroll before
     // the scene clock mounts. Seeking back to zero stalls the decoder again.
     const audio = audioRef.current;
     if (!audio) return;
-    let warmed = false;
-    const ready = () => {
-      if (warmed) return;
-      warmed = true;
-      window.clearTimeout(timeout);
-      audio.removeEventListener('timeupdate', warm);
+    const warm = () => {
+      if (warmRef.current || audio.paused || audio.currentTime < 2) return;
+      warmRef.current = true;
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
       setMedia('ready');
     };
-    const failed = () => setMedia('error');
-    const timeout = window.setTimeout(failed, 12000);
-    const warm = () => { if (audio.currentTime >= 2) ready(); };
-    const start = () => audio.play().catch(() => {
-      // Browsers without audible-autoplay permission can still start silently.
-      // The preview's volume control lets the viewer enable sound by clicking.
-      setPreloadMuted(true);
-      window.requestAnimationFrame(() => audio.play().catch(failed));
-    });
+    const failed = () => {
+      if (warmRef.current) return;
+      ++attemptRef.current;
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+      setMedia('error');
+    };
     audio.addEventListener('timeupdate', warm);
-    audio.addEventListener('canplay', start, { once: true });
-    audio.addEventListener('error', failed, { once: true });
+    audio.addEventListener('error', failed);
     audio.load();
-    if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) start();
+    beginPlayback();
     return () => {
-      window.clearTimeout(timeout);
+      ++attemptRef.current;
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
       audio.removeEventListener('timeupdate', warm);
-      audio.removeEventListener('canplay', start);
       audio.removeEventListener('error', failed);
       audio.pause();
     };
-  }, []);
+  }, [beginPlayback]);
+
+  const watchSilently = () => {
+    ++attemptRef.current;
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    warmRef.current = true;
+    setMuted(true);
+    setMedia('ready');
+  };
+
   return (
     <>
-      <audio ref={audioRef} src={`${import.meta.env.BASE_URL}audio/final-mix.mp3`} preload="auto" muted={preloadMuted || muted} />
-      {media === 'error'
-        ? <main dir="rtl" style={{ background: '#fbf7ef', color: '#225739', minHeight: '100vh', display: 'grid', placeItems: 'center', fontFamily: 'Cairo' }}>تعذّر تحميل صوت الإعلان. أعد فتح المعاينة.</main>
-        : media === 'loading'
-          ? <main dir="rtl" style={{ background: '#fbf7ef', color: '#225739', minHeight: '100vh', display: 'grid', placeItems: 'center', fontFamily: 'Cairo', fontWeight: 700 }}>جارٍ تجهيز الإعلان…</main>
-          : <VideoWithControls audioRef={audioRef} muted={preloadMuted || muted} onMutedChange={next => { setPreloadMuted(false); setMuted(next); }} />}
+      <audio ref={audioRef} src={`${import.meta.env.BASE_URL}audio/final-mix.mp3`} preload="auto" muted={muted} />
+      {media === 'ready' ? (
+        <VideoWithControls audioRef={audioRef} muted={muted} onMutedChange={setMuted} />
+      ) : (
+        <main className="audio-gate" dir="rtl">
+          <div className="audio-gate-card">
+            <span className="audio-gate-brand">حصاد</span>
+            <span className="audio-gate-kicker">إعلان للمعلمين · 50 ثانية</span>
+            <h1>{media === 'error' ? 'تعذّر تحميل الصوت' : 'درس الغد؟ لا تبدأ من الصفر.'}</h1>
+            <p>
+              {media === 'error'
+                ? 'تحقّق من اتصالك ثم أعد المحاولة، أو شاهد الإعلان بدون صوت.'
+                : media === 'gesture'
+                  ? 'لتسمع التعليق الصوتي على هاتفك، اضغط تشغيل الإعلان.'
+                  : 'جارٍ تجهيز الإعلان… يمكنك الضغط لتشغيله الآن.'}
+            </p>
+            <button className="audio-gate-play" type="button" onClick={() => beginPlayback(media === 'error')}>
+              <span aria-hidden="true">▶</span>
+              {media === 'error' ? 'إعادة تحميل الصوت' : 'تشغيل الإعلان بالصوت'}
+            </button>
+            <button className="audio-gate-silent" type="button" onClick={watchSilently}>
+              مشاهدة بدون صوت
+            </button>
+          </div>
+        </main>
+      )}
     </>
   );
 }

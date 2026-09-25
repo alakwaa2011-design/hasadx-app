@@ -62,6 +62,7 @@ export default function VideoTemplate({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    if (audio.error) return; // The viewer can still watch silently if the audio request failed.
     audio.volume = 0.9;
     if (paused) {
       audio.pause();

@@ -1,0 +1,82 @@
+.audio-gate {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+  background: #fcfaf5;
+  color: #225739;
+  font-family: Cairo, sans-serif;
+  text-align: center;
+}
+
+.audio-gate-card {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.audio-gate-brand {
+  font-family: Tajawal, Cairo, sans-serif;
+  font-size: clamp(56px, 18vw, 82px);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.audio-gate-kicker {
+  margin-top: 10px;
+  color: #8a692b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.audio-gate h1 {
+  margin: 42px 0 0;
+  font-family: Tajawal, Cairo, sans-serif;
+  font-size: clamp(28px, 8vw, 38px);
+  line-height: 1.25;
+}
+
+.audio-gate p {
+  max-width: 310px;
+  min-height: 3em;
+  margin: 12px 0 28px;
+  color: #496754;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.audio-gate button {
+  width: min(100%, 330px);
+  min-height: 52px;
+  border-radius: 14px;
+  font: 800 16px Cairo, sans-serif;
+  cursor: pointer;
+}
+
+.audio-gate-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 1px solid #225739;
+  background: #225739;
+  color: #fff;
+}
+
+.audio-gate-play span {
+  font-size: 14px;
+}
+
+.audio-gate-silent {
+  margin-top: 9px;
+  border: 1px solid #b7c5b8;
+  background: transparent;
+  color: #225739;
+}
+
+.audio-gate button:focus-visible {
+  outline: 3px solid #d9a321;
+  outline-offset: 3px;
+}
