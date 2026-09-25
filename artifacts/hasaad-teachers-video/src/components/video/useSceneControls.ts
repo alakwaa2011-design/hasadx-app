@@ -42,10 +42,12 @@ export function useSceneControls(base: Record<string, number>) {
     setMountKey(value => value + 1);
     setTick(value => value + 1);
   }, []);
+  const pause = useCallback(() => setPaused(true), []);
+  const togglePause = useCallback(() => setPaused(value => !value), []);
   return {
     keys, activeIndex, locked, paused, mountKey, tick, durations,
     activeDuration: base[keys[activeIndex]] ?? 0,
     activeStartTime, totalDuration, onSceneChange, jumpTo, toggleLock,
-    togglePause: () => setPaused(value => !value),
+    pause, togglePause,
   };
 }

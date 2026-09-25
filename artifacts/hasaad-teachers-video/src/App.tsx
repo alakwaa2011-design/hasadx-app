@@ -64,6 +64,40 @@ export default function App() {
     };
   }, [beginPlayback]);
 
+  useEffect(() => {
+    // The preview can remain mounted when its tab or the Replit pane is left.
+    // Never leave the narration running in the background. Export capture
+    // supplies startRecording and must not be interrupted by editor focus.
+    const suspend = () => {
+      if (typeof window.startRecording === 'function') return;
+      const audio = audioRef.current;
+      audio?.pause();
+      window.dispatchEvent(new Event('hasaad-preview-suspend'));
+      if (!warmRef.current) {
+        ++attemptRef.current;
+        if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+        setMedia(audio?.error ? 'error' : 'gesture');
+      }
+    };
+    const onVisibility = () => { if (document.hidden) suspend(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', suspend);
+    window.addEventListener('blur', suspend);
+    // Replit may hide its preview iframe without hiding the browser tab.
+    // In that case visibilitychange never fires, but intersection does.
+    const root = document.getElementById('root');
+    const observer = root && new IntersectionObserver(entries => {
+      if (!entries[0]?.isIntersecting) suspend();
+    });
+    if (root) observer?.observe(root);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', suspend);
+      window.removeEventListener('blur', suspend);
+      observer?.disconnect();
+    };
+  }, []);
+
   const watchSilently = () => {
     ++attemptRef.current;
     if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);

@@ -53,6 +53,11 @@ function PreviewWithControls({ audioRef, muted, onMutedChange }: ControlsProps) 
     return () => frozen.forEach(animation => animation.play());
   }, [controls.paused]);
   useEffect(() => {
+    if (typeof window.startRecording === 'function') return;
+    window.addEventListener('hasaad-preview-suspend', controls.pause);
+    return () => window.removeEventListener('hasaad-preview-suspend', controls.pause);
+  }, [controls.pause]);
+  useEffect(() => {
     if (!(collapsed && tapPinned)) return;
     const outside = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse' && sensor.current && !sensor.current.contains(event.target as Node)) setTapPinned(false);
@@ -71,6 +76,14 @@ function PreviewWithControls({ audioRef, muted, onMutedChange }: ControlsProps) 
       },
     }, '*');
   }, [controls]);
+  const togglePlayback = () => {
+    if (controls.paused) {
+      // Start directly inside the tap handler so mobile browsers allow sound.
+      const audio = audioRef.current;
+      if (audio && !audio.error) audio.play().catch(controls.pause);
+    }
+    controls.togglePause();
+  };
   const visible = !collapsed || hovering || tapPinned;
   return (
     <div className="preview-shell">
@@ -82,11 +95,13 @@ function PreviewWithControls({ audioRef, muted, onMutedChange }: ControlsProps) 
       >
         <div className="preview-sensor-space" />
         <div className={`preview-controls ${visible ? 'visible' : 'hidden'}`}>
-          <button aria-label={controls.paused ? 'تشغيل' : 'إيقاف مؤقت'} onClick={controls.togglePause}>{controls.paused ? <Play /> : <Pause />}</button>
+          <button className="preview-playback-toggle" aria-label={controls.paused ? 'تشغيل الإعلان' : 'إيقاف الإعلان مؤقتًا'} onClick={togglePlayback}>
+            {controls.paused ? <Play /> : <Pause />}<span>{controls.paused ? 'تشغيل' : 'إيقاف'}</span>
+          </button>
           <button aria-label="تكرار المشهد" aria-pressed={controls.locked} onClick={controls.toggleLock}><Repeat /></button>
           <button aria-label={muted ? 'تشغيل الصوت' : 'كتم الصوت'} onClick={() => { onMutedChange(!muted); audioRef.current?.play().catch(() => {}); }}>{muted ? <VolumeX /> : <Volume2 />}</button>
           <PlaybackProgress keys={controls.keys} activeIndex={controls.activeIndex} activeDuration={controls.activeDuration} activeStartTime={controls.activeStartTime} totalDuration={controls.totalDuration} tick={controls.tick} paused={controls.paused} jump={jump} />
-          <button aria-label={collapsed ? 'إظهار التحكم' : 'إخفاء التحكم'} onClick={() => { setCollapsed(value => !value); setTapPinned(false); setHovering(false); }}>{collapsed ? <ChevronUp /> : <ChevronDown />}</button>
+          <button className="preview-collapse-toggle" aria-label={collapsed ? 'إظهار التحكم' : 'إخفاء التحكم'} onClick={() => { setCollapsed(value => !value); setTapPinned(false); setHovering(false); }}>{collapsed ? <ChevronUp /> : <ChevronDown />}</button>
         </div>
       </div>
     </div>
@@ -94,5 +109,8 @@ function PreviewWithControls({ audioRef, muted, onMutedChange }: ControlsProps) 
 }
 
 export default function VideoWithControls(props: ControlsProps) {
-  return typeof window !== 'undefined' && window.self !== window.top ? <PreviewWithControls {...props} /> : <VideoTemplate audioRef={props.audioRef} />;
+  // The export renderer injects startRecording before mounting. Keep its
+  // top-level capture clean, but give normal top-level/mobile viewers controls.
+  const exportCapture = typeof window !== 'undefined' && typeof window.startRecording === 'function';
+  return exportCapture ? <VideoTemplate audioRef={props.audioRef} /> : <PreviewWithControls {...props} />;
 }
