@@ -6,14 +6,14 @@ import { Footage } from '../Footage';
 export function Scene2() {
   const [beat, setBeat] = useState(0);
   useSceneTimer([
-    { time: 550, callback: () => setBeat(1) },
-    { time: 1600, callback: () => setBeat(2) },
-    { time: 2450, callback: () => setBeat(3) },
+    { time: 450, callback: () => setBeat(1) },
+    { time: 1350, callback: () => setBeat(2) },
+    { time: 2300, callback: () => setBeat(3) },
     { time: 3550, callback: () => setBeat(4) },
   ]);
   return (
     <motion.section className="shot shot-map" initial={{ opacity: 0, clipPath: 'circle(10% at 52% 70%)' }} animate={{ opacity: 1, clipPath: 'circle(130% at 52% 70%)' }} exit={{ opacity: 0, scale: 1.12 }} transition={{ duration: 0.6 }}>
-      <div className="shot-topline dark-line"><span>حصاد</span><span>{beat >= 4 ? '02 — لوحة التحفيز' : '02 — الخريطة الذهنية'}</span></div>
+      <div className="shot-topline dark-line"><span>حصاد</span><span>{beat >= 4 ? '04 — لوحة التحفيز' : '04 — الخريطة الذهنية'}</span></div>
       <div className="map-heading">
         <span className="eyebrow">{beat >= 4 ? 'كل تقدّم يستحق تشجيعًا' : 'حين تصبح الفكرة صورة'}</span>
         <motion.h2 key={beat >= 4 ? 'reward' : 'map'} initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34 }}>
@@ -37,7 +37,7 @@ export function Scene2() {
         <Footage file="map-result" />
         <span>انظر كيف تتصل المفاهيم</span>
       </motion.div>}
-      <div className="shot-bottomline dark-line"><span>{beat >= 4 ? 'حفّز طلابك' : 'نظّم المحتوى'}</span><span>02 / 04</span></div>
+      <div className="shot-bottomline dark-line"><span>{beat >= 4 ? 'حفّز طلابك' : 'نظّم المحتوى'}</span><span dir="ltr">04 / 09</span></div>
     </motion.section>
   );
 }

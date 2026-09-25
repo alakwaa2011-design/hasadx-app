@@ -12,19 +12,25 @@ import { Scene2 } from './video_scenes/Scene2';
 import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
+import { Scene6 } from './video_scenes/Scene6';
+import { Scene7 } from './video_scenes/Scene7';
+import { Scene8 } from './video_scenes/Scene8';
 import './film.css';
 
 export const SCENE_DURATIONS = {
-  scene0: 3800,
-  scene1: 7100,
-  scene2: 6000,
-  scene3: 7100,
-  scene4: 5500,
-  scene5: 4000,
+  scene0: 2700,
+  scene1: 4400,
+  scene6: 7800,
+  scene2: 5800,
+  scene7: 5600,
+  scene8: 4250,
+  scene3: 6700,
+  scene4: 7100,
+  scene5: 5250,
 };
 
 const VIDEO_ASPECT_RATIO: VideoAspectRatio = '9:16';
-const SCENES: Record<string, React.ComponentType> = { scene0: Scene0, scene1: Scene1, scene2: Scene2, scene3: Scene3, scene4: Scene4, scene5: Scene5 };
+const SCENES: Record<string, React.ComponentType> = { scene0: Scene0, scene1: Scene1, scene2: Scene2, scene3: Scene3, scene4: Scene4, scene5: Scene5, scene6: Scene6, scene7: Scene7, scene8: Scene8 };
 const SCENE_START_SEC: Record<string, number> = Object.fromEntries(
   Object.keys(SCENE_DURATIONS).map((key, index, keys) => [
     key,

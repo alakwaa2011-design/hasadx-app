@@ -7,18 +7,19 @@ export function Scene4() {
   const [beat, setBeat] = useState(0);
   useSceneTimer([
     { time: 350, callback: () => setBeat(1) },
-    { time: 850, callback: () => setBeat(2) },
-    { time: 1800, callback: () => setBeat(3) },
-    { time: 3250, callback: () => setBeat(4) },
+    { time: 900, callback: () => setBeat(2) },
+    { time: 1850, callback: () => setBeat(3) },
+    { time: 3150, callback: () => setBeat(4) },
+    { time: 5400, callback: () => setBeat(5) },
   ]);
   return (
     <motion.section className="shot shot-tug" initial={{ opacity: 0, scale: 1.12, filter: 'blur(8px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 1.17 }} transition={{ duration: 0.43 }}>
-      <div className="shot-topline"><span>حصاد</span><span>04 — شد الحبل</span></div>
+      <div className="shot-topline"><span>حصاد</span><span>08 — شد الحبل</span></div>
       <div className="tug-heading">
         <span className="eyebrow">منافسة بين فريقين</span>
         <AnimatePresence mode="sync">
           <motion.h2 key={beat >= 4 ? 'winner' : 'teams'} initial={{ opacity: 0, y: 27 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -27 }} transition={{ duration: 0.32 }}>
-            {beat >= 4 ? <>والفوز<br /><em>للأزرق.</em></> : <>فريقان.<br /><em>سؤال لكل فريق.</em></>}
+            {beat >= 4 ? <>الأزرق <em>فاز.</em><br />الأحمر <span className="tug-loser">خسر.</span></> : <>فريقان.<br /><em>سؤال لكل فريق.</em></>}
           </motion.h2>
         </AnimatePresence>
       </div>
@@ -43,10 +44,17 @@ export function Scene4() {
           )}
         </AnimatePresence>
       </div>
-      <motion.div className="tug-label" initial={{ opacity: 0 }} animate={{ opacity: beat >= 1 ? 1 : 0 }} transition={{ duration: 0.3 }}>
-        {beat >= 4 ? 'نتيجة حقيقية · ٣٢٠٠ مقابل ١٥٠٠' : beat >= 3 ? 'الإجابة تغيّر مجرى المباراة' : 'السؤال على الجهتين · الحماس في الميدان'}
-      </motion.div>
-      <div className="shot-bottomline"><span>تعلّم وتنافس</span><span>04 / 04</span></div>
+      {beat >= 4 ? (
+        <motion.div className="tug-outcome" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, scale: beat >= 5 ? 1.03 : 1 }} transition={{ duration: 0.38 }}>
+          <div className="blue"><span>الأزرق · فائز</span><strong dir="ltr">3200</strong></div>
+          <div className="red"><span>الأحمر · خاسر</span><strong dir="ltr">1500</strong></div>
+        </motion.div>
+      ) : (
+        <motion.div className="tug-label" initial={{ opacity: 0 }} animate={{ opacity: beat >= 1 ? 1 : 0 }} transition={{ duration: 0.3 }}>
+          {beat >= 3 ? 'الإجابة تغيّر مجرى المباراة' : 'السؤال على الجهتين · الحماس في الميدان'}
+        </motion.div>
+      )}
+      <div className="shot-bottomline"><span>تعلّم وتنافس</span><span dir="ltr">08 / 09</span></div>
     </motion.section>
   );
 }

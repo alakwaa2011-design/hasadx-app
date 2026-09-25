@@ -6,14 +6,14 @@ import { Footage } from '../Footage';
 export function Scene1() {
   const [beat, setBeat] = useState(0);
   useSceneTimer([
-    { time: 600, callback: () => setBeat(1) },
-    { time: 1700, callback: () => setBeat(2) },
-    { time: 4250, callback: () => setBeat(3) },
-    { time: 6350, callback: () => setBeat(4) },
+    { time: 300, callback: () => setBeat(1) },
+    { time: 850, callback: () => setBeat(2) },
+    { time: 2150, callback: () => setBeat(3) },
+    { time: 3450, callback: () => setBeat(4) },
   ]);
   return (
     <motion.section className="shot shot-worksheet" initial={{ opacity: 0, scale: 1.06 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.18, filter: 'blur(7px)' }} transition={{ duration: 0.45 }}>
-      <div className="shot-topline"><span>حصاد</span><span>01 — تحضير الدرس</span></div>
+      <div className="shot-topline"><span>حصاد</span><span>02 — تحضير الدرس</span></div>
       <div className="feature-heading">
         <span className="eyebrow">من داخل المنصة · تسجيل حقيقي</span>
         <motion.h2 key={beat >= 3 ? 'worksheet' : beat >= 2 ? 'plan' : 'input'} initial={{ y: 36, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.42 }}>
@@ -36,7 +36,7 @@ export function Scene1() {
         </AnimatePresence>
       </div>
       <motion.div className="feature-tag" initial={{ opacity: 0, y: 20 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 20 }} transition={{ duration: 0.4 }}>أدوات جاهزة للمعلم</motion.div>
-      <div className="shot-bottomline"><span>حضّر بذكاء</span><span>01 / 04</span></div>
+      <div className="shot-bottomline"><span>حضّر بذكاء</span><span dir="ltr">02 / 09</span></div>
     </motion.section>
   );
 }
