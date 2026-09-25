@@ -8,32 +8,36 @@ export function Scene2() {
   useSceneTimer([
     { time: 550, callback: () => setBeat(1) },
     { time: 1600, callback: () => setBeat(2) },
-    { time: 2850, callback: () => setBeat(3) },
-    { time: 4300, callback: () => setBeat(4) },
+    { time: 2450, callback: () => setBeat(3) },
+    { time: 3550, callback: () => setBeat(4) },
   ]);
   return (
     <motion.section className="shot shot-map" initial={{ opacity: 0, clipPath: 'circle(10% at 52% 70%)' }} animate={{ opacity: 1, clipPath: 'circle(130% at 52% 70%)' }} exit={{ opacity: 0, scale: 1.12 }} transition={{ duration: 0.6 }}>
-      <div className="shot-topline dark-line"><span>حصاد</span><span>02 — الخريطة الذهنية</span></div>
+      <div className="shot-topline dark-line"><span>حصاد</span><span>{beat >= 4 ? '02 — لوحة التحفيز' : '02 — الخريطة الذهنية'}</span></div>
       <div className="map-heading">
-        <span className="eyebrow">حين تصبح الفكرة صورة</span>
-        <h2>اربط <em>الأفكار.</em></h2>
-        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 20 }}>بخريطة واحدة واضحة</motion.p>
+        <span className="eyebrow">{beat >= 4 ? 'كل تقدّم يستحق تشجيعًا' : 'حين تصبح الفكرة صورة'}</span>
+        <motion.h2 key={beat >= 4 ? 'reward' : 'map'} initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34 }}>
+          {beat >= 4 ? <>لوحة<br /><em>التحفيز.</em></> : <>اربط <em>الأفكار.</em></>}
+        </motion.h2>
+        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 20 }}>{beat >= 4 ? 'نقاط الصف أمامك لحظة بلحظة' : 'بخريطة واحدة واضحة'}</motion.p>
       </div>
       <div className="map-thread map-thread-a" /><div className="map-thread map-thread-b" />
-      <div className="frame map-frame">
-        <div className="frame-chrome"><span /><span /><span /><strong>من موضوع إلى خريطة</strong></div>
+      <div className={`frame ${beat >= 4 ? 'reward-frame' : 'map-frame'}`}>
+        <div className="frame-chrome"><span /><span /><span /><strong>{beat >= 4 ? 'لوحة تحفيز الصف' : 'من موضوع إلى خريطة'}</strong></div>
         <AnimatePresence mode="sync">
-          {beat < 2
-            ? <motion.div key="map-input" className="frame-content" exit={{ opacity: 0, scale: 1.3 }} transition={{ duration: 0.3 }}><Footage file="map-input" /></motion.div>
-            : <motion.div key="map-result" className="frame-content" initial={{ opacity: 0, scale: 1.3 }} animate={{ opacity: 1, scale: beat >= 4 ? 1.14 : 1 }} transition={{ duration: 0.55 }}><Footage file="map-result" /></motion.div>
+          {beat >= 4
+            ? <motion.div key="reward-board" className="frame-content" initial={{ opacity: 0, scale: 1.08 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.38 }}><Footage file="reward-board-redacted" /></motion.div>
+            : beat < 2
+              ? <motion.div key="map-input" className="frame-content" exit={{ opacity: 0, scale: 1.3 }} transition={{ duration: 0.3 }}><Footage file="map-input" /></motion.div>
+              : <motion.div key="map-result" className="frame-content" initial={{ opacity: 0, scale: 1.3 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.55 }}><Footage file="map-result" /></motion.div>
           }
         </AnimatePresence>
       </div>
-      <motion.div className="map-detail" initial={{ opacity: 0, y: 45, rotate: 5 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 45, rotate: beat >= 3 ? -3 : 5 }} transition={{ duration: 0.52 }}>
+      {beat < 4 && <motion.div className="map-detail" initial={{ opacity: 0, y: 45, rotate: 5 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 45, rotate: beat >= 3 ? -3 : 5 }} transition={{ duration: 0.52 }}>
         <Footage file="map-result" />
         <span>انظر كيف تتصل المفاهيم</span>
-      </motion.div>
-      <div className="shot-bottomline dark-line"><span>نظّم المحتوى</span><span>02 / 04</span></div>
+      </motion.div>}
+      <div className="shot-bottomline dark-line"><span>{beat >= 4 ? 'حفّز طلابك' : 'نظّم المحتوى'}</span><span>02 / 04</span></div>
     </motion.section>
   );
 }

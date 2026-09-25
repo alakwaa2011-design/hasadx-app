@@ -53,6 +53,8 @@
 .map-thread-b { width:93vw; height:93vw; right:-57%; bottom:9%; border-color:#76afae; }
 .map-frame { position:absolute; top:38%; right:3%; width:94%; height:30%; z-index:2; box-shadow:0 5vmin 8vmin #1b553530; }
 .map-frame .footage { object-fit:cover; }
+.reward-frame { position:absolute; top:40%; right:4%; width:92%; height:33%; z-index:2; box-shadow:0 5vmin 8vmin #1b553530; }
+.reward-frame .footage { object-fit:cover; object-position:center top; }
 .map-detail { position:absolute; z-index:3; right:13%; top:69%; width:74%; height:17%; background:#fff; border:1.2vmin solid #fff; border-radius:3vmin; box-shadow:0 3vmin 5vmin #15372450; overflow:hidden; }
 .map-detail .footage { object-fit:cover; object-position:center; transform:scale(1.7); }
 .map-detail span { position:absolute; bottom:0; right:0; width:100%; padding:.6vmin 2vmin; text-align:center; background:#1e5137; color:white; font-size:2.8vmin; font-weight:800; }
