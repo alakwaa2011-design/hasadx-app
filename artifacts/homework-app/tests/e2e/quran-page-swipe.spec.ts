@@ -49,14 +49,20 @@ async function swipePointForPage(pageFigure: Locator, direction: "right" | "left
   };
 }
 
-async function swipe(page: Page, start: Point, end: Point, browserName: string): Promise<void> {
+async function swipe(
+  page: Page,
+  start: Point,
+  end: Point,
+  browserName: string,
+  finish: "end" | "cancel" = "end",
+): Promise<boolean | undefined> {
   if (browserName === "webkit") {
-    await page.evaluate(({ start, end }) => {
+    return page.evaluate(({ start, end, finish }) => {
       const target = document.elementFromPoint(start.x, start.y);
       if (!target) throw new Error("Could not find the WebKit touch target");
 
       const dispatchTouch = (
-        type: "touchstart" | "touchmove" | "touchend",
+        type: "touchstart" | "touchmove" | "touchend" | "touchcancel",
         point: Point,
       ): boolean => {
         const touch = {
@@ -75,11 +81,11 @@ async function swipe(page: Page, start: Point, end: Point, browserName: string):
         };
         const event = new Event(type, {
           bubbles: true,
-          cancelable: type !== "touchend",
+          cancelable: type === "touchstart" || type === "touchmove",
         });
         Object.defineProperties(event, {
-          touches: { value: type === "touchend" ? [] : [touch] },
-          targetTouches: { value: type === "touchend" ? [] : [touch] },
+          touches: { value: type === "touchend" || type === "touchcancel" ? [] : [touch] },
+          targetTouches: { value: type === "touchend" || type === "touchcancel" ? [] : [touch] },
           changedTouches: { value: [touch] },
         });
         target.dispatchEvent(event);
@@ -92,8 +98,10 @@ async function swipe(page: Page, start: Point, end: Point, browserName: string):
         y: Math.round((start.y + end.y) / 2),
       });
       const moveWasCancelled = dispatchTouch("touchmove", end);
-      dispatchTouch("touchend", end);
-      if (!moveWasCancelled) {
+      dispatchTouch(finish === "cancel" ? "touchcancel" : "touchend", end);
+      // Synthetic WebKit touch events do not create a compatibility click.
+      // Check page-text click suppression explicitly; do not fabricate a toolbar click.
+      if (finish === "end" && !moveWasCancelled && target instanceof Element && target.closest("[data-quran-page]")) {
         target.dispatchEvent(new MouseEvent("click", {
           bubbles: true,
           cancelable: true,
@@ -101,8 +109,8 @@ async function swipe(page: Page, start: Point, end: Point, browserName: string):
           view: window,
         }));
       }
-    }, { start, end });
-    return;
+      return moveWasCancelled;
+    }, { start, end, finish });
   }
 
   const session = await page.context().newCDPSession(page);
@@ -126,7 +134,7 @@ async function swipe(page: Page, start: Point, end: Point, browserName: string):
       touchPoints: [{ ...end, radiusX: 4, radiusY: 4, force: 1 }],
     });
     await session.send("Input.dispatchTouchEvent", {
-      type: "touchEnd",
+      type: finish === "cancel" ? "touchCancel" : "touchEnd",
       touchPoints: [],
     });
   } finally {
@@ -155,7 +163,7 @@ test("keeps Mushaf page swipes correctly directed and isolated from taps", async
   });
 
   await page.goto("/quran/1");
-  const pageSelect = page.getByTestId("select-mobile-page");
+  const pageSelect = page.getByRole("combobox", { name: "اختيار الصفحة" });
   await expect(pageSelect).toBeVisible();
   await pageSelect.selectOption("300");
 
@@ -163,6 +171,9 @@ test("keeps Mushaf page swipes correctly directed and isolated from taps", async
   await expect(page300).toBeVisible();
   const readerTipsSkip = page.getByRole("button", { name: "تخطي", exact: true });
   if (await readerTipsSkip.isVisible()) await readerTipsSkip.click();
+  await page.evaluate(() => {
+    (window as Window & { toolbarClickCount?: number }).toolbarClickCount = 0;
+  });
   const rightSwipeStart = await swipePointForPage(page300, "right");
   await swipe(page, rightSwipeStart, { x: rightSwipeStart.x + 120, y: rightSwipeStart.y }, browserName);
 
@@ -187,14 +198,21 @@ test("keeps Mushaf page swipes correctly directed and isolated from taps", async
   await expect(page300).toBeVisible();
 
   const verticalStart = await pointInside(page300, "center");
-  await swipe(page, verticalStart, { x: verticalStart.x + 12, y: verticalStart.y + 105 }, browserName);
+  const verticalPrevented = await swipe(page, verticalStart, { x: verticalStart.x + 12, y: verticalStart.y + 105 }, browserName);
+  if (browserName === "webkit") expect(verticalPrevented).toBe(false);
   await expect(page300).toBeVisible();
+
+  const cancelledStart = await swipePointForPage(page300, "right");
+  await swipe(page, cancelledStart, { x: cancelledStart.x + 120, y: cancelledStart.y }, browserName, "cancel");
+  await page.waitForTimeout(200); // A cancelled swipe must not schedule the delayed page turn.
+  await expect(page300).toBeVisible();
+  await expect(page301).toHaveCount(0);
 
   const flickStart = await swipePointForPage(page300, "right");
   await swipe(page, flickStart, { x: flickStart.x + 36, y: flickStart.y }, browserName);
   await expect(page301).toBeVisible();
   const returnFlickStart = await swipePointForPage(page301, "left");
-  await swipe(page, returnFlickStart, { x: returnFlickStart.x - 36, y: returnFlickStart.y }, browserName);
+  await swipe(page, returnFlickStart, { x: returnFlickStart.x - 120, y: returnFlickStart.y }, browserName);
   await expect(page300).toBeVisible();
 
   const toolbar = page.locator(".quran-reader-header");
