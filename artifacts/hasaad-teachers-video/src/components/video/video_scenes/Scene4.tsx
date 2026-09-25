@@ -19,7 +19,7 @@ export function Scene4() {
         <span className="eyebrow">منافسة بين فريقين</span>
         <AnimatePresence mode="sync">
           <motion.h2 key={beat >= 4 ? 'game' : 'teams'} initial={{ opacity: 0, y: 27 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -27 }} transition={{ duration: 0.32 }}>
-            {beat >= 4 ? <>المنافسة<br /><em>تشتعل!</em></> : <>فريقان.<br /><em>كل إجابة تُحرّك الحبل.</em></>}
+            {beat >= 4 ? <>كل إجابة<br /><em>تحرّك المنافسة.</em></> : <>شدّ<br /><em>الحبل.</em></>}
           </motion.h2>
         </AnimatePresence>
       </div>
@@ -45,7 +45,7 @@ export function Scene4() {
         </AnimatePresence>
       </div>
       <motion.div className="tug-label" initial={{ opacity: 0 }} animate={{ opacity: beat >= 1 ? 1 : 0 }} transition={{ duration: 0.3 }}>
-        {beat >= 3 ? 'الإجابة تغيّر مجرى المباراة' : 'السؤال على الجهتين · الحماس في الميدان'}
+        {beat >= 3 ? 'الإجابة تغيّر مجرى المباراة' : 'فريقان · سؤال واحد · حبل واحد'}
       </motion.div>
       <div className="shot-bottomline"><span>تعلّم وتنافس</span><span dir="ltr">08 / 09</span></div>
     </motion.section>

@@ -2066,3 +2066,24 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4-short.mp
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... مفاجأة جديدة في كلّ دور!"
+
+[[outputs]]
+id = "C50UApyLGqhHPZF-4amb9"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/bed-directed.mp3"
+type = "audio"
+title = "directed teacher film score"
+description = "Generated music: Original instrumental score for a 50-second Arabic vertical teacher product film. Elegant modern warm electronic and organic percussion, 108 BPM, short syncopated muted-pluck motif w…"
+
+[[outputs]]
+id = "Efwvb6lAwwGMu1FJ3XRdI"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/mark-accent.mp3"
+type = "audio"
+title = "game mark accent"
+description = "Generated sound effect: One crisp felt-tip marker stroke drawing an X on a board, followed by a tiny warm confirm tap. Tactile and clean, around half a second, no voices, no music, no exaggerated swo…"
+
+[[outputs]]
+id = "CUd8TX5fcD5ll3-ha73K2"
+uri = "file://artifacts/hasaad-teachers-video/public/audio/wheel-accent.mp3"
+type = "audio"
+title = "wheel landing accent"
+description = "Generated sound effect: A short elegant tactile classroom spinner: three rapidly decelerating wooden pointer clicks ending in one soft precise landing tap. Minimal warm acoustic sound, no voices, no …"

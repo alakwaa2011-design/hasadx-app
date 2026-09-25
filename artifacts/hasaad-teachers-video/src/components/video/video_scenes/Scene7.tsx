@@ -8,9 +8,9 @@ export function Scene7() {
   useSceneTimer([
     { time: 450, callback: () => setBeat(1) },
     { time: 950, callback: () => setBeat(2) },
-    { time: 3100, callback: () => setBeat(3) },
-    { time: 4050, callback: () => setBeat(4) },
-    { time: 5350, callback: () => setBeat(5) },
+    { time: 2950, callback: () => setBeat(3) },
+    { time: 3200, callback: () => setBeat(4) },
+    { time: 4950, callback: () => setBeat(5) },
   ]);
 
   return (
@@ -24,7 +24,7 @@ export function Scene7() {
       <div className="picker-stage">
         <motion.div className="picker-wheel-wrap" animate={{ scale: beat >= 4 ? 0.68 : 1, x: beat >= 4 ? '-36%' : 0, opacity: beat >= 5 ? 0.32 : 1 }} transition={{ duration: 0.58 }}>
           <div className="picker-arrow" />
-          <motion.div className="picker-wheel" initial={{ rotate: -35, scale: 0.45 }} animate={{ rotate: beat >= 2 ? 1090 : 0, scale: 1 }} transition={{ rotate: { duration: 2.45, ease: [0.1, 0.75, 0.16, 1] }, scale: { duration: 0.55 } }}>
+          <motion.div className="picker-wheel" initial={{ rotate: -35, scale: 0.45 }} animate={{ rotate: beat >= 2 ? 1090 : 0, scale: 1 }} transition={{ rotate: { duration: 2.15, ease: [0.1, 0.75, 0.16, 1] }, scale: { duration: 0.55 } }}>
             <span>فكرة</span><span>سؤال</span><span>تحدٍّ</span><span>مشاركة</span>
             <div className="picker-wheel-center">؟</div>
           </motion.div>

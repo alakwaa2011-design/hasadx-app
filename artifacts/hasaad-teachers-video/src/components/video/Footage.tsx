@@ -19,6 +19,7 @@ export function Footage({ file, className = '', style }: {
       className={`footage ${className}`}
       style={style}
       src={`${import.meta.env.BASE_URL}video/${file}.mp4`}
+      poster={`${import.meta.env.BASE_URL}video/posters/${file}.jpg`}
       autoPlay
       muted
       playsInline

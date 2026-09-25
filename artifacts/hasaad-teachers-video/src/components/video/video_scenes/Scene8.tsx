@@ -8,9 +8,9 @@ export function Scene8() {
   useSceneTimer([
     { time: 350, callback: () => setBeat(1) },
     { time: 1300, callback: () => setBeat(2) },
-    { time: 2750, callback: () => setBeat(3) },
-    { time: 4100, callback: () => setBeat(4) },
-    { time: 5450, callback: () => setBeat(5) },
+    { time: 2250, callback: () => setBeat(3) },
+    { time: 2700, callback: () => setBeat(4) },
+    { time: 3550, callback: () => setBeat(5) },
   ]);
 
   return (
@@ -23,7 +23,7 @@ export function Scene8() {
       </div>
       <div className="xo-ghost xo-ghost-x">×</div>
       <div className="xo-ghost xo-ghost-o">○</div>
-      <motion.div className="xo-recording" initial={{ opacity: 0, scale: 0.78, rotate: 6 }} animate={{ opacity: 1, scale: beat >= 4 ? 1.12 : 1, rotate: beat >= 4 ? 0 : -2 }} transition={{ duration: 0.48, ease: [0.2, 0.8, 0.25, 1] }}>
+      <motion.div className="xo-recording" initial={{ opacity: 0, scale: 0.9, rotate: 3 }} animate={{ opacity: 1, scale: beat >= 4 ? 1.04 : 1, rotate: beat >= 4 ? 0 : -2 }} transition={{ duration: 0.48, ease: [0.2, 0.8, 0.25, 1] }}>
         <Footage file="xo-game" />
         <span className="xo-recording-caption">من تسجيل اللعبة الحقيقي</span>
       </motion.div>

@@ -8,8 +8,8 @@ export function Scene2() {
   useSceneTimer([
     { time: 450, callback: () => setBeat(1) },
     { time: 1350, callback: () => setBeat(2) },
-    { time: 2300, callback: () => setBeat(3) },
-    { time: 3550, callback: () => setBeat(4) },
+    { time: 2000, callback: () => setBeat(3) },
+    { time: 2700, callback: () => setBeat(4) },
   ]);
   return (
     <motion.section className="shot shot-map" initial={{ opacity: 0, clipPath: 'circle(10% at 52% 70%)' }} animate={{ opacity: 1, clipPath: 'circle(130% at 52% 70%)' }} exit={{ opacity: 0, scale: 1.12 }} transition={{ duration: 0.6 }}>
@@ -33,10 +33,6 @@ export function Scene2() {
           }
         </AnimatePresence>
       </div>
-      {beat < 4 && <motion.div className="map-detail" initial={{ opacity: 0, y: 45, rotate: 5 }} animate={{ opacity: beat >= 3 ? 1 : 0, y: beat >= 3 ? 0 : 45, rotate: beat >= 3 ? -3 : 5 }} transition={{ duration: 0.52 }}>
-        <Footage file="map-result" />
-        <span>انظر كيف تتصل المفاهيم</span>
-      </motion.div>}
       <div className="shot-bottomline dark-line"><span>{beat >= 4 ? 'حفّز طلابك' : 'نظّم المحتوى'}</span><span dir="ltr">04 / 09</span></div>
     </motion.section>
   );

@@ -23,9 +23,9 @@ export function Scene6() {
     { time: 450, callback: () => setBeat(1) },
     { time: 1750, callback: () => setBeat(2) },
     { time: 3050, callback: () => setBeat(3) },
-    { time: 4200, callback: () => setBeat(4) },
-    { time: 5450, callback: () => setBeat(5) },
-    { time: 6550, callback: () => setBeat(6) },
+    { time: 3800, callback: () => setBeat(4) },
+    { time: 4750, callback: () => setBeat(5) },
+    { time: 6500, callback: () => setBeat(6) },
   ]);
 
   return (
