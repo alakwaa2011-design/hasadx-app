@@ -28,6 +28,7 @@ import {
   listQuranFoundationDisplayReciters,
   ABU_BAKR_AL_DHABI_RECITATION_ID,
   MAHMOUD_ALI_AL_BANNA_RECITATION_ID,
+  FARES_ABBAD_RECITATION_ID,
   SADIQ_ALNIZAM_RECITATION_ID,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
@@ -264,6 +265,7 @@ describe("Quran Foundation client", () => {
       { id: SADIQ_ALNIZAM_RECITATION_ID, style: "Murattal" },
       { id: 1, style: "Mujawwad" },
       { id: 2, style: "Murattal" },
+      { id: FARES_ABBAD_RECITATION_ID, style: "Murattal" },
       { id: 1_000_168, style: "Kids repeat" },
       { id: 8, style: "Mujawwad" },
       { id: 9, style: "Murattal" },
@@ -281,6 +283,11 @@ describe("Quran Foundation client", () => {
     });
     expect(display.find((item) => item.id === MAHMOUD_ALI_AL_BANNA_RECITATION_ID)).toMatchObject({
       name: "محمود علي البنا",
+      style: "Murattal",
+      available: true,
+    });
+    expect(display.find((item) => item.id === FARES_ABBAD_RECITATION_ID)).toMatchObject({
+      name: "فارس عباد",
       style: "Murattal",
       available: true,
     });
@@ -313,6 +320,15 @@ describe("Quran Foundation client", () => {
       .resolves.toBe("https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps/001001.mp3");
     await expect(getQuranFoundationAudioUrl(MAHMOUD_ALI_AL_BANNA_RECITATION_ID, 114, 6))
       .resolves.toBe("https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps/114006.mp3");
+  });
+
+  it("serves Fares Abbad as a complete ayah-scoped Murattal recitation", async () => {
+    await expect(getQuranFoundationAyahTimings(FARES_ABBAD_RECITATION_ID, 2, 255))
+      .rejects.toThrow("ayah-scoped playback");
+    await expect(getQuranFoundationAudioUrl(FARES_ABBAD_RECITATION_ID, 1, 1))
+      .resolves.toBe("https://everyayah.com/data/Fares_Abbad_64kbps/001001.mp3");
+    await expect(getQuranFoundationAudioUrl(FARES_ABBAD_RECITATION_ID, 114, 6))
+      .resolves.toBe("https://everyayah.com/data/Fares_Abbad_64kbps/114006.mp3");
   });
 
   it("loads Abu Bakr Al-Dhabi timings for every surah while preserving the existing At-Tin sample", async () => {

@@ -22,6 +22,8 @@ const MAHER_AL_MUAIQLY_AUDIO_BASE_URL = "https://everyayah.com/data/MaherAlMuaiq
 export const MAHMOUD_ALI_AL_BANNA_RECITATION_ID = 2_000_032;
 const MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL =
   "https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps";
+export const FARES_ABBAD_RECITATION_ID = 2_000_170;
+const FARES_ABBAD_AUDIO_BASE_URL = "https://everyayah.com/data/Fares_Abbad_64kbps";
 export const SADIQ_ALNIZAM_RECITATION_ID = 2_000_114;
 const SADIQ_ALNIZAM_AUDIO_URL =
   "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3";
@@ -545,6 +547,12 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
     style: "Murattal",
     available: true,
   });
+  selected.set("فارس عباد:Murattal", {
+    id: FARES_ABBAD_RECITATION_ID,
+    name: "فارس عباد",
+    style: "Murattal",
+    available: true,
+  });
   return [...selected.values()].sort((left, right) =>
     left.name.localeCompare(right.name, "ar")
     || (left.style ?? "").localeCompare(right.style ?? "", "en"));
@@ -748,6 +756,7 @@ export async function getQuranFoundationAyahTimings(
   if (
     recitationId === MAHER_AL_MUAIQLY_RECITATION_ID
     || recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID
+    || recitationId === FARES_ABBAD_RECITATION_ID
   ) {
     throw new Error("This standard recitation uses ayah-scoped playback");
   }
@@ -993,10 +1002,13 @@ export async function getQuranFoundationAudioUrl(
     validateVerseNumbers(surahNumber, ayahNumber);
     return getAbuBakrAlDhabiAudioUrl(surahNumber);
   }
-  if (recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID) {
+  if (recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID || recitationId === FARES_ABBAD_RECITATION_ID) {
     validateVerseNumbers(surahNumber, ayahNumber);
+    const baseUrl = recitationId === FARES_ABBAD_RECITATION_ID
+      ? FARES_ABBAD_AUDIO_BASE_URL
+      : MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL;
     const fileName = `${String(surahNumber).padStart(3, "0")}${String(ayahNumber).padStart(3, "0")}.mp3`;
-    const value = `${MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL}/${fileName}`;
+    const value = `${baseUrl}/${fileName}`;
     cachedAudio.set(`${recitationId}:${surahNumber}:${ayahNumber}`, {
       value,
       expiresAt: Date.now() + AUDIO_CACHE_MS,

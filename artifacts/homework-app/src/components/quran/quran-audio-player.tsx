@@ -281,7 +281,8 @@ export function QuranAudioPlayer({
 
     if (timingsQuery.isError || !timingsQuery.data?.synchronized) {
        const supportsAyahScopedFallback = recitationId === 1_000_159
-         || recitationId === 2_000_032;
+         || recitationId === 2_000_032
+         || recitationId === 2_000_170;
        if (recitationId >= 1_000_000 && !supportsAyahScopedFallback) {
         activeSeekRef.current = null;
         currentAudioSrcRef.current = undefined;
