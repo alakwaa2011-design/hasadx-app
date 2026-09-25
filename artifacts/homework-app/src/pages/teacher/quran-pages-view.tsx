@@ -43,6 +43,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { QuranMadaniPageRenderer } from "./quran-madani-page";
+import { pageSwipeDirection, swipeAxis, type SwipeAxis } from "./quran-swipe-gesture";
 import { QuranAudioPlayer } from "@/components/quran/quran-audio-player";
 import { useQuranAudioHost } from "@/components/quran/quran-audio-host";
 import {
@@ -199,19 +200,27 @@ export function QuranPagesView({
   );
   const continuousInitializedRef = useRef(false);
   const [failedPages, setFailedPages] = useState<Set<number>>(new Set());
-  const swipeStartXRef = useRef<number | null>(null);
-  const swipeLastXRef = useRef<number | null>(null);
-  const swipeStartYRef = useRef<number | null>(null);
-  const swipePointerIdRef = useRef<number | null>(null);
-  const suppressSwipeClickRef = useRef(false);
+  const swipeGestureRef = useRef<{
+    source: "touch" | "pen";
+    id: number;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    startTime: number;
+    axis: SwipeAxis | null;
+    shell: HTMLElement;
+  } | null>(null);
+  const swipeClickUntilRef = useRef(0);
+  const swipeTurnLockedRef = useRef(false);
+  const swipeNavigateTimerRef = useRef<number | null>(null);
+  const swipeUnlockTimerRef = useRef<number | null>(null);
   const readerMainRef = useRef<HTMLElement | null>(null);
   const continuousProgrammaticNavigationRef = useRef(false);
   const continuousLoadMoreRef = useRef<HTMLDivElement | null>(null);
   const playbackAutoNavigationRef = useRef(false);
   const playbackAutoNavigationTimeoutRef = useRef<number | null>(null);
-  const didSwipeRef = useRef(false);
   const [turnDirection, setTurnDirection] = useState<"next" | "previous" | null>(null);
-  const [swipeOffset, setSwipeOffset] = useState(0);
 
   const {
     readerState,
@@ -1126,100 +1135,157 @@ export function QuranPagesView({
     const main = readerMainRef.current;
     if (!main) return;
 
-    const resetSwipe = () => {
-      swipeStartXRef.current = null;
-      swipeLastXRef.current = null;
-      swipeStartYRef.current = null;
-      swipePointerIdRef.current = null;
-      suppressSwipeClickRef.current = false;
-      setSwipeOffset(0);
+    const restoreShell = (shell: HTMLElement) => {
+      if (!shell.isConnected) return;
+      shell.style.transition = "transform 170ms cubic-bezier(.22,.82,.28,1)";
+      shell.style.removeProperty("--quran-swipe-x");
+      window.setTimeout(() => {
+        if (shell.isConnected) shell.style.removeProperty("transition");
+      }, 180);
+    };
+    const cancelGesture = () => {
+      const gesture = swipeGestureRef.current;
+      swipeGestureRef.current = null;
+      if (gesture) restoreShell(gesture.shell);
+    };
+    const startGesture = (source: "touch" | "pen", id: number, x: number, y: number, target: EventTarget | null) => {
+      if (pageLayout === "continuous" || swipeNavigateTimerRef.current !== null || swipeGestureRef.current || !(target instanceof Element)) return;
+      if (target.closest("input,select,textarea,[contenteditable='true']")) return;
+      const shell = target.closest<HTMLElement>(".quran-page-shell--paged");
+      if (!shell || !main.contains(shell)) return;
+      if (swipeTurnLockedRef.current) {
+        swipeTurnLockedRef.current = false;
+        if (swipeUnlockTimerRef.current !== null) window.clearTimeout(swipeUnlockTimerRef.current);
+        swipeUnlockTimerRef.current = null;
+        setTurnDirection(null);
+      }
+      swipeClickUntilRef.current = 0;
+      swipeGestureRef.current = {
+        source, id, startX: x, startY: y, lastX: x, lastY: y,
+        startTime: performance.now(), axis: null, shell,
+      };
+    };
+    const moveGesture = (source: "touch" | "pen", id: number, x: number, y: number, event: Event) => {
+      const gesture = swipeGestureRef.current;
+      if (!gesture || gesture.source !== source || gesture.id !== id) return;
+      gesture.lastX = x;
+      gesture.lastY = y;
+      const dx = x - gesture.startX;
+      const dy = y - gesture.startY;
+      if (!gesture.axis) gesture.axis = swipeAxis(dx, dy);
+      if (gesture.axis !== "horizontal") return;
+      if (event.cancelable) event.preventDefault();
+      swipeClickUntilRef.current = performance.now() + 450;
+      const direction = dx > 0 ? "next" : "previous";
+      const atBoundary = direction === "next" ? !canGoToNextSpread : !canGoToPreviousSpread;
+      const distance = Math.min(atBoundary ? 22 : 112, Math.abs(dx) * (atBoundary ? 0.2 : 0.72));
+      gesture.shell.style.transition = "none";
+      gesture.shell.style.setProperty("--quran-swipe-x", `${Math.sign(dx) * distance}px`);
+    };
+    const endGesture = (source: "touch" | "pen", id: number, x: number, y: number) => {
+      const gesture = swipeGestureRef.current;
+      if (!gesture || gesture.source !== source || gesture.id !== id) return;
+      swipeGestureRef.current = null;
+      const dx = x - gesture.startX;
+      const dy = y - gesture.startY;
+      const direction = pageSwipeDirection(dx, dy, performance.now() - gesture.startTime, gesture.axis);
+      if (gesture.axis === "horizontal") swipeClickUntilRef.current = performance.now() + 450;
+      if (!direction || (direction === "next" ? !canGoToNextSpread : !canGoToPreviousSpread)) {
+        restoreShell(gesture.shell);
+        return;
+      }
+      swipeTurnLockedRef.current = true;
+      gesture.shell.style.transition = "transform 110ms ease-out, opacity 110ms ease-out";
+      gesture.shell.style.setProperty("--quran-swipe-x", `${(direction === "next" ? 1 : -1) * Math.min(main.clientWidth * 0.36, 150)}px`);
+      gesture.shell.style.opacity = "0.76";
+      swipeNavigateTimerRef.current = window.setTimeout(() => {
+        swipeNavigateTimerRef.current = null;
+        goToSpread(direction);
+        swipeUnlockTimerRef.current = window.setTimeout(() => {
+          swipeTurnLockedRef.current = false;
+          swipeUnlockTimerRef.current = null;
+        }, 280);
+      }, 105);
+    };
+    const findTouch = (event: TouchEvent) => {
+      const gesture = swipeGestureRef.current;
+      return gesture?.source === "touch"
+        ? Array.from(event.changedTouches).find((touch) => touch.identifier === gesture.id)
+        : null;
+    };
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        cancelGesture();
+        return;
+      }
+      const touch = event.changedTouches[0];
+      if (touch) startGesture("touch", touch.identifier, touch.clientX, touch.clientY, event.target);
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        cancelGesture();
+        return;
+      }
+      const touch = findTouch(event);
+      if (touch) moveGesture("touch", touch.identifier, touch.clientX, touch.clientY, event);
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      const touch = findTouch(event);
+      if (touch) endGesture("touch", touch.identifier, touch.clientX, touch.clientY);
+    };
+    const onTouchCancel = (event: TouchEvent) => {
+      if (findTouch(event)) cancelGesture();
     };
     const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType === "mouse" || !event.isPrimary) return;
-      const target = event.target;
-      if (pageLayout === "continuous" || !(target instanceof Node) || !main.contains(target)) {
-        resetSwipe();
-        return;
-      }
-      const quranPage = target instanceof Element
-        ? target.closest("[data-quran-page], .quran-page-shell--paged")
-        : null;
-      if (!quranPage || (target instanceof Element && target.closest("input,select,textarea"))) {
-        resetSwipe();
-        return;
-      }
-      didSwipeRef.current = false;
-      suppressSwipeClickRef.current = false;
-      swipePointerIdRef.current = event.pointerId;
-      swipeStartXRef.current = event.clientX;
-      swipeLastXRef.current = event.clientX;
-      swipeStartYRef.current = event.clientY;
-      try {
-        main.setPointerCapture(event.pointerId);
-      } catch {
-        // Some embedded browsers do not allow capture for synthetic or
-        // already-captured touch pointers; bubbling events still drive swipe.
+      if (event.pointerType === "pen" && event.isPrimary) {
+        startGesture("pen", event.pointerId, event.clientX, event.clientY, event.target);
       }
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (swipePointerIdRef.current !== event.pointerId || swipeStartXRef.current === null) return;
-      swipeLastXRef.current = event.clientX;
-      const movement = event.clientX - swipeStartXRef.current;
-      const horizontal = Math.abs(movement);
-      const vertical = Math.abs(event.clientY - (swipeStartYRef.current ?? event.clientY));
-      if (horizontal > 12 && horizontal > vertical) {
-        event.preventDefault();
-        const resistedOffset = Math.sign(movement) * Math.min(64, horizontal * 0.42);
-        setSwipeOffset(resistedOffset);
-      }
+      if (event.pointerType === "pen") moveGesture("pen", event.pointerId, event.clientX, event.clientY, event);
     };
     const onPointerEnd = (event: PointerEvent) => {
-      if (swipePointerIdRef.current !== event.pointerId) return;
-      const startX = swipeStartXRef.current;
-      const endX = event.clientX ?? swipeLastXRef.current;
-      const suppressClick = suppressSwipeClickRef.current;
-      if (main.hasPointerCapture(event.pointerId)) {
-        try {
-          main.releasePointerCapture(event.pointerId);
-        } catch {
-          // The browser may release touch capture before pointerup.
-        }
-      }
-      resetSwipe();
-      if (suppressClick) return;
-      if (startX === null || endX === null) return;
-      const movement = endX - startX;
-      if (movement > 50) {
-        didSwipeRef.current = true;
-        goToSpread("next");
-      } else if (movement < -50) {
-        didSwipeRef.current = true;
-        goToSpread("previous");
-      }
+      if (event.pointerType === "pen") endGesture("pen", event.pointerId, event.clientX, event.clientY);
     };
     const onPointerCancel = (event: PointerEvent) => {
-      if (swipePointerIdRef.current !== event.pointerId) return;
-      if (main.hasPointerCapture(event.pointerId)) {
-        try {
-          main.releasePointerCapture(event.pointerId);
-        } catch {
-          // The browser may release touch capture before pointercancel.
-        }
-      }
-      resetSwipe();
+      if (swipeGestureRef.current?.source === "pen" && swipeGestureRef.current.id === event.pointerId) cancelGesture();
+    };
+    const onSwipeClick = (event: MouseEvent) => {
+      if (performance.now() > swipeClickUntilRef.current) return;
+      swipeClickUntilRef.current = 0;
+      event.preventDefault();
+      event.stopImmediatePropagation();
     };
 
+    main.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("touchcancel", onTouchCancel);
     main.addEventListener("pointerdown", onPointerDown);
-    main.addEventListener("pointermove", onPointerMove);
-    main.addEventListener("pointerup", onPointerEnd);
-    main.addEventListener("pointercancel", onPointerCancel);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerCancel);
+    window.addEventListener("lostpointercapture", onPointerCancel);
+    main.addEventListener("click", onSwipeClick, true);
     return () => {
+      cancelGesture();
+      main.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchCancel);
       main.removeEventListener("pointerdown", onPointerDown);
-      main.removeEventListener("pointermove", onPointerMove);
-      main.removeEventListener("pointerup", onPointerEnd);
-      main.removeEventListener("pointercancel", onPointerCancel);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerCancel);
+      window.removeEventListener("lostpointercapture", onPointerCancel);
+      main.removeEventListener("click", onSwipeClick, true);
     };
   }, [activePage, loading, pageLayout]);
+
+  useEffect(() => () => {
+    if (swipeNavigateTimerRef.current !== null) window.clearTimeout(swipeNavigateTimerRef.current);
+    if (swipeUnlockTimerRef.current !== null) window.clearTimeout(swipeUnlockTimerRef.current);
+  }, []);
 
   const goToSurah = (chapterId: number, source: "manual" | "playback" = "manual") => {
     const firstVerse = verses.find(
@@ -1275,10 +1341,6 @@ export function QuranPagesView({
         data-physical-page={physicalPage}
         className="quran-reader-figure relative mx-auto w-full overflow-hidden bg-[#fdfaf6] md:rounded-[3px] md:bg-white md:shadow-[0_20px_60px_rgba(34,87,57,0.16)] md:ring-1 md:ring-black/10"
         onClick={(event) => {
-          if (didSwipeRef.current) {
-            didSwipeRef.current = false;
-            return;
-          }
           // On phones, page navigation is swipe-only. Taps remain available
           // for words and controls without accidentally turning the page.
           if (window.innerWidth < 768) return;
@@ -1397,10 +1459,6 @@ export function QuranPagesView({
               setAyahActionVerseKey(selection.verseKey);
             }}
             onVerseClick={(selection) => {
-               if (didSwipeRef.current) {
-                 didSwipeRef.current = false;
-                 return;
-               }
                const verseKey = selection.verseKey;
                const chapterId = Number(verseKey.split(":")[0]);
                const verseNumber = Number(verseKey.split(":")[1]);
@@ -2096,28 +2154,6 @@ export function QuranPagesView({
             }}
           />
         )}
-        {swipeOffset !== 0 && pageLayout !== "continuous" && (
-          <div
-            aria-hidden="true"
-            className={cn(
-              "pointer-events-none absolute top-1/2 z-50 flex -translate-y-1/2 items-center gap-1 rounded-full border border-emerald-900/10 bg-[#fffdf8]/92 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 shadow-lg backdrop-blur-md dark:border-white/10 dark:bg-[#101411]/92 dark:text-emerald-200",
-              swipeOffset > 0 ? "left-2" : "right-2",
-            )}
-            style={{ opacity: Math.min(1, Math.abs(swipeOffset) / 34) }}
-          >
-            {swipeOffset > 0 ? (
-              <>
-                <ChevronRight className="h-3.5 w-3.5" />
-                <span>{lang === "ar" ? "الصفحة التالية" : "Next page"}</span>
-              </>
-            ) : (
-              <>
-                <span>{lang === "ar" ? "الصفحة السابقة" : "Previous page"}</span>
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </>
-            )}
-          </div>
-        )}
         {pageLayout === "continuous" ? (
           <div
             className="quran-page-shell mx-auto flex w-full flex-col gap-1 transition-[width,max-width] duration-200"
@@ -2161,13 +2197,6 @@ export function QuranPagesView({
               maxWidth: pageLayout === "spread"
                 ? `${Math.round(10.32 * zoom)}px`
                 : `${Math.round(7.2 * zoom)}px`,
-              transform: swipeOffset === 0
-                ? undefined
-                : `perspective(1400px) translate3d(${swipeOffset}px, 0, 0) rotateY(${swipeOffset * -0.035}deg) scale(0.994)`,
-              transformOrigin: swipeOffset > 0 ? "right center" : "left center",
-              transition: swipeOffset === 0
-                ? undefined
-                : "none",
             }}
           >
             {pageLayout === "spread" ? (

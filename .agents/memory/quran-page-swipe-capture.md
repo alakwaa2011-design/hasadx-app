@@ -14,3 +14,9 @@ WebKit E2E may render a page-image fallback when the remote QCF font cannot load
 **Why:** The iPhone WebKit project can load the page image while the font-backed word buttons remain unavailable; requiring a button would skip the actual page-surface gesture coverage.
 
 **How to apply:** Keep WebKit coverage independent of external font availability, while retaining the button-origin path for Chromium and font-ready WebKit runs.
+
+In browser gesture checks, dismiss the first-visit Quran tutorial before starting a touch on page text, even if the page is reported visible.
+
+**Why:** A visible page can be underneath the tutorial. Coordinate-based touch input hits the overlay instead, so a swipe appears broken without ever reaching the reader.
+
+**How to apply:** Close the tutorial before measuring word/page touch coordinates; distinguish a gesture failure from an overlay intercept when investigating a failed mobile test.

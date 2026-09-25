@@ -31,52 +31,30 @@
 
 @keyframes quran-page-turn-next {
   0% {
-    opacity: 0.58;
-    transform: perspective(1400px) rotateY(-2.2deg) translateX(-20px) scale(0.992);
-    transform-origin: right center;
-    filter: brightness(0.97);
-    box-shadow: 18px 0 32px rgb(34 87 57 / 10%);
-  }
-  58% {
-    opacity: 0.96;
-    transform: perspective(1400px) rotateY(0.35deg) translateX(2px) scale(0.998);
-    box-shadow: 4px 0 12px rgb(34 87 57 / 5%);
+    opacity: 0.84;
+    transform: translate3d(-18px, 0, 0);
   }
   100% {
     opacity: 1;
-    transform: perspective(1400px) rotateY(0deg) translateX(0) scale(1);
-    transform-origin: right center;
-    filter: brightness(1);
-    box-shadow: none;
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes quran-page-turn-previous {
   0% {
-    opacity: 0.58;
-    transform: perspective(1400px) rotateY(2.2deg) translateX(20px) scale(0.992);
-    transform-origin: left center;
-    filter: brightness(0.97);
-    box-shadow: -18px 0 32px rgb(34 87 57 / 10%);
-  }
-  58% {
-    opacity: 0.96;
-    transform: perspective(1400px) rotateY(-0.35deg) translateX(-2px) scale(0.998);
-    box-shadow: -4px 0 12px rgb(34 87 57 / 5%);
+    opacity: 0.84;
+    transform: translate3d(18px, 0, 0);
   }
   100% {
     opacity: 1;
-    transform: perspective(1400px) rotateY(0deg) translateX(0) scale(1);
-    transform-origin: left center;
-    filter: brightness(1);
-    box-shadow: none;
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .quran-page-turn-next,
 .quran-page-turn-previous {
-  animation-duration: 340ms;
-  animation-timing-function: cubic-bezier(0.22, 0.82, 0.28, 1);
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.25, 1);
   animation-fill-mode: both;
   backface-visibility: hidden;
   will-change: transform, opacity;
@@ -96,6 +74,10 @@
 
 .quran-page-turn-previous {
   animation-name: quran-page-turn-previous;
+}
+
+.quran-page-shell--paged {
+  transform: translate3d(var(--quran-swipe-x, 0px), 0, 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1030,7 +1012,7 @@
         var(--quran-safe-area-left, env(safe-area-inset-left))
         - var(--quran-safe-area-right, env(safe-area-inset-right))
       ) * 0.5
-    ));
+    )) translate3d(var(--quran-swipe-x, 0px), 0, 0);
   }
 
   .quran-page-shell--paged .quran-spread-right-page,

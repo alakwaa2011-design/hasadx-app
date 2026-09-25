@@ -161,6 +161,8 @@ test("keeps Mushaf page swipes correctly directed and isolated from taps", async
 
   const page300 = page.locator('[data-quran-page="300"]');
   await expect(page300).toBeVisible();
+  const readerTipsSkip = page.getByRole("button", { name: "تخطي", exact: true });
+  if (await readerTipsSkip.isVisible()) await readerTipsSkip.click();
   const rightSwipeStart = await swipePointForPage(page300, "right");
   await swipe(page, rightSwipeStart, { x: rightSwipeStart.x + 120, y: rightSwipeStart.y }, browserName);
 
@@ -179,6 +181,21 @@ test("keeps Mushaf page swipes correctly directed and isolated from taps", async
   expect(await page.evaluate(() => (
     window as Window & { quranPageClickCount?: number }
   ).quranPageClickCount)).toBe(0);
+
+  const smallDragStart = await swipePointForPage(page300, "left");
+  await swipe(page, smallDragStart, { x: smallDragStart.x - 20, y: smallDragStart.y }, browserName);
+  await expect(page300).toBeVisible();
+
+  const verticalStart = await pointInside(page300, "center");
+  await swipe(page, verticalStart, { x: verticalStart.x + 12, y: verticalStart.y + 105 }, browserName);
+  await expect(page300).toBeVisible();
+
+  const flickStart = await swipePointForPage(page300, "right");
+  await swipe(page, flickStart, { x: flickStart.x + 36, y: flickStart.y }, browserName);
+  await expect(page301).toBeVisible();
+  const returnFlickStart = await swipePointForPage(page301, "left");
+  await swipe(page, returnFlickStart, { x: returnFlickStart.x - 36, y: returnFlickStart.y }, browserName);
+  await expect(page300).toBeVisible();
 
   const toolbar = page.locator(".quran-reader-header");
   const toolbarStart = await pointInside(toolbar, "left");
