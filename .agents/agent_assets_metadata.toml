@@ -1975,3 +1975,94 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-8.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: من التحضير إلى التفاعل، هذه حصّتك في حصاد. ابدأ الآن!"
+
+[[outputs]]
+id = "0RYMfGc0WrceGpBtf_qFo"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-2.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: وعرض تفاعلي يشرح الفكرة، وفيديو يوقف المشاهدة بسؤال... ليبدأ دور الطالب."
+
+[[outputs]]
+id = "cX8zsPtLgp_Md066wehd6"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-0.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: درس الغد؟ لا تبدأ من الصفر!"
+
+[[outputs]]
+id = "jomuCr59oe12NhRgsTw2B"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-1.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: في حصاد، فكرة واحدة تصبح خطة درس، وورقة عمل جاهزة."
+
+[[outputs]]
+id = "kJ7xIMpNmHclMBuxyyboQ"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-6.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: ثم وميض! أسئلة تتوالى، وتحدّيات تُشعل حماس الصف."
+
+[[outputs]]
+id = "RZpJjivTswFujhVlBiCiX"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-5.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: إكس أو! سؤال، إجابة، وخانة تغيّر سير اللعب."
+
+[[outputs]]
+id = "4B6CpB3bDW21iU1Bh6OS6"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... الكل حاضر!"
+
+[[outputs]]
+id = "tu9qTa6_HQ4p-Ud1Ids1d"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-3.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: خريطة توضّح المفاهيم، ولوحة تحفيز تُظهر مشاركة طلابك."
+
+[[outputs]]
+id = "lI1SDmQWJp-hdK608DFqL"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-7.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: وفي شدّ الحبل، كل إجابة تحرّك المنافسة حتى اللحظة الحاسمة!"
+
+[[outputs]]
+id = "sGLsHYrEMY9yVL8bIvZ3J"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-8.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: من أول فكرة إلى آخر لحظة تفاعل... حصاد، ابدأ الآن!"
+
+[[outputs]]
+id = "dL4A1k1mSoUgPqTwb7JsQ"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4_2.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... مفاجأة جديدة، والصفّ كلّه حاضر!"
+
+[[outputs]]
+id = "EZLOQRc-Fx-UC4lcKofPp"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-6_2.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: ثم وميض! أسئلة تتوالى، وتحدّيات تُشعل حماس الصف... والمشاركة لا تتوقّف!"
+
+[[outputs]]
+id = "G3izmA4pdwrfp7_xeLuBV"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-7_2.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: وفي شدّ الحبل، كل إجابة تحرّك المنافسة... ويظلّ الحماس مشتعلاً حتى اللحظة الحاسمة!"
+
+[[outputs]]
+id = "O5SWW6n-SKoPwG7JcfWH8"
+uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4-short.mp3"
+type = "audio"
+title = "speech"
+description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... مفاجأة جديدة في كلّ دور!"
