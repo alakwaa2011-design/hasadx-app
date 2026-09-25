@@ -47,6 +47,7 @@ export const en: typeof ar = {
     allDeleted: "All students deleted",
     genericError: "Something went wrong",
     classDeleted: "Class deleted",
+    classDeletePartial: "The students were deleted, but the class could not be deleted. The class still exists; please try deleting it again.",
     duplicateClass: "A class with this name exists",
     classRenamed: "Class renamed",
     classAlreadyExists: "This class already exists",

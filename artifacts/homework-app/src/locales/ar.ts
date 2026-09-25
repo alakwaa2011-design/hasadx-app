@@ -45,6 +45,7 @@ export const ar = {
     allDeleted: "تم حذف جميع الطلاب",
     genericError: "حدث خطأ",
     classDeleted: "تم حذف الصف",
+    classDeletePartial: "حُذف طلاب الصف، لكن تعذّر حذف الصف نفسه. ما زال الصف موجودًا؛ حاول حذفه مجددًا.",
     duplicateClass: "يوجد صف بهذا الاسم",
     classRenamed: "تم تغيير اسم الصف",
     classAlreadyExists: "الصف موجود بالفعل",

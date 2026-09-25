@@ -759,11 +759,10 @@ export default function StudentsPage() {
         fetch(`${API_BASE}/api/teacher/classes`, { credentials: "include", cache: "no-store" }),
       ]);
       if (studentsRes.status === 401) { setLocation("/login"); return; }
+      if (!studentsRes.ok || !classesRes.ok) throw new Error("Could not load students and classes");
       const data: Student[] = await studentsRes.json();
+      const persistedClassesData: Array<{ name: string; groupName?: string | null; color?: string | null; groupColor?: string | null }> = await classesRes.json();
       setStudents(data);
-      const persistedClassesData: Array<{ name: string; groupName?: string | null; color?: string | null; groupColor?: string | null }> = classesRes.ok
-        ? await classesRes.json()
-        : [];
       const persistedClasses: string[] = persistedClassesData.map(c => c.name);
       // Build groupMap from classes response
       const map: Record<string, string> = {};
@@ -926,10 +925,18 @@ export default function StudentsPage() {
       });
       if (res.ok) {
         if (folder !== UNGROUPED) {
-          await fetch(`${API_BASE}/api/teacher/classes/${encodeURIComponent(folder)}`, {
-            method: "DELETE",
-            credentials: "include",
-          }).catch(() => {});
+          try {
+            const classRes = await fetch(`${API_BASE}/api/teacher/classes/${encodeURIComponent(folder)}`, {
+              method: "DELETE",
+              credentials: "include",
+            });
+            if (!classRes.ok) throw new Error("Could not delete class");
+          } catch {
+            toast.error(t.teacherStudents.classDeletePartial);
+            await fetchStudents();
+            refreshRewardLists();
+            return;
+          }
         }
         setStudents((prev) => prev.filter((s) => (s.gradeLevel || UNGROUPED) !== folder));
         setFolderOrder((prev) => prev.filter((f) => f !== folder));
