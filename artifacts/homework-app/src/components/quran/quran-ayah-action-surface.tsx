@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Bookmark, BookOpen, Copy, Layers, Play } from "lucide-react";
+import { Bookmark, BookOpen, Copy, GitCompareArrows, Layers, Play } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { QuranBookmarkCategoryPicker } from "./quran-bookmark-category-picker";
@@ -26,6 +26,7 @@ interface QuranAyahActionSurfaceProps {
   onMultiCopy: () => void;
   onBookmark: (category?: QuranBookmarkCategory) => void;
   onTafsir: () => void;
+  onSimilar?: () => void;
 }
 
 export function QuranAyahActionSurface({
@@ -40,6 +41,7 @@ export function QuranAyahActionSurface({
   onMultiCopy,
   onBookmark,
   onTafsir,
+  onSimilar,
 }: QuranAyahActionSurfaceProps) {
   const { lang, dir } = useI18n();
   const [copyOptionsOpen, setCopyOptionsOpen] = React.useState(false);
@@ -151,6 +153,20 @@ export function QuranAyahActionSurface({
             </button>
           ))}
         </div>
+        {onSimilar && (
+          <button
+            type="button"
+            data-testid="action-mutashabihat"
+            onClick={() => {
+              onSimilar();
+              onOpenChange(false);
+            }}
+            className="mt-1.5 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber-200/80 bg-amber-50 px-3 text-xs font-bold text-emerald-950 transition-colors hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-emerald-50 dark:hover:bg-amber-900/40"
+          >
+            <GitCompareArrows className="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+            {lang === "ar" ? "المتشابهات اللفظية" : "Similar verses"}
+          </button>
+        )}
         {copyOptionsOpen && (
           <div className="mt-2 grid grid-cols-2 gap-2 border-t border-emerald-900/5 pt-2 dark:border-white/5">
             <button

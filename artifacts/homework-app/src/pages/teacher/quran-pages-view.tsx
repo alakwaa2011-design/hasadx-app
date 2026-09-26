@@ -58,6 +58,7 @@ import {
 } from "@/components/quran/quran-guided-memorization-panel";
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import { QuranAyahActionSurface } from "@/components/quran/quran-ayah-action-surface";
+import { QuranMutashabihatPanel } from "@/components/quran/quran-mutashabihat-panel";
 import { QuranBookmarkCategoryPicker } from "@/components/quran/quran-bookmark-category-picker";
 import { QuranWordActionPopover } from "@/components/quran/quran-word-action-popover";
 import { QuranTajweedRuleCard } from "@/components/quran/quran-tajweed-rule-card";
@@ -334,6 +335,7 @@ export function QuranPagesView({
   const [copyActionsOpen, setCopyActionsOpen] = useState(false);
   const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const [ayahActionVerseKey, setAyahActionVerseKey] = useState<string | null>(null);
+  const [mutashabihatVerseKey, setMutashabihatVerseKey] = useState<string | null>(null);
   const [ayahActionAnchor, setAyahActionAnchor] = useState<{
     top: number;
     left: number;
@@ -2719,6 +2721,9 @@ export function QuranPagesView({
         anchorRect={ayahActionAnchor}
         isBookmarked={ayahActionVerseKey ? bookmarksMap.has(ayahActionVerseKey) : false}
         bookmarkCategory={ayahActionVerseKey ? bookmarksMap.get(ayahActionVerseKey) : null}
+        onSimilar={() => {
+          if (ayahActionVerseKey) setMutashabihatVerseKey(ayahActionVerseKey);
+        }}
         onPlay={() => {
           if (!ayahActionVerseKey) return;
           setSelectedVerseKey(ayahActionVerseKey);
@@ -2787,6 +2792,19 @@ export function QuranPagesView({
           window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
         }}
       />
+      {mutashabihatVerseKey && (
+        <QuranMutashabihatPanel
+          verseKey={mutashabihatVerseKey}
+          onClose={() => setMutashabihatVerseKey(null)}
+          onNavigate={({ verseKey, pageId }) => {
+            const [surah, ayah] = verseKey.split(":").map(Number);
+            setMutashabihatVerseKey(null);
+            goToPage(pageId);
+            setSelectedVerseKey(verseKey);
+            onNavigate({ surah, ayah, page: pageId });
+          }}
+        />
+      )}
       <QuranWordActionPopover
         open={wordAction !== null}
         wordText={wordAction?.wordText ?? ""}
