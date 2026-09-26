@@ -77,7 +77,6 @@ interface QComplexPage {
   id: number;
   chapter_id: number;
   part_id: number;
-  quarter_id: number;
 }
 
 export interface QComplexVerse {
@@ -85,7 +84,6 @@ export interface QComplexVerse {
   chapter_id: number;
   page_id: number;
   part_id: number;
-  quarter_id: number;
 }
 
 interface QComplexPart {
@@ -97,20 +95,6 @@ const LAST_PAGE = 604;
 const DEFAULT_ZOOM = 100;
 const MIN_ZOOM = 70;
 const MAX_ZOOM = 180;
-const TOTAL_QUARTERS = 240;
-const QUARTER_IDS = Array.from({ length: TOTAL_QUARTERS }, (_, i) => i + 1);
-
-/** Each juz has 2 ahzab, each hizb has 4 quarter markers — 30 * 2 * 4 = 240 total. */
-function describeQuarter(quarterId: number) {
-  const juz = Math.ceil(quarterId / 8);
-  const withinJuz = quarterId - (juz - 1) * 8; // 1..8
-  const hizbInJuz = withinJuz <= 4 ? 1 : 2;
-  const fractionIndex = (quarterId - 1) % 4; // 0..3
-  const fractionSymbol = ["", "¼", "½", "¾"][fractionIndex];
-  const fractionAr = ["بداية الحزب", "ربع الحزب", "نصف الحزب", "ثلاثة أرباع الحزب"][fractionIndex];
-  const fractionEn = ["Hizb start", "Quarter", "Half", "Three-quarters"][fractionIndex];
-  return { juz, hizbInJuz, fractionSymbol, fractionAr, fractionEn };
-}
 
 function pageImageUrl(page: number) {
   return `${import.meta.env.BASE_URL}quran/mushaf-hafs-1441/${String(page).padStart(3, "0")}.webp`;
@@ -1352,11 +1336,6 @@ export function QuranPagesView({
     if (firstVerse) goToPage(firstVerse.page_id);
   };
 
-  const goToRubElHizb = (quarterId: number) => {
-    const firstVerse = verses.find((verse) => verse.quarter_id === quarterId);
-    if (firstVerse) goToPage(firstVerse.page_id);
-  };
-
   const renderPage = (page: number, physicalPage: "left" | "right" | "single" | "continuous") => {
     const failed = failedPages.has(page);
 
@@ -1642,35 +1621,6 @@ export function QuranPagesView({
             {lang === "ar" ? `الجزء ${part.id}` : `Juz ${part.id}`}
           </option>
         ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
-    </div>
-  );
-
-  const rubHizbSelect = (
-    <div className="relative flex h-full min-w-0 flex-1 items-center lg:flex-none">
-      <select
-        value={activePageMeta?.quarter_id ?? 1}
-        onChange={(event) => goToRubElHizb(Number(event.target.value))}
-        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10 lg:text-sm"
-        aria-label={lang === "ar" ? "اختيار الحزب والربع" : "Choose hizb quarter"}
-        data-testid="select-rub-hizb"
-      >
-        {QUARTER_IDS.map((quarterId) => {
-          const { juz, hizbInJuz, fractionSymbol, fractionAr, fractionEn } = describeQuarter(quarterId);
-          return (
-            <option
-              key={quarterId}
-              value={quarterId}
-              className="bg-background text-foreground"
-              title={lang === "ar" ? `الجزء ${juz} — الحزب ${hizbInJuz} — ${fractionAr}` : `Juz ${juz} — Hizb ${hizbInJuz} — ${fractionEn}`}
-            >
-              {lang === "ar"
-                ? `ج${juz} ح${hizbInJuz}${fractionSymbol ? ` ${fractionSymbol}` : ""}`
-                : `J${juz} H${hizbInJuz}${fractionSymbol ? ` ${fractionSymbol}` : ""}`}
-            </option>
-          );
-        })}
       </select>
       <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
     </div>
@@ -2078,8 +2028,6 @@ export function QuranPagesView({
                 <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
                 {juzSelect}
                 <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-                {rubHizbSelect}
-                <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
                 {pageSelect}
               </div>
             </div>
@@ -2154,14 +2102,9 @@ export function QuranPagesView({
                   {lang === "ar" ? "طريقة العرض" : "Reading view"}
                 </p>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex h-9 min-w-[110px] flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+                  <div className="flex h-9 w-32 shrink-0 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                     {juzSelect}
                   </div>
-                  <div className="flex h-9 min-w-[140px] flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
-                    {rubHizbSelect}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex h-9 min-w-[120px] flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                     {layoutSelectDesktop}
                   </div>
