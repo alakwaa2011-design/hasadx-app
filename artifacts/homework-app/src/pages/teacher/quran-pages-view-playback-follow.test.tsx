@@ -274,6 +274,7 @@ describe.each([
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("2");
       expect(screen.getByTestId("mushaf-page-2").getAttribute("data-selected-verse")).toBe("2:5");
     });
+    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
     fireEvent.change(screen.getByTestId("select-page-layout"), { target: { value: layout } });
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     fireEvent.click(screen.getByRole("button", { name: "تشغيل" }));
@@ -332,6 +333,7 @@ describe.each([
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("49");
       expect(screen.getByTestId("mushaf-page-49").getAttribute("data-selected-verse")).toBe("2:286");
     });
+    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
     fireEvent.change(screen.getByTestId("select-page-layout"), { target: { value: layout } });
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     const playerInstance = screen.getByTestId("audio-player").getAttribute("data-instance");
@@ -370,6 +372,7 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
+    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
     await waitFor(() => {
       expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("50");
@@ -414,6 +417,7 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
+    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
     await waitFor(() => {
       expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("3");
@@ -453,6 +457,7 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
+    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
     await waitFor(() => {
       expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
       expect(screen.getByTestId("mushaf-page-1")).toBeTruthy();
@@ -560,6 +565,7 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
+    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
     await waitFor(() => {
       expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
       expect(screen.getAllByTestId(`mushaf-page-${firstPage}`).length).toBeGreaterThan(0);

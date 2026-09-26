@@ -96,7 +96,7 @@ export function QuranAudioPlayer({
 
   const [isBuffering, setIsBuffering] = useState(false);
   const [error, setError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'none' | 'settings' | 'memo'>('none');
+  const [activeTab, setActiveTab] = useState<'none' | 'settings' | 'repeat'>('none');
   const playerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -545,6 +545,57 @@ export function QuranAudioPlayer({
   // Repeat the whole cross-chapter span, not each chapter independently.
   const effectiveRepeat = crossSurahLink ? 1 : (memoSession?.isActive ? memoSession.repeatCount : repeat);
   const effectivePause = memoSession?.isActive ? memoSession.pauseSeconds : 0;
+  const isSegmentRepeat = Boolean(memoSession?.isActive && memoSession.repeatScope === 'range');
+
+  const resetRepeatCounters = () => {
+    isEndedHandledRef.current = false;
+    crossLinkPlayCountRef.current = 1;
+    setCurrentAyahPlayCount(1);
+    setCurrentRangePlayCount(1);
+  };
+
+  const selectRepeatMode = (mode: 'ayah' | 'range') => {
+    if (mode === 'ayah') {
+      if (memoSession && onMemoSessionChange) {
+        onMemoSessionChange({ ...memoSession, isActive: false, repeatScope: 'ayah' });
+      }
+      resetRepeatCounters();
+      return;
+    }
+    if (!memoSession || !onMemoSessionChange) return;
+
+    const lowerBound = startAyah ?? 1;
+    const upperBound = endAyah ?? surahLength;
+    const priorRangeIsValid = isSegmentRepeat && Number.isInteger(memoSession.rangeStart)
+      && Number.isInteger(memoSession.rangeEnd)
+      && memoSession.rangeStart >= lowerBound
+      && memoSession.rangeStart <= memoSession.rangeEnd
+      && memoSession.rangeEnd <= upperBound
+      && (!memoSession.rangeStartSurah || memoSession.rangeStartSurah === surahNumber)
+      && (!memoSession.rangeEndSurah || memoSession.rangeEndSurah === surahNumber);
+    const currentAyah = Math.min(upperBound, Math.max(lowerBound, playingAyah ?? selectedAyah));
+    const rangeStart = priorRangeIsValid ? memoSession.rangeStart : currentAyah;
+    const rangeEnd = priorRangeIsValid ? memoSession.rangeEnd : currentAyah;
+    onMemoSessionChange({
+      ...memoSession,
+      isActive: true,
+      repeatScope: 'range',
+      rangeStart,
+      rangeEnd,
+      rangeStartSurah: surahNumber,
+      rangeEndSurah: surahNumber,
+    });
+    resetRepeatCounters();
+  };
+
+  const selectRepeatCount = (count: number | 'continuous') => {
+    if (isSegmentRepeat && memoSession && onMemoSessionChange) {
+      onMemoSessionChange({ ...memoSession, repeatCount: count });
+    } else if (typeof count === 'number') {
+      setRepeat(count);
+    }
+    resetRepeatCounters();
+  };
 
   const getNextPlaybackState = () => {
     if (!playingAyah) return null;
@@ -1049,7 +1100,7 @@ export function QuranAudioPlayer({
   return (
     <div ref={playerRef} data-quran-audio-controller="true" className={cn(
        "relative w-full shrink-0 border-t bg-background/95 p-2 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.1)] backdrop-blur-md transition-colors dark:shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.3)]",
-       memoSession?.isActive ? "border-amber-300/60 dark:border-amber-900/40" : "border-border/60"
+        guidedMemorizationActive ? "border-amber-300/60 dark:border-amber-900/40" : "border-border/60"
     )}>
 
       {/* Floating Panel for Active Tab */}
@@ -1088,107 +1139,6 @@ export function QuranAudioPlayer({
                    ))}
                  </div>
                </div>
-
-                {memoSession && onMemoSessionChange && !guidedMemorizationActive && (
-                  <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground">
-                        <Repeat className="h-4 w-4" />
-                        <span>{isArabic ? 'تكرار المقطع' : 'Repeat segment'}</span>
-                      </div>
-                      <button
-                        type="button"
-                        data-testid="button-toggle-segment-repeat"
-                        onClick={() => onMemoSessionChange({
-                          ...memoSession,
-                          isActive: !memoSession.isActive,
-                          repeatScope: 'range',
-                          rangeStart: memoSession.isActive ? memoSession.rangeStart : (playingAyah ?? selectedAyah),
-                          rangeEnd: memoSession.isActive ? memoSession.rangeEnd : (playingAyah ?? selectedAyah),
-                        })}
-                        className={cn(
-                          "min-h-8 rounded-lg px-3 py-1 text-xs font-bold transition-colors",
-                          memoSession.isActive
-                            ? "bg-emerald-700 text-white hover:bg-emerald-800"
-                            : "bg-background text-foreground shadow-sm ring-1 ring-border/60 hover:bg-muted",
-                        )}
-                      >
-                        {memoSession.isActive
-                          ? (isArabic ? 'إيقاف' : 'Disable')
-                          : (isArabic ? 'تفعيل' : 'Enable')}
-                      </button>
-                    </div>
-
-                    {memoSession.isActive && (
-                      <>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'المقطع' : 'Segment'}</span>
-                          <div className="flex items-center rounded-lg border border-border/50 bg-background p-0.5">
-                            <label className="flex items-center gap-1 px-2 py-1">
-                              <span className="text-[10px] text-muted-foreground">{isArabic ? 'من' : 'From'}</span>
-                              <select
-                                data-testid="select-segment-start"
-                                value={memoSession.rangeStart}
-                                onChange={(event) => {
-                                  const rangeStart = Number(event.target.value);
-                                  onMemoSessionChange({
-                                    ...memoSession,
-                                    rangeStart,
-                                    rangeEnd: Math.max(rangeStart, memoSession.rangeEnd),
-                                  });
-                                }}
-                                className="bg-transparent text-xs font-bold text-foreground outline-none"
-                              >
-                                {Array.from({ length: surahLength }, (_, index) => index + 1)
-                                  .filter((ayah) => (!startAyah || ayah >= startAyah) && (!endAyah || ayah <= endAyah))
-                                  .map((ayah) => <option key={ayah} value={ayah}>{ayah}</option>)}
-                              </select>
-                            </label>
-                            <div className="h-3 w-px bg-border/50" />
-                            <label className="flex items-center gap-1 px-2 py-1">
-                              <span className="text-[10px] text-muted-foreground">{isArabic ? 'إلى' : 'To'}</span>
-                              <select
-                                data-testid="select-segment-end"
-                                value={memoSession.rangeEnd}
-                                onChange={(event) => onMemoSessionChange({
-                                  ...memoSession,
-                                  rangeEnd: Math.max(memoSession.rangeStart, Number(event.target.value)),
-                                })}
-                                className="bg-transparent text-xs font-bold text-foreground outline-none"
-                              >
-                                {Array.from({ length: surahLength }, (_, index) => index + 1)
-                                  .filter((ayah) => ayah >= memoSession.rangeStart && (!endAyah || ayah <= endAyah))
-                                  .map((ayah) => <option key={ayah} value={ayah}>{ayah}</option>)}
-                              </select>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'عدد التكرارات' : 'Repeat count'}</span>
-                          <div className="flex items-center rounded-lg border border-border/50 bg-background p-0.5" dir="ltr">
-                            {MEMO_REPEAT_COUNTS.map((count) => (
-                              <button
-                                type="button"
-                                key={count}
-                                data-testid={`button-segment-count-${count}`}
-                                onClick={() => onMemoSessionChange({ ...memoSession, repeatCount: count })}
-                                className={cn(
-                                  "min-h-8 rounded-md px-2 py-1 text-xs font-bold transition-all",
-                                  memoSession.repeatCount === count
-                                    ? "bg-muted text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground",
-                                )}
-                              >
-                                {count === 'continuous' ? '∞' : `${count}x`}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
 
                <hr className="border-border/50" />
 
@@ -1273,123 +1223,166 @@ export function QuranAudioPlayer({
                  </div>
                </div>
              </div>
-          ) : (
-             <div className="space-y-4">
-               <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-1.5">
-                   <BookOpen className="w-4 h-4 text-amber-600" />
-                    <span className="font-bold text-sm text-foreground">{isArabic ? 'تكرار المقطع' : 'Repeat segment'}</span>
-                 </div>
+           ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Repeat className="h-4 w-4 text-emerald-600" />
+                    <span className="font-bold text-sm text-foreground">{isArabic ? 'التكرار' : 'Repeat'}</span>
+                  </div>
                   <button data-testid="button-close-panel" onClick={() => setActiveTab('none')} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-               {memoSession && onMemoSessionChange && (
-                 <div className="space-y-3">
-                   <div className="flex items-center justify-between gap-2">
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'نمط التكرار' : 'Repeat mode'}</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      data-testid="button-repeat-mode-ayah"
+                      aria-pressed={!isSegmentRepeat}
+                      onClick={() => selectRepeatMode('ayah')}
+                      className={cn("min-h-9 rounded-lg px-3 text-xs font-bold transition-colors", !isSegmentRepeat ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-muted/50 text-muted-foreground hover:text-foreground")}
+                    >
+                      {isArabic ? 'آية' : 'Ayah'}
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="button-repeat-mode-range"
+                      aria-pressed={isSegmentRepeat}
+                      disabled={!memoSession || !onMemoSessionChange || guidedMemorizationActive}
+                      onClick={() => selectRepeatMode('range')}
+                      className={cn("min-h-9 rounded-lg px-3 text-xs font-bold transition-colors disabled:opacity-40", isSegmentRepeat ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-muted/50 text-muted-foreground hover:text-foreground")}
+                    >
+                      {isArabic ? 'مقطع' : 'Segment'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'عدد التكرارات' : 'Repeat count'}</span>
+                  <div className="flex items-center rounded-lg border border-border/50 bg-muted/50 p-0.5" dir="ltr">
+                    {(isSegmentRepeat ? MEMO_REPEAT_COUNTS : REPEATS).map((count) => (
+                      <button
+                        type="button"
+                        key={count}
+                        data-testid={`button-repeat-count-${count}`}
+                        aria-pressed={isSegmentRepeat ? memoSession?.repeatCount === count : repeat === count}
+                        onClick={() => selectRepeatCount(count)}
+                        className={cn("min-h-8 rounded-md px-2 py-1 text-xs font-bold transition-all", (isSegmentRepeat ? memoSession?.repeatCount === count : repeat === count) ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                      >
+                        {count === 'continuous' ? '∞' : `${count}x`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {isSegmentRepeat && memoSession && onMemoSessionChange && (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'المقطع' : 'Segment'}</span>
-                     <div className="flex items-center bg-muted/50 rounded-lg border border-border/50 p-0.5">
-                        <div className="flex items-center px-2 py-1 gap-1">
-                           <span className="text-[10px] text-muted-foreground">{isArabic ? 'آية البداية' : 'Start ayah'}</span>
+                      <div className="flex items-center rounded-lg border border-border/50 bg-background p-0.5">
+                        <label className="flex items-center gap-1 px-2 py-1">
+                          <span className="text-[10px] text-muted-foreground">{isArabic ? 'من' : 'From'}</span>
                           <select
-                            data-testid="select-memo-start"
+                            data-testid="select-segment-start"
                             value={memoSession.rangeStart}
-                            onChange={e => onMemoSessionChange({ ...memoSession, rangeStart: Number(e.target.value) })}
-                            className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground"
+                            onChange={(event) => {
+                              const rangeStart = Number(event.target.value);
+                              onMemoSessionChange({
+                                ...memoSession,
+                                rangeStart,
+                                rangeEnd: Math.max(rangeStart, memoSession.rangeEnd),
+                                rangeStartSurah: surahNumber,
+                                rangeEndSurah: surahNumber,
+                              });
+                              resetRepeatCounters();
+                            }}
+                            className="bg-transparent text-xs font-bold text-foreground outline-none"
                           >
-                            {Array.from({ length: surahLength }, (_, i) => i + 1)
-                               .filter(i => (!startAyah || i >= startAyah) && (!endAyah || i <= endAyah))
-                               .map(i => <option key={i} value={i}>{i}</option>)}
+                            {Array.from({ length: surahLength }, (_, index) => index + 1)
+                              .filter((ayah) => (!startAyah || ayah >= startAyah) && (!endAyah || ayah <= endAyah))
+                              .map((ayah) => <option key={ayah} value={ayah}>{ayah}</option>)}
                           </select>
-                        </div>
-                        <div className="w-px h-3 bg-border/50 mx-1"></div>
-                        <div className="flex items-center px-2 py-1 gap-1">
-                           <span className="text-[10px] text-muted-foreground">{isArabic ? 'آية النهاية' : 'End ayah'}</span>
+                        </label>
+                        <div className="h-3 w-px bg-border/50" />
+                        <label className="flex items-center gap-1 px-2 py-1">
+                          <span className="text-[10px] text-muted-foreground">{isArabic ? 'إلى' : 'To'}</span>
                           <select
-                            data-testid="select-memo-end"
+                            data-testid="select-segment-end"
                             value={memoSession.rangeEnd}
-                            onChange={e => onMemoSessionChange({ ...memoSession, rangeEnd: Math.max(memoSession.rangeStart, Number(e.target.value)) })}
-                            className="bg-transparent text-xs font-bold outline-none cursor-pointer text-foreground"
+                            onChange={(event) => {
+                              const rangeEnd = Math.max(memoSession.rangeStart, Number(event.target.value));
+                              onMemoSessionChange({
+                                ...memoSession,
+                                rangeEnd,
+                                rangeStartSurah: surahNumber,
+                                rangeEndSurah: surahNumber,
+                              });
+                              resetRepeatCounters();
+                            }}
+                            className="bg-transparent text-xs font-bold text-foreground outline-none"
                           >
-                            {Array.from({ length: surahLength }, (_, i) => i + 1)
-                               .filter(i => i >= memoSession.rangeStart && (!endAyah || i <= endAyah))
-                               .map(i => <option key={i} value={i}>{i}</option>)}
+                            {Array.from({ length: surahLength }, (_, index) => index + 1)
+                              .filter((ayah) => ayah >= memoSession.rangeStart && (!endAyah || ayah <= endAyah))
+                              .map((ayah) => <option key={ayah} value={ayah}>{ayah}</option>)}
                           </select>
-                        </div>
-                     </div>
-                   </div>
-
-                   <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-muted-foreground">{isArabic ? 'عدد التكرارات' : 'Repeat count'}</span>
-                     <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
-                       {MEMO_REPEAT_COUNTS.map(val => (
-                         <button
-                            key={val}
-                            data-testid={`button-memo-count-${val}`}
-                            onClick={() => onMemoSessionChange({ ...memoSession, repeatCount: val })}
-                             className={cn("min-h-8 px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.repeatCount === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                         >
-                            {val === 'continuous' ? '∞' : `${val}x`}
-                         </button>
-                       ))}
-                     </div>
-                   </div>
-
-                   <div className="flex items-center justify-between gap-2">
-                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
-                        <Clock className="w-4 h-4" />
-                        <span>{isArabic ? 'توقف' : 'Pause'}</span>
-                     </div>
-                     <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50" dir="ltr">
-                       {[0, 1, 2, 3, 5].map(val => (
-                         <button
-                            key={val}
-                            data-testid={`button-memo-pause-${val}`}
-                            onClick={() => onMemoSessionChange({ ...memoSession, pauseSeconds: val })}
-                             className={cn("min-h-8 px-2 py-1 text-xs font-bold rounded-md transition-all", memoSession.pauseSeconds === val ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                         >
-                            {val === 0 ? '0s' : `${val}s`}
-                         </button>
-                       ))}
-                     </div>
-                   </div>
-
-                   {memoView && onMemoViewChange && (
-                      <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-border/50">
-                        <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
-                          <Eye className="w-4 h-4" />
-                          {isArabic ? 'الآيات' : 'Visibility'}
-                        </span>
-                        <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50">
-                          <button
-                             data-testid="button-memoview-show"
-                             onClick={() => onMemoViewChange('show')}
-                              className={cn("min-h-8 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'show' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                          >
-                             {isArabic ? 'الكل' : 'All'}
-                          </button>
-                          <button
-                             data-testid="button-memoview-progressive"
-                             onClick={() => onMemoViewChange('progressive')}
-                              className={cn("min-h-8 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'progressive' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                          >
-                             {isArabic ? 'تتابعي' : 'Prog'}
-                          </button>
-                          <button
-                             data-testid="button-memoview-hide"
-                             onClick={() => onMemoViewChange('hide')}
-                              className={cn("min-h-8 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all", memoView === 'hide' ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
-                          >
-                             {isArabic ? 'إخفاء' : 'Hide'}
-                          </button>
-                        </div>
+                        </label>
                       </div>
-                   )}
-                 </div>
-               )}
-             </div>
-          )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-bold">
+                        <Clock className="h-4 w-4" />
+                        <span>{isArabic ? 'توقف' : 'Pause'}</span>
+                      </div>
+                      <div className="flex items-center rounded-lg border border-border/50 bg-muted/50 p-0.5" dir="ltr">
+                        {[0, 1, 2, 3, 5].map((seconds) => (
+                          <button
+                            type="button"
+                            key={seconds}
+                            data-testid={`button-memo-pause-${seconds}`}
+                            aria-pressed={memoSession.pauseSeconds === seconds}
+                            onClick={() => onMemoSessionChange({ ...memoSession, pauseSeconds: seconds })}
+                            className={cn("min-h-8 rounded-md px-2 py-1 text-xs font-bold transition-all", memoSession.pauseSeconds === seconds ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                          >
+                            {seconds === 0 ? '0s' : `${seconds}s`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {memoView && onMemoViewChange && (
+                  <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+                    <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground">
+                      <Eye className="h-4 w-4" />
+                      {isArabic ? 'الآيات' : 'Visibility'}
+                    </span>
+                    <div className="flex items-center rounded-lg border border-border/50 bg-muted/50 p-0.5">
+                      {([
+                        ['show', isArabic ? 'الكل' : 'All'],
+                        ['progressive', isArabic ? 'تتابعي' : 'Prog'],
+                        ['hide', isArabic ? 'إخفاء' : 'Hide'],
+                      ] as const).map(([view, label]) => (
+                        <button
+                          type="button"
+                          key={view}
+                          data-testid={`button-memoview-${view}`}
+                          aria-pressed={memoView === view}
+                          onClick={() => onMemoViewChange(view)}
+                          className={cn("min-h-8 rounded-md px-2 py-1 text-[11px] font-bold transition-all", memoView === view ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" : "text-muted-foreground hover:text-foreground")}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+           )}
         </div>
       )}
 
@@ -1404,7 +1397,7 @@ export function QuranAudioPlayer({
             aria-label={isPlaying ? (isArabic ? 'إيقاف مؤقت' : 'Pause') : (isArabic ? 'تشغيل' : 'Play')}
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95 md:h-12 md:w-12",
-              memoSession?.isActive ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+               guidedMemorizationActive ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/20" : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
             )}
           >
             {isBuffering ? <Loader2 className="w-5 h-5 animate-spin" /> : isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5 rtl:mr-0.5 rtl:ml-0" />}
@@ -1442,19 +1435,21 @@ export function QuranAudioPlayer({
                      ? (isArabic ? 'تحميل...' : 'Loading...')
                      : selectedReciter?.name ?? (isArabic ? 'القارئ غير متاح' : 'Reciter unavailable')}
                  </span>
-                 {memoSession?.isActive && (
+                  {memoSession?.isActive && (
                     <>
                       <span className="w-1 h-1 rounded-full bg-border shrink-0"></span>
-                      <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 shrink-0">
-                        <BookOpen className="w-3 h-3" />
-                        {isArabic ? 'حفظ' : 'Memo'}
+                       <span className={cn("font-bold flex items-center gap-1 shrink-0", guidedMemorizationActive ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                         {guidedMemorizationActive ? <BookOpen className="w-3 h-3" /> : <Repeat className="w-3 h-3" />}
+                         {guidedMemorizationActive
+                           ? (isArabic ? 'حفظ' : 'Memorize')
+                           : (isArabic ? 'مقطع' : 'Segment')}
                       </span>
                     </>
                  )}
                  {playingAyah && (effectiveRepeat === 'continuous' || effectiveRepeat > 1) && (
                    <>
                      <span className="w-1 h-1 rounded-full bg-border shrink-0"></span>
-                     <span className={cn("flex items-center gap-1 shrink-0", memoSession?.isActive ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                      <span className={cn("flex items-center gap-1 shrink-0", guidedMemorizationActive ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
                        <Repeat className="w-3 h-3" />
                        {effectiveScope === 'ayah'
                          ? `${currentAyahPlayCount}/${effectiveRepeat === 'continuous' ? '∞' : effectiveRepeat}`
@@ -1486,26 +1481,23 @@ export function QuranAudioPlayer({
 
           {/* Actions */}
           <div className="flex shrink-0 items-center justify-center gap-0.5 border-s border-border/50 ps-1 md:gap-2 md:ps-3">
-          {!memoSession?.isActive && (
+          {!guidedMemorizationActive && (
             <button
               data-testid="button-audio-repeat"
               onClick={() => {
-                const currentIndex = REPEATS.indexOf(repeat);
-                const nextIndex = (currentIndex + 1) % REPEATS.length;
-                const nextRepeat = REPEATS[nextIndex];
-                isEndedHandledRef.current = false;
-                setRepeat(nextRepeat);
-                setCurrentAyahPlayCount(1);
-                setCurrentRangePlayCount(1);
+                setActiveTab(activeTab === 'repeat' ? 'none' : 'repeat');
               }}
-              aria-label={isArabic ? 'تكرار الآية' : 'Repeat ayah'}
+              aria-label={isArabic ? 'التكرار' : 'Repeat'}
+              aria-expanded={activeTab === 'repeat'}
               className={cn(
                 "flex h-10 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:text-xs",
-                repeat > 1 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "hover:bg-muted text-muted-foreground"
+                activeTab === 'repeat' || isSegmentRepeat || repeat > 1
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                  : "hover:bg-muted text-muted-foreground"
               )}
             >
               <Repeat className="h-4 w-4" />
-              <span className="inline" dir="ltr">{repeat}x</span>
+              <span>{isArabic ? 'التكرار' : 'Repeat'}</span>
             </button>
           )}
           <button
@@ -1515,7 +1507,7 @@ export function QuranAudioPlayer({
                setActiveTab(isOpening ? 'settings' : 'none');
                if (isOpening) void reciterCatalog.refetch();
              }}
-             aria-label={isArabic ? 'خيارات التلاوة' : 'Recitation options'}
+              aria-label={isArabic ? 'القارئ والسرعة' : 'Reciter and speed'}
              aria-expanded={activeTab === 'settings'}
              className={cn(
                  "flex h-10 items-center justify-center gap-1 rounded-lg px-2 text-[10px] font-bold transition-colors md:text-xs",
@@ -1523,7 +1515,7 @@ export function QuranAudioPlayer({
              )}
           >
              <Settings2 className="h-4 w-4" />
-             <span className="hidden sm:inline">{isArabic ? 'القارئ والخيارات' : 'Reciter and options'}</span>
+              <span className="hidden sm:inline">{isArabic ? 'القارئ والسرعة' : 'Reciter and speed'}</span>
           </button>
           {onClose && (
              <button

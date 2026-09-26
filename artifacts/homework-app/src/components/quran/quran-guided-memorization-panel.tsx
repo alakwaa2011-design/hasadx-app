@@ -165,7 +165,7 @@ export function QuranGuidedMemorizationPanel({
         {stage === 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-black text-muted-foreground">{ar ? "تكرار الآية" : "Repeat ayah"}</span>
+              <span className="text-xs font-black text-muted-foreground">{ar ? "مرات الاستماع في هذه الخطوة" : "Listening rounds in this step"}</span>
               <div className="flex items-center rounded-xl bg-black/[0.035] p-1 dark:bg-white/[0.06]" dir="ltr">
                 {[1, 3, 5, 10, "continuous" as const].map((count) => (
                   <button

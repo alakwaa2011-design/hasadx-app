@@ -11,12 +11,10 @@ import {
   ImageOff,
   ListPlus,
   Bookmark,
-  BookOpen,
   Volume2,
   Loader2,
   Menu,
   Mic2,
-  Rows3,
   Cloud,
   CloudOff,
   X,
@@ -259,6 +257,7 @@ export function QuranPagesView({
   const [activePage, setActivePage] = useState(FIRST_PAGE);
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [memoChoiceOpen, setMemoChoiceOpen] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
   const [guidedVerseKey, setGuidedVerseKey] = useState<string | null>(null);
@@ -517,14 +516,32 @@ export function QuranPagesView({
   };
 
   useEffect(() => {
-    if (!mobileToolsOpen) return;
+    if (!mobileToolsOpen && !memoChoiceOpen) return;
     const closeOnOutsidePress = (event: PointerEvent) => {
-      if (!toolsHeaderRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const element = target instanceof Element ? target : target.parentElement;
+      if (mobileToolsOpen && !element?.closest("[data-reader-more], [data-reader-more-trigger]")) setMobileToolsOpen(false);
+      if (memoChoiceOpen && !element?.closest("[data-reader-memo-choice], [data-reader-memo-trigger]")) setMemoChoiceOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
         setMobileToolsOpen(false);
+        setMemoChoiceOpen(false);
       }
     };
     document.addEventListener("pointerdown", closeOnOutsidePress);
-    return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileToolsOpen, memoChoiceOpen]);
+  useEffect(() => {
+    if (mobileToolsOpen) return;
+    setCopyActionsOpen(false);
+    setBookmarkActionsOpen(false);
+    setReadingThemePickerOpen(false);
+    setTajweedLegendOpen(false);
   }, [mobileToolsOpen]);
 
   useEffect(() => {
@@ -1155,6 +1172,16 @@ export function QuranPagesView({
       closeGuidedMemorization();
       return;
     }
+    if (personalPlan.enabled) {
+      setMobileToolsOpen(false);
+      setMemoChoiceOpen((open) => !open);
+      return;
+    }
+    startCurrentAyahGuided();
+  };
+
+  const startCurrentAyahGuided = () => {
+    setMemoChoiceOpen(false);
     const targetVerse = selectedVerseKey
       ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
       : selectedVerse ?? verses.find((verse) => verse.page_id === activePage);
@@ -2248,6 +2275,7 @@ export function QuranPagesView({
     <button
       type="button"
       onClick={toggleMemoSession}
+      data-reader-memo-trigger
       data-testid="button-memo-session"
       className={cn(
         "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-3 text-xs font-bold transition-colors lg:text-sm",
@@ -2264,6 +2292,7 @@ export function QuranPagesView({
     <button
       type="button"
       onClick={toggleMemoSession}
+      data-reader-memo-trigger
       data-testid="button-mobile-memo-session"
       className={cn(
         "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-2.5 text-xs font-bold transition-colors lg:hidden",
@@ -2276,36 +2305,14 @@ export function QuranPagesView({
     </button>
   );
 
-  const personalPlanButton = (mobile: boolean) => personalPlan.enabled ? (
-    <button
-      type="button"
-      onClick={() => {
-        if (personalPlanRedirectHref) setLocation(personalPlanRedirectHref);
-        else setPersonalPlanOpen(true);
-      }}
-      data-testid={mobile ? "button-personal-quran-plan" : "button-personal-quran-plan-desktop"}
-      className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md bg-emerald-900/5 px-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
-      aria-label={lang === "ar" ? "خطة الحفظ والمراجعة الشخصية" : "Personal memorization and review plan"}
-    >
-      <ListPlus className="h-4 w-4" />
-      <span>{lang === "ar" ? "خطتي" : "My plan"}</span>
-      {personalPlan.due.length > 0 && (
-        <span data-testid="count-personal-quran-due" className="rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
-          {personalPlan.due.length}
-        </span>
-      )}
-    </button>
-  ) : null;
-
-  const layoutToggleButtonMobile = (
-    <button
-      type="button"
-      onClick={() => changePageLayout(pageLayout === "continuous" ? "single" : "continuous")}
-      data-testid="button-mobile-page-layout"
-      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:hidden"
-      aria-label={pageLayout === "continuous" ? (lang === "ar" ? "عرض صفحة واحدة" : "Show one page") : (lang === "ar" ? "عرض صفحات متصلة" : "Show continuous pages")}
-    >
-      {pageLayout === "continuous" ? <Rows3 className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
+  const moreButton = (mobile: boolean) => (
+    <button type="button" data-reader-more-trigger data-testid={mobile ? "button-mobile-more-tools" : "button-desktop-more-tools"}
+      onClick={() => { setMemoChoiceOpen(false); setMobileToolsOpen((open) => !open); }}
+      aria-label={lang === "ar" ? "المزيد من أدوات المصحف" : "More Mushaf tools"}
+      aria-controls="quran-reader-more-panel" aria-expanded={mobileToolsOpen}
+      className={cn("inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-emerald-800 transition-colors hover:bg-emerald-900/10 dark:text-emerald-200 dark:hover:bg-white/10", mobileToolsOpen && "bg-emerald-900/10 dark:bg-white/10")}>
+      {mobileToolsOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+      <span className="hidden text-xs font-bold xl:inline">{lang === "ar" ? "المزيد" : "More"}</span>
     </button>
   );
 
@@ -2337,57 +2344,27 @@ export function QuranPagesView({
       )}
 
       {!quietMode && (
-        <header ref={toolsHeaderRef} className="quran-reader-header sticky top-0 z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-sm backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-[#0a0c0b]/95">
+        <header ref={toolsHeaderRef} className="quran-reader-header relative z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-sm backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-[#0a0c0b]/95">
           {/* Desktop Toolbar */}
           <div className="mx-auto hidden w-full max-w-[1400px] flex-row items-center justify-between gap-4 px-4 py-2 lg:flex">
-            {/* Left: System & Location */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {backButtonDesktop}
-                {syncButton}
-              </div>
-
+            <div className="flex min-w-0 items-center gap-3">
+              {backButtonDesktop}
               <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                 {surahSelect}
-                <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-                {juzSelect}
                 <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
                 {pageSelect}
               </div>
             </div>
-
-            {/* Right: Tools & Actions */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
-                {layoutSelectDesktop}
-                <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-                {zoomControlsDesktop}
-              </div>
-
-              <div className="flex items-center gap-0.5">
-                {installButton}
-                {searchDialogWrapped}
-                {copyDropdown}
-                {bookmarkDropdown}
-                {readingThemePicker}
-                {tajweedToggleButton}
-                {quietModeButton}
-              </div>
-
-              <div className="h-5 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-
-              <div className="flex items-center gap-2">
-                {audioButtonDesktop}
-                {recordPracticeButton}
-                {personalPlanButton(false)}
-                {memoButton}
-                {liveRecitationButton}
-              </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {searchDialogWrapped}
+              {audioButtonDesktop}
+              {memoButton}
+              {moreButton(false)}
             </div>
           </div>
 
           {/* Mobile Toolbar */}
-          <div className="flex w-full flex-col px-2 py-2 lg:hidden">
+          <div className="flex w-full px-2 py-2 lg:hidden">
             <div className="flex w-full items-center justify-between gap-1">
               <div className="flex min-w-0 flex-1 items-center gap-1">
                 {exitEmbeddedButton || backButtonMobile}
@@ -2399,35 +2376,40 @@ export function QuranPagesView({
               </div>
 
               <div className="flex shrink-0 items-center gap-0.5">
-                {audioButtonMobile}
-                {layoutToggleButtonMobile}
                 {searchDialogWrapped}
+                {audioButtonMobile}
                 {memoButtonMobile}
-                {personalPlanButton(true)}
-                <button
-                  type="button"
-                  onClick={() => setMobileToolsOpen((open) => !open)}
-                  className={cn(
-                    "grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors",
-                    mobileToolsOpen
-                      ? "bg-emerald-900/10 text-emerald-950 dark:bg-white/10 dark:text-emerald-100"
-                      : "text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
-                  )}
-                  aria-expanded={mobileToolsOpen}
-                  aria-label={lang === "ar" ? "المزيد من أدوات المصحف" : "More Mushaf tools"}
-                >
-                  {mobileToolsOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-                </button>
+                {moreButton(true)}
               </div>
             </div>
+          </div>
 
-            {/* Mobile Expanded Area */}
-            {mobileToolsOpen && (
-              <div className="mt-2 flex flex-col gap-2 rounded-xl border border-emerald-900/10 bg-white/50 p-2 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/50">
+          {memoChoiceOpen && personalPlan.enabled && !guidedOpen && (
+            <div data-reader-memo-choice role="group" aria-label={lang === "ar" ? "بدء حفظني" : "Start memorization"}
+              className="absolute end-2 top-full z-50 mt-1 w-[min(20rem,calc(100vw-1rem))] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-2 shadow-xl dark:border-white/10 dark:bg-[#151b18] lg:end-14">
+              <p className="px-2 py-1 text-xs font-bold text-emerald-900/65 dark:text-emerald-100/65">{lang === "ar" ? "كيف تود البدء؟" : "How would you like to begin?"}</p>
+              <button type="button" data-testid="button-start-current-memo" onClick={startCurrentAyahGuided}
+                className="flex w-full items-center rounded-lg px-3 py-2.5 text-start text-sm font-bold text-emerald-900 hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10">
+                {lang === "ar" ? "حفظني من الآية الحالية" : "Memorize from current ayah"}
+              </button>
+              <button type="button" data-testid="button-open-personal-plan" onClick={() => {
+                setMemoChoiceOpen(false);
+                if (personalPlanRedirectHref) setLocation(personalPlanRedirectHref);
+                else setPersonalPlanOpen(true);
+              }} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-start text-sm font-bold text-emerald-900 hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10">
+                <span>{lang === "ar" ? "خطتي" : "My plan"}</span>
+                <span data-testid="count-personal-quran-due" className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">{personalPlan.due.length}</span>
+              </button>
+            </div>
+          )}
+
+          {mobileToolsOpen && (
+            <div data-reader-more id="quran-reader-more-panel" role="region" aria-label={lang === "ar" ? "أدوات المصحف" : "Mushaf tools"}
+              className="absolute end-2 top-full z-50 mt-1 flex max-h-[calc(100dvh-4.5rem)] w-[min(23rem,calc(100vw-1rem))] flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-3 shadow-xl dark:border-white/10 dark:bg-[#151b18] lg:end-4">
                 <p className="px-1 text-[10px] font-extrabold text-emerald-800/60 dark:text-emerald-200/60">
                   {lang === "ar" ? "طريقة العرض" : "Reading view"}
                 </p>
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <div className="flex h-9 w-32 shrink-0 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                     {juzSelect}
                   </div>
@@ -2435,12 +2417,11 @@ export function QuranPagesView({
                     {layoutSelectDesktop}
                   </div>
                 </div>
-
+                <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 dark:bg-white/5">{zoomControlsDesktop}</div>
                 <p className="border-t border-emerald-900/10 px-1 pt-2 text-[10px] font-extrabold text-emerald-800/60 dark:border-white/10 dark:text-emerald-200/60">
                   {lang === "ar" ? "أدوات القراءة" : "Reading tools"}
                 </p>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                     {installButton}
                     {copyDropdown}
                     {bookmarkDropdown}
@@ -2448,33 +2429,22 @@ export function QuranPagesView({
                     {tajweedToggleButton}
                     {quietModeButton}
                     {syncButton}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      data-testid="button-mobile-open-bookmarks"
-                      onClick={() => {
-                        if (onOpenBookmarks) {
-                          setMobileToolsOpen(false);
-                          setBookmarkActionsOpen(false);
-                          onOpenBookmarks();
-                          return;
-                        }
-                        setCopyActionsOpen(false);
-                        setBookmarkActionsOpen(true);
-                      }}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-emerald-900/5 px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
-                    >
-                      <Bookmark className="h-4 w-4" />
-                      <span>{lang === "ar" ? "العلامات" : "Bookmarks"}</span>
-                    </button>
+                </div>
+                {(onOpenBookmarks || recordPracticeButton || liveRecitationButton) && (
+                  <>
+                    <p className="border-t border-emerald-900/10 px-1 pt-2 text-[10px] font-extrabold text-emerald-800/60 dark:border-white/10 dark:text-emerald-200/60">{lang === "ar" ? "إجراءات" : "Actions"}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                    {onOpenBookmarks && <button type="button" data-testid="button-mobile-open-bookmarks" onClick={() => { setMobileToolsOpen(false); onOpenBookmarks(); }}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-900/5 px-3 text-xs font-bold text-emerald-800 dark:bg-white/5 dark:text-emerald-200">
+                      <Bookmark className="h-4 w-4" />{lang === "ar" ? "العلامات" : "Bookmarks"}
+                    </button>}
                     {recordPracticeButton}
                     {liveRecitationButton}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                    </div>
+                  </>
+                )}
+            </div>
+          )}
 
           {startAyah !== null && endAyah !== null && (
             <div className="border-y border-emerald-200/50 bg-emerald-50 px-2 py-1 text-center text-[11px] font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100 md:px-4 md:py-2 md:text-sm">

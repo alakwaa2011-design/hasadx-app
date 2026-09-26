@@ -200,11 +200,42 @@ function pagesView(extra: Partial<React.ComponentProps<typeof QuranPagesView>> =
 function renderPagesView(extra: Partial<React.ComponentProps<typeof QuranPagesView>> = {}) {
   return render(pagesView(extra));
 }
+async function openPersonalPlan() {
+  fireEvent.click(await screen.findByTestId("button-memo-session"));
+  fireEvent.click(screen.getByTestId("button-open-personal-plan"));
+}
 
 describe("personal Quran plans in authenticated readers", () => {
+  it("offers the current ayah and plan from حفظني, and closes the choice with Escape", async () => {
+    renderPagesView({ embedded: true });
+    fireEvent.click(await screen.findByTestId("button-memo-session"));
+    expect(screen.getByTestId("button-start-current-memo")).toBeTruthy();
+    expect(screen.getByTestId("button-open-personal-plan")).toBeTruthy();
+    expect(screen.getByTestId("count-personal-quran-due").textContent).toBe("0");
+    expect(screen.queryByTestId("guided-stage")).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByTestId("button-open-personal-plan")).toBeNull();
+    fireEvent.click(screen.getByTestId("button-memo-session"));
+    fireEvent.click(screen.getByTestId("button-start-current-memo"));
+    expect(screen.getByTestId("guided-stage")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("button-memo-session"));
+    expect(screen.queryByTestId("guided-stage")).toBeNull();
+  });
+
+  it("keeps secondary reader tools inside an overlay disclosure", async () => {
+    renderPagesView();
+    const more = await screen.findByTestId("button-mobile-more-tools");
+    expect(screen.queryByTestId("button-tajweed-toggle")).toBeNull();
+    fireEvent.click(more);
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByTestId("button-tajweed-toggle")).toBeTruthy();
+    fireEvent.click(more);
+    expect(screen.queryByTestId("button-tajweed-toggle")).toBeNull();
+  });
+
   it("links from the first selected ayah through the current ayah and restores the range on resume", async () => {
     renderPagesView({ embedded: true });
-    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    await openPersonalPlan();
     fireEvent.change(screen.getByTestId("select-personal-plan-end-ayah"), { target: { value: "3" } });
     fireEvent.click(screen.getByTestId("button-save-personal-plan"));
     fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
@@ -219,7 +250,7 @@ describe("personal Quran plans in authenticated readers", () => {
     });
 
     fireEvent.click(screen.getByTestId("guided-close"));
-    fireEvent.click(screen.getByTestId("button-personal-quran-plan-desktop"));
+    await openPersonalPlan();
     fireEvent.click(screen.getByTestId("button-resume-personal-session"));
     expect(screen.getByTestId("guided-stage").dataset.stage).toBe("4");
     expect(screen.getByTestId("mock-audio-range").dataset).toMatchObject({
@@ -230,7 +261,7 @@ describe("personal Quran plans in authenticated readers", () => {
 
   it("keeps the first selected surah when the linked range crosses into the next surah", async () => {
     renderPagesView({ embedded: true });
-    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    await openPersonalPlan();
     fireEvent.change(screen.getByTestId("select-personal-plan-start-ayah"), { target: { value: "7" } });
     fireEvent.change(screen.getByTestId("select-personal-plan-end-surah"), { target: { value: "2" } });
     fireEvent.change(screen.getByTestId("select-personal-plan-end-ayah"), { target: { value: "2" } });
@@ -247,8 +278,7 @@ describe("personal Quran plans in authenticated readers", () => {
 
   it("shows the teacher's own plan in the embedded teacher Mushaf without writing to the public reader", async () => {
     renderPagesView({ embedded: true });
-    const button = await screen.findByTestId("button-personal-quran-plan-desktop");
-    fireEvent.click(button);
+    await openPersonalPlan();
     expect(screen.getByTestId("quran-personal-plan-panel")).toBeTruthy();
     fireEvent.click(screen.getByTestId("button-save-personal-plan"));
     expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).plan?.start).toEqual({ surah: 1, ayah: 1 });
@@ -267,7 +297,7 @@ describe("personal Quran plans in authenticated readers", () => {
       readerBasePath: "/student/quran-practice",
       isIndependentPractice: true,
     });
-    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    await openPersonalPlan();
     fireEvent.click(screen.getByTestId("button-save-personal-plan"));
     expect(readQuranPersonalState(studentKey).plan?.dailyGoal).toBe(3);
     expect(localStorage.getItem(personalQuranStorageKey("teacher", 10))).toBeNull();
@@ -287,21 +317,21 @@ describe("personal Quran plans in authenticated readers", () => {
       startAyah: 1,
       endAyah: 2,
     });
-    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    await openPersonalPlan();
     expect(navigateMock).toHaveBeenCalledWith("/student/quran-practice/1?personalPlan=1");
     expect(screen.queryByTestId("quran-personal-plan-panel")).toBeNull();
   });
 
   it("hides the old plan and closes its guided session when identity verification fails or changes", async () => {
     const { rerender } = renderPagesView({ embedded: true });
-    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    await openPersonalPlan();
     fireEvent.click(screen.getByTestId("button-save-personal-plan"));
     fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
     expect(screen.getByTestId("assess-personal-mastered")).toBeTruthy();
 
     teacherIdentity.current = { data: { id: 10 }, isFetching: true, isError: false, isFetchedAfterMount: true };
     rerender(pagesView({ embedded: true }));
-    expect(screen.queryByTestId("button-personal-quran-plan-desktop")).toBeNull();
+    expect(screen.queryByTestId("button-open-personal-plan")).toBeNull();
     expect(screen.queryByTestId("assess-personal-mastered")).toBeNull();
 
     teacherIdentity.current = { data: { id: 10 }, isFetching: false, isError: false, isFetchedAfterMount: true };
@@ -310,13 +340,12 @@ describe("personal Quran plans in authenticated readers", () => {
 
     teacherIdentity.current = { data: { id: 10 }, isFetching: false, isError: true, isFetchedAfterMount: true };
     rerender(pagesView({ embedded: true }));
-    expect(screen.queryByTestId("button-personal-quran-plan-desktop")).toBeNull();
+    expect(screen.queryByTestId("button-open-personal-plan")).toBeNull();
     expect(screen.queryByTestId("assess-personal-mastered")).toBeNull();
 
     teacherIdentity.current = { data: { id: 11 }, isFetching: false, isError: false, isFetchedAfterMount: true };
     rerender(pagesView({ embedded: true }));
-    const button = await screen.findByTestId("button-personal-quran-plan-desktop");
-    fireEvent.click(button);
+    await openPersonalPlan();
     expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).plan).not.toBeNull();
     expect(readQuranPersonalState(personalQuranStorageKey("teacher", 11)).plan).toBeNull();
     expect(readQuranPersonalState(personalQuranStorageKey("teacher", 11)).assessments).toEqual({});
@@ -395,6 +424,7 @@ describe("QuranPagesView word Tajweed action", () => {
     fireEvent.click(screen.getByTestId("tajweed-card-close"));
 
     // Toggling Tajweed color rendering on must not change rule availability.
+    fireEvent.click(screen.getByTestId("button-desktop-more-tools"));
     fireEvent.click(screen.getByTestId("button-tajweed-toggle"));
     await waitFor(() => {
       expect(screen.getAllByTestId("mushaf-page")[0].getAttribute("data-tajweed-color-enabled")).toBe("true");

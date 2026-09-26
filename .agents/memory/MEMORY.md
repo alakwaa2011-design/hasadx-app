@@ -154,3 +154,4 @@
 - [Quran joined-vocative madd](quran-joined-vocative-madd.md) — Quran Foundation may tag «يا» + hamza as connected from its joined written form; preserve the linguistic boundary and label local corrections.
 - [Quran orthographic search](quran-orthographic-search.md) — index both omitted and written dagger-alif forms; split joined vocatives before stripping marks.
 - [Authenticated personal Quran plans](authenticated-personal-quran-plans.md) — device-local self-assessment is account-scoped; assigned wards link to independent practice, never inherit its state.
+- [Quran reader control hierarchy](quran-reader-control-hierarchy.md) — keep the page primary, nest personal plans under memorization, and give listening repetition one ayah/segment entry.

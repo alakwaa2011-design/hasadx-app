@@ -192,6 +192,35 @@ function RepeatingPlayerHarness({
   );
 }
 
+function RepeatSettingsHarness({ invalidRange = false }: { invalidRange?: boolean } = {}) {
+  const [memoSession, setMemoSession] = useState({
+    isActive: false,
+    rangeStart: invalidRange ? 8 : 1,
+    rangeEnd: invalidRange ? 10 : 2,
+    repeatScope: 'ayah' as 'ayah' | 'range',
+    repeatCount: 3 as number | 'continuous',
+    pauseSeconds: 0,
+  });
+  return (
+    <QuranAudioHostProvider>
+      <output data-testid="repeat-session">{JSON.stringify(memoSession)}</output>
+      <QuranAudioPlayer
+        surahs={[{ ayahs: [{}, {}, {}, {}] }] as never}
+        surahNumber={1}
+        startAyah={null}
+        endAyah={null}
+        selectedAyah={2}
+        playingAyah={2}
+        onPlayingAyahChange={vi.fn()}
+        isPlaying={false}
+        onIsPlayingChange={vi.fn()}
+        memoSession={memoSession}
+        onMemoSessionChange={setMemoSession}
+      />
+    </QuranAudioHostProvider>
+  );
+}
+
 async function renderAtBoundary(
   onAudibleAyahChange?: (surahNumber: number, ayah: number | null) => void,
 ) {
@@ -548,5 +577,62 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
       await waitFor(() => expect(view.getByTestId('repeating-playing-ayah').textContent)
         .toBe(playCount < 3 ? '1' : '2'));
     }
+  });
+
+  it('switches repeat modes and directly selects the ayah and segment counts', async () => {
+    const view = render(<RepeatSettingsHarness />);
+    fireEvent.click(view.getByTestId('button-audio-repeat'));
+    expect(view.getByTestId('panel-repeat')).toBeTruthy();
+
+    const ayahCount = view.getByTestId('button-repeat-count-5');
+    fireEvent.click(ayahCount);
+    expect(ayahCount.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(view.getByTestId('button-repeat-mode-range'));
+    await waitFor(() => {
+      const state = JSON.parse(view.getByTestId('repeat-session').textContent ?? '{}');
+      expect(state.isActive).toBe(true);
+      expect(state.repeatScope).toBe('range');
+      expect(state.rangeStart).toBe(2);
+      expect(state.rangeEnd).toBe(2);
+    });
+    const segmentCount = view.getByTestId('button-repeat-count-10');
+    fireEvent.click(segmentCount);
+    expect(segmentCount.getAttribute('aria-pressed')).toBe('true');
+    expect(JSON.parse(view.getByTestId('repeat-session').textContent ?? '{}').repeatCount).toBe(10);
+
+    fireEvent.click(view.getByTestId('button-repeat-mode-ayah'));
+    await waitFor(() => {
+      const state = JSON.parse(view.getByTestId('repeat-session').textContent ?? '{}');
+      expect(state.isActive).toBe(false);
+      expect(state.repeatScope).toBe('ayah');
+    });
+    expect(view.queryByTestId('select-segment-start')).toBeNull();
+    expect(view.getByTestId('button-repeat-count-5').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('keeps segment selectors ordered and initializes an invalid range at the current ayah', async () => {
+    const view = render(<RepeatSettingsHarness invalidRange />);
+    fireEvent.click(view.getByTestId('button-audio-repeat'));
+    fireEvent.click(view.getByTestId('button-repeat-mode-range'));
+
+    const start = await waitFor(() => view.getByTestId('select-segment-start') as HTMLSelectElement);
+    const end = view.getByTestId('select-segment-end') as HTMLSelectElement;
+    const initialized = JSON.parse(view.getByTestId('repeat-session').textContent ?? '{}');
+    expect(initialized.rangeStart).toBe(2);
+    expect(initialized.rangeEnd).toBe(2);
+    fireEvent.change(start, { target: { value: '3' } });
+    await waitFor(() => {
+      const state = JSON.parse(view.getByTestId('repeat-session').textContent ?? '{}');
+      expect(state.rangeStart).toBe(3);
+      expect(state.rangeEnd).toBe(3);
+    });
+    fireEvent.change(end, { target: { value: '4' } });
+    await waitFor(() => {
+      const state = JSON.parse(view.getByTestId('repeat-session').textContent ?? '{}');
+      expect(state.rangeStart).toBe(3);
+      expect(state.rangeEnd).toBe(4);
+    });
+    expect(Array.from(end.options).map(option => Number(option.value)).every(value => value >= 3)).toBe(true);
   });
 });
