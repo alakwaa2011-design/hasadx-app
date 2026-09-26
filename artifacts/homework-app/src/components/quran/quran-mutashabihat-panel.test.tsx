@@ -21,12 +21,22 @@ describe("Quran mutashabihat panel", () => {
     expect(onNavigate).toHaveBeenCalledWith({ verseKey: "3:2", pageId: expect.any(Number) });
   });
 
+  it("shows the full set of repeated verses for alif-lam-mim", async () => {
+    render(
+      <I18nProvider>
+        <QuranMutashabihatPanel verseKey="2:1" onNavigate={vi.fn()} onClose={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByTestId("mutashabihat-match-3:1")).toBeTruthy();
+    expect(screen.getByTestId("mutashabihat-match-32:1")).toBeTruthy();
+  });
+
   it("explains that an empty selection does not imply no other similarities", async () => {
     render(
       <I18nProvider>
-        <QuranMutashabihatPanel verseKey="1:1" onNavigate={vi.fn()} onClose={vi.fn()} />
+        <QuranMutashabihatPanel verseKey="111:1" onNavigate={vi.fn()} onClose={vi.fn()} />
       </I18nProvider>,
     );
-    expect(await screen.findByText(/لا توجد لهذه الآية علاقات منتقاة/)).toBeTruthy();
+    expect(await screen.findByText(/قد توجد اختلافات لفظية أخرى/)).toBeTruthy();
   });
 });

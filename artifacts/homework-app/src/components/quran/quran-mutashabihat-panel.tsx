@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowUpLeft, GitCompareArrows, Loader2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getQuranMutashabihat, type QuranMutashabihatCategory } from "@/data/quran/mutashabihat-relations";
+import { findRepeatedPhrases, getQuranPhraseIndex, getSharedPhrase, type QuranPhraseIndex } from "@/data/quran/mutashabihat-phrases";
 
 type Verse = { chapter_id: number; number: number; page_id: number; content: string };
 type Chapter = { id: number; name: string };
-type Corpus = { verses: Map<string, Verse>; chapters: Map<number, string> };
+type Corpus = { verses: Map<string, Verse>; chapters: Map<number, string>; phraseIndex: QuranPhraseIndex };
 
-const categoryLabels: Record<QuranMutashabihatCategory, { ar: string; en: string }> = {
+type ResultCategory = QuranMutashabihatCategory | "repeated_verse" | "repeated_phrase";
+const categoryLabels: Record<ResultCategory, { ar: string; en: string }> = {
+  repeated_verse: { ar: "نص الآية متكرر", en: "Repeated verse" },
+  repeated_phrase: { ar: "عبارة مشتركة", en: "Repeated phrase" },
   lafzi: { ar: "عبارة متطابقة", en: "Shared wording" },
   word_swap: { ar: "تبديل لفظ", en: "Word variation" },
   addition_omission: { ar: "زيادة أو حذف", en: "Addition or omission" },
@@ -16,35 +20,6 @@ const categoryLabels: Record<QuranMutashabihatCategory, { ar: string; en: string
   pronoun_shift: { ar: "اختلاف الضمير", en: "Pronoun variation" },
   structural: { ar: "تشابه في الصياغة", en: "Similar structure" },
 };
-
-function normalizedWord(word: string) {
-  return word.normalize("NFKD")
-    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u08D3-\u08FF\u0640]/g, "")
-    .replace(/[ٱأإآ]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/[^\u0621-\u064A]/g, "");
-}
-
-function sharedWordPositions(firstText: string, secondText: string) {
-  const first = firstText.split(/\s+/).filter(Boolean);
-  const second = secondText.split(/\s+/).filter(Boolean);
-  const a = first.map((word, index) => ({ word: normalizedWord(word), index })).filter((item) => item.word);
-  const b = second.map((word, index) => ({ word: normalizedWord(word), index })).filter((item) => item.word);
-  const previous = new Array<number>(b.length + 1).fill(0);
-  let best = { length: 0, a: 0, b: 0 };
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = b.length; j >= 1; j--) {
-      previous[j] = a[i - 1].word === b[j - 1].word ? previous[j - 1] + 1 : 0;
-      if (previous[j] > best.length) best = { length: previous[j], a: i - previous[j], b: j - previous[j] };
-    }
-  }
-  // A one-word coincidence is not evidence of a shared phrase.
-  if (best.length < 2) return { first: new Set<number>(), second: new Set<number>() };
-  return {
-    first: new Set(a.slice(best.a, best.a + best.length).map((item) => item.index)),
-    second: new Set(b.slice(best.b, best.b + best.length).map((item) => item.index)),
-  };
-}
 
 function VerseText({ text, highlighted }: { text: string; highlighted: Set<number> }) {
   return (
@@ -70,7 +45,27 @@ export function QuranMutashabihatPanel({
   const { lang, dir } = useI18n();
   const [corpus, setCorpus] = useState<Corpus | null>(null);
   const [error, setError] = useState(false);
-  const relations = useMemo(() => getQuranMutashabihat(verseKey), [verseKey]);
+  const [visibleCount, setVisibleCount] = useState(12);
+  useEffect(() => setVisibleCount(12), [verseKey]);
+  const relations = useMemo(() => {
+    if (!corpus) return [];
+    const curated = getQuranMutashabihat(verseKey);
+    const curatedByVerse = new Map(curated.map((relation) => [relation.otherVerseKey, relation.category]));
+    const repeated = findRepeatedPhrases(corpus.phraseIndex, verseKey);
+    const repeatedKeys = new Set(repeated.map((relation) => relation.otherVerseKey));
+    return [
+      ...repeated.map((relation) => ({
+        otherVerseKey: relation.otherVerseKey,
+        category: (relation.exactVerse
+          ? "repeated_verse"
+          : curatedByVerse.get(relation.otherVerseKey) ?? "repeated_phrase") as ResultCategory,
+        exactVerse: relation.exactVerse,
+      })),
+      ...curated.filter((relation) => !repeatedKeys.has(relation.otherVerseKey))
+        .map((relation) => ({ ...relation, exactVerse: false })),
+    ];
+  }, [corpus, verseKey]);
+  const exactCount = relations.filter((relation) => relation.exactVerse).length;
 
   useEffect(() => {
     let active = true;
@@ -84,6 +79,7 @@ export function QuranMutashabihatPanel({
       setCorpus({
         verses: new Map(verses.map((verse) => [`${verse.chapter_id}:${verse.number}`, verse])),
         chapters: new Map(chapters.map((chapter) => [chapter.id, chapter.name])),
+        phraseIndex: getQuranPhraseIndex(verses),
       });
     }).catch(() => {
       if (active) setError(true);
@@ -141,25 +137,25 @@ export function QuranMutashabihatPanel({
             <>
               <p className="mb-4 text-sm text-emerald-800/80 dark:text-emerald-200/80">
                 {lang === "ar"
-                  ? `مواضع منتقاة لها صلة بهذه الآية (${relations.length}). التظليل يبيّن أطول عبارة مشتركة حرفيًا بعد توحيد الرسم للمقارنة فقط؛ نص الآيات كما هو.`
-                  : `${relations.length} selected related verses. Highlighting marks the longest shared wording; verse text is unchanged.`}
+                  ? `${relations.length} موضعًا مرتبطًا، منها ${exactCount} مواضع يتكرر فيها نص الآية. نعرض العبارات المشتركة من ثلاث كلمات فأكثر والآيات القصيرة المتطابقة، إلى جانب علاقات منتقاة للاختلافات اللفظية. استُبعدت بسملة مطلع السورة من المقارنة فقط؛ نص المصحف لم يتغير.`
+                  : `${relations.length} related verses, including ${exactCount} identical verse texts. Matches include shared phrases of three or more words, complete short verses, and selected wording variations. Opening basmalas are excluded from comparison only.`}
               </p>
               {relations.length === 0 && (
                 <p className="rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm leading-7 text-emerald-900 dark:border-white/10 dark:bg-emerald-900/20 dark:text-emerald-50">
                   {lang === "ar"
-                    ? "لا توجد لهذه الآية علاقات منتقاة في الفهرس الحالي. هذا لا يعني عدم وجود متشابهات لها خارج هذه المجموعة."
-                    : "No selected relations for this verse in the current index. This does not mean it has no similarities elsewhere."}
+                    ? "لم نجد تكرارًا مطابقًا أو عبارة مشتركة من ثلاث كلمات فأكثر لهذه الآية، ولا علاقة منتقاة في الفهرس. قد توجد اختلافات لفظية أخرى غير مفهرسة."
+                    : "No repeated verse, shared phrase of three or more words, or selected relation was found. Other wording variations may exist."}
                 </p>
               )}
               <div className="space-y-3">
-                {relations.map(({ otherVerseKey, category }) => {
+                {relations.slice(0, visibleCount).map(({ otherVerseKey, category }) => {
                   const other = corpus.verses.get(otherVerseKey);
                   if (!other) return (
                     <div key={otherVerseKey} role="alert" className="rounded-xl border border-rose-200 p-3 text-rose-800">
                       {lang === "ar" ? `تعذر العثور على الآية ${otherVerseKey}` : `Verse ${otherVerseKey} not found`}
                     </div>
                   );
-                  const shared = sharedWordPositions(current.content, other.content);
+                  const shared = getSharedPhrase(corpus.phraseIndex, verseKey, otherVerseKey);
                   return (
                     <article key={otherVerseKey} className="rounded-xl border border-emerald-900/10 bg-white p-3.5 dark:border-white/10 dark:bg-white/5" data-testid={`mutashabihat-match-${otherVerseKey}`}>
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -180,8 +176,13 @@ export function QuranMutashabihatPanel({
                   );
                 })}
               </div>
+              {relations.length > visibleCount && (
+                <button type="button" data-testid="mutashabihat-show-more" onClick={() => setVisibleCount((count) => count + 12)} className="mt-4 w-full rounded-xl border border-emerald-800/20 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900 hover:bg-emerald-100 dark:border-white/10 dark:bg-emerald-900/20 dark:text-emerald-50">
+                  {lang === "ar" ? `عرض المزيد (${relations.length - visibleCount} متبقية)` : `Show more (${relations.length - visibleCount} remaining)`}
+                </button>
+              )}
               <p className="mt-5 border-t border-emerald-900/10 pt-3 text-xs leading-6 text-emerald-800/75 dark:border-white/10 dark:text-emerald-200/75">
-                {lang === "ar" ? "علاقات منتقاة وليست فهرسًا شاملًا. المصدر: " : "Selected relations, not an exhaustive index. Source: "}
+                {lang === "ar" ? "التكرار النصي محسوب من مصحف Q-Complex المحلي. العلاقات المنتقاة للاختلافات اللفظية ليست شاملة؛ مصدرها: " : "Textual repetition is calculated from the local Q-Complex text. Selected wording variations are not exhaustive; source: "}
                 <a className="underline underline-offset-2" href="https://github.com/srmdn/quran-mutashabihat" target="_blank" rel="noopener noreferrer">quran-mutashabihat</a>
                 {" · "}
                 <a className="underline underline-offset-2" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>
