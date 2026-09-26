@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Loader2, Search, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import chaptersUrl from "@/data/quran/qcomplex/chapters.json?url";
+import versesUrl from "@/data/quran/qcomplex/verses.json?url";
 
 interface SearchChapter {
   id: number;
@@ -22,6 +24,13 @@ export interface QuranSearchSelection {
 }
 
 const MAX_VISIBLE_RESULTS = 60;
+const INDEX_LOAD_TIMEOUT_MS = 20_000;
+
+async function fetchIndex<T>(url: string, signal: AbortSignal): Promise<T> {
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Could not load Quran search index (${response.status})`);
+  return response.json() as Promise<T>;
+}
 
 function normalizeArabic(value: string) {
   return value
@@ -56,28 +65,35 @@ export function QuranSearchDialog({
   useEffect(() => {
     if (!open || verses.length > 0) return;
 
-    let mounted = true;
+    let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), INDEX_LOAD_TIMEOUT_MS);
     setLoading(true);
     setLoadError(false);
 
     Promise.all([
-      import("@/data/quran/qcomplex/chapters.json"),
-      import("@/data/quran/qcomplex/verses.json"),
+      fetchIndex<SearchChapter[]>(chaptersUrl, controller.signal),
+      fetchIndex<SearchVerse[]>(versesUrl, controller.signal),
     ])
       .then(([chapterData, verseData]) => {
-        if (!mounted) return;
-        setChapters(chapterData.default as SearchChapter[]);
-        setVerses(verseData.default as SearchVerse[]);
+        if (!active) return;
+        setChapters(chapterData);
+        setLoading(false);
+        setVerses(verseData);
       })
       .catch(() => {
-        if (mounted) setLoadError(true);
+        if (!active) return;
+        setLoading(false);
+        setLoadError(true);
       })
       .finally(() => {
-        if (mounted) setLoading(false);
+        window.clearTimeout(timeout);
       });
 
     return () => {
-      mounted = false;
+      active = false;
+      controller.abort();
+      window.clearTimeout(timeout);
     };
   }, [loadAttempt, open, verses.length]);
 
@@ -95,12 +111,15 @@ export function QuranSearchDialog({
     setVisibleLimit(MAX_VISIBLE_RESULTS);
   }, [normalizedQuery]);
 
+  const normalizedVerses = useMemo(
+    () => verses.map((verse) => normalizeArabic(verse.content)),
+    [verses],
+  );
+
   const matches = useMemo(() => {
     if (!normalizedQuery) return [];
-    return verses.filter((verse) =>
-      normalizeArabic(verse.content).includes(normalizedQuery),
-    );
-  }, [normalizedQuery, verses]);
+    return verses.filter((_, index) => normalizedVerses[index].includes(normalizedQuery));
+  }, [normalizedQuery, verses, normalizedVerses]);
 
   const chapterNames = useMemo(
     () => new Map(chapters.map((chapter) => [chapter.id, chapter.name])),
