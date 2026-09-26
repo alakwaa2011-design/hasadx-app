@@ -185,7 +185,10 @@ export function QuranAudioPlayer({
   }, [activeTab]);
 
   useEffect(() => {
-    if (recitationId !== null || !reciterCatalog.data?.reciters.length) return;
+    if (!reciterCatalog.data?.reciters.length) return;
+    // A session-only sample may be selected temporarily even though it cannot
+    // be saved as a preference. Reset only IDs missing from the new catalog.
+    if (recitationId !== null && reciterCatalog.data.reciters.some((item) => item.id === recitationId)) return;
     const availableReciters = reciterCatalog.data.reciters.filter((item) => item.available !== false);
     if (availableReciters.length === 0) return;
     let locallyPreferred: number | null = null;
@@ -287,14 +290,13 @@ export function QuranAudioPlayer({
        onPlayingWordChange?.(null);
     }
 
-    if (timingsQuery.isLoading || timingsQuery.isFetching) {
+    if ((timingsQuery.isLoading || timingsQuery.isFetching) && !timingsQuery.data) {
        return;
     }
 
-    if (timingsQuery.isError || !timingsQuery.data?.synchronized) {
-       const supportsAyahScopedFallback = recitationId === 1_000_159
-         || recitationId === 2_000_032
-         || recitationId === 2_000_170;
+    if (!timingsQuery.data?.synchronized) {
+      const supportsAyahScopedFallback = recitationId === 1_000_159
+        || recitationId === 2_000_032;
        if (recitationId >= 1_000_000 && !supportsAyahScopedFallback) {
         activeSeekRef.current = null;
         currentAudioSrcRef.current = undefined;
@@ -462,7 +464,7 @@ export function QuranAudioPlayer({
     }
 
     if (isPlaying && !isPausedBetween && audioSrc) {
-       if (timingsQuery.isLoading || timingsQuery.isFetching) {
+       if ((timingsQuery.isLoading || timingsQuery.isFetching) && !timingsQuery.data) {
          audio.pause();
          return;
        }

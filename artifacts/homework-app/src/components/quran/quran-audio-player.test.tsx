@@ -72,7 +72,6 @@ vi.mock('@workspace/api-client-react', () => ({
         { id: 8, name: 'Second reciter', style: 'Murattal' },
         { id: 2_000_032, name: 'محمود علي البنا', style: 'Murattal', available: true },
         { id: 2_000_114, name: 'صادق النظام', style: 'Murattal', available: false },
-        { id: 2_000_170, name: 'فارس عباد', style: 'Murattal', available: true },
         { id: 2_001_095, name: 'أبوبكر الظبي', style: 'Murattal', available: true },
       ],
     },
@@ -296,6 +295,19 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(audio.hasAttribute('src')).toBe(true);
   });
 
+  it('keeps the same recording playing while the next ayah timing refreshes in the background', async () => {
+    cachedNextTiming = connectedSecond;
+    timingResults.set(2, { data: connectedSecond, isFetching: true });
+    const { view, audio } = await renderAtBoundary();
+    pause.mockClear();
+
+    audio.currentTime = 1;
+    fireEvent.timeUpdate(audio);
+    await waitFor(() => expect(view.getByTestId('playing-ayah').textContent).toBe('2'));
+    expect(audio.src).toContain('/surah.mp3');
+    expect(pause).not.toHaveBeenCalled();
+  });
+
   it('falls back to ayah-scoped audio for Mahmoud Ali Al-Banna', async () => {
     preferredRecitationId = 2_000_032;
     timingResults.set(1, { isError: true });
@@ -309,22 +321,6 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
 
     await waitFor(() => {
       expect(audio.src).toContain('/api/quran/audio/2000032/1/1');
-    });
-  });
-
-  it('falls back to ayah-scoped audio for Fares Abbad', async () => {
-    preferredRecitationId = 2_000_170;
-    timingResults.set(1, { isError: true });
-
-    const view = render(<PlayerHarness />);
-    const audio = await waitFor(() => {
-      const element = view.container.querySelector('audio');
-      expect(element).not.toBeNull();
-      return element as HTMLAudioElement;
-    });
-
-    await waitFor(() => {
-      expect(audio.src).toContain('/api/quran/audio/2000170/1/1');
     });
   });
 

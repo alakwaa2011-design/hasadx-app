@@ -29,7 +29,6 @@ import {
   listQuranFoundationDisplayReciters,
   ABU_BAKR_AL_DHABI_RECITATION_ID,
   MAHMOUD_ALI_AL_BANNA_RECITATION_ID,
-  FARES_ABBAD_RECITATION_ID,
   SADIQ_ALNIZAM_RECITATION_ID,
   resetQuranFoundationClientForTests,
 } from "../lib/quran-foundation-client";
@@ -247,6 +246,7 @@ describe("Quran Foundation client", () => {
           { id: 8, reciter_name: "محمد صديق المنشاوي", style: "Mujawwad" },
           { id: 9, reciter_name: "محمد صديق المنشاوي", style: "Murattal" },
           { id: 12, reciter_name: "محمود خليل الحصري", style: "Muallim" },
+          { id: 170, reciter_name: "فارس عباد", style: "Murattal" },
         ],
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
@@ -254,6 +254,7 @@ describe("Quran Foundation client", () => {
           { id: 1, reciter_name: "عبد الباسط عبد الصمد - مجود", style: "Mujawwad" },
           { id: 6, reciter_name: "محمود خليل الحصري", style: "Murattal" },
           { id: 168, reciter_name: "محمد صديق المنشاوي", style: "Kids repeat" },
+          { id: 170, reciter_name: "Fares Abbad", style: "Murattal" },
           { id: 176, reciter_name: "قارئ تجريبي", style: "Murattal" },
         ],
       }), { status: 200 }));
@@ -266,7 +267,6 @@ describe("Quran Foundation client", () => {
       { id: SADIQ_ALNIZAM_RECITATION_ID, style: "Murattal" },
       { id: 1, style: "Mujawwad" },
       { id: 2, style: "Murattal" },
-      { id: FARES_ABBAD_RECITATION_ID, style: "Murattal" },
       { id: 1_000_168, style: "Kids repeat" },
       { id: 8, style: "Mujawwad" },
       { id: 9, style: "Murattal" },
@@ -287,11 +287,8 @@ describe("Quran Foundation client", () => {
       style: "Murattal",
       available: true,
     });
-    expect(display.find((item) => item.id === FARES_ABBAD_RECITATION_ID)).toMatchObject({
-      name: "فارس عباد",
-      style: "Murattal",
-      available: true,
-    });
+    expect(display.some((item) => item.id === 2_000_170)).toBe(false);
+    expect(display.some((item) => /فارس عباد|fares abbad/i.test(item.name))).toBe(false);
   });
 
   it("keeps the Sadiq Al-Nizam sample behind the verified-surah timing contract", async () => {
@@ -323,13 +320,11 @@ describe("Quran Foundation client", () => {
       .resolves.toBe("https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps/114006.mp3");
   });
 
-  it("serves Fares Abbad as a complete ayah-scoped Murattal recitation", async () => {
-    await expect(getQuranFoundationAyahTimings(FARES_ABBAD_RECITATION_ID, 2, 255))
-      .rejects.toThrow("ayah-scoped playback");
-    await expect(getQuranFoundationAudioUrl(FARES_ABBAD_RECITATION_ID, 1, 1))
-      .resolves.toBe("https://everyayah.com/data/Fares_Abbad_64kbps/001001.mp3");
-    await expect(getQuranFoundationAudioUrl(FARES_ABBAD_RECITATION_ID, 114, 6))
-      .resolves.toBe("https://everyayah.com/data/Fares_Abbad_64kbps/114006.mp3");
+  it("rejects the removed reader's former ID even for saved or direct audio requests", async () => {
+    await expect(getQuranFoundationAyahTimings(2_000_170, 2, 255))
+      .rejects.toThrow("not in the trusted catalog");
+    await expect(getQuranFoundationAudioUrl(2_000_170, 1, 1))
+      .rejects.toThrow("not in the trusted catalog");
   });
 
   it("loads Abu Bakr Al-Dhabi timings for every surah while preserving the existing At-Tin sample", async () => {

@@ -724,6 +724,10 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
     res.setHeader("Cache-Control", "private, max-age=604800, immutable");
     res.redirect(302, url);
   } catch (error) {
+    if (error instanceof Error && error.message.includes("not in the trusted catalog")) {
+      res.status(404).json({ error: "Quran audio is unavailable" });
+      return;
+    }
     req.log.warn({ err: error, ...parsed.data }, "Official Quran audio unavailable");
     res.status(502).json({ error: "Official Quran audio is temporarily unavailable" });
   }
@@ -784,6 +788,7 @@ router.get(
     if (error instanceof Error && (
       error.message.includes("mapping is unavailable")
       || error.message.includes("timings are unavailable")
+      || error.message.includes("not in the trusted catalog")
     )) {
       res.status(404).json({ error: "Verified Quran timing data is unavailable" });
       return;

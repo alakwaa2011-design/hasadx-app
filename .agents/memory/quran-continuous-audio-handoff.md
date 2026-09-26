@@ -5,6 +5,12 @@ description: Requirements for gap-free Quran playback across ayah boundaries
 
 When pause is zero, chapter-scoped recitations must keep the same audio element and source playing while the active ayah timing advances. Prefetch the next timing and allow an in-flight timing request to finish without pausing or unmounting audio. Ayah-scoped recordings should preload the next file.
 
+Cached valid timings remain usable during a background refresh: a query may report `isFetching` while also providing synchronized data. Pausing on the fetch flag alone inserts an artificial gap into an otherwise continuous chapter recording.
+
+**Why:** React Query can refetch without discarding the previous result, and the audio source has not changed at a same-chapter ayah boundary.
+
+**How to apply:** Wait only if no valid timing data exists; keep the current recording mounted through same-source ayah transitions. This does not eliminate silence encoded inside a recording or gaps inherent in switching separate ayah files.
+
 The app-root Quran audio host owns the persistent media element and enough session state to continue ayah-scoped and chapter-scoped playback across SPA route changes and surah boundaries. Media Session provides supported mobile browsers with lock-screen controls, but the operating system may still suspend a browser in the background.
 
 Cross-surah handoff needs an explicit transition identity shared by the route, visible player, persistent host, and audio source. The host must seek the new source to its ayah start after `play()` succeeds and before publishing the new location; browsers can retain the previous source's `currentTime` across `src` replacement. A correct URL is insufficient: verify the player label, highlighted ayah, education panel, source, and media time. Same-page boundaries such as 112→113→114 are the strongest regression case.

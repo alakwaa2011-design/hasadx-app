@@ -23,8 +23,6 @@ const MAHER_AL_MUAIQLY_AUDIO_BASE_URL = "https://everyayah.com/data/MaherAlMuaiq
 export const MAHMOUD_ALI_AL_BANNA_RECITATION_ID = 2_000_032;
 const MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL =
   "https://everyayah.com/data/Mahmoud_Ali_Al_Banna_32kbps";
-export const FARES_ABBAD_RECITATION_ID = 2_000_170;
-const FARES_ABBAD_AUDIO_BASE_URL = "https://everyayah.com/data/Fares_Abbad_64kbps";
 export const SADIQ_ALNIZAM_RECITATION_ID = 2_000_114;
 const SADIQ_ALNIZAM_AUDIO_URL =
   "/api/storage/objects/uploads/quran-recitation/sadiq-alnizam/114.mp3";
@@ -484,11 +482,20 @@ function normalizeRecitationCatalog(payload: unknown): QuranFoundationReciter[] 
       style: typeof value.style === "string" && value.style.trim() ? value.style.trim() : null,
       available: true,
     };
-  });
+  }).filter((reciter) => !isExcludedReciter(reciter));
   if (normalized.length < 1 || new Set(normalized.map((reciter) => reciter.id)).size !== normalized.length) {
     throw new Error("Quran Foundation recitation catalog is invalid");
   }
   return normalized.sort((left, right) => left.name.localeCompare(right.name, "ar"));
+}
+
+// Include provider catalogs as well as the former local ayah recording in this
+// exclusion; otherwise a catalog refresh could reintroduce the removed reader.
+function isExcludedReciter(reciter: Pick<QuranFoundationReciter, "id" | "name">): boolean {
+  const name = normalizeIdentity(reciter.name);
+  return reciter.id === 2_000_170
+    || name.includes("فارسعباد")
+    || /far[ei]s(?:al)?abbad|far[ei]s(?:al)?abad/.test(name);
 }
 
 export async function listQuranFoundationReciters(): Promise<QuranFoundationReciter[]> {
@@ -503,6 +510,7 @@ export async function listQuranFoundationReciters(): Promise<QuranFoundationReci
   for (const chapter of chapterReciters) {
     if (HIDDEN_CHAPTER_RECITER_IDS.has(chapter.chapterReciterId)) continue;
     const publicId = chapterPublicId(chapter.chapterReciterId);
+    if (isExcludedReciter({ id: publicId, name: chapter.name })) continue;
     if (usedIds.has(publicId)) throw new Error("Quran recitation ID namespace collision");
     const localizedName = ARABIC_CHAPTER_RECITER_NAMES[chapter.chapterReciterId] ?? chapter.name;
     if (!value.some((reciter) => reciter.name === localizedName && reciter.style === chapter.style)) {
@@ -540,6 +548,7 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
   const catalog = await listQuranFoundationReciters();
   const selected = new Map<string, QuranFoundationReciter>();
   for (const reciter of catalog) {
+    if (isExcludedReciter(reciter)) continue;
     const style = canonicalDisplayStyle(reciter.style);
     if (!style || /تجريبي|experimental/i.test(reciter.name)) continue;
     const normalized = { ...reciter, style };
@@ -564,12 +573,6 @@ export async function listQuranFoundationDisplayReciters(): Promise<QuranFoundat
   selected.set("محمود علي البنا:Murattal", {
     id: MAHMOUD_ALI_AL_BANNA_RECITATION_ID,
     name: "محمود علي البنا",
-    style: "Murattal",
-    available: true,
-  });
-  selected.set("فارس عباد:Murattal", {
-    id: FARES_ABBAD_RECITATION_ID,
-    name: "فارس عباد",
     style: "Murattal",
     available: true,
   });
@@ -743,6 +746,7 @@ export async function getQuranFoundationAyahTimings(
   recitationId: number, surahNumber: number, ayahNumber: number,
 ): Promise<QuranFoundationAyahTimings> {
   if (!Number.isInteger(recitationId) || recitationId < 1) throw new Error("Invalid Quran Foundation recitation");
+  if (recitationId === 2_000_170) throw new Error("Quran Foundation recitation is not in the trusted catalog");
   validateVerseNumbers(surahNumber, ayahNumber);
   if (recitationId === SADIQ_ALNIZAM_RECITATION_ID) {
     if (surahNumber !== 114) {
@@ -776,7 +780,6 @@ export async function getQuranFoundationAyahTimings(
   if (
     recitationId === MAHER_AL_MUAIQLY_RECITATION_ID
     || recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID
-    || recitationId === FARES_ABBAD_RECITATION_ID
   ) {
     throw new Error("This standard recitation uses ayah-scoped playback");
   }
@@ -1011,6 +1014,9 @@ export async function getQuranFoundationAudioUrl(
   if (!Number.isInteger(recitationId) || recitationId < 1) {
     throw new Error("Invalid Quran Foundation recitation");
   }
+  if (recitationId === 2_000_170) {
+    throw new Error("Quran Foundation recitation is not in the trusted catalog");
+  }
   if (recitationId === SADIQ_ALNIZAM_RECITATION_ID) {
     validateVerseNumbers(surahNumber, ayahNumber);
     if (surahNumber !== 114) {
@@ -1022,13 +1028,10 @@ export async function getQuranFoundationAudioUrl(
     validateVerseNumbers(surahNumber, ayahNumber);
     return getAbuBakrAlDhabiAudioUrl(surahNumber);
   }
-  if (recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID || recitationId === FARES_ABBAD_RECITATION_ID) {
+  if (recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID) {
     validateVerseNumbers(surahNumber, ayahNumber);
-    const baseUrl = recitationId === FARES_ABBAD_RECITATION_ID
-      ? FARES_ABBAD_AUDIO_BASE_URL
-      : MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL;
     const fileName = `${String(surahNumber).padStart(3, "0")}${String(ayahNumber).padStart(3, "0")}.mp3`;
-    const value = `${baseUrl}/${fileName}`;
+    const value = `${MAHMOUD_ALI_AL_BANNA_AUDIO_BASE_URL}/${fileName}`;
     cachedAudio.set(`${recitationId}:${surahNumber}:${ayahNumber}`, {
       value,
       expiresAt: Date.now() + AUDIO_CACHE_MS,
