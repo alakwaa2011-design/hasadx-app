@@ -8,6 +8,8 @@ interface QuranMadaniPageRendererProps {
   pageNumber: number;
   isLastVerse: (chapterId: number, verseNumber: number) => boolean;
   fallbackImageUrl: string;
+  /** When true, renders with the King Fahd Complex "QCF v4" Tajweed color font instead of the plain black v2 font. */
+  tajweedEnabled?: boolean;
   onFallbackError?: () => void;
   selectedVerseKey?: string | null;
   selectedVerseRange?: { surah: number; startAyah: number; endAyah: number } | null;
@@ -40,6 +42,7 @@ export function QuranMadaniPageRenderer({
   pageNumber,
   isLastVerse,
   fallbackImageUrl,
+  tajweedEnabled = false,
   onFallbackError,
   selectedVerseKey,
   selectedVerseRange,
@@ -64,11 +67,18 @@ export function QuranMadaniPageRenderer({
 
   useEffect(() => {
     let mounted = true;
-    const fontUrls = [
-      `https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2`,
-      `https://static.qurancdn.com/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2`,
-    ];
-    const fontName = `qcf-v2-p${pageNumber}`;
+    // The v4 Tajweed font reuses the exact same glyph codes as v2 (code_v2), just
+    // recolored per rule via COLR/CPAL — same word data, only the font swaps.
+    const fontUrls = tajweedEnabled
+      ? [
+          `https://verses.quran.foundation/fonts/quran/hafs/v4/colrv1/woff2/p${pageNumber}.woff2`,
+          `https://static.qurancdn.com/fonts/quran/hafs/v4/woff2/p${pageNumber}.woff2`,
+        ]
+      : [
+          `https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2`,
+          `https://static.qurancdn.com/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2`,
+        ];
+    const fontName = tajweedEnabled ? `qcf-v4-p${pageNumber}` : `qcf-v2-p${pageNumber}`;
     setFontState("loading");
     const loadFont = async () => {
       let lastError: unknown;
@@ -96,7 +106,7 @@ export function QuranMadaniPageRenderer({
     return () => {
       mounted = false;
     };
-  }, [pageNumber]);
+  }, [pageNumber, tajweedEnabled]);
 
   const pageLayout = useMemo(() => {
     const decorations = new Map<number, { kind: "surah" | "bismillah"; surahNumber: number }>();
@@ -170,7 +180,7 @@ export function QuranMadaniPageRenderer({
   }
 
   const rows = Array.from({ length: 15 }, (_, i) => i + 1);
-  const fontName = `qcf-v2-p${pageNumber}`;
+  const fontName = tajweedEnabled ? `qcf-v4-p${pageNumber}` : `qcf-v2-p${pageNumber}`;
   const firstPagesContent = pageNumber <= 2
     ? data.lines.filter((line) => line.words.length > 0)
     : null;
