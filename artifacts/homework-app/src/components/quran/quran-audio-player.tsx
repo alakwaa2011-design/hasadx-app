@@ -1022,6 +1022,10 @@ export function QuranAudioPlayer({
       && hostPlayback.ayahNumber
       && !isPlaying
       && !playingAyah
+      // Restore only an audible host handoff, not the stale host location
+      // left behind while a completed range is stopping at an ayah boundary.
+      && audioRef.current
+      && !audioRef.current.paused
     ) {
       if (hostPlayback.surahNumber !== surahNumber) {
         if (hostPlayback.surahNumber) {

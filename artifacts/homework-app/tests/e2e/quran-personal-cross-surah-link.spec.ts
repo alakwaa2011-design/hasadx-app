@@ -167,6 +167,7 @@ test("personal link repeats 112:4 → 113:1 three times and resumes after reload
     await page.getByRole("button", { name: "الانتقال إلى خطوة اربط" }).click();
     await expect(page.getByTestId("quran-guided-memorization-panel")).toContainText("اربط الآيات");
     await expectThreePasses(page);
+    await expect(page.getByTestId("button-guided-play-pause")).toHaveAttribute("aria-label", "تشغيل التلاوة");
 
     await page.reload();
     await openPersonalPlan(page);
@@ -176,6 +177,7 @@ test("personal link repeats 112:4 → 113:1 three times and resumes after reload
     await observePasses(page);
     await page.getByTestId("button-guided-play-pause").click();
     await expectThreePasses(page);
+    await expect(page.getByTestId("button-guided-play-pause")).toHaveAttribute("aria-label", "تشغيل التلاوة");
 
     await page.getByRole("button", { name: "إغلاق جلسة الحفظ" }).click();
     await expect(page.getByTestId("quran-guided-memorization-panel")).toHaveCount(0);
@@ -184,6 +186,7 @@ test("personal link repeats 112:4 → 113:1 three times and resumes after reload
     await observePasses(page);
     await page.getByTestId("button-guided-play-pause").click();
     await expectThreePasses(page);
+    await expect(page.getByTestId("button-guided-play-pause")).toHaveAttribute("aria-label", "تشغيل التلاوة");
   } finally {
     await context.close();
     await pool.query("DELETE FROM teachers WHERE id = $1", [teacher.rows[0].id]);
