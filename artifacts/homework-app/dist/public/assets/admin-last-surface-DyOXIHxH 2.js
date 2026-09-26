@@ -1,0 +1,1 @@
+const a="admin_last_surface",e={teacher:"/teacher",organizer:"/organizer",admin:"/teacher/admin"};function n(){try{const t=localStorage.getItem(a);if(t==="teacher"||t==="organizer"||t==="admin")return t}catch{}return null}function r(t){try{localStorage.setItem(a,t)}catch{}}function c(){const t=n();return t?e[t]:null}export{c as g,r as s};

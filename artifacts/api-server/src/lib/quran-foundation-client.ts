@@ -14,6 +14,7 @@ const AUDIO_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
 const TIMINGS_CACHE_MS = 30 * 24 * 60 * 60 * 1_000;
 
 const EDUCATION_CACHE_MS = 24 * 60 * 60 * 1_000;
+const TAJWEED_CACHE_MS = 24 * 60 * 60 * 1_000;
 const QUL_GHARIB_CACHE_MS = 7 * 24 * 60 * 60 * 1_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const VERSE_AUDIO_BASE_URL = "https://verses.quran.foundation";
@@ -220,6 +221,24 @@ export type QuranFoundationAyahEducation = {
     source: typeof TAFSIR_MUYASSAR_SOURCE;
   };
 };
+
+export type QuranTajweedRuleClass = keyof typeof TAJWEED_RULE_DEFINITIONS;
+
+export type QuranFoundationWordTajweed = {
+  verseKey: string;
+  wordId: number;
+  position: number;
+  text: string;
+  rules: Array<{
+    class: QuranTajweedRuleClass;
+    letters: string;
+    nameAr: string;
+    descriptionAr: string;
+    color: string;
+    colorNameAr: string;
+  }>;
+  source: typeof QURAN_TAJWEED_SOURCE;
+};
 type CachedToken = {
   value: string;
   expiresAt: number;
@@ -243,6 +262,7 @@ const MAX_CACHED_AYAH_TIMINGS = 2_048;
 const MAX_CACHED_TIMING_CHAPTERS = 64;
 
 const cachedEducation = new Map<string, { value: QuranFoundationAyahEducation; expiresAt: number }>();
+const cachedWordTajweed = new Map<string, { value: QuranFoundationWordTajweed; expiresAt: number }>();
 const cachedQulGharib = new Map<string, {
   value: Array<{ phrase: string; meaning: string }>;
   expiresAt: number;
@@ -1204,6 +1224,64 @@ export async function getQuranFoundationAyahEducation(
   cachedEducation.set(cacheKey, { value, expiresAt: Date.now() + EDUCATION_CACHE_MS });
   return value;
 }
+
+/**
+ * Returns only Tajweed rules the official Quran Foundation API explicitly tags
+ * for this exact word (via `text_uthmani_tajweed`). Never inferred or guessed:
+ * an empty `rules` array means the word carries no distinguishable rule per the
+ * source, and callers must treat that as "no verified rule available" rather
+ * than falling back to a guess. This lookup is intentionally independent of the
+ * QCF v4 color font toggle — it reads structured rule text, not glyph colors.
+ */
+export async function getQuranFoundationWordTajweed(
+  surahNumber: number,
+  ayahNumber: number,
+  wordPosition: number,
+): Promise<QuranFoundationWordTajweed> {
+  validateVerseNumbers(surahNumber, ayahNumber);
+  if (!Number.isInteger(wordPosition) || wordPosition < 1 || wordPosition > 200) {
+    throw new Error("Invalid Quran word position");
+  }
+  const verseKey = `${surahNumber}:${ayahNumber}`;
+  const cacheKey = `${verseKey}:${wordPosition}`;
+  const cached = cachedWordTajweed.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const payload = await requestContentJson(
+    `verses/by_key/${verseKey}?words=true&word_fields=text_uthmani_tajweed`,
+  );
+  const verse = payload && typeof payload === "object"
+    ? (payload as { verse?: unknown }).verse
+    : null;
+  if (!verse || typeof verse !== "object" || (verse as { verse_key?: unknown }).verse_key !== verseKey) {
+    throw new Error("Quran Foundation Tajweed verse is invalid");
+  }
+  const words = Array.isArray((verse as { words?: unknown }).words)
+    ? (verse as { words: unknown[] }).words
+    : [];
+  const word = words.find((item) =>
+    item
+    && typeof item === "object"
+    && (item as { position?: unknown }).position === wordPosition
+    && (item as { char_type_name?: unknown }).char_type_name === "word"
+  ) as Record<string, unknown> | undefined;
+  if (!word) throw new Error("Selected Quran word is not part of the ayah");
+  if (!Number.isInteger(word.id) || typeof word.text_uthmani_tajweed !== "string") {
+    throw new Error("Quran Foundation Tajweed word is invalid");
+  }
+
+  const value: QuranFoundationWordTajweed = {
+    verseKey,
+    wordId: word.id as number,
+    position: wordPosition,
+    text: word.text_uthmani_tajweed.replace(/<[^>]+>/g, ""),
+    rules: parseTajweedRuleSpans(word.text_uthmani_tajweed),
+    source: QURAN_TAJWEED_SOURCE,
+  };
+  cachedWordTajweed.set(cacheKey, { value, expiresAt: Date.now() + TAJWEED_CACHE_MS });
+  return value;
+}
+
 export function resetQuranFoundationClientForTests(): void {
   abuBakrAlDhabiManifestRequest = null;
   cachedToken = null;
@@ -1222,6 +1300,7 @@ export function resetQuranFoundationClientForTests(): void {
   timingPayloadRequests.clear();
   cachedEducation.clear();
   cachedQulGharib.clear();
+  cachedWordTajweed.clear();
 }
 
 function plainText(value: string): string {
@@ -1256,6 +1335,144 @@ const QUL_GHARIB_SOURCE = {
   provider: "Quranic Universal Library (QUL)",
   version: "Tafsir resource 519",
 } as const;
+
+const QURAN_TAJWEED_SOURCE = {
+  id: null,
+  name: "أحكام التجويد المعتمدة (مجمع الملك فهد)",
+  provider: "Quran Foundation",
+  version: "Content API v4 · text_uthmani_tajweed",
+} as const;
+
+/**
+ * Every entry is keyed by the exact `class` value the official Quran Foundation
+ * Content API embeds in a word's `text_uthmani_tajweed` field (verified against
+ * live API responses across many surahs). Colors mirror the five-family Tajweed
+ * legend already shown to readers in the color-mode info popover, so a rule's
+ * swatch here always matches what the colored font displays.
+ */
+const TAJWEED_RULE_DEFINITIONS = {
+  ghunnah: {
+    nameAr: "الغُنّة",
+    descriptionAr: "صوت أنفي يمتد عند تشديد النون أو الميم (نّ / مّ) بمقدار حركتين تقريبًا.",
+    color: "#09b000",
+    colorNameAr: "أخضر",
+  },
+  ham_wasl: {
+    nameAr: "همزة الوصل",
+    descriptionAr: "همزة تُنطق عند البدء بالكلمة، وتسقط لفظًا إذا وُصلت القراءة بما قبلها.",
+    color: "#a5a5a5",
+    colorNameAr: "رمادي",
+  },
+  idgham_ghunnah: {
+    nameAr: "الإدغام بغنة",
+    descriptionAr: "إدغام النون الساكنة أو التنوين في أحد حروف (ي ن م و) مع بقاء صوت الغنة.",
+    color: "#09b000",
+    colorNameAr: "أخضر",
+  },
+  idgham_mutajanisayn: {
+    nameAr: "إدغام المتجانسين",
+    descriptionAr: "إدغام حرفين يتفقان في المخرج ويختلفان في الصفة، فيصيران حرفًا واحدًا مشددًا.",
+    color: "#ff7b00",
+    colorNameAr: "برتقالي",
+  },
+  idgham_mutaqaribayn: {
+    nameAr: "إدغام المتقاربين",
+    descriptionAr: "إدغام حرفين يتقاربان في المخرج والصفة، فيصيران حرفًا واحدًا مشددًا.",
+    color: "#ff7b00",
+    colorNameAr: "برتقالي",
+  },
+  idgham_shafawi: {
+    nameAr: "الإدغام الشفوي",
+    descriptionAr: "إدغام الميم الساكنة في ميم بعدها مع غنة، ومخرجهما من الشفتين.",
+    color: "#09b000",
+    colorNameAr: "أخضر",
+  },
+  idgham_wo_ghunnah: {
+    nameAr: "الإدغام بغير غنة",
+    descriptionAr: "إدغام النون الساكنة أو التنوين في اللام أو الراء دون غنة.",
+    color: "#ff7b00",
+    colorNameAr: "برتقالي",
+  },
+  ikhafa: {
+    nameAr: "الإخفاء الحقيقي",
+    descriptionAr: "إخفاء النون الساكنة أو التنوين عند حروف الإخفاء الخمسة عشر، مع غنة خفيفة.",
+    color: "#09b000",
+    colorNameAr: "أخضر",
+  },
+  ikhafa_shafawi: {
+    nameAr: "الإخفاء الشفوي",
+    descriptionAr: "إخفاء الميم الساكنة عند حرف الباء مع غنة، ومخرجهما من الشفتين.",
+    color: "#09b000",
+    colorNameAr: "أخضر",
+  },
+  iqlab: {
+    nameAr: "الإقلاب",
+    descriptionAr: "قلب النون الساكنة أو التنوين ميمًا مخفاة عند حرف الباء، مع غنة.",
+    color: "#09b000",
+    colorNameAr: "أخضر",
+  },
+  laam_shamsiyah: {
+    nameAr: "اللام الشمسية",
+    descriptionAr: "لام «أل» التعريف تُدغم في الحرف الشمسي الذي يليها، فلا تُنطق اللام نفسها.",
+    color: "#a5a5a5",
+    colorNameAr: "رمادي",
+  },
+  madda_necessary: {
+    nameAr: "المد اللازم",
+    descriptionAr: "مدّ بمقدار ست حركات لوجود سكون أصلي ثابت بعد حرف المد.",
+    color: "#b50000",
+    colorNameAr: "أحمر",
+  },
+  madda_normal: {
+    nameAr: "المد الطبيعي",
+    descriptionAr: "مدّ بمقدار حركتين بلا همز ولا سكون بعد حرف المد.",
+    color: "#b50000",
+    colorNameAr: "أحمر",
+  },
+  madda_obligatory_monfasel: {
+    nameAr: "المد الجائز المنفصل",
+    descriptionAr: "حرف المد في آخر الكلمة، وهمزة القطع في أول الكلمة التالية، ويُمد 4 أو 5 حركات.",
+    color: "#b50000",
+    colorNameAr: "أحمر",
+  },
+  madda_obligatory_mottasel: {
+    nameAr: "المد الواجب المتصل",
+    descriptionAr: "يجتمع حرف المد والهمزة في كلمة واحدة، فيُمد وجوبًا 4 أو 5 حركات.",
+    color: "#b50000",
+    colorNameAr: "أحمر",
+  },
+  madda_permissible: {
+    nameAr: "مد البدل",
+    descriptionAr: "همزة يليها حرف مد في أصل الكلمة، ويُمد بمقدار حركتين.",
+    color: "#b50000",
+    colorNameAr: "أحمر",
+  },
+  qalaqah: {
+    nameAr: "القلقلة",
+    descriptionAr: "اضطراب في الصوت عند النطق بأحد حروف (قطب جد) الساكنة يُحدث نبرة واضحة.",
+    color: "#3f48e6",
+    colorNameAr: "أزرق",
+  },
+  slnt: {
+    nameAr: "حرف لا يُنطق",
+    descriptionAr: "حرف مكتوب في المصحف لا يُنطق أثناء التلاوة وفق رواية حفص عن عاصم.",
+    color: "#a5a5a5",
+    colorNameAr: "رمادي",
+  },
+} as const satisfies Record<string, { nameAr: string; descriptionAr: string; color: string; colorNameAr: string }>;
+
+function parseTajweedRuleSpans(taggedText: string): QuranFoundationWordTajweed["rules"] {
+  const rules: QuranFoundationWordTajweed["rules"] = [];
+  const pattern = /<(?:tajweed|rule)\s+class=(?:"([a-zA-Z_]+)"|([a-zA-Z_]+))>([^<]*)<\/(?:tajweed|rule)>/g;
+  for (const match of taggedText.matchAll(pattern)) {
+    const ruleClass = match[1] ?? match[2];
+    const letters = match[3];
+    const definition = (TAJWEED_RULE_DEFINITIONS as Record<string, typeof TAJWEED_RULE_DEFINITIONS[QuranTajweedRuleClass]>)[ruleClass];
+    if (!definition || !letters) continue;
+    rules.push({ class: ruleClass as QuranTajweedRuleClass, letters, ...definition });
+  }
+  return rules;
+}
 
 function validateVerseNumbers(surahNumber: number, ayahNumber: number): void {
   if (

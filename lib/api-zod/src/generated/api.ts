@@ -4781,6 +4781,58 @@ export const GetQuranMadaniPageResponse = zod.object({
 
 
 /**
+ * @summary Get verified Tajweed rules for one word, independent of color font mode
+ */
+export const getQuranWordTajweedPathSurahNumberMax = 114;
+
+export const getQuranWordTajweedPathAyahNumberMax = 286;
+
+export const getQuranWordTajweedPathWordPositionMax = 200;
+
+
+
+export const GetQuranWordTajweedParams = zod.object({
+  "surahNumber": zod.coerce.number().int().min(1).max(getQuranWordTajweedPathSurahNumberMax),
+  "ayahNumber": zod.coerce.number().int().min(1).max(getQuranWordTajweedPathAyahNumberMax),
+  "wordPosition": zod.coerce.number().int().min(1).max(getQuranWordTajweedPathWordPositionMax)
+})
+
+export const getQuranWordTajweedResponseVerseKeyRegExp = new RegExp('^\\d{1,3}:\\d{1,3}$');
+
+
+
+
+
+export const getQuranWordTajweedResponseRulesItemColorRegExp = new RegExp('^#[0-9a-f]{6}$');
+
+
+
+
+
+
+export const GetQuranWordTajweedResponse = zod.object({
+  "verseKey": zod.string().regex(getQuranWordTajweedResponseVerseKeyRegExp),
+  "wordId": zod.int(),
+  "position": zod.int().min(1),
+  "text": zod.string().min(1),
+  "rules": zod.array(zod.object({
+  "class": zod.enum(['ghunnah', 'ham_wasl', 'idgham_ghunnah', 'idgham_mutajanisayn', 'idgham_mutaqaribayn', 'idgham_shafawi', 'idgham_wo_ghunnah', 'ikhafa', 'ikhafa_shafawi', 'iqlab', 'laam_shamsiyah', 'madda_necessary', 'madda_normal', 'madda_obligatory_monfasel', 'madda_obligatory_mottasel', 'madda_permissible', 'qalaqah', 'slnt']),
+  "letters": zod.string().min(1),
+  "nameAr": zod.string().min(1),
+  "descriptionAr": zod.string().min(1),
+  "color": zod.string().regex(getQuranWordTajweedResponseRulesItemColorRegExp),
+  "colorNameAr": zod.string().min(1)
+})),
+  "source": zod.object({
+  "id": zod.int().nullable(),
+  "name": zod.string().min(1),
+  "provider": zod.string().min(1),
+  "version": zod.string().min(1)
+})
+})
+
+
+/**
  * @summary Get sourced Arabic word context and tafsir for one ayah
  */
 export const getQuranAyahEducationPathSurahNumberMax = 114;

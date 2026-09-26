@@ -191,8 +191,8 @@ export declare const mindMapsTable: import("drizzle-orm/pg-core").PgTableWithCol
     dialect: "pg";
 }>;
 export declare const insertMindMapSchema: z.ZodObject<{
-    teacherId: z.ZodInt;
     title: z.ZodString;
+    teacherId: z.ZodInt;
     language: z.ZodOptional<z.ZodString>;
     clientRequestId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     topic: z.ZodString;

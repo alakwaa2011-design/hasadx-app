@@ -264,10 +264,10 @@ export declare const quranWardsTable: import("drizzle-orm/pg-core").PgTableWithC
 export declare const insertQuranWardSchema: z.ZodObject<{
     mode: z.ZodString;
     teacherId: z.ZodInt;
-    surahNumber: z.ZodInt;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     studentId: z.ZodInt;
     status: z.ZodOptional<z.ZodString>;
+    surahNumber: z.ZodInt;
     surahName: z.ZodString;
     startAyah: z.ZodInt;
     endAyah: z.ZodInt;

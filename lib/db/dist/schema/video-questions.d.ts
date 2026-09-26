@@ -212,13 +212,13 @@ export declare const videoQuestionsTable: import("drizzle-orm/pg-core").PgTableW
 }>;
 export declare const insertVideoQuestionSchema: z.ZodObject<{
     questionType: z.ZodOptional<z.ZodString>;
-    text: z.ZodString;
     optionA: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionB: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionC: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionD: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     correctAnswer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     points: z.ZodOptional<z.ZodNumber>;
+    text: z.ZodString;
     videoLessonId: z.ZodInt;
     timestampSeconds: z.ZodInt;
     questionOrder: z.ZodOptional<z.ZodInt>;

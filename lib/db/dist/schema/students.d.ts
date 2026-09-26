@@ -229,9 +229,8 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
 }>;
 export declare const insertStudentSchema: z.ZodObject<{
     name: z.ZodString;
-    avatar: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     teacherId: z.ZodInt;
-    studentAccountId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    avatar: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     gradeLevel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     studentClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     parentPhone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -239,6 +238,7 @@ export declare const insertStudentSchema: z.ZodObject<{
     parentEmail: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     accountUsername: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    studentAccountId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
 }, {
     out: {};
     in: {};

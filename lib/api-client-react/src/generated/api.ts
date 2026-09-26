@@ -104,6 +104,7 @@ import type {
   QuranWard,
   QuranWardInput,
   QuranWardUpdate,
+  QuranWordTajweed,
   RegisterAssetBody,
   RegisterTeacherBody,
   RevokeSessionResponse,
@@ -6741,6 +6742,93 @@ export function useGetQuranMadaniPage<TData = Awaited<ReturnType<typeof getQuran
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetQuranMadaniPageQueryOptions(pageNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranWordTajweedUrl = (surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number,) => {
+
+
+
+
+  return `/api/quran/tajweed/word/${surahNumber}/${ayahNumber}/${wordPosition}`
+}
+
+/**
+ * @summary Get verified Tajweed rules for one word, independent of color font mode
+ */
+export const getQuranWordTajweed = async (surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number, options?: Parameters<typeof customFetch>[1]): Promise<QuranWordTajweed> => {
+
+  return customFetch<QuranWordTajweed>(getGetQuranWordTajweedUrl(surahNumber,ayahNumber,wordPosition),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranWordTajweedQueryKey = (surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number,) => {
+    return [
+    `/api/quran/tajweed/word/${surahNumber}/${ayahNumber}/${wordPosition}`
+    ] as const;
+    }
+
+
+export const getGetQuranWordTajweedQueryOptions = <TData = Awaited<ReturnType<typeof getQuranWordTajweed>>, TError = ErrorType<void>>(surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranWordTajweed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranWordTajweedQueryKey(surahNumber,ayahNumber,wordPosition);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranWordTajweed>>> = ({ signal }) => getQuranWordTajweed(surahNumber,ayahNumber,wordPosition, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: surahNumber !== null && surahNumber !== undefined && ayahNumber !== null && ayahNumber !== undefined && wordPosition !== null && wordPosition !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranWordTajweed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranWordTajweedQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranWordTajweed>>>
+export type GetQuranWordTajweedQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get verified Tajweed rules for one word, independent of color font mode
+ */
+
+export function useGetQuranWordTajweed<TData = Awaited<ReturnType<typeof getQuranWordTajweed>>, TError = ErrorType<void>>(
+ surahNumber: number,
+    ayahNumber: number,
+    wordPosition: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranWordTajweed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranWordTajweedQueryOptions(surahNumber,ayahNumber,wordPosition,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

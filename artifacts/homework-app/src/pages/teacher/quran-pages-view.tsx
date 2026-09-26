@@ -25,6 +25,7 @@ import {
   Download,
   Palette,
   Droplets,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -35,11 +36,14 @@ import {
   getGetQuranJourneyQueryKey,
   getGetQuranSurahContentQueryKey,
   getGetCurrentTeacherQueryKey,
+  getGetQuranWordTajweedQueryKey,
   useGetCurrentTeacher,
   useGetQuranSurahContent,
+  useGetQuranWordTajweed,
   getQuranSurahContent,
   useRecordMyQuranIndependentSession,
   useUpdateMyQuranIndependentPosition,
+  type QuranTajweedRule,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -56,6 +60,7 @@ import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import { QuranAyahActionSurface } from "@/components/quran/quran-ayah-action-surface";
 import { QuranBookmarkCategoryPicker } from "@/components/quran/quran-bookmark-category-picker";
 import { QuranWordActionPopover } from "@/components/quran/quran-word-action-popover";
+import { QuranTajweedRuleCard } from "@/components/quran/quran-tajweed-rule-card";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
 import { useQuranReaderState } from "@/components/quran/use-quran-reader-state";
 import { useQuranMemoSession } from "@/components/quran/use-quran-memo-session";
@@ -89,6 +94,59 @@ export interface QComplexVerse {
 interface QComplexPart {
   id: number;
 }
+
+const TAJWEED_LEGEND_SEEN_KEY = "hasaad:quran-tajweed-legend-seen:v1";
+
+/**
+ * Rule colors extracted from the actual QCF v4 Tajweed font's default CPAL
+ * palette, grouped by the standard Dar Al-Ma'arifah scheme this font is
+ * based on. Exact per-letter rules still need the font's own (unpublished)
+ * glyph-layer mapping, so this legend explains color *families*, not a 1:1
+ * lookup table.
+ */
+const TAJWEED_LEGEND: {
+  color: string;
+  labelAr: string;
+  labelEn: string;
+  descAr: string;
+  descEn: string;
+}[] = [
+  {
+    color: "#b50000",
+    labelAr: "أحمر (بدرجاته)",
+    labelEn: "Red (shades)",
+    descAr: "أحكام المدّ بأنواعه: الطبيعي، الجائز، الواجب، واللازم — يختلف عدد الحركات حسب درجة اللون",
+    descEn: "Madd (prolongation) rules: normal, permissible, obligatory, and necessary",
+  },
+  {
+    color: "#09b000",
+    labelAr: "أخضر",
+    labelEn: "Green",
+    descAr: "الغُنّة: الإخفاء، الإقلاب، والإدغام بغنة",
+    descEn: "Ghunnah (nasalization): ikhfa, iqlab, and idgham with ghunnah",
+  },
+  {
+    color: "#3f48e6",
+    labelAr: "أزرق",
+    labelEn: "Blue",
+    descAr: "القلقلة، وتفخيم حرف الراء",
+    descEn: "Qalqalah, and emphatic pronunciation of raa",
+  },
+  {
+    color: "#ff7b00",
+    labelAr: "برتقالي/ذهبي",
+    labelEn: "Orange/gold",
+    descAr: "الإدغام بلا غنة، وبعض حالات الإخفاء الإضافية",
+    descEn: "Idgham without ghunnah, and additional ikhfa cases",
+  },
+  {
+    color: "#a5a5a5",
+    labelAr: "رمادي",
+    labelEn: "Gray",
+    descAr: "حروف لا تُنطق أثناء التلاوة (كالألف بعد واو الجماعة)",
+    descEn: "Silent letters not pronounced during recitation",
+  },
+];
 
 const FIRST_PAGE = 1;
 const LAST_PAGE = 604;
@@ -200,6 +258,7 @@ export function QuranPagesView({
   const { themeId: readingThemeId, setThemeId: setReadingThemeId, cssVars: readingThemeVars } = useQuranReadingTheme();
   const { tajweedEnabled, setTajweedEnabled } = useQuranTajweedMode();
   const [readingThemePickerOpen, setReadingThemePickerOpen] = useState(false);
+  const [tajweedLegendOpen, setTajweedLegendOpen] = useState(false);
   const preLandscapeLayoutRef = useRef<"spread" | "single" | "continuous" | null>(null);
   const [continuousStartPage, setContinuousStartPage] = useState(FIRST_PAGE);
   const [continuousEndPage, setContinuousEndPage] = useState(
@@ -290,6 +349,39 @@ export function QuranPagesView({
     wordText: string;
     anchorRect: { top: number; left: number; right: number; bottom: number; width: number; height: number };
   } | null>(null);
+  const [tajweedCard, setTajweedCard] = useState<{
+    wordText: string;
+    surahNumber: number;
+    ayahNumber: number;
+    wordPosition: number;
+    rules: QuranTajweedRule[];
+    sourceName: string;
+  } | null>(null);
+  const [wordActionSurahNumber, wordActionAyahNumber] = wordAction
+    ? wordAction.verseKey.split(":").map(Number)
+    : [0, 0];
+  // Verified Tajweed rule lookup for the currently open word action popover.
+  // Independent of the color font toggle (useQuranTajweedMode) by design: this
+  // only reads structured rule data, never the glyph coloring itself, so the
+  // action button's visibility never depends on whether colors are enabled.
+  const wordTajweedQuery = useGetQuranWordTajweed(
+    wordActionSurahNumber,
+    wordActionAyahNumber,
+    wordAction?.wordPosition ?? 0,
+    {
+      query: {
+        queryKey: getGetQuranWordTajweedQueryKey(
+          wordActionSurahNumber,
+          wordActionAyahNumber,
+          wordAction?.wordPosition ?? 0,
+        ),
+        enabled: wordAction !== null,
+        staleTime: 24 * 60 * 60 * 1000,
+        retry: 1,
+      },
+    },
+  );
+  const wordTajweedRules = wordAction && wordTajweedQuery.data ? wordTajweedQuery.data.rules : [];
   const [showReaderTips, setShowReaderTips] = useState(
     () => typeof window !== "undefined" && window.localStorage.getItem(QURAN_READER_TIPS_KEY) !== "true",
   );
@@ -1732,7 +1824,7 @@ export function QuranPagesView({
     <div className="relative flex shrink-0">
       <button
         type="button"
-        onClick={() => { setReadingThemePickerOpen((v) => !v); setCopyActionsOpen(false); setBookmarkActionsOpen(false); }}
+        onClick={() => { setReadingThemePickerOpen((v) => !v); setCopyActionsOpen(false); setBookmarkActionsOpen(false); setTajweedLegendOpen(false); }}
         data-testid="button-reading-theme"
         className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
         aria-label={lang === "ar" ? "إضاءة صفحة المصحف" : "Mushaf page lighting"}
@@ -1773,22 +1865,86 @@ export function QuranPagesView({
   );
 
   const tajweedToggleButton = (
-    <button
-      type="button"
-      onClick={() => setTajweedEnabled(!tajweedEnabled)}
-      data-testid="button-tajweed-toggle"
-      className={cn(
-        "grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors",
-        tajweedEnabled
-          ? "text-emerald-700 bg-emerald-900/10 dark:text-emerald-300 dark:bg-white/15"
-          : "text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10",
+    <div className="relative flex shrink-0 items-center">
+      <button
+        type="button"
+        onClick={() => {
+          const next = !tajweedEnabled;
+          setTajweedEnabled(next);
+          if (next) {
+            try {
+              if (window.localStorage.getItem(TAJWEED_LEGEND_SEEN_KEY) !== "true") {
+                setTajweedLegendOpen(true);
+                window.localStorage.setItem(TAJWEED_LEGEND_SEEN_KEY, "true");
+              }
+            } catch {}
+          }
+        }}
+        data-testid="button-tajweed-toggle"
+        className={cn(
+          "grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors",
+          tajweedEnabled
+            ? "text-emerald-700 bg-emerald-900/10 dark:text-emerald-300 dark:bg-white/15"
+            : "text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10",
+        )}
+        aria-label={lang === "ar" ? "تلوين أحكام التجويد" : "Tajweed rule coloring"}
+        aria-pressed={tajweedEnabled}
+        title={lang === "ar" ? "تلوين أحكام التجويد" : "Tajweed rule coloring"}
+      >
+        <Droplets className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setTajweedLegendOpen((v) => !v);
+          setCopyActionsOpen(false);
+          setBookmarkActionsOpen(false);
+          setReadingThemePickerOpen(false);
+        }}
+        data-testid="button-tajweed-legend"
+        className="grid h-9 w-6 shrink-0 place-items-center rounded-md text-emerald-800/70 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300/70 dark:hover:bg-white/10"
+        aria-label={lang === "ar" ? "معنى ألوان التجويد" : "What the tajweed colors mean"}
+        aria-expanded={tajweedLegendOpen}
+        title={lang === "ar" ? "معنى ألوان التجويد" : "What the tajweed colors mean"}
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      {tajweedLegendOpen && (
+        <div className="fixed inset-x-3 top-24 z-50 flex max-h-[70vh] w-auto flex-col gap-1 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white/95 p-2 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10 sm:w-72">
+          <div className="flex items-center justify-between px-1.5 pb-1 pt-0.5">
+            <p className="text-[11px] font-extrabold text-emerald-800/70 dark:text-emerald-200/70">
+              {lang === "ar" ? "معنى ألوان التجويد" : "Tajweed color legend"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setTajweedLegendOpen(false)}
+              className="grid h-6 w-6 place-items-center rounded-md text-emerald-800/60 hover:bg-emerald-900/5 dark:text-emerald-200/60 dark:hover:bg-white/10"
+              aria-label={lang === "ar" ? "إغلاق" : "Close"}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {TAJWEED_LEGEND.map((rule) => (
+            <div key={rule.color} className="flex items-start gap-2.5 rounded-lg px-1.5 py-1.5">
+              <span
+                aria-hidden="true"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-black/10 shadow-inner dark:border-white/20"
+                style={{ backgroundColor: rule.color }}
+              />
+              <div className="flex-1 text-start">
+                <p className="text-xs font-bold text-foreground">{lang === "ar" ? rule.labelAr : rule.labelEn}</p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{lang === "ar" ? rule.descAr : rule.descEn}</p>
+              </div>
+            </div>
+          ))}
+          <p className="border-t border-emerald-900/10 px-1.5 pb-0.5 pt-1.5 text-[10px] leading-relaxed text-muted-foreground/80 dark:border-white/10">
+            {lang === "ar"
+              ? "الألوان معتمدة على خط التجويد الرسمي، وقد تختلف درجة اللون قليلاً حسب إضاءة الصفحة المختارة."
+              : "Colors come from the official Tajweed font and may shift slightly with the chosen page lighting."}
+          </p>
+        </div>
       )}
-      aria-label={lang === "ar" ? "تلوين أحكام التجويد" : "Tajweed rule coloring"}
-      aria-pressed={tajweedEnabled}
-      title={lang === "ar" ? "تلوين أحكام التجويد" : "Tajweed rule coloring"}
-    >
-      <Droplets className="h-4 w-4" />
-    </button>
+    </div>
   );
 
   const searchDialogWrapped = (
@@ -1801,7 +1957,7 @@ export function QuranPagesView({
     <div className="relative flex shrink-0">
       <button
         type="button"
-        onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); setReadingThemePickerOpen(false); }}
+        onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); setReadingThemePickerOpen(false); setTajweedLegendOpen(false); }}
         data-testid="button-copy-actions"
         className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
         aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}
@@ -1828,7 +1984,7 @@ export function QuranPagesView({
     <div className="relative flex shrink-0">
       <button
         type="button"
-        onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); setReadingThemePickerOpen(false); }}
+        onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); setReadingThemePickerOpen(false); setTajweedLegendOpen(false); }}
         data-testid="button-bookmark-actions"
         className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
         aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}
@@ -2667,6 +2823,28 @@ export function QuranPagesView({
           setEducationHidden(false);
           window.localStorage.removeItem(QURAN_EDUCATION_HIDDEN_KEY);
         }}
+        showTajweedAction={wordTajweedRules.length > 0}
+        onTajweed={() => {
+          if (!wordAction || !wordTajweedQuery.data || wordTajweedQuery.data.rules.length === 0) return;
+          setTajweedCard({
+            wordText: wordAction.wordText,
+            surahNumber: wordActionSurahNumber,
+            ayahNumber: wordActionAyahNumber,
+            wordPosition: wordAction.wordPosition,
+            rules: wordTajweedQuery.data.rules,
+            sourceName: wordTajweedQuery.data.source.name,
+          });
+        }}
+      />
+      <QuranTajweedRuleCard
+        open={tajweedCard !== null}
+        wordText={tajweedCard?.wordText ?? ""}
+        surahNumber={tajweedCard?.surahNumber ?? 0}
+        ayahNumber={tajweedCard?.ayahNumber ?? 0}
+        wordPosition={tajweedCard?.wordPosition ?? 0}
+        rules={tajweedCard?.rules ?? []}
+        sourceName={tajweedCard?.sourceName ?? ""}
+        onClose={() => setTajweedCard(null)}
       />
       {copyRange && (
         <aside
