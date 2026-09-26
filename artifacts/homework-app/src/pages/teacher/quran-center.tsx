@@ -37,6 +37,7 @@ export default function QuranCenter({
   const [internalTab, setInternalTab] = useState<QuranCenterTab>(tabFromQuery);
   const activeTab = selectedTab ?? internalTab;
   const installUrl = `${window.location.origin}/quran`;
+  const [installLinkCopied, setInstallLinkCopied] = useState(false);
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
@@ -81,6 +82,7 @@ export default function QuranCenter({
   const copyInstallLink = async () => {
     try {
       await navigator.clipboard.writeText(installUrl);
+      setInstallLinkCopied(true);
       toast.success(lang === "ar" ? "تم نسخ رابط المصحف" : "Quran link copied");
     } catch {
       toast.error(lang === "ar" ? "تعذر نسخ الرابط؛ يمكنك فتحه مباشرة" : "Could not copy the link; you can open it directly");
@@ -209,22 +211,24 @@ export default function QuranCenter({
             >
               {activeTab === "mushaf" && (
                 <>
-                  <div data-testid="teacher-quran-install-link" className="flex shrink-0 items-center gap-2 border-b border-emerald-900/10 bg-[#fbfaf6] px-3 py-2 dark:border-white/10 dark:bg-[#151b18] sm:gap-3">
-                    <img src="/icons/quran-hasaad.png" alt="" className="h-8 w-8 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-emerald-900 dark:text-emerald-100">{lang === "ar" ? "رابط تثبيت مصحف حصاد على الهاتف" : "Install Hasaad Quran on your phone"}</p>
-                      <a href="/quran?install=1" target="_blank" rel="noopener noreferrer" data-testid="link-standalone-quran"
-                        className="block break-all text-[11px] font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100">
-                        {installUrl}
-                      </a>
+                  {!installLinkCopied && (
+                    <div data-testid="teacher-quran-install-link" className="flex shrink-0 items-center gap-2 border-b border-emerald-900/10 bg-[#fbfaf6] px-3 py-2 dark:border-white/10 dark:bg-[#151b18] sm:gap-3">
+                      <img src="/icons/quran-hasaad.png" alt="" className="h-8 w-8 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-emerald-900 dark:text-emerald-100">{lang === "ar" ? "رابط تثبيت مصحف حصاد على الهاتف" : "Install Hasaad Quran on your phone"}</p>
+                        <a href="/quran?install=1" target="_blank" rel="noopener noreferrer" data-testid="link-standalone-quran"
+                          className="block break-all text-[11px] font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100">
+                          {installUrl}
+                        </a>
+                      </div>
+                      <button type="button" onClick={() => void copyInstallLink()} data-testid="button-copy-quran-install-link"
+                        className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-emerald-900/10 px-2 text-xs font-bold text-emerald-800 hover:bg-emerald-900/5 dark:border-white/10 dark:text-emerald-200 dark:hover:bg-white/10"
+                        aria-label={lang === "ar" ? "نسخ رابط تثبيت المصحف" : "Copy Quran install link"}>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>{lang === "ar" ? "نسخ" : "Copy"}</span>
+                      </button>
                     </div>
-                    <button type="button" onClick={() => void copyInstallLink()} data-testid="button-copy-quran-install-link"
-                      className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-emerald-900/10 px-2 text-xs font-bold text-emerald-800 hover:bg-emerald-900/5 dark:border-white/10 dark:text-emerald-200 dark:hover:bg-white/10"
-                      aria-label={lang === "ar" ? "نسخ رابط تثبيت المصحف" : "Copy Quran install link"}>
-                      <Copy className="h-3.5 w-3.5" />
-                      <span>{lang === "ar" ? "نسخ" : "Copy"}</span>
-                    </button>
-                  </div>
+                  )}
                   <div className="min-h-0 flex-1">
                     <QuranPagesView
                       initialSurah={mushafLocation.surah}

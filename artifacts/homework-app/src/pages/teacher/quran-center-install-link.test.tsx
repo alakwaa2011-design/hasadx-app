@@ -50,5 +50,20 @@ describe("teacher Mushaf install link", () => {
     fireEvent.click(screen.getByTestId("button-copy-quran-install-link"));
     await waitFor(() => expect(copyMock).toHaveBeenCalledWith(`${window.location.origin}/quran`));
     expect(successMock).toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByTestId("teacher-quran-install-link")).toBeNull());
+  });
+
+  it("keeps the link visible when copying fails", async () => {
+    copyMock.mockRejectedValueOnce(new Error("Clipboard unavailable"));
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: copyMock },
+    });
+    render(<QuranCenter embedded selectedTab="mushaf" />);
+
+    fireEvent.click(screen.getByTestId("button-copy-quran-install-link"));
+
+    await waitFor(() => expect(errorMock).toHaveBeenCalled());
+    expect(screen.getByTestId("teacher-quran-install-link")).toBeTruthy();
   });
 });
