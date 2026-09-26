@@ -113,6 +113,12 @@ export function QuranAyahActionSurface({
       testId: "action-copy",
       keepOpen: true,
     },
+    ...(onSimilar ? [{
+      icon: GitCompareArrows,
+      label: lang === "ar" ? "متشابهات" : "Similar",
+      onClick: onSimilar,
+      testId: "action-mutashabihat",
+    }] : []),
   ];
 
   return (
@@ -131,42 +137,30 @@ export function QuranAyahActionSurface({
         className="fixed w-[min(340px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-emerald-900/10 bg-[#fffdf8]/98 p-2 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl dark:border-white/10 dark:bg-[#101411]/98"
         style={position}
       >
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className={cn("grid gap-1", onSimilar ? "grid-cols-5" : "grid-cols-4")}>
           {actions.map((action) => (
             <button
               key={action.testId}
               type="button"
               data-testid={action.testId}
+              aria-label={action.testId === "action-mutashabihat" ? (lang === "ar" ? "المتشابهات اللفظية" : "Similar verses") : undefined}
               onClick={() => {
                 action.onClick();
                 if (!action.keepOpen) onOpenChange(false);
               }}
-              className="flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 py-2.5 text-emerald-950 transition-colors hover:bg-emerald-50 active:bg-emerald-100 dark:text-emerald-50 dark:hover:bg-emerald-950 dark:active:bg-emerald-900"
+              className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-2 text-emerald-950 transition-colors hover:bg-emerald-50 active:bg-emerald-100 dark:text-emerald-50 dark:hover:bg-emerald-950 dark:active:bg-emerald-900"
             >
               <div className={cn(
-                "grid h-10 w-10 place-items-center rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+                "grid h-9 w-9 place-items-center rounded-full bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
                 action.active && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+                action.testId === "action-mutashabihat" && "bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
               )}>
                 <action.icon className="h-4 w-4" />
               </div>
-              <span className="line-clamp-1 text-[11px] font-bold">{action.label}</span>
+              <span className="whitespace-nowrap text-[10px] font-bold leading-4 sm:text-[11px]">{action.label}</span>
             </button>
           ))}
         </div>
-        {onSimilar && (
-          <button
-            type="button"
-            data-testid="action-mutashabihat"
-            onClick={() => {
-              onSimilar();
-              onOpenChange(false);
-            }}
-            className="mt-1.5 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber-200/80 bg-amber-50 px-3 text-xs font-bold text-emerald-950 transition-colors hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-emerald-50 dark:hover:bg-amber-900/40"
-          >
-            <GitCompareArrows className="h-4 w-4 text-amber-700 dark:text-amber-300" aria-hidden="true" />
-            {lang === "ar" ? "المتشابهات اللفظية" : "Similar verses"}
-          </button>
-        )}
         {copyOptionsOpen && (
           <div className="mt-2 grid grid-cols-2 gap-2 border-t border-emerald-900/5 pt-2 dark:border-white/5">
             <button
