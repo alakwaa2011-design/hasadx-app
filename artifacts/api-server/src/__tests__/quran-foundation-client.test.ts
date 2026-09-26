@@ -846,9 +846,13 @@ describe("Quran Foundation client", () => {
   });
 
   it.each([
-    ["2:21", "يَـٰٓأَيُّهَا", "أَيُّهَا"],
-    ["89:27", "يَـٰٓأَيَّتُهَا", "أَيَّتُهَا"],
-  ])("corrects the joined vocative in %s to a permissible separated madd", async (verseKey, wordText, rest) => {
+    ["2:21", "يَـٰٓأَيُّهَا", "ـٰٓ", "أَيُّهَا"],
+    ["89:27", "يَـٰٓأَيَّتُهَا", "ـٰٓ", "أَيَّتُهَا"],
+    ["2:33", "يَـٰٓـــَٔادَمُ", "ـٰٓـ", "ــَٔادَمُ"],
+    ["3:64", "يَـٰٓأَهۡلَ", "ـٰٓ", "أَهۡلَ"],
+    ["11:76", "يَـٰٓإِبۡرَٰهِيمُ", "ـٰٓ", "إِبۡرَٰهِيمُ"],
+    ["7:19", "وَيَـٰٓــَٔـادَمُ", "ـٰٓـ", "ـَٔـادَمُ", "وَ"],
+  ])("corrects the joined vocative in %s to a permissible separated madd", async (verseKey, wordText, maddLetters, rest, prefix = "") => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
         access_token: "access-token",
@@ -861,7 +865,7 @@ describe("Quran Foundation client", () => {
             id: 42,
             position: 1,
             char_type_name: "word",
-            text_uthmani_tajweed: `يَ<rule class=madda_obligatory_mottasel>ـٰٓ</rule>${rest}`,
+            text_uthmani_tajweed: `${prefix}يَ<rule class=madda_obligatory_mottasel>${maddLetters}</rule>${rest}`,
           }],
         },
       }), { status: 200 }));
@@ -872,12 +876,62 @@ describe("Quran Foundation client", () => {
     expect(result.text).toBe(wordText);
     expect(result.rules).toMatchObject([{
       class: "madda_obligatory_monfasel",
-      letters: "ـٰٓ",
+      letters: maddLetters,
       nameAr: "المد الجائز المنفصل",
       color: "#b50000",
     }]);
     expect(result.rules[0].descriptionAr).toContain("وإن اتصل الرسم");
     expect(result.source.name).toContain("تصحيح حصاد");
+  });
+
+  it("does not correct a joined vocative without a following hamza", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "2:21",
+          words: [{
+            id: 44,
+            position: 3,
+            char_type_name: "word",
+            text_uthmani_tajweed: "يَ<rule class=madda_obligatory_mottasel>ـٰٓ</rule>بَنِي",
+          }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getQuranFoundationWordTajweed(2, 21, 3);
+    expect(result.rules[0].class).toBe("madda_obligatory_mottasel");
+    expect(result.source.name).not.toContain("تصحيح");
+  });
+
+  it("preserves a second genuine connected madd inside the vocative's following word", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "2:21",
+          words: [{
+            id: 45,
+            position: 4,
+            char_type_name: "word",
+            text_uthmani_tajweed: "يَ<rule class=madda_obligatory_mottasel>ـٰٓ</rule>أَسْمَ<rule class=madda_obligatory_mottasel>آ</rule>ءُ",
+          }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getQuranFoundationWordTajweed(2, 21, 4);
+    expect(result.rules.map((rule) => rule.class)).toEqual([
+      "madda_obligatory_monfasel",
+      "madda_obligatory_mottasel",
+    ]);
   });
 
   it("does not change a genuine connected madd or a correctly tagged separated madd", async () => {
