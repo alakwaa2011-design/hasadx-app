@@ -70,6 +70,9 @@ import { QuranReaderTips } from "@/components/quran/quran-reader-tips";
 import { getGuidedVerseScrollDelta } from "@/components/quran/quran-guided-visibility";
 import { QURAN_READING_THEMES, useQuranReadingTheme, type QuranReadingThemeId } from "@/components/quran/use-quran-reading-theme";
 import { useQuranTajweedMode } from "@/components/quran/use-quran-tajweed-mode";
+import { useQuranPersonalPlan } from "@/components/quran/use-quran-personal-plan";
+import { verseOrdinal, type QuranPracticeSession, type QuranVerseRef } from "@/components/quran/quran-personal-plan";
+import { QuranPersonalPlanPanel } from "@/components/quran/quran-personal-plan-panel";
 
 const QURAN_EDUCATION_HIDDEN_KEY = "quran-education-hidden";
 const QURAN_READER_TIPS_KEY = "quran-reader-tips-seen-v1";
@@ -77,6 +80,7 @@ const QURAN_READER_TIPS_KEY = "quran-reader-tips-seen-v1";
 interface QComplexChapter {
   id: number;
   name: string;
+  verse_count: number;
 }
 
 interface QComplexPage {
@@ -243,6 +247,8 @@ export function QuranPagesView({
   const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
   const [guidedVerseKey, setGuidedVerseKey] = useState<string | null>(null);
   const [guidedRecitationRevealed, setGuidedRecitationRevealed] = useState(false);
+  const [personalPlanOpen, setPersonalPlanOpen] = useState(false);
+  const personalPlan = useQuranPersonalPlan(standalone);
   const [silentReadWordPosition, setSilentReadWordPosition] = useState<number | null>(null);
   const guidedPanelRef = useRef<HTMLElement | null>(null);
   const [guidedPanelHeight, setGuidedPanelHeight] = useState(0);
@@ -923,6 +929,18 @@ export function QuranPagesView({
   };
 
   const setGuidedStageAndPlayback = (stage: GuidedMemorizationStage) => {
+    if (standalone && guidedVerseKey) {
+      const [surah, ayah] = guidedVerseKey.split(":").map(Number);
+      if (!personalPlan.saveSession({
+        verse: { surah, ayah },
+        stage,
+        repeatCount: memoSession.repeatCount,
+        recitationRevealed: false,
+      })) {
+        toast.error(lang === "ar" ? "تعذر حفظ خطوة الحفظ على هذا الجهاز" : "Could not save this memorization step");
+        return;
+      }
+    }
     setGuidedStage(stage);
     setGuidedRecitationRevealed(false);
     setSilentReadWordPosition(null);
@@ -985,12 +1003,66 @@ export function QuranPagesView({
     });
   };
 
+  const beginPersonalGuidedVerse = (verse: QuranVerseRef, saved?: QuranPracticeSession) => {
+    const targetVerse = verses.find((item) => item.chapter_id === verse.surah && item.number === verse.ayah);
+    if (!targetVerse) {
+      toast.error(lang === "ar" ? "لم تُحمّل الآية بعد، حاول مرة أخرى" : "Ayah is not ready yet");
+      return;
+    }
+    const session: QuranPracticeSession = saved ?? {
+      verse,
+      stage: 0,
+      repeatCount: 3,
+      recitationRevealed: false,
+    };
+    if (standalone && !personalPlan.saveSession(session)) {
+      toast.error(lang === "ar" ? "تعذر حفظ الجلسة على هذا الجهاز" : "Could not save the session on this device");
+      return;
+    }
+    audioRef.current?.pause();
+    setPersonalPlanOpen(false);
+    setMobileToolsOpen(false);
+    setSelectedVerseKey(`${verse.surah}:${verse.ayah}`);
+    setGuidedVerseKey(`${verse.surah}:${verse.ayah}`);
+    setGuidedStage(session.stage);
+    setGuidedRecitationRevealed(session.recitationRevealed);
+    setGuidedOpen(true);
+    setEducationHidden(true);
+    setEducationSelection(null);
+    setEducationLocked(false);
+    setMemoSession((current) => ({
+      ...current,
+      isActive: true,
+      rangeStart: verse.ayah,
+      rangeEnd: verse.ayah,
+      repeatScope: "ayah",
+      repeatCount: session.repeatCount,
+    }));
+    setMemoView(session.stage === 2 ? "progressive" : session.stage === 3 && !session.recitationRevealed ? "hide" : "show");
+    if (session.stage === 2) randomizePartialHide();
+    setIsPlaying(session.stage === 0);
+    setPlayingVerseKey(session.stage === 0 ? `${verse.surah}:${verse.ayah}` : null);
+    setAudioDockOpen(true);
+    if (targetVerse.page_id !== activePage) {
+      setActivePage(targetVerse.page_id);
+      if (pageLayout === "continuous") {
+        continuousProgrammaticNavigationRef.current = true;
+        setContinuousStartPage(targetVerse.page_id);
+        setContinuousEndPage(Math.min(LAST_PAGE, targetVerse.page_id + 3));
+        window.requestAnimationFrame(() => {
+          if (readerMainRef.current) readerMainRef.current.scrollTop = 0;
+          window.requestAnimationFrame(() => { continuousProgrammaticNavigationRef.current = false; });
+        });
+      }
+    }
+    if (standalone) onNavigate({ surah: verse.surah, ayah: verse.ayah, page: targetVerse.page_id });
+  };
+
   const toggleMemoSession = () => {
     if (guidedOpen) {
       closeGuidedMemorization();
       return;
     }
-    if (memoSession.isActive) endSession();
     const targetVerse = selectedVerseKey
       ? verses.find((verse) => `${verse.chapter_id}:${verse.number}` === selectedVerseKey)
       : selectedVerse ?? verses.find((verse) => verse.page_id === activePage);
@@ -998,27 +1070,8 @@ export function QuranPagesView({
       endSession();
       return;
     }
-    const targetKey = `${targetVerse.chapter_id}:${targetVerse.number}`;
-    setSelectedVerseKey(targetKey);
-    setPlayingVerseKey(targetKey);
-    setGuidedVerseKey(targetKey);
-    setGuidedStage(0);
-    setGuidedRecitationRevealed(false);
-    setGuidedOpen(true);
-    setEducationHidden(true);
-    setEducationSelection(null);
-    setEducationLocked(false);
-    setMemoSession((session) => ({
-      ...session,
-      isActive: true,
-      rangeStart: targetVerse.number,
-      rangeEnd: targetVerse.number,
-      repeatScope: "ayah",
-      repeatCount: 3,
-    }));
-    setMemoView("show");
-    setIsPlaying(true);
-    setAudioDockOpen(true);
+    if (memoSession.isActive) endSession();
+    beginPersonalGuidedVerse({ surah: targetVerse.chapter_id, ayah: targetVerse.number });
   };
 
   const visiblePages = useMemo(() => {
@@ -2131,6 +2184,24 @@ export function QuranPagesView({
     </button>
   );
 
+  const personalPlanButton = (mobile: boolean) => standalone ? (
+    <button
+      type="button"
+      onClick={() => setPersonalPlanOpen(true)}
+      data-testid={mobile ? "button-personal-quran-plan" : "button-personal-quran-plan-desktop"}
+      className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md bg-emerald-900/5 px-2.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
+      aria-label={lang === "ar" ? "خطة الحفظ والمراجعة الشخصية" : "Personal memorization and review plan"}
+    >
+      <ListPlus className="h-4 w-4" />
+      <span>{lang === "ar" ? "خطتي" : "My plan"}</span>
+      {personalPlan.due.length > 0 && (
+        <span data-testid="count-personal-quran-due" className="rounded-full bg-amber-100 px-1.5 text-[10px] text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+          {personalPlan.due.length}
+        </span>
+      )}
+    </button>
+  ) : null;
+
   const layoutToggleButtonMobile = (
     <button
       type="button"
@@ -2213,6 +2284,7 @@ export function QuranPagesView({
               <div className="flex items-center gap-2">
                 {audioButtonDesktop}
                 {recordPracticeButton}
+                {personalPlanButton(false)}
                 {memoButton}
                 {liveRecitationButton}
               </div>
@@ -2236,6 +2308,7 @@ export function QuranPagesView({
                 {layoutToggleButtonMobile}
                 {searchDialogWrapped}
                 {memoButtonMobile}
+                {personalPlanButton(true)}
                 <button
                   type="button"
                   onClick={() => setMobileToolsOpen((open) => !open)}
@@ -2653,6 +2726,18 @@ export function QuranPagesView({
         onClose={closeGuidedMemorization}
         onStageChange={setGuidedStageAndPlayback}
         onRepeatCountChange={(repeatCount) => {
+          if (standalone && guidedVerseKey) {
+            const [surah, ayah] = guidedVerseKey.split(":").map(Number);
+            if (!personalPlan.saveSession({
+              verse: { surah, ayah },
+              stage: guidedStage,
+              repeatCount,
+              recitationRevealed: guidedRecitationRevealed,
+            })) {
+              toast.error(lang === "ar" ? "تعذر حفظ إعداد التكرار" : "Could not save repeat setting");
+              return;
+            }
+          }
           setMemoSession((session) => ({ ...session, repeatCount }));
         }}
         onTogglePlayback={() => {
@@ -2673,10 +2758,67 @@ export function QuranPagesView({
         }}
         onReplay={replayGuidedRecitation}
         onRevealRecitation={() => {
+          if (standalone && guidedVerseKey) {
+            const [surah, ayah] = guidedVerseKey.split(":").map(Number);
+            if (!personalPlan.saveSession({
+              verse: { surah, ayah },
+              stage: guidedStage,
+              repeatCount: memoSession.repeatCount,
+              recitationRevealed: true,
+            })) {
+              toast.error(lang === "ar" ? "تعذر حفظ خطوة الحفظ" : "Could not save memorization step");
+              return;
+            }
+          }
           setGuidedRecitationRevealed(true);
           setMemoView("show");
         }}
         onAssess={(result) => {
+          if (standalone && guidedVerseKey) {
+            const [surah, ayah] = guidedVerseKey.split(":").map(Number);
+            if (!personalPlan.assess({ surah, ayah }, result)) {
+              toast.error(lang === "ar" ? "تعذر حفظ نتيجة المراجعة" : "Could not save review result");
+              return;
+            }
+            if (result === "mastered") {
+              const currentOrdinal = verseOrdinal({ surah, ayah });
+              const withinPlan = currentOrdinal !== null && personalPlan.plan
+                && currentOrdinal >= verseOrdinal(personalPlan.plan.start)!
+                && currentOrdinal <= verseOrdinal(personalPlan.plan.end)!;
+              const reviewWasDue = personalPlan.due.some((item) => item.surah === surah && item.ayah === ayah);
+              const nextDue = reviewWasDue
+                ? personalPlan.due.find((item) => item.surah !== surah || item.ayah !== ayah)
+                : null;
+              if (nextDue) {
+                beginPersonalGuidedVerse(nextDue);
+                return;
+              }
+              if (reviewWasDue) {
+                closeGuidedMemorization();
+                setPersonalPlanOpen(true);
+                toast.success(lang === "ar" ? "أتممت مراجعاتك المستحقة" : "Due reviews complete");
+                return;
+              }
+              if (withinPlan) {
+                const reachedGoal = personalPlan.completedTodayNow() >= personalPlan.plan!.dailyGoal;
+                const next = personalPlan.nextNow();
+                if (reachedGoal || !next || reviewWasDue) {
+                  closeGuidedMemorization();
+                  setPersonalPlanOpen(true);
+                  toast.success(lang === "ar" ? "حُفظ تقييمك، راجع خطتك" : "Assessment saved. Check your plan");
+                  return;
+                }
+                beginPersonalGuidedVerse(next);
+                return;
+              }
+            }
+            if (result === "mastered") {
+              closeGuidedMemorization();
+              setPersonalPlanOpen(true);
+              toast.success(lang === "ar" ? "حُفظ تقييمك الشخصي" : "Personal assessment saved");
+              return;
+            }
+          }
           if (result === "review") {
             setGuidedStageAndPlayback(0);
             toast.success(lang === "ar" ? "سنكرر الآية الآن" : "Let’s repeat this ayah");
@@ -2711,6 +2853,33 @@ export function QuranPagesView({
           toast.success(lang === "ar" ? "ننتقل إلى الآية التالية" : "Moving to the next ayah");
         }}
       />
+      {standalone && (
+        <QuranPersonalPlanPanel
+          open={personalPlanOpen}
+          onClose={() => setPersonalPlanOpen(false)}
+          lang={lang}
+          chapters={chapters}
+          current={{ surah: selectedSurah, ayah: selectedAyah }}
+          plan={personalPlan.plan}
+          due={personalPlan.due}
+          next={personalPlan.next}
+          completedToday={personalPlan.completedToday}
+          storageError={personalPlan.error}
+          hasSession={personalPlan.session !== null}
+          onSavePlan={personalPlan.savePlan}
+          onStart={(verse) => beginPersonalGuidedVerse(verse)}
+          onResume={() => {
+            if (personalPlan.session) beginPersonalGuidedVerse(personalPlan.session.verse, personalPlan.session);
+          }}
+          onDeletePlan={() => {
+            const saved = personalPlan.clearPlan();
+            if (!saved) {
+              toast.error(lang === "ar" ? "تعذر حذف الخطة على هذا الجهاز" : "Could not remove the plan");
+            }
+            return saved;
+          }}
+        />
+      )}
 
       <QuranAyahActionSurface
         open={ayahActionVerseKey !== null}

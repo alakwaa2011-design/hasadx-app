@@ -7,4 +7,8 @@ The public Quran reader must remain fully usable with device-local state and no 
 
 **Why:** Requiring authentication would weaken the public reading experience, while replacing either state wholesale could silently lose bookmarks. A fresh device can otherwise treat its automatically rendered default as user intent and overwrite a real account position.
 
-**How to apply:** Any future reader-state additions should have a local anonymous path, join the same opt-in sync boundary, and use non-destructive merge semantics. Distinguish an untouched default from an intentional local update, and fall back locally on authentication loss. Do not connect this public state to teacher assignments or academic progress.
+Self-assessed personal memorization is not teacher-verified mastery, and must not silently inherit reader-position sync or be presented as cross-device state without a designed merge.
+
+**Why:** Reader-position sync does not establish a trustworthy merge of personal practice histories. Quietly reusing that channel could lose assessments, promise continuity that does not exist, or blur self-assessment with academic progress.
+
+**How to apply:** Any future reader-state additions should have a local anonymous path. If personal practice eventually gains optional account sync, design a separate non-destructive merge of assessments and resumable sessions before promising it in the UI. Distinguish an untouched default from an intentional local update, and fall back locally on authentication loss. Do not connect this public state to teacher assignments or academic progress.
