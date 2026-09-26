@@ -260,6 +260,7 @@ export function QuranPagesView({
   const [memoChoiceOpen, setMemoChoiceOpen] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
+  const [guidedLinkRunId, setGuidedLinkRunId] = useState(0);
   const [guidedVerseKey, setGuidedVerseKey] = useState<string | null>(null);
   const [guidedRecitationRevealed, setGuidedRecitationRevealed] = useState(false);
   const [personalPlanOpen, setPersonalPlanOpen] = useState(false);
@@ -1055,6 +1056,7 @@ export function QuranPagesView({
     if (stage === 4 && guidedVerseKey) {
       const [surah, ayah] = guidedVerseKey.split(":").map(Number);
       const start = guidedLinkStart({ surah, ayah });
+      setGuidedLinkRunId((runId) => runId + 1);
       setMemoView("show");
       setMemoSession((session) => ({
         ...session,
@@ -1121,6 +1123,7 @@ export function QuranPagesView({
       return;
     }
     const linkStart = session.stage === 4 ? guidedLinkStart(verse) : verse;
+    if (session.stage === 4) setGuidedLinkRunId((runId) => runId + 1);
     const linkStartVerse = session.stage === 4
       ? verses.find((item) => item.chapter_id === linkStart.surah && item.number === linkStart.ayah)
       : null;
@@ -2684,6 +2687,7 @@ export function QuranPagesView({
                 isPlaying={isPlaying}
                 onIsPlayingChange={setIsPlaying}
                 memoSession={memoSession}
+                guidedLinkRunId={guidedLinkRunId}
                 onMemoSessionChange={setMemoSession}
                 guidedMemorizationActive={guidedOpen}
                 memoView={memoView}

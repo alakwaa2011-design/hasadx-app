@@ -28,3 +28,9 @@ For chapter recordings, a normal cross-surah handoff starts the next source at t
 **Why:** Treating every ayah boundary like a source change caused gaps. Separately, shared host/player ownership, media-event races, and ignored byte ranges caused chapter recordings to retain an old offset or start at zero instead of the selected ayah.
 
 **How to apply:** Distinguish chapter-audio timing handoffs from real source changes and explicit pauses. Keep one provider-owned `ended` path, lock source transitions until real progress, and make route/player views adopt the provider's source instead of reloading it. Test 112:4→113:1 naturally in a real browser and sample the first 500ms in-page; also verify 8→9 does not insert a basmalah.
+
+When verifying a guided linked range with chapter recordings, use the target ayah's timing end rather than the chapter file's duration. A chapter file continues past the selected ayah; seeking to its end can make an already-completed multi-pass run look like it stopped after one pass. Test each pass from fresh playback, including a close/reopen without page reload: a new guided run must reset its whole-range repetition counter even if the selected range has not changed.
+
+**Why:** A real-browser 112:4→113:1 check initially appeared to fail at the end of the whole 113 recording; passive observation confirmed three correct verse-level passes after reload, but reopening on the same mounted page exposed a retained repetition count.
+
+**How to apply:** Observe source transitions at verse boundaries, count complete range passes, and test both reload-based restoration and same-page session reopening.

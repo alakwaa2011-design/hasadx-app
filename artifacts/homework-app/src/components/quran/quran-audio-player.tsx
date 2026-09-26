@@ -32,6 +32,7 @@ export interface QuranAudioPlayerProps {
   onSurahEnd?: () => void;
   onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
   memoSession?: MemoSessionState;
+  guidedLinkRunId?: number;
   onMemoSessionChange?: (session: MemoSessionState) => void;
   guidedMemorizationActive?: boolean;
   memoView?: 'show' | 'hide' | 'progressive';
@@ -70,6 +71,7 @@ export function QuranAudioPlayer({
   onSurahEnd,
   onPlaybackLocationChange,
   memoSession,
+  guidedLinkRunId,
   onMemoSessionChange,
   guidedMemorizationActive = false,
   memoView,
@@ -530,11 +532,14 @@ export function QuranAudioPlayer({
     : null;
   const crossLinkPlayCountRef = useRef(1);
   const previousCrossLinkKeyRef = useRef<string | null>(null);
+  const previousGuidedLinkRunIdRef = useRef(guidedLinkRunId);
   useEffect(() => {
-    if (previousCrossLinkKeyRef.current === crossLinkKey) return;
+    if (previousCrossLinkKeyRef.current === crossLinkKey
+      && previousGuidedLinkRunIdRef.current === guidedLinkRunId) return;
     previousCrossLinkKeyRef.current = crossLinkKey;
+    previousGuidedLinkRunIdRef.current = guidedLinkRunId;
     crossLinkPlayCountRef.current = 1;
-  }, [crossLinkKey]);
+  }, [crossLinkKey, guidedLinkRunId]);
   const effectiveStart = memoSession?.isActive
     ? (crossSurahLink && surahNumber > memoSession.rangeStartSurah! ? 1 : memoSession.rangeStart)
     : (startAyah ?? 1);
