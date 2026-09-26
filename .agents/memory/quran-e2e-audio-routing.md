@@ -7,4 +7,4 @@ Playwright Quran reader contexts that mock timing/audio requests should block Se
 
 **Why:** Without Service Worker isolation, the browser can issue direct audio requests that appear in page request logs but bypass page-level route handlers, leaving deterministic timing fixtures unused.
 
-**How to apply:** Create the authenticated reader BrowserContext with `serviceWorkers: "block"` before installing Quran audio routes; keep guest/catalog checks separate when they need the normal browser behavior.
+**How to apply:** Create the authenticated reader BrowserContext with `serviceWorkers: "block"` before installing context-level Quran audio routes; keep guest/catalog checks separate when they need the normal browser behavior. A test that unexpectedly plays the external chapter recording instead of its fixture is not measuring its mocked timing.
