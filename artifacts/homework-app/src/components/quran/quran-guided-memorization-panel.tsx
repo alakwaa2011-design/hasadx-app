@@ -18,6 +18,7 @@ export type GuidedMemorizationStage = 0 | 1 | 2 | 3 | 4 | 5;
 interface QuranGuidedMemorizationPanelProps {
   panelRef?: Ref<HTMLElement>;
   open: boolean;
+  dockHeight?: number;
   stage: GuidedMemorizationStage;
   surahName: string;
   ayahNumber: number;
@@ -47,6 +48,7 @@ const STAGES = [
 export function QuranGuidedMemorizationPanel({
   panelRef,
   open,
+  dockHeight = 0,
   stage,
   surahName,
   ayahNumber,
@@ -72,6 +74,10 @@ export function QuranGuidedMemorizationPanel({
       ref={panelRef}
       data-testid="quran-guided-memorization-panel"
       className="fixed inset-x-3 bottom-[calc(0.75rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] z-[70] mx-auto max-h-[min(52dvh,31rem)] w-auto max-w-md overflow-y-auto rounded-[1.75rem] border border-emerald-900/10 bg-[#fffdf8]/95 p-4 shadow-[0_24px_80px_rgba(11,75,53,0.24)] backdrop-blur-xl dark:border-emerald-300/10 dark:bg-[#10251d]/95 sm:inset-x-auto sm:bottom-[calc(1.25rem+var(--quran-safe-area-bottom,env(safe-area-inset-bottom,0px)))] sm:end-5 sm:w-[390px] sm:p-5"
+      style={dockHeight > 0 ? {
+        bottom: `calc(${dockHeight}px + 0.75rem)`,
+        maxHeight: `min(52dvh, 31rem, max(7rem, calc(100dvh - ${dockHeight}px - 6rem)))`,
+      } : undefined}
       dir={ar ? "rtl" : "ltr"}
       aria-label={ar ? "جلسة حفظني" : "Memorize me session"}
     >

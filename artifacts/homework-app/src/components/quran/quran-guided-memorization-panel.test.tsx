@@ -43,4 +43,12 @@ describe("QuranGuidedMemorizationPanel", () => {
 
     expect(props.onStageChange).toHaveBeenCalledWith(4);
   });
+
+  it("leaves the audio dock uncovered and limits its height when the dock is visible", () => {
+    renderPanel({ dockHeight: 180 });
+    const panel = screen.getByTestId("quran-guided-memorization-panel");
+
+    expect(panel.style.bottom).toBe("calc(180px + 0.75rem)");
+    expect(panel.style.maxHeight).toContain("100dvh - 180px");
+  });
 });

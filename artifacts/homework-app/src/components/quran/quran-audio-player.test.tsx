@@ -114,8 +114,10 @@ const connectedSecond: TimingResult = {
 
 function PlayerHarness({
   onAudibleAyahChange,
+  onFloatingPanelOpenChange,
 }: {
   onAudibleAyahChange?: (surahNumber: number, ayah: number | null) => void;
+  onFloatingPanelOpenChange?: (open: boolean) => void;
 } = {}) {
   const [playingAyah, setPlayingAyah] = useState<number | null>(1);
   return (
@@ -132,6 +134,7 @@ function PlayerHarness({
         isPlaying
         onIsPlayingChange={vi.fn()}
         onAudibleAyahChange={onAudibleAyahChange}
+        onFloatingPanelOpenChange={onFloatingPanelOpenChange}
       />
     </QuranAudioHostProvider>
   );
@@ -466,6 +469,21 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     await waitFor(() => expect(sampleButton.className).toContain('bg-emerald-50'));
     await waitFor(() => expect(timingHookCalls).toHaveBeenCalledWith(2_000_114, 1, 1));
     expect(savePreference).not.toHaveBeenCalled();
+  });
+
+  it('raises the audio panel above the guided session while reciters are selectable', () => {
+    const onFloatingPanelOpenChange = vi.fn();
+    const view = render(<PlayerHarness onFloatingPanelOpenChange={onFloatingPanelOpenChange} />);
+
+    fireEvent.click(view.getByTestId('button-audio-options'));
+    expect(onFloatingPanelOpenChange).toHaveBeenLastCalledWith(true);
+    fireEvent.click(view.getByTestId('button-reciter-8'));
+    expect(savePreference).toHaveBeenCalledWith({ data: { recitationId: 8 } });
+    fireEvent.click(view.getByTestId('button-close-panel'));
+    expect(onFloatingPanelOpenChange).toHaveBeenLastCalledWith(false);
+
+    view.unmount();
+    expect(onFloatingPanelOpenChange).toHaveBeenLastCalledWith(false);
   });
 
   it('seeks to the selected ayah and saves Abu Bakr Al-Dhabi as the preferred reciter', async () => {

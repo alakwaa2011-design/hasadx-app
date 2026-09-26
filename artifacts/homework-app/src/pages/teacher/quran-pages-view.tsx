@@ -259,6 +259,7 @@ export function QuranPagesView({
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [memoChoiceOpen, setMemoChoiceOpen] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
+  const [audioFloatingPanelOpen, setAudioFloatingPanelOpen] = useState(false);
   const [guidedStage, setGuidedStage] = useState<GuidedMemorizationStage>(0);
   const [guidedLinkRunId, setGuidedLinkRunId] = useState(0);
   const [guidedVerseKey, setGuidedVerseKey] = useState<string | null>(null);
@@ -2674,7 +2675,10 @@ export function QuranPagesView({
       {bottomDockVisible && (
         <div
           ref={bottomDockRef}
-          className="quran-reader-dock relative z-40 flex max-h-[44dvh] w-full shrink-0 flex-col overflow-visible rounded-t-[22px] bg-[#fbfaf6] shadow-[0_-10px_34px_rgba(34,87,57,0.12)] ring-1 ring-emerald-950/10 dark:bg-[#111512] md:max-h-[58dvh] md:rounded-none"
+          className={cn(
+            "quran-reader-dock relative flex max-h-[44dvh] w-full shrink-0 flex-col overflow-visible rounded-t-[22px] bg-[#fbfaf6] shadow-[0_-10px_34px_rgba(34,87,57,0.12)] ring-1 ring-emerald-950/10 dark:bg-[#111512] md:max-h-[58dvh] md:rounded-none",
+            audioFloatingPanelOpen ? "z-[80]" : "z-40",
+          )}
           data-testid="quran-bottom-dock"
         >
           {(audioDockOpen || isPlaying) && selectedVerseKey && audioSurahs.length > 0 && (
@@ -2694,6 +2698,7 @@ export function QuranPagesView({
                 guidedLinkRunId={guidedLinkRunId}
                 onMemoSessionChange={setMemoSession}
                 guidedMemorizationActive={guidedOpen}
+                onFloatingPanelOpenChange={setAudioFloatingPanelOpen}
                 memoView={memoView}
                 onMemoViewChange={setMemoView}
                 onPlayingWordChange={setPlayingWordPosition}
@@ -2789,6 +2794,7 @@ export function QuranPagesView({
       <QuranGuidedMemorizationPanel
         panelRef={guidedPanelRef}
         open={guidedOpen && (!personalGuidedSessionRef.current || personalPlanCanPractice)}
+        dockHeight={bottomDockVisible ? bottomDockHeight : 0}
         stage={guidedStage}
         surahName={chapters.find((chapter) => chapter.id === Number(guidedVerseKey?.split(":")[0]))?.name ?? ""}
         ayahNumber={Number(guidedVerseKey?.split(":")[1]) || selectedAyah}

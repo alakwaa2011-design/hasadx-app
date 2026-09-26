@@ -156,3 +156,4 @@
 - [Authenticated personal Quran plans](authenticated-personal-quran-plans.md) — device-local self-assessment is account-scoped; assigned wards link to independent practice, never inherit its state.
 - [Quran reader control hierarchy](quran-reader-control-hierarchy.md) — keep the page primary, nest personal plans under memorization, and give listening repetition one ayah/segment entry.
 - [Mushaf Hasaad icon treatment](quran-icon-source.md) — preserve the approved square artwork untouched; never add app-side masking, rounding, framing, or overlays.
+- [Guided Quran overlay stacking](quran-guided-overlay-stacking.md) — raise the player dock only while its settings popover is open; keep the guided panel clear of the dock.
