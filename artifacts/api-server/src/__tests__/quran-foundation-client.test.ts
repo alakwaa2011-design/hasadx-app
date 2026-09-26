@@ -845,6 +845,68 @@ describe("Quran Foundation client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    ["2:21", "يَـٰٓأَيُّهَا", "أَيُّهَا"],
+    ["89:27", "يَـٰٓأَيَّتُهَا", "أَيَّتُهَا"],
+  ])("corrects the joined vocative in %s to a permissible separated madd", async (verseKey, wordText, rest) => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: verseKey,
+          words: [{
+            id: 42,
+            position: 1,
+            char_type_name: "word",
+            text_uthmani_tajweed: `يَ<rule class=madda_obligatory_mottasel>ـٰٓ</rule>${rest}`,
+          }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const [surahNumber, ayahNumber] = verseKey.split(":").map(Number);
+    const result = await getQuranFoundationWordTajweed(surahNumber, ayahNumber, 1);
+    expect(result.text).toBe(wordText);
+    expect(result.rules).toMatchObject([{
+      class: "madda_obligatory_monfasel",
+      letters: "ـٰٓ",
+      nameAr: "المد الجائز المنفصل",
+      color: "#b50000",
+    }]);
+    expect(result.rules[0].descriptionAr).toContain("وإن اتصل الرسم");
+    expect(result.source.name).toContain("تصحيح حصاد");
+  });
+
+  it("does not change a genuine connected madd or a correctly tagged separated madd", async () => {
+    const versePayload = {
+      verse: {
+        verse_key: "2:21",
+        words: [
+          { id: 42, position: 1, char_type_name: "word", text_uthmani_tajweed: "جَ<rule class=madda_obligatory_mottasel>آ</rule>ءَ" },
+          { id: 43, position: 2, char_type_name: "word", text_uthmani_tajweed: "يَ<rule class=madda_obligatory_monfasel>ـٰٓ</rule>أَيُّهَا" },
+        ],
+      },
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(versePayload), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(versePayload), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const connected = await getQuranFoundationWordTajweed(2, 21, 1);
+    const alreadySeparated = await getQuranFoundationWordTajweed(2, 21, 2);
+    expect(connected.rules[0].class).toBe("madda_obligatory_mottasel");
+    expect(connected.source.name).not.toContain("تصحيح");
+    expect(alreadySeparated.rules[0].class).toBe("madda_obligatory_monfasel");
+    expect(alreadySeparated.source.name).not.toContain("تصحيح");
+  });
+
   it("returns an empty rules array (not a guess) when the source tags no rule for the word", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({

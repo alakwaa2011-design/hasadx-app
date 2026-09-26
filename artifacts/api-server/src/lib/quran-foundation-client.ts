@@ -237,7 +237,7 @@ export type QuranFoundationWordTajweed = {
     color: string;
     colorNameAr: string;
   }>;
-  source: typeof QURAN_TAJWEED_SOURCE;
+  source: typeof QURAN_TAJWEED_SOURCE | typeof YA_AYYUHA_TAJWEED_SOURCE;
 };
 type CachedToken = {
   value: string;
@@ -1270,13 +1270,29 @@ export async function getQuranFoundationWordTajweed(
     throw new Error("Quran Foundation Tajweed word is invalid");
   }
 
+  const text = word.text_uthmani_tajweed.replace(/<[^>]+>/g, "");
+  const taggedRules = parseTajweedRuleSpans(word.text_uthmani_tajweed);
+  // In the Mushaf "يَـٰٓأَيُّهَا" is joined in writing, but "يا" and
+  // "أيها" (likewise "أيتها") are separate words for the madd rule.
+  const correctVocativeMadd = isJoinedYaAyyuha(text)
+    && taggedRules.some((rule) => rule.class === "madda_obligatory_mottasel");
+  const rules = correctVocativeMadd
+    ? taggedRules.map((rule) => rule.class === "madda_obligatory_mottasel"
+      ? {
+          ...rule,
+          class: "madda_obligatory_monfasel" as const,
+          ...TAJWEED_RULE_DEFINITIONS.madda_obligatory_monfasel,
+          descriptionAr: "حرف المد في «يا» والهمزة في «أيها/أيتها»؛ وهو مد جائز منفصل حُكمًا وإن اتصل الرسم، ويُمد عند الوصل 4 أو 5 حركات.",
+        }
+      : rule)
+    : taggedRules;
   const value: QuranFoundationWordTajweed = {
     verseKey,
     wordId: word.id as number,
     position: wordPosition,
-    text: word.text_uthmani_tajweed.replace(/<[^>]+>/g, ""),
-    rules: parseTajweedRuleSpans(word.text_uthmani_tajweed),
-    source: QURAN_TAJWEED_SOURCE,
+    text,
+    rules,
+    source: correctVocativeMadd ? YA_AYYUHA_TAJWEED_SOURCE : QURAN_TAJWEED_SOURCE,
   };
   cachedWordTajweed.set(cacheKey, { value, expiresAt: Date.now() + TAJWEED_CACHE_MS });
   return value;
@@ -1342,6 +1358,21 @@ const QURAN_TAJWEED_SOURCE = {
   provider: "Quran Foundation",
   version: "Content API v4 · text_uthmani_tajweed",
 } as const;
+
+const YA_AYYUHA_TAJWEED_SOURCE = {
+  ...QURAN_TAJWEED_SOURCE,
+  name: "تصحيح حصاد لمد «يا أيها/أيتها» · Quran Foundation",
+  provider: "Quran Foundation + حصاد",
+  version: "Content API v4 · text_uthmani_tajweed · تصحيح تصنيف مد النداء",
+} as const;
+
+function isJoinedYaAyyuha(text: string): boolean {
+  const normalized = text.normalize("NFKD")
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u08D3-\u08FF\u0640]/g, "")
+    .replace(/[ٱأإآ]/g, "ا");
+  // The dagger alif in "يَـٰٓ" is not a literal alif in the source text.
+  return (normalized === "يايها" || normalized === "يايتها") && text.includes("ـٰٓ");
+}
 
 /**
  * Every entry is keyed by the exact `class` value the official Quran Foundation
