@@ -310,15 +310,15 @@ export function QuranMadaniPageRenderer({
                       w.type === "end" ? "quran-madani-end text-[5.2cqw]" : "",
                       // Apply standard color or highlight colors
                       isSelectedWord
-                        ? "text-amber-800 bg-amber-200/70 ring-1 ring-amber-500/50"
+                        ? "text-[color:var(--quran-hl-word-select-text,#92400e)] bg-[color:var(--quran-hl-word-select-bg,rgba(253,230,138,0.7))] ring-1 ring-[color:var(--quran-hl-word-select-ring,rgba(245,158,11,0.5))]"
                         : isPlayingWord
-                        ? "quran-word-glow text-emerald-800 bg-emerald-200/90 ring-1 ring-emerald-500/50"
+                        ? "quran-word-glow text-[color:var(--quran-hl-word-play-text,#065f46)] bg-[color:var(--quran-hl-word-play-bg,rgba(167,243,208,0.9))] ring-1 ring-[color:var(--quran-hl-word-play-ring,rgba(16,185,129,0.5))]"
                         : isPlaying && !playingWordPosition
-                        ? "text-emerald-700 drop-shadow-[0_0_0_rgba(22,101,52,0.8)] bg-emerald-100/50"
+                        ? "text-[color:var(--quran-hl-ayah-play-text,#047857)] drop-shadow-[0_0_0_var(--quran-hl-ayah-play-text,rgba(4,120,87,0.8))] bg-[color:var(--quran-hl-ayah-play-bg,rgba(209,250,229,0.5))]"
                         : isSelected
-                        ? "text-amber-700 drop-shadow-[0_0_0_rgba(180,83,9,0.8)] bg-amber-100/40"
+                        ? "text-[color:var(--quran-hl-ayah-select-text,#b45309)] drop-shadow-[0_0_0_var(--quran-hl-ayah-select-text,rgba(180,83,9,0.8))] bg-[color:var(--quran-hl-ayah-select-bg,rgba(254,243,199,0.4))]"
                         : isInSelectedRange
-                        ? "text-amber-800 bg-amber-100/60"
+                        ? "text-[color:var(--quran-hl-range-text,#92400e)] bg-[color:var(--quran-hl-range-bg,rgba(254,243,199,0.6))]"
                         : w.type === "end"
                         ? "text-[color:var(--quran-end-ink,#1d4432)] drop-shadow-[0_0_0_var(--quran-end-ink,rgba(29,68,50,1))] hover:text-emerald-800 hover:bg-emerald-50/50"
                         : "text-[color:var(--quran-ink,#000000)] drop-shadow-[0_0_0_var(--quran-ink,rgba(0,0,0,1))] hover:text-emerald-900 hover:bg-emerald-50/50",
