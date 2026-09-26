@@ -31,6 +31,30 @@ const fetchQuery = vi.fn(() => fetchNextTiming);
 const getQueryData = vi.fn(() => cachedNextTiming);
 const savePreference = vi.fn(() => Promise.resolve());
 const timingHookCalls = vi.fn();
+const gaplessCalls = vi.hoisted(() => ({
+  play: vi.fn(async () => undefined),
+  queue: vi.fn(async () => undefined),
+  stop: vi.fn(),
+  unlock: vi.fn(async () => undefined),
+}));
+vi.mock('./gapless-ayah-audio', () => ({
+  GaplessAyahAudio: class {
+    active = false;
+    isPlaying = false;
+    currentKey: string | null = null;
+    play = async (key: string) => {
+      this.active = true;
+      this.isPlaying = true;
+      this.currentKey = key;
+      await gaplessCalls.play(key);
+    };
+    queue = gaplessCalls.queue;
+    stop = gaplessCalls.stop;
+    pause = vi.fn();
+    resume = vi.fn(async () => undefined);
+    unlock = gaplessCalls.unlock;
+  },
+}));
 let preferredRecitationId = 7;
 
 vi.mock('@/lib/i18n', () => ({
@@ -134,6 +158,26 @@ function PlayerHarness({
         onIsPlayingChange={vi.fn()}
         onAudibleAyahChange={onAudibleAyahChange}
         onFloatingPanelOpenChange={onFloatingPanelOpenChange}
+      />
+    </QuranAudioHostProvider>
+  );
+}
+
+function ChapterStartHarness() {
+  const [playingAyah, setPlayingAyah] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  return (
+    <QuranAudioHostProvider>
+      <QuranAudioPlayer
+        surahs={[{ ayahs: [{}, {}] }] as never}
+        surahNumber={1}
+        startAyah={null}
+        endAyah={null}
+        selectedAyah={1}
+        playingAyah={playingAyah}
+        onPlayingAyahChange={setPlayingAyah}
+        isPlaying={isPlaying}
+        onIsPlayingChange={setIsPlaying}
       />
     </QuranAudioHostProvider>
   );
@@ -268,6 +312,7 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     load.mockClear();
     savePreference.mockClear();
     timingHookCalls.mockClear();
+    gaplessCalls.unlock.mockClear();
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(pause);
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(play);
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(load);
@@ -319,9 +364,8 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
       return element as HTMLAudioElement;
     });
 
-    await waitFor(() => {
-      expect(audio.src).toContain('/api/quran/audio/2000032/1/1');
-    });
+    await waitFor(() => expect(gaplessCalls.play).toHaveBeenCalledWith('/api/quran/audio/2000032/1/1/buffer'));
+    expect(audio.src).toBe('');
   });
 
   it('restarts the current ayah timing instead of the beginning of the surah', async () => {
@@ -390,27 +434,35 @@ describe('QuranAudioPlayer zero-pause transitions', () => {
     expect(audio.hasAttribute('src')).toBe(true);
   });
 
-  it('preloads the next standalone ayah audio file', async () => {
+  it('schedules the decoded next standalone ayah before the boundary', async () => {
     timingResults.set(1, { isError: true });
-    const constructed: Array<{ src: string; preload: string; load: ReturnType<typeof vi.fn> }> = [];
-    globalThis.Audio = class {
-      src: string;
-      preload = '';
-      load = vi.fn();
-      pause = vi.fn();
-      removeAttribute = vi.fn();
-      constructor(src: string) {
-        this.src = src;
-        constructed.push(this);
-      }
-    } as never;
 
     render(<PlayerHarness />);
 
-    await waitFor(() => expect(constructed).toHaveLength(1));
-    expect(constructed[0].src).toBe('/api/quran/audio/7/1/2');
-    expect(constructed[0].preload).toBe('auto');
-    expect(constructed[0].load).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(gaplessCalls.queue).toHaveBeenCalledWith('/api/quran/audio/7/1/2/buffer'));
+  });
+
+  it('does not pause the media stream carrier when a verse-file player advances', async () => {
+    preferredRecitationId = 2_000_032;
+    timingResults.set(1, { isError: true });
+    timingResults.set(2, { isError: true });
+    const view = render(<PlayerHarness />);
+    await waitFor(() => expect(gaplessCalls.play).toHaveBeenCalledWith('/api/quran/audio/2000032/1/1/buffer'));
+    pause.mockClear();
+    fireEvent.click(view.getByTestId('button-next-ayah'));
+    await waitFor(() => expect(view.getByTestId('playing-ayah').textContent).toBe('2'));
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('starts a chapter-timed reciter without taking over or muting the shared audio element', async () => {
+    render(<ChapterStartHarness />);
+    await waitFor(() => expect(document.querySelector('audio')).not.toBeNull());
+    fireEvent.click(document.querySelector('[data-testid="button-play-pause"]')!);
+    const audio = document.querySelector('audio') as HTMLAudioElement;
+    await waitFor(() => expect(audio.src).toContain('/surah.mp3'));
+    expect(gaplessCalls.unlock).not.toHaveBeenCalled();
+    expect(audio.srcObject).toBeFalsy();
+    expect(audio.volume).toBe(1);
   });
 
   it('places previous on the right and next on the left in Arabic', async () => {

@@ -16,20 +16,10 @@
 - [Outline 120s proxy budget](outline-120s-proxy-budget.md) — proxy aborts at 120s; multi-call LLM routes need elapsed-time retry guards + per-call SDK timeouts; sonnet needs 16k max_tokens for full outlines.
 - [gpt-5 reasoning token budget](gpt5-reasoning-token-budget.md) — gpt-5 spends max_completion_tokens on hidden reasoning; without reasoning_effort:"minimal" + big budget, replies come back EMPTY (finish=length).
 - [Worksheet smart grading link](worksheet-grading-link.md) — hidden source='worksheet' assignments power photo grading; owner-session only, no access code, version on edit-after-results.
-- [Credits system architecture](credits-system.md) — 5 DB tables + 3 platform_settings columns; CreditService hold/capture/refund; checkCredits middleware is a no-op when creditsEnabled=OFF; @workspace/db dist/ must be rebuilt (npx tsc -p tsconfig.json) after schema changes or tsc errors on new tables; Button in ui-elements.tsx has no size prop, only variant.
-- [Subscription credits design](subscription-credits.md) — subscription_payment_success is the ONLY credit grant source; subscription_credit_grants table (invoice_id UNIQUE) is primary idempotency guard; batch expires_at = nextPeriodEnd (+1 calendar month from renews_at fetched from LS API); no extending old batches; credits_granted recorded even when 0.
+- [Credits and payment safeguards](credits-payment-notes.md) — pointers to credit grants, idempotency, balance, charging, and notification rules.
 - [Hasad unified color tokens](hasad-color-tokens.md) — emerald/teal/green Tailwind scales overridden in index.css from #225739; never hardcode bright green hexes.
-- [Lemon Squeezy credit purchases](lemonsqueezy-credits.md) — paid credits granted ONLY in HMAC webhook; webhook path needs raw-body + CSRF exemptions; buckets paid/promo/earned must sum to balance.
 - [jscanify/OpenCV scanner](jscanify-opencv-scanner.md) — jscanify 1.4.x leaks cv.Mat in findPaperContour/extractPaper; call cv directly with full deletes in any per-frame loop.
-- [Webhook idempotency semantics](webhook-idempotency-semantics.md) — handlers must throw (not silently return) when required work fails, or the idempotency key locks as "processed" and corrected retries are dropped.
-- [Manual plan grant race safety](manual-plan-grant.md) — grantSubscriptionCredits reads credits from the STORED subscription; manual admin grants must use grantManualPlan's single-tx planCode-based path.
-- [Credit hold idempotency races](hold-idempotency-races.md) — hold needs in-lock recheck + 23505 catch (err.cause.code) + 409 for completed/refunded replays, or races double-charge/run free.
 - [Extract format normalization](extract-equivalent-format-normalization.md) — Sonnet emits `question` not `prompt`; sanitize must normalize equivalent keys, never invent/default answers.
-- [Central credits balance query](credits-balance-central-query.md) — one react-query key for نقاط حصاد; every AI call site must invalidate it on settle; no local deduction math.
-- [Positive-only award notifications](positive-award-notifications.md) — email and in-app alerts celebrate admin grants only; never notify on deductions, unlimited removal, or plan downgrades.
-- [Welcome credits grant paths](welcome-credits-grant-paths.md) — every session-establishing auth route (login/OTP/link/Google) must call the shared grant helper; idempotency is in the service, not the DB.
-- [checkCredits fail-closed](credits-fail-closed.md) — unexpected verification errors return 503, never next(); guest AI routes stay deliberately uncharged.
-- [TTS audio cache invariants](tts-audio-cache.md) — serve only after confirmed capture ({captured} flag); credit_request_id fences all row writes; compensate only on definitive 404, never on missing key or transient errors.
 - [Canonical domain redirect](canonical-domain-redirect.md) — prod pages now served by node serve.mjs (compiled from serve.ts — recompile after edits); 301 hasadx.com→hasaadx.com lives there + api-server middleware.
 - [DM read receipts & images](dm-read-receipts-images.md) — one-way receipts by design (teacher never sees admin's readAt); DM images need raster-only allowlist + nosniff/CSP on object serving.
 - [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.
@@ -38,8 +28,7 @@
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
 - [Direct play links architecture](direct-play-links.md) — opaque public links support assignments, saved games, and display modes; session-backed games create fresh rooms per open.
 - [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
-- [Browser E2E database isolation](browser-e2e-db-isolation.md) — fixture-writing browser tests must run app and API together on a dedicated test database.
-- [Teacher E2E session setup](teacher-e2e-session-setup.md) — registration now returns a pending OTP; browser fixtures need a verified DB teacher plus /auth/verify-otp before attaching a session.
+- [Browser test environment notes](browser-test-notes.md) — pointers for isolated fixtures, browser runtimes, viewport assertions, and Quran audio test routing.
 - [Autosave idempotency](autosave-idempotency.md) — generated-content retries use a stable client key and must atomically include every create-side effect.
 - [Shared library Wameeth access](shared-library-wameeth-access.md) — cross-teacher direct play is limited to visibly published activities and only Wameeth class/independent modes.
 - [Independent game control isolation](independent-game-control-isolation.md) — treat control taps as immediate actions and fence question events while an exit dialog is active.
@@ -53,9 +42,6 @@
 - [Presentation visual contract](presentation-visual-contract.md) — real-image search is opt-in and every planned image has a deterministic teaching fallback.
 - [Question source selection state](question-source-selection-state.md) — async assignment pickers must bind loaded questions to the currently selected ID.
 - [Replit Build session recovery](replit-build-session.md) — a crossed Wi‑Fi icon and missing Agent usually indicate an editor WebSocket/session issue, not app code.
-- [Playwright cache fallback](playwright-cache-fallback.md) — after clearing Playwright’s browser cache, use the managed Chromium binary for local browser checks.
-- [Playwright WebKit on NixOS](playwright-webkit-nixos.md) — scope managed Chromium fallbacks by project; downloaded WebKit needs a compatible host library set on Replit.
-- [Mobile viewport geometry](playwright-mobile-viewport-geometry.md) — mobile emulation can report a CSS viewport different from a requested size; compare element bounds with window.innerWidth/innerHeight.
 - [AI content language precedence](ai-content-language-precedence.md) — new AI content uses explicit request, then clear English input, then UI fallback; persist the resolved language with multi-step artifacts.
 - [UI locale startup ordering](ui-locale-startup-ordering.md) — root boundaries need the locale provider outside them, and first API requests need locale decoration before descendant effects.
 - [Feedback messaging identity](feedback-messaging-identity.md) — only authenticated sessions may link feedback to teacher chats; email delivery status must be fenced to the current response.
@@ -91,7 +77,6 @@
 - [PostgreSQL UPDATE RETURNING scope](postgres-update-returning-scope.md) — RETURNING may use the updated row, not aliases introduced through UPDATE FROM; mocks do not validate this SQL.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
-- [Browser test database schema lag](e2e-test-database-schema-lag.md) — the isolated Playwright database may lag behind Drizzle; verify fixture-table columns before diagnosing UI failures.
 - [Integration schema synchronization](integration-schema-synchronization.md) — sync Drizzle onto the existing test schema; rebuilding public deletes reference seeds required across the integration suite.
 - [Quran Foundation integration](quran-foundation-environments.md) — QCF V2 is the Madani page source; production also needs strict counts, no auth redirects, and exact-origin audio.
 - [Maher Al-Muaiqly standard recitation](maher-standard-recitation.md) — use the familiar ayah-scoped 128kbps recording, not Quranicaudio’s year1440 chapter recording.
@@ -99,7 +84,6 @@
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Class reward balance](class-reward-balance.md) — class points use an independent balance and ledger; never distribute them to students or mix them with group scores.
 - [Reward class groups](reward-class-groups.md) — groups may overlap; metadata and membership save atomically, while deletion never changes balances or transaction history.
-- [RTL numeric UI assertions](rtl-numeric-ui-assertions.md) — exact full-string selectors around arrows and localized digits are brittle; assert values within their semantic row.
 - [Safe required columns on publish](safe-required-columns-publish.md) — required columns added to populated production tables need a per-row default or Publish may propose truncation.
 - [Reward grant undo semantics](reward-grant-undo-semantics.md) — undo a multi-student reward grant atomically by batch; weekly recognition counts only unreversed grants.
 - [Academic reward goals](academic-reward-goals.md) — student goals override class goals; progress and fairness use stable class identity and never include group competition scores.
@@ -130,6 +114,7 @@
 - [Quran partial hiding](quran-partial-hiding.md) — a one-ayah guided session hides alternating words; progressive range logic must not reveal the only target ayah.
 - [Quran tafsir playback follow](quran-tafsir-playback-follow.md) — tafsir follows the playing ayah unless the user locks the current explanation.
 - [Quran continuous audio handoff](quran-continuous-audio-handoff.md) — zero-pause recitation must keep chapter audio mounted and advance with prefetched timings; ayah files preload the next source.
+- [Audible Web Audio boundary checks](quran-audible-boundary-checks.md) — sample a pulled Web Audio graph at the actual boundary; UI labels, network preloads, and unconnected analysers cannot prove audibility.
 - [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — component tests need explicit cleanup and native DOM assertions; wrap audio consumers in their real provider.
 - [Public Quran delivery](public-quran-delivery.md) — ship the anonymous reader as an isolated /quran experience first; create a separate artifact only after shared Quran libraries exist.
 - [Pending recitation release gates](pending-recitation-release-gates.md) — unverified custom reciters may appear only to reader sessions; gate catalogs, timing, and direct audio routes together.
@@ -137,8 +122,6 @@
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
 - [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait and landscape both stay interactive; short landscape uses one full-screen paper with height-sized QCF content.
 - [Quran continuous navigation](quran-continuous-navigation.md) — manual jumps in continuous mode must freeze scroll observation and reset scrollTop, or browser anchoring can cascade through pages.
-- [Quran safe-area testing](quran-safe-area-testing.md) — managed Chromium lacks CDP safe-area emulation; use the reader's CSS variable seam in browser tests.
-- [Quran E2E audio routing](quran-e2e-audio-routing.md) — block Service Workers in reader contexts or Playwright audio mocks may miss direct timing requests.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
 - [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.

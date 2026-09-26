@@ -781,7 +781,7 @@ export async function getQuranFoundationAyahTimings(
     recitationId === MAHER_AL_MUAIQLY_RECITATION_ID
     || recitationId === MAHMOUD_ALI_AL_BANNA_RECITATION_ID
   ) {
-    throw new Error("This standard recitation uses ayah-scoped playback");
+    throw new Error("Quran Foundation timing mapping is unavailable for ayah-scoped playback");
   }
   const verseKey = `${surahNumber}:${ayahNumber}`;
   const cacheKey = `${recitationId}:${verseKey}`;
@@ -1085,6 +1085,18 @@ export async function getQuranFoundationAudioUrl(
   const value = url.toString();
   cachedAudio.set(cacheKey, { value, expiresAt: Date.now() + AUDIO_CACHE_MS });
   return value;
+}
+
+/** The PCM player may request bytes only for genuinely verse-scoped recordings. */
+export async function getQuranFoundationVerseFileUrl(
+  recitationId: number, surahNumber: number, ayahNumber: number,
+): Promise<string> {
+  if (recitationId !== MAHER_AL_MUAIQLY_RECITATION_ID
+    && recitationId !== MAHMOUD_ALI_AL_BANNA_RECITATION_ID
+    && (recitationId >= CHAPTER_PUBLIC_ID_BASE || await verifiedChapterReciterId(recitationId))) {
+    throw new Error("Chapter recitation cannot be buffered as a verse");
+  }
+  return getQuranFoundationAudioUrl(recitationId, surahNumber, ayahNumber);
 }
 
 export async function getQuranFoundationWordAudioUrl(

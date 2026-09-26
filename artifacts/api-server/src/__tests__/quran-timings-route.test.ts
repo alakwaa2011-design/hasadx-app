@@ -1,13 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 
-const { getTimings, getDisplayReciters } = vi.hoisted(() => ({
+const { getTimings, getDisplayReciters, getVerseUrl } = vi.hoisted(() => ({
   getTimings: vi.fn(),
   getDisplayReciters: vi.fn(),
+  getVerseUrl: vi.fn(),
 }));
 vi.mock("../lib/quran-foundation-client", () => ({
   getQuranFoundationAyahTimings: getTimings,
+  getQuranFoundationVerseFileUrl: getVerseUrl,
   getQuranFoundationAudioUrl: vi.fn(),
   getQuranFoundationMadaniPage: vi.fn(),
   getQuranFoundationSurahContent: vi.fn(),
@@ -37,6 +39,7 @@ function app(session: { teacherId?: number; studentAccountId?: number } = { teac
 describe("Quran ayah timings route", () => {
   beforeEach(() => {
     getTimings.mockReset();
+    getVerseUrl.mockReset();
     getDisplayReciters.mockReset();
     getDisplayReciters.mockResolvedValue([
       { id: 7, name: "Verified", style: "Murattal", available: true },
@@ -49,6 +52,32 @@ describe("Quran ayah timings route", () => {
       segments: [{ wordPosition: 1, startMs: 0, endMs: 100 }],
       synchronized: true,
     });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("buffers trusted verse recordings and keeps gated recordings private", async () => {
+    getVerseUrl.mockResolvedValue("https://verses.quran.foundation/ayah.mp3");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), {
+      headers: { "content-type": "audio/mpeg" },
+    })));
+    const publicAudio = await request(app({})).get("/api/quran/audio/2000032/112/1/buffer");
+    expect(publicAudio.status).toBe(200);
+    expect(publicAudio.headers["content-type"]).toContain("audio/mpeg");
+    expect(publicAudio.body).toEqual(Buffer.from([1, 2, 3]));
+    expect(publicAudio.headers["cache-control"]).toContain("public");
+    expect(getVerseUrl).toHaveBeenCalledWith(2_000_032, 112, 1);
+
+    const gatedAudio = await request(app({ teacherId: 1 }))
+      .get("/api/quran/audio/2000114/114/1/buffer");
+    expect(gatedAudio.status).toBe(200);
+    expect(gatedAudio.headers["cache-control"]).toContain("private");
+    expect((await request(app({})).get("/api/quran/audio/2000114/114/1/buffer")).status).toBe(404);
+  });
+
+  it("does not buffer a chapter recording as an individual verse", async () => {
+    getVerseUrl.mockRejectedValue(new Error("Chapter recitation cannot be buffered as a verse"));
+    expect((await request(app({})).get("/api/quran/audio/7/112/1/buffer")).status).toBe(404);
   });
 
   it("does not expose an unverified sample recitation to anonymous readers", async () => {

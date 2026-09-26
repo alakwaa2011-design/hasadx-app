@@ -118,6 +118,7 @@ import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage"
 import { calculateQuranJourney } from "../lib/quran-journey";
 import {
   getQuranFoundationAudioUrl,
+  getQuranFoundationVerseFileUrl,
   getQuranFoundationWordAudioUrl,
   getQuranFoundationAyahTimings,
   getQuranFoundationMadaniPage,
@@ -696,6 +697,64 @@ router.post(
     }
   },
 );
+
+router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber/buffer", async (req, res): Promise<void> => {
+  const parsed = GetQuranAyahAudioParams.safeParse({
+    ...req.params, recitationId: Number(req.params.recitationId),
+  });
+  if (!parsed.success || !QURAN_SURAHS[parsed.data.surahNumber - 1]
+    || parsed.data.ayahNumber > QURAN_SURAHS[parsed.data.surahNumber - 1].ayahCount) {
+    res.status(400).json({ error: "Invalid recitation or verse" });
+    return;
+  }
+  if (isUnverifiedQuranRecitation(parsed.data.recitationId) && !hasQuranReaderSession(req)) {
+    res.status(404).json({ error: "Quran audio is unavailable" });
+    return;
+  }
+  try {
+    const url = await getQuranFoundationVerseFileUrl(
+      parsed.data.recitationId, parsed.data.surahNumber, parsed.data.ayahNumber,
+    );
+    const upstream = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    if (!upstream.ok || !upstream.body || !upstream.headers.get("content-type")?.toLowerCase().includes("audio")) {
+      throw new Error("Verse audio response is unavailable");
+    }
+    const maxBytes = 8 * 1024 * 1024;
+    if (Number(upstream.headers.get("content-length")) > maxBytes) throw new Error("Verse audio is too large");
+    const reader = upstream.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) throw new Error("Verse audio is too large");
+        chunks.push(value);
+      }
+    } finally {
+      await reader.cancel().catch(() => undefined);
+    }
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader(
+      "Cache-Control",
+      isUnverifiedQuranRecitation(parsed.data.recitationId)
+        ? "private, max-age=604800"
+        : "public, max-age=604800",
+    );
+    res.send(Buffer.concat(chunks.map(chunk => Buffer.from(chunk))));
+  } catch (error) {
+    if (error instanceof Error && (
+      error.message.includes("Chapter recitation cannot be buffered")
+      || error.message.includes("not in the trusted catalog")
+    )) {
+      res.status(404).json({ error: "Verse audio is unavailable" });
+      return;
+    }
+    req.log.warn({ err: error, ...parsed.data }, "Verse audio buffering unavailable");
+    res.status(502).json({ error: "Verse audio is temporarily unavailable" });
+  }
+});
 
 router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, res): Promise<void> => {
   const parsed = GetQuranAyahAudioParams.safeParse({

@@ -3,6 +3,7 @@ import { Pause, Play, Square } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useLocation } from "wouter";
 import chapters from "@/data/quran/qcomplex/chapters.json";
+import { GaplessAyahAudio } from "./gapless-ayah-audio";
 
 interface QuranAudioHostValue {
   audioRef: RefObject<HTMLAudioElement | null>;
@@ -11,6 +12,7 @@ interface QuranAudioHostValue {
   setSession: (session: QuranAudioSession | null) => void;
   setControllerAttached: (attached: boolean) => void;
   advanceBoundary: () => void;
+  gapless: () => GaplessAyahAudio | null;
 }
 
 export interface QuranAudioPlaybackState {
@@ -36,12 +38,18 @@ export interface QuranAudioSession {
    */
   onAyahEnded?: () => void;
   onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
+  onPlaybackStateChange?: (playing: boolean) => void;
 }
 
 const QuranAudioHostContext = createContext<QuranAudioHostValue | null>(null);
 
 export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const gaplessRef = useRef<GaplessAyahAudio | null>(null);
+  const gapless = useCallback(() => {
+    if (!audioRef.current) return null;
+    return gaplessRef.current ??= new GaplessAyahAudio(audioRef.current);
+  }, []);
   const [playback, setPlayback] = useState<QuranAudioPlaybackState>({
     active: false, isPlaying: false, surahNumber: null, ayahNumber: null,
   });
@@ -95,6 +103,24 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
       boundaryLockedRef.current = true;
       const epoch = ++sourceEpochRef.current;
       const nextSource = `/api/quran/audio/${session.recitationId}/${nextSurah}/${nextAyah}`;
+      const engine = gaplessRef.current;
+      if (engine?.active) {
+        const bufferedSource = `${nextSource}/buffer`;
+        const nextSurahLength = chapters[nextSurah - 1]?.verse_count ?? session.surahLength;
+        sessionRef.current = { ...session, surahNumber: nextSurah, ayahNumber: nextAyah, surahLength: nextSurahLength };
+        try {
+          await engine.play(bufferedSource, session.speed, () => sessionRef.current?.onAyahEnded?.());
+          if (sourceEpochRef.current !== epoch || transitionIdRef.current !== transitionId) return;
+          boundaryLockedRef.current = false;
+          setPlayback({ active: true, isPlaying: true, surahNumber: nextSurah, ayahNumber: nextAyah });
+          session.onPlaybackLocationChange?.(nextSurah, nextAyah);
+        } catch {
+          boundaryLockedRef.current = false;
+          engine.stop();
+          setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });
+        }
+        return;
+      }
       audio.src = nextSource;
       audio.load();
       audio.playbackRate = session.speed;
@@ -230,14 +256,44 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
     });
     mediaSession.playbackState = playback.isPlaying ? "playing" : "paused";
     const next = () => {
+      if (gaplessRef.current?.active) {
+        gaplessRef.current.pause();
+        sessionRef.current?.onAyahEnded?.();
+        return;
+      }
       const audio = audioRef.current;
       if (audio && Number.isFinite(audio.duration)) audio.currentTime = audio.duration;
     };
     const previous = () => {
+      if (gaplessRef.current?.active) {
+        const session = sessionRef.current;
+        if (session) {
+          gaplessRef.current.stop();
+          void gaplessRef.current.play(
+            `/api/quran/audio/${session.recitationId}/${session.surahNumber}/${session.ayahNumber}/buffer`,
+            session.speed, () => sessionRef.current?.onAyahEnded?.(),
+          ).catch(() => setPlayback(current => ({ ...current, isPlaying: false })));
+        }
+        return;
+      }
       if (audioRef.current) audioRef.current.currentTime = 0;
     };
-    mediaSession.setActionHandler("play", () => { void audioRef.current?.play(); });
-    mediaSession.setActionHandler("pause", () => audioRef.current?.pause());
+    mediaSession.setActionHandler("play", () => {
+      if (gaplessRef.current?.active) {
+        void gaplessRef.current.resume().catch(error => {
+          if ((error as Error).name !== "AbortError") setPlayback(current => ({ ...current, isPlaying: false }));
+        });
+        sessionRef.current?.onPlaybackStateChange?.(true);
+      }
+      else void audioRef.current?.play().catch(() => undefined);
+    });
+    mediaSession.setActionHandler("pause", () => {
+      if (gaplessRef.current?.active) {
+        gaplessRef.current.pause();
+        sessionRef.current?.onPlaybackStateChange?.(false);
+      }
+      else audioRef.current?.pause();
+    });
     mediaSession.setActionHandler("nexttrack", next);
     mediaSession.setActionHandler("previoustrack", previous);
     return () => {
@@ -245,7 +301,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
         try { mediaSession.setActionHandler(action, null); } catch { /* unsupported action */ }
       }
     };
-  }, [lang, playback.ayahNumber, playback.isPlaying, playback.surahNumber]);
+  }, [advanceBoundary, lang, playback.ayahNumber, playback.isPlaying, playback.surahNumber]);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -259,7 +315,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
     return () => audio.removeEventListener("ended", handleEnded);
   }, [advanceBoundary]);
   return (
-    <QuranAudioHostContext.Provider value={{ audioRef, playback, setPlayback, setSession, setControllerAttached, advanceBoundary }}>
+    <QuranAudioHostContext.Provider value={{ audioRef, playback, setPlayback, setSession, setControllerAttached, advanceBoundary, gapless }}>
       {children}
       <audio ref={audioRef} className="hidden" aria-hidden="true" />
       {playback.active && !isQuranRoute && !controllerAttached && (
@@ -277,7 +333,15 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
           <button type="button" className="grid h-9 w-9 place-items-center rounded-full bg-emerald-700 text-white" onClick={() => {
             const audio = audioRef.current;
             if (!audio) return;
-            if (audio.paused) void audio.play();
+            if (gaplessRef.current?.active) {
+              if (gaplessRef.current.isPlaying) {
+                gaplessRef.current.pause();
+                sessionRef.current?.onPlaybackStateChange?.(false);
+              } else {
+                void gaplessRef.current.resume().catch(() => setPlayback(current => ({ ...current, isPlaying: false })));
+                sessionRef.current?.onPlaybackStateChange?.(true);
+              }
+            } else if (audio.paused) void audio.play().catch(() => undefined);
             else audio.pause();
           }} aria-label={playback.isPlaying ? "Pause Quran" : "Play Quran"}>
             {playback.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -286,6 +350,7 @@ export function QuranAudioHostProvider({ children }: { children: ReactNode }) {
             const audio = audioRef.current;
             if (!audio) return;
             audio.pause();
+            gaplessRef.current?.stop();
             audio.currentTime = 0;
             sessionRef.current = null;
             setPlayback({ active: false, isPlaying: false, surahNumber: null, ayahNumber: null });

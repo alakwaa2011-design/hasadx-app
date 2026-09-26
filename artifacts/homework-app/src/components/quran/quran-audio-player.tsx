@@ -118,8 +118,8 @@ export function QuranAudioPlayer({
     setSession,
     setControllerAttached,
     advanceBoundary,
+    gapless,
   } = useQuranAudioHost();
-  const preloadedAyahAudioRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const activeSeekRef = useRef<{ ayah: number, startMs: number, endMs: number, url: string, segments: AyahTimingSegment[] } | null>(null);
   const [audioSrc, setAudioSrc] = useState<string | undefined>();
   const currentAudioSrcRef = useRef<string | undefined>(undefined);
@@ -142,6 +142,7 @@ export function QuranAudioPlayer({
   const timeUpdateEventRef = useRef<() => void>(() => undefined);
 
   const surahLength = surahs[surahNumber - 1]?.ayahs.length || 0;
+  const knownVerseFileReciter = recitationId === 1_000_159 || recitationId === 2_000_032;
 
   useEffect(() => {
     setControllerAttached(true);
@@ -154,7 +155,7 @@ export function QuranAudioPlayer({
     playingAyah ?? 0,
     {
       query: {
-        enabled: !!playingAyah && !!recitationId && recitationId !== 1_000_159,
+        enabled: !!playingAyah && !!recitationId && !knownVerseFileReciter,
         retry: false,
         staleTime: Infinity,
         queryKey: getGetQuranAyahTimingsQueryKey(recitationId ?? 0, surahNumber, playingAyah ?? 0),
@@ -270,7 +271,7 @@ export function QuranAudioPlayer({
          staleSurahSourceBlockedRef.current = false;
          currentAudioSrcRef.current = audioRef.current.src;
          setAudioSrc(audioRef.current.src);
-       } else if (!isSeamlessTransition) {
+        } else if (!isSeamlessTransition && !gapless()?.active) {
          audioRef.current?.pause();
          if (surahChanged) {
            staleSurahSourceBlockedRef.current = true;
@@ -290,7 +291,7 @@ export function QuranAudioPlayer({
        onPlayingWordChange?.(null);
     }
 
-    if ((timingsQuery.isLoading || timingsQuery.isFetching) && !timingsQuery.data) {
+    if (!knownVerseFileReciter && (timingsQuery.isLoading || timingsQuery.isFetching) && !timingsQuery.data) {
        return;
     }
 
@@ -305,28 +306,13 @@ export function QuranAudioPlayer({
         onIsPlayingChange(false);
         return;
       }
-      const fallbackUrl = `/api/quran/audio/${recitationId}/${surahNumber}/${playingAyah}`;
       activeSeekRef.current = null;
-      if (currentAudioSrcRef.current !== fallbackUrl) {
-         staleSurahSourceBlockedRef.current = false;
-         restartWhenTimingsReadyRef.current = null;
-         currentAudioSrcRef.current = fallbackUrl;
-         setAudioSrc(fallbackUrl);
-      } else {
-         if (audioRef.current) {
-           audioRef.current.currentTime = 0;
-           restartWhenTimingsReadyRef.current = null;
-           if (isPlaying && !isPausedBetween) {
-             audioRef.current.playbackRate = speed;
-             void audioRef.current.play().catch(error => {
-               if (error.name !== 'AbortError') {
-                 setError(true);
-                 onIsPlayingChange(false);
-               }
-             });
-           }
-         }
-      }
+      // Verse files are decoded and scheduled on the host's PCM clock, not
+      // swapped into its media element at the boundary.
+      currentAudioSrcRef.current = undefined;
+      setAudioSrc(undefined);
+      restartWhenTimingsReadyRef.current = null;
+      staleSurahSourceBlockedRef.current = false;
     } else {
       const data = timingsQuery.data;
       const shouldRestartSameSource = restartWhenTimingsReadyRef.current === currentQueryKey;
@@ -349,6 +335,8 @@ export function QuranAudioPlayer({
       }
     }
   }, [
+    gapless,
+    knownVerseFileReciter,
     hostPlayback.ayahNumber,
     hostPlayback.isPlaying,
     hostPlayback.surahNumber,
@@ -387,6 +375,8 @@ export function QuranAudioPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    if (gapless()?.active || knownVerseFileReciter || (playingAyah && recitationId
+      && timingsQuery.isError && recitationId < 1_000_000)) return;
     const handleLoadedMetadataEvent = () => loadedMetadataEventRef.current();
     audio.addEventListener('loadedmetadata', handleLoadedMetadataEvent);
     return () => audio.removeEventListener('loadedmetadata', handleLoadedMetadataEvent);
@@ -450,6 +440,9 @@ export function QuranAudioPlayer({
     const audio = audioRef.current;
     if (!audio) return;
 
+    if (gapless()?.active || knownVerseFileReciter || (playingAyah && recitationId
+      && timingsQuery.isError && recitationId < 1_000_000)) return;
+
     if (staleSurahSourceBlockedRef.current) {
       audio.pause();
       return;
@@ -508,6 +501,8 @@ export function QuranAudioPlayer({
   }, [
     audioRef,
     audioSrc,
+    gapless,
+    knownVerseFileReciter,
     isPausedBetween,
     isPlaying,
     onIsPlayingChange,
@@ -520,17 +515,7 @@ export function QuranAudioPlayer({
     timingsQuery.isLoading,
   ]);
 
-  useEffect(() => {
-    return () => {
-      clearPauseTimeout();
-      preloadedAyahAudioRef.current.forEach(audio => {
-        audio.pause();
-        audio.removeAttribute('src');
-        audio.load();
-      });
-      preloadedAyahAudioRef.current.clear();
-    };
-  }, [onIsPlayingChange]);
+  useEffect(() => () => clearPauseTimeout(), [onIsPlayingChange]);
 
   const crossSurahLink = !!(
     memoSession?.isActive
@@ -670,44 +655,25 @@ export function QuranAudioPlayer({
     timingsQuery.data?.synchronized,
   ]);
 
-  useEffect(() => {
-    const preloadedAudio = preloadedAyahAudioRef.current;
-    preloadedAudio.forEach(audio => {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-    });
-    preloadedAudio.clear();
-  }, [recitationId, surahNumber]);
-
-  useEffect(() => {
-    if (
-      !recitationId
-      || !playingAyah
-      || !isPlaying
-      || (!timingsQuery.isError && recitationId !== 1_000_159)
-    ) return;
-
+  const queueUpcomingVerseFile = (engine: ReturnType<typeof gapless>) => {
+    if (!engine || !recitationId || !playingAyah || !isPlaying
+      || (!timingsQuery.isError && !knownVerseFileReciter)) return;
     const nextState = getNextPlaybackState();
-    if (!nextState?.nextAyah || nextState.nextAyah === playingAyah) return;
-
-    const url = `/api/quran/audio/${recitationId}/${surahNumber}/${nextState.nextAyah}`;
-    const preloadedAudio = preloadedAyahAudioRef.current;
-    if (!preloadedAudio.has(url)) {
-      const audio = new Audio(url);
-      audio.preload = 'auto';
-      audio.load();
-      preloadedAudio.set(url, audio);
+    const nextSurah = nextState?.nextAyah
+      ? surahNumber
+      : ((!memoSession?.isActive && startAyah === null && endAyah === null && surahNumber < 114)
+        || (crossSurahLink && surahNumber < memoSession!.rangeEndSurah!))
+        ? surahNumber + 1 : null;
+    const nextAyah = nextState?.nextAyah ?? (nextSurah ? 1 : null);
+    if (nextAyah) {
+      void engine.queue(`/api/quran/audio/${recitationId}/${nextSurah ?? surahNumber}/${nextAyah}/buffer`)
+        .catch(() => { /* Playback reports the error if that verse cannot be started. */ });
     }
+  };
 
-    while (preloadedAudio.size > 3) {
-      const oldestEntry = preloadedAudio.entries().next().value as [string, HTMLAudioElement] | undefined;
-      if (!oldestEntry) break;
-      oldestEntry[1].pause();
-      oldestEntry[1].removeAttribute('src');
-      oldestEntry[1].load();
-      preloadedAudio.delete(oldestEntry[0]);
-    }
+  useEffect(() => {
+    if (isBuffering) return;
+    queueUpcomingVerseFile(gapless());
   }, [
     currentAyahPlayCount,
     currentRangePlayCount,
@@ -716,12 +682,54 @@ export function QuranAudioPlayer({
     effectiveScope,
     effectiveStart,
     isPlaying,
+    isBuffering,
+    gapless,
+    knownVerseFileReciter,
+    crossSurahLink,
+    endAyah,
+    memoSession,
     playingAyah,
     recitationId,
     surahLength,
     surahNumber,
+    startAyah,
     timingsQuery.isError,
   ]);
+
+  useEffect(() => {
+    const engine = gapless();
+    if (!engine) return;
+    if (!playingAyah || !recitationId) {
+      if (engine.active) engine.stop();
+      return;
+    }
+    if (!knownVerseFileReciter && (timingsQuery.isLoading || timingsQuery.isFetching) && !timingsQuery.data) return;
+    if (!knownVerseFileReciter && timingsQuery.data?.synchronized) {
+      if (engine.active || audioRef.current?.srcObject) engine.stop();
+      return;
+    }
+    const key = `/api/quran/audio/${recitationId}/${surahNumber}/${playingAyah}/buffer`;
+    if (!isPlaying || isPausedBetween) {
+      engine.pause();
+      return;
+    }
+    if (engine.currentKey === key && engine.isPlaying) {
+      void engine.play(key, speed, () => endedEventRef.current());
+      return;
+    }
+    void (engine.currentKey === key && !engine.isPlaying
+      ? engine.resume()
+      : engine.play(key, speed, () => endedEventRef.current())
+    ).then(() => {
+      if (engine.currentKey !== key || !engine.isPlaying) return;
+      queueUpcomingVerseFile(engine);
+      setIsBuffering(false);
+      setError(false);
+    })
+      .catch(() => { setIsBuffering(false); setError(true); onIsPlayingChange(false); });
+    setIsBuffering(true);
+  }, [gapless, knownVerseFileReciter, isPausedBetween, isPlaying, onIsPlayingChange, playingAyah,
+    recitationId, speed, surahNumber, timingsQuery.data, timingsQuery.isFetching, timingsQuery.isLoading]);
 
   const commitSeamlessAyahTransition = (
     nextState: NonNullable<ReturnType<typeof getNextPlaybackState>>,
@@ -864,7 +872,12 @@ export function QuranAudioPlayer({
           lastInternalAyahRef.current = nextAyah;
           onPlayingAyahChange(nextAyah);
         } else {
-          if (activeSeekRef.current && audioRef.current) {
+          if (gapless()?.active) {
+            void gapless()?.play(
+              `/api/quran/audio/${recitationId}/${surahNumber}/${playingAyah}/buffer`,
+              speed, () => endedEventRef.current(),
+            ).catch(() => { setError(true); onIsPlayingChange(false); });
+          } else if (activeSeekRef.current && audioRef.current) {
             audioRef.current.currentTime = activeSeekRef.current.startMs / 1000;
           } else if (audioRef.current) {
             audioRef.current.currentTime = 0;
@@ -998,6 +1011,7 @@ export function QuranAudioPlayer({
       sourceMode: timingsQuery.data?.synchronized ? "chapter" : "ayah",
       speed,
       onAyahEnded: () => endedEventRef.current(),
+      onPlaybackStateChange: onIsPlayingChange,
       onPlaybackLocationChange,
     });
   }, [
@@ -1006,6 +1020,7 @@ export function QuranAudioPlayer({
     memoSession?.isActive,
     memoSession?.rangeEndSurah,
     onPlaybackLocationChange,
+    onIsPlayingChange,
     playingAyah,
     recitationId,
     setSession,
@@ -1081,6 +1096,9 @@ export function QuranAudioPlayer({
 
   const togglePlay = () => {
     if (!playingAyah) {
+      if (knownVerseFileReciter || (recitationId && recitationId < 1_000_000 && timingsQuery.isError)) {
+        void gapless()?.unlock().catch(() => undefined);
+      }
       isEndedHandledRef.current = false;
       setCurrentAyahPlayCount(1);
       setCurrentRangePlayCount(1);
@@ -1107,7 +1125,13 @@ export function QuranAudioPlayer({
     const activeAyahSeek = activeSeekRef.current?.ayah === playingAyah
       ? activeSeekRef.current
       : null;
-    if (audioRef.current) {
+    if (gapless()?.active) {
+      gapless()?.stop();
+      if (recitationId && playingAyah) void gapless()?.play(
+        `/api/quran/audio/${recitationId}/${surahNumber}/${playingAyah}/buffer`,
+        speed, () => endedEventRef.current(),
+      ).catch(() => setError(true));
+    } else if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = activeAyahSeek
         ? activeAyahSeek.startMs / 1000
