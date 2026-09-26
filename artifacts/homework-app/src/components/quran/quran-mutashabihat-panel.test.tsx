@@ -31,6 +31,45 @@ describe("Quran mutashabihat panel", () => {
     );
     expect(await screen.findByTestId("mutashabihat-match-3:1")).toBeTruthy();
     expect(screen.getByTestId("mutashabihat-match-32:1")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-exact"));
+    expect(screen.getByTestId("mutashabihat-match-32:1")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-variation"));
+    expect(screen.queryByTestId("mutashabihat-match-32:1")).toBeNull();
+    expect(screen.getByText(/لا توجد مواضع في هذا التصنيف/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-all"));
+    expect(screen.getByTestId("mutashabihat-match-32:1")).toBeTruthy();
+  });
+
+  it("separates exact repeats from shared phrases and preserves the unfiltered result list", async () => {
+    render(
+      <I18nProvider>
+        <QuranMutashabihatPanel verseKey="10:48" onNavigate={vi.fn()} onClose={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByTestId("mutashabihat-match-21:38")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-phrase"));
+    expect(screen.queryByTestId("mutashabihat-match-21:38")).toBeNull();
+    expect(screen.getByTestId("mutashabihat-show-more")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-exact"));
+    expect(screen.getByTestId("mutashabihat-match-21:38")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-all"));
+    expect(screen.getByTestId("mutashabihat-match-21:38")).toBeTruthy();
+  });
+
+  it("preserves amber shared words, marks local wording differences in blue, and filters wording variations", async () => {
+    render(
+      <I18nProvider>
+        <QuranMutashabihatPanel verseKey="2:48" onNavigate={vi.fn()} onClose={vi.fn()} />
+      </I18nProvider>,
+    );
+    const match = await screen.findByTestId("mutashabihat-match-2:123");
+    expect(match.querySelectorAll('[data-word-mark="shared"]').length).toBeGreaterThan(0);
+    expect(match.querySelectorAll('[data-word-mark="different"]').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-variation"));
+    expect(screen.getByTestId("mutashabihat-match-2:123")).toBeTruthy();
+    expect(screen.getByTestId("mutashabihat-filter-variation").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByTestId("mutashabihat-filter-exact"));
+    expect(screen.queryByTestId("mutashabihat-match-2:123")).toBeNull();
   });
 
   it("explains that an empty selection does not imply no other similarities", async () => {

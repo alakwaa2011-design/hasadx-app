@@ -20,6 +20,11 @@ export type SharedPhrase = {
   exactVerse: boolean;
 };
 
+export type WordDifferences = {
+  first: Set<number>;
+  second: Set<number>;
+};
+
 export type QuranPhraseIndex = {
   byVerse: Map<string, IndexedVerse>;
   byThreeWords: Map<string, string[]>;
@@ -117,6 +122,53 @@ export function getSharedPhrase(index: QuranPhraseIndex, firstKey: string, secon
   const second = index.byVerse.get(secondKey);
   if (!first || !second) return { first: new Set(), second: new Set(), wordCount: 0, exactVerse: false };
   return compareWords(first.words, second.words);
+}
+
+export function getWordDifferences(index: QuranPhraseIndex, firstKey: string, secondKey: string): WordDifferences {
+  const first = index.byVerse.get(firstKey)?.words ?? [];
+  const second = index.byVerse.get(secondKey)?.words ?? [];
+  const differences: WordDifferences = { first: new Set(), second: new Set() };
+  if (!first.length || !second.length) return differences;
+
+  // Align normalized words so insertions, omissions and changed order do not
+  // shift every subsequent word into the "different" color.
+  const lengths = Array.from({ length: first.length + 1 }, () => new Uint16Array(second.length + 1));
+  for (let i = first.length - 1; i >= 0; i--) {
+    for (let j = second.length - 1; j >= 0; j--) {
+      lengths[i][j] = first[i].value === second[j].value
+        ? lengths[i + 1][j + 1] + 1
+        : Math.max(lengths[i + 1][j], lengths[i][j + 1]);
+    }
+  }
+
+  const aligned: Array<[number, number]> = [[-1, -1]];
+  let i = 0;
+  let j = 0;
+  while (i < first.length && j < second.length) {
+    if (first[i].value === second[j].value) {
+      aligned.push([i++, j++]);
+    } else if (lengths[i + 1][j] >= lengths[i][j + 1]) {
+      i++;
+    } else {
+      j++;
+    }
+  }
+  aligned.push([first.length, second.length]);
+
+  for (let k = 1; k < aligned.length; k++) {
+    const [prevFirst, prevSecond] = aligned[k - 1];
+    const [nextFirst, nextSecond] = aligned[k];
+    const firstGap = nextFirst - prevFirst - 1;
+    const secondGap = nextSecond - prevSecond - 1;
+    // A long unmatched prefix/suffix after a short common phrase is context,
+    // not necessarily a local wording change. Keep it unmarked rather than
+    // coloring almost an entire unrelated ayah.
+    const maxGap = k === 1 || k === aligned.length - 1 ? 3 : 4;
+    if (firstGap > maxGap || secondGap > maxGap) continue;
+    for (let n = prevFirst + 1; n < nextFirst; n++) differences.first.add(first[n].originalIndex);
+    for (let n = prevSecond + 1; n < nextSecond; n++) differences.second.add(second[n].originalIndex);
+  }
+  return differences;
 }
 
 export function findRepeatedPhrases(index: QuranPhraseIndex, verseKey: string): PhraseMatch[] {

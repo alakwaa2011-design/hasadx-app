@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowUpLeft, GitCompareArrows, Loader2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getQuranMutashabihat, type QuranMutashabihatCategory } from "@/data/quran/mutashabihat-relations";
-import { findRepeatedPhrases, getQuranPhraseIndex, getSharedPhrase, type QuranPhraseIndex } from "@/data/quran/mutashabihat-phrases";
+import { findRepeatedPhrases, getQuranPhraseIndex, getSharedPhrase, getWordDifferences, type QuranPhraseIndex } from "@/data/quran/mutashabihat-phrases";
 
 type Verse = { chapter_id: number; number: number; page_id: number; content: string };
 type Chapter = { id: number; name: string };
 type Corpus = { verses: Map<string, Verse>; chapters: Map<number, string>; phraseIndex: QuranPhraseIndex };
 
 type ResultCategory = QuranMutashabihatCategory | "repeated_verse" | "repeated_phrase";
+type ResultFilter = "all" | "exact" | "phrase" | "variation";
 const categoryLabels: Record<ResultCategory, { ar: string; en: string }> = {
   repeated_verse: { ar: "نص الآية متكرر", en: "Repeated verse" },
   repeated_phrase: { ar: "عبارة مشتركة", en: "Repeated phrase" },
@@ -21,11 +22,19 @@ const categoryLabels: Record<ResultCategory, { ar: string; en: string }> = {
   structural: { ar: "تشابه في الصياغة", en: "Similar structure" },
 };
 
-function VerseText({ text, highlighted }: { text: string; highlighted: Set<number> }) {
+function VerseText({ text, highlighted, different }: { text: string; highlighted: Set<number>; different: Set<number> }) {
   return (
     <span className="quran-word-action-text block text-[20px] leading-[2.1] text-emerald-950 dark:text-emerald-50">
       {text.split(/\s+/).filter(Boolean).map((word, index) => (
-        <span key={index} className={highlighted.has(index) ? "rounded bg-amber-200/70 px-0.5 text-emerald-950 dark:bg-amber-500/30 dark:text-amber-50" : undefined}>
+        <span
+          key={index}
+          data-word-mark={highlighted.has(index) ? "shared" : different.has(index) ? "different" : undefined}
+          className={highlighted.has(index)
+            ? "rounded bg-amber-200/70 px-0.5 text-emerald-950 dark:bg-amber-500/30 dark:text-amber-50"
+            : different.has(index)
+              ? "rounded bg-sky-100 px-0.5 text-emerald-950 ring-1 ring-inset ring-sky-300/80 dark:bg-sky-500/25 dark:text-sky-50 dark:ring-sky-400/40"
+              : undefined}
+        >
           {word}{" "}
         </span>
       ))}
@@ -46,7 +55,9 @@ export function QuranMutashabihatPanel({
   const [corpus, setCorpus] = useState<Corpus | null>(null);
   const [error, setError] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
-  useEffect(() => setVisibleCount(12), [verseKey]);
+  const [filter, setFilter] = useState<ResultFilter>("all");
+  useEffect(() => { setVisibleCount(12); setFilter("all"); }, [verseKey]);
+  useEffect(() => setVisibleCount(12), [filter]);
   const relations = useMemo(() => {
     if (!corpus) return [];
     const curated = getQuranMutashabihat(verseKey);
@@ -65,6 +76,24 @@ export function QuranMutashabihatPanel({
         .map((relation) => ({ ...relation, exactVerse: false })),
     ];
   }, [corpus, verseKey]);
+  const filterCounts = {
+    all: relations.length,
+    exact: relations.filter((relation) => relation.exactVerse).length,
+    phrase: relations.filter((relation) => !relation.exactVerse && relation.category === "repeated_phrase").length,
+    variation: relations.filter((relation) => !relation.exactVerse && relation.category !== "repeated_phrase").length,
+  };
+  const filteredRelations = relations.filter((relation) =>
+    filter === "all"
+    || (filter === "exact" && relation.exactVerse)
+    || (filter === "phrase" && !relation.exactVerse && relation.category === "repeated_phrase")
+    || (filter === "variation" && !relation.exactVerse && relation.category !== "repeated_phrase"),
+  );
+  const filters: Array<{ id: ResultFilter; ar: string; en: string; fullAr: string; fullEn: string }> = [
+    { id: "all", ar: "الكل", en: "All", fullAr: "كل المتشابهات", fullEn: "All similar passages" },
+    { id: "exact", ar: "مطابق", en: "Exact", fullAr: "نص مطابق", fullEn: "Exact text" },
+    { id: "phrase", ar: "عبارة", en: "Phrase", fullAr: "عبارة مشتركة", fullEn: "Shared phrase" },
+    { id: "variation", ar: "اختلاف", en: "Variation", fullAr: "اختلاف لفظي", fullEn: "Wording variation" },
+  ];
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -133,9 +162,30 @@ export function QuranMutashabihatPanel({
           {corpus && !current && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-800">{lang === "ar" ? "الآية غير موجودة في المصحف المحلي." : "Verse not found in the local Quran."}</div>}
           {current && corpus && (
             <>
-              <p className="mb-4 text-sm font-semibold text-emerald-800/80 dark:text-emerald-200/80">
-                {lang === "ar" ? `المواضع المتشابهة: ${relations.length}` : `Similar passages: ${relations.length}`}
-              </p>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-semibold text-emerald-800/80 dark:text-emerald-200/80">
+                <span>{lang === "ar" ? `المواضع المتشابهة: ${filteredRelations.length}` : `Similar passages: ${filteredRelations.length}`}</span>
+                <span className="flex items-center gap-3">
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-amber-200 dark:bg-amber-500/40" />{lang === "ar" ? "مشترك" : "Shared"}</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-sky-100 ring-1 ring-inset ring-sky-300 dark:bg-sky-500/30 dark:ring-sky-400/40" />{lang === "ar" ? "مختلف" : "Different"}</span>
+                </span>
+              </div>
+              <div className="mb-3 grid grid-cols-4 gap-1" role="group" aria-label={lang === "ar" ? "تصفية المتشابهات" : "Filter similar verses"}>
+                {filters.map(({ id, ar, en, fullAr, fullEn }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    data-testid={`mutashabihat-filter-${id}`}
+                    aria-pressed={filter === id}
+                    aria-label={`${lang === "ar" ? fullAr : fullEn}: ${filterCounts[id]}`}
+                    onClick={() => setFilter(id)}
+                    className={`min-w-0 whitespace-nowrap rounded-full border px-1 py-1.5 text-[11px] font-bold transition-colors sm:text-xs ${filter === id
+                      ? "border-emerald-800 bg-emerald-800 text-white dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950"
+                      : "border-emerald-900/15 bg-white text-emerald-900 hover:bg-emerald-50 dark:border-white/15 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-white/10"}`}
+                  >
+                    {lang === "ar" ? ar : en} <span className="opacity-75">{filterCounts[id]}</span>
+                  </button>
+                ))}
+              </div>
               {relations.length === 0 && (
                 <p className="rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm leading-7 text-emerald-900 dark:border-white/10 dark:bg-emerald-900/20 dark:text-emerald-50">
                   {lang === "ar"
@@ -143,8 +193,13 @@ export function QuranMutashabihatPanel({
                     : "No repeated verse, shared phrase of three or more words, or selected relation was found. Other wording variations may exist."}
                 </p>
               )}
+              {relations.length > 0 && filteredRelations.length === 0 && (
+                <p className="rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-white/10 dark:bg-emerald-900/20 dark:text-emerald-50">
+                  {lang === "ar" ? "لا توجد مواضع في هذا التصنيف. اختر «الكل» لعرض بقية النتائج." : "No passages in this category. Select All to see other results."}
+                </p>
+              )}
               <div className="space-y-3">
-                {relations.slice(0, visibleCount).map(({ otherVerseKey, category }) => {
+                {filteredRelations.slice(0, visibleCount).map(({ otherVerseKey, category }) => {
                   const other = corpus.verses.get(otherVerseKey);
                   if (!other) return (
                     <div key={otherVerseKey} role="alert" className="rounded-xl border border-rose-200 p-3 text-rose-800">
@@ -152,6 +207,7 @@ export function QuranMutashabihatPanel({
                     </div>
                   );
                   const shared = getSharedPhrase(corpus.phraseIndex, verseKey, otherVerseKey);
+                  const different = getWordDifferences(corpus.phraseIndex, verseKey, otherVerseKey);
                   return (
                     <article key={otherVerseKey} className="rounded-xl border border-emerald-900/10 bg-white p-3.5 dark:border-white/10 dark:bg-white/5" data-testid={`mutashabihat-match-${otherVerseKey}`}>
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -161,7 +217,7 @@ export function QuranMutashabihatPanel({
                         </span>
                       </div>
                       <div className="space-y-2 rounded-lg bg-[#faf8f2] p-3 dark:bg-emerald-950/30">
-                        <div><span className="text-xs font-semibold text-emerald-800/75 dark:text-emerald-200/75">{lang === "ar" ? "الآية الحالية" : "Current verse"}</span><VerseText text={current.content} highlighted={shared.first} /></div>
+                         <div><span className="text-xs font-semibold text-emerald-800/75 dark:text-emerald-200/75">{lang === "ar" ? "الآية الحالية" : "Current verse"}</span><VerseText text={current.content} highlighted={shared.first} different={different.first} /></div>
                         <button
                           type="button"
                           data-testid={`mutashabihat-navigate-${otherVerseKey}`}
@@ -173,16 +229,16 @@ export function QuranMutashabihatPanel({
                             <span>{heading(otherVerseKey)}</span>
                             <ArrowUpLeft className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
                           </span>
-                          <VerseText text={other.content} highlighted={shared.second} />
+                           <VerseText text={other.content} highlighted={shared.second} different={different.second} />
                         </button>
                       </div>
                     </article>
                   );
                 })}
               </div>
-              {relations.length > visibleCount && (
+              {filteredRelations.length > visibleCount && (
                 <button type="button" data-testid="mutashabihat-show-more" onClick={() => setVisibleCount((count) => count + 12)} className="mt-4 w-full rounded-xl border border-emerald-800/20 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900 hover:bg-emerald-100 dark:border-white/10 dark:bg-emerald-900/20 dark:text-emerald-50">
-                  {lang === "ar" ? `عرض المزيد (${relations.length - visibleCount} متبقية)` : `Show more (${relations.length - visibleCount} remaining)`}
+                  {lang === "ar" ? `عرض المزيد (${filteredRelations.length - visibleCount} متبقية)` : `Show more (${filteredRelations.length - visibleCount} remaining)`}
                 </button>
               )}
               <p className="mt-5 border-t border-emerald-900/10 pt-3 text-xs leading-6 text-emerald-800/75 dark:border-white/10 dark:text-emerald-200/75">
