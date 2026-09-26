@@ -967,6 +967,41 @@ export function QuranPagesView({
     setPersonalPlanOpen(false);
   }, [personalPlanStorageKey, personalPlanIdentityPending]);
 
+  const guidedLinkStart = (verse: QuranVerseRef): QuranVerseRef => {
+    const plan = personalPlanCanPractice ? personalPlan.plan : null;
+    const currentOrdinal = verseOrdinal(verse);
+    if (plan && currentOrdinal !== null) {
+      const start = verseOrdinal(plan.start);
+      const end = verseOrdinal(plan.end);
+      if (start !== null && end !== null && currentOrdinal >= start && currentOrdinal <= end) {
+        return plan.start;
+      }
+    }
+    if (startAyah !== null && verse.surah === initialSurah && startAyah <= verse.ayah) {
+      return { surah: verse.surah, ayah: startAyah };
+    }
+    return verse;
+  };
+
+  const showGuidedLinkStart = (start: QuranVerseRef) => {
+    const target = verses.find((item) => item.chapter_id === start.surah && item.number === start.ayah);
+    if (!target) return;
+    setSelectedVerseKey(`${start.surah}:${start.ayah}`);
+    if (target.page_id !== activePage) {
+      setActivePage(target.page_id);
+      if (pageLayout === "continuous") {
+        continuousProgrammaticNavigationRef.current = true;
+        setContinuousStartPage(target.page_id);
+        setContinuousEndPage(Math.min(LAST_PAGE, target.page_id + 3));
+        window.requestAnimationFrame(() => {
+          if (readerMainRef.current) readerMainRef.current.scrollTop = 0;
+          window.requestAnimationFrame(() => { continuousProgrammaticNavigationRef.current = false; });
+        });
+      }
+    }
+    if (personalPlanCanPractice) onNavigate({ surah: start.surah, ayah: start.ayah, page: target.page_id });
+  };
+
   const setGuidedStageAndPlayback = (stage: GuidedMemorizationStage) => {
     if (personalPlanCanPractice && guidedVerseKey) {
       const [surah, ayah] = guidedVerseKey.split(":").map(Number);
@@ -984,27 +1019,37 @@ export function QuranPagesView({
     setGuidedRecitationRevealed(false);
     setSilentReadWordPosition(null);
     if (stage === 0 && guidedVerseKey) {
+      const [surah, ayah] = guidedVerseKey.split(":").map(Number);
       setMemoView("show");
       setMemoSession((session) => ({
         ...session,
         isActive: true,
+        rangeStart: ayah,
+        rangeEnd: ayah,
+        rangeStartSurah: surah,
+        rangeEndSurah: surah,
         repeatScope: "ayah",
       }));
-      const replayAyah = Number(guidedVerseKey.split(":")[1]);
-      setPlayingVerseKey(`${guidedVerseKey.split(":")[0]}:${replayAyah}`);
+      setPlayingVerseKey(guidedVerseKey);
       setIsPlaying(true);
       return;
     }
     if (stage === 2) randomizePartialHide();
     if (stage === 4 && guidedVerseKey) {
+      const [surah, ayah] = guidedVerseKey.split(":").map(Number);
+      const start = guidedLinkStart({ surah, ayah });
       setMemoView("show");
       setMemoSession((session) => ({
         ...session,
         isActive: true,
         repeatScope: "range",
-        rangeEnd: Number(guidedVerseKey.split(":")[1]),
+        rangeStart: start.ayah,
+        rangeEnd: ayah,
+        rangeStartSurah: start.surah,
+        rangeEndSurah: surah,
       }));
-      setPlayingVerseKey(`${guidedVerseKey.split(":")[0]}:${memoSession.rangeStart}`);
+      showGuidedLinkStart(start);
+      setPlayingVerseKey(`${start.surah}:${start.ayah}`);
       setIsPlaying(true);
       return;
     }
@@ -1058,11 +1103,15 @@ export function QuranPagesView({
       toast.error(lang === "ar" ? "تعذر حفظ الجلسة على هذا الجهاز" : "Could not save the session on this device");
       return;
     }
+    const linkStart = session.stage === 4 ? guidedLinkStart(verse) : verse;
+    const linkStartVerse = session.stage === 4
+      ? verses.find((item) => item.chapter_id === linkStart.surah && item.number === linkStart.ayah)
+      : null;
     personalGuidedSessionRef.current = personalPlanCanPractice;
     audioRef.current?.pause();
     setPersonalPlanOpen(false);
     setMobileToolsOpen(false);
-    setSelectedVerseKey(`${verse.surah}:${verse.ayah}`);
+    setSelectedVerseKey(`${linkStart.surah}:${linkStart.ayah}`);
     setGuidedVerseKey(`${verse.surah}:${verse.ayah}`);
     setGuidedStage(session.stage);
     setGuidedRecitationRevealed(session.recitationRevealed);
@@ -1073,29 +1122,32 @@ export function QuranPagesView({
     setMemoSession((current) => ({
       ...current,
       isActive: true,
-      rangeStart: verse.ayah,
+      rangeStart: linkStart.ayah,
       rangeEnd: verse.ayah,
-      repeatScope: "ayah",
+      rangeStartSurah: linkStart.surah,
+      rangeEndSurah: verse.surah,
+      repeatScope: session.stage === 4 ? "range" : "ayah",
       repeatCount: session.repeatCount,
     }));
     setMemoView(session.stage === 2 ? "progressive" : session.stage === 3 && !session.recitationRevealed ? "hide" : "show");
     if (session.stage === 2) randomizePartialHide();
     setIsPlaying(session.stage === 0);
-    setPlayingVerseKey(session.stage === 0 ? `${verse.surah}:${verse.ayah}` : null);
+    setPlayingVerseKey(session.stage === 0 || session.stage === 4 ? `${linkStart.surah}:${linkStart.ayah}` : null);
     setAudioDockOpen(true);
-    if (targetVerse.page_id !== activePage) {
-      setActivePage(targetVerse.page_id);
+    const visibleVerse = linkStartVerse ?? targetVerse;
+    if (visibleVerse.page_id !== activePage) {
+      setActivePage(visibleVerse.page_id);
       if (pageLayout === "continuous") {
         continuousProgrammaticNavigationRef.current = true;
-        setContinuousStartPage(targetVerse.page_id);
-        setContinuousEndPage(Math.min(LAST_PAGE, targetVerse.page_id + 3));
+        setContinuousStartPage(visibleVerse.page_id);
+        setContinuousEndPage(Math.min(LAST_PAGE, visibleVerse.page_id + 3));
         window.requestAnimationFrame(() => {
           if (readerMainRef.current) readerMainRef.current.scrollTop = 0;
           window.requestAnimationFrame(() => { continuousProgrammaticNavigationRef.current = false; });
         });
       }
     }
-    if (personalPlanCanPractice) onNavigate({ surah: verse.surah, ayah: verse.ayah, page: targetVerse.page_id });
+    if (personalPlanCanPractice) onNavigate({ surah: linkStart.surah, ayah: linkStart.ayah, page: visibleVerse.page_id });
   };
 
   const toggleMemoSession = () => {

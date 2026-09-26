@@ -4,6 +4,8 @@ export interface MemoSessionState {
   isActive: boolean;
   rangeStart: number;
   rangeEnd: number;
+  rangeStartSurah?: number;
+  rangeEndSurah?: number;
   repeatScope: 'ayah' | 'range';
   repeatCount: number | 'continuous';
   pauseSeconds: number;

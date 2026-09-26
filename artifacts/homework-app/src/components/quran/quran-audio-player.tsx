@@ -518,10 +518,32 @@ export function QuranAudioPlayer({
     };
   }, [onIsPlayingChange]);
 
-  const effectiveStart = memoSession?.isActive ? memoSession.rangeStart : (startAyah ?? 1);
-  const effectiveEnd = memoSession?.isActive ? memoSession.rangeEnd : (endAyah ?? surahLength);
+  const crossSurahLink = !!(
+    memoSession?.isActive
+    && memoSession.repeatScope === 'range'
+    && memoSession.rangeStartSurah
+    && memoSession.rangeEndSurah
+    && memoSession.rangeStartSurah < memoSession.rangeEndSurah
+  );
+  const crossLinkKey = crossSurahLink
+    ? `${memoSession!.rangeStartSurah}:${memoSession!.rangeStart}-${memoSession!.rangeEndSurah}:${memoSession!.rangeEnd}`
+    : null;
+  const crossLinkPlayCountRef = useRef(1);
+  const previousCrossLinkKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (previousCrossLinkKeyRef.current === crossLinkKey) return;
+    previousCrossLinkKeyRef.current = crossLinkKey;
+    crossLinkPlayCountRef.current = 1;
+  }, [crossLinkKey]);
+  const effectiveStart = memoSession?.isActive
+    ? (crossSurahLink && surahNumber > memoSession.rangeStartSurah! ? 1 : memoSession.rangeStart)
+    : (startAyah ?? 1);
+  const effectiveEnd = memoSession?.isActive
+    ? (crossSurahLink && surahNumber < memoSession.rangeEndSurah! ? surahLength : memoSession.rangeEnd)
+    : (endAyah ?? surahLength);
   const effectiveScope = memoSession?.isActive ? memoSession.repeatScope : 'ayah';
-  const effectiveRepeat = memoSession?.isActive ? memoSession.repeatCount : repeat;
+  // Repeat the whole cross-chapter span, not each chapter independently.
+  const effectiveRepeat = crossSurahLink ? 1 : (memoSession?.isActive ? memoSession.repeatCount : repeat);
   const effectivePause = memoSession?.isActive ? memoSession.pauseSeconds : 0;
 
   const getNextPlaybackState = () => {
@@ -785,7 +807,14 @@ export function QuranAudioPlayer({
         }
       });
     } else {
-      if (!memoSession?.isActive && startAyah === null && endAyah === null && surahNumber < 114) {
+      if (crossSurahLink && surahNumber < memoSession!.rangeEndSurah!) {
+        advanceBoundary();
+      } else if (crossSurahLink
+        && onPlaybackLocationChange
+        && crossLinkPlayCountRef.current < (memoSession!.repeatCount === 'continuous' ? Infinity : memoSession!.repeatCount)) {
+        crossLinkPlayCountRef.current += 1;
+        onPlaybackLocationChange(memoSession!.rangeStartSurah!, memoSession!.rangeStart);
+      } else if (!memoSession?.isActive && startAyah === null && endAyah === null && surahNumber < 114) {
         advanceBoundary();
       } else {
         onIsPlayingChange(false);
@@ -895,8 +924,9 @@ export function QuranAudioPlayer({
       surahNumber,
       ayahNumber: playingAyah,
       surahLength,
-      endAyah,
-      unrestricted: !memoSession?.isActive && startAyah === null && endAyah === null,
+      endAyah: crossSurahLink && surahNumber < memoSession!.rangeEndSurah! ? null : endAyah,
+      unrestricted: (crossSurahLink && surahNumber < memoSession!.rangeEndSurah!)
+        || (!memoSession?.isActive && startAyah === null && endAyah === null),
       sourceMode: timingsQuery.data?.synchronized ? "chapter" : "ayah",
       speed,
       onAyahEnded: () => endedEventRef.current(),
@@ -904,7 +934,9 @@ export function QuranAudioPlayer({
     });
   }, [
     endAyah,
+    crossSurahLink,
     memoSession?.isActive,
+    memoSession?.rangeEndSurah,
     onPlaybackLocationChange,
     playingAyah,
     recitationId,

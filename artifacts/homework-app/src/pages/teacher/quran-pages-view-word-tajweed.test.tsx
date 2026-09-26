@@ -3,6 +3,8 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { personalQuranStorageKey, QURAN_PERSONAL_PLAN_KEY, readQuranPersonalState } from "@/components/quran/quran-personal-plan";
+import type { GuidedMemorizationStage } from "@/components/quran/quran-guided-memorization-panel";
+import type { MemoSessionState } from "@/components/quran/use-quran-memo-session";
 
 const { navigateMock, teacherIdentity } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
@@ -139,14 +141,33 @@ vi.mock("./quran-madani-page", () => ({
 }));
 
 vi.mock("@/components/quran/quran-guided-memorization-panel", () => ({
-  QuranGuidedMemorizationPanel: ({ open, onAssess }: {
+  QuranGuidedMemorizationPanel: ({ open, stage, onAssess, onStageChange, onClose }: {
     open: boolean;
+    stage: GuidedMemorizationStage;
     onAssess: (result: "mastered" | "review") => void;
-  }) => open ? <button type="button" data-testid="assess-personal-mastered" onClick={() => onAssess("mastered")}>أتقنتها</button> : null,
+    onStageChange: (stage: GuidedMemorizationStage) => void;
+    onClose: () => void;
+  }) => open ? <div data-testid="guided-stage" data-stage={stage}>
+    <button type="button" data-testid="assess-personal-mastered" onClick={() => onAssess("mastered")}>أتقنتها</button>
+    <button type="button" data-testid="guided-link" onClick={() => onStageChange(4)}>اربط</button>
+    <button type="button" data-testid="guided-close" onClick={onClose}>إغلاق</button>
+  </div> : null,
 }));
 
 vi.mock("@/components/quran/quran-audio-player", () => ({
-  QuranAudioPlayer: () => null,
+  QuranAudioPlayer: ({ memoSession, surahNumber, playingAyah }: {
+    memoSession: MemoSessionState;
+    surahNumber: number;
+    playingAyah: number | null;
+  }) => <div data-testid="mock-audio-range"
+    data-start-surah={memoSession.rangeStartSurah}
+    data-start-ayah={memoSession.rangeStart}
+    data-end-surah={memoSession.rangeEndSurah}
+    data-end-ayah={memoSession.rangeEnd}
+    data-scope={memoSession.repeatScope}
+    data-playing-surah={surahNumber}
+    data-playing-ayah={playingAyah}
+  />,
 }));
 
 vi.mock("@/components/quran/quran-education-panel", () => ({
@@ -181,6 +202,49 @@ function renderPagesView(extra: Partial<React.ComponentProps<typeof QuranPagesVi
 }
 
 describe("personal Quran plans in authenticated readers", () => {
+  it("links from the first selected ayah through the current ayah and restores the range on resume", async () => {
+    renderPagesView({ embedded: true });
+    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    fireEvent.change(screen.getByTestId("select-personal-plan-end-ayah"), { target: { value: "3" } });
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
+    fireEvent.click(screen.getByTestId("assess-personal-mastered"));
+
+    await waitFor(() => expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).session?.verse).toEqual({ surah: 1, ayah: 2 }));
+    fireEvent.click(screen.getByTestId("guided-link"));
+    const audio = screen.getByTestId("mock-audio-range");
+    expect(audio.dataset).toMatchObject({
+      startSurah: "1", startAyah: "1", endSurah: "1", endAyah: "2",
+      scope: "range", playingSurah: "1", playingAyah: "1",
+    });
+
+    fireEvent.click(screen.getByTestId("guided-close"));
+    fireEvent.click(screen.getByTestId("button-personal-quran-plan-desktop"));
+    fireEvent.click(screen.getByTestId("button-resume-personal-session"));
+    expect(screen.getByTestId("guided-stage").dataset.stage).toBe("4");
+    expect(screen.getByTestId("mock-audio-range").dataset).toMatchObject({
+      startSurah: "1", startAyah: "1", endSurah: "1", endAyah: "2",
+      scope: "range", playingSurah: "1", playingAyah: "1",
+    });
+  });
+
+  it("keeps the first selected surah when the linked range crosses into the next surah", async () => {
+    renderPagesView({ embedded: true });
+    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    fireEvent.change(screen.getByTestId("select-personal-plan-start-ayah"), { target: { value: "7" } });
+    fireEvent.change(screen.getByTestId("select-personal-plan-end-surah"), { target: { value: "2" } });
+    fireEvent.change(screen.getByTestId("select-personal-plan-end-ayah"), { target: { value: "2" } });
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
+    fireEvent.click(screen.getByTestId("assess-personal-mastered"));
+    await waitFor(() => expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).session?.verse).toEqual({ surah: 2, ayah: 1 }));
+    fireEvent.click(screen.getByTestId("guided-link"));
+    expect(screen.getByTestId("mock-audio-range").dataset).toMatchObject({
+      startSurah: "1", startAyah: "7", endSurah: "2", endAyah: "1",
+      scope: "range", playingSurah: "1", playingAyah: "7",
+    });
+  });
+
   it("shows the teacher's own plan in the embedded teacher Mushaf without writing to the public reader", async () => {
     renderPagesView({ embedded: true });
     const button = await screen.findByTestId("button-personal-quran-plan-desktop");
