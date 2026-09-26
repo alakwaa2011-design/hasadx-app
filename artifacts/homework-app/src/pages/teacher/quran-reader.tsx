@@ -30,7 +30,7 @@ import {
   getGetDueQuranMemorizationQueryKey,
   getGetQuranMemorizationSummaryQueryKey,
 } from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { QuranStudentSubmissionPanel } from '../student/quran-student-submission';
 import { QuranAudioPlayer } from '@/components/quran/quran-audio-player';
@@ -48,6 +48,7 @@ import {
 } from '@/components/quran/quran-guided-memorization-panel';
 import { useQuranWordAudio } from '@/components/quran/use-quran-word-audio';
 import { isStudentQuranReaderPath } from '@/lib/quran-live-recitation';
+import { personalQuranStorageKey } from '@/components/quran/quran-personal-plan';
 
 export default function QuranReader() {
   const { lang } = useI18n();
@@ -56,6 +57,28 @@ export default function QuranReader() {
   const isStudentWard = window.location.pathname.startsWith('/student/quran-wards/');
   const isStudentPractice = window.location.pathname.startsWith('/student/quran-practice/');
   const isStudentReader = isStudentQuranReaderPath(window.location.pathname);
+  const {
+    data: studentAccountId,
+    isFetching: studentIdentityLoading,
+    isError: studentIdentityError,
+    isFetchedAfterMount: studentIdentityConfirmed,
+  } = useQuery({
+    queryKey: ['quran-personal-student-account'],
+    queryFn: async () => {
+      const response = await fetch('/api/student-auth/me', { credentials: 'include', cache: 'no-store' });
+      if (!response.ok) throw new Error('Student session unavailable');
+      const profile: unknown = await response.json();
+      const id = (profile as { id?: unknown })?.id;
+      if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 1) {
+        throw new Error('Student identity unavailable');
+      }
+      return id;
+    },
+    enabled: isStudentReader,
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
   const readerBasePath = isStudentPractice ? '/student/quran-practice' : '/teacher/quran-reader';
   const searchParams = new URLSearchParams(window.location.search);
 
@@ -68,6 +91,7 @@ export default function QuranReader() {
   // query parameters are intentionally ignored and resolve to the page view.
   const view = 'pages';
   const requestedGuided = searchParams.get('guided') === '1';
+  const requestedPersonalPlan = searchParams.get('personalPlan') === '1';
   const isDueReviewSession = searchParams.get('reviewDue') === '1';
 
   const [guidedSignal, setGuidedSignal] = useState(requestedGuided ? 1 : 0);
@@ -104,6 +128,7 @@ export default function QuranReader() {
   const [studentWard, setStudentWard] = useState<QuranWard | null>(null);
   const [studentWardLoading, setStudentWardLoading] = useState(isStudentWard);
   const [studentWardMissing, setStudentWardMissing] = useState(false);
+  const activeWard = isStudentWard && studentWard?.id === Number(params.wardId) ? studentWard : null;
 
   useEffect(() => {
     if (!isStudentWard) return;
@@ -154,7 +179,7 @@ export default function QuranReader() {
     );
   }
 
-  if (isStudentWard && (studentWardMissing || !studentWard)) {
+  if (isStudentWard && (studentWardMissing || !activeWard)) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#fcfaf8] px-6 text-center dark:bg-background">
         <BookOpen className="h-10 w-10 text-emerald-700" />
@@ -175,8 +200,8 @@ export default function QuranReader() {
   let computedRequestedAyah = requestedAyah;
   let computedPageNumber: number | undefined = requestedPage;
 
-  if (studentWard?.surahNumber) {
-    surahNumber = studentWard.surahNumber;
+  if (activeWard?.surahNumber) {
+    surahNumber = activeWard.surahNumber;
   } else if (isStudentPractice && !requestedAyah && independentPosition && independentPosition.textSurahNumber) {
     surahNumber = independentPosition.textSurahNumber;
     computedRequestedAyah = independentPosition.textAyah;
@@ -188,15 +213,16 @@ export default function QuranReader() {
     surahNumber = parseInt(params.surahNumber || '1', 10);
   }
 
-  const startAyah = studentWard?.startAyah ?? queryStartAyah;
-  const endAyah = studentWard?.endAyah ?? queryEndAyah;
-  const mode = studentWard?.mode ?? queryMode;
-  const studentWardId = studentWard?.id;
+  const startAyah = activeWard?.startAyah ?? queryStartAyah;
+  const endAyah = activeWard?.endAyah ?? queryEndAyah;
+  const mode = activeWard?.mode ?? queryMode;
+  const studentWardId = activeWard?.id;
   
   if (view === 'pages') {
     return (
       <>
         <QuranPagesView
+          key={isStudentWard ? `ward:${params.wardId}` : isStudentPractice ? 'student-practice' : 'teacher-reader'}
           initialSurah={surahNumber}
           initialAyah={computedRequestedAyah ?? startAyah ?? 1}
           initialPage={computedPageNumber ?? (isStudentPractice ? (independentPosition?.pageNumber ?? undefined) : undefined)}
@@ -218,6 +244,13 @@ export default function QuranReader() {
               }
             : undefined}
           isIndependentPractice={isStudentPractice}
+          isStudentReader={isStudentReader}
+          studentPersonalPlanKey={isStudentReader && studentIdentityConfirmed && !studentIdentityLoading && !studentIdentityError && studentAccountId
+            ? personalQuranStorageKey('student', studentAccountId)
+            : null}
+          studentIdentityPending={isStudentReader && studentIdentityLoading}
+          personalPlanRedirectHref={isStudentWard ? '/student/quran-practice/1?personalPlan=1' : undefined}
+          openPersonalPlanOnLoad={isStudentPractice && requestedPersonalPlan}
           liveRecitationAvailable={false}
         />
         {isStudentWard && studentWardId && <QuranStudentSubmissionPanel wardId={studentWardId} />}
@@ -233,7 +266,7 @@ export default function QuranReader() {
     requestedAyah={computedRequestedAyah}
     isStudentWard={isStudentWard}
     isStudentPractice={isStudentPractice}
-    wardId={studentWard?.id}
+    wardId={activeWard?.id}
     isIndependentPractice={isStudentPractice}
     guidedMemorizationSignal={guidedSignal}
     onGuidedMemorizationStarted={() => setGuidedSignal(0)}

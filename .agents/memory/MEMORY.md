@@ -153,3 +153,4 @@
 - [Quran mutashabihat source rights](quran-mutashabihat-source-rights.md) — QUL's MIT software license does not establish rights to its sign-in-only dataset; bundle only explicitly licensed relations.
 - [Quran joined-vocative madd](quran-joined-vocative-madd.md) — Quran Foundation may tag «يا» + hamza as connected from its joined written form; preserve the linguistic boundary and label local corrections.
 - [Quran orthographic search](quran-orthographic-search.md) — index both omitted and written dagger-alif forms; split joined vocatives before stripping marks.
+- [Authenticated personal Quran plans](authenticated-personal-quran-plans.md) — device-local self-assessment is account-scoped; assigned wards link to independent practice, never inherit its state.

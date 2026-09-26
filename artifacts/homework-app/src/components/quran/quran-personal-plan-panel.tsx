@@ -208,8 +208,8 @@ export function QuranPersonalPlanPanel({
           </div>
           <p id={descriptionId} className="mt-2 text-xs leading-5 text-emerald-900/65 dark:text-emerald-100/65">
             {ar
-              ? "مساحتك الخاصة للحفظ والمراجعة، محفوظة على هذا الجهاز فقط. لا تغيّر تقدّمك المعتمد من المعلّم."
-              : "Your own space to memorize and review, saved on this device only. It does not change teacher-approved progress."}
+              ? "مساحتك الخاصة للحفظ والمراجعة، محفوظة على هذا الجهاز فقط. لا تغيّر الأوراد المكلّفة أو التقدّم المعتمد."
+              : "Your own space to memorize and review, saved on this device only. It does not change assigned wards or verified progress."}
           </p>
         </div>
 
@@ -373,7 +373,7 @@ export function QuranPersonalPlanPanel({
               <div className="border-t border-emerald-900/10 pt-4 dark:border-white/10">
                 {confirmDelete ? (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-800 dark:bg-rose-950/30">
-                    <p className="text-xs font-bold text-rose-900 dark:text-rose-200">{ar ? "حذف خطتك الشخصية؟ لا يؤثر هذا على تقدّمك المعتمد من المعلّم." : "Delete your personal plan? Teacher-approved progress will not be affected."}</p>
+                    <p className="text-xs font-bold text-rose-900 dark:text-rose-200">{ar ? "حذف خطتك الشخصية؟ لن يؤثر ذلك على الأوراد المكلّفة أو التقدّم المعتمد." : "Delete your personal plan? Assigned wards and verified progress will not be affected."}</p>
                     <div className="mt-3 flex gap-2">
                       <button type="button" data-testid="button-confirm-delete-personal-plan" onClick={() => {
                         if (onDeletePlan()) {

@@ -5,7 +5,6 @@ import {
   masteredTodayInPlan,
   nextPersonalMemorization,
   personalDueReviews,
-  QURAN_PERSONAL_PLAN_KEY,
   readQuranPersonalState,
   validPersonalPlan,
   verseOrdinal,
@@ -15,54 +14,66 @@ import {
   type QuranVerseRef,
 } from "./quran-personal-plan";
 
-function initialState(enabled: boolean): { state: QuranPersonalState; error: boolean } {
-  if (!enabled) return { state: emptyQuranPersonalState(), error: false };
+function initialState(storageKey: string | null): { key: string | null; state: QuranPersonalState; error: boolean } {
+  if (!storageKey) return { key: null, state: emptyQuranPersonalState(), error: false };
   try {
-    return { state: readQuranPersonalState(), error: false };
+    return { key: storageKey, state: readQuranPersonalState(storageKey), error: false };
   } catch {
-    return { state: emptyQuranPersonalState(), error: true };
+    return { key: storageKey, state: emptyQuranPersonalState(), error: true };
   }
 }
 
-export function useQuranPersonalPlan(enabled: boolean) {
-  const [initial] = useState(() => initialState(enabled));
-  const [state, setState] = useState(initial.state);
-  const [error, setError] = useState(initial.error);
-  const latest = useRef(state);
+const EMPTY_STATE = emptyQuranPersonalState();
+
+export function useQuranPersonalPlan(storageKey: string | null) {
+  const [snapshot, setSnapshot] = useState(() => initialState(storageKey));
+  const latest = useRef(snapshot);
+  const enabled = storageKey !== null && snapshot.key === storageKey;
+  const state = enabled ? snapshot.state : EMPTY_STATE;
+  const error = enabled && snapshot.error;
+
+  useEffect(() => {
+    const next = initialState(storageKey);
+    latest.current = next;
+    setSnapshot(next);
+  }, [storageKey]);
 
   const write = useCallback((update: (previous: QuranPersonalState) => QuranPersonalState): boolean => {
-    if (!enabled) return false;
+    if (!storageKey || latest.current.key !== storageKey) return false;
     try {
       // Re-read before each write: an unreadable record must never be overwritten
       // by a blank state, and another tab may have saved assessments since mount.
-      const next = update(readQuranPersonalState());
-      window.localStorage.setItem(QURAN_PERSONAL_PLAN_KEY, JSON.stringify(next));
-      latest.current = next;
-      setState(next);
-      setError(false);
+      const next = update(readQuranPersonalState(storageKey));
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      const saved = { key: storageKey, state: next, error: false };
+      latest.current = saved;
+      setSnapshot(saved);
       return true;
     } catch {
-      setError(true);
+      const failed = { ...latest.current, error: true };
+      latest.current = failed;
+      setSnapshot(failed);
       return false;
     }
-  }, [enabled]);
+  }, [storageKey]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!storageKey) return;
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== QURAN_PERSONAL_PLAN_KEY && event.key !== null) return;
+      if (event.key !== storageKey && event.key !== null) return;
       try {
-        const current = readQuranPersonalState();
+        const current = initialState(storageKey);
         latest.current = current;
-        setState(current);
-        setError(false);
+        setSnapshot(current);
       } catch {
-        setError(true);
+        const failed = { ...latest.current, error: true };
+        latest.current = failed;
+        setSnapshot(failed);
       }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [enabled]);
+  }, [storageKey]);
 
   const savePlan = useCallback((plan: QuranPersonalPlan) => {
     if (!validPersonalPlan(plan)) return false;
@@ -89,8 +100,8 @@ export function useQuranPersonalPlan(enabled: boolean) {
   const due = useMemo(() => personalDueReviews(state), [state]);
   const next = useMemo(() => nextPersonalMemorization(state), [state]);
   const completedToday = useMemo(() => masteredTodayInPlan(state), [state]);
-  const nextNow = useCallback(() => nextPersonalMemorization(latest.current), []);
-  const completedTodayNow = useCallback(() => masteredTodayInPlan(latest.current), []);
+  const nextNow = useCallback(() => nextPersonalMemorization(latest.current.state), []);
+  const completedTodayNow = useCallback(() => masteredTodayInPlan(latest.current.state), []);
 
   return {
     plan: state.plan,
@@ -99,6 +110,7 @@ export function useQuranPersonalPlan(enabled: boolean) {
     next,
     completedToday,
     error,
+    enabled,
     savePlan,
     clearPlan,
     saveSession,

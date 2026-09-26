@@ -39,6 +39,10 @@ export interface QuranPersonalState {
 }
 
 export const QURAN_PERSONAL_PLAN_KEY = "hasaad:public-quran-personal-plan:v1";
+export function personalQuranStorageKey(role: "teacher" | "student", id: number): string {
+  if (!Number.isSafeInteger(id) || id < 1) throw new Error("Invalid personal Quran owner");
+  return `hasaad:quran-personal-plan:v1:${role}:${id}`;
+}
 export const emptyQuranPersonalState = (): QuranPersonalState => ({
   version: 1,
   plan: null,
@@ -151,8 +155,8 @@ export function masteredTodayInPlan(state: QuranPersonalState, day = localQuranD
   }).length;
 }
 
-export function readQuranPersonalState(): QuranPersonalState {
-  const raw = window.localStorage.getItem(QURAN_PERSONAL_PLAN_KEY);
+export function readQuranPersonalState(storageKey = QURAN_PERSONAL_PLAN_KEY): QuranPersonalState {
+  const raw = window.localStorage.getItem(storageKey);
   if (!raw) return emptyQuranPersonalState();
   const parsed: unknown = JSON.parse(raw);
   if (!parsed || typeof parsed !== "object" || (parsed as QuranPersonalState).version !== 1) {

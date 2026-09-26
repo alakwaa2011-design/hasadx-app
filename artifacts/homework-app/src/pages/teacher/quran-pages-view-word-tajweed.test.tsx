@@ -2,9 +2,16 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { personalQuranStorageKey, QURAN_PERSONAL_PLAN_KEY, readQuranPersonalState } from "@/components/quran/quran-personal-plan";
 
+const { navigateMock, teacherIdentity } = vi.hoisted(() => ({
+  navigateMock: vi.fn(),
+  teacherIdentity: {
+    current: { data: { id: 10 }, isFetching: false, isError: false, isFetchedAfterMount: true },
+  },
+}));
 vi.mock("wouter", () => ({
-  useLocation: () => ["/teacher/quran-reader/1", vi.fn()],
+  useLocation: () => ["/teacher/quran-reader/1", navigateMock],
 }));
 
 vi.mock("@/lib/i18n", () => ({
@@ -37,7 +44,7 @@ vi.mock("@workspace/api-client-react", () => ({
   getGetQuranWordTajweedQueryKey: (surahNumber: number, ayahNumber: number, wordPosition: number) => [
     "quran-word-tajweed", surahNumber, ayahNumber, wordPosition,
   ],
-  useGetCurrentTeacher: () => ({ data: null }),
+  useGetCurrentTeacher: () => teacherIdentity.current,
   useGetQuranSurahContent: () => ({ data: { ayahs: [] }, isFetching: false }),
   useRecordMyQuranIndependentSession: () => ({ mutateAsync: vi.fn() }),
   useUpdateMyQuranIndependentPosition: () => ({ mutate: vi.fn() }),
@@ -132,7 +139,10 @@ vi.mock("./quran-madani-page", () => ({
 }));
 
 vi.mock("@/components/quran/quran-guided-memorization-panel", () => ({
-  QuranGuidedMemorizationPanel: () => null,
+  QuranGuidedMemorizationPanel: ({ open, onAssess }: {
+    open: boolean;
+    onAssess: (result: "mastered" | "review") => void;
+  }) => open ? <button type="button" data-testid="assess-personal-mastered" onClick={() => onAssess("mastered")}>أتقنتها</button> : null,
 }));
 
 vi.mock("@/components/quran/quran-audio-player", () => ({
@@ -148,10 +158,11 @@ import { QuranPagesView } from "./quran-pages-view";
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  teacherIdentity.current = { data: { id: 10 }, isFetching: false, isError: false, isFetchedAfterMount: true };
 });
 
-function renderPagesView() {
-  return render(
+function pagesView(extra: Partial<React.ComponentProps<typeof QuranPagesView>> = {}) {
+  return (
     <QuranPagesView
       initialSurah={1}
       initialAyah={1}
@@ -161,9 +172,93 @@ function renderPagesView() {
       endAyah={null}
       mode={null}
       liveRecitationAvailable={false}
-    />,
+      {...extra}
+    />
   );
 }
+function renderPagesView(extra: Partial<React.ComponentProps<typeof QuranPagesView>> = {}) {
+  return render(pagesView(extra));
+}
+
+describe("personal Quran plans in authenticated readers", () => {
+  it("shows the teacher's own plan in the embedded teacher Mushaf without writing to the public reader", async () => {
+    renderPagesView({ embedded: true });
+    const button = await screen.findByTestId("button-personal-quran-plan-desktop");
+    fireEvent.click(button);
+    expect(screen.getByTestId("quran-personal-plan-panel")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).plan?.start).toEqual({ surah: 1, ayah: 1 });
+    expect(localStorage.getItem(QURAN_PERSONAL_PLAN_KEY)).toBeNull();
+    fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
+    fireEvent.click(screen.getByTestId("assess-personal-mastered"));
+    expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).assessments["1:1"]?.result).toBe("mastered");
+    expect(localStorage.getItem(QURAN_PERSONAL_PLAN_KEY)).toBeNull();
+  });
+
+  it("shows a separate plan in the student's independent practice reader", async () => {
+    const studentKey = personalQuranStorageKey("student", 25);
+    renderPagesView({
+      isStudentReader: true,
+      studentPersonalPlanKey: studentKey,
+      readerBasePath: "/student/quran-practice",
+      isIndependentPractice: true,
+    });
+    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    expect(readQuranPersonalState(studentKey).plan?.dailyGoal).toBe(3);
+    expect(localStorage.getItem(personalQuranStorageKey("teacher", 10))).toBeNull();
+    fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
+    fireEvent.click(screen.getByTestId("assess-personal-mastered"));
+    expect(readQuranPersonalState(studentKey).assessments["1:1"]?.result).toBe("mastered");
+    expect(localStorage.getItem(personalQuranStorageKey("teacher", 10))).toBeNull();
+  });
+
+  it("opens the student's independent practice before showing the personal plan from an assigned ward", async () => {
+    navigateMock.mockClear();
+    renderPagesView({
+      isStudentReader: true,
+      studentPersonalPlanKey: personalQuranStorageKey("student", 25),
+      personalPlanRedirectHref: "/student/quran-practice/1?personalPlan=1",
+      mode: "memorization",
+      startAyah: 1,
+      endAyah: 2,
+    });
+    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    expect(navigateMock).toHaveBeenCalledWith("/student/quran-practice/1?personalPlan=1");
+    expect(screen.queryByTestId("quran-personal-plan-panel")).toBeNull();
+  });
+
+  it("hides the old plan and closes its guided session when identity verification fails or changes", async () => {
+    const { rerender } = renderPagesView({ embedded: true });
+    fireEvent.click(await screen.findByTestId("button-personal-quran-plan-desktop"));
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
+    expect(screen.getByTestId("assess-personal-mastered")).toBeTruthy();
+
+    teacherIdentity.current = { data: { id: 10 }, isFetching: true, isError: false, isFetchedAfterMount: true };
+    rerender(pagesView({ embedded: true }));
+    expect(screen.queryByTestId("button-personal-quran-plan-desktop")).toBeNull();
+    expect(screen.queryByTestId("assess-personal-mastered")).toBeNull();
+
+    teacherIdentity.current = { data: { id: 10 }, isFetching: false, isError: false, isFetchedAfterMount: true };
+    rerender(pagesView({ embedded: true }));
+    expect(await screen.findByTestId("assess-personal-mastered")).toBeTruthy();
+
+    teacherIdentity.current = { data: { id: 10 }, isFetching: false, isError: true, isFetchedAfterMount: true };
+    rerender(pagesView({ embedded: true }));
+    expect(screen.queryByTestId("button-personal-quran-plan-desktop")).toBeNull();
+    expect(screen.queryByTestId("assess-personal-mastered")).toBeNull();
+
+    teacherIdentity.current = { data: { id: 11 }, isFetching: false, isError: false, isFetchedAfterMount: true };
+    rerender(pagesView({ embedded: true }));
+    const button = await screen.findByTestId("button-personal-quran-plan-desktop");
+    fireEvent.click(button);
+    expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).plan).not.toBeNull();
+    expect(readQuranPersonalState(personalQuranStorageKey("teacher", 11)).plan).toBeNull();
+    expect(readQuranPersonalState(personalQuranStorageKey("teacher", 11)).assessments).toEqual({});
+    expect(screen.queryByTestId("assess-personal-mastered")).toBeNull();
+  });
+});
 
 // Multiple physical Mushaf pages (single/duo/continuous layouts) can mount
 // simultaneously; only the first one needs to be exercised for these checks.
