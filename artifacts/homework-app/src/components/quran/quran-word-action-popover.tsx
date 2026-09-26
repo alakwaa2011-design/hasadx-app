@@ -76,9 +76,6 @@ export function QuranWordActionPopover({
 
   if (!open) return null;
 
-  const actionCount = 3 + (showTajweedAction ? 1 : 0);
-  const lastActionSpansRow = actionCount % 2 === 1;
-
   return (
     <div className="fixed inset-0 z-[76]" dir={dir}>
       <button
@@ -98,7 +95,7 @@ export function QuranWordActionPopover({
         <p className="quran-word-action-text mb-2.5 overflow-x-auto whitespace-nowrap border-b border-emerald-900/5 px-2 pb-2.5 text-center text-[17px] font-bold leading-9 text-emerald-950 dark:border-white/5 dark:text-emerald-50">
           {wordText}
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-4 gap-1">
           <button
             type="button"
             data-testid="word-action-pronounce"
@@ -106,10 +103,10 @@ export function QuranWordActionPopover({
               onPronounce();
               onOpenChange(false);
             }}
-            className="quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-900/[0.07] px-2 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
+            className="quran-reader-ui-label flex min-h-[34px] min-w-0 items-center justify-center gap-1 rounded-lg bg-emerald-900/[0.07] px-1 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
           >
-            <Volume2 className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
-            <span className="text-xs font-bold">{lang === "ar" ? "نطق" : "Pronounce"}</span>
+            <Volume2 className="h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+            <span className="whitespace-nowrap text-[10px] font-bold">{lang === "ar" ? "نطق" : "Pronounce"}</span>
           </button>
           <button
             type="button"
@@ -118,9 +115,9 @@ export function QuranWordActionPopover({
               onMeaning();
               onOpenChange(false);
             }}
-            className="quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center rounded-xl bg-emerald-900/[0.07] px-1.5 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
+            className="quran-reader-ui-label flex min-h-[34px] min-w-0 items-center justify-center rounded-lg bg-emerald-900/[0.07] px-1 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
           >
-            <span className="whitespace-nowrap text-xs font-bold">{lang === "ar" ? "معنى الكلمة" : "Meaning"}</span>
+            <span className="whitespace-nowrap text-[10px] font-bold">{lang === "ar" ? "معنى الكلمة" : "Meaning"}</span>
           </button>
           <button
             type="button"
@@ -129,9 +126,9 @@ export function QuranWordActionPopover({
               onTranslation();
               onOpenChange(false);
             }}
-            className={`quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center rounded-xl bg-emerald-900/[0.07] px-1.5 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15${lastActionSpansRow ? " col-span-2" : ""}`}
+            className="quran-reader-ui-label flex min-h-[34px] min-w-0 items-center justify-center rounded-lg bg-emerald-900/[0.07] px-1 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
           >
-            <span className="whitespace-nowrap text-xs font-bold">{lang === "ar" ? "ترجمة" : "Translation"}</span>
+            <span className="whitespace-nowrap text-[10px] font-bold">{lang === "ar" ? "ترجمة" : "Translation"}</span>
           </button>
           {showTajweedAction && (
             <button
@@ -141,10 +138,10 @@ export function QuranWordActionPopover({
                 onTajweed?.();
                 onOpenChange(false);
               }}
-              className="quran-reader-ui-label flex min-h-[42px] min-w-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-900/[0.07] px-1.5 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
+              className="quran-reader-ui-label flex min-h-[34px] min-w-0 items-center justify-center gap-1 rounded-lg bg-emerald-900/[0.07] px-1 text-emerald-900 transition-colors hover:bg-emerald-900/[0.12] dark:bg-emerald-400/10 dark:text-emerald-100 dark:hover:bg-emerald-400/15"
             >
-              <BookMarked className="h-4 w-4 text-emerald-700 dark:text-emerald-300" />
-              <span className="whitespace-nowrap text-xs font-bold">{lang === "ar" ? "الحكم" : "Tajweed"}</span>
+              <BookMarked className="h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+              <span className="whitespace-nowrap text-[10px] font-bold">{lang === "ar" ? "تجويد" : "Tajweed"}</span>
             </button>
           )}
         </div>

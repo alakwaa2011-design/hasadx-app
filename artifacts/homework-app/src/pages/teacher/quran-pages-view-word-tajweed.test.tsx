@@ -175,7 +175,7 @@ function firstTapWordWithoutRule() {
 }
 
 describe("QuranPagesView word Tajweed action", () => {
-  it("shows the Tajweed action only for a word with a documented, verified rule", async () => {
+  it("shows the compact one-row Tajweed action only for a word with a documented, verified rule", async () => {
     renderPagesView();
 
     await waitFor(() => expect(screen.getAllByTestId("mushaf-page").length).toBeGreaterThan(0));
@@ -186,6 +186,12 @@ describe("QuranPagesView word Tajweed action", () => {
     expect(screen.getByTestId("word-action-pronounce")).toBeTruthy();
     expect(screen.getByTestId("word-action-meaning")).toBeTruthy();
     expect(screen.getByTestId("word-action-translation")).toBeTruthy();
+    expect(screen.getByText("تجويد")).toBeTruthy();
+    const actionRow = screen.getByTestId("word-action-pronounce").parentElement;
+    expect(actionRow?.className).toContain("grid-cols-4");
+    for (const testId of ["word-action-meaning", "word-action-translation", "word-action-tajweed"]) {
+      expect(screen.getByTestId(testId).parentElement).toBe(actionRow);
+    }
   });
 
   it("hides the Tajweed action when no verified rule is documented for the word", async () => {
