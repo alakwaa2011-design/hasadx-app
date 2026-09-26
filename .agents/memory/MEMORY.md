@@ -155,3 +155,4 @@
 - [Quran orthographic search](quran-orthographic-search.md) — index both omitted and written dagger-alif forms; split joined vocatives before stripping marks.
 - [Authenticated personal Quran plans](authenticated-personal-quran-plans.md) — device-local self-assessment is account-scoped; assigned wards link to independent practice, never inherit its state.
 - [Quran reader control hierarchy](quran-reader-control-hierarchy.md) — keep the page primary, nest personal plans under memorization, and give listening repetition one ayah/segment entry.
+- [Mushaf Hasaad icon treatment](quran-icon-source.md) — preserve the approved square artwork untouched; never add app-side masking, rounding, framing, or overlays.

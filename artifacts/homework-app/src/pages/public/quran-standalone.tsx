@@ -71,8 +71,8 @@ export function PublicQuranStandalone() {
 
     manifest?.setAttribute("href", "/quran-manifest.json");
     appleTitle?.setAttribute("content", "مصحف حصاد");
-    appleIcon?.setAttribute("href", "/icons/quran-hasaad-180.png");
-    favicon?.setAttribute("href", "/icons/quran-hasaad-192.png");
+    appleIcon?.setAttribute("href", "/icons/quran-hasaad.png");
+    favicon?.setAttribute("href", "/icons/quran-hasaad.png");
     themeColor?.setAttribute("content", "#123D2E");
 
     return () => {

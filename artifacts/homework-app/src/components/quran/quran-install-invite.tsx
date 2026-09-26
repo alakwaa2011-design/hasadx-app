@@ -74,9 +74,7 @@ export function QuranInstallExperience({
             className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-0 right-0 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-[22rem] flex-row items-center gap-3.5 rounded-[1.25rem] bg-[#123D2E] p-3 text-white shadow-[0_20px_40px_-15px_rgba(18,61,46,0.6)] ring-1 ring-white/10"
             dir={dir}
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.85rem] bg-white/10 ring-1 ring-white/20">
-              <img src="/icons/quran-hasaad-192.png" alt="" className="h-7 w-7 rounded-[0.4rem]" />
-            </div>
+            <img src="/icons/quran-hasaad.png" alt="" className="h-11 w-11 shrink-0" />
             <div className="flex-1">
               <h3 className="text-[13px] font-bold leading-tight">
                 {lang === "ar" ? "تجربة قراءة أفضل" : "Better Reading Experience"}
@@ -110,7 +108,7 @@ export function QuranInstallExperience({
         <DialogContent className="sm:max-w-md bg-[#F8F1DF] dark:bg-[#0a0c0b] border-emerald-900/10 dark:border-emerald-100/10 shadow-2xl">
           <DialogHeader className="pt-2">
             <DialogTitle className="text-emerald-950 dark:text-emerald-50 flex items-center gap-3">
-              <img src="/icons/quran-hasaad-192.png" alt="" className="h-8 w-8 rounded-lg shadow-sm ring-1 ring-black/5" />
+              <img src="/icons/quran-hasaad.png" alt="" className="h-8 w-8 shrink-0" />
               {lang === "ar" ? "تثبيت مصحف حصاد" : "Install Hasaad Quran"}
             </DialogTitle>
             <DialogDescription className="sr-only">
