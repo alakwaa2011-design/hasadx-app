@@ -23,8 +23,10 @@ vi.mock("@workspace/api-client-react", () => ({
   getGetQuranJourneyQueryKey: () => ["quran-journey"],
   getGetQuranSurahContentQueryKey: (surah: number) => ["quran-surah", surah],
   getGetCurrentTeacherQueryKey: () => ["current-teacher"],
+  getGetQuranWordTajweedQueryKey: () => ["quran-word-tajweed"],
   useGetCurrentTeacher: () => ({ data: null }),
   useGetQuranSurahContent: () => ({ data: { ayahs: [] }, isFetching: false }),
+  useGetQuranWordTajweed: () => ({ data: undefined, isFetching: false }),
   useRecordMyQuranIndependentSession: () => ({ mutateAsync: vi.fn() }),
   useUpdateMyQuranIndependentPosition: () => ({ mutate: vi.fn() }),
 }));

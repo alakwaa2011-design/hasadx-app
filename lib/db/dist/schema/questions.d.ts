@@ -281,17 +281,17 @@ export declare const questionsTable: import("drizzle-orm/pg-core").PgTableWithCo
 export declare const insertQuestionSchema: z.ZodObject<{
     assignmentId: z.ZodInt;
     questionType: z.ZodOptional<z.ZodString>;
-    text: z.ZodString;
     optionA: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionB: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionC: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionD: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     correctAnswer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    difficulty: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     points: z.ZodOptional<z.ZodNumber>;
     imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    readAloud: z.ZodOptional<z.ZodBoolean>;
-    difficulty: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     skill: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    text: z.ZodString;
+    readAloud: z.ZodOptional<z.ZodBoolean>;
     allowMultipleAnswers: z.ZodOptional<z.ZodBoolean>;
     repeatQuestion: z.ZodOptional<z.ZodBoolean>;
 }, {

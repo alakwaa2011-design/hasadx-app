@@ -178,9 +178,9 @@ export declare const quranGuidedMemorizationTable: import("drizzle-orm/pg-core")
 }>;
 export declare const insertQuranGuidedMemorizationSchema: z.ZodObject<{
     studentAccountId: z.ZodInt;
+    status: z.ZodOptional<z.ZodString>;
     surahNumber: z.ZodInt;
     ayahNumber: z.ZodInt;
-    status: z.ZodOptional<z.ZodString>;
     intervalDays: z.ZodOptional<z.ZodInt>;
     nextReviewDate: z.ZodString;
     lastAssessedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;

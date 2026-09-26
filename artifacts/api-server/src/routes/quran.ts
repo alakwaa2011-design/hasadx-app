@@ -92,6 +92,8 @@ import {
   GetQuranAyahEducationParams,
   GetQuranAyahEducationQueryParams,
   GetQuranAyahEducationResponse,
+  GetQuranWordTajweedParams,
+  GetQuranWordTajweedResponse,
   UpdateMyQuranIndependentPositionBody,
   UpdateMyQuranIndependentPositionResponse,
   RecordMyQuranIndependentSessionBody,
@@ -121,6 +123,7 @@ import {
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   getQuranFoundationAyahEducation,
+  getQuranFoundationWordTajweed,
   listQuranFoundationSurahs,
   listQuranFoundationReciters,
   listQuranFoundationDisplayReciters,
@@ -148,6 +151,13 @@ const publicQuranEducationLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { error: "Too many Quran education requests; please try again shortly" },
+});
+const publicQuranTajweedLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many Quran Tajweed requests; please try again shortly" },
 });
 type TeacherRequest = { session?: { teacherId?: number; studentAccountId?: number }; log?: { error: (error: unknown, message: string) => void } };
 
@@ -1147,6 +1157,39 @@ router.delete("/quran/reader-state/bookmarks/:surahNumber/:ayahNumber", async (r
   await db.delete(quranBookmarksTable).where(and(filter, eq(quranBookmarksTable.surahNumber, surahNumber), eq(quranBookmarksTable.ayahNumber, ayahNumber)));
   res.status(204).send();
 });
+
+router.get(
+  "/quran/tajweed/word/:surahNumber/:ayahNumber/:wordPosition",
+  publicQuranTajweedLimiter,
+  async (req, res): Promise<void> => {
+    const params = GetQuranWordTajweedParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid verse or word position" });
+      return;
+    }
+    const canonicalCount = SURAH_AYAH_COUNTS[params.data.surahNumber - 1];
+    if (!canonicalCount || params.data.ayahNumber > canonicalCount) {
+      res.status(400).json({ error: "Ayah number is outside the surah" });
+      return;
+    }
+    try {
+      const tajweed = await getQuranFoundationWordTajweed(
+        params.data.surahNumber,
+        params.data.ayahNumber,
+        params.data.wordPosition,
+      );
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600");
+      res.json(GetQuranWordTajweedResponse.parse(tajweed));
+    } catch (error) {
+      if (error instanceof Error && error.message === "Selected Quran word is not part of the ayah") {
+        res.status(404).json({ error: error.message });
+        return;
+      }
+      req.log?.error(error, "Sourced Quran Tajweed lookup failed");
+      res.status(503).json({ error: "Official Tajweed rule data is temporarily unavailable" });
+    }
+  },
+);
 
 router.get(
   "/quran/education/:surahNumber/:ayahNumber",

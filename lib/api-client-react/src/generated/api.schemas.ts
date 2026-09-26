@@ -328,6 +328,56 @@ export interface QuranAyahEducation {
   tafsir: QuranAyahTafsir;
 }
 
+export type QuranTajweedRuleClass = typeof QuranTajweedRuleClass[keyof typeof QuranTajweedRuleClass];
+
+
+export const QuranTajweedRuleClass = {
+  ghunnah: 'ghunnah',
+  ham_wasl: 'ham_wasl',
+  idgham_ghunnah: 'idgham_ghunnah',
+  idgham_mutajanisayn: 'idgham_mutajanisayn',
+  idgham_mutaqaribayn: 'idgham_mutaqaribayn',
+  idgham_shafawi: 'idgham_shafawi',
+  idgham_wo_ghunnah: 'idgham_wo_ghunnah',
+  ikhafa: 'ikhafa',
+  ikhafa_shafawi: 'ikhafa_shafawi',
+  iqlab: 'iqlab',
+  laam_shamsiyah: 'laam_shamsiyah',
+  madda_necessary: 'madda_necessary',
+  madda_normal: 'madda_normal',
+  madda_obligatory_monfasel: 'madda_obligatory_monfasel',
+  madda_obligatory_mottasel: 'madda_obligatory_mottasel',
+  madda_permissible: 'madda_permissible',
+  qalaqah: 'qalaqah',
+  slnt: 'slnt',
+} as const;
+
+export interface QuranTajweedRule {
+  class: QuranTajweedRuleClass;
+  /** @minLength 1 */
+  letters: string;
+  /** @minLength 1 */
+  nameAr: string;
+  /** @minLength 1 */
+  descriptionAr: string;
+  /** @pattern ^#[0-9a-f]{6}$ */
+  color: string;
+  /** @minLength 1 */
+  colorNameAr: string;
+}
+
+export interface QuranWordTajweed {
+  /** @pattern ^\d{1,3}:\d{1,3}$ */
+  verseKey: string;
+  wordId: number;
+  /** @minimum 1 */
+  position: number;
+  /** @minLength 1 */
+  text: string;
+  rules: QuranTajweedRule[];
+  source: QuranEducationSource;
+}
+
 export interface QuranAyahTimingSegment {
   /** @minimum 1 */
   wordPosition: number;

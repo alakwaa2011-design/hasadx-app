@@ -323,18 +323,18 @@ export declare const insertQuranSubmissionSchema: z.ZodObject<{
     teacherId: z.ZodInt;
     studentAccountId: z.ZodInt;
     studentId: z.ZodInt;
+    objectPath: z.ZodString;
+    contentType: z.ZodString;
     feedback: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodOptional<z.ZodString>;
     clientRequestId: z.ZodString;
-    objectPath: z.ZodString;
+    reviewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     wardId: z.ZodInt;
     memorizationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     recitationScore: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     mistakeCounts: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
-    contentType: z.ZodString;
     fileSize: z.ZodInt;
     reviewedByTeacherId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    reviewedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
 }, {
     out: {};
     in: {};

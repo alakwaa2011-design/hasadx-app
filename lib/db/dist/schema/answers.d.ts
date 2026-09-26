@@ -129,8 +129,8 @@ export declare const insertAnswerSchema: z.ZodObject<{
     teacherNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     submissionId: z.ZodInt;
     questionId: z.ZodInt;
-    selectedAnswer: z.ZodString;
     isCorrect: z.ZodBoolean;
+    selectedAnswer: z.ZodString;
     teacherPoints: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, {
     out: {};

@@ -21,6 +21,7 @@ import {
   getQuranFoundationWordAudioUrl,
   getQuranFoundationAyahTimings,
   getQuranFoundationAyahEducation,
+  getQuranFoundationWordTajweed,
   getQuranFoundationMadaniPage,
   getQuranFoundationSurahContent,
   listQuranFoundationSurahs,
@@ -778,6 +779,138 @@ describe("Quran Foundation client", () => {
 
     expect(result.selectedWord).toBeNull();
     expect(result.tafsir.source).toMatchObject({ id: 16, name: "التفسير الميسر" });
+  });
+
+  it("parses only officially tagged Tajweed rules for a word, then caches it", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "1:1",
+          words: [
+            {
+              id: 2,
+              position: 2,
+              char_type_name: "word",
+              text_uthmani_tajweed: "<rule class=ham_wasl>ٱ</rule>للَّهِ",
+            },
+            {
+              id: 3,
+              position: 3,
+              char_type_name: "word",
+              text_uthmani_tajweed: "<rule class=ham_wasl>ٱ</rule><rule class=laam_shamsiyah>ل</rule>رَّحۡمَ<rule class=madda_normal>ـٰ</rule>نِ",
+            },
+          ],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = await getQuranFoundationWordTajweed(1, 1, 3);
+    const second = await getQuranFoundationWordTajweed(1, 1, 3);
+
+    expect(first.verseKey).toBe("1:1");
+    expect(first.wordId).toBe(3);
+    expect(first.text).toBe("ٱلرَّحۡمَـٰنِ");
+    expect(first.rules).toEqual([
+      {
+        class: "ham_wasl",
+        letters: "ٱ",
+        nameAr: "همزة الوصل",
+        descriptionAr: expect.any(String),
+        color: "#a5a5a5",
+        colorNameAr: "رمادي",
+      },
+      {
+        class: "laam_shamsiyah",
+        letters: "ل",
+        nameAr: "اللام الشمسية",
+        descriptionAr: expect.any(String),
+        color: "#a5a5a5",
+        colorNameAr: "رمادي",
+      },
+      {
+        class: "madda_normal",
+        letters: "ـٰ",
+        nameAr: "المد الطبيعي",
+        descriptionAr: expect.any(String),
+        color: "#b50000",
+        colorNameAr: "أحمر",
+      },
+    ]);
+    expect(first.source).toMatchObject({ provider: "Quran Foundation" });
+    expect(second).toBe(first);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns an empty rules array (not a guess) when the source tags no rule for the word", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "1:4",
+          words: [{ id: 5, position: 1, char_type_name: "word", text_uthmani_tajweed: "مَٰلِكِ" }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getQuranFoundationWordTajweed(1, 4, 1);
+    expect(result.rules).toEqual([]);
+  });
+
+  it("ignores an unrecognized rule class instead of guessing a definition for it", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "1:1",
+          words: [{
+            id: 1,
+            position: 1,
+            char_type_name: "word",
+            text_uthmani_tajweed: "<rule class=some_future_rule>بِ</rule>سْمِ",
+          }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getQuranFoundationWordTajweed(1, 1, 1);
+    expect(result.rules).toEqual([]);
+  });
+
+  it("rejects an invalid word position before any network request", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationWordTajweed(1, 1, 0)).rejects.toThrow("Invalid Quran word position");
+    await expect(getQuranFoundationWordTajweed(1, 1, 201)).rejects.toThrow("Invalid Quran word position");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the requested word position is not part of the ayah", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        access_token: "access-token",
+        expires_in: 3600,
+      }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        verse: {
+          verse_key: "1:1",
+          words: [{ id: 1, position: 1, char_type_name: "word", text_uthmani_tajweed: "بِسْمِ" }],
+        },
+      }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getQuranFoundationWordTajweed(1, 1, 9))
+      .rejects.toThrow("Selected Quran word is not part of the ayah");
   });
 
   it("rejects a canonical catalog with a wrong ayah count", async () => {
