@@ -232,9 +232,6 @@ export function QuranPersonalPlanPanel({
                 <h3 className="text-sm font-black text-[#0B4B35] dark:text-emerald-100">
                   {plan ? (ar ? "تعديل نطاق الحفظ" : "Edit your range") : (ar ? "ابدأ بخطة تناسبك" : "Set your own pace")}
                 </h3>
-                <span className="rounded-full bg-emerald-900/5 px-2.5 py-1 text-[10px] font-bold text-emerald-800 dark:bg-white/10 dark:text-emerald-200">
-                  {ar ? "دون تسجيل دخول" : "No sign-in needed"}
-                </span>
               </div>
               {([
                 { label: ar ? "من الآية" : "Start at", value: start, setter: setStart, key: "start" },
