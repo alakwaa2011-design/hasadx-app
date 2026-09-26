@@ -17,7 +17,9 @@ describe("Quran mutashabihat panel", () => {
 
     const match = await screen.findByTestId("mutashabihat-match-3:2");
     expect(match.textContent).toContain("ٱلْحَىُّ ٱلْقَيُّومُ");
-    fireEvent.click(screen.getByTestId("mutashabihat-navigate-3:2"));
+    const targetVerseText = screen.getByTestId("mutashabihat-navigate-3:2").querySelector(".quran-word-action-text");
+    expect(targetVerseText?.textContent).toContain("ٱلْحَىُّ ٱلْقَيُّومُ");
+    fireEvent.click(targetVerseText!);
     expect(onNavigate).toHaveBeenCalledWith({ verseKey: "3:2", pageId: expect.any(Number) });
   });
 

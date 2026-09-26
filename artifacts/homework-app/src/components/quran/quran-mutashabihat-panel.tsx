@@ -23,13 +23,13 @@ const categoryLabels: Record<ResultCategory, { ar: string; en: string }> = {
 
 function VerseText({ text, highlighted }: { text: string; highlighted: Set<number> }) {
   return (
-    <p className="quran-word-action-text text-[20px] leading-[2.1] text-emerald-950 dark:text-emerald-50">
+    <span className="quran-word-action-text block text-[20px] leading-[2.1] text-emerald-950 dark:text-emerald-50">
       {text.split(/\s+/).filter(Boolean).map((word, index) => (
         <span key={index} className={highlighted.has(index) ? "rounded bg-amber-200/70 px-0.5 text-emerald-950 dark:bg-amber-500/30 dark:text-amber-50" : undefined}>
           {word}{" "}
         </span>
       ))}
-    </p>
+    </span>
   );
 }
 
@@ -65,8 +65,6 @@ export function QuranMutashabihatPanel({
         .map((relation) => ({ ...relation, exactVerse: false })),
     ];
   }, [corpus, verseKey]);
-  const exactCount = relations.filter((relation) => relation.exactVerse).length;
-
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -135,10 +133,8 @@ export function QuranMutashabihatPanel({
           {corpus && !current && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-800">{lang === "ar" ? "الآية غير موجودة في المصحف المحلي." : "Verse not found in the local Quran."}</div>}
           {current && corpus && (
             <>
-              <p className="mb-4 text-sm text-emerald-800/80 dark:text-emerald-200/80">
-                {lang === "ar"
-                  ? `${relations.length} موضعًا مرتبطًا، منها ${exactCount} مواضع يتكرر فيها نص الآية. نعرض العبارات المشتركة من ثلاث كلمات فأكثر والآيات القصيرة المتطابقة، إلى جانب علاقات منتقاة للاختلافات اللفظية. استُبعدت بسملة مطلع السورة من المقارنة فقط؛ نص المصحف لم يتغير.`
-                  : `${relations.length} related verses, including ${exactCount} identical verse texts. Matches include shared phrases of three or more words, complete short verses, and selected wording variations. Opening basmalas are excluded from comparison only.`}
+              <p className="mb-4 text-sm font-semibold text-emerald-800/80 dark:text-emerald-200/80">
+                {lang === "ar" ? `المواضع المتشابهة: ${relations.length}` : `Similar passages: ${relations.length}`}
               </p>
               {relations.length === 0 && (
                 <p className="rounded-xl border border-emerald-900/10 bg-emerald-50 p-4 text-sm leading-7 text-emerald-900 dark:border-white/10 dark:bg-emerald-900/20 dark:text-emerald-50">
@@ -166,12 +162,20 @@ export function QuranMutashabihatPanel({
                       </div>
                       <div className="space-y-2 rounded-lg bg-[#faf8f2] p-3 dark:bg-emerald-950/30">
                         <div><span className="text-xs font-semibold text-emerald-800/75 dark:text-emerald-200/75">{lang === "ar" ? "الآية الحالية" : "Current verse"}</span><VerseText text={current.content} highlighted={shared.first} /></div>
-                        <div className="border-t border-emerald-900/10 pt-2 dark:border-white/10"><span className="text-xs font-semibold text-emerald-800/75 dark:text-emerald-200/75">{heading(otherVerseKey)}</span><VerseText text={other.content} highlighted={shared.second} /></div>
+                        <button
+                          type="button"
+                          data-testid={`mutashabihat-navigate-${otherVerseKey}`}
+                          aria-label={lang === "ar" ? `الانتقال إلى ${heading(otherVerseKey)}` : `Go to ${heading(otherVerseKey)}`}
+                          onClick={() => onNavigate({ verseKey: otherVerseKey, pageId: other.page_id })}
+                          className="group block w-full rounded-lg border-t border-emerald-900/10 px-1 py-2 text-start transition-colors hover:bg-emerald-100/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700 dark:border-white/10 dark:hover:bg-emerald-800/30"
+                        >
+                          <span className="flex items-center justify-between gap-2 text-xs font-semibold text-emerald-800/75 dark:text-emerald-200/75">
+                            <span>{heading(otherVerseKey)}</span>
+                            <ArrowUpLeft className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+                          </span>
+                          <VerseText text={other.content} highlighted={shared.second} />
+                        </button>
                       </div>
-                      <button type="button" data-testid={`mutashabihat-navigate-${otherVerseKey}`} onClick={() => onNavigate({ verseKey: otherVerseKey, pageId: other.page_id })} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-800 px-3 text-sm font-semibold text-white hover:bg-emerald-900">
-                        {lang === "ar" ? "اذهب إلى الآية" : "Go to verse"}
-                        <ArrowUpLeft className="h-4 w-4" aria-hidden="true" />
-                      </button>
                     </article>
                   );
                 })}
