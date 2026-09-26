@@ -152,3 +152,4 @@
 - [Wouter encoded route params](wouter-encoded-route-params.md) — decode reserved characters from the raw URL once; decoding Wouter params again can corrupt literal percent sequences.
 - [Quran mutashabihat source rights](quran-mutashabihat-source-rights.md) — QUL's MIT software license does not establish rights to its sign-in-only dataset; bundle only explicitly licensed relations.
 - [Quran joined-vocative madd](quran-joined-vocative-madd.md) — Quran Foundation may tag «يا» + hamza as connected from its joined written form; preserve the linguistic boundary and label local corrections.
+- [Quran orthographic search](quran-orthographic-search.md) — index both omitted and written dagger-alif forms; split joined vocatives before stripping marks.

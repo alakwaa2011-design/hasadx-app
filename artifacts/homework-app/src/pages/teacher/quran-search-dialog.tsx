@@ -32,10 +32,16 @@ async function fetchIndex<T>(url: string, signal: AbortSignal): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function normalizeArabic(value: string) {
+function normalizeArabic(value: string, expandDaggerAlif = false) {
   return value
+    // Uthmani spelling joins vocative "يا" to a hamza-initial word.
+    // Keep their ordinary-writing boundary, including "ويا آدم" where
+    // the hamza is written on a tatweel rather than on the alif.
+    .replace(/((?:[وف]َ)?يَـٰٓ)(?:ـ*([أإآء])|ـ*[ٕٔ]َ?ـ*ا)/gu,
+      (_, vocative: string, hamza?: string) => `${vocative.replace("ـٰٓ", "ا")} ${hamza ?? "ا"}`)
     .normalize("NFKD")
-    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, "")
+    .replace(/\u0670/g, expandDaggerAlif ? "ا" : "")
+    .replace(/[\u0610-\u061A\u064B-\u065F\u06D6-\u06ED]/g, "")
     .replace(/\u0640/g, "")
     .replace(/[ٱأإآ]/g, "ا")
     .replace(/ى/g, "ي")
@@ -107,19 +113,29 @@ export function QuranSearchDialog({
   }, [open]);
 
   const normalizedQuery = normalizeArabic(deferredQuery);
+  const expandedQuery = normalizeArabic(deferredQuery, true);
   useEffect(() => {
     setVisibleLimit(MAX_VISIBLE_RESULTS);
   }, [normalizedQuery]);
 
   const normalizedVerses = useMemo(
-    () => verses.map((verse) => normalizeArabic(verse.content)),
+    () => verses.map((verse) => ({
+      compact: normalizeArabic(verse.content),
+      expanded: normalizeArabic(verse.content, true),
+    })),
     [verses],
   );
 
   const matches = useMemo(() => {
     if (!normalizedQuery) return [];
-    return verses.filter((_, index) => normalizedVerses[index].includes(normalizedQuery));
-  }, [normalizedQuery, verses, normalizedVerses]);
+    return verses.filter((_, index) => {
+      const { compact, expanded } = normalizedVerses[index];
+      return compact.includes(normalizedQuery)
+        || expanded.includes(normalizedQuery)
+        || (expandedQuery !== normalizedQuery
+          && (compact.includes(expandedQuery) || expanded.includes(expandedQuery)));
+    });
+  }, [normalizedQuery, expandedQuery, verses, normalizedVerses]);
 
   const chapterNames = useMemo(
     () => new Map(chapters.map((chapter) => [chapter.id, chapter.name])),
