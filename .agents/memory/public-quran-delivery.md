@@ -7,7 +7,13 @@ The public Quran experience should remain an anonymous, distraction-free `/quran
 
 **Why:** The existing reader, audio behavior, Madani rendering, and large Mushaf asset set are still coupled to the Hasaad artifact. Copying them into a second artifact would split maintenance and duplicate large assets, while extracting every dependency before validating the public experience would delay delivery.
 
-**How to apply:** Reuse the same reader implementation through explicit standalone adapters. If a separate domain or artifact is later required, first extract framework-neutral Quran logic and reusable UI into `lib/*` packages, then let both artifacts consume those packages and one canonical asset distribution.
+**How to apply:** Reuse the same reader implementation through explicit standalone adapters. Teacher-facing installation links must open the public Quran route, not an authenticated teacher reader; installation is initiated by the browser on desktop or phone rather than by downloading an APK. If a separate domain or artifact is later required, first extract framework-neutral Quran logic and reusable UI into `lib/*` packages, then let both artifacts consume those packages and one canonical asset distribution.
+
+The public Mushaf must be a separately installable PWA even when Hasaad is installed: keep its manifest ID distinct, provide genuine 192- and 512-pixel derivatives of the approved icon without changing the source, and serve the Quran manifest in the **initial HTML** response. Detecting standalone display mode alone cannot prove which of the two apps owns the window; an install link opened from the teacher app needs browser-opening guidance.
+
+**Why:** Desktop Chromium requires both declared icon sizes; the original large square icon alone did not qualify. Vite's SPA fallback may transform the entry as `/index.html` even for a deep URL, so a path check only inside `transformIndexHtml` left the main app manifest in the first response. Runtime React metadata changes cannot guarantee the browser has not already evaluated that manifest.
+
+**How to apply:** Verify the unhydrated response for a direct Quran URL in both development and production, including manifest ID and icons, before judging installability. Avoid broadening or moving the main platform's `/` PWA scope merely to fix this; it would affect other existing routes.
 
 For future product scoping, prioritize a personal memorization-and-review plan in the anonymous Mushaf: a chosen ayah range and daily goal, resuming the exact guided step, and a saved daily review list based on self-assessment. Self-recording and playback for comparison come next; automated recitation correction should wait until accuracy and privacy are verified.
 

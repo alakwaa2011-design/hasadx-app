@@ -44,12 +44,14 @@ describe("useQuranInstall", () => {
   beforeEach(() => {
     originalUa = window.navigator.userAgent;
     originalMatchMedia = window.matchMedia;
+    window.history.replaceState(null, "", "/quran");
     vi.stubGlobal("matchMedia", () => ({ matches: false }));
   });
 
   afterEach(() => {
     Object.defineProperty(window.navigator, "userAgent", { value: originalUa, configurable: true });
     window.matchMedia = originalMatchMedia;
+    window.history.replaceState(null, "", "/");
   });
 
   it("detects installed standalone mode via matchMedia", () => {
@@ -57,6 +59,24 @@ describe("useQuranInstall", () => {
     const { result } = renderHook(() => useQuranInstall());
     expect(result.current.platform).toBe("installed");
     expect(result.current.isInstallable).toBe(false);
+  });
+
+  it("treats a Quran install link opened inside the installed platform as a separate app request", () => {
+    window.history.replaceState(null, "", "/quran?install=1");
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("standalone") }));
+    const { result } = renderHook(() => useQuranInstall());
+    expect(result.current.platform).toBe("app-window");
+    expect(result.current.isInstallable).toBe(true);
+  });
+
+  it("offers desktop installation guidance when no native prompt is available", () => {
+    Object.defineProperty(window.navigator, "userAgent", {
+      value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36",
+      configurable: true,
+    });
+    const { result } = renderHook(() => useQuranInstall());
+    expect(result.current.platform).toBe("desktop");
+    expect(result.current.isInstallable).toBe(true);
   });
 
   it("detects iOS Safari", () => {

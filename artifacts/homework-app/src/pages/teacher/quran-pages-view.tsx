@@ -418,10 +418,14 @@ export function QuranPagesView({
   );
   const wordTajweedRules = wordAction && wordTajweedQuery.data ? wordTajweedQuery.data.rules : [];
   const [showReaderTips, setShowReaderTips] = useState(
-    () => typeof window !== "undefined" && window.localStorage.getItem(QURAN_READER_TIPS_KEY) !== "true",
+    () => typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).get("install") !== "1"
+      && window.localStorage.getItem(QURAN_READER_TIPS_KEY) !== "true",
   );
   const { playWord, stopWordAudio } = useQuranWordAudio();
-  const [installManualOpen, setInstallManualOpen] = useState(false);
+  const [installManualOpen, setInstallManualOpen] = useState(
+    () => standalone && new URLSearchParams(window.location.search).get("install") === "1",
+  );
   const { platform, isInstallable } = useQuranInstall();
 
   useEffect(() => {

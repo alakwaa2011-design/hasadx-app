@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { readFile } from "node:fs/promises";
 
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
@@ -15,6 +16,31 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    {
+      name: "quran-install-manifest",
+      configureServer(server) {
+        server.middlewares.use(async (request, response, next) => {
+          const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+          if (request.method !== "GET" || !/^\/quran(?:\/\d{1,3})?\/?$/.test(pathname)) return next();
+          try {
+            const source = await readFile(path.resolve(import.meta.dirname, "index.html"), "utf8");
+            const html = await server.transformIndexHtml(pathname, source);
+            response.setHeader("Content-Type", "text/html; charset=utf-8");
+            response.end(html);
+          } catch (error) {
+            next(error);
+          }
+        });
+      },
+      transformIndexHtml(html, context) {
+        if (!/^\/quran(?:\/|$)/.test(context.path)) return html;
+        return html
+          .replace('href="/manifest.json"', 'href="/quran-manifest.json"')
+          .replace('sizes="32x32" href="/icons/icon-192.png"', 'sizes="1254x1254" href="/icons/quran-hasaad.png"')
+          .replace('href="/icons/apple-touch-icon.png"', 'href="/icons/quran-hasaad.png"')
+          .replace('name="apple-mobile-web-app-title" content="حصاد"', 'name="apple-mobile-web-app-title" content="مصحف حصاد"');
+      },
+    },
     ...(includeRuntimeErrorOverlay ? [runtimeErrorOverlay()] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined

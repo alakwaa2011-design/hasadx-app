@@ -66,6 +66,7 @@ export function PublicQuranStandalone() {
       appleTitle: appleTitle?.getAttribute("content"),
       appleIcon: appleIcon?.getAttribute("href"),
       favicon: favicon?.getAttribute("href"),
+      faviconSizes: favicon?.getAttribute("sizes"),
       themeColor: themeColor?.getAttribute("content"),
     };
 
@@ -73,6 +74,7 @@ export function PublicQuranStandalone() {
     appleTitle?.setAttribute("content", "مصحف حصاد");
     appleIcon?.setAttribute("href", "/icons/quran-hasaad.png");
     favicon?.setAttribute("href", "/icons/quran-hasaad.png");
+    favicon?.setAttribute("sizes", "1254x1254");
     themeColor?.setAttribute("content", "#123D2E");
 
     return () => {
@@ -80,6 +82,8 @@ export function PublicQuranStandalone() {
       if (previous.appleTitle) appleTitle?.setAttribute("content", previous.appleTitle);
       if (previous.appleIcon) appleIcon?.setAttribute("href", previous.appleIcon);
       if (previous.favicon) favicon?.setAttribute("href", previous.favicon);
+      if (previous.faviconSizes) favicon?.setAttribute("sizes", previous.faviconSizes);
+      else favicon?.removeAttribute("sizes");
       if (previous.themeColor) themeColor?.setAttribute("content", previous.themeColor);
     };
   }, []);

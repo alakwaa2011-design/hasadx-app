@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Share, PlusSquare, Download, Compass, Smartphone } from "lucide-react";
+import { X, Share, PlusSquare, Download, Compass, Smartphone, MonitorDown } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from "@/components/ui/dialog";
 import { useQuranInstall, useQuranInstallCooldown } from "./use-quran-install";
 
@@ -24,7 +25,7 @@ export function QuranInstallExperience({
   const { lang, dir } = useI18n();
 
   useEffect(() => {
-    if (!standalone || !isInstallable || isDismissed) {
+    if (!standalone || !isInstallable || isDismissed || (platform !== "native" && platform !== "ios-safari")) {
       setSmartVisible(false);
       return;
     }
@@ -34,7 +35,7 @@ export function QuranInstallExperience({
     }, 10000);
 
     return () => clearTimeout(timer);
-  }, [standalone, isInstallable, isDismissed]);
+  }, [standalone, isInstallable, isDismissed, platform]);
 
   useEffect(() => {
     if (isPlaying || isDockOpen) setSmartVisible(false);
@@ -184,6 +185,39 @@ export function QuranInstallExperience({
                 >
                   {lang === "ar" ? "تثبيت التطبيق الآن" : "Install App Now"}
                 </button>
+              </div>
+            )}
+            {(platform === "desktop" || platform === "app-window") && (
+              <div className="flex flex-col items-center gap-4 py-3">
+                <MonitorDown className="h-10 w-10 text-emerald-800 dark:text-emerald-300" />
+                <p className="text-center text-[13px] leading-relaxed text-stone-700 dark:text-stone-300">
+                  {platform === "app-window"
+                    ? (lang === "ar"
+                      ? "أنت داخل نافذة تطبيق حصاد المثبّت. لتثبيت المصحف كتطبيق مستقل، انسخ الرابط وافتحه مباشرة في متصفح Chrome أو Edge خارج نافذة حصاد."
+                      : "You are in an installed app window. To install the Quran separately, copy the link and open it in Chrome or Edge outside the Hasaad app.")
+                    : (lang === "ar"
+                      ? "افتح الصفحة في Chrome أو Edge، ثم اضغط أيقونة التثبيت في شريط العنوان أو اختر «تثبيت الصفحة كتطبيق» من قائمة المتصفح."
+                      : "Open this page in Chrome or Edge, then use the install icon in the address bar or choose “Install page as app” from the browser menu.")}
+                </p>
+                <a href="/quran" target="_blank" rel="noopener noreferrer" className="break-all text-center text-xs text-emerald-700 underline dark:text-emerald-300">
+                  {window.location.origin}/quran
+                </a>
+                {platform === "app-window" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(`${window.location.origin}/quran`);
+                        toast.success(lang === "ar" ? "تم نسخ رابط المصحف" : "Quran link copied");
+                      } catch {
+                        toast.error(lang === "ar" ? "تعذر النسخ؛ حدد الرابط وانسخه يدويًا" : "Copy failed; select and copy the link manually");
+                      }
+                    }}
+                    className="rounded-xl bg-[#123D2E] px-4 py-2.5 text-xs font-bold text-white"
+                  >
+                    {lang === "ar" ? "نسخ رابط المصحف" : "Copy Quran link"}
+                  </button>
+                )}
               </div>
             )}
             

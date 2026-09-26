@@ -543,8 +543,9 @@ async function main() {
 
     if (route.quranPwa) {
       html = setLinkHref(html, "manifest", "/quran-manifest.json");
-      html = setLinkHref(html, "apple-touch-icon", "/icons/quran-hasaad-180.png");
-      html = setLinkHref(html, "icon", "/icons/quran-hasaad-192.png");
+      html = setLinkHref(html, "apple-touch-icon", "/icons/quran-hasaad.png");
+      html = setLinkHref(html, "icon", "/icons/quran-hasaad.png");
+      html = html.replace(/(<link\b[^>]*rel="icon"[^>]*\bsizes=")[^"]*(")/i, (_match, before, after) => `${before}1254x1254${after}`);
       html = setMeta(html, "name", "apple-mobile-web-app-title", "مصحف حصاد");
       html = setMeta(html, "name", "theme-color", "#123D2E");
     }

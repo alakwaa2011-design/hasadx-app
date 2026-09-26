@@ -4,8 +4,9 @@ import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { useGetCurrentTeacher, useListQuranSurahs } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight, X, Brain } from "lucide-react";
+import { BookOpen, Users, ClipboardCheck, Loader2, Bookmark, ChevronLeft, ChevronRight, X, Brain, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 import { QuranCircles } from "./quran-center/quran-circles";
 import { QuranReviewQueue } from "./quran-center/quran-review-queue";
@@ -35,6 +36,7 @@ export default function QuranCenter({
     : "mushaf";
   const [internalTab, setInternalTab] = useState<QuranCenterTab>(tabFromQuery);
   const activeTab = selectedTab ?? internalTab;
+  const installUrl = `${window.location.origin}/quran`;
   const [mobileSectionsOpen, setMobileSectionsOpen] = useState(false);
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [mushafLocation, setMushafLocation] = useState<{ surah: number; ayah: number; page?: number }>({ surah: 1, ayah: 1 });
@@ -73,6 +75,15 @@ export default function QuranCenter({
     setMobileSectionsOpen(false);
     if (!embedded) {
       setLocation(`/teacher/quran-center?tab=${tab}`);
+    }
+  };
+
+  const copyInstallLink = async () => {
+    try {
+      await navigator.clipboard.writeText(installUrl);
+      toast.success(lang === "ar" ? "تم نسخ رابط المصحف" : "Quran link copied");
+    } catch {
+      toast.error(lang === "ar" ? "تعذر نسخ الرابط؛ يمكنك فتحه مباشرة" : "Could not copy the link; you can open it directly");
     }
   };
 
@@ -194,23 +205,43 @@ export default function QuranCenter({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute inset-0 overflow-y-auto"
+              className={cn("absolute inset-0", activeTab === "mushaf" ? "flex min-h-0 flex-col overflow-hidden" : "overflow-y-auto")}
             >
               {activeTab === "mushaf" && (
-                <QuranPagesView
-                  initialSurah={mushafLocation.surah}
-                  initialAyah={mushafLocation.ayah}
-                  initialPage={mushafLocation.page}
-                  onNavigate={handleMushafNavigate}
-                  isTaskAyah={() => false}
-                  startAyah={null}
-                  endAyah={null}
-                  mode={null}
-                  liveRecitationAvailable={false}
-                  embedded
-                  onExitEmbedded={() => setMobileSectionsOpen(true)}
-                  onOpenBookmarks={() => setBookmarksOpen(true)}
-                />
+                <>
+                  <div data-testid="teacher-quran-install-link" className="flex shrink-0 items-center gap-2 border-b border-emerald-900/10 bg-[#fbfaf6] px-3 py-2 dark:border-white/10 dark:bg-[#151b18] sm:gap-3">
+                    <img src="/icons/quran-hasaad.png" alt="" className="h-8 w-8 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-emerald-900 dark:text-emerald-100">{lang === "ar" ? "رابط تثبيت مصحف حصاد على الهاتف" : "Install Hasaad Quran on your phone"}</p>
+                      <a href="/quran?install=1" target="_blank" rel="noopener noreferrer" data-testid="link-standalone-quran"
+                        className="block break-all text-[11px] font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100">
+                        {installUrl}
+                      </a>
+                    </div>
+                    <button type="button" onClick={() => void copyInstallLink()} data-testid="button-copy-quran-install-link"
+                      className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-emerald-900/10 px-2 text-xs font-bold text-emerald-800 hover:bg-emerald-900/5 dark:border-white/10 dark:text-emerald-200 dark:hover:bg-white/10"
+                      aria-label={lang === "ar" ? "نسخ رابط تثبيت المصحف" : "Copy Quran install link"}>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>{lang === "ar" ? "نسخ" : "Copy"}</span>
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1">
+                    <QuranPagesView
+                      initialSurah={mushafLocation.surah}
+                      initialAyah={mushafLocation.ayah}
+                      initialPage={mushafLocation.page}
+                      onNavigate={handleMushafNavigate}
+                      isTaskAyah={() => false}
+                      startAyah={null}
+                      endAyah={null}
+                      mode={null}
+                      liveRecitationAvailable={false}
+                      embedded
+                      onExitEmbedded={() => setMobileSectionsOpen(true)}
+                      onOpenBookmarks={() => setBookmarksOpen(true)}
+                    />
+                  </div>
+                </>
               )}
               {activeTab === "circles" && <QuranCircles surahs={surahs || []} />}
               {activeTab === "queue" && <QuranReviewQueue surahs={surahs || []} />}

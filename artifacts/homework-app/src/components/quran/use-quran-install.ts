@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 
-export type InstallPlatform = "native" | "ios-safari" | "ios-inapp" | "unsupported" | "installed";
+export type InstallPlatform = "native" | "ios-safari" | "ios-inapp" | "desktop" | "app-window" | "unsupported" | "installed";
 
 const COOLDOWN_KEY = "quran_install_dismissed_until";
 const COOLDOWN_DAYS = 30;
@@ -46,7 +46,10 @@ export function useQuranInstall() {
       document.referrer.includes("android-app://");
 
     if (isStandalone) {
-      setPlatform("installed");
+      // A teacher may open the separate Quran from the installed Hasaad app.
+      // Standalone display mode alone does not prove this Quran PWA is installed.
+      const fromInstallLink = new URLSearchParams(window.location.search).get("install") === "1";
+      setPlatform(fromInstallLink ? "app-window" : "installed");
       return;
     }
 
@@ -63,6 +66,8 @@ export function useQuranInstall() {
       setPlatform("ios-inapp");
     } else if (isIOSSafari) {
       setPlatform("ios-safari");
+    } else if (!/android|mobile/.test(ua)) {
+      setPlatform("desktop");
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
