@@ -2226,12 +2226,11 @@ export function QuranPagesView({
             type="button"
             onClick={() => goToSpread("previous")}
             disabled={!canGoToPreviousSpread}
-            className="group inline-flex min-h-10 items-center gap-1.5 rounded-full border border-emerald-900/15 bg-white/70 px-3 py-2 text-xs font-bold text-emerald-900 shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-50 disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-700/60 dark:bg-card/70 dark:text-emerald-100 dark:hover:bg-emerald-950/60 md:min-h-12 md:gap-2 md:rounded-2xl md:px-5 md:py-2.5 md:text-sm md:font-black"
+            className="group inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-emerald-800/70 transition-colors hover:bg-emerald-900/5 hover:text-emerald-900 disabled:pointer-events-none disabled:opacity-30 dark:text-emerald-200/70 dark:hover:bg-white/10 dark:hover:text-emerald-100 md:h-11 md:w-11"
             aria-label={lang === "ar" ? "الصفحة السابقة" : "Previous page"}
+            title={lang === "ar" ? "الصفحة السابقة" : "Previous page"}
           >
-            <ChevronLeft className="h-4 w-4 rtl:rotate-180 md:h-5 md:w-5" />
-            <span className="md:hidden">{lang === "ar" ? "السابق" : "Previous"}</span>
-            <span className="hidden md:inline">{lang === "ar" ? "الصفحة السابقة" : "Previous page"}</span>
+            <ChevronLeft className="h-5 w-5 rtl:rotate-180 md:h-6 md:w-6" />
           </button>
 
           <span className="hidden text-xs font-bold text-muted-foreground sm:block">
@@ -2242,12 +2241,11 @@ export function QuranPagesView({
             type="button"
             onClick={() => goToSpread("next")}
             disabled={!canGoToNextSpread}
-            className="group inline-flex min-h-10 items-center gap-1.5 rounded-full border border-emerald-700/25 bg-emerald-700/10 px-3 py-2 text-xs font-bold text-emerald-900 shadow-sm transition-colors hover:border-emerald-500 hover:bg-emerald-100 disabled:pointer-events-none disabled:opacity-35 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:hover:bg-emerald-900/50 md:min-h-12 md:gap-2 md:rounded-2xl md:bg-emerald-700 md:px-5 md:py-2.5 md:text-sm md:font-black md:text-white md:shadow-md md:shadow-emerald-900/15 md:hover:bg-emerald-800 dark:md:bg-emerald-600 dark:md:hover:bg-emerald-500"
+            className="group inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-emerald-800/70 transition-colors hover:bg-emerald-900/5 hover:text-emerald-900 disabled:pointer-events-none disabled:opacity-30 dark:text-emerald-200/70 dark:hover:bg-white/10 dark:hover:text-emerald-100 md:h-11 md:w-11"
             aria-label={lang === "ar" ? "الصفحة التالية" : "Next page"}
+            title={lang === "ar" ? "الصفحة التالية" : "Next page"}
           >
-            <span className="md:hidden">{lang === "ar" ? "التالي" : "Next"}</span>
-            <span className="hidden md:inline">{lang === "ar" ? "الصفحة التالية" : "Next page"}</span>
-            <ChevronRight className="h-4 w-4 rtl:rotate-180 md:h-5 md:w-5" />
+            <ChevronRight className="h-5 w-5 rtl:rotate-180 md:h-6 md:w-6" />
           </button>
         </nav>
         {pageLayout === "continuous" && (
