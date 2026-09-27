@@ -1115,7 +1115,7 @@
   .quran-reader-toolbar .quran-toolbar-action { min-width: 35px; height: 40px; padding-inline: 3px; }
   .quran-reader-toolbar .quran-toolbar-memo { min-width: 45px; max-width: 66px; font-size: 11px; }
   .quran-reader-toolbar .quran-toolbar-page { width: 67px; min-width: 67px; }
-  .quran-reader-toolbar .quran-toolbar-surah { flex: 1 1 74px; min-width: 0; }
+  .quran-reader-toolbar .quran-toolbar-surah { flex: 1 1 120px; min-width: 0; max-width: 160px; }
   .quran-reader-toolbar .quran-toolbar-back { width: 32px; min-width: 32px; }
   .quran-reader-toolbar .quran-toolbar-back button { width: 32px; height: 40px; }
   .quran-reader-toolbar .quran-toolbar-search button { width: 35px; min-width: 35px; padding-inline: 2px; }
