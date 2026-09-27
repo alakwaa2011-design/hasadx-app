@@ -138,6 +138,7 @@
 - [Quran orthographic search](quran-orthographic-search.md) — index both omitted and written dagger-alif forms; split joined vocatives before stripping marks.
 - [Authenticated personal Quran plans](authenticated-personal-quran-plans.md) — device-local self-assessment is account-scoped; assigned wards link to independent practice, never inherit its state.
 - [Quran reader control hierarchy](quran-reader-control-hierarchy.md) — keep the page primary, nest personal plans under memorization, and give listening repetition one ayah/segment entry.
+- [Guided Quran plan opt-in](quran-guided-plan-opt-in.md) — “memorize from current ayah” must never enter or update My Plan; only explicitly starting from My Plan enables its prompts and progress.
 - [Mushaf Hasaad icon treatment](quran-icon-source.md) — preserve the approved square artwork untouched; never add app-side masking, rounding, framing, or overlays.
 - [Guided Quran overlay stacking](quran-guided-overlay-stacking.md) — raise the player dock only while its settings popover is open; keep the guided panel clear of the dock.
 - [Quran compact toolbar alignment](quran-compact-toolbar-alignment.md) — settings stay at the left edge, navigation at the right; medium widths need modestly wider controls rather than an empty center.

@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 import { personalQuranStorageKey, QURAN_PERSONAL_PLAN_KEY, readQuranPersonalState } from "@/components/quran/quran-personal-plan";
 import type { GuidedMemorizationStage } from "@/components/quran/quran-guided-memorization-panel";
 import type { MemoSessionState } from "@/components/quran/use-quran-memo-session";
@@ -220,6 +221,46 @@ describe("personal Quran plans in authenticated readers", () => {
     expect(screen.getByTestId("guided-stage")).toBeTruthy();
     fireEvent.click(screen.getByTestId("button-memo-session"));
     expect(screen.queryByTestId("guided-stage")).toBeNull();
+  });
+
+  it("continues to the next ayah without opening or writing to the plan when current ayah was chosen", async () => {
+    renderPagesView({ embedded: true });
+    await openPersonalPlan();
+    fireEvent.change(screen.getByTestId("select-personal-plan-end-ayah"), { target: { value: "3" } });
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    fireEvent.click(screen.getByTestId("button-close-personal-plan"));
+    fireEvent.click(screen.getByTestId("button-memo-session"));
+    fireEvent.click(screen.getByTestId("button-start-current-memo"));
+
+    vi.mocked(toast.success).mockClear();
+    fireEvent.click(screen.getByTestId("assess-personal-mastered"));
+
+    expect(screen.getByTestId("guided-stage")).toBeTruthy();
+    expect(screen.queryByTestId("quran-personal-plan-panel")).toBeNull();
+    expect(screen.getByTestId("mock-audio-range").dataset).toMatchObject({
+      startSurah: "1", startAyah: "2", endSurah: "1", endAyah: "2", scope: "ayah",
+    });
+    const saved = readQuranPersonalState(personalQuranStorageKey("teacher", 10));
+    expect(saved.plan).not.toBeNull();
+    expect(saved.session).toBeNull();
+    expect(saved.assessments["1:1"]).toBeUndefined();
+    expect(toast.success).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("guided-close"));
+    await openPersonalPlan();
+    expect(screen.getByTestId("quran-personal-plan-panel")).toBeTruthy();
+  });
+
+  it("still opens the plan after mastery when practice was started from خطتي", async () => {
+    renderPagesView({ embedded: true });
+    await openPersonalPlan();
+    fireEvent.change(screen.getByTestId("input-personal-plan-daily-goal"), { target: { value: "1" } });
+    fireEvent.click(screen.getByTestId("button-save-personal-plan"));
+    fireEvent.click(screen.getByTestId("button-start-next-personal-ayah"));
+    fireEvent.click(screen.getByTestId("assess-personal-mastered"));
+
+    expect(screen.getByTestId("quran-personal-plan-panel")).toBeTruthy();
+    expect(readQuranPersonalState(personalQuranStorageKey("teacher", 10)).assessments["1:1"]?.result).toBe("mastered");
   });
 
   it("keeps secondary reader tools inside an overlay disclosure", async () => {
