@@ -247,6 +247,30 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
+it("shows the three page-layout buttons in both shared reader headers", () => {
+  render(
+    <QuranPagesView
+      initialSurah={2}
+      initialAyah={5}
+      initialPage={2}
+      onNavigate={vi.fn()}
+      isTaskAyah={() => false}
+      startAyah={null}
+      endAyah={null}
+      mode={null}
+      liveRecitationAvailable={false}
+    />,
+  );
+
+  expect(screen.getByTestId("page-layout-control-desktop").closest("header")).toBeTruthy();
+  expect(screen.getByTestId("page-layout-control-mobile").closest("header")).toBeTruthy();
+  expect(screen.queryByTestId("quran-reader-more-panel")).toBeNull();
+  for (const layout of ["continuous", "spread", "single"]) {
+    expect(screen.getByTestId(`button-page-layout-${layout}-desktop`)).toBeTruthy();
+    expect(screen.getByTestId(`button-page-layout-${layout}-mobile`)).toBeTruthy();
+  }
+});
+
 describe.each([
   ["عرض الصفحة الواحدة", "single"],
   ["العرض المتصل", "continuous"],
@@ -274,8 +298,7 @@ describe.each([
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("2");
       expect(screen.getByTestId("mushaf-page-2").getAttribute("data-selected-verse")).toBe("2:5");
     });
-    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
-    fireEvent.change(screen.getByTestId("select-page-layout"), { target: { value: layout } });
+    fireEvent.click(screen.getByTestId(`button-page-layout-${layout}-mobile`));
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     fireEvent.click(screen.getByRole("button", { name: "تشغيل" }));
     fireEvent.click(screen.getByRole("button", { name: "عبور الصفحة" }));

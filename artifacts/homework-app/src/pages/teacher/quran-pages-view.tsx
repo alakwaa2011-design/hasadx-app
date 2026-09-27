@@ -1957,20 +1957,37 @@ export function QuranPagesView({
     </div>
   );
 
-  const layoutSelectDesktop = (
-    <div className="relative flex h-full flex-1 items-center">
-      <select
-        value={pageLayout}
-        onChange={(event) => changePageLayout(event.target.value as "spread" | "single" | "continuous")}
-        data-testid="select-page-layout"
-        className="h-full w-full appearance-none rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10"
-        aria-label={lang === "ar" ? "طريقة عرض الصفحات" : "Page layout"}
-      >
-        <option value="spread" className="bg-background text-foreground">{lang === "ar" ? "صفحتان" : "Spread"}</option>
-        <option value="single" className="bg-background text-foreground">{lang === "ar" ? "صفحة" : "Single"}</option>
-        <option value="continuous" className="bg-background text-foreground">{lang === "ar" ? "متصلة" : "Continuous"}</option>
-      </select>
-      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
+  const layoutModeControl = (placement: "desktop" | "mobile") => (
+    <div
+      data-testid={`page-layout-control-${placement}`}
+      role="group"
+      aria-label={lang === "ar" ? "طريقة عرض الصفحات" : "Page layout"}
+      className={cn(
+        "grid h-9 grid-cols-3 items-center gap-0.5 rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5",
+        placement === "desktop" ? "w-[228px] shrink-0" : "w-full",
+      )}
+    >
+      {([
+        { value: "continuous", ar: "متصلة", en: "Continuous" },
+        { value: "spread", ar: "صفحتان", en: "2 pages" },
+        { value: "single", ar: "صفحة", en: "1 page" },
+      ] as const).map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          data-testid={`button-page-layout-${option.value}-${placement}`}
+          aria-pressed={pageLayout === option.value}
+          onClick={() => changePageLayout(option.value)}
+          className={cn(
+            "inline-flex h-7 min-w-0 items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[11px] font-extrabold leading-none transition-colors sm:px-2",
+            pageLayout === option.value
+              ? "bg-emerald-700 text-white shadow-sm dark:bg-emerald-600"
+              : "text-emerald-900/70 hover:bg-white/70 dark:text-emerald-100/70 dark:hover:bg-white/10",
+          )}
+        >
+          {lang === "ar" ? option.ar : option.en}
+        </button>
+      ))}
     </div>
   );
 
@@ -2364,6 +2381,7 @@ export function QuranPagesView({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {layoutModeControl("desktop")}
               {searchDialogWrapped}
               {audioButtonDesktop}
               {memoButton}
@@ -2391,6 +2409,9 @@ export function QuranPagesView({
               </div>
             </div>
           </div>
+          <div className="px-3 pb-2 lg:hidden">
+            {layoutModeControl("mobile")}
+          </div>
 
           {memoChoiceOpen && personalPlan.enabled && !guidedOpen && (
             <div data-reader-memo-choice role="group" aria-label={lang === "ar" ? "بدء حفظني" : "Start memorization"}
@@ -2415,14 +2436,11 @@ export function QuranPagesView({
             <div data-reader-more id="quran-reader-more-panel" role="region" aria-label={lang === "ar" ? "أدوات المصحف" : "Mushaf tools"}
               className="absolute end-2 top-full z-50 mt-1 flex max-h-[calc(100dvh-4.5rem)] w-[min(23rem,calc(100vw-1rem))] flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-3 shadow-xl dark:border-white/10 dark:bg-[#151b18] lg:end-4">
                 <p className="px-1 text-[10px] font-extrabold text-emerald-800/60 dark:text-emerald-200/60">
-                  {lang === "ar" ? "طريقة العرض" : "Reading view"}
+                  {lang === "ar" ? "التنقل" : "Navigation"}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex h-9 w-32 shrink-0 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                     {juzSelect}
-                  </div>
-                  <div className="flex h-9 min-w-[120px] flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
-                    {layoutSelectDesktop}
                   </div>
                 </div>
                 <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 dark:bg-white/5">{zoomControlsDesktop}</div>
