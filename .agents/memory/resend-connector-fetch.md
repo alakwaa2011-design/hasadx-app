@@ -14,3 +14,9 @@ Resend delivery failures can resolve normally as `{ delivered: false, reason }` 
 **Why:** A registration was accepted while Resend had exhausted its daily sending quota; the provider rejection was returned as data and never appeared in the OTP send failure log.
 
 **How to apply:** Authentication and other user-critical email flows must await `sendEmail()`, inspect `delivered`, log only the safe reason, and return an actionable retry message instead of claiming the message was sent.
+
+An `added` Resend integration in the workspace does not prove that the published app can resolve its credentials. A production `resend_not_configured` result means the application never called Resend; it does not identify a provider rejection, API key, or provider account. The integration's restricted send-only key also cannot list domains for confirmation.
+
+**Why:** In September 2026, production OTP and admin-digest attempts returned `resend_not_configured` while the workspace integration remained added. The credential lookup suppressed the specific failure, so the available logs could establish the failure boundary but not whether the runtime token, connector response, or key setting was missing.
+
+**How to apply:** For production delivery investigations, separate workspace connection status from runtime credential resolution. Do not attribute a failed send to Resend, a dashboard account, or a domain until production logs show the request reached the provider; add safe diagnostics if the exact connector failure branch must be established.
