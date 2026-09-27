@@ -1144,6 +1144,55 @@
   .quran-reader-toolbar .quran-toolbar-action,
   .quran-reader-toolbar .quran-toolbar-search button { min-width: 32px; width: 32px; }
 }
+@media (min-width: 480px) and (max-width: 1023px) {
+  .quran-reader-header > .quran-reader-toolbar:nth-child(2) {
+    max-width: 860px;
+    margin-inline: auto;
+  }
+  .quran-reader-toolbar .quran-toolbar-navigation {
+    flex: 0 0 clamp(205px, 36vw, 300px);
+  }
+  .quran-reader-toolbar .quran-toolbar-surah {
+    flex: 1 1 0%;
+    max-width: none;
+  }
+  .quran-reader-toolbar .quran-toolbar-actions {
+    flex: 0 0 clamp(250px, 54vw, 470px);
+  }
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-search,
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-action {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-memo {
+    flex: 1.45 1 0%;
+    min-width: 0;
+    max-width: none;
+  }
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-search button,
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-memo button {
+    width: 100%;
+    min-width: 0;
+  }
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-search button {
+    height: 40px;
+    border: 1px solid rgba(11, 75, 53, .08);
+    border-radius: .75rem;
+    background: rgba(11, 75, 53, .035);
+  }
+  .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-action {
+    width: auto;
+    height: 40px;
+    background: rgba(11, 75, 53, .035);
+  }
+  .dark .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-search button {
+    border-color: rgba(255, 255, 255, .1);
+    background: rgba(255, 255, 255, .05);
+  }
+  .dark .quran-reader-toolbar .quran-toolbar-actions > .quran-toolbar-action {
+    background: rgba(255, 255, 255, .05);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .quran-settings-sheet { animation: none; }
 }

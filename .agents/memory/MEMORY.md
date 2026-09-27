@@ -140,6 +140,6 @@
 - [Quran reader control hierarchy](quran-reader-control-hierarchy.md) — keep the page primary, nest personal plans under memorization, and give listening repetition one ayah/segment entry.
 - [Mushaf Hasaad icon treatment](quran-icon-source.md) — preserve the approved square artwork untouched; never add app-side masking, rounding, framing, or overlays.
 - [Guided Quran overlay stacking](quran-guided-overlay-stacking.md) — raise the player dock only while its settings popover is open; keep the guided panel clear of the dock.
-- [Quran compact toolbar alignment](quran-compact-toolbar-alignment.md) — Arabic mobile settings belong at the left edge, navigation at the right; reversing one flex row alone leaves controls adrift.
+- [Quran compact toolbar alignment](quran-compact-toolbar-alignment.md) — settings stay at the left edge, navigation at the right; medium widths need modestly wider controls rather than an empty center.
 - [Quran desktop toolbar continuity](quran-desktop-toolbar-continuity.md) — keep reader controls in one balanced line; neither viewport-edge clusters nor a tiny centered pair of clusters.
 - [Quran page-picker density](quran-page-picker-density.md) — the vertical page list should be only wide enough for page numbers; direct number entry remains available separately.

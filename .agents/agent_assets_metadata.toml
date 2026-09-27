@@ -2329,3 +2329,17 @@ mtime_ms = 1790533335760
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/813b5247-edcb-45c6-82ea-82a7f804f828/498b7377-571d-46d4-8656-f003509ee562"
 storage_version_token = "1790533372932323"
 content_type = "image/png"
+
+[[outputs]]
+id = "uslww5ZqqOjEkUNDMxlTY"
+uri = "file://screenshots/quran-reader-ui/compact-toolbar-512-header.png"
+type = "image"
+title = "الشريط المضغوط بعد التوزيع"
+description = "معاينة بمقاس 512px وبكثافة 2x: أزرار أعرض قليلًا وفراغ أوسط أصغر، مع بقاء التنقل يمينًا والإعدادات يسارًا."
+logical_id = "05195f16-d05f-4ab8-b086-520899933889"
+content_hash = "sha256:248d7027168720fa5c7c881e2a4af39726b7c55ad8b470ed23cc924d2d5c9069"
+size = 20137
+mtime_ms = 1790533729263
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/05195f16-d05f-4ab8-b086-520899933889/f2825e17-4c7a-4929-a185-6cdae8635e14"
+storage_version_token = "1790533741537452"
+content_type = "image/png"
