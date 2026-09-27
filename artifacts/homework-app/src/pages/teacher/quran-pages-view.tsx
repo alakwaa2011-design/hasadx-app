@@ -2403,14 +2403,20 @@ export function QuranPagesView({
           </div>
 
           {/* Mobile Toolbar */}
-          <div className="quran-reader-toolbar flex w-full items-center gap-0.5 px-1 py-1 lg:hidden">
-            {moreButton(true)}
-            <div className="quran-toolbar-memo shrink-0">{memoButtonMobile}</div>
-            {audioButtonMobile}
-            {searchDialogWrapped}
-            <div className="quran-toolbar-page flex h-10 shrink-0 items-center rounded-lg border border-emerald-900/10 bg-emerald-900/[.025]">{pagePickerControl("mobile")}</div>
-            <div className="quran-toolbar-surah flex h-10 min-w-0 items-center rounded-lg border border-emerald-900/10 bg-emerald-900/[.025]">{mobileSurahSelect}</div>
-            <div className="quran-toolbar-back shrink-0 overflow-hidden">{exitEmbeddedButton || backButtonMobile}</div>
+          <div className="quran-reader-toolbar flex w-full items-center justify-between gap-2 px-1 py-1 lg:hidden">
+            <div className="quran-toolbar-navigation flex min-w-0 items-center gap-0.5">
+              {(exitEmbeddedButton || backButtonMobile) && (
+                <div className="quran-toolbar-back shrink-0 overflow-hidden">{exitEmbeddedButton || backButtonMobile}</div>
+              )}
+              <div className="quran-toolbar-surah flex h-10 min-w-0 items-center rounded-lg border border-emerald-900/10 bg-emerald-900/[.025]">{mobileSurahSelect}</div>
+              <div className="quran-toolbar-page flex h-10 shrink-0 items-center rounded-lg border border-emerald-900/10 bg-emerald-900/[.025]">{pagePickerControl("mobile")}</div>
+            </div>
+            <div className="quran-toolbar-actions flex shrink-0 items-center gap-0.5">
+              {searchDialogWrapped}
+              {audioButtonMobile}
+              <div className="quran-toolbar-memo shrink-0">{memoButtonMobile}</div>
+              {moreButton(true)}
+            </div>
           </div>
           {memoChoiceOpen && personalPlan.enabled && !guidedOpen && (
             <div data-reader-memo-choice role="group" aria-label={lang === "ar" ? "بدء حفظني" : "Start memorization"}

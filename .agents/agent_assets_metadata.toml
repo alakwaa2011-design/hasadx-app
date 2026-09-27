@@ -2231,3 +2231,31 @@ mtime_ms = 1790527282971
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/a21d21a3-e06f-42aa-8d50-b49fb0995136/b57a919e-6a56-4330-a04c-1f20177a6113"
 storage_version_token = "1790527469182912"
 content_type = "image/png"
+
+[[outputs]]
+id = "v1BOHapqEMK87nXpbi_9S"
+uri = "file://screenshots/quran-reader-ui/settings-balanced-390.png"
+type = "image"
+title = "إعدادات المصحف — هاتف 390px"
+description = "الأزرار موزعة على الطرفين، والقائمة في اليسار والبطاقة أصغر."
+logical_id = "7804863b-fd9b-4546-947b-28048d8a777d"
+content_hash = "sha256:62f53223cfc6c0928463e5cfb36a6f588075ada36dfa86cf567f5997dab05377"
+size = 35528
+mtime_ms = 1790531518561
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/7804863b-fd9b-4546-947b-28048d8a777d/ddc3647f-d17e-4231-86b0-247db62c5972"
+storage_version_token = "1790531537822716"
+content_type = "image/png"
+
+[[outputs]]
+id = "ozr8CNax4ygheOuTdfQcR"
+uri = "file://screenshots/quran-reader-ui/settings-balanced-710.png"
+type = "image"
+title = "إعدادات المصحف — عرض 710px"
+description = "معاينة البطاقة العائمة والشريط الموزع على شاشة أعرض."
+logical_id = "272bfd17-28de-4053-a91b-a862118f04d7"
+content_hash = "sha256:127acea66cda60490ac5f50a78bc1a2d031ac95747468069b2a64149aad8d50e"
+size = 63296
+mtime_ms = 1790531518568
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/272bfd17-28de-4053-a91b-a862118f04d7/dd886279-5440-4925-bb73-d6877bc85ffd"
+storage_version_token = "1790531539546044"
+content_type = "image/png"

@@ -881,6 +881,7 @@
     top: calc(var(--quran-safe-area-top, env(safe-area-inset-top, 0px)) + 0.35rem);
     right: 0.5rem;
     left: 0.5rem;
+    width: auto;
     z-index: 60;
     border: 1px solid rgb(11 75 53 / 10%);
     border-radius: 1rem;
