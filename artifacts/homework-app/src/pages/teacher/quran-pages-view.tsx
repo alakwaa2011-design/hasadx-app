@@ -1950,7 +1950,7 @@ export function QuranPagesView({
   ) : null;
 
   const surahSelect = (
-    <div className="relative flex h-full min-w-0 flex-1 items-center lg:flex-none">
+    <div className="relative flex h-full min-w-0 flex-1 items-center">
       <select
         value={selectedSurah}
         onChange={(event) => goToSurah(Number(event.target.value))}
@@ -2058,7 +2058,7 @@ export function QuranPagesView({
             data-testid={`page-picker-panel-${placement}`}
             role="dialog"
             aria-label={lang === "ar" ? "قائمة صفحات المصحف" : "Mushaf page list"}
-            className="absolute end-0 top-full z-[70] mt-1 w-[min(16rem,calc(100vw-1rem))] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-2 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
+            className="absolute start-0 top-full z-[70] mt-1 w-[min(13rem,calc(100vw-1rem))] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-2 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
           >
             <label htmlFor={`${pickerId}-search`} className="sr-only">
               {lang === "ar" ? "ابحث برقم الصفحة" : "Search by page number"}
@@ -2082,7 +2082,7 @@ export function QuranPagesView({
             <div
               role="list"
               aria-label={lang === "ar" ? "أرقام الصفحات" : "Page numbers"}
-              className="grid max-h-56 grid-cols-4 gap-1 overflow-y-auto overscroll-contain"
+              className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto overscroll-contain"
             >
               {pagePickerPageNumbers.length > 0 ? pagePickerPageNumbers.map((page) => {
                 const isCurrentPage = page === activePage;
@@ -2099,7 +2099,7 @@ export function QuranPagesView({
                         setPagePickerQuery("");
                       }}
                       className={cn(
-                        "h-8 w-full rounded-md text-sm font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
+                        "h-9 w-full rounded-md px-3 text-start text-sm font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
                         isCurrentPage
                           ? "bg-emerald-700 text-white dark:bg-emerald-600"
                           : "text-emerald-900 hover:bg-emerald-900/8 dark:text-emerald-100 dark:hover:bg-white/10",
@@ -2110,7 +2110,7 @@ export function QuranPagesView({
                   </div>
                 );
               }) : (
-                <p className="col-span-4 py-5 text-center text-xs font-medium text-emerald-900/55 dark:text-emerald-100/55">
+                <p className="py-5 text-center text-xs font-medium text-emerald-900/55 dark:text-emerald-100/55">
                   {lang === "ar" ? "لا توجد صفحات مطابقة" : "No matching pages"}
                 </p>
               )}
@@ -2223,7 +2223,7 @@ export function QuranPagesView({
   };
 
   const searchDialogWrapped = (
-    <div className="quran-toolbar-search flex shrink-0 items-center" onPointerDown={() => setMobileToolsOpen(false)}>
+    <div className="quran-toolbar-search flex shrink-0 items-center lg:min-w-0 lg:flex-1" onPointerDown={() => setMobileToolsOpen(false)}>
       <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
     </div>
   );
@@ -2271,7 +2271,7 @@ export function QuranPagesView({
         openAudioControls();
       }}
       data-testid="button-desktop-audio"
-      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+      className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:flex-1"
       aria-label={lang === "ar" ? "فتح مشغل التلاوة" : "Open recitation player"}
       aria-pressed={audioDockOpen}
     >
@@ -2312,7 +2312,7 @@ export function QuranPagesView({
       data-reader-memo-trigger
       data-testid="button-memo-session"
       className={cn(
-        "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-3 text-xs font-bold transition-colors lg:text-sm",
+        "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-3 text-xs font-bold transition-colors lg:flex-1 lg:text-sm",
         guidedOpen
           ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900/70"
           : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
@@ -2344,9 +2344,9 @@ export function QuranPagesView({
       onClick={() => { setMemoChoiceOpen(false); setMobileToolsOpen((open) => !open); }}
       aria-label={lang === "ar" ? "إعدادات المصحف" : "Mushaf settings"}
       aria-haspopup="dialog" aria-controls="quran-reader-more-panel" aria-expanded={mobileToolsOpen}
-      className={cn("quran-toolbar-action inline-flex h-10 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-emerald-900 transition-colors hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10", mobileToolsOpen && "bg-emerald-900/10 dark:bg-white/10")}>
+      className={cn("quran-toolbar-action inline-flex h-10 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-emerald-900 transition-colors hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10", !mobile && "lg:flex-1", mobileToolsOpen && "bg-emerald-900/10 dark:bg-white/10")}>
       <Menu className="h-[18px] w-[18px]" aria-hidden="true" />
-      <span className="hidden text-xs font-bold xl:inline">{lang === "ar" ? "الإعدادات" : "Settings"}</span>
+      <span className="hidden text-xs font-bold lg:inline">{lang === "ar" ? "الإعدادات" : "Settings"}</span>
     </button>
   );
 
@@ -2383,16 +2383,16 @@ export function QuranPagesView({
       {!quietMode && (
         <header ref={toolsHeaderRef} className="quran-reader-header relative z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fcfbf5]/95 shadow-[0_2px_10px_rgba(15,50,32,0.04)] backdrop-blur-md dark:border-white/10 dark:bg-[#15231a]/95">
           {/* Desktop Toolbar */}
-          <div className="quran-reader-toolbar mx-auto hidden w-fit max-w-[1100px] flex-row items-center justify-center gap-8 px-4 py-2 lg:flex">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="quran-reader-toolbar quran-reader-toolbar-desktop mx-auto hidden w-full max-w-[960px] flex-row items-center gap-3 px-4 py-2 lg:flex">
+            <div className="flex min-w-0 flex-[1.2] items-center gap-3">
               {backButtonDesktop}
-              <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
+              <div className="flex h-9 min-w-0 flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                 {surahSelect}
                 <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
                 {pagePickerControl("desktop")}
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-0 flex-[3] items-center gap-2">
               {recordPracticeButton}
               {liveRecitationButton}
               {searchDialogWrapped}

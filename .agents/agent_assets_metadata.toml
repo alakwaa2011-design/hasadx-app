@@ -2273,3 +2273,31 @@ mtime_ms = 1790532346180
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/177ff77f-3fc8-46cb-ac12-419a9f6c5fcd/f7401c22-cbe0-4dad-9a21-3cb720da3365"
 storage_version_token = "1790532360102467"
 content_type = "image/png"
+
+[[outputs]]
+id = "TqcADpd0wcTHnn3d5JsfD"
+uri = "file://screenshots/quran-reader-ui/desktop-toolbar-balanced-1440.png"
+type = "image"
+title = "الشريط العلوي — Desktop 1440px"
+description = "سطر واحد متوازن دون فراغ كبير بين التنقل والأدوات."
+logical_id = "643b25fd-e68a-4df1-83cc-23dde72ac6a0"
+content_hash = "sha256:2433d33560d4aabfc630820aead1b1fcb5337d51791d7ececa6f255ab71db6de"
+size = 149809
+mtime_ms = 1790533041284
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/643b25fd-e68a-4df1-83cc-23dde72ac6a0/0b4e5cb4-d5b0-4c81-bf90-67571d571cb3"
+storage_version_token = "1790533101218027"
+content_type = "image/png"
+
+[[outputs]]
+id = "Fa_sL8YmptVuxWep3HzkA"
+uri = "file://screenshots/quran-reader-ui/mobile-page-list-320.png"
+type = "image"
+title = "قائمة الصفحات العمودية — هاتف 320px"
+description = "قائمة بعمود واحد داخل الشاشة مع بقاء إدخال رقم الصفحة والبحث متاحين."
+logical_id = "8743a463-672a-477e-ae5a-6f0bdfc0cba1"
+content_hash = "sha256:6ceae0accfa07f72369e9a71e14baf0b1cb7bf56277fe8dd15b56565371195b0"
+size = 37953
+mtime_ms = 1790533048340
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/8743a463-672a-477e-ae5a-6f0bdfc0cba1/5ca247bf-a5a1-4cee-862e-c954be4de9d6"
+storage_version_token = "1790533102695735"
+content_type = "image/png"

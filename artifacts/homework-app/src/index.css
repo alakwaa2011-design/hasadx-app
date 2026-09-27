@@ -986,6 +986,11 @@
   min-width: 0;
   white-space: nowrap;
 }
+@media (min-width: 1024px) {
+  .quran-reader-toolbar-desktop .quran-toolbar-search button {
+    width: 100%;
+  }
+}
 .quran-reader-toolbar button,
 .quran-reader-toolbar select,
 .quran-reader-toolbar input {

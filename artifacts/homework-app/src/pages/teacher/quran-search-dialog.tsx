@@ -156,7 +156,7 @@ export function QuranSearchDialog({
         aria-label={lang === "ar" ? "البحث في القرآن" : "Search the Quran"}
       >
         <Search className="h-4.5 w-4.5 md:h-5 md:w-5" />
-        <span className="hidden text-sm font-bold xl:inline">
+        <span className="hidden text-sm font-bold lg:inline">
           {lang === "ar" ? "بحث" : "Search"}
         </span>
       </button>
