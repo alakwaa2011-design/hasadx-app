@@ -2383,7 +2383,7 @@ export function QuranPagesView({
       {!quietMode && (
         <header ref={toolsHeaderRef} className="quran-reader-header relative z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fcfbf5]/95 shadow-[0_2px_10px_rgba(15,50,32,0.04)] backdrop-blur-md dark:border-white/10 dark:bg-[#15231a]/95">
           {/* Desktop Toolbar */}
-          <div className="quran-reader-toolbar mx-auto hidden w-full max-w-[1400px] flex-row items-center justify-between gap-4 px-4 py-2 lg:flex">
+          <div className="quran-reader-toolbar mx-auto hidden w-fit max-w-[1100px] flex-row items-center justify-center gap-8 px-4 py-2 lg:flex">
             <div className="flex min-w-0 items-center gap-3">
               {backButtonDesktop}
               <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">

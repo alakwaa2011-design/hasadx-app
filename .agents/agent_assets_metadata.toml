@@ -2259,3 +2259,17 @@ mtime_ms = 1790531518568
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/272bfd17-28de-4053-a91b-a862118f04d7/dd886279-5440-4925-bb73-d6877bc85ffd"
 storage_version_token = "1790531539546044"
 content_type = "image/png"
+
+[[outputs]]
+id = "HQprDJ4-dW0dBiMfYzw2x"
+uri = "file://screenshots/quran-reader-ui/desktop-toolbar-1440.png"
+type = "image"
+title = "شريط المصحف على Desktop — 1440px"
+description = "لقطة بعد إغلاق الإرشاد الأولي؛ مجموعتا التنقل والأدوات متمركزتان بفاصل معتدل."
+logical_id = "177ff77f-3fc8-46cb-ac12-419a9f6c5fcd"
+content_hash = "sha256:c22ec2e97b7c0000ac449e29fae509779c522e90a884fb0e89ff529b1581e5fb"
+size = 149834
+mtime_ms = 1790532346180
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/177ff77f-3fc8-46cb-ac12-419a9f6c5fcd/f7401c22-cbe0-4dad-9a21-3cb720da3365"
+storage_version_token = "1790532360102467"
+content_type = "image/png"
