@@ -2301,3 +2301,31 @@ mtime_ms = 1790533048340
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/8743a463-672a-477e-ae5a-6f0bdfc0cba1/5ca247bf-a5a1-4cee-862e-c954be4de9d6"
 storage_version_token = "1790533102695735"
 content_type = "image/png"
+
+[[outputs]]
+id = "LbrnrcCZQWRbu2GyEBQLw"
+uri = "file://screenshots/quran-reader-ui/mobile-page-list-narrow-320.png"
+type = "image"
+title = "قائمة الصفحات الضيقة — هاتف"
+description = "عمود أرقام فقط بعرض 88px؛ الكتابة المباشرة لرقم الصفحة ما زالت متاحة في الشريط."
+logical_id = "8fe7ea61-94ee-44e3-b4e2-e598a925908e"
+content_hash = "sha256:4469956012c41b88ca8a9dd22408bb7bec3a0979133287e61ca5cd9d61117f45"
+size = 41054
+mtime_ms = 1790533332412
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/8fe7ea61-94ee-44e3-b4e2-e598a925908e/e3fe8d32-c083-4e43-b3c9-09690bfdf923"
+storage_version_token = "1790533370737708"
+content_type = "image/png"
+
+[[outputs]]
+id = "hGe9g3GJnIi8o2KpGktHR"
+uri = "file://screenshots/quran-reader-ui/desktop-page-list-narrow-1440.png"
+type = "image"
+title = "قائمة الصفحات الضيقة — Desktop"
+description = "العرض نفسه لقائمة الصفحات دون تمدد."
+logical_id = "813b5247-edcb-45c6-82ea-82a7f804f828"
+content_hash = "sha256:bab5e446f99b1b0fbd7b8140e03f4abf5e178202b06abd5217b7f55d4c5fa1b1"
+size = 156090
+mtime_ms = 1790533335760
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/813b5247-edcb-45c6-82ea-82a7f804f828/498b7377-571d-46d4-8656-f003509ee562"
+storage_version_token = "1790533372932323"
+content_type = "image/png"

@@ -2058,13 +2058,12 @@ export function QuranPagesView({
             data-testid={`page-picker-panel-${placement}`}
             role="dialog"
             aria-label={lang === "ar" ? "قائمة صفحات المصحف" : "Mushaf page list"}
-            className="absolute start-0 top-full z-[70] mt-1 w-[min(13rem,calc(100vw-1rem))] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-2 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
+            className="absolute start-0 top-full z-[70] mt-1 w-[5.5rem] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-1.5 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
           >
             <label htmlFor={`${pickerId}-search`} className="sr-only">
               {lang === "ar" ? "ابحث برقم الصفحة" : "Search by page number"}
             </label>
             <div className="relative mb-2">
-              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-900/40 dark:text-emerald-100/40" aria-hidden="true" />
               <input
                 id={`${pickerId}-search`}
                 type="text"
@@ -2073,10 +2072,10 @@ export function QuranPagesView({
                 autoFocus
                 value={pagePickerQuery}
                 onChange={(event) => setPagePickerQuery(normalizePageNumberDraft(event.target.value))}
-                placeholder={lang === "ar" ? "اكتب رقم الصفحة..." : "Type a page number..."}
+                placeholder={lang === "ar" ? "رقم" : "Page"}
                 dir="ltr"
                 data-testid={`input-page-picker-search-${placement}`}
-                className="h-9 w-full rounded-lg border border-emerald-900/10 bg-white/70 ps-8 pe-3 text-sm font-semibold tabular-nums text-emerald-950 outline-none placeholder:text-emerald-900/35 focus:border-emerald-700/40 focus:ring-2 focus:ring-emerald-600/15 dark:border-white/10 dark:bg-white/5 dark:text-emerald-100 dark:placeholder:text-emerald-100/35"
+                className="h-8 w-full rounded-md border border-emerald-900/10 bg-white/70 px-1 text-center text-xs font-semibold tabular-nums text-emerald-950 outline-none placeholder:text-emerald-900/35 focus:border-emerald-700/40 focus:ring-2 focus:ring-emerald-600/15 dark:border-white/10 dark:bg-white/5 dark:text-emerald-100 dark:placeholder:text-emerald-100/35"
               />
             </div>
             <div
@@ -2099,7 +2098,7 @@ export function QuranPagesView({
                         setPagePickerQuery("");
                       }}
                       className={cn(
-                        "h-9 w-full rounded-md px-3 text-start text-sm font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
+                        "h-9 w-full rounded-md px-1 text-center text-sm font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
                         isCurrentPage
                           ? "bg-emerald-700 text-white dark:bg-emerald-600"
                           : "text-emerald-900 hover:bg-emerald-900/8 dark:text-emerald-100 dark:hover:bg-white/10",
