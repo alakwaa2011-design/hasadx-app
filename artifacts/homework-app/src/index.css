@@ -1102,6 +1102,17 @@
   }
   .quran-settings-backdrop { background: transparent; }
 }
+@media (max-width: 767px) {
+  .quran-settings-sheet {
+    inset-inline: 0;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    width: min(520px, calc(100vw - 1.5rem));
+    max-height: min(72dvh, 600px);
+    margin-inline: auto;
+    border-radius: 18px;
+    box-shadow: 0 14px 38px rgba(22, 42, 29, .16);
+  }
+}
 .dark .quran-settings-sheet {
   background: #19251e;
   color: #e4eee7;
