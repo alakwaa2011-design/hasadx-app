@@ -15,6 +15,7 @@ import {
   Volume2,
   Loader2,
   Menu,
+  Search,
   Mic2,
   Cloud,
   CloudOff,
@@ -268,6 +269,8 @@ export function QuranPagesView({
   const [activePage, setActivePage] = useState(FIRST_PAGE);
   const [pageNumberDraft, setPageNumberDraft] = useState(String(FIRST_PAGE));
   const pageNumberInputFocusedRef = useRef(false);
+  const [pagePickerPlacement, setPagePickerPlacement] = useState<"desktop" | "mobile" | null>(null);
+  const [pagePickerQuery, setPagePickerQuery] = useState("");
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [pageLayoutMenuPlacement, setPageLayoutMenuPlacement] = useState<"desktop" | "mobile" | null>(null);
@@ -576,6 +579,28 @@ export function QuranPagesView({
     };
   }, [pageLayoutMenuPlacement]);
   useEffect(() => {
+    if (pagePickerPlacement === null) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target as Node;
+      const element = target instanceof Element ? target : target.parentElement;
+      if (!element?.closest("[data-page-picker-panel], [data-page-picker-trigger]")) {
+        setPagePickerPlacement(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPagePickerPlacement(null);
+        setPagePickerQuery("");
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [pagePickerPlacement]);
+  useEffect(() => {
     if (mobileToolsOpen) return;
     setCopyActionsOpen(false);
     setBookmarkActionsOpen(false);
@@ -793,6 +818,11 @@ export function QuranPagesView({
   };
 
   const activePageMeta = pages.find((page) => page.id === activePage);
+  const pagePickerPageNumbers = useMemo(() => {
+    const query = normalizePageNumberDraft(pagePickerQuery);
+    return Array.from({ length: LAST_PAGE }, (_, index) => index + FIRST_PAGE)
+      .filter((page) => String(page).includes(query));
+  }, [pagePickerQuery]);
   const activeChapterId = activePageMeta?.chapter_id ?? FIRST_PAGE;
 
   const audioSurahs = useMemo<QuranSurahParsed[]>(() => {
@@ -1951,41 +1981,139 @@ export function QuranPagesView({
     </div>
   );
 
-  const pageSelect = (
-    <div className="flex h-full shrink-0 items-center gap-1 px-1">
-      <span aria-hidden="true" className="text-[10px] font-bold text-emerald-900/50 dark:text-emerald-100/50">
-        {lang === "ar" ? "ص" : "p."}
-      </span>
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={3}
-        value={pageNumberDraft}
-        onChange={(event) => setPageNumberDraft(normalizePageNumberDraft(event.target.value))}
-        onFocus={() => { pageNumberInputFocusedRef.current = true; }}
-        onBlur={(event) => {
-          pageNumberInputFocusedRef.current = false;
-          commitPageNumberDraft(event.currentTarget.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            event.currentTarget.blur();
-          } else if (event.key === "Escape") {
-            event.currentTarget.value = String(activePage);
-            setPageNumberDraft(String(activePage));
-            event.currentTarget.blur();
-          }
-        }}
-        dir="ltr"
-        title={lang === "ar" ? `أدخل رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Enter a page from ${FIRST_PAGE} to ${LAST_PAGE}`}
-        className="h-7 w-10 rounded-md border border-transparent bg-transparent px-0.5 text-center text-xs font-extrabold tabular-nums text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:border-emerald-700/30 focus:bg-white/70 focus:ring-2 focus:ring-emerald-600/20 dark:text-emerald-100 dark:focus:bg-white/10"
-        aria-label={lang === "ar" ? `رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Page number from ${FIRST_PAGE} to ${LAST_PAGE}`}
-        data-testid="select-page"
-      />
-    </div>
-  );
+  const pagePickerControl = (placement: "desktop" | "mobile") => {
+    const isMobile = placement === "mobile";
+    const pickerOpen = pagePickerPlacement === placement;
+    const pickerId = `quran-page-picker-${placement}`;
+
+    return (
+      <div className="relative flex h-full shrink-0 items-center gap-0.5 px-1">
+        <span aria-hidden="true" className={cn(
+          "font-bold text-emerald-900/50 dark:text-emerald-100/50",
+          isMobile ? "text-[9px]" : "text-[10px]",
+        )}>
+          {lang === "ar" ? "ص" : "p."}
+        </span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={3}
+          value={pageNumberDraft}
+          onChange={(event) => setPageNumberDraft(normalizePageNumberDraft(event.target.value))}
+          onFocus={() => { pageNumberInputFocusedRef.current = true; }}
+          onBlur={(event) => {
+            pageNumberInputFocusedRef.current = false;
+            commitPageNumberDraft(event.currentTarget.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              event.currentTarget.blur();
+            } else if (event.key === "Escape") {
+              event.currentTarget.value = String(activePage);
+              setPageNumberDraft(String(activePage));
+              event.currentTarget.blur();
+            }
+          }}
+          dir="ltr"
+          title={lang === "ar" ? `أدخل رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Enter a page from ${FIRST_PAGE} to ${LAST_PAGE}`}
+          className={cn(
+            "rounded-md border border-transparent bg-transparent px-0.5 text-center font-extrabold tabular-nums text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:border-emerald-700/30 focus:bg-white/70 focus:ring-2 focus:ring-emerald-600/20 dark:text-emerald-100 dark:focus:bg-white/10",
+            isMobile ? "h-7 w-9 text-[11px]" : "h-7 w-10 text-xs",
+          )}
+          aria-label={lang === "ar" ? `رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Page number from ${FIRST_PAGE} to ${LAST_PAGE}`}
+          data-testid={isMobile ? "select-mobile-page" : "select-page"}
+        />
+        <button
+          type="button"
+          data-page-picker-trigger
+          data-testid={`button-page-picker-trigger-${placement}`}
+          aria-label={lang === "ar" ? "اختيار صفحة من القائمة" : "Choose a page from the list"}
+          aria-haspopup="dialog"
+          aria-expanded={pickerOpen}
+          aria-controls={pickerId}
+          onClick={() => {
+            setPagePickerQuery("");
+            setPagePickerPlacement((current) => current === placement ? null : placement);
+          }}
+          className={cn(
+            "inline-flex shrink-0 items-center justify-center rounded-md text-emerald-900/55 transition-colors hover:bg-emerald-900/10 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-100/60 dark:hover:bg-white/10 dark:hover:text-emerald-100",
+            isMobile ? "h-7 w-6" : "h-7 w-7",
+            pickerOpen && "bg-emerald-900/10 dark:bg-white/10",
+          )}
+        >
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", pickerOpen && "rotate-180")} aria-hidden="true" />
+        </button>
+        {pickerOpen && (
+          <div
+            id={pickerId}
+            data-page-picker-panel
+            data-testid={`page-picker-panel-${placement}`}
+            role="dialog"
+            aria-label={lang === "ar" ? "قائمة صفحات المصحف" : "Mushaf page list"}
+            className="absolute end-0 top-full z-[70] mt-1 w-[min(16rem,calc(100vw-1rem))] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-2 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
+          >
+            <label htmlFor={`${pickerId}-search`} className="sr-only">
+              {lang === "ar" ? "ابحث برقم الصفحة" : "Search by page number"}
+            </label>
+            <div className="relative mb-2">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-900/40 dark:text-emerald-100/40" aria-hidden="true" />
+              <input
+                id={`${pickerId}-search`}
+                type="text"
+                inputMode="numeric"
+                maxLength={3}
+                autoFocus
+                value={pagePickerQuery}
+                onChange={(event) => setPagePickerQuery(normalizePageNumberDraft(event.target.value))}
+                placeholder={lang === "ar" ? "اكتب رقم الصفحة..." : "Type a page number..."}
+                dir="ltr"
+                data-testid={`input-page-picker-search-${placement}`}
+                className="h-9 w-full rounded-lg border border-emerald-900/10 bg-white/70 ps-8 pe-3 text-sm font-semibold tabular-nums text-emerald-950 outline-none placeholder:text-emerald-900/35 focus:border-emerald-700/40 focus:ring-2 focus:ring-emerald-600/15 dark:border-white/10 dark:bg-white/5 dark:text-emerald-100 dark:placeholder:text-emerald-100/35"
+              />
+            </div>
+            <div
+              role="list"
+              aria-label={lang === "ar" ? "أرقام الصفحات" : "Page numbers"}
+              className="grid max-h-56 grid-cols-4 gap-1 overflow-y-auto overscroll-contain"
+            >
+              {pagePickerPageNumbers.length > 0 ? pagePickerPageNumbers.map((page) => {
+                const isCurrentPage = page === activePage;
+                return (
+                  <div key={page} role="listitem">
+                    <button
+                      type="button"
+                      aria-current={isCurrentPage ? "page" : undefined}
+                      data-testid={`button-page-picker-page-${page}-${placement}`}
+                      onClick={() => {
+                        setPageNumberDraft(String(page));
+                        goToPage(page);
+                        setPagePickerPlacement(null);
+                        setPagePickerQuery("");
+                      }}
+                      className={cn(
+                        "h-8 w-full rounded-md text-sm font-bold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
+                        isCurrentPage
+                          ? "bg-emerald-700 text-white dark:bg-emerald-600"
+                          : "text-emerald-900 hover:bg-emerald-900/8 dark:text-emerald-100 dark:hover:bg-white/10",
+                      )}
+                    >
+                      {page}
+                    </button>
+                  </div>
+                );
+              }) : (
+                <p className="col-span-4 py-5 text-center text-xs font-medium text-emerald-900/55 dark:text-emerald-100/55">
+                  {lang === "ar" ? "لا توجد صفحات مطابقة" : "No matching pages"}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const mobileSurahSelect = (
     <div className="relative flex h-full min-w-0 flex-1 items-center">
@@ -2003,42 +2131,6 @@ export function QuranPagesView({
         ))}
       </select>
       <ChevronDown className="pointer-events-none absolute end-1 h-3 w-3 text-emerald-900/40 dark:text-emerald-100/40" />
-    </div>
-  );
-
-  const mobilePageSelect = (
-    <div className="flex h-full shrink-0 items-center gap-0.5 px-0.5">
-      <span aria-hidden="true" className="text-[9px] font-bold text-emerald-900/50 dark:text-emerald-100/50">
-        {lang === "ar" ? "ص" : "p."}
-      </span>
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={3}
-        value={pageNumberDraft}
-        onChange={(event) => setPageNumberDraft(normalizePageNumberDraft(event.target.value))}
-        onFocus={() => { pageNumberInputFocusedRef.current = true; }}
-        onBlur={(event) => {
-          pageNumberInputFocusedRef.current = false;
-          commitPageNumberDraft(event.currentTarget.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            event.currentTarget.blur();
-          } else if (event.key === "Escape") {
-            event.currentTarget.value = String(activePage);
-            setPageNumberDraft(String(activePage));
-            event.currentTarget.blur();
-          }
-        }}
-        dir="ltr"
-        title={lang === "ar" ? `أدخل رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Enter a page from ${FIRST_PAGE} to ${LAST_PAGE}`}
-        className="h-7 w-9 rounded-md border border-transparent bg-transparent px-0.5 text-center text-[11px] font-extrabold tabular-nums text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:border-emerald-700/30 focus:bg-white/70 focus:ring-2 focus:ring-emerald-600/20 dark:text-emerald-100 dark:focus:bg-white/10"
-        aria-label={lang === "ar" ? `رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Page number from ${FIRST_PAGE} to ${LAST_PAGE}`}
-        data-testid="select-mobile-page"
-      />
     </div>
   );
 
@@ -2496,7 +2588,7 @@ export function QuranPagesView({
               <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                 {surahSelect}
                 <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-                {pageSelect}
+                {pagePickerControl("desktop")}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -2516,7 +2608,7 @@ export function QuranPagesView({
                 <div className="flex h-9 min-w-0 flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
                   {mobileSurahSelect}
                   <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-                  {mobilePageSelect}
+                  {pagePickerControl("mobile")}
                 </div>
               </div>
 
@@ -2828,6 +2920,8 @@ export function QuranPagesView({
                 onPlayingAyahChange={handlePlayingAyahChange}
                 isPlaying={isPlaying}
                 onIsPlayingChange={setIsPlaying}
+                showTafsirRestore={educationHidden && !guidedOpen}
+                onShowTafsir={showEducation}
                 memoSession={memoSession}
                 guidedLinkRunId={guidedLinkRunId}
                 onMemoSessionChange={setMemoSession}

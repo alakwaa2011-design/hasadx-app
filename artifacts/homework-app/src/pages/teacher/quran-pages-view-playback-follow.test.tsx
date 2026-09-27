@@ -327,6 +327,49 @@ it("jumps to a typed page on Enter, accepts Arabic digits, and rejects pages out
   });
 });
 
+it("searches the page dropdown with Arabic digits and jumps to the selected page on desktop and mobile", async () => {
+  render(
+    <QuranPagesView
+      initialSurah={2}
+      initialAyah={5}
+      initialPage={2}
+      onNavigate={vi.fn()}
+      isTaskAyah={() => false}
+      startAyah={null}
+      endAyah={null}
+      mode={null}
+      liveRecitationAvailable={false}
+    />,
+  );
+
+  fireEvent.click(await screen.findByTestId("button-page-picker-trigger-mobile"));
+  const mobileSearch = await screen.findByTestId("input-page-picker-search-mobile");
+  fireEvent.change(mobileSearch, { target: { value: "٦٠٤" } });
+
+  const mobilePage604 = await screen.findByTestId("button-page-picker-page-604-mobile");
+  expect(screen.queryByTestId("button-page-picker-page-60-mobile")).toBeNull();
+  fireEvent.click(mobilePage604);
+
+  await waitFor(() => {
+    expect((screen.getByTestId("select-page") as HTMLInputElement).value).toBe("604");
+    expect((screen.getByTestId("select-mobile-page") as HTMLInputElement).value).toBe("604");
+    expect(screen.getByTestId("mushaf-page-604")).toBeTruthy();
+    expect(screen.queryByTestId("page-picker-panel-mobile")).toBeNull();
+  });
+
+  fireEvent.click(screen.getByTestId("button-page-picker-trigger-desktop"));
+  const desktopSearch = await screen.findByTestId("input-page-picker-search-desktop");
+  fireEvent.change(desktopSearch, { target: { value: "49" } });
+  expect(await screen.findByTestId("button-page-picker-page-49-desktop")).toBeTruthy();
+  expect(screen.queryByTestId("button-page-picker-page-604-desktop")).toBeNull();
+
+  fireEvent.keyDown(desktopSearch, { key: "Escape", code: "Escape" });
+  await waitFor(() => {
+    expect(screen.queryByTestId("page-picker-panel-desktop")).toBeNull();
+    expect(screen.getByTestId("button-page-picker-trigger-desktop").getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
 describe.each([
   ["عرض الصفحة الواحدة", "single"],
   ["العرض المتصل", "continuous"],

@@ -29,6 +29,8 @@ export interface QuranAudioPlayerProps {
   isPlaying: boolean;
   onIsPlayingChange: (playing: boolean) => void;
   onClose?: () => void;
+  showTafsirRestore?: boolean;
+  onShowTafsir?: () => void;
   onSurahEnd?: () => void;
   onPlaybackLocationChange?: (surahNumber: number, ayahNumber: number) => void;
   memoSession?: MemoSessionState;
@@ -69,6 +71,8 @@ export function QuranAudioPlayer({
   isPlaying,
   onIsPlayingChange,
   onClose,
+  showTafsirRestore,
+  onShowTafsir,
   onSurahEnd,
   onPlaybackLocationChange,
   memoSession,
@@ -1506,6 +1510,18 @@ export function QuranAudioPlayer({
                </button>
             )}
           </div>
+          {showTafsirRestore && onShowTafsir && (
+            <button
+              type="button"
+              data-testid="button-show-tafsir"
+              onClick={onShowTafsir}
+              aria-label={isArabic ? 'إظهار التفسير' : 'Show tafsir'}
+              title={isArabic ? 'إظهار التفسير' : 'Show tafsir'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-emerald-700 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+            >
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         {/* Playback and option controls share one compact row on phones. */}
