@@ -162,6 +162,16 @@ function pageImageUrl(page: number) {
   return `${import.meta.env.BASE_URL}quran/mushaf-hafs-1441/${String(page).padStart(3, "0")}.webp`;
 }
 
+function normalizePageNumberDraft(value: string) {
+  return value
+    .replace(/[٠-٩۰-۹]/g, (digit) => {
+      const code = digit.charCodeAt(0);
+      return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+    })
+    .replace(/\D/g, "")
+    .slice(0, 3);
+}
+
 const CANONICAL_SURAH_NAME_OVERRIDES: Readonly<Record<number, string>> = {
   3: "آل عمران",
   42: "الشورى",
@@ -256,6 +266,8 @@ export function QuranPagesView({
   const [parts, setParts] = useState<QComplexPart[]>([]);
   const [loading, setLoading] = useState(true);
   const [activePage, setActivePage] = useState(FIRST_PAGE);
+  const [pageNumberDraft, setPageNumberDraft] = useState(String(FIRST_PAGE));
+  const pageNumberInputFocusedRef = useRef(false);
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [pageLayoutMenuPlacement, setPageLayoutMenuPlacement] = useState<"desktop" | "mobile" | null>(null);
@@ -728,6 +740,12 @@ export function QuranPagesView({
       image.src = pageImageUrl(page);
     }
   }, [activePage, loading]);
+
+  useEffect(() => {
+    if (!pageNumberInputFocusedRef.current) {
+      setPageNumberDraft(String(activePage));
+    }
+  }, [activePage]);
 
   useEffect(() => {
     if (loading || pageLayout !== "continuous" || continuousInitializedRef.current) return;
@@ -1348,6 +1366,17 @@ export function QuranPagesView({
     }
   };
 
+  const commitPageNumberDraft = (rawDraft: string) => {
+    const normalized = normalizePageNumberDraft(rawDraft);
+    const page = Number(normalized);
+    if (normalized && Number.isInteger(page) && page >= FIRST_PAGE && page <= LAST_PAGE) {
+      setPageNumberDraft(String(page));
+      if (page !== activePage) goToPage(page);
+      return;
+    }
+    setPageNumberDraft(String(activePage));
+  };
+
   const changePageLayout = (nextLayout: "spread" | "single" | "continuous") => {
     setPageLayout(nextLayout);
     setPageLayoutMenuPlacement(null);
@@ -1923,21 +1952,38 @@ export function QuranPagesView({
   );
 
   const pageSelect = (
-    <div className="relative flex h-full min-w-0 flex-1 items-center lg:flex-none">
-      <select
-        value={activePage}
-        onChange={(event) => goToPage(Number(event.target.value))}
-        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-7 ps-3 text-xs font-bold text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:bg-emerald-900/5 cursor-pointer dark:text-emerald-100 dark:hover:bg-white/10 dark:focus:bg-white/10 lg:text-sm"
-        aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
+    <div className="flex h-full shrink-0 items-center gap-1 px-1">
+      <span aria-hidden="true" className="text-[10px] font-bold text-emerald-900/50 dark:text-emerald-100/50">
+        {lang === "ar" ? "ص" : "p."}
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={3}
+        value={pageNumberDraft}
+        onChange={(event) => setPageNumberDraft(normalizePageNumberDraft(event.target.value))}
+        onFocus={() => { pageNumberInputFocusedRef.current = true; }}
+        onBlur={(event) => {
+          pageNumberInputFocusedRef.current = false;
+          commitPageNumberDraft(event.currentTarget.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          } else if (event.key === "Escape") {
+            event.currentTarget.value = String(activePage);
+            setPageNumberDraft(String(activePage));
+            event.currentTarget.blur();
+          }
+        }}
+        dir="ltr"
+        title={lang === "ar" ? `أدخل رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Enter a page from ${FIRST_PAGE} to ${LAST_PAGE}`}
+        className="h-7 w-10 rounded-md border border-transparent bg-transparent px-0.5 text-center text-xs font-extrabold tabular-nums text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:border-emerald-700/30 focus:bg-white/70 focus:ring-2 focus:ring-emerald-600/20 dark:text-emerald-100 dark:focus:bg-white/10"
+        aria-label={lang === "ar" ? `رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Page number from ${FIRST_PAGE} to ${LAST_PAGE}`}
         data-testid="select-page"
-      >
-        {pages.map((page) => (
-          <option key={page.id} value={page.id} className="bg-background text-foreground">
-            {lang === "ar" ? `صفحة ${page.id}` : `Page ${page.id}`}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute end-2 h-3.5 w-3.5 text-emerald-900/40 dark:text-emerald-100/40" />
+      />
     </div>
   );
 
@@ -1961,21 +2007,38 @@ export function QuranPagesView({
   );
 
   const mobilePageSelect = (
-    <div className="relative flex h-full min-w-0 shrink-0 items-center">
-      <select
-        value={activePage}
-        onChange={(event) => goToPage(Number(event.target.value))}
-        className="h-full w-full appearance-none truncate rounded-md bg-transparent pe-5 ps-2 text-[11px] font-bold text-emerald-950 outline-none cursor-pointer dark:text-emerald-100"
-        aria-label={lang === "ar" ? "اختيار الصفحة" : "Choose page"}
+    <div className="flex h-full shrink-0 items-center gap-0.5 px-0.5">
+      <span aria-hidden="true" className="text-[9px] font-bold text-emerald-900/50 dark:text-emerald-100/50">
+        {lang === "ar" ? "ص" : "p."}
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={3}
+        value={pageNumberDraft}
+        onChange={(event) => setPageNumberDraft(normalizePageNumberDraft(event.target.value))}
+        onFocus={() => { pageNumberInputFocusedRef.current = true; }}
+        onBlur={(event) => {
+          pageNumberInputFocusedRef.current = false;
+          commitPageNumberDraft(event.currentTarget.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          } else if (event.key === "Escape") {
+            event.currentTarget.value = String(activePage);
+            setPageNumberDraft(String(activePage));
+            event.currentTarget.blur();
+          }
+        }}
+        dir="ltr"
+        title={lang === "ar" ? `أدخل رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Enter a page from ${FIRST_PAGE} to ${LAST_PAGE}`}
+        className="h-7 w-9 rounded-md border border-transparent bg-transparent px-0.5 text-center text-[11px] font-extrabold tabular-nums text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:border-emerald-700/30 focus:bg-white/70 focus:ring-2 focus:ring-emerald-600/20 dark:text-emerald-100 dark:focus:bg-white/10"
+        aria-label={lang === "ar" ? `رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Page number from ${FIRST_PAGE} to ${LAST_PAGE}`}
         data-testid="select-mobile-page"
-      >
-        {pages.map((page) => (
-          <option key={page.id} value={page.id}>
-            {lang === "ar" ? `ص ${page.id}` : `p. ${page.id}`}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute end-1 h-3 w-3 text-emerald-900/40 dark:text-emerald-100/40" />
+      />
     </div>
   );
 

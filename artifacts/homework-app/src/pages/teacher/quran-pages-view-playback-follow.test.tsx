@@ -291,6 +291,42 @@ it("shows one page-layout dropdown in both shared reader headers", async () => {
   }
 });
 
+it("jumps to a typed page on Enter, accepts Arabic digits, and rejects pages outside the Mushaf", async () => {
+  render(
+    <QuranPagesView
+      initialSurah={2}
+      initialAyah={5}
+      initialPage={2}
+      onNavigate={vi.fn()}
+      isTaskAyah={() => false}
+      startAyah={null}
+      endAyah={null}
+      mode={null}
+      liveRecitationAvailable={false}
+    />,
+  );
+
+  const pageInput = await screen.findByTestId("select-page") as HTMLInputElement;
+  pageInput.focus();
+  fireEvent.change(pageInput, { target: { value: "٦٠٤" } });
+  fireEvent.keyDown(pageInput, { key: "Enter", code: "Enter" });
+
+  await waitFor(() => {
+    expect(pageInput.value).toBe("604");
+    expect((screen.getByTestId("select-mobile-page") as HTMLInputElement).value).toBe("604");
+    expect(screen.getByTestId("mushaf-page-604")).toBeTruthy();
+  });
+
+  pageInput.focus();
+  fireEvent.change(pageInput, { target: { value: "605" } });
+  fireEvent.blur(pageInput);
+
+  await waitFor(() => {
+    expect(pageInput.value).toBe("604");
+    expect((screen.getByTestId("select-mobile-page") as HTMLInputElement).value).toBe("604");
+  });
+});
+
 describe.each([
   ["عرض الصفحة الواحدة", "single"],
   ["العرض المتصل", "continuous"],

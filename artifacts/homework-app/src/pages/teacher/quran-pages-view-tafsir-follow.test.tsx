@@ -283,7 +283,10 @@ describe("QuranPagesView tafsir playback following", () => {
     fireEvent.click(screen.getByRole("button", { name: "فاصل بين الآيات" }));
     expect(screen.getByTestId("mushaf-page").getAttribute("data-playing-verse")).toBe("1:1");
 
-    fireEvent.change(screen.getByTestId("select-mobile-page"), { target: { value: "10" } });
+    const pageNumberInput = screen.getByTestId("select-mobile-page") as HTMLInputElement;
+    pageNumberInput.focus();
+    fireEvent.change(pageNumberInput, { target: { value: "10" } });
+    fireEvent.keyDown(pageNumberInput, { key: "Enter", code: "Enter" });
     await waitFor(() => {
       expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("10");
     });
@@ -291,7 +294,8 @@ describe("QuranPagesView tafsir playback following", () => {
     fireEvent.click(screen.getByRole("button", { name: "بدأ صوت آية في صفحة أخرى" }));
     expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("10");
 
-    fireEvent.change(screen.getByTestId("select-mobile-page"), { target: { value: "22" } });
+    fireEvent.change(pageNumberInput, { target: { value: "22" } });
+    fireEvent.blur(pageNumberInput);
     await waitFor(() => {
       expect(screen.getByTestId("quran-mushaf-page").getAttribute("data-page-number")).toBe("22");
       expect(screen.getByTestId("mushaf-page").getAttribute("data-playing-verse")).toBe("2:142");
