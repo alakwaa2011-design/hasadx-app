@@ -508,6 +508,7 @@ function LogsSection() {
   const [purchases, setPurchases] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retryingId, setRetryingId] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -521,6 +522,31 @@ function LogsSection() {
       .catch(() => toast.error(c.logLoadFailed))
       .finally(() => setLoading(false));
   }, [view]);
+
+  const retryInvoice = async (id: number) => {
+    if (!window.confirm(lang === "ar"
+      ? "إعادة التحقق من الفاتورة المدفوعة ومعالجة رصيد الاشتراك؟"
+      : "Verify the paid invoice again and process its subscription credits?")) return;
+    setRetryingId(id);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/credits/webhook-events/${id}/retry`, {
+        method: "POST", credentials: "include",
+      });
+      if (!response.ok) throw new Error("retry failed");
+      toast.success(lang === "ar" ? "تمت معالجة الفاتورة بنجاح" : "Invoice processed successfully");
+      const refreshed = await fetch(`${API_BASE}/api/admin/credits/webhook-events?pageSize=50`, {
+        credentials: "include",
+      });
+      if (!refreshed.ok) throw new Error("refresh failed");
+      setEvents(await refreshed.json());
+    } catch {
+      toast.error(lang === "ar"
+        ? "لم تكتمل المعالجة. راجع حالة الحدث ورسالة الخطأ قبل إعادة المحاولة."
+        : "Processing did not complete. Check the event status and error before retrying.");
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   const statusColor: Record<string, string> = {
     paid: "text-green-600", processed: "text-green-600",
@@ -600,6 +626,7 @@ function LogsSection() {
                  <th className="text-start py-2 px-3">{c.attempts}</th>
                  <th className="text-start py-2 px-3">{c.error}</th>
                  <th className="text-start py-2 px-3">{c.date}</th>
+                  <th className="text-start py-2 px-3">{lang === "ar" ? "الإجراء" : "Action"}</th>
               </tr>
             </thead>
             <tbody>
@@ -612,6 +639,17 @@ function LogsSection() {
                   <td className="py-2 px-3 text-xs tabular-nums">{e.attempts}</td>
                   <td className="py-2 px-3 text-xs text-red-500 max-w-[200px] truncate" dir="ltr">{e.error_message ?? "—"}</td>
                   <td className="py-2 px-3 text-xs text-muted-foreground">{e.created_at ? new Date(e.created_at).toLocaleString(locale) : "—"}</td>
+                  <td className="py-2 px-3 text-xs">
+                    {e.provider === "lemonsqueezy" && e.event_name === "subscription_payment_success" && e.status === "failed" && (
+                      <button type="button" onClick={() => retryInvoice(e.id)} disabled={retryingId !== null}
+                        data-testid={`button-retry-invoice-${e.id}`}
+                        className="rounded-md border border-primary/40 px-2 py-1 font-medium text-primary hover:bg-primary/10 disabled:opacity-50">
+                        {retryingId === e.id
+                          ? (lang === "ar" ? "جارٍ التحقق…" : "Verifying…")
+                          : (lang === "ar" ? "تحقق وأعد المعالجة" : "Verify & retry")}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

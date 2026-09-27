@@ -258,6 +258,49 @@ async function fetchLSInvoiceAttrs(invoiceId: string): Promise<any | null> {
   } catch { return null; }
 }
 
+async function fetchLSOrderAttrs(orderId: string): Promise<any | null> {
+  const key = process.env["LEMON_SQUEEZY_API_KEY"];
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://api.lemonsqueezy.com/v1/orders/${orderId}`,
+      { headers: { Authorization: `Bearer ${key}`, Accept: "application/vnd.api+json" } });
+    if (!r.ok) return null;
+    return (await r.json() as any)?.data?.attributes ?? null;
+  } catch { return null; }
+}
+
+/**
+ * Initial invoices do not contain a variant or order ID in Lemon Squeezy's
+ * documented API. The subscription's *initial order* is the immutable purchase
+ * evidence; never use its mutable current variant for a historical invoice.
+ */
+async function resolveInitialInvoiceOrder(invoiceId: string, subscriptionId: string, invoice: any):
+  Promise<{ variantId: string; orderId: string }> {
+  const sub = await fetchLSSubscriptionAttrs(subscriptionId);
+  const orderId = String(sub?.order_id ?? "");
+  if (!orderId) throw new Error(`initial invoice ${invoiceId}: provider subscription/order unavailable; retry required`);
+  const order = await fetchLSOrderAttrs(orderId);
+  const matchingIdentity = invoice?.store_id != null && invoice?.customer_id != null
+    && String(invoice.store_id) === String(sub?.store_id)
+    && String(invoice.store_id) === String(order?.store_id)
+    && String(invoice.customer_id) === String(sub?.customer_id)
+    && String(invoice.customer_id) === String(order?.customer_id);
+  const matchingPayment = invoice?.currency && Number(invoice?.total) > 0
+    && String(invoice.currency) === String(order?.currency)
+    && Number(invoice.total) === Number(order?.total)
+    && invoice.test_mode === sub?.test_mode
+    && invoice.test_mode === order?.test_mode
+    && order?.status === "paid"
+    && order?.refunded !== true
+    && Number(order?.refunded_amount ?? 0) === 0;
+  const variantId = String(order?.first_order_item?.variant_id ?? "");
+  if (!matchingIdentity || !matchingPayment || !variantId
+    || (order?.first_order_item?.order_id && String(order.first_order_item.order_id) !== orderId)) {
+    throw new Error(`initial invoice ${invoiceId}: provider order does not match paid invoice; review required`);
+  }
+  return { variantId, orderId };
+}
+
 function providerTimestamp(attrs: any): Date | null {
   const raw = attrs?.updated_at ?? attrs?.created_at ?? null;
   if (!raw) return null;
@@ -291,6 +334,9 @@ async function handleOrderCreated(payload: any): Promise<void> {
       : [];
 
     if (!purchase && !pkg) {
+      // An initial subscription order uses a plan variant, not a one-time
+      // credit package. Its invoice (not order_created) grants the credits.
+      if (!purchaseIntentId && variantId && await resolvePlanByVariant(variantId)) return;
       throw new Error(`Variant غير معروف (${variantId}) ولا يوجد Purchase Intent`);
     }
 
@@ -354,7 +400,16 @@ async function handleOrderRefunded(payload: any): Promise<void> {
   const orderId       = String(payload?.data?.id ?? "");
   const refundedCents = Number(attrs?.refunded_amount ?? 0);
   const totalCents    = Number(attrs?.total ?? 0);
-  const subscriptionId = String(attrs?.subscription_id ?? "");
+  // Order objects omit subscription_id. Initial paid entitlements retain their
+  // provider order ID so a refund can target precisely that paid term.
+  const matchedEntitlement = !attrs?.subscription_id && orderId
+    ? await db.execute(sql`
+        SELECT subscription_id FROM subscription_credit_entitlements
+        WHERE provider_order_id = ${orderId} LIMIT 1
+      `)
+    : null;
+  const subscriptionId = String(attrs?.subscription_id
+    ?? (matchedEntitlement?.rows[0] as any)?.subscription_id ?? "");
 
   // Subscription order refunds have no credit_purchase row. Stop unreleased
   // annual months immediately; already released credit handling remains the
@@ -530,37 +585,54 @@ async function handleSubscriptionCreated(payload: any): Promise<void> {
 async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
   let attrs            = payload?.data?.attributes ?? {};
   const invoiceId      = String(payload?.data?.id ?? "");
-  let subscriptionId = String(attrs?.subscription_id ?? "");
 
   if (!invoiceId) {
     // عيب دائم في الـ payload — retry بنفس الحمولة لن يصلحه
-    throw new TerminalWebhookError(`subscription_payment_success: invoice/subscription id مفقود (invoice=${invoiceId || "?"}, sub=${subscriptionId || "?"})`);
+    throw new TerminalWebhookError("subscription_payment_success: invoice id مفقود");
   }
-  if (!attrs?.created_at || !(attrs?.variant_id ?? attrs?.first_order_item?.variant_id) || !attrs?.billing_reason) {
-    const fetched = await fetchLSInvoiceAttrs(invoiceId);
-    if (fetched) attrs = { ...attrs, ...fetched };
-    subscriptionId = String(attrs?.subscription_id ?? subscriptionId);
+  const fetched = await fetchLSInvoiceAttrs(invoiceId);
+  if (fetched) {
+    if (attrs.subscription_id && String(attrs.subscription_id) !== String(fetched.subscription_id)) {
+      throw new Error(`subscription_payment_success: invoice ${invoiceId} subscription mismatch`);
+    }
+    attrs = { ...attrs, ...fetched };
   }
+  const subscriptionId = String(attrs?.subscription_id ?? "");
   if (!subscriptionId) {
     throw new Error(`subscription_payment_success: immutable invoice subscription_id unavailable (invoice ${invoiceId}); review/retry required`);
+  }
+  if (attrs?.status !== "paid" || attrs?.refunded === true || Number(attrs?.refunded_amount ?? 0) > 0) {
+    throw new Error(`subscription_payment_success: invoice ${invoiceId} is not fully paid and unrefunded`);
   }
 
   const invoiceCreated = attrs?.created_at ? new Date(attrs.created_at) : null;
   if (!invoiceCreated || Number.isNaN(invoiceCreated.getTime())) {
     throw new Error(`subscription_payment_success: immutable invoice created_at unavailable (invoice ${invoiceId}); review/retry required`);
   }
-  const invoiceVariant = String(attrs?.variant_id ?? attrs?.first_order_item?.variant_id ?? "");
-  if (!invoiceVariant) throw new Error(`subscription_payment_success: immutable invoice variant unavailable (invoice ${invoiceId}); review/retry required`);
   const billingReason = String(attrs?.billing_reason ?? "");
-  if (!["subscription_created", "subscription_renewed"].includes(billingReason)) {
+  if (!["initial", "renewal", "subscription_created", "subscription_renewed"].includes(billingReason)) {
     throw new Error(`subscription_payment_success: ${billingReason || "missing"} billing reason is not a full-cycle invoice; review required`);
   }
+  if (billingReason === "initial" && !fetched) {
+    throw new Error(`subscription_payment_success: initial invoice ${invoiceId} could not be verified with provider; retry required`);
+  }
+  const initialOrder = billingReason === "initial"
+    ? await resolveInitialInvoiceOrder(invoiceId, subscriptionId, attrs) : null;
+  const suppliedVariant = String(attrs?.variant_id ?? attrs?.first_order_item?.variant_id ?? "");
+  if (initialOrder && suppliedVariant && suppliedVariant !== initialOrder.variantId) {
+    throw new Error(`subscription_payment_success: invoice ${invoiceId} variant/order mismatch`);
+  }
+  const invoiceVariant = initialOrder?.variantId ?? suppliedVariant;
+  if (!invoiceVariant) throw new Error(`subscription_payment_success: invoice variant unavailable (invoice ${invoiceId}); review/retry required`);
   const plan = await resolvePlanByVariant(invoiceVariant);
   if (!plan) throw new Error(`subscription_payment_success: unknown invoice variant ${invoiceVariant}; review/retry required`);
   const intervalMonths = plan.billingInterval === "year" ? 12 : 1;
   const periodStart = invoiceCreated;
   const periodEnd = addCalendarMonthsUtc(periodStart, intervalMonths);
-  const providerOrderId = attrs?.order_id ? String(attrs.order_id) : null;
+  if (initialOrder && attrs?.order_id && String(attrs.order_id) !== initialOrder.orderId) {
+    throw new Error(`subscription_payment_success: invoice ${invoiceId} order mismatch`);
+  }
+  const providerOrderId = initialOrder?.orderId ?? (attrs?.order_id ? String(attrs.order_id) : null);
   const eventAt = providerTimestamp(attrs);
 
   await db.transaction(async (tx) => {
@@ -582,8 +654,8 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
     `);
     if (!inserted.rows.length) return;
     const e = inserted.rows[0] as any;
-    // Keep lock while grant's inner transaction runs, so refund cannot revoke
-    // between entitlement creation/status check and batch creation.
+    // Grant in this same transaction: a refund cannot revoke the entitlement
+    // between creation and batch creation, and a failure rolls both back.
     const firstEnd = new Date(e.release_through);
     const grantKey = plan.billingInterval === "year"
       ? `annual:${invoiceId}:${firstEnd.toISOString()}` : invoiceId;
@@ -594,13 +666,52 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
         monthlyCredits: Number(e.monthly_credits_snapshot),
         rolloverCap: e.rollover_cap_snapshot == null ? null : Number(e.rollover_cap_snapshot),
         entitlementId: Number(e.id),
-      });
+       }, tx);
     await tx.execute(sql`
       UPDATE subscriptions SET payment_status = 'active', current_period_end = ${periodEnd},
         paid_through = GREATEST(COALESCE(paid_through, ${periodEnd}), ${periodEnd}), updated_at = NOW()
       WHERE external_subscription_id = ${subscriptionId}
     `);
   });
+}
+
+/** Reprocess only a previously signature-verified, failed payment event.
+ * Called by the authenticated admin endpoint; the handler checks live provider
+ * evidence again and the invoice grant remains unique and transactional. */
+export async function retryStoredLemonInvoiceWebhook(eventId: number): Promise<boolean> {
+  const [claimed] = await db.update(webhookEventsTable)
+    .set({ status: "processing", attempts: sql`attempts + 1`, updatedAt: new Date() })
+    .where(and(
+      eq(webhookEventsTable.id, eventId),
+      eq(webhookEventsTable.provider, "lemonsqueezy"),
+      eq(webhookEventsTable.eventName, "subscription_payment_success"),
+      eq(webhookEventsTable.status, "failed"),
+    ))
+    .returning({
+      rawPayload: webhookEventsTable.rawPayload,
+      providerObjectId: webhookEventsTable.providerObjectId,
+    });
+  if (!claimed) return false;
+  try {
+    const payload = JSON.parse(claimed.rawPayload ?? "");
+    if (payload?.meta?.event_name !== "subscription_payment_success"
+      || String(payload?.data?.id ?? "") !== claimed.providerObjectId) {
+      throw new Error("stored invoice event identity mismatch");
+    }
+    await handleSubscriptionPaymentSuccess(payload);
+    await db.update(webhookEventsTable)
+      .set({ status: "processed", errorMessage: null, processedAt: new Date(), failedAt: null, updatedAt: new Date() })
+      .where(eq(webhookEventsTable.id, eventId));
+    return true;
+  } catch (err) {
+    await db.update(webhookEventsTable)
+      .set({
+        status: "failed", errorMessage: String(err instanceof Error ? err.message : err).slice(0, 2000),
+        failedAt: new Date(), updatedAt: new Date(),
+      })
+      .where(eq(webhookEventsTable.id, eventId));
+    throw err;
+  }
 }
 
 // ─── subscription_payment_failed ─────────────────────────────────────────────
@@ -750,15 +861,15 @@ async function handleSubscriptionUpdated(payload: any): Promise<void> {
   await lockProviderSubscription(tx, subId);
   await tx.execute(sql`
     UPDATE subscriptions
-    SET plan_id = COALESCE(${planId ?? null}, plan_id),
-         billing_interval = COALESCE(${billingInterval ?? null}, billing_interval),
+    SET plan_id = COALESCE(${planId ?? null}::integer, plan_id),
+         billing_interval = COALESCE(${billingInterval ?? null}::text, billing_interval),
          lemon_variant_id = COALESCE(NULLIF(${variantId}, ''), lemon_variant_id),
-        current_period_end   = COALESCE(${renewsAt}, current_period_end),
+        current_period_end   = COALESCE(${renewsAt}::timestamp, current_period_end),
         external_customer_id = COALESCE(NULLIF(${customerId}, ''), external_customer_id),
-         provider_updated_at  = COALESCE(${eventAt}, provider_updated_at),
+         provider_updated_at  = COALESCE(${eventAt}::timestamp, provider_updated_at),
         updated_at           = NOW()
     WHERE external_subscription_id = ${subId}
-      AND (provider_updated_at IS NULL OR ${eventAt} IS NULL OR provider_updated_at <= ${eventAt})
+      AND (provider_updated_at IS NULL OR ${eventAt}::timestamp IS NULL OR provider_updated_at <= ${eventAt}::timestamp)
   `);
   });
 

@@ -9,6 +9,8 @@ import { eq, sql, and, ilike, or, desc, asc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
+import { logger } from "../lib/logger";
+import { retryStoredLemonInvoiceWebhook } from "./webhooks-lemonsqueezy";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
 import {
   notifyTeacherOfAward,
@@ -628,6 +630,25 @@ router.get("/webhook-events", async (req, res) => {
     res.json(rows.rows);
   } catch {
     res.status(500).json({ message: "فشل تحميل سجل الأحداث" });
+  }
+});
+
+router.post("/webhook-events/:id/retry", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    res.status(400).json({ message: "رقم الحدث غير صحيح" });
+    return;
+  }
+  try {
+    const retried = await retryStoredLemonInvoiceWebhook(id);
+    if (!retried) {
+      res.status(409).json({ message: "يمكن إعادة معالجة فواتير الاشتراك الفاشلة فقط" });
+      return;
+    }
+    res.json({ status: "processed" });
+  } catch (err) {
+    logger.error(err, "admin retry of paid invoice webhook failed");
+    res.status(500).json({ message: "تعذّرت معالجة الفاتورة؛ لم يُضف رصيد، واحتُفظ بالخطأ للمراجعة" });
   }
 });
 

@@ -622,9 +622,10 @@ export const CreditService = {
     periodEnd: Date,
     nextPeriodEnd: Date,
     creditCycleKey?: string,
-    snapshot?: { monthlyCredits: number; rolloverCap: number | null; entitlementId: number }
+    snapshot?: { monthlyCredits: number; rolloverCap: number | null; entitlementId: number },
+    transaction?: Parameters<Parameters<typeof db.transaction>[0]>[0]
   ): Promise<{ granted: number; alreadyGranted: boolean }> {
-    return await db.transaction(async (tx) => {
+    const grant = async (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => {
       // ── Step 1: Claim the invoice (primary guard) ────────────────────────
       // Insert first — UNIQUE constraint on subscription_invoice_id prevents
       // two concurrent webhooks from both proceeding.
@@ -708,7 +709,8 @@ export const CreditService = {
       `);
 
       return { granted, alreadyGranted: false };
-    });
+    };
+    return transaction ? grant(transaction) : db.transaction(grant);
   },
 
   /** Remove only unspent batches authorized by one refunded entitlement. */
