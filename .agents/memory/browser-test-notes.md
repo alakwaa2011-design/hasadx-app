@@ -12,3 +12,4 @@ description: Index of browser test fixture, runtime, and assertion lessons.
 - [RTL numeric assertions](rtl-numeric-ui-assertions.md)
 - [Quran safe-area testing](quran-safe-area-testing.md)
 - [Quran audio routing in E2E](quran-e2e-audio-routing.md)
+- [Quran reader DOM readiness](quran-reader-dom-readiness.md)

@@ -11,6 +11,7 @@ import {
   ImageOff,
   ListPlus,
   Bookmark,
+  BookOpen,
   Volume2,
   Loader2,
   Menu,
@@ -257,6 +258,7 @@ export function QuranPagesView({
   const [activePage, setActivePage] = useState(FIRST_PAGE);
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [pageLayoutMenuPlacement, setPageLayoutMenuPlacement] = useState<"desktop" | "mobile" | null>(null);
   const [memoChoiceOpen, setMemoChoiceOpen] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [audioFloatingPanelOpen, setAudioFloatingPanelOpen] = useState(false);
@@ -542,6 +544,25 @@ export function QuranPagesView({
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [mobileToolsOpen, memoChoiceOpen]);
+  useEffect(() => {
+    if (pageLayoutMenuPlacement === null) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target as Node;
+      const element = target instanceof Element ? target : target.parentElement;
+      if (!element?.closest("[data-page-layout-menu], [data-page-layout-trigger]")) {
+        setPageLayoutMenuPlacement(null);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPageLayoutMenuPlacement(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [pageLayoutMenuPlacement]);
   useEffect(() => {
     if (mobileToolsOpen) return;
     setCopyActionsOpen(false);
@@ -1329,6 +1350,7 @@ export function QuranPagesView({
 
   const changePageLayout = (nextLayout: "spread" | "single" | "continuous") => {
     setPageLayout(nextLayout);
+    setPageLayoutMenuPlacement(null);
     if (nextLayout === "continuous") {
       setContinuousStartPage(activePage);
       setContinuousEndPage(Math.min(LAST_PAGE, activePage + 3));
@@ -1957,39 +1979,73 @@ export function QuranPagesView({
     </div>
   );
 
-  const layoutModeControl = (placement: "desktop" | "mobile") => (
-    <div
-      data-testid={`page-layout-control-${placement}`}
-      role="group"
-      aria-label={lang === "ar" ? "طريقة عرض الصفحات" : "Page layout"}
-      className={cn(
-        "grid h-9 grid-cols-3 items-center gap-0.5 rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5",
-        placement === "desktop" ? "w-[228px] shrink-0" : "w-full",
-      )}
-    >
-      {([
-        { value: "continuous", ar: "متصلة", en: "Continuous" },
-        { value: "spread", ar: "صفحتان", en: "2 pages" },
-        { value: "single", ar: "صفحة", en: "1 page" },
-      ] as const).map((option) => (
+  const layoutModeControl = (placement: "desktop" | "mobile") => {
+    const options = [
+      { value: "continuous", ar: "متصلة", en: "Continuous" },
+      { value: "spread", ar: "صفحتان", en: "2 pages" },
+      { value: "single", ar: "صفحة", en: "1 page" },
+    ] as const;
+    const selectedOption = options.find((option) => option.value === pageLayout)!;
+    const menuOpen = pageLayoutMenuPlacement === placement;
+
+    return (
+      <div data-testid={`page-layout-control-${placement}`} className="relative shrink-0">
         <button
-          key={option.value}
           type="button"
-          data-testid={`button-page-layout-${option.value}-${placement}`}
-          aria-pressed={pageLayout === option.value}
-          onClick={() => changePageLayout(option.value)}
+          data-page-layout-trigger
+          data-testid={`button-page-layout-trigger-${placement}`}
+          aria-label={lang === "ar"
+            ? `نمط عرض المصحف: ${selectedOption.ar}`
+            : `Mushaf layout: ${selectedOption.en}`}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-controls={`quran-page-layout-menu-${placement}`}
+          onClick={() => setPageLayoutMenuPlacement((current) => current === placement ? null : placement)}
           className={cn(
-            "inline-flex h-7 min-w-0 items-center justify-center whitespace-nowrap rounded-md px-1.5 text-[11px] font-extrabold leading-none transition-colors sm:px-2",
-            pageLayout === option.value
-              ? "bg-emerald-700 text-white shadow-sm dark:bg-emerald-600"
-              : "text-emerald-900/70 hover:bg-white/70 dark:text-emerald-100/70 dark:hover:bg-white/10",
+            "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-emerald-900/5 px-2.5 text-xs font-bold text-emerald-900 transition-colors hover:bg-emerald-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-white/10 dark:focus-visible:ring-emerald-400",
+            menuOpen && "bg-emerald-900/10 dark:bg-white/10",
           )}
         >
-          {lang === "ar" ? option.ar : option.en}
+          <BookOpen className="h-4 w-4 shrink-0 opacity-75" aria-hidden="true" />
+          <span>{lang === "ar" ? selectedOption.ar : selectedOption.en}</span>
+          <ChevronDown className={cn("h-3.5 w-3.5 opacity-60 transition-transform", menuOpen && "rotate-180")} aria-hidden="true" />
         </button>
-      ))}
-    </div>
-  );
+        {menuOpen && (
+          <div
+            id={`quran-page-layout-menu-${placement}`}
+            data-page-layout-menu
+            data-testid={`page-layout-menu-${placement}`}
+            role="menu"
+            aria-label={lang === "ar" ? "طريقة عرض المصحف" : "Mushaf page layout"}
+            className="absolute end-0 top-full z-[60] mt-1 w-40 overflow-hidden rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-1.5 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
+          >
+            {options.map((option) => {
+              const selected = pageLayout === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  data-testid={`button-page-layout-${option.value}-${placement}`}
+                  onClick={() => changePageLayout(option.value)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-start text-sm font-bold transition-colors",
+                    selected
+                      ? "bg-emerald-700 text-white dark:bg-emerald-600"
+                      : "text-emerald-900 hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10",
+                  )}
+                >
+                  <span>{lang === "ar" ? option.ar : option.en}</span>
+                  {selected && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const zoomControlsDesktop = (
     <div className="flex h-full shrink-0 items-center gap-0.5 px-1">
@@ -2402,6 +2458,7 @@ export function QuranPagesView({
               </div>
 
               <div className="flex shrink-0 items-center gap-0.5">
+                {layoutModeControl("mobile")}
                 {searchDialogWrapped}
                 {audioButtonMobile}
                 {memoButtonMobile}
@@ -2409,10 +2466,6 @@ export function QuranPagesView({
               </div>
             </div>
           </div>
-          <div className="px-3 pb-2 lg:hidden">
-            {layoutModeControl("mobile")}
-          </div>
-
           {memoChoiceOpen && personalPlan.enabled && !guidedOpen && (
             <div data-reader-memo-choice role="group" aria-label={lang === "ar" ? "بدء حفظني" : "Start memorization"}
               className="absolute end-2 top-full z-50 mt-1 w-[min(20rem,calc(100vw-1rem))] rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-2 shadow-xl dark:border-white/10 dark:bg-[#151b18] lg:end-14">

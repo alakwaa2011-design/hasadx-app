@@ -235,6 +235,14 @@ vi.mock("@/components/quran/quran-audio-player", () => ({
 
 import { QuranPagesView } from "./quran-pages-view";
 
+const selectPageLayout = async (
+  layout: "continuous" | "spread" | "single",
+  placement: "desktop" | "mobile" = "desktop",
+) => {
+  fireEvent.click(await screen.findByTestId(`button-page-layout-trigger-${placement}`));
+  fireEvent.click(await screen.findByTestId(`button-page-layout-${layout}-${placement}`));
+};
+
 beforeEach(() => {
   scrollIntoView.mockClear();
   nextAudioPlayerInstance = 0;
@@ -247,7 +255,7 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-it("shows the three page-layout buttons in both shared reader headers", () => {
+it("shows one page-layout dropdown in both shared reader headers", async () => {
   render(
     <QuranPagesView
       initialSurah={2}
@@ -262,12 +270,24 @@ it("shows the three page-layout buttons in both shared reader headers", () => {
     />,
   );
 
+  await screen.findByTestId("select-page");
   expect(screen.getByTestId("page-layout-control-desktop").closest("header")).toBeTruthy();
   expect(screen.getByTestId("page-layout-control-mobile").closest("header")).toBeTruthy();
   expect(screen.queryByTestId("quran-reader-more-panel")).toBeNull();
-  for (const layout of ["continuous", "spread", "single"]) {
-    expect(screen.getByTestId(`button-page-layout-${layout}-desktop`)).toBeTruthy();
-    expect(screen.getByTestId(`button-page-layout-${layout}-mobile`)).toBeTruthy();
+  for (const placement of ["desktop", "mobile"] as const) {
+    const trigger = screen.getByTestId(`button-page-layout-trigger-${placement}`);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByTestId(`page-layout-menu-${placement}`)).toBeNull();
+    fireEvent.click(trigger);
+    const menu = await screen.findByTestId(`page-layout-menu-${placement}`);
+    expect(menu.closest(`[data-testid="page-layout-control-${placement}"]`)).toBeTruthy();
+    expect(menu.querySelectorAll('[role="menuitemradio"]')).toHaveLength(3);
+    const selectedLayout = placement === "desktop" ? "single" : "continuous";
+    expect(screen.getByTestId(`button-page-layout-${selectedLayout}-${placement}`).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByTestId(`button-page-layout-continuous-${placement}`));
+    expect(screen.queryByTestId(`page-layout-menu-${placement}`)).toBeNull();
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.getAttribute("aria-label")).toContain("متصلة");
   }
 });
 
@@ -298,7 +318,7 @@ describe.each([
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("2");
       expect(screen.getByTestId("mushaf-page-2").getAttribute("data-selected-verse")).toBe("2:5");
     });
-    fireEvent.click(screen.getByTestId(`button-page-layout-${layout}-mobile`));
+    await selectPageLayout(layout, "mobile");
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     fireEvent.click(screen.getByRole("button", { name: "تشغيل" }));
     fireEvent.click(screen.getByRole("button", { name: "عبور الصفحة" }));
@@ -356,8 +376,7 @@ describe.each([
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("49");
       expect(screen.getByTestId("mushaf-page-49").getAttribute("data-selected-verse")).toBe("2:286");
     });
-    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
-    fireEvent.change(screen.getByTestId("select-page-layout"), { target: { value: layout } });
+    await selectPageLayout(layout);
     fireEvent.click(screen.getByTestId("button-mobile-audio"));
     const playerInstance = screen.getByTestId("audio-player").getAttribute("data-instance");
     fireEvent.click(screen.getByRole("button", { name: "تشغيل" }));
@@ -395,9 +414,9 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
-    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
+    await selectPageLayout("spread");
     await waitFor(() => {
-      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect(screen.getByTestId("button-page-layout-trigger-desktop").getAttribute("aria-label")).toContain("صفحتان");
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("50");
       expect(screen.getByTestId("mushaf-page-49")).toBeTruthy();
       expect(screen.getAllByTestId("mushaf-page-50").some(
@@ -440,9 +459,9 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
-    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
+    await selectPageLayout("spread");
     await waitFor(() => {
-      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect(screen.getByTestId("button-page-layout-trigger-desktop").getAttribute("aria-label")).toContain("صفحتان");
       expect((screen.getByTestId("select-page") as HTMLSelectElement).value).toBe("3");
       expect(screen.getAllByTestId("mushaf-page-3").length).toBeGreaterThan(0);
       expect(screen.getByTestId("mushaf-page-4")).toBeTruthy();
@@ -480,9 +499,9 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
-    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
+    await selectPageLayout("spread");
     await waitFor(() => {
-      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect(screen.getByTestId("button-page-layout-trigger-desktop").getAttribute("aria-label")).toContain("صفحتان");
       expect(screen.getByTestId("mushaf-page-1")).toBeTruthy();
       expect(screen.getAllByTestId("mushaf-page-2").length).toBeGreaterThan(0);
     });
@@ -588,9 +607,9 @@ describe("QuranPagesView playback following in desktop spread view", () => {
       />,
     );
 
-    fireEvent.click(await screen.findByTestId("button-desktop-more-tools"));
+    await selectPageLayout("spread");
     await waitFor(() => {
-      expect((screen.getByTestId("select-page-layout") as HTMLSelectElement).value).toBe("spread");
+      expect(screen.getByTestId("button-page-layout-trigger-desktop").getAttribute("aria-label")).toContain("صفحتان");
       expect(screen.getAllByTestId(`mushaf-page-${firstPage}`).length).toBeGreaterThan(0);
       expect(screen.getAllByTestId(`mushaf-page-${secondPage}`).length).toBeGreaterThan(0);
     });
