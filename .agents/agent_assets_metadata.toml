@@ -1772,6 +1772,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/bg_music.mp3"
 type = "audio"
 title = "حصاد موسيقى الإعلان"
 description = "Generated music: Original warm uplifting instrumental music for a short Arabic teacher productivity advertisement. Modern understated groove, piano arpeggio, soft oud-like plucked accents, muted hand…"
+logical_id = "9ff155a1-11f2-41f8-8c02-a80876321140"
 
 [[outputs]]
 id = "6gl60Y7xkw9t0d2auA1Mj"
@@ -1779,6 +1780,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_0.mp3"
 type = "audio"
 title = "حصاد تعليق 1"
 description = "Text-to-speech audio: وقتك للطلاب، لا لزحمة التحضير."
+logical_id = "3e2c8715-c01d-4e1d-b3e5-a2ce62b093cc"
 
 [[outputs]]
 id = "iwaKVpDgV23ojRrkJf39r"
@@ -1786,6 +1788,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_1.mp3"
 type = "audio"
 title = "حصاد تعليق 2"
 description = "Text-to-speech audio: في حصاد، يتحول موضوع واحد إلى ورقة عمل جاهزة."
+logical_id = "6c7bad6f-1ec5-40de-a683-d998b85503b7"
 
 [[outputs]]
 id = "ebuy1fuOXGhYXoATMv7nD"
@@ -1793,6 +1796,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_4.mp3"
 type = "audio"
 title = "حصاد تعليق 5"
 description = "Text-to-speech audio: حصاد. وقت أقل للتحضير، وتفاعل أكبر. سجّل الآن."
+logical_id = "ba7bfa57-c331-43e5-b161-b7a7ba56c4ac"
 
 [[outputs]]
 id = "PXTKq2xyKdidHI367jKtu"
@@ -1800,6 +1804,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_3.mp3"
 type = "audio"
 title = "حصاد تعليق 4"
 description = "Text-to-speech audio: ثم يصبح السؤال تحدّيًا يشارك فيه طلابك، حتى اللحظة الأخيرة."
+logical_id = "48914163-d903-4803-9b1e-24709fcf83b9"
 
 [[outputs]]
 id = "es7geJONQMwRtojNY3hPy"
@@ -1807,6 +1812,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_2.mp3"
 type = "audio"
 title = "حصاد تعليق 3"
 description = "Text-to-speech audio: وتنتظم الأفكار في خريطة ذهنية واضحة."
+logical_id = "272ef3a6-a50a-4dc1-8ed3-b992cde94f1c"
 
 [[outputs]]
 id = "MyZPgi11J3EtNGLpT8rO6"
@@ -1814,6 +1820,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_4_2.mp3"
 type = "audio"
 title = "حصاد دعوة التسجيل"
 description = "Text-to-speech audio: حصاد. سجّل الآن، وابدأ التفاعل."
+logical_id = "87cb44b8-893c-471e-ad3b-6e4584214c62"
 
 [[outputs]]
 id = "IXJbtWxCISGdHF3gyAV4F"
@@ -1821,6 +1828,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_intro_clear.mp3"
 type = "audio"
 title = "تعليق افتتاح حصاد واضح"
 description = "Text-to-speech audio: وقتك للطلاب. والتحضير على حصاد."
+logical_id = "cd843411-f4ea-46b7-b10c-1783f3d0eaf1"
 
 [[outputs]]
 id = "90Cm87wNWpCOUk5MMO_Te"
@@ -1828,6 +1836,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_outro_kasra.mp3"
 type = "audio"
 title = "دعوة حصاد مع كسرة الجيم"
 description = "Text-to-speech audio: حصاد. سَجِّلْ الآن، وابدأ التفاعل."
+logical_id = "d8cc8676-6ef2-4fbd-bbab-e06805bc3821"
 
 [[outputs]]
 id = "PbSQLrcYs04kryqEaNGQn"
@@ -1835,6 +1844,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_intro_final.mp3"
 type = "audio"
 title = "تعليق افتتاح مختصر وواضح"
 description = "Text-to-speech audio: وقتك للطلاب. حصاد يُسهِّل التحضير."
+logical_id = "6bc3fcec-3715-467c-89ef-be30f34fac62"
 
 [[outputs]]
 id = "LVrIakjib5OwPcD-7Ardo"
@@ -1842,6 +1852,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_tug_winner.mp3"
 type = "audio"
 title = "تعليق فوز الفريق الأزرق"
 description = "Text-to-speech audio: والفوز للفريق الأزرق!"
+logical_id = "5e9d5f6d-1db6-46e2-9cfd-322184d2c788"
 
 [[outputs]]
 id = "vLa_Jy2ipMHlwofgLGVkj"
@@ -1849,6 +1860,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/vo_tug_teams.mp3"
 type = "audio"
 title = "تعليق مواجهة شد الحبل"
 description = "Text-to-speech audio: فريقان، وسؤال لكل فريق!"
+logical_id = "59eab153-ed91-4ce3-8f07-f9747d2a8176"
 
 [[outputs]]
 id = "acdQNvNZ9zcM-6OAzT7ZQ"
@@ -1856,6 +1868,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-0.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: كم مرّة قلت: من أين أبدأ تحضير درس الغد؟"
+logical_id = "91aef95b-2ad5-471a-9a6c-5486f9612f50"
 
 [[outputs]]
 id = "Me960jW3jWUbZj_DMKPnv"
@@ -1863,6 +1876,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-3.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: واربط المفاهيم بخريطة ذهنية، وتابع مشاركة الصف عبر لوحة التحفيز."
+logical_id = "1c0f7dc7-2af2-44e1-9a7d-c46f7424a5d2"
 
 [[outputs]]
 id = "B0WrQhZ6iDjOVwOVKhWAm"
@@ -1870,6 +1884,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-5.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: والآن إكس أو! سؤال... إجابة... وعلامة جديدة تقلب نتيجة الجولة. من سيسبق؟"
+logical_id = "7b1102bd-bcd5-423c-971c-857d77158cbd"
 
 [[outputs]]
 id = "HcOhLhlUI6LB2aCIIpMSy"
@@ -1877,6 +1892,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-2.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: وللشرح؟ أنشئ عرضًا تفاعليًا. ثم فيديو تفاعليًا: يتوقف عند السؤال، ويبدأ دور الطالب!"
+logical_id = "7e19cfd0-d5c9-4d97-83d2-0e4be26cd138"
 
 [[outputs]]
 id = "VE8lwxbMxOMnRQ3EyFH1L"
@@ -1884,6 +1900,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-1.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: ابدأ بفكرة في حصاد؛ تتحول إلى خطة درس واضحة، وبعدها ورقة عمل بأسئلة جاهزة لطلابك."
+logical_id = "c31dd0ca-c7c3-4b02-a64b-3a7c8ccde367"
 
 [[outputs]]
 id = "T9aX7wftC5ZtLy1qJ4B-Y"
@@ -1891,6 +1908,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-4.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: واختر من يشارك بعد ذلك: لفّ العجلة الدوّارة، أو دع حصاد يختار طالبًا عشوائيًا!"
+logical_id = "207f6c88-61ac-4775-836a-f3474b4a18dc"
 
 [[outputs]]
 id = "fc22LWFl6nza-7m4Ji6nK"
@@ -1898,6 +1916,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-6.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: ومع لعبة وميض، يتحول كل سؤال إلى تحدٍّ ينتظر فيه الجميع لحظة الفوز."
+logical_id = "58aadfca-4ec9-4804-a090-7a87624d7e9a"
 
 [[outputs]]
 id = "kzmMZfxvgFZz4vlanA0jg"
@@ -1905,6 +1924,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-8.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: هذه ليست أدوات متفرقة... هذه حصتك، من التحضير إلى المشاركة. حصاد: حضّر، ألهم، وشارك. ابدأ الآن!"
+logical_id = "bc78df2a-8ca4-42f1-a3c0-cbdd36e6f3f1"
 
 [[outputs]]
 id = "M5Bpy8MckqpkpgWuVX8zj"
@@ -1912,6 +1932,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-vo-7.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: وفي شدّ الحبل، كل إجابة تقرّب فريقًا من الفوز. هنا فاز الأزرق، وخسر الأحمر: ثلاثة آلاف ومئتان مقابل ألف وخمسمئة!"
+logical_id = "e45b650f-b78e-4d32-903d-43f198ee1c34"
 
 [[outputs]]
 id = "HU1FNTAKhu6rue48R6vMD"
@@ -1919,6 +1940,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-0.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: درس الغد؟ لا تبدأ من الصفر."
+logical_id = "87c88a1c-fdca-47e8-8e62-151da48ddcff"
 
 [[outputs]]
 id = "BR2j9TU1-T293vNXMQk27"
@@ -1926,6 +1948,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-1.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: في حصاد، فكرتك خطة درس، وورقة عمل لطلابك."
+logical_id = "5e1fa2c9-aa26-4b0e-ab88-6b6b1383a4a4"
 
 [[outputs]]
 id = "61C02MECzKQOFaa9pG591"
@@ -1933,6 +1956,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-4.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا. الكل يشارك!"
+logical_id = "b9b0a8c7-a9dd-4afa-87d4-f73d1cb8fd26"
 
 [[outputs]]
 id = "fDd3O9J-M2Z2uzFu6M04D"
@@ -1940,6 +1964,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-3.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: رتّب الأفكار بخريطة، وكافئ المشاركة بلوحة التحفيز."
+logical_id = "354fc8cc-7fac-463c-9238-a09f7f8fb310"
 
 [[outputs]]
 id = "sLSoRWT8JNMdjscgm7E7I"
@@ -1947,6 +1972,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-5.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: ثم إكس أو! سؤال، إجابة، وعلامة تغيّر الجولة."
+logical_id = "ed3bf814-2a7e-4d2a-ac76-b1188cfa5f04"
 
 [[outputs]]
 id = "AjD7RBDq46FulEYALXqDt"
@@ -1954,6 +1980,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-7.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: شدّ الحبل! الأزرق فائز، والأحمر خاسر، والنتيجة أمامك."
+logical_id = "1a06630c-a558-499a-8540-489cec313cf4"
 
 [[outputs]]
 id = "tnd2C07ijHxNjfGhrktEb"
@@ -1961,6 +1988,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-6.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: وفي وميض، تتحول الأسئلة إلى تحدّيات يشارك فيها الجميع."
+logical_id = "6da49515-d241-4c6f-8edb-a4de70a78dde"
 
 [[outputs]]
 id = "cG8WaD1PLhOAPuGDLdReQ"
@@ -1968,6 +1996,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-2.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: حوّلها إلى عرض تفاعلي، وفيديو تفاعلي فيه سؤال يشارك فيه الطالب."
+logical_id = "e3442ef6-5591-435f-8304-5d9039d8538c"
 
 [[outputs]]
 id = "NLWANAd5Kq8p8mhlUC_Fy"
@@ -1975,6 +2004,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-short-8.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: من التحضير إلى التفاعل، هذه حصّتك في حصاد. ابدأ الآن!"
+logical_id = "d59c3b86-1c19-43eb-9832-a7f73d4f1b79"
 
 [[outputs]]
 id = "0RYMfGc0WrceGpBtf_qFo"
@@ -1982,6 +2012,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-2.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: وعرض تفاعلي يشرح الفكرة، وفيديو يوقف المشاهدة بسؤال... ليبدأ دور الطالب."
+logical_id = "4dab5afe-f355-4ef6-bd32-b05f22fe1143"
 
 [[outputs]]
 id = "cX8zsPtLgp_Md066wehd6"
@@ -1989,6 +2020,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-0.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: درس الغد؟ لا تبدأ من الصفر!"
+logical_id = "c00c0f03-41e5-414f-bf54-3e9a9f47f13f"
 
 [[outputs]]
 id = "jomuCr59oe12NhRgsTw2B"
@@ -1996,6 +2028,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-1.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: في حصاد، فكرة واحدة تصبح خطة درس، وورقة عمل جاهزة."
+logical_id = "010de4f9-1383-4f7e-977d-4a8dc487c8cd"
 
 [[outputs]]
 id = "kJ7xIMpNmHclMBuxyyboQ"
@@ -2003,6 +2036,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-6.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: ثم وميض! أسئلة تتوالى، وتحدّيات تُشعل حماس الصف."
+logical_id = "7d20a5cf-4b4c-4ee2-84b4-f78bfa354fb7"
 
 [[outputs]]
 id = "RZpJjivTswFujhVlBiCiX"
@@ -2010,6 +2044,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-5.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: إكس أو! سؤال، إجابة، وخانة تغيّر سير اللعب."
+logical_id = "85c002c7-b103-4c73-b449-f26d4895cd22"
 
 [[outputs]]
 id = "4B6CpB3bDW21iU1Bh6OS6"
@@ -2017,6 +2052,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... الكل حاضر!"
+logical_id = "efc35aef-1340-4bb5-a9ed-86b9bdce052d"
 
 [[outputs]]
 id = "tu9qTa6_HQ4p-Ud1Ids1d"
@@ -2024,6 +2060,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-3.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: خريطة توضّح المفاهيم، ولوحة تحفيز تُظهر مشاركة طلابك."
+logical_id = "f7c37cbc-412c-4145-ad4f-658fba79a733"
 
 [[outputs]]
 id = "lI1SDmQWJp-hdK608DFqL"
@@ -2031,6 +2068,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-7.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: وفي شدّ الحبل، كل إجابة تحرّك المنافسة حتى اللحظة الحاسمة!"
+logical_id = "1d1788cf-aaff-479f-b430-828343ae1c5e"
 
 [[outputs]]
 id = "sGLsHYrEMY9yVL8bIvZ3J"
@@ -2038,6 +2076,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-8.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: من أول فكرة إلى آخر لحظة تفاعل... حصاد، ابدأ الآن!"
+logical_id = "63444726-c25a-49ab-96c2-e4eb52dfda38"
 
 [[outputs]]
 id = "dL4A1k1mSoUgPqTwb7JsQ"
@@ -2045,6 +2084,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4_2.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... مفاجأة جديدة، والصفّ كلّه حاضر!"
+logical_id = "b61a5a75-27a1-4869-a934-def36dd5bdd8"
 
 [[outputs]]
 id = "EZLOQRc-Fx-UC4lcKofPp"
@@ -2052,6 +2092,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-6_2.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: ثم وميض! أسئلة تتوالى، وتحدّيات تُشعل حماس الصف... والمشاركة لا تتوقّف!"
+logical_id = "7c5f1f8c-bcbc-495d-8a41-700a590a54ed"
 
 [[outputs]]
 id = "G3izmA4pdwrfp7_xeLuBV"
@@ -2059,6 +2100,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-7_2.mp3"
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: وفي شدّ الحبل، كل إجابة تحرّك المنافسة... ويظلّ الحماس مشتعلاً حتى اللحظة الحاسمة!"
+logical_id = "1eabdd1e-f6b9-4bf8-b87d-cff2e659e5e6"
 
 [[outputs]]
 id = "O5SWW6n-SKoPwG7JcfWH8"
@@ -2066,6 +2108,7 @@ uri = "file://attached_assets/generated_audio/hasaad-vertical-premium-4-short.mp
 type = "audio"
 title = "speech"
 description = "Text-to-speech audio: دوّر العجلة، أو اختر طالبًا عشوائيًا... مفاجأة جديدة في كلّ دور!"
+logical_id = "b9e7b1ee-0cb4-4b32-8513-69ac93219587"
 
 [[outputs]]
 id = "C50UApyLGqhHPZF-4amb9"
@@ -2073,6 +2116,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/bed-directed.mp3"
 type = "audio"
 title = "directed teacher film score"
 description = "Generated music: Original instrumental score for a 50-second Arabic vertical teacher product film. Elegant modern warm electronic and organic percussion, 108 BPM, short syncopated muted-pluck motif w…"
+logical_id = "47f93da0-050d-4de7-96c9-e733542041f5"
 
 [[outputs]]
 id = "Efwvb6lAwwGMu1FJ3XRdI"
@@ -2080,6 +2124,7 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/mark-accent.mp3"
 type = "audio"
 title = "game mark accent"
 description = "Generated sound effect: One crisp felt-tip marker stroke drawing an X on a board, followed by a tiny warm confirm tap. Tactile and clean, around half a second, no voices, no music, no exaggerated swo…"
+logical_id = "6ca5e6fd-109f-468e-a4da-129d60297128"
 
 [[outputs]]
 id = "CUd8TX5fcD5ll3-ha73K2"
@@ -2087,3 +2132,102 @@ uri = "file://artifacts/hasaad-teachers-video/public/audio/wheel-accent.mp3"
 type = "audio"
 title = "wheel landing accent"
 description = "Generated sound effect: A short elegant tactile classroom spinner: three rapidly decelerating wooden pointer clicks ending in one soft precise landing tap. Minimal warm acoustic sound, no voices, no …"
+logical_id = "a374df7f-4186-4103-8f46-486ae48407c2"
+
+[[outputs]]
+id = "M68QNmKrSpBmKuoNKl3op"
+uri = "file://screenshots/quran-reader-ui/01-mobile-closed.png"
+type = "image"
+title = "الهاتف 390 — الشريط مغلق"
+description = "شريط واحد فوق صفحة المصحف."
+logical_id = "3db2454d-5f09-4eca-9f5a-5e9282d8df61"
+content_hash = "sha256:49aa49c765ea25d5c496eeeade49fdf966d6d6318286d8a0859c1fddf70482d1"
+size = 55498
+mtime_ms = 1790527148347
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/3db2454d-5f09-4eca-9f5a-5e9282d8df61/dae8837f-2858-4d25-9b1c-c0a1cd4f0588"
+storage_version_token = "1790527459802563"
+content_type = "image/png"
+
+[[outputs]]
+id = "o1HpI3s29wRda9KSmINl6"
+uri = "file://screenshots/quran-reader-ui/02-mobile-menu-open.png"
+type = "image"
+title = "الهاتف 390 — الإعدادات"
+description = "اللوحة السفلية مع التنقل والحجم والمظهر."
+logical_id = "c0c9f07c-89bd-4349-97c5-b326a4f0d60b"
+content_hash = "sha256:ed503ed94b8588f1fad2e97e5fa165fbe044dd80351c764fbc0bdd4598d3dec6"
+size = 36210
+mtime_ms = 1790527148915
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/c0c9f07c-89bd-4349-97c5-b326a4f0d60b/7c24ed06-dd4d-4ed0-acb2-48ee4d9b5f7f"
+storage_version_token = "1790527461523967"
+content_type = "image/png"
+
+[[outputs]]
+id = "vf7maaz0ScQTbUR5drkkK"
+uri = "file://screenshots/quran-reader-ui/03-mobile-appearance.png"
+type = "image"
+title = "الهاتف 390 — المظهر"
+description = "المظاهر الثلاثة مع سيبيا محددًا ومفتاح التجويد مستقلًا."
+logical_id = "39cd7150-327f-4a20-a0b3-69d38ba14c4d"
+content_hash = "sha256:394572143c72d553d43ca4006fe793444a2feed226cf955775add51f942b96f2"
+size = 36061
+mtime_ms = 1790527413983
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/39cd7150-327f-4a20-a0b3-69d38ba14c4d/df2d3256-c704-4190-b1b0-acbf396462c8"
+storage_version_token = "1790527462958770"
+content_type = "image/png"
+
+[[outputs]]
+id = "2R-xUpcyMzdyL5WxvZnnb"
+uri = "file://screenshots/quran-reader-ui/04-mobile-tajweed-guide.png"
+type = "image"
+title = "الهاتف 390 — دليل التجويد"
+description = "دليل الألوان بعد تفعيل المفتاح والتمرير داخل اللوحة."
+logical_id = "96946c93-fd88-46c4-99f4-d6c518c19ac5"
+content_hash = "sha256:c34d3da79594dbe1e93ba549f322bf7215bcec7c5f418e0c8a19c0d0a0eb413d"
+size = 46827
+mtime_ms = 1790527229020
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/96946c93-fd88-46c4-99f4-d6c518c19ac5/60714c6c-a542-4108-84d5-3b15e79b0cc8"
+storage_version_token = "1790527464339289"
+content_type = "image/png"
+
+[[outputs]]
+id = "B1g1sqpUCaqbq2W8hwb8C"
+uri = "file://screenshots/quran-reader-ui/05-landscape-closed.png"
+type = "image"
+title = "الهاتف الأفقي 844 — صفحة واحدة"
+description = "قارئ بعرض أفقي وشريط واحد من دون ازدحام."
+logical_id = "e9b49815-bad1-469a-8b71-b3ff1a1b3db7"
+content_hash = "sha256:57d1722447d6dc6fcba8c6d287c3d7dbbb37cab1aa48978b1ce566f64d98d695"
+size = 39957
+mtime_ms = 1790527231904
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/e9b49815-bad1-469a-8b71-b3ff1a1b3db7/65dfee79-e2d1-4cd2-9653-07d03b17b85f"
+storage_version_token = "1790527465665679"
+content_type = "image/png"
+
+[[outputs]]
+id = "aKNJQlAV1DsjQA-BOnlrH"
+uri = "file://screenshots/quran-reader-ui/08-tablet-menu-open.png"
+type = "image"
+title = "اللوحي 768 — الإعدادات"
+description = "اللوحة المضغوطة على عرض لوحي."
+logical_id = "3f624348-ef16-4eb9-81d4-ca341ab98821"
+content_hash = "sha256:9d117e3ab524da798a040eeb23d27bd3c8cfb70f993e7c6a4e7f22a3e0977cdd"
+size = 92225
+mtime_ms = 1790527302723
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/3f624348-ef16-4eb9-81d4-ca341ab98821/1ac3a1a9-28c6-4ba6-9952-e69892320b99"
+storage_version_token = "1790527467270473"
+content_type = "image/png"
+
+[[outputs]]
+id = "rfFIxBcfatCqHIAZnWgpa"
+uri = "file://screenshots/quran-reader-ui/09-desktop-menu-open.png"
+type = "image"
+title = "سطح المكتب 1440 — الإعدادات"
+description = "لوحة مدمجة بجوار المصحف ذي الصفحتين."
+logical_id = "a21d21a3-e06f-42aa-8d50-b49fb0995136"
+content_hash = "sha256:eda7f89adf37119bc1abb27c1379bfd6263db1a4730cf4be0906d259490776c1"
+size = 167928
+mtime_ms = 1790527282971
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/a21d21a3-e06f-42aa-8d50-b49fb0995136/b57a919e-6a56-4330-a04c-1f20177a6113"
+storage_version_token = "1790527469182912"
+content_type = "image/png"

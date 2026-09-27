@@ -11,7 +11,6 @@ import {
   ImageOff,
   ListPlus,
   Bookmark,
-  BookOpen,
   Volume2,
   Loader2,
   Menu,
@@ -23,8 +22,6 @@ import {
   ZoomIn,
   ZoomOut,
   Download,
-  Palette,
-  Droplets,
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,7 +56,6 @@ import {
 import { QuranEducationPanel } from "@/components/quran/quran-education-panel";
 import { QuranAyahActionSurface } from "@/components/quran/quran-ayah-action-surface";
 import { QuranMutashabihatPanel } from "@/components/quran/quran-mutashabihat-panel";
-import { QuranBookmarkCategoryPicker } from "@/components/quran/quran-bookmark-category-picker";
 import { QuranWordActionPopover } from "@/components/quran/quran-word-action-popover";
 import { QuranTajweedRuleCard } from "@/components/quran/quran-tajweed-rule-card";
 import type { QuranSurahParsed } from "@/lib/quran-parser";
@@ -273,6 +269,8 @@ export function QuranPagesView({
   const [pagePickerQuery, setPagePickerQuery] = useState("");
   const [quietMode, setQuietMode] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const settingsCloseRef = useRef<HTMLButtonElement | null>(null);
+  const settingsTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [pageLayoutMenuPlacement, setPageLayoutMenuPlacement] = useState<"desktop" | "mobile" | null>(null);
   const [memoChoiceOpen, setMemoChoiceOpen] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
@@ -309,7 +307,6 @@ export function QuranPagesView({
   );
   const { themeId: readingThemeId, setThemeId: setReadingThemeId, cssVars: readingThemeVars } = useQuranReadingTheme();
   const { tajweedEnabled, setTajweedEnabled } = useQuranTajweedMode();
-  const [readingThemePickerOpen, setReadingThemePickerOpen] = useState(false);
   const [tajweedLegendOpen, setTajweedLegendOpen] = useState(false);
   const preLandscapeLayoutRef = useRef<"spread" | "single" | "continuous" | null>(null);
   const [continuousStartPage, setContinuousStartPage] = useState(FIRST_PAGE);
@@ -346,7 +343,6 @@ export function QuranPagesView({
     savePosition: saveMainPosition,
     toggleBookmark,
     bookmarksMap,
-    isMutatingBookmark,
     canSync,
     syncEnabled,
     syncActive,
@@ -383,8 +379,6 @@ export function QuranPagesView({
     startAyah: number;
     endAyah: number;
   } | null>(null);
-  const [copyActionsOpen, setCopyActionsOpen] = useState(false);
-  const [bookmarkActionsOpen, setBookmarkActionsOpen] = useState(false);
   const [ayahActionVerseKey, setAyahActionVerseKey] = useState<string | null>(null);
   const [mutashabihatVerseKey, setMutashabihatVerseKey] = useState<string | null>(null);
   const [ayahActionAnchor, setAyahActionAnchor] = useState<{
@@ -602,10 +596,34 @@ export function QuranPagesView({
   }, [pagePickerPlacement]);
   useEffect(() => {
     if (mobileToolsOpen) return;
-    setCopyActionsOpen(false);
-    setBookmarkActionsOpen(false);
-    setReadingThemePickerOpen(false);
     setTajweedLegendOpen(false);
+  }, [mobileToolsOpen]);
+  useEffect(() => {
+    if (!mobileToolsOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    settingsCloseRef.current?.focus();
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const panel = document.getElementById("quran-reader-more-panel");
+      const focusable = panel?.querySelectorAll<HTMLElement>('button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex="0"]');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", keepFocusInside);
+    return () => {
+      document.removeEventListener("keydown", keepFocusInside);
+      document.body.style.overflow = previousOverflow;
+      settingsTriggerRef.current?.focus();
+    };
   }, [mobileToolsOpen]);
 
   useEffect(() => {
@@ -617,7 +635,7 @@ export function QuranPagesView({
           if (preLandscapeLayoutRef.current === null) {
             preLandscapeLayoutRef.current = current;
           }
-          return "spread";
+          return "single";
         });
         return;
       }
@@ -926,7 +944,6 @@ export function QuranPagesView({
   const selectedAyahText = selectedSurahContent?.ayahs.find((ayah) => ayah.index === selectedAyah)?.text;
 
   const copySelection = async () => {
-    setCopyActionsOpen(false);
     if (!selectedSurahContent || !selectedVerseKey) return;
     const rangeStart = copyRange?.surah === selectedSurah
       ? Math.min(copyRange.startAyah, copyRange.endAyah)
@@ -966,22 +983,9 @@ export function QuranPagesView({
     }
   };
 
-  const toggleMultiCopy = () => {
-    setCopyActionsOpen(false);
-    if (copyRange) {
-      setCopyRange(null);
-      return;
-    }
-    setCopyRange({ surah: selectedSurah, startAyah: selectedAyah, endAyah: selectedAyah });
-  };
-
   const copyRangeStart = copyRange ? Math.min(copyRange.startAyah, copyRange.endAyah) : selectedAyah;
   const copyRangeEnd = copyRange ? Math.max(copyRange.startAyah, copyRange.endAyah) : selectedAyah;
   const copyCount = copyRangeEnd - copyRangeStart + 1;
-  const currentCopyKey = `${selectedSurah}:${copyRangeStart}-${copyRangeEnd}`;
-  const isCurrentBookmarked = bookmarksMap.has(`${selectedSurah}:${selectedAyah}`);
-  const currentBookmarkCategory = bookmarksMap.get(`${selectedSurah}:${selectedAyah}`);
-  const canToggleCurrentBookmark = !isIndependentPractice && mode === null && Boolean(fallbackVerse);
 
   const {
     memoSession, setMemoSession,
@@ -1926,20 +1930,22 @@ export function QuranPagesView({
       type="button"
       disabled={isSyncing}
       onClick={() => void handleStandaloneSyncToggle()}
+      data-testid="button-sync-reading"
       className={cn(
-        "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors disabled:opacity-50",
+        "quran-settings-row rounded-md px-1 transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/5",
         syncEnabled
-          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100"
-          : "text-emerald-700 hover:bg-emerald-900/5 dark:text-emerald-400 dark:hover:bg-white/10",
+          ? "text-emerald-900 dark:text-emerald-100"
+          : "text-emerald-800 dark:text-emerald-200",
       )}
       title={lang === "ar"
         ? "مزامنة آخر موضع والعلامات والتفضيلات"
         : "Sync your reading position, bookmarks, and preferences"}
     >
-      {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : syncEnabled ? <Cloud className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}
-      <span className="hidden sm:inline">
-        {lang === "ar" ? (syncEnabled ? "مزامنة مفعّلة" : "المزامنة") : (syncEnabled ? "Sync on" : "Sync")}
+      <span className="inline-flex items-center gap-2">
+        {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : syncEnabled ? <Cloud className="h-4 w-4" /> : <CloudOff className="h-4 w-4" />}
+        {lang === "ar" ? "مزامنة القراءة" : "Reading sync"}
       </span>
+      <span className="text-[11px] font-medium opacity-65">{lang === "ar" ? (syncEnabled ? "مفعّلة" : "متوقفة") : (syncEnabled ? "On" : "Off")}</span>
     </button>
   ) : null;
 
@@ -1987,7 +1993,7 @@ export function QuranPagesView({
     const pickerId = `quran-page-picker-${placement}`;
 
     return (
-      <div className="relative flex h-full shrink-0 items-center gap-0.5 px-1">
+      <div className="relative flex h-full shrink-0 items-center gap-0.5 px-0.5">
         <span aria-hidden="true" className={cn(
           "font-bold text-emerald-900/50 dark:text-emerald-100/50",
           isMobile ? "text-[9px]" : "text-[10px]",
@@ -2020,7 +2026,7 @@ export function QuranPagesView({
           title={lang === "ar" ? `أدخل رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Enter a page from ${FIRST_PAGE} to ${LAST_PAGE}`}
           className={cn(
             "rounded-md border border-transparent bg-transparent px-0.5 text-center font-extrabold tabular-nums text-emerald-950 outline-none transition-colors hover:bg-emerald-900/5 focus:border-emerald-700/30 focus:bg-white/70 focus:ring-2 focus:ring-emerald-600/20 dark:text-emerald-100 dark:focus:bg-white/10",
-            isMobile ? "h-7 w-9 text-[11px]" : "h-7 w-10 text-xs",
+            isMobile ? "h-9 w-8 text-[11px]" : "h-8 w-10 text-xs",
           )}
           aria-label={lang === "ar" ? `رقم الصفحة من ${FIRST_PAGE} إلى ${LAST_PAGE}` : `Page number from ${FIRST_PAGE} to ${LAST_PAGE}`}
           data-testid={isMobile ? "select-mobile-page" : "select-page"}
@@ -2039,7 +2045,7 @@ export function QuranPagesView({
           }}
           className={cn(
             "inline-flex shrink-0 items-center justify-center rounded-md text-emerald-900/55 transition-colors hover:bg-emerald-900/10 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-100/60 dark:hover:bg-white/10 dark:hover:text-emerald-100",
-            isMobile ? "h-7 w-6" : "h-7 w-7",
+            isMobile ? "h-9 w-5" : "h-8 w-7",
             pickerOpen && "bg-emerald-900/10 dark:bg-white/10",
           )}
         >
@@ -2144,7 +2150,7 @@ export function QuranPagesView({
     const menuOpen = pageLayoutMenuPlacement === placement;
 
     return (
-      <div data-testid={`page-layout-control-${placement}`} className="relative shrink-0">
+      <div data-testid={`page-layout-control-${placement}`} className="relative min-w-0 flex-1">
         <button
           type="button"
           data-page-layout-trigger
@@ -2157,11 +2163,10 @@ export function QuranPagesView({
           aria-controls={`quran-page-layout-menu-${placement}`}
           onClick={() => setPageLayoutMenuPlacement((current) => current === placement ? null : placement)}
           className={cn(
-            "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-emerald-900/5 px-2.5 text-xs font-bold text-emerald-900 transition-colors hover:bg-emerald-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-white/5 dark:text-emerald-100 dark:hover:bg-white/10 dark:focus-visible:ring-emerald-400",
+            "inline-flex h-10 w-full items-center justify-between gap-1 rounded-md px-2 text-xs font-bold text-emerald-900 transition-colors hover:bg-emerald-900/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-100 dark:hover:bg-white/10 dark:focus-visible:ring-emerald-400",
             menuOpen && "bg-emerald-900/10 dark:bg-white/10",
           )}
         >
-          <BookOpen className="h-4 w-4 shrink-0 opacity-75" aria-hidden="true" />
           <span>{lang === "ar" ? selectedOption.ar : selectedOption.en}</span>
           <ChevronDown className={cn("h-3.5 w-3.5 opacity-60 transition-transform", menuOpen && "rotate-180")} aria-hidden="true" />
         </button>
@@ -2172,7 +2177,7 @@ export function QuranPagesView({
             data-testid={`page-layout-menu-${placement}`}
             role="menu"
             aria-label={lang === "ar" ? "طريقة عرض المصحف" : "Mushaf page layout"}
-            className="absolute end-0 top-full z-[60] mt-1 w-40 overflow-hidden rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-1.5 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
+            className="absolute end-0 top-full z-[80] mt-1 w-40 overflow-hidden rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-1.5 shadow-xl dark:border-white/10 dark:bg-[#151b18]"
           >
             {options.map((option) => {
               const selected = pageLayout === option.value;
@@ -2202,286 +2207,78 @@ export function QuranPagesView({
     );
   };
 
-  const zoomControlsDesktop = (
-    <div className="flex h-full shrink-0 items-center gap-0.5 px-1">
-      <button
-        type="button"
-        onClick={() => adjustZoom(-10)}
-        disabled={zoom <= MIN_ZOOM}
-        data-testid="button-zoom-out"
-        className="grid h-7 w-7 place-items-center rounded text-emerald-800 transition-colors hover:bg-emerald-900/5 disabled:opacity-35 dark:text-emerald-300 dark:hover:bg-white/10"
-        aria-label={lang === "ar" ? "تصغير" : "Zoom out"}
-      >
-        <ZoomOut className="h-4 w-4" />
-      </button>
-      <span className="min-w-9 text-center text-[11px] font-bold text-emerald-950 dark:text-emerald-100">
-        {zoom}%
-      </span>
-      <button
-        type="button"
-        onClick={() => adjustZoom(10)}
-        disabled={zoom >= MAX_ZOOM}
-        data-testid="button-zoom-in"
-        className="grid h-7 w-7 place-items-center rounded text-emerald-800 transition-colors hover:bg-emerald-900/5 disabled:opacity-35 dark:text-emerald-300 dark:hover:bg-white/10"
-        aria-label={lang === "ar" ? "تكبير" : "Zoom in"}
-      >
-        <ZoomIn className="h-4 w-4" />
-      </button>
-    </div>
-  );
-
-  const readingThemePicker = (
-    <div className="relative flex shrink-0">
-      <button
-        type="button"
-        onClick={() => { setReadingThemePickerOpen((v) => !v); setCopyActionsOpen(false); setBookmarkActionsOpen(false); setTajweedLegendOpen(false); }}
-        data-testid="button-reading-theme"
-        className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
-        aria-label={lang === "ar" ? "إضاءة صفحة المصحف" : "Mushaf page lighting"}
-        aria-expanded={readingThemePickerOpen}
-      >
-        <Palette className="h-4 w-4" />
-      </button>
-      {readingThemePickerOpen && (
-        <div className="fixed inset-x-3 top-24 z-50 flex min-w-52 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10">
-          <p className="px-2 pb-0.5 pt-1 text-[10px] font-extrabold text-emerald-800/60 dark:text-emerald-200/60">
-            {lang === "ar" ? "إضاءة الصفحة" : "Page lighting"}
-          </p>
-          {(Object.values(QURAN_READING_THEMES)).map((themeOption) => (
-            <button
-              key={themeOption.id}
-              type="button"
-              onClick={() => {
-                setReadingThemeId(themeOption.id as QuranReadingThemeId);
-                setReadingThemePickerOpen(false);
-              }}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 dark:hover:bg-white/10",
-                readingThemeId === themeOption.id && "bg-emerald-900/5 dark:bg-white/10",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className="h-5 w-5 shrink-0 rounded-full border border-black/10 shadow-inner dark:border-white/20"
-                style={{ backgroundColor: themeOption.swatch }}
-              />
-              <span className="flex-1 text-start">{lang === "ar" ? themeOption.labelAr : themeOption.labelEn}</span>
-              {readingThemeId === themeOption.id && <Check className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-300" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const tajweedToggleButton = (
-    <div className="relative flex shrink-0 items-center">
-      <button
-        type="button"
-        onClick={() => {
-          const next = !tajweedEnabled;
-          setTajweedEnabled(next);
-          if (next) {
-            try {
-              if (window.localStorage.getItem(TAJWEED_LEGEND_SEEN_KEY) !== "true") {
-                setTajweedLegendOpen(true);
-                window.localStorage.setItem(TAJWEED_LEGEND_SEEN_KEY, "true");
-              }
-            } catch {}
-          }
-        }}
-        data-testid="button-tajweed-toggle"
-        className={cn(
-          "grid h-9 w-9 shrink-0 place-items-center rounded-md transition-colors",
-          tajweedEnabled
-            ? "text-emerald-700 bg-emerald-900/10 dark:text-emerald-300 dark:bg-white/15"
-            : "text-emerald-800 hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10",
-        )}
-        aria-label={lang === "ar" ? "تلوين أحكام التجويد" : "Tajweed rule coloring"}
-        aria-pressed={tajweedEnabled}
-        title={lang === "ar" ? "تلوين أحكام التجويد" : "Tajweed rule coloring"}
-      >
-        <Droplets className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          setTajweedLegendOpen((v) => !v);
-          setCopyActionsOpen(false);
-          setBookmarkActionsOpen(false);
-          setReadingThemePickerOpen(false);
-        }}
-        data-testid="button-tajweed-legend"
-        className="grid h-9 w-6 shrink-0 place-items-center rounded-md text-emerald-800/70 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300/70 dark:hover:bg-white/10"
-        aria-label={lang === "ar" ? "معنى ألوان التجويد" : "What the tajweed colors mean"}
-        aria-expanded={tajweedLegendOpen}
-        title={lang === "ar" ? "معنى ألوان التجويد" : "What the tajweed colors mean"}
-      >
-        <Info className="h-3.5 w-3.5" />
-      </button>
-      {tajweedLegendOpen && (
-        <div className="fixed inset-x-3 top-24 z-50 flex max-h-[70vh] w-auto flex-col gap-1 overflow-y-auto rounded-xl border border-emerald-900/10 bg-white/95 p-2 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10 sm:w-72">
-          <div className="flex items-center justify-between px-1.5 pb-1 pt-0.5">
-            <p className="text-[11px] font-extrabold text-emerald-800/70 dark:text-emerald-200/70">
-              {lang === "ar" ? "معنى ألوان التجويد" : "Tajweed color legend"}
-            </p>
-            <button
-              type="button"
-              onClick={() => setTajweedLegendOpen(false)}
-              className="grid h-6 w-6 place-items-center rounded-md text-emerald-800/60 hover:bg-emerald-900/5 dark:text-emerald-200/60 dark:hover:bg-white/10"
-              aria-label={lang === "ar" ? "إغلاق" : "Close"}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          {TAJWEED_LEGEND.map((rule) => (
-            <div key={rule.color} className="flex items-start gap-2.5 rounded-lg px-1.5 py-1.5">
-              <span
-                aria-hidden="true"
-                className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-black/10 shadow-inner dark:border-white/20"
-                style={{ backgroundColor: rule.color }}
-              />
-              <div className="flex-1 text-start">
-                <p className="text-xs font-bold text-foreground">{lang === "ar" ? rule.labelAr : rule.labelEn}</p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">{lang === "ar" ? rule.descAr : rule.descEn}</p>
-              </div>
-            </div>
-          ))}
-          <p className="border-t border-emerald-900/10 px-1.5 pb-0.5 pt-1.5 text-[10px] leading-relaxed text-muted-foreground/80 dark:border-white/10">
-            {lang === "ar"
-              ? "الألوان معتمدة على خط التجويد الرسمي، وقد تختلف درجة اللون قليلاً حسب إضاءة الصفحة المختارة."
-              : "Colors come from the official Tajweed font and may shift slightly with the chosen page lighting."}
-          </p>
-        </div>
-      )}
-    </div>
-  );
+  const toggleTajweedColors = () => {
+    const next = !tajweedEnabled;
+    setTajweedEnabled(next);
+    if (next) {
+      try {
+        if (window.localStorage.getItem(TAJWEED_LEGEND_SEEN_KEY) !== "true") {
+          setTajweedLegendOpen(true);
+          window.localStorage.setItem(TAJWEED_LEGEND_SEEN_KEY, "true");
+        }
+      } catch {}
+    } else {
+      setTajweedLegendOpen(false);
+    }
+  };
 
   const searchDialogWrapped = (
-    <div className="flex shrink-0 items-center" onPointerDown={() => setMobileToolsOpen(false)}>
+    <div className="quran-toolbar-search flex shrink-0 items-center" onPointerDown={() => setMobileToolsOpen(false)}>
       <QuranSearchDialog onSelect={({ pageId }) => goToPage(pageId)} />
     </div>
-  );
-
-  const copyDropdown = (
-    <div className="relative flex shrink-0">
-      <button
-        type="button"
-        onClick={() => { setCopyActionsOpen((v) => !v); setBookmarkActionsOpen(false); setReadingThemePickerOpen(false); setTajweedLegendOpen(false); }}
-        data-testid="button-copy-actions"
-        className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
-        aria-label={lang === "ar" ? "خيارات النسخ" : "Copy options"}
-      >
-        {copiedVerseKey === currentCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      </button>
-      {copyActionsOpen && (
-        <div className="fixed inset-x-3 top-24 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10">
-          <button type="button" onClick={() => void copySelection()} disabled={!selectedAyahText || isFetchingSelectedSurah}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 disabled:opacity-50 dark:hover:bg-white/10">
-            <Copy className="h-4 w-4" />{lang === "ar" ? (copyRange ? `نسخ ${copyCount} آيات` : "نسخ") : (copyRange ? `Copy ${copyCount}` : "Copy")}
-          </button>
-          <button type="button" onClick={toggleMultiCopy}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 dark:hover:bg-white/10">
-            {copyRange ? <X className="h-4 w-4" /> : <ListPlus className="h-4 w-4" />}
-            {lang === "ar" ? (copyRange ? "إلغاء التحديد" : "تحديد آيات") : (copyRange ? "Cancel" : "Select ayahs")}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
-  const bookmarkDropdown = (canToggleCurrentBookmark || onOpenBookmarks) ? (
-    <div className="relative flex shrink-0">
-      <button
-        type="button"
-        onClick={() => { setBookmarkActionsOpen((v) => !v); setCopyActionsOpen(false); setReadingThemePickerOpen(false); setTajweedLegendOpen(false); }}
-        data-testid="button-bookmark-actions"
-        className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
-        aria-label={lang === "ar" ? "خيارات العلامات" : "Bookmark options"}
-      >
-        <Bookmark className={cn("h-4 w-4", isCurrentBookmarked && "fill-current")} />
-      </button>
-      {bookmarkActionsOpen && (
-        <div className="fixed inset-x-3 top-24 z-50 flex min-w-40 flex-col gap-1 rounded-xl border border-emerald-900/10 bg-white/95 p-1.5 shadow-xl backdrop-blur-md dark:border-white/10 dark:bg-[#0a0c0b]/95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-10">
-          {canToggleCurrentBookmark && (
-            <QuranBookmarkCategoryPicker
-              selectedCategory={currentBookmarkCategory}
-              disabled={isMutatingBookmark}
-              className="min-w-72"
-              onSelect={(category) => {
-                toggleBookmark(selectedSurah, selectedAyah, canonicalPage, isCurrentBookmarked, category);
-                setBookmarkActionsOpen(false);
-              }}
-              onRemove={isCurrentBookmarked ? () => {
-                toggleBookmark(selectedSurah, selectedAyah, canonicalPage, true);
-                setBookmarkActionsOpen(false);
-              } : undefined}
-            />
-          )}
-          {onOpenBookmarks && (
-            <button type="button" onClick={() => { setBookmarkActionsOpen(false); onOpenBookmarks(); }}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors hover:bg-emerald-900/5 dark:hover:bg-white/10">
-              <Bookmark className="h-4 w-4" />{lang === "ar" ? "كل العلامات" : "All bookmarks"}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  ) : null;
-
-  const quietModeButton = (
-    <button
-      type="button"
-      onClick={() => {
-        setQuietMode(true);
-        toast.info(lang === "ar"
-          ? "تم تشغيل وضع القراءة الهادئ — اضغط إظهار الأدوات للخروج"
-          : "Quiet reading is on — use Show tools to exit");
-      }}
-      data-testid="button-quiet-mode"
-      className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
-      aria-label={lang === "ar" ? "وضع القراءة الهادئ" : "Quiet mode"}
-    >
-      <EyeOff className="h-4 w-4" />
-    </button>
   );
 
   const installButton = standalone && isInstallable ? (
     <button
       type="button"
-      onClick={() => setInstallManualOpen(true)}
+      onClick={() => { setMobileToolsOpen(false); setInstallManualOpen(true); }}
       data-testid="button-install-pwa"
-      className="grid h-9 w-9 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
+      className="quran-settings-row rounded-md px-1 text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-200 dark:hover:bg-white/5"
       aria-label={lang === "ar" ? "تثبيت التطبيق" : "Install App"}
     >
-      <Download className="h-4 w-4" />
+      <span className="inline-flex items-center gap-2"><Download className="h-4 w-4" />{lang === "ar" ? "تثبيت التطبيق" : "Install app"}</span>
+      <ChevronLeft className="h-4 w-4 opacity-50" aria-hidden="true" />
     </button>
   ) : null;
 
-  const audioButtonMobile = !audioDockOpen ? (
+  const audioButtonMobile = (
     <button
       type="button"
-      onClick={openAudioControls}
+      onClick={() => {
+        if (audioDockOpen) {
+          bottomDockRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          return;
+        }
+        openAudioControls();
+      }}
       data-testid="button-mobile-audio"
-      className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10 lg:hidden"
+      className="quran-toolbar-action grid h-10 w-9 shrink-0 place-items-center rounded-lg text-emerald-900 transition-colors hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10 lg:hidden"
       aria-label={lang === "ar" ? "التلاوة" : "Recitation"}
+      aria-pressed={audioDockOpen}
     >
-      <Volume2 className="h-4.5 w-4.5" />
+      <Volume2 className="h-[18px] w-[18px]" />
     </button>
-  ) : null;
+  );
 
-  const audioButtonDesktop = !audioDockOpen ? (
+  const audioButtonDesktop = (
     <button
       type="button"
-      onClick={openAudioControls}
+      onClick={() => {
+        if (audioDockOpen) {
+          bottomDockRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          return;
+        }
+        openAudioControls();
+      }}
       data-testid="button-desktop-audio"
       className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-900/5 dark:text-emerald-300 dark:hover:bg-white/10"
       aria-label={lang === "ar" ? "فتح مشغل التلاوة" : "Open recitation player"}
+      aria-pressed={audioDockOpen}
     >
       <Volume2 className="h-4 w-4" />
       <span>{lang === "ar" ? "التلاوة" : "Recitation"}</span>
     </button>
-  ) : null;
+  );
 
   const recordPracticeButton = isIndependentPractice && !standalone ? (
     <button
@@ -2500,6 +2297,7 @@ export function QuranPagesView({
       type="button"
       onClick={openLiveRecitation}
       data-testid="button-live-recitation"
+      aria-label={lang === "ar" ? "تسميع مباشر" : "Live recitation"}
       className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-bold text-white transition-colors hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 lg:text-sm"
     >
       <Mic2 className="h-4 w-4" />
@@ -2531,7 +2329,7 @@ export function QuranPagesView({
       data-reader-memo-trigger
       data-testid="button-mobile-memo-session"
       className={cn(
-        "inline-flex h-9 shrink-0 items-center justify-center rounded-md px-2.5 text-xs font-bold transition-colors lg:hidden",
+        "inline-flex h-10 max-w-full shrink-0 items-center justify-center truncate rounded-lg px-1.5 text-[11px] font-bold transition-colors lg:hidden",
         guidedOpen
           ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900/70"
           : "bg-emerald-900/5 text-emerald-800 hover:bg-emerald-900/10 dark:bg-white/5 dark:text-emerald-200 dark:hover:bg-white/10"
@@ -2542,13 +2340,13 @@ export function QuranPagesView({
   );
 
   const moreButton = (mobile: boolean) => (
-    <button type="button" data-reader-more-trigger data-testid={mobile ? "button-mobile-more-tools" : "button-desktop-more-tools"}
+    <button type="button" ref={(node) => { if (node && typeof window !== "undefined" && (mobile === (window.innerWidth < 1024))) settingsTriggerRef.current = node; }} data-reader-more-trigger data-testid={mobile ? "button-mobile-more-tools" : "button-desktop-more-tools"}
       onClick={() => { setMemoChoiceOpen(false); setMobileToolsOpen((open) => !open); }}
-      aria-label={lang === "ar" ? "المزيد من أدوات المصحف" : "More Mushaf tools"}
-      aria-controls="quran-reader-more-panel" aria-expanded={mobileToolsOpen}
-      className={cn("inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-emerald-800 transition-colors hover:bg-emerald-900/10 dark:text-emerald-200 dark:hover:bg-white/10", mobileToolsOpen && "bg-emerald-900/10 dark:bg-white/10")}>
-      {mobileToolsOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-      <span className="hidden text-xs font-bold xl:inline">{lang === "ar" ? "المزيد" : "More"}</span>
+      aria-label={lang === "ar" ? "إعدادات المصحف" : "Mushaf settings"}
+      aria-haspopup="dialog" aria-controls="quran-reader-more-panel" aria-expanded={mobileToolsOpen}
+      className={cn("quran-toolbar-action inline-flex h-10 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-emerald-900 transition-colors hover:bg-emerald-900/5 dark:text-emerald-100 dark:hover:bg-white/10", mobileToolsOpen && "bg-emerald-900/10 dark:bg-white/10")}>
+      <Menu className="h-[18px] w-[18px]" aria-hidden="true" />
+      <span className="hidden text-xs font-bold xl:inline">{lang === "ar" ? "الإعدادات" : "Settings"}</span>
     </button>
   );
 
@@ -2565,6 +2363,9 @@ export function QuranPagesView({
       )}
       dir={dir}
     >
+      <span className="sr-only" aria-live="polite">
+        {copiedVerseKey ? (lang === "ar" ? "تم نسخ الآية" : "Ayah copied") : ""}
+      </span>
       {quietMode && (
         <button
           type="button"
@@ -2572,17 +2373,17 @@ export function QuranPagesView({
             setQuietMode(false);
             toast.info(lang === "ar" ? "عادت أدوات المصحف" : "Quran tools are visible");
           }}
-          className="quran-reader-quiet-exit fixed bottom-6 end-6 z-50 rounded-full bg-emerald-800 p-3 text-white opacity-40 shadow-lg transition-opacity hover:opacity-100"
+          className="quran-reader-quiet-exit fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] end-4 z-50 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#0b4b35] px-3 text-xs font-bold text-[#fcfbf5] shadow-md opacity-75 transition-opacity hover:opacity-100"
           aria-label={lang === "ar" ? "إظهار الأدوات" : "Show controls"}
         >
-          <Eye className="h-6 w-6" />
+          <Eye className="h-4 w-4" /><span>{lang === "ar" ? "إظهار الأدوات" : "Show tools"}</span>
         </button>
       )}
 
       {!quietMode && (
-        <header ref={toolsHeaderRef} className="quran-reader-header relative z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fbfaf6]/95 shadow-sm backdrop-blur-xl transition-all duration-300 dark:border-white/5 dark:bg-[#0a0c0b]/95">
+        <header ref={toolsHeaderRef} className="quran-reader-header relative z-40 w-full shrink-0 border-b border-emerald-900/10 bg-[#fcfbf5]/95 shadow-[0_2px_10px_rgba(15,50,32,0.04)] backdrop-blur-md dark:border-white/10 dark:bg-[#15231a]/95">
           {/* Desktop Toolbar */}
-          <div className="mx-auto hidden w-full max-w-[1400px] flex-row items-center justify-between gap-4 px-4 py-2 lg:flex">
+          <div className="quran-reader-toolbar mx-auto hidden w-full max-w-[1400px] flex-row items-center justify-between gap-4 px-4 py-2 lg:flex">
             <div className="flex min-w-0 items-center gap-3">
               {backButtonDesktop}
               <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
@@ -2592,7 +2393,8 @@ export function QuranPagesView({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              {layoutModeControl("desktop")}
+              {recordPracticeButton}
+              {liveRecitationButton}
               {searchDialogWrapped}
               {audioButtonDesktop}
               {memoButton}
@@ -2601,25 +2403,14 @@ export function QuranPagesView({
           </div>
 
           {/* Mobile Toolbar */}
-          <div className="flex w-full px-2 py-2 lg:hidden">
-            <div className="flex w-full items-center justify-between gap-1">
-              <div className="flex min-w-0 flex-1 items-center gap-1">
-                {exitEmbeddedButton || backButtonMobile}
-                <div className="flex h-9 min-w-0 flex-1 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
-                  {mobileSurahSelect}
-                  <div className="mx-1 h-4 w-px shrink-0 bg-emerald-900/10 dark:bg-white/10" />
-                  {pagePickerControl("mobile")}
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-0.5">
-                {layoutModeControl("mobile")}
-                {searchDialogWrapped}
-                {audioButtonMobile}
-                {memoButtonMobile}
-                {moreButton(true)}
-              </div>
-            </div>
+          <div className="quran-reader-toolbar flex w-full items-center gap-0.5 px-1 py-1 lg:hidden">
+            {moreButton(true)}
+            <div className="quran-toolbar-memo shrink-0">{memoButtonMobile}</div>
+            {audioButtonMobile}
+            {searchDialogWrapped}
+            <div className="quran-toolbar-page flex h-10 shrink-0 items-center rounded-lg border border-emerald-900/10 bg-emerald-900/[.025]">{pagePickerControl("mobile")}</div>
+            <div className="quran-toolbar-surah flex h-10 min-w-0 items-center rounded-lg border border-emerald-900/10 bg-emerald-900/[.025]">{mobileSurahSelect}</div>
+            <div className="quran-toolbar-back shrink-0 overflow-hidden">{exitEmbeddedButton || backButtonMobile}</div>
           </div>
           {memoChoiceOpen && personalPlan.enabled && !guidedOpen && (
             <div data-reader-memo-choice role="group" aria-label={lang === "ar" ? "بدء حفظني" : "Start memorization"}
@@ -2640,46 +2431,6 @@ export function QuranPagesView({
             </div>
           )}
 
-          {mobileToolsOpen && (
-            <div data-reader-more id="quran-reader-more-panel" role="region" aria-label={lang === "ar" ? "أدوات المصحف" : "Mushaf tools"}
-              className="absolute end-2 top-full z-50 mt-1 flex max-h-[calc(100dvh-4.5rem)] w-[min(23rem,calc(100vw-1rem))] flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-emerald-900/10 bg-[#fbfaf6] p-3 shadow-xl dark:border-white/10 dark:bg-[#151b18] lg:end-4">
-                <p className="px-1 text-[10px] font-extrabold text-emerald-800/60 dark:text-emerald-200/60">
-                  {lang === "ar" ? "التنقل" : "Navigation"}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex h-9 w-32 shrink-0 items-center rounded-lg bg-emerald-900/5 p-1 dark:bg-white/5">
-                    {juzSelect}
-                  </div>
-                </div>
-                <div className="flex h-9 items-center rounded-lg bg-emerald-900/5 dark:bg-white/5">{zoomControlsDesktop}</div>
-                <p className="border-t border-emerald-900/10 px-1 pt-2 text-[10px] font-extrabold text-emerald-800/60 dark:border-white/10 dark:text-emerald-200/60">
-                  {lang === "ar" ? "أدوات القراءة" : "Reading tools"}
-                </p>
-                <div className="flex flex-wrap items-center gap-1">
-                    {installButton}
-                    {copyDropdown}
-                    {bookmarkDropdown}
-                    {readingThemePicker}
-                    {tajweedToggleButton}
-                    {quietModeButton}
-                    {syncButton}
-                </div>
-                {(onOpenBookmarks || recordPracticeButton || liveRecitationButton) && (
-                  <>
-                    <p className="border-t border-emerald-900/10 px-1 pt-2 text-[10px] font-extrabold text-emerald-800/60 dark:border-white/10 dark:text-emerald-200/60">{lang === "ar" ? "إجراءات" : "Actions"}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                    {onOpenBookmarks && <button type="button" data-testid="button-mobile-open-bookmarks" onClick={() => { setMobileToolsOpen(false); onOpenBookmarks(); }}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-900/5 px-3 text-xs font-bold text-emerald-800 dark:bg-white/5 dark:text-emerald-200">
-                      <Bookmark className="h-4 w-4" />{lang === "ar" ? "العلامات" : "Bookmarks"}
-                    </button>}
-                    {recordPracticeButton}
-                    {liveRecitationButton}
-                    </div>
-                  </>
-                )}
-            </div>
-          )}
-
           {startAyah !== null && endAyah !== null && (
             <div className="border-y border-emerald-200/50 bg-emerald-50 px-2 py-1 text-center text-[11px] font-bold text-emerald-900 shadow-inner dark:border-emerald-800/50 dark:bg-emerald-900/40 dark:text-emerald-100 md:px-4 md:py-2 md:text-sm">
               {lang === "ar"
@@ -2688,6 +2439,128 @@ export function QuranPagesView({
             </div>
           )}
         </header>
+      )}
+
+      {mobileToolsOpen && !quietMode && (
+        <>
+          <div className="quran-settings-backdrop" aria-hidden="true" onPointerDown={() => setMobileToolsOpen(false)} />
+          <div data-reader-more id="quran-reader-more-panel" role="dialog" aria-modal="true"
+            aria-labelledby="quran-settings-title" className="quran-settings-sheet">
+            <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-emerald-900/20 md:hidden" aria-hidden="true" />
+            <div className="flex shrink-0 items-center justify-between border-b border-emerald-900/10 px-5 py-2.5">
+              <h2 id="quran-settings-title" className="text-base font-extrabold">{lang === "ar" ? "إعدادات المصحف" : "Mushaf settings"}</h2>
+              <button type="button" ref={settingsCloseRef} onClick={() => setMobileToolsOpen(false)}
+                data-testid="button-close-mushaf-settings" aria-label={lang === "ar" ? "إغلاق إعدادات المصحف" : "Close Mushaf settings"}
+                className="grid h-10 w-10 place-items-center rounded-lg hover:bg-emerald-900/5">
+                <X className="h-[18px] w-[18px]" />
+              </button>
+            </div>
+            <div className="quran-settings-body px-5">
+              <section className="quran-settings-section py-4" aria-label={lang === "ar" ? "التنقل والعرض" : "Navigation and display"}>
+                <span className="quran-settings-label">{lang === "ar" ? "التنقل والعرض" : "Navigation & display"}</span>
+                <div className="flex items-center gap-2">
+                  <div className="quran-settings-control flex h-10 min-w-0 flex-1 items-center">{juzSelect}</div>
+                  <div className="quran-settings-control flex min-w-0 flex-1 items-center">{layoutModeControl("mobile")}</div>
+                </div>
+              </section>
+              <section className="quran-settings-section py-4" aria-label={lang === "ar" ? "حجم المصحف" : "Mushaf size"}>
+                <span className="quran-settings-label">{lang === "ar" ? "حجم المصحف" : "Mushaf size"}</span>
+                <div className="quran-settings-control flex h-11 items-center justify-between px-1">
+                  <button type="button" onClick={() => adjustZoom(-10)} disabled={zoom <= MIN_ZOOM}
+                    data-testid="button-zoom-out" aria-label={lang === "ar" ? "تصغير" : "Zoom out"}
+                    className="grid h-10 w-10 place-items-center rounded-md hover:bg-emerald-900/5 disabled:opacity-35"><ZoomOut className="h-4 w-4" /></button>
+                  <span data-testid="text-quran-zoom" className="text-sm font-extrabold tabular-nums" dir="ltr">{zoom}%</span>
+                  <button type="button" onClick={() => adjustZoom(10)} disabled={zoom >= MAX_ZOOM}
+                    data-testid="button-zoom-in" aria-label={lang === "ar" ? "تكبير" : "Zoom in"}
+                    className="grid h-10 w-10 place-items-center rounded-md hover:bg-emerald-900/5 disabled:opacity-35"><ZoomIn className="h-4 w-4" /></button>
+                </div>
+              </section>
+              <section className="quran-settings-section py-4" aria-label={lang === "ar" ? "مظهر المصحف" : "Mushaf appearance"}>
+                <span className="quran-settings-label">{lang === "ar" ? "مظهر المصحف" : "Mushaf appearance"}</span>
+                <div role="radiogroup" aria-label={lang === "ar" ? "مظهر القراءة" : "Reading appearance"} className="grid grid-cols-3 gap-2">
+                  {Object.values(QURAN_READING_THEMES).map((option) => (
+                    <button key={option.id} type="button" role="radio" aria-checked={readingThemeId === option.id}
+                      data-testid={`button-reading-theme-${option.id}`}
+                      onClick={() => setReadingThemeId(option.id as QuranReadingThemeId)}
+                      className="quran-theme-choice flex flex-col items-center justify-center gap-1 px-1 py-2 text-center text-[11px] font-bold">
+                      <span aria-hidden="true" className="quran-theme-mini-page"
+                        style={{ backgroundColor: option.pageBg, color: option.ink }}>
+                        <span /><span /><span />
+                      </span>
+                      <span className="truncate">{lang === "ar" ? option.labelAr : option.labelEn}</span>
+                    </button>
+                  ))}
+                </div>
+                <button type="button" role="switch" aria-checked={tajweedEnabled} onClick={toggleTajweedColors}
+                  data-testid="button-tajweed-toggle" className="quran-settings-row mt-3 border-t border-emerald-900/10">
+                  <span>{lang === "ar" ? "ألوان التجويد" : "Tajweed colors"}</span>
+                  <span aria-hidden="true" className={cn("flex h-6 w-11 items-center rounded-full p-0.5 transition-colors", tajweedEnabled ? "bg-[#0b4b35]" : "bg-[#bac7bf]")}>
+                    <span className={cn("h-5 w-5 rounded-full bg-[#fcfbf5] shadow-sm transition-transform", tajweedEnabled && (dir === "rtl" ? "-translate-x-5" : "translate-x-5"))} />
+                  </span>
+                </button>
+                {tajweedEnabled && (
+                  <div className="border-t border-emerald-900/10">
+                    <button type="button" onClick={() => setTajweedLegendOpen((open) => !open)}
+                      data-testid="button-tajweed-legend" aria-expanded={tajweedLegendOpen}
+                      className="quran-settings-row text-xs font-bold">
+                      <span className="flex items-center gap-2"><Info className="h-4 w-4" />{lang === "ar" ? "دليل ألوان التجويد" : "Tajweed color guide"}</span>
+                      <ChevronLeft className={cn("h-4 w-4 transition-transform", tajweedLegendOpen && "-rotate-90")} />
+                    </button>
+                    {tajweedLegendOpen && (
+                      <div data-testid="panel-tajweed-legend" className="border-t border-emerald-900/10 py-2">
+                        {TAJWEED_LEGEND.map((rule) => (
+                          <div key={rule.color} className="flex items-start gap-2 py-1.5">
+                            <span aria-hidden="true" className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: rule.color }} />
+                            <div><p className="text-xs font-bold">{lang === "ar" ? rule.labelAr : rule.labelEn}</p>
+                              <p className="text-[11px] leading-relaxed opacity-70">{lang === "ar" ? rule.descAr : rule.descEn}</p></div>
+                          </div>
+                        ))}
+                        <p className="border-t border-emerald-900/10 pt-2 text-[10px] leading-relaxed opacity-70">
+                          {lang === "ar" ? "الألوان معتمدة على خط التجويد الرسمي، وقد تختلف درجة اللون قليلًا حسب إضاءة الصفحة المختارة." : "Colors come from the official Tajweed font and may vary slightly with page lighting."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+              <section className="quran-settings-section py-2" aria-label={lang === "ar" ? "أدوات العرض" : "Display tools"}>
+                <span className="quran-settings-label mb-0 mt-2">{lang === "ar" ? "أدوات العرض" : "Display tools"}</span>
+                <button type="button" onClick={() => {
+                  setMobileToolsOpen(false);
+                  setQuietMode(true);
+                  toast.info(lang === "ar" ? "تم تشغيل وضع القراءة الهادئ — اضغط إظهار الأدوات للخروج" : "Quiet reading is on — use Show tools to exit");
+                }} data-testid="button-quiet-mode" className="quran-settings-row">
+                  <span className="flex items-center gap-2"><EyeOff className="h-4 w-4" />{lang === "ar" ? "القراءة الصافية" : "Clear reading"}</span>
+                  <ChevronLeft className="h-4 w-4 opacity-50" />
+                </button>
+              </section>
+              {onOpenBookmarks && (
+                <section className="quran-settings-section py-2">
+                  <button type="button" data-testid="button-mobile-open-bookmarks"
+                    onClick={() => { setMobileToolsOpen(false); onOpenBookmarks(); }} className="quran-settings-row">
+                    <span className="flex items-center gap-2"><Bookmark className="h-4 w-4" />{lang === "ar" ? "العلامات المحفوظة" : "Saved bookmarks"}</span>
+                    <ChevronLeft className="h-4 w-4 opacity-50" />
+                  </button>
+                </section>
+              )}
+              {(installButton || syncButton) && (
+                <section className="quran-settings-section py-2" aria-label={lang === "ar" ? "خيارات التطبيق" : "App options"}>
+                  <span className="quran-settings-label mb-0 mt-2">{lang === "ar" ? "خيارات التطبيق" : "App options"}</span>
+                  {installButton}
+                  {syncButton}
+                </section>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {!quietMode && (recordPracticeButton || liveRecitationButton) && (
+        <div className="quran-context-actions absolute end-3 z-30 flex items-center gap-2 lg:hidden"
+          style={{ bottom: `calc(${bottomDockHeight}px + var(--quran-safe-area-bottom, env(safe-area-inset-bottom, 0px)) + 12px)` }}>
+          {recordPracticeButton}
+          {liveRecitationButton}
+        </div>
       )}
 
       <main

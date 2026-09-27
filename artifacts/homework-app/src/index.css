@@ -975,6 +975,162 @@
   }
 }
 
+/* Reader chrome: warm paper and restrained ink, distinct from the glyph page. */
+.quran-reader-header {
+  --reader-ink: #0b4b35;
+  --reader-line: rgba(11, 75, 53, .13);
+  color: var(--reader-ink);
+}
+.quran-reader-toolbar {
+  min-width: 0;
+  white-space: nowrap;
+}
+.quran-reader-toolbar button,
+.quran-reader-toolbar select,
+.quran-reader-toolbar input {
+  touch-action: manipulation;
+}
+.quran-reader-toolbar button:focus-visible,
+.quran-reader-toolbar select:focus-visible,
+.quran-reader-toolbar input:focus-visible,
+.quran-settings-sheet button:focus-visible,
+.quran-settings-sheet select:focus-visible {
+  outline: 2px solid #0b6548;
+  outline-offset: 2px;
+}
+.quran-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  background: rgba(20, 37, 27, .12);
+}
+.quran-settings-sheet {
+  position: fixed;
+  z-index: 66;
+  bottom: 0;
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: min(82dvh, 690px);
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border: 1px solid rgba(11, 75, 53, .14);
+  border-radius: 18px 18px 0 0;
+  background: #fcfbf5;
+  box-shadow: 0 -12px 32px rgba(22, 42, 29, .1);
+  color: #123f30;
+  animation: quran-settings-enter .22s ease-out both;
+}
+.quran-settings-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.quran-settings-section + .quran-settings-section {
+  border-top: 1px solid rgba(11, 75, 53, .11);
+}
+.quran-settings-label {
+  display: block;
+  margin-bottom: .75rem;
+  color: #567369;
+  font-size: .72rem;
+  font-weight: 800;
+}
+.quran-settings-control {
+  border: 1px solid rgba(11, 75, 53, .14);
+  background: rgba(11, 75, 53, .035);
+  border-radius: 9px;
+}
+.quran-settings-row {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  text-align: start;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.quran-theme-choice {
+  min-width: 0;
+  min-height: 70px;
+  border: 1px solid rgba(11, 75, 53, .12);
+  border-radius: 10px;
+}
+.quran-theme-choice[aria-checked="true"] {
+  border-color: #0b6548;
+  box-shadow: inset 0 0 0 1px #0b6548;
+}
+.quran-theme-mini-page {
+  display: flex;
+  width: 30px;
+  height: 34px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(20, 37, 27, .12);
+}
+.quran-theme-mini-page span {
+  display: block;
+  height: 1px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: .56;
+}
+.quran-theme-mini-page span:nth-child(1) { width: 13px; }
+.quran-theme-mini-page span:nth-child(2) { width: 18px; }
+.quran-theme-mini-page span:nth-child(3) { width: 15px; }
+.quran-context-actions button { min-height: 44px; }
+@keyframes quran-settings-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (min-width: 768px) {
+  .quran-settings-sheet {
+    inset-inline: auto 1rem;
+    top: 4.4rem;
+    bottom: auto;
+    width: min(370px, calc(100vw - 2rem));
+    max-height: min(78dvh, 690px);
+    padding-bottom: 0;
+    border-radius: 14px;
+    box-shadow: 0 14px 38px rgba(22, 42, 29, .14);
+  }
+  .quran-settings-backdrop { background: transparent; }
+}
+.dark .quran-settings-sheet {
+  background: #19251e;
+  color: #e4eee7;
+  border-color: rgba(229, 244, 232, .15);
+}
+.dark .quran-settings-control { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .13); }
+.dark .quran-settings-label { color: #a9c4b4; }
+.dark .quran-theme-choice { border-color: rgba(255, 255, 255, .19); }
+@media (max-width: 767px) {
+  .quran-reader-toolbar { gap: 2px; }
+  .quran-reader-toolbar .quran-toolbar-action { min-width: 35px; height: 40px; padding-inline: 3px; }
+  .quran-reader-toolbar .quran-toolbar-memo { min-width: 45px; max-width: 66px; font-size: 11px; }
+  .quran-reader-toolbar .quran-toolbar-page { width: 67px; min-width: 67px; }
+  .quran-reader-toolbar .quran-toolbar-surah { flex: 1 1 74px; min-width: 0; }
+  .quran-reader-toolbar .quran-toolbar-back { width: 32px; min-width: 32px; }
+  .quran-reader-toolbar .quran-toolbar-back button { width: 32px; height: 40px; }
+  .quran-reader-toolbar .quran-toolbar-search button { width: 35px; min-width: 35px; padding-inline: 2px; }
+  .quran-reader-toolbar .quran-toolbar-search button svg { width: 17px; height: 17px; }
+}
+@media (max-width: 360px) {
+  .quran-reader-toolbar .quran-toolbar-back { width: 32px; min-width: 32px; }
+  .quran-reader-toolbar .quran-toolbar-page { width: 59px; min-width: 59px; }
+  .quran-reader-toolbar .quran-toolbar-action,
+  .quran-reader-toolbar .quran-toolbar-search button { min-width: 32px; width: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quran-settings-sheet { animation: none; }
+}
+
 /* Touch landscape: fill the safe width with two complete facing pages.
    Each page keeps its own 15 lines; font size follows its half of the viewport. */
 @media (orientation: landscape) and (max-height: 900px) and (any-pointer: coarse) {
@@ -1102,4 +1258,55 @@
   .quran-reader-figure .quran-madani-bismillah {
     font-size: min(5.8cqw, 5dvh) !important;
   }
+}
+
+/* Landscape phones still read one page. The older spread rules above are
+   intentionally overridden rather than changing the page renderer itself. */
+@media (orientation: landscape) and (max-height: 900px) and (any-pointer: coarse) {
+  .quran-reader-header {
+    display: block !important;
+    position: absolute !important;
+    top: max(4px, env(safe-area-inset-top, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    width: auto !important;
+    border-radius: 12px;
+    background: rgba(252, 251, 245, .95);
+    z-index: 60;
+  }
+  .dark .quran-reader-header { background: rgba(21, 35, 26, .95); }
+  .quran-reader-header .quran-reader-toolbar { display: flex !important; padding: 3px 5px !important; }
+  .quran-settings-sheet { max-height: 86dvh; }
+  .quran-reader-dock { display: flex !important; }
+  [data-testid="quran-guided-memorization-panel"], .quran-reader-quiet-exit { display: block !important; }
+  .quran-reader-main {
+    overflow: auto !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 56px 0 max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .quran-page-shell--paged {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: min(100%, 420px) !important;
+    height: auto !important;
+    overflow: visible !important;
+    transform: translate3d(var(--quran-swipe-x, 0px), 0, 0) !important;
+  }
+  .quran-page-shell--paged .quran-spread-right-page,
+  .quran-page-shell--paged .quran-spread-left-page { display: none !important; }
+  .quran-page-shell--paged .quran-spread-mobile-page { display: block !important; }
+  .quran-reader-figure, .quran-reader-figure .quran-madani-page {
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 382.677 / 547.086 !important;
+  }
+  /* Retain the renderer's existing landscape glyph sizing. */
+}
+@media (orientation: landscape) and (max-height: 900px) and (any-pointer: coarse) and (max-width: 1023px) {
+  .quran-reader-header .quran-reader-toolbar:first-child { display: none !important; }
+  .quran-reader-header .quran-reader-toolbar:nth-child(2) { display: flex !important; }
+}
+@media (orientation: landscape) and (max-height: 900px) and (any-pointer: coarse) and (min-width: 1024px) {
+  .quran-reader-header .quran-reader-toolbar:nth-child(2) { display: none !important; }
 }
