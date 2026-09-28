@@ -100,7 +100,7 @@ export function RewardCelebration({
           <div className="flex flex-col">
             <span className="font-black text-amber-400 text-xl leading-none">+{formatRewardPoints(celebration.points)}</span>
             <span className="text-xs font-bold text-emerald-200 mt-0.5 truncate max-w-[150px]">
-               {celebration.isGroup ? celebration.groupName : (visibleStudents.length === 1 ? visibleStudents[0].name : r(`${visibleStudents.length} طلاب`, `${visibleStudents.length} students`))}
+                {celebration.isGroup ? celebration.groupName : (celebration.students.length === 1 ? celebration.students[0].name : r(`${celebration.students.length} طلاب`, `${celebration.students.length} students`))}
             </span>
           </div>
           {celebration.rewardName && (

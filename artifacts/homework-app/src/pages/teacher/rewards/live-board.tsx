@@ -89,6 +89,7 @@ export function LiveBoard({
       typeId: defaultReward?.id,
       customReason: defaultReward?.id ? undefined : rewardName,
       customPoints: defaultReward?.id ? undefined : points,
+      optimisticPoints: points,
       idempotencyKey: crypto.randomUUID(),
     }, {
       onSuccess: () => onCelebrate({ students: [student], points, rewardName, mode: "live" }),

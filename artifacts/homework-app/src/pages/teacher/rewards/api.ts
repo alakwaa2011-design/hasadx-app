@@ -334,17 +334,38 @@ export const useGrantRewards = () => {
     onMutate: async (variables: any) => {
       const points = Number(variables.optimisticPoints ?? variables.customPoints ?? 0);
       const selected = new Set<number>((variables.studentIds ?? []).map(Number));
-      await qc.cancelQueries({ queryKey: ["classroom-rewards"] });
-      const affected = qc.getQueriesData({ queryKey: ["classroom-rewards"] });
-      if (points > 0 && selected.size) {
-        qc.setQueriesData({ queryKey: ["classroom-rewards", "classes", variables.className] }, (old: any) => {
-          return applyOptimisticRewardPoints(old, selected, points);
-        });
-        for (const studentId of selected) {
-          qc.setQueryData(["classroom-rewards", "students", studentId], (old: any) => {
-            return applyOptimisticRewardPoints(old, selected, points);
-          });
-        }
+      if (points <= 0 || selected.size === 0) return { affected: [] };
+
+      const classQueryKey = ["classroom-rewards", "classes", variables.className];
+      const boardQueryKey = ["classroom-rewards", "board", variables.className];
+      const isSelectedStudentQuery = (query: any) =>
+        query.queryKey[0] === "classroom-rewards" &&
+        query.queryKey[1] === "students" &&
+        selected.has(Number(query.queryKey[2]));
+      const selectedStudentQueries = {
+        queryKey: ["classroom-rewards", "students"],
+        predicate: isSelectedStudentQuery,
+      };
+
+      // Avoid cancelling unrelated reward queries: the complete-class view can
+      // have many active requests, while only these caches need fencing.
+      await Promise.all([
+        qc.cancelQueries({ queryKey: classQueryKey, exact: true }),
+        qc.cancelQueries({ queryKey: boardQueryKey, exact: true }),
+        qc.cancelQueries(selectedStudentQueries),
+      ]);
+
+      const affected = [
+        ...qc.getQueriesData({ queryKey: classQueryKey, exact: true }),
+        ...qc.getQueriesData({ queryKey: boardQueryKey, exact: true }),
+        ...qc.getQueriesData(selectedStudentQueries),
+      ];
+      qc.setQueryData(classQueryKey, (old: any) => applyOptimisticRewardPoints(old, selected, points));
+      qc.setQueryData(boardQueryKey, (old: any) => applyOptimisticRewardPoints(old, selected, points));
+      for (const studentId of selected) {
+        qc.setQueryData(["classroom-rewards", "students", studentId], (old: any) =>
+          applyOptimisticRewardPoints(old, selected, points),
+        );
       }
       return { affected };
     },
@@ -352,14 +373,13 @@ export const useGrantRewards = () => {
       for (const [queryKey, data] of context?.affected ?? []) qc.setQueryData(queryKey, data);
     },
     onSettled: (_, __, variables) => {
-       qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes"] });
+       qc.invalidateQueries({ queryKey: ["classroom-rewards", "classes", variables.className], exact: true });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "ledger"] });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "summary"] });
-       qc.invalidateQueries({ queryKey: ["classroom-rewards", "students"] });
-       qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className] });
+       qc.invalidateQueries({ queryKey: ["classroom-rewards", "board", variables.className], exact: true });
        qc.invalidateQueries({ queryKey: ["classroom-rewards", "suggestions", variables.className] });
        for (const studentId of variables.studentIds ?? []) {
-         qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", studentId] });
+         qc.invalidateQueries({ queryKey: ["classroom-rewards", "students", Number(studentId)], exact: true });
        }
     },
   });

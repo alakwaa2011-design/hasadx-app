@@ -389,6 +389,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       idempotencyKey: key
     };
 
+    if (customData) setCustomGrantOpen(false);
     grantMutation.mutate(payload, {
       onSuccess: (result: any) => {
         playSound();
@@ -399,10 +400,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           students: awardedStudents,
           points: type?.points || customData?.points || 0,
           rewardName: type?.name || customData?.reason,
+          mode: "live",
         });
         grantIntentRef.current = null;
         setSelectedIds(new Set());
-        setCustomGrantOpen(false);
         const pts = type?.points || customData?.points;
         const batchId = result?.grants?.[0]?.batch_id ? String(result.grants[0].batch_id) : null;
         const reversalKey = crypto.randomUUID();
@@ -427,6 +428,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         });
       },
       onError: (err) => {
+        if (customData) setCustomGrantOpen(true);
         toast.error(getArabicRewardError(err, r("حدث خطأ أثناء منح النقاط", "Could not award the points.")));
       },
       onSettled: () => {
@@ -753,13 +755,18 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           <button
             type="button"
             onClick={() => setClassBalanceOpen(true)}
-            className="group flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-emerald-100 bg-white p-2 shadow-sm transition-all text-right hover:border-amber-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3"
+            aria-label={r("نقاط الصف: رصيد مستقل للصف كله ولا يُضاف إلى نقاط أي طالب", "Class points: a separate balance for the whole class, not added to any student's points")}
+            title={r("تُمنح للصف كله ولا تُضاف إلى نقاط أي طالب", "Awarded to the whole class and not added to any student's points")}
+            className="group flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-emerald-50 p-2 text-right shadow-sm shadow-amber-900/5 transition-all hover:border-amber-400 hover:shadow-md hover:shadow-amber-900/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-500 shadow-inner transition-transform group-hover:scale-105 sm:h-11 sm:w-11 sm:rounded-xl">
-              <School size={20} />
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-300/60 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-inner transition-transform group-hover:scale-105 sm:h-11 sm:w-11 sm:rounded-xl">
+              <School size={20} strokeWidth={2.4} />
+              <span className="absolute -bottom-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-emerald-700 text-white shadow-sm" aria-hidden="true">
+                <UsersRound size={9} strokeWidth={2.8} />
+              </span>
             </div>
             <div>
-              <p className="text-[11px] font-bold text-emerald-900/60 mb-0.5">{r("نقاط الصف", "Class points")}</p>
+              <p className="text-[11px] font-black text-emerald-900 mb-0.5">{r("نقاط الصف", "Class points")}</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-lg font-black text-emerald-950">{classBalanceLoading ? "—" : formatPoints(classBalanceData?.balance ?? 0)}</span>
               </div>
@@ -1263,6 +1270,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             grantIntentRef.current = { signature, key };
           }
 
+          setSingleGrantStudentId(null);
           grantMutation.mutate({
             className: currentClass,
             studentIds: [singleGrantStudent.id],
@@ -1278,12 +1286,14 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 students: [{ id: singleGrantStudent.id, name: singleGrantStudent.name, avatar: singleGrantStudent.avatar }],
                 points: type?.points || customData?.points || 0,
                 rewardName: type?.name || customData?.reason,
+                mode: "live",
               });
               grantIntentRef.current = null;
               setSingleGrantStudentId(null);
             },
             onError: (err) => {
               singleGrantPendingRef.current = false;
+              setSingleGrantStudentId(singleGrantStudent.id);
               toast.error(getArabicRewardError(err, rewardText(lang, "حدث خطأ أثناء منح النقاط", "Could not award the points.")));
             },
             onSettled: () => {
