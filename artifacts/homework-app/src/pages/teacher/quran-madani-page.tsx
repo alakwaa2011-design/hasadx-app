@@ -10,6 +10,8 @@ interface QuranMadaniPageRendererProps {
   fallbackImageUrl: string;
   /** When true, renders with the King Fahd Complex "QCF v4" Tajweed color font instead of the plain black v2 font. */
   tajweedEnabled?: boolean;
+  /** QCF v4's black ink needs a light-on-dark treatment on the amber night page. */
+  nightTheme?: boolean;
   onFallbackError?: () => void;
   selectedVerseKey?: string | null;
   selectedVerseRange?: { surah: number; startAyah: number; endAyah: number } | null;
@@ -43,6 +45,7 @@ export function QuranMadaniPageRenderer({
   isLastVerse,
   fallbackImageUrl,
   tajweedEnabled = false,
+  nightTheme = false,
   onFallbackError,
   selectedVerseKey,
   selectedVerseRange,
@@ -336,7 +339,16 @@ export function QuranMadaniPageRenderer({
                     )}
                     style={concealed ? { userSelect: 'none' } : {}}
                   >
-                    {w.glyph}
+                    <span
+                      className="inline-block"
+                      style={tajweedEnabled && nightTheme
+                        // Transform only the painted glyph, not its selection background or bookmark.
+                        // Invert black ink to white while rotating saturated Tajweed hues back.
+                        ? { filter: "invert(1) hue-rotate(180deg) brightness(1.4)" }
+                        : undefined}
+                    >
+                      {w.glyph}
+                    </span>
                     {isBookmarkedVerse && (
                       <Bookmark
                         aria-hidden="true"

@@ -1785,6 +1785,7 @@ export function QuranPagesView({
             }}
             fallbackImageUrl={pageImageUrl(page)}
             tajweedEnabled={tajweedEnabled}
+            nightTheme={readingThemeId === "night"}
             onFallbackError={() =>
               setFailedPages((current) => new Set(current).add(page))
             }
