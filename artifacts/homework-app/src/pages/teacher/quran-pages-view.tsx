@@ -2375,9 +2375,9 @@ export function QuranPagesView({
             toast.info(lang === "ar" ? "عادت أدوات المصحف" : "Quran tools are visible");
           }}
           className="quran-reader-quiet-exit fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] end-4 z-50 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#0b4b35] px-3 text-xs font-bold text-[#fcfbf5] shadow-md opacity-75 transition-opacity hover:opacity-100"
-          aria-label={lang === "ar" ? "إظهار الأدوات" : "Show controls"}
+          aria-label={lang === "ar" ? "إظهار شريط الأدوات" : "Show controls"}
         >
-          <Eye className="h-4 w-4" /><span>{lang === "ar" ? "إظهار الأدوات" : "Show tools"}</span>
+          <Eye className="h-4 w-4" /><span>{lang === "ar" ? "إظهار شريط الأدوات" : "Show tools"}</span>
         </button>
       )}
 
@@ -2537,7 +2537,7 @@ export function QuranPagesView({
                   setQuietMode(true);
                   toast.info(lang === "ar" ? "تم تشغيل وضع القراءة الهادئ — اضغط إظهار الأدوات للخروج" : "Quiet reading is on — use Show tools to exit");
                 }} data-testid="button-quiet-mode" className="quran-settings-row">
-                  <span className="flex items-center gap-2"><EyeOff className="h-4 w-4" />{lang === "ar" ? "القراءة الصافية" : "Clear reading"}</span>
+                  <span className="flex items-center gap-2"><EyeOff className="h-4 w-4" />{lang === "ar" ? "إخفاء شريط الأدوات" : "Clear reading"}</span>
                   <ChevronLeft className="h-4 w-4 opacity-50" />
                 </button>
               </section>

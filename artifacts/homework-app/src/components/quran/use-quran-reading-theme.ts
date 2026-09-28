@@ -73,7 +73,7 @@ export const QURAN_READING_THEMES: Readonly<Record<QuranReadingThemeId, QuranRea
   },
   sepia: {
     id: "sepia",
-    labelAr: "سيبيا دافئ",
+    labelAr: "دافئ",
     labelEn: "Sepia",
     pageBg: "#f1e3c6",
     chromeBg: "#f1e3c6",
@@ -99,7 +99,7 @@ export const QURAN_READING_THEMES: Readonly<Record<QuranReadingThemeId, QuranRea
   },
   night: {
     id: "night",
-    labelAr: "ليلي كهرماني",
+    labelAr: "ليلي",
     labelEn: "Amber night",
     pageBg: "#161310",
     chromeBg: "#161310",

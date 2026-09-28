@@ -2343,3 +2343,31 @@ mtime_ms = 1790533729263
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/05195f16-d05f-4ab8-b086-520899933889/f2825e17-4c7a-4929-a185-6cdae8635e14"
 storage_version_token = "1790533741537452"
 content_type = "image/png"
+
+[[outputs]]
+id = "YqGm2eoR1vkTDQuH_gWZB"
+uri = "file://screenshots/mushaf-settings-mobile.png"
+type = "image"
+title = "إعدادات المصحف — الهاتف"
+description = "لقطة لإعدادات المصحف بعد تحديث التسميات على الهاتف."
+logical_id = "574ac19e-7ec5-48b2-8331-5847e5c6e3f1"
+content_hash = "sha256:27a1167118b6660e78a15320297206eb2a16c9d1b76239634ed8a20c4b312026"
+size = 34802
+mtime_ms = 1790571130931
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/574ac19e-7ec5-48b2-8331-5847e5c6e3f1/487e6c71-65af-4c40-bb28-e2f59bfd1b5b"
+storage_version_token = "1790571144890854"
+content_type = "image/png"
+
+[[outputs]]
+id = "8FP_3EabXSOj_oI5ET2tB"
+uri = "file://screenshots/mushaf-settings-desktop.png"
+type = "image"
+title = "إعدادات المصحف — سطح المكتب"
+description = "لقطة لإعدادات المصحف بعد تحديث التسميات على سطح المكتب."
+logical_id = "8e6e4486-c5a4-4645-938f-23dc65ba4869"
+content_hash = "sha256:867278650f5ca715b7cb00ee65a431586648e03321954d85e7b786a1a9ffbb3b"
+size = 167397
+mtime_ms = 1790571134139
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/8e6e4486-c5a4-4645-938f-23dc65ba4869/bbaa0cac-f6a4-42fa-8b34-42441b019622"
+storage_version_token = "1790571146864964"
+content_type = "image/png"
