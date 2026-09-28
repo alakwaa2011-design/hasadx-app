@@ -7,6 +7,7 @@
  * - Primary invoice guard: subscription_credit_grants.subscription_invoice_id UNIQUE.
  */
 import { Router, type IRouter } from "express";
+import { createHash } from "node:crypto";
 import {
   db,
   creditPackagesTable,
@@ -33,6 +34,12 @@ const router: IRouter = Router();
  */
 class TerminalWebhookError extends Error {}
 class InvoiceEvidenceError extends Error {}
+export type InvoiceReview = {
+  variantId: string;
+  invoiceCreatedAt: string;
+  invoiceUrl: string;
+  adminId: number;
+};
 
 async function alertInvoiceReview(invoiceId: string, reason: string): Promise<void> {
   const text = `تعذّر تحديد باقة فاتورة الاشتراك ${invoiceId}؛ لم يُمنح رصيد. راجع سجل الأحداث وأعد معالجة الفاتورة بعد توفير دليل الدفع.\n${reason}\n${getAppBaseUrl()}/teacher/admin?tab=hasad-credits`;
@@ -284,6 +291,53 @@ async function fetchLSOrderAttrs(orderId: string): Promise<any | null> {
   } catch { return null; }
 }
 
+/** Preview only provider-sourced facts. The signed download URL is never persisted. */
+export async function getLemonInvoiceReview(eventId: number) {
+  const [event] = await db.select({
+    providerObjectId: webhookEventsTable.providerObjectId,
+    rawPayload: webhookEventsTable.rawPayload,
+  }).from(webhookEventsTable).where(and(
+    eq(webhookEventsTable.id, eventId),
+    eq(webhookEventsTable.provider, "lemonsqueezy"),
+    eq(webhookEventsTable.eventName, "subscription_payment_success"),
+    eq(webhookEventsTable.status, "failed"),
+  )).limit(1);
+  if (!event?.providerObjectId) return null;
+  const payload = JSON.parse(event.rawPayload ?? "");
+  if (payload?.meta?.event_name !== "subscription_payment_success"
+    || String(payload?.data?.id ?? "") !== event.providerObjectId) throw new InvoiceEvidenceError("stored invoice event identity mismatch");
+  const invoice = await fetchLSInvoiceAttrs(event.providerObjectId);
+  const subId = String(invoice?.subscription_id ?? "");
+  const sub = subId ? await fetchLSSubscriptionAttrs(subId) : null;
+  const created = invoice?.created_at ? new Date(invoice.created_at) : null;
+  const url = invoice?.urls?.invoice_url;
+  if (!invoice || !sub || !created || Number.isNaN(created.getTime())
+    || invoice.status !== "paid" || invoice.refunded === true || Number(invoice.refunded_amount ?? 0) !== 0
+    || !["renewal", "subscription_renewed"].includes(String(invoice.billing_reason))
+    || !Number.isFinite(Number(invoice.total)) || Number(invoice.total) <= 0 || !invoice.currency
+    || !url || typeof url !== "string" || !url.startsWith("https://app.lemonsqueezy.com/")
+    || String(payload?.data?.attributes?.subscription_id ?? "") !== subId
+    || !invoice.store_id || !invoice.customer_id || invoice.test_mode == null
+    || String(invoice.store_id) !== String(sub.store_id)
+    || String(invoice.customer_id) !== String(sub.customer_id)
+    || invoice.test_mode !== sub.test_mode
+    || !await resolveTeacherFromSubscription(subId)) {
+    throw new InvoiceEvidenceError("provider invoice payment, document or subscription identity could not be verified");
+  }
+  const options = await db.select({
+    variantId: planBillingOptionsTable.lemonVariantId,
+    interval: planBillingOptionsTable.billingInterval,
+    planCode: plansTable.code,
+    nameAr: plansTable.nameAr,
+    nameEn: plansTable.nameEn,
+  }).from(planBillingOptionsTable).innerJoin(plansTable, eq(planBillingOptionsTable.planId, plansTable.id));
+  return {
+    invoiceId: event.providerObjectId, subscriptionId: subId, createdAt: created.toISOString(),
+    total: Number(invoice.total), currency: String(invoice.currency),
+    invoiceUrl: url, options: options.filter(o => o.variantId),
+  };
+}
+
 /**
  * Initial invoices do not contain a variant or order ID in Lemon Squeezy's
  * documented API. The subscription's *initial order* is the immutable purchase
@@ -322,7 +376,7 @@ async function resolveInitialInvoiceOrder(invoiceId: string, subscriptionId: str
  * these snapshots can identify a plan before a later plan switch. Never
  * backfill a missing interval from the current variant.
  */
-async function resolveRenewalInvoiceVariant(invoiceId: string, subscriptionId: string, invoice: any, at: Date): Promise<string> {
+async function resolveRenewalInvoiceVariant(invoiceId: string, subscriptionId: string, invoice: any, at: Date, review?: InvoiceReview): Promise<string> {
   const sub = await fetchLSSubscriptionAttrs(subscriptionId);
   if (!sub || !invoice?.store_id || !invoice?.customer_id || invoice?.test_mode == null
     || String(sub.store_id) !== String(invoice.store_id)
@@ -351,9 +405,24 @@ async function resolveRenewalInvoiceVariant(invoiceId: string, subscriptionId: s
   snapshots.sort((a, b) => a.time - b.time);
   const eligible = snapshots.filter(s => s.time <= at.getTime());
   const latest = eligible.at(-1);
+  if (!latest && review) {
+    // An administrator must read the provider-issued historical PDF; a current
+    // subscription variant or a later webhook cannot establish the old plan.
+    const providerUrl = invoice?.urls?.invoice_url;
+    const currentAt = providerTimestamp(sub);
+    if (!review.variantId || !Number.isSafeInteger(review.adminId) || review.adminId <= 0
+      || !providerUrl || !String(providerUrl).startsWith("https://app.lemonsqueezy.com/")
+      || review.invoiceUrl !== providerUrl || review.invoiceCreatedAt !== at.toISOString()
+      || !Number.isFinite(Number(invoice.total)) || Number(invoice.total) <= 0 || !invoice.currency
+      || (currentAt && currentAt.getTime() <= at.getTime() && sub.variant_id && String(sub.variant_id) !== review.variantId)) {
+      throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: reviewed provider evidence mismatched; no credit granted`);
+    }
+    return review.variantId;
+  }
   if (!latest || eligible.some(s => s.time === latest.time && s.variant !== latest.variant)) {
     throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: no unambiguous dated plan at invoice time; review required`);
   }
+  if (review) throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: dated plan history already exists; use normal retry`);
   // A current provider snapshot that predates this invoice must agree with the
   // stored history. Later provider state cannot be used to price an old invoice.
   const currentAt = providerTimestamp(sub);
@@ -645,7 +714,7 @@ async function handleSubscriptionCreated(payload: any): Promise<void> {
 // Period and economics come only from immutable invoice fields, never the
 // mutable Subscription object's current renews_at/variant.
 
-async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
+async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceReview): Promise<void> {
   let attrs            = payload?.data?.attributes ?? {};
   const invoiceId      = String(payload?.data?.id ?? "");
 
@@ -688,8 +757,13 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
   if (!initialOrder && !suppliedVariant && !fetched) {
     throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: provider invoice unavailable; review required`);
   }
-  const invoiceVariant = (initialOrder?.variantId ?? suppliedVariant)
-    || await resolveRenewalInvoiceVariant(invoiceId, subscriptionId, attrs, invoiceCreated);
+  if (review && (billingReason === "initial" || suppliedVariant || !fetched)) {
+    throw new InvoiceEvidenceError(`invoice ${invoiceId}: manual review is only for provider-verified variant-less renewals`);
+  }
+  const invoiceVariant = review
+    ? await resolveRenewalInvoiceVariant(invoiceId, subscriptionId, attrs, invoiceCreated, review)
+    : (initialOrder?.variantId ?? suppliedVariant)
+      || await resolveRenewalInvoiceVariant(invoiceId, subscriptionId, attrs, invoiceCreated);
   if (!invoiceVariant) throw new Error(`subscription_payment_success: invoice variant unavailable (invoice ${invoiceId}); review/retry required`);
   const plan = await resolvePlanByVariant(invoiceVariant);
   if (!plan) throw new Error(`subscription_payment_success: unknown invoice variant ${invoiceVariant}; review/retry required`);
@@ -709,6 +783,10 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
     `);
     const teacherId = Number((local.rows[0] as any)?.teacher_id ?? 0);
     if (!teacherId) throw new Error(`subscription_payment_success: Subscription غير موجود محليًا (${subscriptionId})`);
+    if (review) {
+      const reviewedBy = await tx.execute(sql`SELECT id FROM teachers WHERE id = ${review.adminId} AND is_admin = TRUE`);
+      if (!reviewedBy.rows.length) throw new InvoiceEvidenceError("invoice reviewer is not an administrator");
+    }
     const inserted = await tx.execute(sql`
       INSERT INTO subscription_credit_entitlements
         (provider_invoice_id, subscription_id, provider_order_id, teacher_id, plan_code, billing_interval,
@@ -720,6 +798,19 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
       ON CONFLICT (provider_invoice_id) DO NOTHING RETURNING *
     `);
     if (!inserted.rows.length) return;
+    if (review) {
+      await tx.execute(sql`
+        UPDATE webhook_events SET review_evidence = ${JSON.stringify({
+          adminId: review.adminId, invoiceId, subscriptionId, variantId: invoiceVariant,
+          invoiceCreatedAt: invoiceCreated.toISOString(), periodEnd: periodEnd.toISOString(),
+          total: Number(attrs.total), currency: String(attrs.currency),
+          documentSha256: createHash("sha256").update(review.invoiceUrl).digest("hex"),
+          reviewedAt: new Date().toISOString(),
+        })}::jsonb
+        WHERE provider = 'lemonsqueezy' AND event_name = 'subscription_payment_success'
+          AND provider_object_id = ${invoiceId} AND status = 'processing'
+      `);
+    }
     const e = inserted.rows[0] as any;
     // Grant in this same transaction: a refund cannot revoke the entitlement
     // between creation and batch creation, and a failure rolls both back.
@@ -748,7 +839,7 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
 /** Reprocess only a previously signature-verified, failed payment event.
  * Called by the authenticated admin endpoint; the handler checks live provider
  * evidence again and the invoice grant remains unique and transactional. */
-export async function retryStoredLemonInvoiceWebhook(eventId: number): Promise<boolean> {
+export async function retryStoredLemonInvoiceWebhook(eventId: number, review?: InvoiceReview): Promise<boolean> {
   const [claimed] = await db.update(webhookEventsTable)
     .set({ status: "processing", attempts: sql`attempts + 1`, updatedAt: new Date() })
     .where(and(
@@ -768,7 +859,7 @@ export async function retryStoredLemonInvoiceWebhook(eventId: number): Promise<b
       || String(payload?.data?.id ?? "") !== claimed.providerObjectId) {
       throw new Error("stored invoice event identity mismatch");
     }
-    await handleSubscriptionPaymentSuccess(payload);
+    await handleSubscriptionPaymentSuccess(payload, review);
     await db.update(webhookEventsTable)
       .set({ status: "processed", errorMessage: null, processedAt: new Date(), failedAt: null, updatedAt: new Date() })
       .where(eq(webhookEventsTable.id, eventId));

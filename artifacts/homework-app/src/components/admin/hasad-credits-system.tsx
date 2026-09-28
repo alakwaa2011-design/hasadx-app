@@ -509,6 +509,12 @@ function LogsSection() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [retryingId, setRetryingId] = useState<number | null>(null);
+  const [review, setReview] = useState<{
+    eventId: number; invoiceId: string; createdAt: string; total: number; currency: string;
+    invoiceUrl: string; options: { variantId: string; interval: string; planCode: string; nameAr: string; nameEn: string }[];
+  } | null>(null);
+  const [reviewVariant, setReviewVariant] = useState("");
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -523,26 +529,47 @@ function LogsSection() {
       .finally(() => setLoading(false));
   }, [view]);
 
-  const retryInvoice = async (id: number) => {
-    if (!window.confirm(lang === "ar"
+  const retryInvoice = async (id: number, reviewed = false) => {
+    if (!reviewed && !window.confirm(lang === "ar"
       ? "إعادة التحقق من الفاتورة المدفوعة ومعالجة رصيد الاشتراك؟"
       : "Verify the paid invoice again and process its subscription credits?")) return;
     setRetryingId(id);
     try {
       const response = await fetch(`${API_BASE}/api/admin/credits/webhook-events/${id}/retry`, {
         method: "POST", credentials: "include",
+        ...(reviewed ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ review: {
+            variantId: reviewVariant, invoiceCreatedAt: review!.createdAt,
+            invoiceUrl: review!.invoiceUrl, confirmed: reviewConfirmed,
+          } }),
+        } : {}),
       });
-      if (!response.ok) throw new Error("retry failed");
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "retry failed");
       toast.success(lang === "ar" ? "تمت معالجة الفاتورة بنجاح" : "Invoice processed successfully");
+      setReview(null);
       const refreshed = await fetch(`${API_BASE}/api/admin/credits/webhook-events?pageSize=50`, {
         credentials: "include",
       });
       if (!refreshed.ok) throw new Error("refresh failed");
       setEvents(await refreshed.json());
-    } catch {
-      toast.error(lang === "ar"
-        ? "لم تكتمل المعالجة. راجع حالة الحدث ورسالة الخطأ قبل إعادة المحاولة."
-        : "Processing did not complete. Check the event status and error before retrying.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : c.logLoadFailed);
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  const openReview = async (id: number) => {
+    setRetryingId(id);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/credits/webhook-events/${id}/invoice-review`, { credentials: "include" });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Provider invoice unavailable");
+      setReview({ ...await response.json(), eventId: id });
+      setReviewVariant("");
+      setReviewConfirmed(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : c.logLoadFailed);
     } finally {
       setRetryingId(null);
     }
@@ -573,6 +600,34 @@ function LogsSection() {
           </button>
         ))}
       </div>
+
+      {review && (
+        <Card className="p-4 space-y-3 border-primary/30">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold">{lang === "ar" ? "مراجعة فاتورة قديمة" : "Review historical invoice"}</h3>
+            <button type="button" onClick={() => setReview(null)} aria-label={lang === "ar" ? "إغلاق" : "Close"}><X size={18} /></button>
+          </div>
+          <p className="text-sm" dir="ltr">{review.invoiceId} · {new Date(review.createdAt).toLocaleString(locale)} · {(review.total / 100).toFixed(2)} {review.currency}</p>
+          <p className="text-sm text-muted-foreground">{lang === "ar"
+            ? "افتح مستند الفاتورة الصادر من Lemon Squeezy. اختر الباقة وفترة الاشتراك الظاهرتين فيه فقط؛ الباقة الحالية ليست دليلاً على الفاتورة القديمة."
+            : "Open the Lemon Squeezy invoice PDF. Select only the plan and interval shown in that historical document; the current subscription plan is not evidence."}</p>
+          <a href={review.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+            {lang === "ar" ? "فتح مستند الفاتورة لدى المزود" : "Open provider invoice PDF"}
+          </a>
+          <select className="block w-full max-w-md rounded-md border bg-background p-2 text-sm" value={reviewVariant}
+            onChange={e => { setReviewVariant(e.target.value); setReviewConfirmed(false); }}>
+            <option value="">{lang === "ar" ? "اختر الباقة من المستند" : "Select plan from document"}</option>
+            {review.options.map(o => <option key={o.variantId} value={o.variantId}>{lang === "ar" ? o.nameAr : o.nameEn} · {o.interval} · {o.variantId}</option>)}
+          </select>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={reviewConfirmed} onChange={e => setReviewConfirmed(e.target.checked)} />
+            <span>{lang === "ar" ? "تحققت من الباقة والفترة في مستند الفاتورة التاريخي الصادر من المزود" : "I verified the plan and period in the provider-issued historical invoice"}</span>
+          </label>
+          <Button disabled={!reviewVariant || !reviewConfirmed || retryingId !== null} onClick={() => retryInvoice(review.eventId, true)}>
+            {lang === "ar" ? "اعتماد المراجعة وإعادة المعالجة" : "Confirm review & retry"}
+          </Button>
+        </Card>
+      )}
 
       {loading ? (
         <p className="text-center text-muted-foreground py-8">{c.loading}</p>
@@ -641,6 +696,7 @@ function LogsSection() {
                   <td className="py-2 px-3 text-xs text-muted-foreground">{e.created_at ? new Date(e.created_at).toLocaleString(locale) : "—"}</td>
                   <td className="py-2 px-3 text-xs">
                     {e.provider === "lemonsqueezy" && e.event_name === "subscription_payment_success" && e.status === "failed" && (
+                      <div className="flex gap-2">
                       <button type="button" onClick={() => retryInvoice(e.id)} disabled={retryingId !== null}
                         data-testid={`button-retry-invoice-${e.id}`}
                         className="rounded-md border border-primary/40 px-2 py-1 font-medium text-primary hover:bg-primary/10 disabled:opacity-50">
@@ -648,6 +704,11 @@ function LogsSection() {
                           ? (lang === "ar" ? "جارٍ التحقق…" : "Verifying…")
                           : (lang === "ar" ? "تحقق وأعد المعالجة" : "Verify & retry")}
                       </button>
+                      <button type="button" onClick={() => openReview(e.id)} disabled={retryingId !== null}
+                        className="rounded-md border px-2 py-1 text-primary hover:bg-primary/10 disabled:opacity-50">
+                        {lang === "ar" ? "مراجعة مستند المزود" : "Review provider document"}
+                      </button>
+                      </div>
                     )}
                   </td>
                 </tr>

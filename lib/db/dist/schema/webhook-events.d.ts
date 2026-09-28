@@ -192,6 +192,23 @@ export declare const webhookEventsTable: import("drizzle-orm/pg-core").PgTableWi
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        reviewEvidence: import("drizzle-orm/pg-core").PgColumn<{
+            name: "review_evidence";
+            tableName: "webhook_events";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         processedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "processed_at";
             tableName: "webhook_events";

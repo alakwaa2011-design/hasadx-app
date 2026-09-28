@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -17,6 +17,7 @@ export const webhookEventsTable = pgTable("webhook_events", {
   attempts:           integer("attempts").notNull().default(0),
   rawPayload:         text("raw_payload"),
   errorMessage:       text("error_message"),
+  reviewEvidence:     jsonb("review_evidence"),
   processedAt:        timestamp("processed_at"),
   failedAt:           timestamp("failed_at"),
   createdAt:          timestamp("created_at").notNull().default(sql`NOW()`),

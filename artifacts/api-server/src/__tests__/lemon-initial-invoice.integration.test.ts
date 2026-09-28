@@ -28,6 +28,9 @@ const afterSwitch = new Date(Date.now() + 60 * 86_400_000).toISOString();
 const oldRenewalId = `invoice_old_renewal_${run}`;
 const newRenewalId = `invoice_new_renewal_${run}`;
 const unknownRenewalId = `invoice_unknown_renewal_${run}`;
+const legacyRenewalId = `invoice_legacy_renewal_${run}`;
+const legacyCreatedAt = new Date(Date.parse(createdAt) - 2 * 86_400_000).toISOString();
+const legacyUrl = "https://app.lemonsqueezy.com/my-orders/legacy/subscription-invoice/document";
 let teacherId = 0;
 let variantId = "";
 let nextVariantId = "";
@@ -60,6 +63,7 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
   }
 
   beforeAll(async () => {
+    await db.execute(sql`ALTER TABLE webhook_events ADD COLUMN IF NOT EXISTS review_evidence JSONB`);
     process.env.LEMON_SQUEEZY_API_KEY = "local-provider-test-key";
     process.env.LEMON_SQUEEZY_WEBHOOK_SECRET = secret;
     const option = await db.execute(sql`
@@ -109,7 +113,8 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
         || input.endsWith(`/subscription-invoices/${mismatchInvoiceId}`)
         || input.endsWith(`/subscription-invoices/${oldRenewalId}`)
         || input.endsWith(`/subscription-invoices/${newRenewalId}`)
-        || input.endsWith(`/subscription-invoices/${unknownRenewalId}`)) {
+        || input.endsWith(`/subscription-invoices/${unknownRenewalId}`)
+        || input.endsWith(`/subscription-invoices/${legacyRenewalId}`)) {
         const isRenewal = !input.endsWith(`/subscription-invoices/${invoiceId}`)
           && !input.endsWith(`/subscription-invoices/${mismatchInvoiceId}`);
         attributes = {
@@ -117,8 +122,10 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
           status: isRenewal ? "paid" : providerStatus, total, currency: "USD", test_mode: false, refunded: false,
           refunded_amount: 0, created_at: input.endsWith(`/subscription-invoices/${oldRenewalId}`) ? beforeSwitch
             : input.endsWith(`/subscription-invoices/${newRenewalId}`) ? afterSwitch
+            : input.endsWith(`/subscription-invoices/${legacyRenewalId}`) ? legacyCreatedAt
             : input.endsWith(`/subscription-invoices/${unknownRenewalId}`) ? new Date(Date.parse(createdAt) - 86_400_000).toISOString()
             : createdAt, billing_reason: isRenewal ? "renewal" : "initial",
+          urls: { invoice_url: legacyUrl },
         };
       } else if (input.endsWith(`/subscriptions/${subscriptionId}`)) {
         attributes = { order_id: orderId, customer_id: customerId, store_id: storeId, test_mode: false,
@@ -148,7 +155,7 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     else process.env.LEMON_SQUEEZY_WEBHOOK_SECRET = originalSecret;
     if (!teacherId) return;
     await db.execute(sql`DELETE FROM webhook_events WHERE provider_object_id IN
-      (${subscriptionId}, ${invoiceId}, ${orderId}, ${mismatchInvoiceId}, ${oldRenewalId}, ${newRenewalId}, ${unknownRenewalId})`);
+      (${subscriptionId}, ${invoiceId}, ${orderId}, ${mismatchInvoiceId}, ${oldRenewalId}, ${newRenewalId}, ${unknownRenewalId}, ${legacyRenewalId})`);
     await db.execute(sql`DELETE FROM subscription_credit_grants WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM credit_hold_items WHERE hold_id IN (SELECT id FROM credit_holds WHERE teacher_id = ${teacherId})`);
     await db.execute(sql`DELETE FROM credit_holds WHERE teacher_id = ${teacherId}`);
@@ -265,6 +272,59 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     expect(Number((count.rows[0] as any).n)).toBe(1);
   });
 
+  it("allows an admin to review the provider's historical paid document and retries an old renewal exactly once", async () => {
+    const payment = webhook("subscription_payment_success", legacyRenewalId, {
+      subscription_id: subscriptionId, status: "paid",
+    });
+    expect((await post(payment)).status).toBe(500);
+    const event = await db.execute(sql`SELECT id FROM webhook_events WHERE provider_object_id = ${legacyRenewalId}`);
+    const id = Number((event.rows[0] as any).id);
+    const { default: adminRouter } = await import("../routes/credits-admin");
+    const adminApp = express();
+    adminApp.use(express.json());
+    adminApp.use((req, _res, next) => { (req as any).session = { teacherId }; next(); });
+    adminApp.use("/api/admin/credits", adminRouter);
+    const previewPath = `/api/admin/credits/webhook-events/${id}/invoice-review`;
+    const retryPath = `/api/admin/credits/webhook-events/${id}/retry`;
+    await db.execute(sql`UPDATE teachers SET is_admin = false WHERE id = ${teacherId}`);
+    expect((await request(adminApp).get(previewPath)).status).toBe(403);
+    await db.execute(sql`UPDATE teachers SET is_admin = true WHERE id = ${teacherId}`);
+    expect((await request(adminApp).get(previewPath)).status).toBe(200);
+    const preview = (await request(adminApp).get(previewPath)).body;
+    expect(preview).toMatchObject({ invoiceId: legacyRenewalId, createdAt: legacyCreatedAt, invoiceUrl: legacyUrl, total });
+    const review = { variantId, invoiceCreatedAt: preview.createdAt, invoiceUrl: preview.invoiceUrl, confirmed: true };
+    const before = await db.execute(sql`SELECT COUNT(*)::int AS n FROM subscription_credit_entitlements WHERE teacher_id = ${teacherId}`);
+    await db.execute(sql`UPDATE teachers SET is_admin = false WHERE id = ${teacherId}`);
+    expect((await request(adminApp).post(retryPath).send({ review })).status).toBe(403);
+    await db.execute(sql`UPDATE teachers SET is_admin = true WHERE id = ${teacherId}`);
+    expect((await request(adminApp).post(retryPath).send({ review: { ...review, confirmed: false } })).status).toBe(400);
+    expect((await request(adminApp).post(retryPath).send({ review: { ...review, invoiceUrl: "https://example.com/fake" } })).status).toBe(500);
+    expect((await request(adminApp).post(retryPath).send({ review: { ...review, invoiceCreatedAt: createdAt } })).status).toBe(500);
+    const still = await db.execute(sql`SELECT COUNT(*)::int AS n FROM subscription_credit_entitlements WHERE teacher_id = ${teacherId}`);
+    expect(Number((still.rows[0] as any).n)).toBe(Number((before.rows[0] as any).n));
+    expect((await request(adminApp).post(retryPath).send({ review })).status).toBe(200);
+    expect((await request(adminApp).post(retryPath).send({ review })).status).toBe(409);
+    expect((await post(payment)).status).toBe(200);
+    const audited = await db.execute(sql`
+      SELECT e.provider_invoice_id, e.plan_code, e.period_start, e.period_end,
+        w.review_evidence, COUNT(g.id)::int AS grants
+      FROM subscription_credit_entitlements e
+      JOIN webhook_events w ON w.provider_object_id = e.provider_invoice_id
+      LEFT JOIN subscription_credit_grants g ON g.entitlement_id = e.id
+      WHERE e.provider_invoice_id = ${legacyRenewalId}
+      GROUP BY e.id, w.id
+    `);
+    expect(audited.rows).toHaveLength(1);
+    const row = audited.rows[0] as any;
+    expect(row.grants).toBe(1);
+    expect(new Date(row.period_start).toISOString()).toBe(legacyCreatedAt);
+    expect(row.review_evidence).toMatchObject({
+      adminId: teacherId, invoiceId: legacyRenewalId, variantId,
+      invoiceCreatedAt: legacyCreatedAt, total,
+    });
+    expect(JSON.stringify(row.review_evidence)).not.toContain(legacyUrl);
+  }, 30_000);
+
   it("reconciles delayed renewals against the plan at invoice time, not today's variant; retries only once", async () => {
     providerVariant = nextVariantId;
     providerUpdatedAt = switchedAt;
@@ -276,6 +336,11 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
       SELECT error_message FROM webhook_events WHERE provider_object_id = ${newRenewalId}
     `);
     expect((missingChange.rows[0] as any).error_message).toContain("missing plan change in history");
+    const { retryStoredLemonInvoiceWebhook } = await import("../routes/webhooks-lemonsqueezy");
+    const pendingChange = await db.execute(sql`SELECT id FROM webhook_events WHERE provider_object_id = ${newRenewalId}`);
+    await expect(retryStoredLemonInvoiceWebhook(Number((pendingChange.rows[0] as any).id), {
+      variantId, invoiceCreatedAt: afterSwitch, invoiceUrl: legacyUrl, adminId: teacherId,
+    })).rejects.toThrow("dated plan history already exists");
     const change = webhook("subscription_updated", subscriptionId, {
       variant_id: nextVariantId, customer_id: customerId, updated_at: switchedAt,
     });

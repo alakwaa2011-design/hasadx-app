@@ -10,7 +10,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
 import { logger } from "../lib/logger";
-import { retryStoredLemonInvoiceWebhook } from "./webhooks-lemonsqueezy";
+import { getLemonInvoiceReview, retryStoredLemonInvoiceWebhook } from "./webhooks-lemonsqueezy";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
 import {
   notifyTeacherOfAward,
@@ -624,12 +624,25 @@ router.get("/webhook-events", async (req, res) => {
     const pg = Math.max(1, parseInt(page));
     const size = Math.min(200, Math.max(1, parseInt(pageSize)));
     const rows = await db.execute(sql`
-      SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, processed_at, failed_at, created_at
+      SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, review_evidence, processed_at, failed_at, created_at
       FROM webhook_events ORDER BY created_at DESC LIMIT ${size} OFFSET ${(pg - 1) * size}
     `);
     res.json(rows.rows);
   } catch {
     res.status(500).json({ message: "فشل تحميل سجل الأحداث" });
+  }
+});
+
+router.get("/webhook-events/:id/invoice-review", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) { res.status(400).json({ message: "رقم الحدث غير صحيح" }); return; }
+  try {
+    const preview = await getLemonInvoiceReview(id);
+    if (!preview) { res.status(409).json({ message: "الفاتورة ليست حدث دفع فاشلاً" }); return; }
+    res.json(preview);
+  } catch (err) {
+    req.log?.warn({ err, eventId: id }, "Lemon invoice review preview unavailable");
+    res.status(422).json({ message: "تعذّر التحقق من الفاتورة ومستندها لدى المزود" });
   }
 });
 
@@ -640,7 +653,19 @@ router.post("/webhook-events/:id/retry", async (req, res) => {
     return;
   }
   try {
-    const retried = await retryStoredLemonInvoiceWebhook(id);
+    const reviewSchema = z.object({
+      variantId: z.string().min(1).max(100),
+      invoiceCreatedAt: z.string().datetime(),
+      invoiceUrl: z.string().url().max(2000),
+      confirmed: z.literal(true),
+    }).strict();
+    let review;
+    if (req.body?.review !== undefined) {
+      const parsed = reviewSchema.safeParse(req.body.review);
+      if (!parsed.success) { res.status(400).json({ message: "دليل مراجعة الفاتورة غير مكتمل" }); return; }
+      review = { ...parsed.data, adminId: Number(req.session!.teacherId) };
+    }
+    const retried = await retryStoredLemonInvoiceWebhook(id, review);
     if (!retried) {
       res.status(409).json({ message: "يمكن إعادة معالجة فواتير الاشتراك الفاشلة فقط" });
       return;

@@ -1478,12 +1478,14 @@ async function runSchemaMigrations() {
         attempts             INTEGER NOT NULL DEFAULT 0,
         raw_payload          TEXT,
         error_message        TEXT,
+        review_evidence      JSONB,
         processed_at         TIMESTAMP,
         failed_at            TIMESTAMP,
         created_at           TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at           TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    await db.execute(sql`ALTER TABLE webhook_events ADD COLUMN IF NOT EXISTS review_evidence JSONB`);
 
     // ── Seed default tool prices (INSERT only — never overwrite customized values) ──
     await db.execute(sql`
