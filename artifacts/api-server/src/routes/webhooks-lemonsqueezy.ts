@@ -7,7 +7,6 @@
  * - Primary invoice guard: subscription_credit_grants.subscription_invoice_id UNIQUE.
  */
 import { Router, type IRouter } from "express";
-import { createHash } from "node:crypto";
 import {
   db,
   creditPackagesTable,
@@ -24,6 +23,7 @@ import { logger } from "../lib/logger";
 import { sendEmail, getAppBaseUrl } from "../lib/email";
 import { CONFIGURED_ADMIN_EMAILS } from "../lib/admin-identity";
 import { addOneCalendarMonth, addCalendarMonthsUtc, lockProviderSubscription } from "../lib/annual-credit-release";
+import { verifyLemonInvoiceDocument } from "../lib/lemon-invoice-document";
 
 const router: IRouter = Router();
 
@@ -291,6 +291,17 @@ async function fetchLSOrderAttrs(orderId: string): Promise<any | null> {
   } catch { return null; }
 }
 
+async function invoicePlanOptions() {
+  const options = await db.select({
+    variantId: planBillingOptionsTable.lemonVariantId,
+    interval: planBillingOptionsTable.billingInterval,
+    planCode: plansTable.code,
+    nameAr: plansTable.nameAr,
+    nameEn: plansTable.nameEn,
+  }).from(planBillingOptionsTable).innerJoin(plansTable, eq(planBillingOptionsTable.planId, plansTable.id));
+  return options.filter(o => o.variantId);
+}
+
 /** Preview only provider-sourced facts. The signed download URL is never persisted. */
 export async function getLemonInvoiceReview(eventId: number) {
   const [event] = await db.select({
@@ -324,17 +335,14 @@ export async function getLemonInvoiceReview(eventId: number) {
     || !await resolveTeacherFromSubscription(subId)) {
     throw new InvoiceEvidenceError("provider invoice payment, document or subscription identity could not be verified");
   }
-  const options = await db.select({
-    variantId: planBillingOptionsTable.lemonVariantId,
-    interval: planBillingOptionsTable.billingInterval,
-    planCode: plansTable.code,
-    nameAr: plansTable.nameAr,
-    nameEn: plansTable.nameEn,
-  }).from(planBillingOptionsTable).innerJoin(plansTable, eq(planBillingOptionsTable.planId, plansTable.id));
+  const options = await invoicePlanOptions();
+  const document = await verifyLemonInvoiceDocument(url, options);
   return {
     invoiceId: event.providerObjectId, subscriptionId: subId, createdAt: created.toISOString(),
     total: Number(invoice.total), currency: String(invoice.currency),
-    invoiceUrl: url, options: options.filter(o => o.variantId),
+    invoiceUrl: url, options, documentPlan: {
+      nameAr: document.option.nameAr, nameEn: document.option.nameEn, interval: document.option.interval,
+    },
   };
 }
 
@@ -767,6 +775,14 @@ async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceRe
   if (!invoiceVariant) throw new Error(`subscription_payment_success: invoice variant unavailable (invoice ${invoiceId}); review/retry required`);
   const plan = await resolvePlanByVariant(invoiceVariant);
   if (!plan) throw new Error(`subscription_payment_success: unknown invoice variant ${invoiceVariant}; review/retry required`);
+  // Only the manual historical review path needs PDF evidence. Normal signed
+  // webhook payments continue using their immutable provider plan evidence.
+  const document = review
+    ? await verifyLemonInvoiceDocument(String(attrs.urls?.invoice_url), await invoicePlanOptions())
+    : null;
+  if (document && (document.option.variantId !== invoiceVariant || document.option.interval !== plan.billingInterval)) {
+    throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: PDF plan or billing interval differs from review; no credit granted`);
+  }
   const intervalMonths = plan.billingInterval === "year" ? 12 : 1;
   const periodStart = invoiceCreated;
   const periodEnd = addCalendarMonthsUtc(periodStart, intervalMonths);
@@ -804,7 +820,8 @@ async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceRe
           adminId: review.adminId, invoiceId, subscriptionId, variantId: invoiceVariant,
           invoiceCreatedAt: invoiceCreated.toISOString(), periodEnd: periodEnd.toISOString(),
           total: Number(attrs.total), currency: String(attrs.currency),
-          documentSha256: createHash("sha256").update(review.invoiceUrl).digest("hex"),
+          documentSha256: document!.documentSha256,
+          documentPlan: document!.option.nameEn, documentInterval: document!.option.interval,
           reviewedAt: new Date().toISOString(),
         })}::jsonb
         WHERE provider = 'lemonsqueezy' AND event_name = 'subscription_payment_success'

@@ -4,6 +4,7 @@ import express from "express";
 import request from "supertest";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { invoiceTestPdf } from "./fixtures/lemon-invoice-pdf";
 
 vi.mock("../lib/email", () => ({
   sendEmail: vi.fn(async () => ({ delivered: false, reason: "mail unavailable" })),
@@ -31,6 +32,8 @@ const unknownRenewalId = `invoice_unknown_renewal_${run}`;
 const legacyRenewalId = `invoice_legacy_renewal_${run}`;
 const legacyCreatedAt = new Date(Date.parse(createdAt) - 2 * 86_400_000).toISOString();
 const legacyUrl = "https://app.lemonsqueezy.com/my-orders/legacy/subscription-invoice/document";
+
+let legacyDocument: Buffer = invoiceTestPdf("Hasaad Pro - Monthly 1 $10.00");
 let teacherId = 0;
 let variantId = "";
 let nextVariantId = "";
@@ -85,10 +88,10 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
       optionId = Number((inserted.rows[0] as any).id);
       createdOption = true;
     }
-    const created = webhook("subscription_created", subscriptionId, {
-      variant_id: variantId, customer_id: customerId, status: "active",
-      renews_at: new Date(Date.now() + 30 * 86_400_000).toISOString(), updated_at: createdAt,
-    }, { user_id: String(teacherId) });
+    const created = await db.execute(sql`
+      INSERT INTO teachers (name, email, password_hash, created_at)
+      VALUES ('Initial Invoice Test', ${`initial_${run}@test.local`}, 'x', NOW()) RETURNING id
+    `);
     teacherId = Number((created.rows[0] as any).id);
     const secondOption = await db.execute(sql`
       SELECT o.lemon_variant_id FROM plan_billing_options o
@@ -108,6 +111,9 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     }
     providerVariant = variantId;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (input === legacyUrl) return new Response(new Uint8Array(legacyDocument), {
+        headers: { "content-type": "application/pdf" },
+      });
       let attributes: Record<string, unknown>;
       if (input.endsWith(`/subscription-invoices/${invoiceId}`)
         || input.endsWith(`/subscription-invoices/${mismatchInvoiceId}`)
@@ -184,7 +190,7 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
       first_order_item: { variant_id: variantId }, customer_id: customerId, total, currency: "USD",
     }, { user_id: String(teacherId) });
     expect((await post(order)).status).toBe(200);
-    const payment = webhook("subscription_payment_success", legacyRenewalId, {
+    const payment = webhook("subscription_payment_success", invoiceId, {
       subscription_id: subscriptionId, status: "paid",
     });
     expect((await post(payment)).status).toBe(500);
@@ -197,18 +203,23 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     const adminApp = express();
     adminApp.use((req, _res, next) => { (req as any).session = { teacherId }; next(); });
     adminApp.use("/api/admin/credits", adminRouter);
-    const retryPath = `/api/admin/credits/webhook-events/${id}/retry`;
-
-    const pending = await request(adminApp).get("/api/admin/credits/pending-invoices");
-
-    const pending = await request(adminApp).get("/api/admin/credits/pending-invoices");
+    const retryPath = `/api/admin/credits/webhook-events/${failedId}/retry`;
+    expect((await request(adminApp).post(retryPath)).status).toBe(403);
+    await db.execute(sql`UPDATE teachers SET is_admin = true WHERE id = ${teacherId}`);
+    expect((await request(adminApp).post(retryPath)).status).toBe(200);
+    expect((await request(adminApp).post(retryPath)).status).toBe(409);
+    expect((await post(payment)).status).toBe(200);
     const record = await db.execute(sql`
-      SELECT e.status, ca.subscription_balance FROM subscription_credit_entitlements e
+      SELECT e.provider_order_id, e.status, g.credits_granted, ca.subscription_balance,
+        w.status AS event_status, w.attempts
+      FROM subscription_credit_entitlements e
+      JOIN subscription_credit_grants g ON g.entitlement_id = e.id
       JOIN credit_accounts ca ON ca.teacher_id = e.teacher_id
-      WHERE e.provider_invoice_id = ${invoiceId}
+      JOIN webhook_events w ON w.provider_object_id = e.provider_invoice_id
+      WHERE e.teacher_id = ${teacherId}
     `);
     expect(record.rows).toHaveLength(1);
-    const row = audited.rows[0] as any;
+    const row = record.rows[0] as any;
     expect(row.provider_order_id).toBe(orderId);
     expect(row.status).toBe("active");
     expect(Number(row.credits_granted)).toBeGreaterThan(0);
@@ -222,11 +233,12 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     providerCustomerId = customerId + 1;
     // A second event pointing to the same subscription is not an initial
     // invoice: the provider read must fail closed before creating entitlement.
-    const payment = webhook("subscription_payment_success", legacyRenewalId, {
-      subscription_id: subscriptionId, status: "paid",
+    const payment = webhook("subscription_payment_success", otherInvoice, {
+      subscription_id: subscriptionId, status: "paid", created_at: createdAt,
+      billing_reason: "initial",
     });
     expect((await post(payment)).status).toBe(500);
-    const failed = await db.execute(sql`SELECT status, error_message FROM webhook_events WHERE provider_object_id = ${unknownRenewalId}`);
+    const failed = await db.execute(sql`SELECT id, error_message FROM webhook_events WHERE provider_object_id = ${otherInvoice}`);
     expect(String((failed.rows[0] as any).error_message)).toContain("does not match paid invoice");
     const { retryStoredLemonInvoiceWebhook } = await import("../routes/webhooks-lemonsqueezy");
     await expect(retryStoredLemonInvoiceWebhook(Number((failed.rows[0] as any).id)))
@@ -275,16 +287,22 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     adminApp.use("/api/admin/credits", adminRouter);
     const previewPath = `/api/admin/credits/webhook-events/${id}/invoice-review`;
     const retryPath = `/api/admin/credits/webhook-events/${id}/retry`;
-
-    const pending = await request(adminApp).get("/api/admin/credits/pending-invoices");
-
-    const pending = await request(adminApp).get("/api/admin/credits/pending-invoices");
+    legacyDocument = Buffer.from("<html>not a PDF</html>");
+    expect((await request(adminApp).get(previewPath)).status).toBe(422);
+    legacyDocument = invoiceTestPdf("Hasaad Pro - Yearly 1 $90.00");
+    // The document is readable, but the selected monthly variant must never be granted.
+    const wrongPeriod = { variantId, invoiceCreatedAt: legacyCreatedAt, invoiceUrl: legacyUrl, confirmed: true };
+    expect((await request(adminApp).post(retryPath).send({ review: wrongPeriod })).status).toBe(500);
+    legacyDocument = invoiceTestPdf("Hasaad Basic - Monthly 1 $5.00");
+    expect((await request(adminApp).post(retryPath).send({ review: wrongPeriod })).status).toBe(500);
+    legacyDocument = invoiceTestPdf("Hasaad Pro - Monthly 1 $10.00");
     await db.execute(sql`UPDATE teachers SET is_admin = false WHERE id = ${teacherId}`);
     expect((await request(adminApp).get(previewPath)).status).toBe(403);
     await db.execute(sql`UPDATE teachers SET is_admin = true WHERE id = ${teacherId}`);
     expect((await request(adminApp).get(previewPath)).status).toBe(200);
     const preview = (await request(adminApp).get(previewPath)).body;
-    expect(preview).toMatchObject({ invoiceId: legacyRenewalId, createdAt: legacyCreatedAt, invoiceUrl: legacyUrl, total });
+    expect(preview).toMatchObject({ invoiceId: legacyRenewalId, createdAt: legacyCreatedAt, invoiceUrl: legacyUrl, total,
+      documentPlan: { nameEn: "Pro", interval: "month" } });
     const review = { variantId, invoiceCreatedAt: preview.createdAt, invoiceUrl: preview.invoiceUrl, confirmed: true };
     const before = await db.execute(sql`SELECT COUNT(*)::int AS n FROM subscription_credit_entitlements WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`UPDATE teachers SET is_admin = false WHERE id = ${teacherId}`);
@@ -341,6 +359,9 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     const oldPayment = webhook("subscription_payment_success", oldRenewalId, {
       subscription_id: subscriptionId, status: "paid",
     });
+    expect((await post(newPayment)).status).toBe(200);
+    expect((await post(oldPayment)).status).toBe(200);
+    expect((await post(oldPayment)).status).toBe(200);
     const result = await db.execute(sql`
       SELECT e.provider_invoice_id, e.plan_code, e.billing_interval, e.provider_order_id,
         COUNT(g.id)::int AS grants
@@ -383,8 +404,3 @@ describe.skipIf(!integration)("Lemon Squeezy initial paid invoice reconciliation
     expect(Number((record.rows[0] as any).subscription_balance)).toBeGreaterThan(0);
   });
 });
-
-    const resolved = await request(adminApp).get("/api/admin/credits/pending-invoices");
-
-    const alertCount = vi.mocked(sendEmail).mock.calls.filter(([message]) =>
-      message.text?.includes(newRenewalId)).length;

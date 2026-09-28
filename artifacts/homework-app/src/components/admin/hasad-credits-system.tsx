@@ -519,6 +519,7 @@ function LogsSection({ onResolved }: { onResolved: () => void }) {
   const [review, setReview] = useState<{
     eventId: number; invoiceId: string; createdAt: string; total: number; currency: string;
     invoiceUrl: string; options: { variantId: string; interval: string; planCode: string; nameAr: string; nameEn: string }[];
+    documentPlan: { nameAr: string; nameEn: string; interval: string };
   } | null>(null);
   const [reviewVariant, setReviewVariant] = useState("");
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
@@ -617,8 +618,11 @@ function LogsSection({ onResolved }: { onResolved: () => void }) {
           </div>
           <p className="text-sm" dir="ltr">{review.invoiceId} · {new Date(review.createdAt).toLocaleString(locale)} · {(review.total / 100).toFixed(2)} {review.currency}</p>
           <p className="text-sm text-muted-foreground">{lang === "ar"
-            ? "افتح مستند الفاتورة الصادر من Lemon Squeezy. اختر الباقة وفترة الاشتراك الظاهرتين فيه فقط؛ الباقة الحالية ليست دليلاً على الفاتورة القديمة."
-            : "Open the Lemon Squeezy invoice PDF. Select only the plan and interval shown in that historical document; the current subscription plan is not evidence."}</p>
+            ? "تحقق الخادم من سطر الباقة والفترة في PDF الصادر من Lemon Squeezy. افتح المستند وراجع الاختيار؛ سيُعاد التحقق منه قبل منح الرصيد."
+            : "The server read the plan and interval from the Lemon Squeezy PDF. Open the document and review your selection; it will be checked again before credits are granted."}</p>
+          <p className="text-sm font-medium">{lang === "ar" ? "الباقة المكتشفة من المستند:" : "Plan found in document:"}{" "}
+            {lang === "ar" ? review.documentPlan.nameAr : review.documentPlan.nameEn} · {review.documentPlan.interval}
+          </p>
           <a href={review.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
             {lang === "ar" ? "فتح مستند الفاتورة لدى المزود" : "Open provider invoice PDF"}
           </a>
