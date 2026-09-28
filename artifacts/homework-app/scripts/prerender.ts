@@ -395,7 +395,7 @@ const routes: Route[] = [
     canonicalPath: "/quran",
     ogTitle: "مصحف حصاد",
     ogDescription: "اقرأ واستمع واحفظ القرآن الكريم عبر مصحف حصاد.",
-    ogImage: `${SITE}/quran-share.png`,
+    ogImage: `${SITE}/icons/quran-hasaad.png`,
     ogImageAlt: "أيقونة مصحف حصاد",
     ogSiteName: "مصحف حصاد",
     quranPwa: true,
@@ -524,8 +524,8 @@ async function main() {
     if (route.ogImage) {
       html = setMeta(html, "property", "og:image", route.ogImage);
       html = setMeta(html, "property", "og:image:secure_url", route.ogImage);
-      html = setMeta(html, "property", "og:image:width", "1200");
-      html = setMeta(html, "property", "og:image:height", "630");
+      html = setMeta(html, "property", "og:image:width", route.quranPwa ? "1254" : "1200");
+      html = setMeta(html, "property", "og:image:height", route.quranPwa ? "1254" : "630");
       html = setMeta(html, "property", "og:image:type", "image/png");
       html = setMeta(html, "property", "og:image:alt", route.ogImageAlt ?? ogTitle);
     }
@@ -567,6 +567,15 @@ async function main() {
     fs.mkdirSync(outDir, { recursive: true });
     const outPath = path.join(outDir, "index.html");
     fs.writeFileSync(outPath, html, "utf-8");
+    // Direct surah URLs are shared from the reader; serve the same Quran
+    // metadata to link-preview crawlers that do not run client-side React.
+    if (route.quranPwa) {
+      for (let surah = 1; surah <= 114; surah++) {
+        const surahDir = path.join(outDir, String(surah));
+        fs.mkdirSync(surahDir, { recursive: true });
+        fs.writeFileSync(path.join(surahDir, "index.html"), html, "utf-8");
+      }
+    }
 
     const relPath = path.relative(process.cwd(), outPath);
     console.log(`[prerender] ✓ ${route.canonicalPath} → ${relPath}`);

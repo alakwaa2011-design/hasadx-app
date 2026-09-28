@@ -35,10 +35,19 @@ export default defineConfig({
       transformIndexHtml(html, context) {
         if (!/^\/quran(?:\/|$)/.test(context.path)) return html;
         return html
+          .replace("<title>منصة حصاد | أنشئ وشارك وتفاعل في تجربة تعليمية متكاملة</title>", "<title>مصحف حصاد | قراءة واستماع وحفظ</title>")
           .replace('href="/manifest.json"', 'href="/quran-manifest.json"')
           .replace('sizes="32x32" href="/icons/icon-192.png"', 'sizes="1254x1254" href="/icons/quran-hasaad.png"')
           .replace('href="/icons/apple-touch-icon.png"', 'href="/icons/quran-hasaad.png"')
-          .replace('name="apple-mobile-web-app-title" content="حصاد"', 'name="apple-mobile-web-app-title" content="مصحف حصاد"');
+          .replace('name="apple-mobile-web-app-title" content="حصاد"', 'name="apple-mobile-web-app-title" content="مصحف حصاد"')
+          .replace('property="og:site_name" content="منصة حصاد"', 'property="og:site_name" content="مصحف حصاد"')
+          .replace('property="og:title" content="منصة حصاد | أنشئ وشارك وتفاعل في تجربة تعليمية متكاملة"', 'property="og:title" content="مصحف حصاد"')
+          .replace('property="og:url" content="https://hasaadx.com/"', 'property="og:url" content="https://hasaadx.com/quran"')
+          .replace('name="twitter:title" content="منصة حصاد | أنشئ وشارك وتفاعل في تجربة تعليمية متكاملة"', 'name="twitter:title" content="مصحف حصاد"')
+          .replaceAll('https://hasaadx.com/opengraph.jpg', 'https://hasaadx.com/icons/quran-hasaad.png')
+          .replace('property="og:image:width" content="1200"', 'property="og:image:width" content="1254"')
+          .replace('property="og:image:height" content="630"', 'property="og:image:height" content="1254"')
+          .replace('property="og:image:alt" content="منصة حصاد التعليمية — HasadX"', 'property="og:image:alt" content="أيقونة مصحف حصاد"');
       },
     },
     ...(includeRuntimeErrorOverlay ? [runtimeErrorOverlay()] : []),

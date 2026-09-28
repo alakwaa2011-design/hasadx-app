@@ -172,11 +172,11 @@ export function PublicQuranStandalone() {
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content="https://hasaadx.com/quran" />
-        <meta property="og:image" content="https://hasaadx.com/quran-share.png" />
+        <meta property="og:image" content="https://hasaadx.com/icons/quran-hasaad.png" />
         <meta property="og:image:alt" content="أيقونة مصحف حصاد" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content="https://hasaadx.com/quran-share.png" />
+        <meta name="twitter:image" content="https://hasaadx.com/icons/quran-hasaad.png" />
       </Helmet>
       
       <QuranPagesView
