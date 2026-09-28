@@ -5,10 +5,10 @@
  *   حزم لمرة واحدة: 100/$2.99 · 300/$6.99 · 600/$11.99 (لا تنتهي)
  *
  * الأقسام: الخطط | حزم النقاط | أسعار أدوات الذكاء | اشتراكات المعلمين | الإعدادات | السجل
- * مصادر البيانات: endpoints الحالية فقط (plans / credit_packages / platform_settings /
- * credit_purchases / webhook_events) — لا تغيير خلفي.
+  * مصادر البيانات: plans / credit_packages / platform_settings /
+  * credit_purchases / webhook_events / pending-invoices.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Coins, Crown, Users, Package, Settings, ScrollText, Save, Loader2, Search,
   CheckCircle2, AlertCircle, X, Eye, EyeOff, Sparkles, ShieldAlert,
@@ -64,7 +64,14 @@ type SubscriberRow = {
   startedAt: string;
 };
 
-/* ─── Pricing Visibility Control (منقول من billing-tab) ─────────────────── */
+type PendingInvoice = {
+  id: number;
+  provider_object_id: string;
+  error_message: string | null;
+  attempts: number;
+  failed_at: string | null;
+  created_at: string;
+};
 export function PricingVisibilityControl() {
   const { t } = useI18n();
   const b = t.billingAdmin;
@@ -501,7 +508,7 @@ function AssignSection({ plans }: { plans: Plan[] }) {
 
 /* ─── القسم 6: سجل المدفوعات والأحداث ──────────────────────────────────── */
 
-function LogsSection() {
+function LogsSection({ onResolved }: { onResolved: () => void }) {
   const { t, lang, dir } = useI18n();
   const c = t.adminCredits.system;
   const [view, setView] = useState<"purchases" | "webhooks">("purchases");
@@ -548,6 +555,7 @@ function LogsSection() {
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "retry failed");
       toast.success(lang === "ar" ? "تمت معالجة الفاتورة بنجاح" : "Invoice processed successfully");
       setReview(null);
+      onResolved();
       const refreshed = await fetch(`${API_BASE}/api/admin/credits/webhook-events?pageSize=50`, {
         credentials: "include",
       });
@@ -726,10 +734,88 @@ function LogsSection() {
 type Section = "plans" | "packages" | "tools" | "assign" | "balances" | "transactions" | "settings" | "logs";
 
 export function HasadCreditsSystem() {
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
   const c = t.adminCredits.system;
   const [section, setSection] = useState<Section>("plans");
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [pending, setPending] = useState<PendingInvoices | null>(null);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingError, setPendingError] = useState(false);
+  const [retryingId, setRetryingId] = useState<number | null>(null);
+  const [review, setReview] = useState<{
+    eventId: number; invoiceId: string; createdAt: string; total: number; currency: string;
+    invoiceUrl: string; options: { variantId: string; interval: string; nameAr: string; nameEn: string }[];
+  } | null>(null);
+  const [reviewVariant, setReviewVariant] = useState("");
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
+
+  const refreshPending = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/credits/pending-invoices?page=${pendingPage}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("pending invoices unavailable");
+      const data: PendingInvoices = await response.json();
+      setPending(data);
+      setPendingError(false);
+      if (pendingPage > 1 && data.rows.length === 0 && data.total > 0) {
+        setPendingPage(Math.ceil(data.total / data.pageSize));
+      }
+    } catch {
+      setPendingError(true);
+    }
+  }, [pendingPage]);
+
+  useEffect(() => {
+    void refreshPending();
+    const timer = window.setInterval(() => void refreshPending(), 60_000);
+    return () => window.clearInterval(timer);
+  }, [refreshPending]);
+
+  const retryInvoice = async (id: number, reviewed = false): Promise<boolean> => {
+    if (!reviewed && !window.confirm(lang === "ar"
+      ? "إعادة التحقق من الفاتورة المدفوعة ومعالجة رصيد الاشتراك؟"
+      : "Verify the paid invoice again and process its subscription credits?")) return false;
+    setRetryingId(id);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/credits/webhook-events/${id}/retry`, {
+        method: "POST", credentials: "include",
+        ...(reviewed ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ review: {
+            variantId: reviewVariant, invoiceCreatedAt: review!.createdAt,
+            invoiceUrl: review!.invoiceUrl, confirmed: reviewConfirmed,
+          } }),
+        } : {}),
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "retry failed");
+      toast.success(lang === "ar" ? "تمت معالجة الفاتورة بنجاح" : "Invoice processed successfully");
+      setReview(null);
+      await refreshPending();
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (lang === "ar" ? "تعذّرت إعادة المعالجة" : "Retry failed"));
+      void refreshPending();
+      return false;
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  const openReview = async (id: number) => {
+    setRetryingId(id);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/credits/webhook-events/${id}/invoice-review`, { credentials: "include" });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "Provider invoice unavailable");
+      setReview({ ...await response.json(), eventId: id });
+      setReviewVariant("");
+      setReviewConfirmed(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (lang === "ar" ? "تعذّر تحميل مستند الفاتورة" : "Invoice unavailable"));
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   const loadOverview = () => {
     fetch(`${API_BASE}/api/billing/admin/overview`, { credentials: "include" })
@@ -774,6 +860,96 @@ export function HasadCreditsSystem() {
           </span>
         )}
       </div>
+
+      {review && (
+        <Card className="p-4 space-y-3 border-primary/30">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold">{lang === "ar" ? "مراجعة فاتورة قديمة" : "Review historical invoice"}</h3>
+            <button type="button" onClick={() => setReview(null)} aria-label={lang === "ar" ? "إغلاق" : "Close"}><X size={18} /></button>
+          </div>
+          <p className="text-sm" dir="ltr">{review.invoiceId} · {new Date(review.createdAt).toLocaleString(lang === "ar" ? "ar-SA" : "en-US")} · {(review.total / 100).toFixed(2)} {review.currency}</p>
+          <p className="text-sm text-muted-foreground">{lang === "ar"
+            ? "افتح مستند الفاتورة الصادر من Lemon Squeezy. اختر الباقة وفترة الاشتراك الظاهرتين فيه فقط؛ الباقة الحالية ليست دليلاً على الفاتورة القديمة."
+            : "Open the Lemon Squeezy invoice PDF. Select only the plan and interval shown in that historical document; the current subscription plan is not evidence."}</p>
+          <a href={review.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline">
+            {lang === "ar" ? "فتح مستند الفاتورة لدى المزود" : "Open provider invoice PDF"}
+          </a>
+          <select className="block w-full max-w-md rounded-md border bg-background p-2 text-sm" value={reviewVariant}
+            onChange={e => { setReviewVariant(e.target.value); setReviewConfirmed(false); }}>
+            <option value="">{lang === "ar" ? "اختر الباقة من المستند" : "Select plan from document"}</option>
+            {review.options.map(o => <option key={o.variantId} value={o.variantId}>{lang === "ar" ? o.nameAr : o.nameEn} · {o.interval} · {o.variantId}</option>)}
+          </select>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={reviewConfirmed} onChange={e => setReviewConfirmed(e.target.checked)} />
+            <span>{lang === "ar" ? "تحققت من الباقة والفترة في مستند الفاتورة التاريخي الصادر من المزود" : "I verified the plan and period in the provider-issued historical invoice"}</span>
+          </label>
+          <Button disabled={!reviewVariant || !reviewConfirmed || retryingId !== null} onClick={() => void retryInvoice(review.eventId, true)}>
+            {lang === "ar" ? "اعتماد المراجعة وإعادة المعالجة" : "Confirm review & retry"}
+          </Button>
+        </Card>
+      )}
+
+      {(pendingError || (pending?.total ?? 0) > 0) && (
+        <Card className="border-amber-400/70 bg-amber-50/60 dark:bg-amber-950/20 p-4" role="alert" data-testid="pending-invoices-alert">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold">
+                {pendingError
+                  ? (lang === "ar" ? "تعذّر التحقق من الفواتير المعلقة" : "Could not check pending invoices")
+                  : (lang === "ar" ? `${pending?.total} فاتورة اشتراك تحتاج مراجعة` : `${pending?.total} subscription invoices need review`)}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {lang === "ar"
+                  ? "أحداث دفع فاشلة بلا استحقاق؛ تبقى هنا حتى تُعالج حتى لو لم يصل البريد."
+                  : "Failed payment events without an entitlement remain here even if the email alert was not delivered."}
+              </p>
+              {pendingError && (
+                <Button type="button" variant="outline" className="mt-2" onClick={() => void refreshPending()}>
+                  {lang === "ar" ? "إعادة التحميل" : "Reload"}
+                </Button>
+              )}
+              {pending && pending.total > 0 && (
+                <div className="mt-3 space-y-2">
+                  {pending.rows.map((invoice) => (
+                    <div key={invoice.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-semibold" dir="ltr">{invoice.provider_object_id || `#${invoice.id}`}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {invoice.failed_at ? new Date(invoice.failed_at).toLocaleString(lang === "ar" ? "ar-SA" : "en-US") : "—"}
+                          {" · "}{lang === "ar" ? `المحاولات: ${invoice.attempts}` : `Attempts: ${invoice.attempts}`}
+                        </p>
+                        <p className="text-xs text-red-700 break-words" dir="auto">{invoice.error_message ?? "—"}</p>
+                      </div>
+                      <Button type="button" variant="outline" disabled={retryingId !== null} onClick={() => void retryInvoice(invoice.id)}
+                        data-testid={`pending-invoice-retry-${invoice.id}`}>
+                        {retryingId === invoice.id
+                          ? (lang === "ar" ? "جارٍ التحقق…" : "Verifying…")
+                          : (lang === "ar" ? "تحقق وأعد المعالجة" : "Verify & retry")}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={retryingId !== null} onClick={() => void openReview(invoice.id)}>
+                        {lang === "ar" ? "مراجعة مستند المزود" : "Review provider document"}
+                      </Button>
+                    </div>
+                  ))}
+                  {pending.total > pending.pageSize && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Button type="button" variant="outline" disabled={pendingPage <= 1} onClick={() => setPendingPage(p => p - 1)}>
+                        {lang === "ar" ? "السابق" : "Previous"}
+                      </Button>
+                      <span>{pendingPage} / {Math.ceil(pending.total / pending.pageSize)}</span>
+                      <Button type="button" variant="outline" disabled={pendingPage >= Math.ceil(pending.total / pending.pageSize)}
+                        onClick={() => setPendingPage(p => p + 1)}>
+                        {lang === "ar" ? "التالي" : "Next"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Section bar */}
       <div className="flex gap-2 flex-wrap">
@@ -859,8 +1035,15 @@ export function HasadCreditsSystem() {
           </div>
         )}
 
-        {section === "logs" && <LogsSection />}
+        {section === "logs" && <LogsSection onResolved={() => void refreshPending()} />}
       </div>
     </div>
   );
 }
+
+type PendingInvoices = {
+  total: number;
+  rows: PendingInvoice[];
+  page: number;
+  pageSize: number;
+};
