@@ -83,7 +83,7 @@
 - [Integration schema synchronization](integration-schema-synchronization.md) — sync Drizzle onto the existing test schema; rebuilding public deletes reference seeds required across the integration suite.
 - [Quran Foundation integration](quran-foundation-environments.md) — QCF V2 is the Madani page source; production also needs strict counts, no auth redirects, and exact-origin audio.
 - [Maher Al-Muaiqly standard recitation](maher-standard-recitation.md) — use the familiar ayah-scoped 128kbps recording, not Quranicaudio’s year1440 chapter recording.
-- [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are the official reward-system identity; never expose emoji or legacy avatars as alternatives.
+- [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are official; teacher point grants keep the full celebration card, not a compact banner.
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Class reward balance](class-reward-balance.md) — class points use an independent balance and ledger; never distribute them to students or mix them with group scores.
 - [Reward class groups](reward-class-groups.md) — groups may overlap; metadata and membership save atomically, while deletion never changes balances or transaction history.

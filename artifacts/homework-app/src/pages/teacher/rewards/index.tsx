@@ -26,7 +26,7 @@ import { RewardLedgerDialog } from "./ledger";
 import { RewardRulesDialog } from "./rules";
 import { BalanceAdjustmentDialog, StudentControlCenter } from "./student-control-center";
 import { RewardGroupsDialog, GroupAwardDialog, GroupDetailDialog } from "./groups";
-import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
+import { RewardCelebration, QUICK_REWARD_CELEBRATION_MS, type RewardCelebrationData } from "./reward-celebration";
 import { GoalDialog, GoalProgressCard, type GoalEditorData } from "./goal-progress";
 import { LiveBoard } from "./live-board";
 import {
@@ -185,6 +185,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   }, [currentClass]);
 
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
+  const [celebrationPending, setCelebrationPending] = useState(false);
 
   const students = useMemo(() => {
     if (!classData?.students) return [];
@@ -389,19 +390,21 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       idempotencyKey: key
     };
 
+    const awardedStudents = (classData?.students ?? [])
+      .filter((student: any) => payload.studentIds.includes(student.id))
+      .map((student: any) => ({ id: student.id, name: student.name, avatar: student.avatar }));
     if (customData) setCustomGrantOpen(false);
+    setCelebrationPending(true);
+    setCelebration({
+      students: awardedStudents,
+      points: type?.points || customData?.points || 0,
+      rewardName: type?.name || customData?.reason,
+      mode: "full",
+    });
     grantMutation.mutate(payload, {
       onSuccess: (result: any) => {
         playSound();
-        const awardedStudents = (classData?.students ?? [])
-          .filter((student: any) => payload.studentIds.includes(student.id))
-          .map((student: any) => ({ id: student.id, name: student.name, avatar: student.avatar }));
-        setCelebration({
-          students: awardedStudents,
-          points: type?.points || customData?.points || 0,
-          rewardName: type?.name || customData?.reason,
-          mode: "live",
-        });
+        setCelebrationPending(false);
         grantIntentRef.current = null;
         setSelectedIds(new Set());
         const pts = type?.points || customData?.points;
@@ -428,6 +431,8 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         });
       },
       onError: (err) => {
+        setCelebrationPending(false);
+        setCelebration(null);
         if (customData) setCustomGrantOpen(true);
         toast.error(getArabicRewardError(err, r("حدث خطأ أثناء منح النقاط", "Could not award the points.")));
       },
@@ -606,8 +611,12 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     <PageContainer embedded={embedded}>
       <RewardCelebration
         celebration={celebration}
+        autoDismissMs={celebrationPending ? null : celebration?.mode === "full" ? QUICK_REWARD_CELEBRATION_MS : undefined}
+        locked={celebrationPending}
+        fastEntrance={celebration?.mode === "full"}
         onComplete={() => {
           bulkGrantPendingRef.current = false;
+          setCelebrationPending(false);
           setCelebration(null);
         }}
       />
@@ -1271,6 +1280,13 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           }
 
           setSingleGrantStudentId(null);
+          setCelebrationPending(true);
+          setCelebration({
+            students: [{ id: singleGrantStudent.id, name: singleGrantStudent.name, avatar: singleGrantStudent.avatar }],
+            points: type?.points || customData?.points || 0,
+            rewardName: type?.name || customData?.reason,
+            mode: "full",
+          });
           grantMutation.mutate({
             className: currentClass,
             studentIds: [singleGrantStudent.id],
@@ -1282,17 +1298,14 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           }, {
             onSuccess: () => {
               playSound();
-              setCelebration({
-                students: [{ id: singleGrantStudent.id, name: singleGrantStudent.name, avatar: singleGrantStudent.avatar }],
-                points: type?.points || customData?.points || 0,
-                rewardName: type?.name || customData?.reason,
-                mode: "live",
-              });
+              setCelebrationPending(false);
               grantIntentRef.current = null;
               setSingleGrantStudentId(null);
             },
             onError: (err) => {
               singleGrantPendingRef.current = false;
+              setCelebrationPending(false);
+              setCelebration(null);
               setSingleGrantStudentId(singleGrantStudent.id);
               toast.error(getArabicRewardError(err, rewardText(lang, "حدث خطأ أثناء منح النقاط", "Could not award the points.")));
             },

@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
+import { I18nProvider } from "@/lib/i18n";
 import { applyOptimisticRewardPoints, useGrantRewards } from "./api";
-import { CelebrationAvatar, getRewardAvatarFallback } from "./reward-celebration";
+import { CelebrationAvatar, RewardCelebration, getRewardAvatarFallback } from "./reward-celebration";
 
 afterEach(() => {
   cleanup();
@@ -69,6 +70,44 @@ describe("reward avatars and optimistic balances", () => {
     expect(html).toContain(`src="${photo}"`);
     expect(html).toContain(">ن</span>");
     expect(html).not.toContain("adventurer-boy");
+  });
+
+  it("shows the original celebration while saving and dismisses it quickly after confirmation", async () => {
+    const onComplete = vi.fn();
+    const celebration = {
+      students: [{ id: 1, name: "سارة", avatar: null }],
+      points: 2,
+      mode: "full" as const,
+    };
+    const view = render(
+      <I18nProvider>
+        <RewardCelebration
+          celebration={celebration}
+          locked
+          autoDismissMs={null}
+          fastEntrance
+          onComplete={onComplete}
+        />
+      </I18nProvider>,
+    );
+
+    const card = view.getByRole("dialog", { name: "احتفال بمنح النقاط" });
+    expect(card.textContent).toContain("سارة");
+    fireEvent.click(card);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    view.rerender(
+      <I18nProvider>
+        <RewardCelebration
+          celebration={celebration}
+          locked={false}
+          autoDismissMs={50}
+          fastEntrance
+          onComplete={onComplete}
+        />
+      </I18nProvider>,
+    );
+    await waitFor(() => expect(onComplete).toHaveBeenCalledOnce());
   });
 
   it("makes general characters available in both explicit sections", () => {

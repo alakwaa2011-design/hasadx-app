@@ -13,7 +13,7 @@ import {
 } from "./api";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { ILLUSTRATED_AVATARS } from "@/lib/avatars";
-import { RewardCelebration, type RewardCelebrationData } from "./reward-celebration";
+import { RewardCelebration, QUICK_REWARD_CELEBRATION_MS, type RewardCelebrationData } from "./reward-celebration";
 import { GoalProgressCard } from "./goal-progress";
 import {
   User, Shield, Key, History, FileText, Activity,
@@ -210,12 +210,20 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
     endDate: data.goal.endsAt ?? null,
   }] : [];
   const [celebration, setCelebration] = useState<RewardCelebrationData | null>(null);
+  const [celebrationPending, setCelebrationPending] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const grantInFlightRef = useRef(false);
 
   const grant = (type: { id: number; name: string; points: number }) => {
     if (!className || grantInFlightRef.current || celebration) return;
     grantInFlightRef.current = true;
+    setCelebrationPending(true);
+    setCelebration({
+      students: [{ id: studentId, name: student.name, avatar: student.avatar }],
+      points: type.points,
+      rewardName: type.name,
+      mode: "full",
+    });
     grantMutation.mutate({
       className,
       studentIds: [studentId],
@@ -224,14 +232,14 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
       idempotencyKey: crypto.randomUUID(),
     }, {
       onSuccess: () => {
-        setCelebration({
-          students: [{ id: studentId, name: student.name, avatar: student.avatar }],
-          points: type.points,
-          rewardName: type.name,
-        });
+        setCelebrationPending(false);
         toast.success(r("تم منح النقاط للطالب بنجاح", "Points awarded to the student."));
       },
-      onError: (error: any) => toast.error(getArabicRewardError(error, r("تعذر منح النقاط", "Could not award points."))),
+      onError: (error: any) => {
+        setCelebrationPending(false);
+        setCelebration(null);
+        toast.error(getArabicRewardError(error, r("تعذر منح النقاط", "Could not award points.")));
+      },
       onSettled: () => {
         grantInFlightRef.current = false;
       },
@@ -240,7 +248,16 @@ function OverviewTab({ data, studentId, className, rewardTypes }: {
   
   return (
     <>
-      <RewardCelebration celebration={celebration} onComplete={() => setCelebration(null)} />
+      <RewardCelebration
+        celebration={celebration}
+        autoDismissMs={celebrationPending ? null : celebration ? QUICK_REWARD_CELEBRATION_MS : undefined}
+        locked={celebrationPending}
+        fastEntrance
+        onComplete={() => {
+          setCelebrationPending(false);
+          setCelebration(null);
+        }}
+      />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 
       <div className="md:col-span-1 space-y-6">

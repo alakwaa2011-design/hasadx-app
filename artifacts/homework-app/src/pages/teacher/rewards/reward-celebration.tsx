@@ -23,6 +23,8 @@ export interface RewardCelebrationData {
   mode?: "full" | "live";
 }
 
+export const QUICK_REWARD_CELEBRATION_MS = 600;
+
 export function getRewardAvatarFallback(name: string): string {
   return Array.from(name.trim())[0] || "•";
 }
@@ -50,9 +52,15 @@ export function CelebrationAvatar({
 export function RewardCelebration({
   celebration,
   onComplete,
+  autoDismissMs,
+  locked = false,
+  fastEntrance = false,
 }: {
   celebration: RewardCelebrationData | null;
   onComplete: () => void;
+  autoDismissMs?: number | null;
+  locked?: boolean;
+  fastEntrance?: boolean;
 }) {
   const { lang } = useI18n();
   const r = (arabic: string, english: string) => rewardText(lang, arabic, english);
@@ -71,10 +79,17 @@ export function RewardCelebration({
     if (celebration.mode !== "live") {
       overlayRef.current?.focus();
     }
-    const duration = celebration.mode === "live" ? 2200 : 2800;
-    const timer = window.setTimeout(() => onCompleteRef.current(), reduceMotion ? duration - 1000 : duration);
+  }, [celebration]);
+
+  useEffect(() => {
+    if (!celebration) return;
+    const duration = autoDismissMs === undefined
+      ? (celebration.mode === "live" ? (reduceMotion ? 1200 : 2200) : (reduceMotion ? 1800 : 2800))
+      : autoDismissMs;
+    if (duration === null) return;
+    const timer = window.setTimeout(() => onCompleteRef.current(), duration);
     return () => window.clearTimeout(timer);
-  }, [celebration, reduceMotion]);
+  }, [celebration, reduceMotion, autoDismissMs]);
 
   if (typeof document === "undefined") return null;
 
@@ -118,14 +133,15 @@ export function RewardCelebration({
           initial={reduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={reduceMotion ? undefined : { opacity: 0 }}
-          onClick={() => onCompleteRef.current()}
+          onClick={() => { if (!locked) onCompleteRef.current(); }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") onCompleteRef.current();
+            if (event.key === "Escape" && !locked) onCompleteRef.current();
             if (event.key === "Tab") event.preventDefault();
           }}
           role="dialog"
           aria-modal="true"
-           aria-label={r("احتفال بمنح النقاط", "Points award celebration")}
+          aria-label={r("احتفال بمنح النقاط", "Points award celebration")}
+          aria-busy={locked}
           aria-live="polite"
           tabIndex={-1}
         >
@@ -134,7 +150,7 @@ export function RewardCelebration({
             initial={reduceMotion ? false : { opacity: 0, scale: 0.7, y: 50 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={reduceMotion ? undefined : { opacity: 0, scale: 0.9, y: 20 }}
-            transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 260, damping: 20 }}
+            transition={reduceMotion ? { duration: 0 } : fastEntrance ? { type: "spring", stiffness: 440, damping: 29 } : { type: "spring", stiffness: 260, damping: 20 }}
             onClick={(event) => event.stopPropagation()}
           >
             {/* Spinning Halo Background */}
@@ -170,18 +186,25 @@ export function RewardCelebration({
                 <motion.div
                   key={student.id}
                   className="relative"
-                  initial={reduceMotion ? false : { y: 70, opacity: 0, rotate: index % 2 ? 8 : -8, scale: 0.8 }}
-                  animate={reduceMotion ? { opacity: 1 } : {
+                  initial={reduceMotion ? false : fastEntrance
+                    ? { y: 18, opacity: 0, rotate: 0, scale: 0.95 }
+                    : { y: 70, opacity: 0, rotate: index % 2 ? 8 : -8, scale: 0.8 }}
+                  animate={reduceMotion ? { opacity: 1 } : fastEntrance ? {
+                    y: [18, -4, 0],
+                    opacity: 1,
+                    scale: 1,
+                    rotate: 0,
+                  } : {
                     y: [70, -18, 4, -8, 0],
                     opacity: 1,
                     scale: 1,
                     rotate: [index % 2 ? 15 : -15, 0, index % 2 ? -5 : 5, 0],
                   }}
-                  transition={{ duration: 0.85, delay: index * 0.1, ease: "easeOut" }}
+                  transition={{ duration: fastEntrance ? 0.42 : 0.85, delay: index * (fastEntrance ? 0.04 : 0.1), ease: "easeOut" }}
                 >
                   <motion.div
                     animate={reduceMotion ? undefined : { y: [0, -10, 0] }}
-                    transition={{ duration: 1.2, delay: 0.9 + index * 0.15, repeat: Infinity, ease: "easeInOut" }}
+                    transition={{ duration: 1.2, delay: (fastEntrance ? 0.45 : 0.9) + index * 0.15, repeat: Infinity, ease: "easeInOut" }}
                   >
                     <CelebrationAvatar student={student} mode="full" />
                   </motion.div>
