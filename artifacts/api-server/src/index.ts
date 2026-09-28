@@ -2630,6 +2630,14 @@ io.on("connection", (socket) => {
 httpServer.listen(port, () => {
   logger.info({ port }, "Server listening");
   /* Run migrations + seeds in the background after the port is open. */
+  // The build smoke test uses an unreachable local DB URL. Never start
+  // migrations, seeds, or workers while checking the compiled HTTP server.
+  if (process.env.API_BUILD_SMOKE_TEST === "1") {
+    if (process.env.DATABASE_URL !== "postgres://smoke:smoke@127.0.0.1:1/smoke") {
+      throw new Error("Build smoke mode requires the isolated local database URL");
+    }
+    return;
+  }
   ensureSessionTable()
     .then(() => runSchemaMigrations())
     .then(() => db.execute(XP_MIGRATION_SQL))

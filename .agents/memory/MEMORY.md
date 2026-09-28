@@ -9,6 +9,7 @@
 - [Runtime schema migrations required](runtime-schema-migrations.md) — new tables/columns must also be added to runSchemaMigrations in the api-server entrypoint, or prod fails with "does not exist".
 - [Solo challenge difficulty and multi-level](solo-challenge-difficulty-levels.md) — difficulty preset (easy/med/hard) + per-question duration via GameQuestion.duration; multi-level uses preserveOrder in createGame and level-transition overlay in play.tsx.
 - [API server slow build & restart](api-server-slow-build.md) — workflow restart timeouts are usually the 2-min esbuild bundle, not a crash; use 300s timeout and test dist manually to tell them apart.
+- [Pino bundle staging path](pino-bundle-staging-path.md) — Pino's esbuild plugin embeds the output directory as an absolute worker path; staged builds must retain the final directory in bundle metadata.
 - [Whiteboard action normalization](whiteboard-action-normalization.md) — LLM board actions may arrive wrapped without "type"; normalize server-side or the presenter silently shows a blank board.
 - [Rebase semantic-merge corruption](rebase-semantic-merge-corruption.md) — task-merge rebases can splice code outside conflict markers; verify both sides' changes survive, rebuild from clean git shows if not.
 - [manualChunks React split](manualchunks-react-split.md) — splitting react into its own vendor chunk broke prod with "Cannot set properties of undefined (Children)"; never manualChunk react.
