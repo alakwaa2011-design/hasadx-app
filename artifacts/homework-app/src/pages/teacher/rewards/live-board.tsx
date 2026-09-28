@@ -78,17 +78,23 @@ export function LiveBoard({
     const active = (rewardTypesData || []).filter((type: any) => type.active && type.points > 0).sort((a: any, b: any) => a.order - b.order);
     return active[0];
   }, [rewardTypesData]);
+  const onePointReward = useMemo(
+    () => (rewardTypesData || [])
+      .filter((type: any) => type.active && Number(type.points) === 1)
+      .sort((a: any, b: any) => a.order - b.order)[0],
+    [rewardTypesData],
+  );
 
   const awardStudent = (student: BoardStudent) => {
     if (grantStudent.isPending) return;
-    const points = defaultReward?.points || 1;
-    const rewardName = defaultReward?.name || r("مشاركة سريعة", "Quick participation");
+    const points = 1;
+    const rewardName = onePointReward?.name || r("مشاركة سريعة", "Quick participation");
     grantStudent.mutate({
       className,
       studentIds: [student.id],
-      typeId: defaultReward?.id,
-      customReason: defaultReward?.id ? undefined : rewardName,
-      customPoints: defaultReward?.id ? undefined : points,
+      typeId: onePointReward?.id,
+      customReason: onePointReward?.id ? undefined : rewardName,
+      customPoints: onePointReward?.id ? undefined : points,
       optimisticPoints: points,
       idempotencyKey: crypto.randomUUID(),
     }, {
@@ -198,29 +204,23 @@ export function LiveBoard({
     : undefined;
 
   return (
-    <div className="fixed inset-0 z-[100] flex min-h-dvh min-w-0 max-w-[100vw] flex-col overflow-x-hidden bg-[#F8FAFC] text-slate-900 font-sans" dir={lang === "ar" ? "rtl" : "ltr"} data-testid="live-board">
-      {/* Background Decor */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-300/15 blur-[120px]" />
-        <div className="absolute -bottom-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-amber-300/15 blur-[120px]" />
-      </div>
+    <div className="fixed inset-0 z-[100] flex min-h-dvh min-w-0 max-w-[100vw] flex-col overflow-hidden bg-[#F5F4EC] text-[#153C31]" dir={lang === "ar" ? "rtl" : "ltr"} data-testid="live-board">
 
       {/* Header */}
-      <header className="relative z-10 flex min-w-0 items-center justify-between gap-2 border-b border-white/60 bg-white/70 px-2 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-xl sm:px-6 sm:py-4">
+      <header className="relative z-10 flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-[#DDE5D9] bg-[#FCFBF5] px-3 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <button type="button" data-testid="button-exit-live-board" aria-label={r("الخروج من لوحة التحفيز المباشرة", "Exit the live rewards board")} onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
-            <ArrowRight size={22} />
+          <button type="button" data-testid="button-exit-live-board" aria-label={r("الخروج من لوحة التحفيز المباشرة", "Exit the live rewards board")} onClick={onExit} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#D4DFD4] bg-[#F3F6EE] text-[#285344] transition-colors motion-reduce:transition-none hover:bg-[#E6EEE2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C39439] sm:h-11 sm:w-11">
+            <ArrowRight size={20} />
           </button>
           <div className="min-w-0">
-            <h1 className="flex items-center gap-2 truncate text-sm font-black text-emerald-950 sm:text-xl">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
-              {r("لوحة التحفيز المباشرة", "Live rewards board")}: {className}
+            <h1 className="truncate text-sm font-black tracking-tight text-[#153C31] sm:text-xl" data-testid="text-live-board-class">
+              <span className="sm:hidden">{r("مباشر", "Live")}</span><span className="hidden sm:inline">{r("اللوحة المباشرة", "Live board")}</span> <span className="mx-0.5 text-[#B48635]">—</span> {className}
             </h1>
-            <p className="mt-0.5 hidden text-sm font-bold text-slate-500 sm:block">{r("امنح النقاط وشاهد ترتيب الطلاب والفرق لحظة بلحظة", "Award points and watch student and team rankings in real time")}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#60786C] sm:text-sm">{r("اضغط على الطالب لمنحه نقطة مباشرة", "Tap a student to award a point instantly")}</p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button 
             onClick={triggerFairnessCue} 
              type="button"
@@ -228,14 +228,14 @@ export function LiveBoard({
              title={r("اختيار اسم عشوائي من طلاب الصف", "Choose a random name from the class")}
              data-testid="button-fairness-cue"
              disabled={isSpinning || students.length === 0}
-             className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 px-2 text-amber-950 font-black shadow-lg shadow-amber-500/25 transition-all motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-500/40 focus:outline-none focus:ring-4 focus:ring-amber-400/40 disabled:transform-none disabled:opacity-50 disabled:shadow-none sm:h-auto sm:w-auto sm:rounded-2xl sm:px-6 sm:py-3"
+              className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#EAC36C] px-2 text-[#422F12] font-bold transition-colors motion-reduce:transition-none hover:bg-[#F2D38D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#92621E] disabled:opacity-50 sm:h-11 sm:w-auto sm:px-4"
           >
-            <Shuffle size={18} />
-             <span className="hidden sm:inline">{r("اختيار طالب عشوائيًا", "Choose random student")}</span>
+             <Shuffle size={17} />
+              <span className="hidden sm:inline">{r("اختيار عشوائي", "Random pick")}</span>
           </button>
           
-            <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? r("إنهاء ملء الشاشة", "Exit fullscreen") : r("ملء الشاشة", "Fullscreen")} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-100 bg-white text-slate-600 shadow-sm transition-colors motion-reduce:transition-none hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-400/20 sm:h-12 sm:w-12 sm:rounded-2xl">
-            {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
+             <button type="button" data-testid="button-toggle-fullscreen" aria-label={isFullscreen ? r("إنهاء ملء الشاشة", "Exit fullscreen") : r("ملء الشاشة", "Fullscreen")} onClick={toggleFullscreen} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#D4DFD4] bg-[#F3F6EE] text-[#285344] transition-colors motion-reduce:transition-none hover:bg-[#E6EEE2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C39439] sm:h-11 sm:w-11">
+             {isFullscreen ? <Minimize size={19} /> : <Maximize size={19} />}
           </button>
         </div>
       </header>
@@ -298,65 +298,61 @@ export function LiveBoard({
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-       <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-2 sm:p-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
-        
-        {/* Right Panel: Goals & Groups */}
-        <aside className="flex h-auto w-full shrink-0 flex-col gap-4 overflow-visible pb-0 lg:h-full lg:w-[340px] lg:gap-6 lg:overflow-y-auto">
-          {goal && (
-            <div className="shrink-0">
-              <h2 className="text-xs font-black text-emerald-900/50 mb-3 uppercase tracking-wider flex items-center gap-2 px-1">
-                <Target size={14} /> {r("هدف الإنجاز", "Progress goal")}
-              </h2>
-              <GoalProgressCard goal={goal} className="border-white/80 bg-white/80 backdrop-blur-xl shadow-lg shadow-emerald-900/5" />
-            </div>
-          )}
-
-          {groupScores.length > 0 && (
-            <div className="flex flex-1 flex-col lg:min-h-[300px]">
-              <h2 className="text-xs font-black text-emerald-900/50 mb-3 uppercase tracking-wider flex items-center gap-2 px-1">
-                <Users size={14} /> {r("الفرق المتنافسة", "Competing teams")}
-              </h2>
-               <div className="relative flex flex-1 gap-3 overflow-x-auto rounded-[2rem] border-2 border-white/80 bg-white/60 p-3 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] backdrop-blur-xl lg:flex-col lg:overflow-y-auto lg:rounded-[2.5rem] lg:p-4">
-                {groupScores.map((group, index) => (
-                  <button
-                    key={group.id}
-                    onClick={() => awardGroup(group)}
-                     type="button"
-                     data-testid={`button-group-reward-${group.id}`}
-                     aria-label={`منح نقاط للمجموعة ${group.name}`}
-                     className="group relative min-w-[13rem] flex-1 rounded-[1.5rem] text-right outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 lg:min-w-0 lg:flex-none lg:w-full"
-                  >
-                    <div className="absolute inset-0 rounded-[1.5rem] bg-white opacity-40 transition-opacity group-hover:opacity-100 shadow-sm" />
-                    <div className="relative flex items-center gap-3 p-3 rounded-[1.5rem] border-2 border-transparent transition-all group-hover:border-emerald-100/50">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] shrink-0 bg-white border-2 border-white" style={{ borderColor: `${group.color}30` }}>
-                        {group.avatar ? (
-                          <AvatarDisplay avatar={group.avatar} size="sm" />
-                        ) : (
-                          <span className="font-black text-lg" style={{ color: group.color }}>{index + 1}</span>
-                        )}
+      {/* A full-width classroom canvas: utilities sit above the roster, never beside it. */}
+      <div className="relative z-10 min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-8 pt-4 sm:px-6 lg:px-8">
+        {(goal || groupScores.length > 0) && (
+          <aside className="mb-5 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-stretch" aria-label={r("هدف الصف والمجموعات", "Class goal and teams")}>
+            {goal && (
+              <div className="min-w-0 lg:w-[310px] lg:shrink-0">
+                <h2 className="mb-2 flex items-center gap-2 text-xs font-black text-[#537063]">
+                  <Target size={15} /> {r("هدف الإنجاز", "Progress goal")}
+                </h2>
+                <GoalProgressCard goal={goal} className="h-[calc(100%-1.5rem)] border-[#DCE8DA] bg-[#FCFBF5] shadow-none" />
+              </div>
+            )}
+            {groupScores.length > 0 && (
+              <div className="flex min-w-0 flex-1 flex-col">
+                <h2 className="mb-2 flex items-center gap-2 text-xs font-black text-[#537063]">
+                  <Users size={15} /> {r("الفرق المتنافسة", "Competing teams")}
+                </h2>
+                <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto rounded-2xl border border-[#DCE8DA] bg-[#EAEFE4] p-2">
+                  {groupScores.map((group, index) => (
+                    <button
+                      key={group.id}
+                      onClick={() => awardGroup(group)}
+                      type="button"
+                      data-testid={`button-group-reward-${group.id}`}
+                      aria-label={`منح نقاط للمجموعة ${group.name}`}
+                      className="group flex min-h-[72px] min-w-[175px] max-w-[220px] flex-1 items-center gap-2.5 rounded-xl border border-[#E1E9DF] bg-[#FCFBF5] p-2.5 text-start shadow-sm transition-colors motion-reduce:transition-none hover:border-[#C8A356] hover:bg-[#FFFAEC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C39439]"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-[#F5F4EC]" style={{ borderColor: `${group.color}50` }}>
+                        {group.avatar ? <AvatarDisplay avatar={group.avatar} size="sm" /> : <span className="text-base font-black" style={{ color: group.color }}>{index + 1}</span>}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-black text-slate-800 truncate">{group.name}</div>
-                        <div className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mt-1">
-                          <Trophy size={11} style={{ color: group.color }} />
-                          <span style={{ color: group.color }}>{formatRewardPoints(group.score)} {r("نقطة", "points")}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-black text-[#173D32]" data-testid={`text-group-name-${group.id}`}>{group.name}</div>
+                        <div className="mt-1 flex items-center gap-1 text-xs font-bold text-[#876223]">
+                          <Trophy size={12} />
+                          <span data-testid={`text-group-score-${group.id}`}>{formatRewardPoints(group.score)} {r("نقطة", "points")}</span>
                         </div>
                       </div>
-                      <div className="shrink-0 text-slate-300 opacity-0 transition-all group-hover:opacity-100 group-hover:-translate-x-1">
-                        <ArrowRight size={18} className="rotate-180" />
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </aside>
+            )}
+          </aside>
+        )}
 
-        {/* Left Panel: Students Grid */}
-        <main className="relative flex min-h-[420px] flex-1 flex-col overflow-y-auto rounded-[2rem] border-2 border-white/80 bg-white/60 p-3 shadow-xl shadow-emerald-900/5 backdrop-blur-xl sm:rounded-[3rem] sm:p-6 lg:min-h-0">
-          <div className="grid auto-rows-max grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        <main className="min-w-0">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-black text-[#173D32] sm:text-base">
+              <Users size={18} className="text-[#B48635]" /> {r("طلاب الصف", "Class students")}
+            </h2>
+            <span className="rounded-full border border-[#DCE8DA] bg-[#EAEFE4] px-3 py-1 text-xs font-bold text-[#37604B]" data-testid="text-live-board-student-count">
+              {formatRewardPoints(students.length)} {r("طالب", "students")}
+            </span>
+          </div>
+          <div className="grid auto-rows-max grid-cols-[repeat(auto-fill,minmax(min(100%,155px),1fr))] gap-2.5 sm:gap-3">
             <AnimatePresence>
               {students.map((student) => {
                 const isHighlighted = fairnessHighlight === student.id;
@@ -367,49 +363,49 @@ export function LiveBoard({
                   <motion.button
                     key={student.id}
                     layout
-                    initial={reduceMotion ? false : { opacity: 0, scale: 0.8 }}
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
                     animate={{ 
                       opacity: 1, 
-                      scale: isHighlighted ? 1.05 : 1,
+                      scale: isHighlighted ? 1.035 : 1,
                       zIndex: isHighlighted ? 10 : 1
                     }}
-                    transition={reduceMotion ? { duration: 0 } : { duration: 0.3 }}
+                    transition={reduceMotion ? { duration: 0 } : { duration: 0.22 }}
                      type="button"
                      data-testid={`button-student-reward-${student.id}`}
                       aria-label={r(`منح نقاط للطالب ${student.name}`, `Award points to ${student.name}`)}
                     onClick={() => awardStudent(student)}
                     className={cn(
-                       "group relative flex flex-col items-center gap-3 rounded-[1.75rem] border-2 p-3 transition-all motion-reduce:transition-none outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/20 sm:gap-4 sm:rounded-[2.5rem] sm:p-5",
+                       "group relative flex min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border p-3 text-center transition-colors motion-reduce:transition-none outline-none focus-visible:ring-2 focus-visible:ring-[#B48635] sm:min-h-[170px] sm:p-3.5",
                       isHighlighted 
-                        ? "bg-gradient-to-b from-amber-50 to-white border-amber-300 shadow-2xl shadow-amber-300/40" 
-                        : "bg-white border-white/80 shadow-md hover:border-emerald-200 hover:shadow-lg hover:bg-emerald-50/50"
+                         ? "border-[#D6A549] bg-[#FFF2D4] shadow-[0_8px_22px_rgba(146,98,30,0.16)]"
+                         : "border-[#E0E8DB] bg-[#FCFBF6] shadow-[0_2px_8px_rgba(24,65,49,0.05)] hover:border-[#C8A356] hover:bg-[#FFFAEC]"
                     )}
                   >
                     {isHighlighted && (
                         <motion.div
                          layoutId={reduceMotion ? undefined : "fairness-glow"}
-                        className="absolute inset-0 rounded-[2.5rem] shadow-[0_0_40px_rgba(251,191,36,0.4)] pointer-events-none"
+                         className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-inset ring-[#D6A549]"
                       />
                     )}
                     
-                    <div className="relative mt-2">
+                     <div className="relative">
                       <AvatarDisplay 
                         avatar={student.avatar} 
                         fallback={student.name.charAt(0)}
                         size="xl"
                         className={cn(
-                           "h-20 w-20 shadow-lg ring-4 transition-transform duration-300 motion-reduce:transition-none motion-reduce:transform-none group-hover:scale-110 sm:h-24 sm:w-24",
-                          isHighlighted ? "ring-amber-300" : "ring-white"
+                            "h-16 w-16 ring-[3px] transition-transform duration-200 motion-reduce:transition-none motion-reduce:transform-none group-hover:scale-105 sm:h-[72px] sm:w-[72px]",
+                           isHighlighted ? "ring-[#D9AA50]" : "ring-[#E9EDE3]"
                         )}
                         style={group ? { backgroundColor: `${group.color}15` } : undefined}
                       />
                       {group && (
                         <div 
-                          className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-white shadow-lg z-10"
+                           className="absolute -bottom-1 -right-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#FCFBF6] text-white shadow-sm"
                           style={{ backgroundColor: group.color }}
                           title={studentGroups.map((item) => item.name).join("، ")}
                         >
-                          <span className="text-xs font-black">{formatRewardPoints(studentGroups.length)}</span>
+                           <span className="text-[10px] font-black">{formatRewardPoints(studentGroups.length)}</span>
                         </div>
                       )}
                       {isHighlighted && (
@@ -417,22 +413,22 @@ export function LiveBoard({
                           initial={reduceMotion ? false : { opacity: 0, y: 10, scale: 0 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 15 }}
-                          className="absolute -top-4 -left-4 text-amber-500 drop-shadow-xl z-20"
+                           className="absolute -top-2 -left-3 z-20 text-[#BD8D31]"
                         >
-                          <Sparkles size={32} />
+                           <Sparkles size={22} />
                         </motion.div>
                       )}
                     </div>
 
-                    <div className="text-center w-full min-w-0 mt-1 mb-1">
-                      <div className="text-sm font-black text-emerald-950 truncate mb-2.5 px-1">{student.name}</div>
+                     <div className="w-full min-w-0 text-center">
+                       <div className="mb-1.5 truncate px-1 text-sm font-black text-[#153C31]" data-testid={`text-student-name-${student.id}`}>{student.name}</div>
                       <div className={cn(
-                        "inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-black transition-colors shadow-inner border-2",
+                         "inline-flex min-w-[62px] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm font-black transition-colors",
                         isHighlighted 
-                          ? "bg-amber-100 text-amber-900 border-amber-200" 
-                          : "bg-slate-50 text-slate-700 border-slate-100/50 group-hover:bg-emerald-100 group-hover:text-emerald-900 group-hover:border-emerald-200"
-                      )}>
-                        <Star size={16} className={cn(isHighlighted ? "fill-amber-400 text-amber-400" : "text-slate-400 group-hover:text-emerald-500 group-hover:fill-emerald-500/20")} />
+                           ? "border-[#D9AA50] bg-[#FFE7A9] text-[#765015]"
+                           : "border-[#F1DFAF] bg-[#FFF4D8] text-[#895F1E] group-hover:bg-[#FFE9B5]"
+                       )} data-testid={`text-student-score-${student.id}`}>
+                         <Star size={14} className="fill-[#DBA842] text-[#DBA842]" />
                         {formatRewardPoints(student.points)}
                       </div>
                     </div>
@@ -443,11 +439,11 @@ export function LiveBoard({
           </div>
           
           {students.length === 0 && (
-            <div className="flex flex-col items-center justify-center flex-1 opacity-60">
-              <div className="w-28 h-28 rounded-full bg-slate-100 flex items-center justify-center mb-5 shadow-inner">
-                <UserRound size={56} className="text-slate-300" />
+             <div className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#C9D9C8] bg-[#FCFBF6] text-center">
+               <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#EAEFE4]">
+                 <UserRound size={38} className="text-[#60816E]" />
               </div>
-              <p className="text-xl font-black text-slate-500">{r("لا يوجد أبطال في هذا الصف بعد", "There are no students in this class yet")}</p>
+               <p className="px-4 text-base font-black text-[#416B55]">{r("لا يوجد أبطال في هذا الصف بعد", "There are no students in this class yet")}</p>
             </div>
           )}
         </main>

@@ -140,3 +140,170 @@
     transition: none !important;
   }
 }
+
+/* Classroom workspace: calm, wide, and legible at a glance. */
+.site-layout-main:has(> .rewards-pavilion),
+.site-layout-main:has(.rewards-pavilion) {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+.site-layout-main:has(.rewards-pavilion) > :has(.rewards-pavilion) {
+  width: 100%;
+  max-width: none;
+}
+.rewards-pavilion {
+  width: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 24px clamp(24px, 2.2vw, 32px) 130px;
+  overflow: visible;
+  color: #193d30;
+  background: #f6f6ef;
+}
+.rewards-pavilion::before,
+.rewards-pavilion::after,
+.rewards-pavilion-lights { display: none; }
+.rewards-pavilion-header > div {
+  border: 1px solid #dce7db;
+  border-radius: 18px;
+  background: #fffefa;
+  box-shadow: 0 4px 18px #163a2710;
+  backdrop-filter: none;
+}
+.rewards-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.rewards-balance-card, .rewards-goal-card {
+  min-width: 0;
+  min-height: 216px;
+  border-radius: 20px;
+  padding: 23px 27px;
+}
+.rewards-balance-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid #1a5840;
+  background: #205b40;
+  color: #f8f7e9;
+  box-shadow: 0 10px 26px #17412f18;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.rewards-balance-card:hover { transform: translateY(-2px); box-shadow: 0 13px 28px #17412f27; }
+.rewards-summary-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+.rewards-balance-card .rewards-summary-eyebrow { color: #d9eedf; }
+.rewards-balance-value {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin-top: 9px;
+  font-size: clamp(36px, 3vw, 47px);
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.rewards-balance-value small { font-size: 17px; font-weight: 700; }
+.rewards-balance-note { margin-top: 10px; font-size: 12px; font-weight: 600; color: #d4e8da; line-height: 1.6; }
+.rewards-balance-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 12px;
+  color: #f3d486;
+  font-size: 13px;
+  font-weight: 800;
+}
+.rewards-balance-action svg { transform: rotate(180deg); }
+.rewards-goal-card { border: 1px solid #e5e7d9; background: #fffefa; box-shadow: 0 4px 18px #163a2710; }
+.rewards-goal-heading, .rewards-goal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rewards-goal-card .rewards-summary-eyebrow { color: #225942; }
+.rewards-goal-title { margin: 12px 0 5px; font-size: 22px; font-weight: 850; line-height: 1.3; color: #1c392c; }
+.rewards-goal-count { display: flex; align-items: baseline; gap: 6px; color: #678071; font-size: 13px; font-weight: 700; }
+.rewards-goal-count strong { color: #204f39; font-size: 25px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rewards-goal-track { height: 8px; margin: 10px 0; overflow: hidden; border-radius: 30px; background: #e9eee3; }
+.rewards-goal-track span { display: block; height: 100%; border-radius: inherit; background: #c69841; }
+.rewards-goal-footer { color: #677c6d; font-size: 12px; font-weight: 700; }
+.rewards-goal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 0;
+  color: #206348;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.rewards-goal-link:hover { text-decoration: underline; }
+.rewards-goal-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 25px; }
+.rewards-goal-empty p { color: #617669; font-size: 16px; font-weight: 700; }
+.rewards-goal-add { display: inline-flex; align-items: center; gap: 7px; border-radius: 10px; background: #205b40; color: #fffefa; padding: 10px 15px; font-size: 13px; font-weight: 800; }
+.rewards-goal-add:hover { background: #164732; }
+.rewards-goal-skeleton { width: 60%; height: 23px; margin-top: 25px; border-radius: 8px; background: #e9eee3; }
+.rewards-pavilion-toolbar {
+  padding: 12px 14px;
+  border: 1px solid #e5e7d9;
+  border-radius: 16px;
+  background: #fffefa;
+}
+.rewards-students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+.rewards-students-grid .rewards-pavilion-card {
+  min-width: 0;
+  border-width: 1px;
+  border-color: #e0e6db;
+  border-radius: 16px;
+  padding: 12px 8px 15px;
+  background: #fffefa;
+  box-shadow: 0 3px 11px #183f2510;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.rewards-students-grid .rewards-pavilion-card:hover {
+  transform: translateY(-2px);
+  border-color: #bdd8c4;
+  box-shadow: 0 8px 19px #183f251c;
+}
+.rewards-students-grid .rewards-pavilion-card:has(button[aria-pressed="true"]) {
+  transform: none;
+  border-color: #c59a4a;
+  background: #fffaf0;
+  box-shadow: 0 0 0 2px #ddc68b52;
+}
+.rewards-students-grid .rewards-pavilion-card > div:first-child { display: none; }
+.rewards-students-grid .rewards-pavilion-card > button:not([aria-pressed]) { margin-top: 32px; }
+.rewards-students-grid .rewards-pavilion-card button[aria-pressed],
+.rewards-students-grid .rewards-pavilion-card > button[title] {
+  width: 29px;
+  height: 29px;
+  border-width: 1px;
+  box-shadow: none;
+}
+.rewards-students-grid .rewards-pavilion-card .h-24.w-24 { width: 80px; height: 80px; }
+.rewards-students-grid .rewards-pavilion-card .sm\:h-28.sm\:w-28 { width: 88px; height: 88px; }
+.rewards-students-grid .rewards-pavilion-card .truncate { max-width: 100%; }
+@media (max-width: 767px) {
+  .rewards-pavilion { padding: 12px 12px 110px; }
+  .rewards-summary { grid-template-columns: 1fr; gap: 10px; }
+  .rewards-balance-card, .rewards-goal-card { min-height: 0; padding: 18px; border-radius: 16px; }
+  .rewards-balance-card { min-height: 180px; }
+  .rewards-goal-card { min-height: 174px; }
+  .rewards-students-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .rewards-pavilion-toolbar > div { align-items: stretch; }
+  .rewards-pavilion-toolbar > div > div:last-child { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rewards-balance-card, .rewards-students-grid .rewards-pavilion-card { transition: none; }
+}

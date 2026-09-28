@@ -2371,3 +2371,101 @@ mtime_ms = 1790571134139
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/8e6e4486-c5a4-4645-938f-23dc65ba4869/bbaa0cac-f6a4-42fa-8b34-42441b019622"
 storage_version_token = "1790571146864964"
 content_type = "image/png"
+
+[[outputs]]
+id = "BpBveznxFDrGLScz7-aVN"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/01-rewards-1440.png"
+type = "image"
+title = "لوحة التحفيز — 1440px"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "fc04b357-01bf-4fa1-9905-1acf88b41f33"
+content_hash = "sha256:dd891bb1a3d2eb4621834c819c1cd4c4da828dd4ce3d59e682ec5d8cac2b318a"
+size = 167887
+mtime_ms = 1790624854384
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/fc04b357-01bf-4fa1-9905-1acf88b41f33/9f915b83-6037-4b53-a423-d2c591a30d8a"
+storage_version_token = "1790624987753579"
+content_type = "image/png"
+
+[[outputs]]
+id = "1ng_zilVhP3eE-1tLIAzz"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/02-rewards-1280.png"
+type = "image"
+title = "لوحة التحفيز — 1280px"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "85054c4e-e319-40b5-a08a-f5e5460429da"
+content_hash = "sha256:2573ca36ff48d39860af5d1c10581e17a204bdaba5c53a19aa42e4bdcc8808a8"
+size = 186938
+mtime_ms = 1790624856247
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/85054c4e-e319-40b5-a08a-f5e5460429da/c314d5e0-0bee-41cd-8610-821ae5280eaf"
+storage_version_token = "1790624990672703"
+content_type = "image/png"
+
+[[outputs]]
+id = "oWAua_mRvcKVDF14FVEyY"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/03-rewards-390.png"
+type = "image"
+title = "لوحة التحفيز — هاتف 390px"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "bcebd8f7-eafc-48ea-8ab8-eaa4506bc18b"
+content_hash = "sha256:0e47171c980ef420d7f31fe68881a6af2a90c3d30bbe209047d785cf2f0e1d23"
+size = 213969
+mtime_ms = 1790624857900
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/bcebd8f7-eafc-48ea-8ab8-eaa4506bc18b/11de0b10-63ad-46b2-8984-3994264db88b"
+storage_version_token = "1790624993155383"
+content_type = "image/png"
+
+[[outputs]]
+id = "PIbOkzSB0uHiNdoXQ6eub"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/04-live-board-1440.png"
+type = "image"
+title = "اللوحة المباشرة — 1440px"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "df1c4098-8274-4231-a9dd-7d903fe5a3fd"
+content_hash = "sha256:cd7ddfe6c339f508fee4548ae09a044777ff204e61867a3f9fe85689c4f87540"
+size = 97048
+mtime_ms = 1790624867711
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/df1c4098-8274-4231-a9dd-7d903fe5a3fd/603f5e4a-04d1-4a98-9c15-744b2296f8f2"
+storage_version_token = "1790624995136079"
+content_type = "image/png"
+
+[[outputs]]
+id = "i1Ecn64BWRWLfR0tqZiB7"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/05-live-board-390.png"
+type = "image"
+title = "اللوحة المباشرة — هاتف 390px"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "f0a5b7d9-9d8f-47d2-8861-bf92fa91bac3"
+content_hash = "sha256:df13447c1ba4601ccf1a2ce9f95395d302f2a5b842c4a7de990c4fbce9fafd90"
+size = 81167
+mtime_ms = 1790624869675
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/f0a5b7d9-9d8f-47d2-8861-bf92fa91bac3/8f6781b6-8012-44cf-ae6f-862f202cf982"
+storage_version_token = "1790624996769600"
+content_type = "image/png"
+
+[[outputs]]
+id = "oo0ps3xFYpQy0nIxs0zbK"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/06-class-balance-dialog.png"
+type = "image"
+title = "نافذة إدارة رصيد الصف"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "26fd4661-27ba-4762-85ad-1b28409fcccf"
+content_hash = "sha256:bbb1d586d044c259cd76617bd89d6e26d7b24c236ae0ea2bed83f06693acb1d0"
+size = 172242
+mtime_ms = 1790624860896
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/26fd4661-27ba-4762-85ad-1b28409fcccf/e4f9fc1e-882d-4802-be1f-a3b07aac12ca"
+storage_version_token = "1790624998991172"
+content_type = "image/png"
+
+[[outputs]]
+id = "3gGpAcXqkA3earG9BD7RP"
+uri = "file://artifacts/homework-app/screenshots/rewards-redesign/07-student-grant-dialog.png"
+type = "image"
+title = "نافذة منح نقاط الطالب"
+description = "لقطة من واجهة التطبيق الفعلية ببيانات صف تجريبي داخل بيئة اختبار معزولة."
+logical_id = "492c2859-fc88-42b3-8b10-f6ce7355cbd9"
+content_hash = "sha256:89c052382108b839c2e6611ec48aa9a0585016f3a7001b8a071368a266ddbe8b"
+size = 232080
+mtime_ms = 1790624864189
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/492c2859-fc88-42b3-8b10-f6ce7355cbd9/2a968ad2-fc9c-48c0-92e3-22bd8b738c92"
+storage_version_token = "1790625001689092"
+content_type = "image/png"

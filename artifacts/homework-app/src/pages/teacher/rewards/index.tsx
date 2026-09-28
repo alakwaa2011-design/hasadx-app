@@ -9,7 +9,6 @@ import {
   useGrantRewards,
   useGetTeacherClasses,
   useGetRewardGroups,
-  useGetRewardSummary,
   useGetRewardGoals,
   useCreateRewardGoal,
   useUpdateRewardGoal,
@@ -63,24 +62,18 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
 }
 
 const formatPoints = formatRewardPoints;
-const INITIAL_VISIBLE_GOALS = 2;
 type TeacherClassOption = { className?: string | null; name?: string | null };
 
-function AdventurePointsBadge({ points, className, animate = false, lang = "ar" }: { points: number, className?: string, animate?: boolean; lang?: RewardLang }) {
+function AdventurePointsBadge({ points, className, lang = "ar" }: { points: number, className?: string; lang?: RewardLang }) {
   return (
     <div className={cn(
       "relative flex items-center justify-center group/badge",
-      animate && "animate-float-slow motion-reduce:animate-none",
       className
     )}>
-      <div className="absolute -inset-1 rounded-full bg-amber-400/50 blur-md transition-opacity duration-500 group-hover/badge:opacity-80 motion-reduce:transition-none" />
-      <div className="relative flex min-w-[4.5rem] items-center justify-center gap-1.5 rounded-2xl border-2 border-white/90 bg-gradient-to-br from-amber-300 via-orange-400 to-amber-600 px-2.5 py-1 shadow-lg shadow-amber-600/25 transition-transform duration-300 group-hover/badge:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none">
-        <span className="relative flex h-4 w-4 items-center justify-center" aria-hidden="true">
-          <Orbit size={16} className="text-white/90 motion-safe:animate-[spin_4s_linear_infinite]" />
-          <span className="absolute h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
-        </span>
-        <span className="text-base font-black leading-none text-white drop-shadow-md">{formatPoints(points)}</span>
-        <span className="text-xs font-black text-amber-50">{rewardText(lang, "نقطة", "points")}</span>
+      <div className="relative flex min-w-[4.5rem] items-center justify-center gap-1 rounded-xl border border-amber-200 bg-amber-100 px-2.5 py-1 shadow-sm">
+        <Orbit size={13} className="text-amber-700" aria-hidden="true" />
+        <span className="text-sm font-black leading-none text-amber-900">{formatPoints(points)}</span>
+        <span className="text-[10px] font-bold text-amber-800">{rewardText(lang, "نقطة", "points")}</span>
       </div>
     </div>
   );
@@ -107,7 +100,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const { data: classData, isLoading: loadingStudents, isError: studentsError, refetch: refetchStudents } = useGetClassRewards(currentClass);
   const { data: groupsData } = useGetRewardGroups(currentClass);
   const { data: rewardTypesData } = useGetRewardTypes();
-  const { data: weeklySummary, isLoading: weeklySummaryLoading, isError: weeklySummaryError } = useGetRewardSummary(currentClass, "week");
   const { data: goalsData, isLoading: goalsLoading } = useGetRewardGoals(currentClass);
   const { data: classBalanceData, isLoading: classBalanceLoading } = useGetClassRewardBalance(currentClass);
   const grantMutation = useGrantRewards();
@@ -197,24 +189,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   }, [activeGroupId, classData, groupsData, search]);
 
   const activeGroup = groupsData?.groups?.find((group) => group.id === activeGroupId) ?? null;
-  const weeklyStats = useMemo(() => {
-    const summaries = weeklySummary?.studentSummaries ?? [];
-    const rosterIds = new Set((classData?.students ?? []).map((student: any) => Number(student.id)));
-    const recognizedStudentIds = new Set(
-      ((weeklySummary as any)?.metrics?.recognizedStudentIds ?? [])
-        .map((studentId: unknown) => Number(studentId))
-        .filter((studentId: number) => rosterIds.has(studentId)),
-    );
-    const topType = [...(weeklySummary?.typeSummaries ?? [])]
-      .filter((type: any) => Number(type.count) > 0)
-      .sort((a: any, b: any) => Number(b.count) - Number(a.count))[0];
-    return {
-      totalPoints: Number((weeklySummary as any)?.metrics?.totalGrantedPoints ?? 0),
-      recognizedCount: recognizedStudentIds.size,
-      awaitingRecognition: Math.max(0, (classData?.students?.length ?? 0) - recognizedStudentIds.size),
-      topTypeName: topType?.typeName || r("لا يوجد بعد", "Not yet"),
-    };
-  }, [classData, lang, weeklySummary]);
+  const currentClassGoal = goalsData?.goals?.find((goal) => goal.targetType === "class" && goal.status === "active");
 
   const singleGrantStudent = useMemo(
     () => classData?.students?.find((student: any) => student.id === singleGrantStudentId) ?? null,
@@ -611,7 +586,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
     <PageContainer embedded={embedded}>
       <RewardCelebration
         celebration={celebration}
-        autoDismissMs={celebrationPending ? null : celebration?.mode === "full" ? QUICK_REWARD_CELEBRATION_MS : undefined}
+        autoDismissMs={celebrationPending ? null : celebration?.mode === "full" ? QUICK_REWARD_CELEBRATION_MS : celebration?.mode === "live" ? 850 : undefined}
         locked={celebrationPending}
         fastEntrance={celebration?.mode === "full"}
         onComplete={() => {
@@ -648,13 +623,13 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
         )
       )}
 
-      <div className="rewards-pavilion max-w-6xl mx-auto space-y-3 pb-32 transition-all motion-reduce:transition-none sm:space-y-4">
+      <div className="rewards-pavilion space-y-4 pb-32 sm:space-y-5">
         <div className="rewards-pavilion-lights" aria-hidden="true">
           <i /><i /><i /><i /><i />
         </div>
 
 
-        {/* Storybook Header */}
+        {/* Class navigation and classroom actions */}
         <header className="rewards-pavilion-header relative mx-auto w-full pt-2">
           <div className="flex flex-col justify-between gap-2.5 rounded-[1.5rem] border-2 border-emerald-50 bg-white/95 p-2 shadow-sm backdrop-blur-xl sm:flex-row sm:items-center sm:rounded-[2rem] sm:p-2.5 sm:pr-4">
             {/* Right (RTL): Back & Class Selector */}
@@ -714,10 +689,6 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 >
                   <Target size={18} className="text-amber-300 transition-transform group-hover:rotate-12" />
                   <span className="text-sm">{r("اللوحة المباشرة", "Live board")}</span>
-                  <span className="absolute -right-1 -top-1 flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75 motion-reduce:animate-none" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-400 border border-white/50" />
-                  </span>
                 </button>
 
                 <div className="relative">
@@ -758,96 +729,46 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </div>
         </header>
 
-        {/* Lightweight Dashboard Strip */}
-        <section aria-label={r("ملخص التحفيز الأسبوعي", "Weekly rewards summary")} className="flex flex-nowrap items-stretch gap-2 overflow-x-auto pb-2 [scrollbar-width:none] sm:gap-3 sm:pb-3">
-          {/* Class Points */}
-          <button
-            type="button"
-            onClick={() => setClassBalanceOpen(true)}
-            aria-label={r("نقاط الصف: رصيد مستقل للصف كله ولا يُضاف إلى نقاط أي طالب", "Class points: a separate balance for the whole class, not added to any student's points")}
-            title={r("تُمنح للصف كله ولا تُضاف إلى نقاط أي طالب", "Awarded to the whole class and not added to any student's points")}
-            className="group flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-emerald-50 p-2 text-right shadow-sm shadow-amber-900/5 transition-all hover:border-amber-400 hover:shadow-md hover:shadow-amber-900/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3"
-          >
-            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-300/60 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-inner transition-transform group-hover:scale-105 sm:h-11 sm:w-11 sm:rounded-xl">
-              <School size={20} strokeWidth={2.4} />
-              <span className="absolute -bottom-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-emerald-700 text-white shadow-sm" aria-hidden="true">
-                <UsersRound size={9} strokeWidth={2.8} />
-              </span>
-            </div>
-            <div>
-              <p className="text-[11px] font-black text-emerald-900 mb-0.5">{r("نقاط الصف", "Class points")}</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-lg font-black text-emerald-950">{classBalanceLoading ? "—" : formatPoints(classBalanceData?.balance ?? 0)}</span>
-              </div>
-            </div>
+        {/* Independent class balance and current class goal */}
+        <section aria-label={r("ملخص الصف", "Class summary")} className="rewards-summary">
+          <button type="button" onClick={() => setClassBalanceOpen(true)}
+            className="rewards-balance-card group text-start focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300"
+            aria-label={r(`إدارة رصيد صف ${currentClass}`, `Manage ${currentClass} class balance`)}
+            data-testid="button-class-balance">
+            <span className="rewards-summary-eyebrow"><School size={19} /> {r(`رصيد صف ${currentClass}`, `Class balance · ${currentClass}`)}</span>
+            <span className="rewards-balance-value" data-testid="text-class-balance">
+              {classBalanceLoading ? "—" : formatPoints(classBalanceData?.balance ?? 0)}
+              <small>{r("نقطة", "points")}</small>
+            </span>
+            <span className="rewards-balance-note">{r("هذا الرصيد مستقل ولا يغيّر نقاط أي طالب.", "This balance is separate and does not change any student's points.")}</span>
+            <span className="rewards-balance-action">{r("إدارة الرصيد", "Manage balance")} <ArrowRight size={16} /></span>
           </button>
-
-          {/* Weekly Stats */}
-          <div className="flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-emerald-100 bg-white p-2 shadow-sm text-right sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shadow-inner sm:h-11 sm:w-11 sm:rounded-xl">
-              <Sparkles size={20} />
+          <div className="rewards-goal-card">
+            <div className="rewards-goal-heading">
+              <span className="rewards-summary-eyebrow"><Target size={19} /> {r("هدف الصف", "Class goal")}</span>
+              {currentClassGoal && <button type="button" onClick={() => { setEditingGoal(currentClassGoal); setGoalDialogOpen(true); }}
+                className="rewards-goal-link" data-testid="button-edit-class-goal">{r("تعديل الهدف", "Edit goal")}</button>}
             </div>
-            <div>
-              <p className="text-[11px] font-bold text-emerald-900/60 mb-0.5">{r("نقاط الأسبوع", "Weekly points")}</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-lg font-black text-emerald-950">{weeklySummaryLoading || weeklySummaryError ? "—" : formatPoints(weeklyStats.totalPoints)}</span>
+            {goalsLoading ? <div className="rewards-goal-skeleton" aria-label={r("جاري تحميل الهدف", "Loading goal")} /> : currentClassGoal ? (
+              <>
+                <h2 className="rewards-goal-title" data-testid="text-class-goal-title">{currentClassGoal.title}</h2>
+                <div className="rewards-goal-count"><strong>{formatPoints(currentClassGoal.currentPoints)}</strong><span>/ {formatPoints(currentClassGoal.targetPoints)} {r("نقطة", "points")}</span></div>
+                <div className="rewards-goal-track" role="progressbar" aria-valuenow={Math.min(100, Math.max(0, Math.round(currentClassGoal.currentPoints / Math.max(1, currentClassGoal.targetPoints) * 100)))} aria-valuemin={0} aria-valuemax={100} aria-label={r("تقدم هدف الصف", "Class goal progress")}>
+                  <span style={{ width: `${Math.min(100, Math.max(0, currentClassGoal.currentPoints / Math.max(1, currentClassGoal.targetPoints) * 100))}%` }} />
+                </div>
+                <div className="rewards-goal-footer">
+                  <span>{currentClassGoal.currentPoints >= currentClassGoal.targetPoints ? r("اكتمل الهدف", "Goal complete") : r(`باقي ${formatPoints(Math.max(0, currentClassGoal.targetPoints - currentClassGoal.currentPoints))} نقطة`, `${formatPoints(Math.max(0, currentClassGoal.targetPoints - currentClassGoal.currentPoints))} points remaining`)}</span>
+                  <button type="button" onClick={() => setGoalsManagerOpen(true)} className="rewards-goal-link"><SlidersHorizontal size={15} /> {r("إدارة الأهداف", "Manage goals")}</button>
+                </div>
+              </>
+            ) : (
+              <div className="rewards-goal-empty">
+                <p>{r("لا يوجد هدف حالي", "No current class goal")}</p>
+                <button type="button" onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }} className="rewards-goal-add"><Plus size={17} /> {r("إضافة هدف", "Add goal")}</button>
+                {(goalsData?.goals?.length ?? 0) > 0 && <button type="button" onClick={() => setGoalsManagerOpen(true)} className="rewards-goal-link">{r("إدارة الأهداف", "Manage goals")}</button>}
               </div>
-            </div>
+            )}
           </div>
-
-          {/* Active Goals */}
-          {!goalsLoading && (goalsData?.goals?.length ?? 0) === 0 && (
-            <button
-              type="button"
-              onClick={() => { setEditingGoal(null); setGoalDialogOpen(true); }}
-              className="group flex min-w-[128px] shrink-0 items-center gap-2 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 p-2 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40 sm:min-w-[145px] sm:gap-3 sm:rounded-2xl sm:p-3"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100/60 text-emerald-600 group-hover:scale-105 transition-transform">
-                <Plus size={22} />
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] font-bold text-emerald-800">{r("إضافة هدف", "Add goal")}</p>
-                <p className="text-[10px] font-bold text-emerald-900/50 mt-0.5">{r("جديد للصف", "New for class")}</p>
-              </div>
-            </button>
-          )}
-
-          {goalsData?.goals?.slice(0, INITIAL_VISIBLE_GOALS).map(goal => {
-            const percentage = Math.min(100, Math.max(0, (goal.currentPoints / goal.targetPoints) * 100));
-            const isCompleted = percentage >= 100;
-            return (
-              <button
-                type="button"
-                key={goal.id}
-                onClick={() => { setEditingGoal(goal); setGoalDialogOpen(true); }}
-                className={cn("group flex min-w-[145px] max-w-[190px] shrink-0 items-center gap-2 rounded-xl border bg-white p-2 shadow-sm transition-all text-right focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-300/40 sm:min-w-[160px] sm:gap-3 sm:rounded-2xl sm:p-3", isCompleted ? "border-amber-200 hover:border-amber-300" : "border-emerald-100 hover:border-sky-200 hover:shadow-md")}
-              >
-                <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl group-hover:scale-105 transition-transform shadow-inner", isCompleted ? "bg-amber-100 text-amber-600" : "bg-sky-50 text-sky-600")}>
-                  <Target size={22} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-emerald-900/60 mb-1.5 truncate" title={goal.title}>{goal.title}</p>
-                  <div className="flex items-center gap-2">
-                    <div className={cn("h-1.5 flex-1 rounded-full overflow-hidden", isCompleted ? "bg-amber-200/50" : "bg-slate-100")}>
-                      <div className={cn("h-full rounded-full", isCompleted ? "bg-amber-500" : "bg-sky-500")} style={{ width: `${percentage}%` }} />
-                    </div>
-                    <span className="text-[10px] font-black text-emerald-950 shrink-0">{percentage.toFixed(0)}%</span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-
-          {(goalsData?.goals?.length ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={() => setGoalsManagerOpen(true)}
-              className="flex min-h-[56px] shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-white px-3 text-[11px] font-black text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300/40 sm:min-h-[70px] sm:rounded-2xl sm:px-4"
-            >
-              <SlidersHorizontal size={15} />
-              {r("إدارة الأهداف", "Manage goals")}
-            </button>
-          )}
         </section>
 
         {/* Toolbar */}
@@ -994,7 +915,7 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
             <p className="font-bold">{r("جاري تحميل الطلاب...", "Loading students...")}</p>
           </div>
         ) : (
-          <div className="rewards-pavilion-grid grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6 xl:grid-cols-7">
+          <div className="rewards-pavilion-grid rewards-students-grid">
             {students.map((student: any) => {
               const isSelected = selectedIds.has(student.id);
               const daysSinceReward = student.lastRewardAt ? Math.floor((Date.now() - new Date(student.lastRewardAt).getTime()) / 86400000) : null;
@@ -1428,7 +1349,7 @@ function SingleStudentGrantDialog({
               className="relative z-10 h-28 w-28 bg-amber-50 px-2 text-lg font-black leading-tight text-center ring-4 ring-amber-400 shadow-2xl sm:text-xl"
             />
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20">
-              <AdventurePointsBadge points={student.points || 0} animate lang={lang} />
+              <AdventurePointsBadge points={student.points || 0} lang={lang} />
             </div>
           </div>
           <DialogTitle className="text-2xl font-black text-white relative z-10 tracking-wide">{student.name}</DialogTitle>
@@ -1858,16 +1779,16 @@ function ClassBalanceDialog({
         <DialogHeader className="border-b border-emerald-100 bg-gradient-to-l from-emerald-950 to-[#225739] p-6 text-white">
           <DialogTitle className="flex items-center gap-2 text-xl font-black text-white">
             <School size={23} className="text-amber-300" />
-            {r(`نقاط صف ${className}`, `${className} class points`)}
+            {r(`رصيد صف ${className}`, `${className} class balance`)}
           </DialogTitle>
           <DialogDescription className="pt-2 font-bold text-emerald-100/75">
             {r("هذا الرصيد مستقل ولا يغيّر نقاط أي طالب.", "This balance is separate and does not change any student's points.")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="max-h-[calc(92dvh-8rem)] space-y-5 overflow-y-auto p-6">
-          <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <span className="text-sm font-black text-amber-900/70">{r("رصيد الصف الحالي", "Current class balance")}</span>
-            <strong className="text-xl font-black text-amber-800">{formatPoints(balance)} {r("نقطة", "points")}</strong>
+          <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <span className="text-sm font-black text-emerald-900/70">{r("رصيد الصف الحالي", "Current class balance")}</span>
+            <strong className="text-xl font-black text-emerald-800">{formatPoints(balance)} {r("نقطة", "points")}</strong>
           </div>
 
           <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5">
