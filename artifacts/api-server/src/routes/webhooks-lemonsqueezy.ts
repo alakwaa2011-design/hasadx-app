@@ -20,6 +20,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { verifySignature } from "../lib/lemonsqueezy";
 import { CreditService } from "../lib/credit-service";
 import { logger } from "../lib/logger";
+import { sendEmail, getAppBaseUrl } from "../lib/email";
+import { CONFIGURED_ADMIN_EMAILS } from "../lib/admin-identity";
 import { addOneCalendarMonth, addCalendarMonthsUtc, lockProviderSubscription } from "../lib/annual-credit-release";
 
 const router: IRouter = Router();
@@ -30,6 +32,15 @@ const router: IRouter = Router();
  * إن أُعيد إرساله لاحقًا (يدويًا) فمسار retry الداخلي يسمح بإعادة المعالجة.
  */
 class TerminalWebhookError extends Error {}
+class InvoiceEvidenceError extends Error {}
+
+async function alertInvoiceReview(invoiceId: string, reason: string): Promise<void> {
+  const text = `تعذّر تحديد باقة فاتورة الاشتراك ${invoiceId}؛ لم يُمنح رصيد. راجع سجل الأحداث وأعد معالجة الفاتورة بعد توفير دليل الدفع.\n${reason}\n${getAppBaseUrl()}/teacher/admin?tab=hasad-credits`;
+  for (const to of new Set([...(process.env.ADMIN_ALERT_EMAILS ?? "").split(",").map(s => s.trim()).filter(Boolean), ...CONFIGURED_ADMIN_EMAILS])) {
+    const result = await sendEmail({ to, subject: "حصاد: فاتورة اشتراك مدفوعة تحتاج مراجعة", text, html: `<pre>${text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</pre>` });
+    if (!result.delivered) logger.warn({ invoiceId, reason: result.reason }, "Lemon invoice admin alert not delivered");
+  }
+}
 
 router.post("/webhooks/lemonsqueezy", async (req, res) => {
   try {
@@ -163,6 +174,10 @@ router.post("/webhooks/lemonsqueezy", async (req, res) => {
     } catch (err: any) {
       logger.error(err, `LS webhook failed (${eventName} ${objectId})`);
       await finish("failed", String(err?.message ?? err).slice(0, 2000));
+      if (err instanceof InvoiceEvidenceError && inserted.length > 0) {
+        try { await alertInvoiceReview(objectId, err.message); }
+        catch (alertError) { logger.error(alertError, "Lemon invoice admin alert failed"); }
+      }
       if (err instanceof TerminalWebhookError) {
         // عيب دائم في الـ payload — أقرّ الاستلام (200) لمنع retry storm من LS
         res.status(200).json({ message: "acknowledged — terminal payload defect recorded" });
@@ -299,6 +314,54 @@ async function resolveInitialInvoiceOrder(invoiceId: string, subscriptionId: str
     throw new Error(`initial invoice ${invoiceId}: provider order does not match paid invoice; review required`);
   }
   return { variantId, orderId };
+}
+
+/**
+ * Signed, successfully processed subscription webhooks retain provider-time
+ * snapshots in webhook_events. Unlike the current subscription projection,
+ * these snapshots can identify a plan before a later plan switch. Never
+ * backfill a missing interval from the current variant.
+ */
+async function resolveRenewalInvoiceVariant(invoiceId: string, subscriptionId: string, invoice: any, at: Date): Promise<string> {
+  const sub = await fetchLSSubscriptionAttrs(subscriptionId);
+  if (!sub || !invoice?.store_id || !invoice?.customer_id || invoice?.test_mode == null
+    || String(sub.store_id) !== String(invoice.store_id)
+    || String(sub.customer_id) !== String(invoice.customer_id)
+    || sub.test_mode !== invoice.test_mode) {
+    throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: provider subscription identity unavailable or mismatched; review required`);
+  }
+  const history = await db.execute(sql`
+    SELECT raw_payload FROM webhook_events
+    WHERE provider = 'lemonsqueezy' AND provider_object_id = ${subscriptionId}
+      AND event_name IN ('subscription_created', 'subscription_updated')
+      AND status = 'processed'
+    ORDER BY id
+  `);
+  const snapshots: { time: number; variant: string }[] = [];
+  for (const row of history.rows) {
+    let event: any;
+    try { event = JSON.parse(String((row as any).raw_payload ?? "")); }
+    catch { throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: unreadable subscription history; review required`); }
+    const attrs = event?.data?.attributes;
+    if (String(event?.data?.id ?? "") !== subscriptionId || !attrs?.variant_id) continue;
+    const time = providerTimestamp(attrs)?.getTime();
+    if (time == null) throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: undated plan history; review required`);
+    snapshots.push({ time, variant: String(attrs.variant_id) });
+  }
+  snapshots.sort((a, b) => a.time - b.time);
+  const eligible = snapshots.filter(s => s.time <= at.getTime());
+  const latest = eligible.at(-1);
+  if (!latest || eligible.some(s => s.time === latest.time && s.variant !== latest.variant)) {
+    throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: no unambiguous dated plan at invoice time; review required`);
+  }
+  // A current provider snapshot that predates this invoice must agree with the
+  // stored history. Later provider state cannot be used to price an old invoice.
+  const currentAt = providerTimestamp(sub);
+  if (sub.variant_id && currentAt && currentAt.getTime() <= at.getTime()
+    && String(sub.variant_id) !== latest.variant) {
+    throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: missing plan change in history; review required`);
+  }
+  return latest.variant;
 }
 
 function providerTimestamp(attrs: any): Date | null {
@@ -622,7 +685,11 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
   if (initialOrder && suppliedVariant && suppliedVariant !== initialOrder.variantId) {
     throw new Error(`subscription_payment_success: invoice ${invoiceId} variant/order mismatch`);
   }
-  const invoiceVariant = initialOrder?.variantId ?? suppliedVariant;
+  if (!initialOrder && !suppliedVariant && !fetched) {
+    throw new InvoiceEvidenceError(`renewal invoice ${invoiceId}: provider invoice unavailable; review required`);
+  }
+  const invoiceVariant = (initialOrder?.variantId ?? suppliedVariant)
+    || await resolveRenewalInvoiceVariant(invoiceId, subscriptionId, attrs, invoiceCreated);
   if (!invoiceVariant) throw new Error(`subscription_payment_success: invoice variant unavailable (invoice ${invoiceId}); review/retry required`);
   const plan = await resolvePlanByVariant(invoiceVariant);
   if (!plan) throw new Error(`subscription_payment_success: unknown invoice variant ${invoiceVariant}; review/retry required`);
@@ -668,7 +735,10 @@ async function handleSubscriptionPaymentSuccess(payload: any): Promise<void> {
         entitlementId: Number(e.id),
        }, tx);
     await tx.execute(sql`
-      UPDATE subscriptions SET payment_status = 'active', current_period_end = ${periodEnd},
+      UPDATE subscriptions SET
+        payment_status = CASE WHEN current_period_end IS NULL OR current_period_end <= ${periodEnd}
+          THEN 'active' ELSE payment_status END,
+        current_period_end = GREATEST(COALESCE(current_period_end, ${periodEnd}), ${periodEnd}),
         paid_through = GREATEST(COALESCE(paid_through, ${periodEnd}), ${periodEnd}), updated_at = NOW()
       WHERE external_subscription_id = ${subscriptionId}
     `);

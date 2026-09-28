@@ -702,8 +702,8 @@ export const CreditService = {
       // ── Step 6: Update subscription metadata ─────────────────────────────
       await tx.execute(sql`
         UPDATE subscriptions
-        SET last_credited_period_end = ${periodEnd},
-            current_period_end       = ${periodEnd},
+        SET last_credited_period_end = GREATEST(COALESCE(last_credited_period_end, ${periodEnd}), ${periodEnd}),
+            current_period_end       = GREATEST(COALESCE(current_period_end, ${periodEnd}), ${periodEnd}),
             updated_at               = NOW()
         WHERE teacher_id = ${teacherId}
       `);
