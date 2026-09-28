@@ -241,10 +241,7 @@ router.get("/tool-prices", async (req, res) => {
     if (category) conditions.push(eq(creditToolPricesTable.category, category));
     if (q)        conditions.push(or(ilike(creditToolPricesTable.toolKey, `%${q}%`), ilike(creditToolPricesTable.toolNameAr, `%${q}%`)));
     if (conditions.length) query = query.where(and(...(conditions as [any, ...any[]])));
-    const rows = await db.execute(sql`
-      SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, review_evidence, processed_at, failed_at, created_at
-      FROM webhook_events ORDER BY created_at DESC LIMIT ${size} OFFSET ${(pg - 1) * size}
-    `);
+    const rows = await query.orderBy(asc(creditToolPricesTable.category), asc(creditToolPricesTable.toolKey));
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: "فشل تحميل أسعار الأدوات" });
@@ -261,7 +258,7 @@ const ToolPricePatchSchema = z.object({
 router.patch("/tool-prices/:toolKey", async (req, res) => {
   try {
     const { toolKey } = req.params;
-    const body = CreditSettingsSchema.parse(req.body);
+    const body = ToolPricePatchSchema.parse(req.body);
     const adminId = req.session!.teacherId!;
 
     const updates: Record<string, any> = { updatedBy: adminId, updatedAt: new Date() };
@@ -293,9 +290,6 @@ router.get("/teachers", async (req, res) => {
     const pg   = Math.max(1, parseInt(page));
     const size = Math.min(200, Math.max(1, parseInt(pageSize)));
 
-    const count = await db.execute(sql`
-      SELECT COUNT(*)::int AS total FROM webhook_events w WHERE ${unresolvedInvoiceCondition}
-    `);
     const offset = (pg - 1) * size;
 
     // الـ SQL الخام أدناه يشير للجدول بالاسم المستعار "ca" — يجب أن يحمل الـ join نفس الاسم
@@ -368,7 +362,7 @@ const ToggleUnlimitedSchema = z.object({
 
 router.post("/teachers/:id/toggle-unlimited", requireAdmin, async (req, res) => {
   try {
-    const teacherId = parseInt(req.params.id);
+    const teacherId = parseInt(req.params.id as string);
     if (Number.isNaN(teacherId)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
     const { reason } = ToggleUnlimitedSchema.parse(req.body);
     const adminId = req.session!.teacherId!;
@@ -421,16 +415,7 @@ router.post("/teachers/:id/adjust", async (req, res) => {
     const teacherId = parseInt(req.params.id);
     const { delta, reason, mode } = AdjustSchema.parse(req.body);
     const adminId = req.session!.teacherId!;
-    const result = await CreditService.listTransactions(
-      {
-        teacherId: teacherId ? parseInt(teacherId) : undefined,
-        type, toolKey, status,
-        fromDate: fromDate ? new Date(fromDate) : undefined,
-        toDate:   toDate   ? new Date(toDate)   : undefined,
-      },
-      parseInt(page),
-      Math.min(200, parseInt(pageSize))
-    );
+    const result = await CreditService.adjustBalance(teacherId, delta, reason, adminId, mode);
     if (result.actualDelta > 0) {
       await notifyTeacherOfAward(teacherId, {
         kind: "credits",
@@ -515,10 +500,7 @@ router.get("/transactions/export.csv", async (req, res) => {
 
 router.get("/packages", async (req, res) => {
   try {
-    const rows = await db.execute(sql`
-      SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, review_evidence, processed_at, failed_at, created_at
-      FROM webhook_events ORDER BY created_at DESC LIMIT ${size} OFFSET ${(pg - 1) * size}
-    `);
+    const rows = await db.select().from(creditPackagesTable).orderBy(asc(creditPackagesTable.sortOrder));
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: "فشل تحميل الباقات" });
@@ -548,12 +530,49 @@ async function clearOtherFeatured(exceptId?: number) {
 
 router.post("/packages", async (req, res) => {
   try {
-    const body = CreditSettingsSchema.parse(req.body);
-    await db.update(platformSettingsTable).set(body);
-    invalidateCreditsSettingsCache();
-    const [row] = await db
-      .select({ creditsEnabled: platformSettingsTable.creditsEnabled, welcomeCredits: platformSettingsTable.welcomeCredits, adminCreditTestMode: platformSettingsTable.adminCreditTestMode })
-      .from(platformSettingsTable).limit(1);
+    const body = PackageSchema.parse(req.body);
+    if (body.isFeatured) await clearOtherFeatured();
+    const [row] = await db.insert(creditPackagesTable).values({ ...body, updatedAt: new Date() }).returning();
+    res.status(201).json(row);
+  } catch (err) {
+    if (err instanceof z.ZodError) { res.status(400).json({ message: "بيانات غير صحيحة", issues: err.issues }); return; }
+    res.status(500).json({ message: "فشل إضافة الباقة" });
+  }
+});
+
+router.patch("/packages/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const body = PackageSchema.partial().parse(req.body);
+    if (body.isFeatured) await clearOtherFeatured(id);
+    const [row] = await db.update(creditPackagesTable).set({ ...body, updatedAt: new Date() }).where(eq(creditPackagesTable.id, id)).returning();
+    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
+    res.json(row);
+  } catch (err) {
+    if (err instanceof z.ZodError) { res.status(400).json({ message: "بيانات غير صحيحة", issues: err.issues }); return; }
+    res.status(500).json({ message: "فشل تحديث الباقة" });
+  }
+});
+
+router.post("/packages/:id/archive", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [row] = await db.update(creditPackagesTable)
+      .set({ archivedAt: new Date(), isVisible: false, isFeatured: false, updatedAt: new Date() })
+      .where(eq(creditPackagesTable.id, id)).returning();
+    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
+    res.json(row);
+  } catch {
+    res.status(500).json({ message: "فشل أرشفة الباقة" });
+  }
+});
+
+router.post("/packages/:id/unarchive", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [row] = await db.update(creditPackagesTable)
+      .set({ archivedAt: null, updatedAt: new Date() })
+      .where(eq(creditPackagesTable.id, id)).returning();
     if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
     res.json(row);
   } catch {
@@ -563,72 +582,35 @@ router.post("/packages", async (req, res) => {
 
 router.delete("/packages/:id", async (req, res) => {
   try {
-  const id = Number(req.params.id);
-    const body = CreditSettingsSchema.parse(req.body);
-    await db.update(platformSettingsTable).set(body);
-    invalidateCreditsSettingsCache();
-    const [row] = await db
-      .select({ creditsEnabled: platformSettingsTable.creditsEnabled, welcomeCredits: platformSettingsTable.welcomeCredits, adminCreditTestMode: platformSettingsTable.adminCreditTestMode })
-      .from(platformSettingsTable).limit(1);
-    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
-    res.json(row);
-  } catch {
-    res.status(500).json({ message: "فشل إلغاء الأرشفة" });
-  }
-});
-
-router.delete("/packages/:id", async (req, res) => {
-  try {
-  const id = Number(req.params.id);
-    const [row] = await db
-      .select({ creditsEnabled: platformSettingsTable.creditsEnabled, welcomeCredits: platformSettingsTable.welcomeCredits, adminCreditTestMode: platformSettingsTable.adminCreditTestMode })
-      .from(platformSettingsTable).limit(1);
-    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
-    res.json(row);
-  } catch {
-    res.status(500).json({ message: "فشل إلغاء الأرشفة" });
-  }
-});
-
-router.delete("/packages/:id", async (req, res) => {
-  try {
-  const id = Number(req.params.id);
-    const [row] = await db
-      .select({ creditsEnabled: platformSettingsTable.creditsEnabled, welcomeCredits: platformSettingsTable.welcomeCredits, adminCreditTestMode: platformSettingsTable.adminCreditTestMode })
-      .from(platformSettingsTable).limit(1);
-    if (!row) { res.status(404).json({ message: "باقة غير موجودة" }); return; }
-    res.json(row);
-  } catch {
-    res.status(500).json({ message: "فشل إلغاء الأرشفة" });
-  }
-});
-
-router.delete("/packages/:id", async (req, res) => {
-  try {
-  const id = Number(req.params.id);
+    const id = parseInt(req.params.id);
     // منع الحذف الحقيقي لباقة مرتبطة بعمليات شراء — الأرشفة فقط
     const linked = await db.execute(sql`SELECT 1 FROM credit_purchases WHERE package_id = ${id} LIMIT 1`);
+    if (linked.rows.length > 0) {
+      res.status(409).json({ message: "لا يمكن حذف باقة مرتبطة بعمليات شراء — استخدم الأرشفة" });
+      return;
+    }
+    await db.delete(creditPackagesTable).where(eq(creditPackagesTable.id, id));
+    res.json({ message: "تم حذف الباقة" });
+  } catch (err) {
+    res.status(500).json({ message: "فشل حذف الباقة" });
+  }
+});
 
-const unresolvedInvoiceCondition = sql`
-  w.provider = 'lemonsqueezy'
-  AND w.event_name = 'subscription_payment_success'
-  AND w.status = 'failed'
-  AND NOT EXISTS (
-    SELECT 1 FROM subscription_credit_entitlements e
-    WHERE e.provider_invoice_id = w.provider_object_id
-  )
-`;
+// ─── Purchases & Webhook events (مراجعة) ─────────────────────────────────────
+
+router.get("/purchases", async (req, res) => {
+  try {
     const { page = "1", pageSize = "50", status } = req.query as Record<string, string>;
-    const pg   = Math.max(1, parseInt(page));
+    const pg = Math.max(1, parseInt(page));
     const size = Math.min(200, Math.max(1, parseInt(pageSize)));
-
-    const count = await db.execute(sql`
-      SELECT COUNT(*)::int AS total FROM webhook_events w WHERE ${unresolvedInvoiceCondition}
-    `);
     const where = status ? sql`WHERE cp.payment_status = ${status}` : sql``;
     const rows = await db.execute(sql`
-      SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, review_evidence, processed_at, failed_at, created_at
-      FROM webhook_events ORDER BY created_at DESC LIMIT ${size} OFFSET ${(pg - 1) * size}
+      SELECT cp.*, t.name AS teacher_name, t.email AS teacher_email
+      FROM credit_purchases cp
+      LEFT JOIN teachers t ON t.id = cp.teacher_id
+      ${where}
+      ORDER BY cp.created_at DESC
+      LIMIT ${size} OFFSET ${(pg - 1) * size}
     `);
     const [{ total }] = (await db.execute(sql`SELECT COUNT(*)::int AS total FROM credit_purchases cp ${where}`)).rows as any[];
     res.json({ rows: rows.rows, total, page: pg, pageSize: size });
@@ -640,12 +622,8 @@ const unresolvedInvoiceCondition = sql`
 router.get("/webhook-events", async (req, res) => {
   try {
     const { page = "1", pageSize = "50" } = req.query as Record<string, string>;
-    const pg   = Math.max(1, parseInt(page));
+    const pg = Math.max(1, parseInt(page));
     const size = Math.min(200, Math.max(1, parseInt(pageSize)));
-
-    const count = await db.execute(sql`
-      SELECT COUNT(*)::int AS total FROM webhook_events w WHERE ${unresolvedInvoiceCondition}
-    `);
     const rows = await db.execute(sql`
       SELECT id, provider, event_name, provider_object_id, idempotency_key, status, attempts, error_message, review_evidence, processed_at, failed_at, created_at
       FROM webhook_events ORDER BY created_at DESC LIMIT ${size} OFFSET ${(pg - 1) * size}
@@ -653,6 +631,37 @@ router.get("/webhook-events", async (req, res) => {
     res.json(rows.rows);
   } catch {
     res.status(500).json({ message: "فشل تحميل سجل الأحداث" });
+  }
+});
+
+const unresolvedInvoiceCondition = sql`
+  w.provider = 'lemonsqueezy'
+  AND w.event_name = 'subscription_payment_success'
+  AND w.status = 'failed'
+  AND NOT EXISTS (
+    SELECT 1 FROM subscription_credit_entitlements e
+    WHERE e.provider_invoice_id = w.provider_object_id
+  )
+`;
+
+router.get("/pending-invoices", async (req, res) => {
+  try {
+    const requestedPage = Number(req.query.page ?? 1);
+    const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const pageSize = 50;
+    const [rows, count] = await Promise.all([
+      db.execute(sql`
+        SELECT w.id, w.provider_object_id, w.status, w.attempts, w.error_message, w.failed_at, w.created_at
+        FROM webhook_events w WHERE ${unresolvedInvoiceCondition}
+        ORDER BY w.failed_at DESC, w.id DESC
+        LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
+      `),
+      db.execute(sql`SELECT COUNT(*)::int AS total FROM webhook_events w WHERE ${unresolvedInvoiceCondition}`),
+    ]);
+    res.json({ rows: rows.rows, total: Number(count.rows[0]?.total ?? 0), page, pageSize });
+  } catch (err) {
+    req.log?.error({ err }, "Pending invoices query failed");
+    res.status(500).json({ message: "فشل تحميل الفواتير المعلقة" });
   }
 });
 
@@ -755,9 +764,6 @@ router.get("/missing-welcome", async (req, res) => {
     const pg   = Math.max(1, parseInt(page));
     const size = Math.min(200, Math.max(1, parseInt(pageSize)));
 
-    const count = await db.execute(sql`
-      SELECT COUNT(*)::int AS total FROM webhook_events w WHERE ${unresolvedInvoiceCondition}
-    `);
     const offset = (pg - 1) * size;
 
     const [rows, countRows] = await Promise.all([
@@ -796,7 +802,7 @@ router.post("/missing-welcome/grant/:id", async (req, res) => {
   try {
     const teacherId = parseInt(req.params.id);
     if (Number.isNaN(teacherId)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
-        const granted = await CreditService.grantWelcomeCredits(id);
+    const granted = await CreditService.grantWelcomeCredits(teacherId);
     if (granted > 0) {
       const newBalance = await CreditService.getBalance(teacherId);
       await notifyTeacherOfAward(teacherId, {
@@ -864,5 +870,3 @@ router.post("/missing-welcome/grant-all", async (req, res) => {
 });
 
 export default router;
-
-  const page = Number(req.query.page ?? 1);
