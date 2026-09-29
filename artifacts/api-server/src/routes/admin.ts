@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES, presentationsTable, worksheetsTable, lessonPlansTable, soloChallengesTable, wheelTemplatesTable, rocketTemplatesTable, letrlyPuzzlesTable, contentCollectionsTable, islamicCategoriesTable, islamicQuestionsTable } from "@workspace/db";
+import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES, DEFAULT_TUTORIAL_LINKS, presentationsTable, worksheetsTable, lessonPlansTable, soloChallengesTable, wheelTemplatesTable, rocketTemplatesTable, letrlyPuzzlesTable, contentCollectionsTable, islamicCategoriesTable, islamicQuestionsTable } from "@workspace/db";
 import { eq, sql, desc, asc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
@@ -752,6 +752,48 @@ router.delete("/admin/teachers/:id", async (req, res) => {
 });
 
 /* ── Platform Settings ──────────────────────────────────────── */
+const youtubeTutorialUrl = z.string().max(500).refine(value => {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    const host = url.hostname.toLowerCase();
+    const id = host === "youtu.be" || host === "www.youtu.be"
+      ? url.pathname.match(/^\/([^/]+)\/?$/)?.[1]
+      : ["youtube.com", "www.youtube.com", "m.youtube.com", "www.youtube-nocookie.com"].includes(host)
+        ? url.pathname === "/watch" ? url.searchParams.get("v") : url.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)\/?$/)?.[1]
+        : null;
+    return !!id && /^[a-zA-Z0-9_-]{11}$/.test(id);
+  } catch { return false; }
+});
+const tutorialLinksBody = z.object({
+  links: z.array(z.object({
+    id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
+    title: z.string().trim().min(1).max(120),
+    url: youtubeTutorialUrl,
+  }).strict()).max(30),
+}).strict();
+
+router.put("/admin/tutorials", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const parsed = tutorialLinksBody.safeParse(req.body);
+    if (!parsed.success || new Set(parsed.data?.links.map(link => link.id)).size !== parsed.data?.links.length) {
+      return res.status(400).json({ message: "تحقق من عناوين وروابط YouTube وعدم تكرار العناصر" });
+    }
+    const [row] = await db.select({ id: platformSettingsTable.id }).from(platformSettingsTable).orderBy(asc(platformSettingsTable.id)).limit(1);
+    if (row) {
+      await db.update(platformSettingsTable).set({ tutorialLinks: parsed.data.links }).where(eq(platformSettingsTable.id, row.id));
+    } else {
+      await db.insert(platformSettingsTable).values({ id: 1, tutorialLinks: parsed.data.links }).onConflictDoUpdate({
+        target: platformSettingsTable.id, set: { tutorialLinks: parsed.data.links },
+      });
+    }
+    return res.json({ links: parsed.data.links });
+  } catch (err) {
+    req.log.error(err, "Failed to save tutorials");
+    return res.status(500).json({ message: "حدث خطأ" });
+  }
+});
 
 async function getPlatformSettings() {
   const [row] = await db

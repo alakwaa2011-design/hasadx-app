@@ -32,6 +32,11 @@ export type ArenaImportSources = {
   file: boolean;
 };
 
+export type TutorialLink = { id: string; title: string; url: string };
+export const DEFAULT_TUTORIAL_LINKS: TutorialLink[] = [
+  { id: "create-assignment", title: "إنشاء واجب في حصاد", url: "https://www.youtube.com/watch?v=oMaDMEM40l4" },
+];
+
 export const platformSettingsTable = pgTable("platform_settings", {
   id: serial("id").primaryKey(),
   publicVisibility: text("public_visibility").notNull().default("selective"),
@@ -92,6 +97,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   pricingPageVisible:   boolean("pricing_page_visible").notNull().default(false),
   /** روابط وسائل التواصل الاجتماعي — مصفوفة منصات قابلة للتفعيل/الإخفاء */
   socialLinks: jsonb("social_links").$type<SocialLink[]>().notNull().default([]),
+  tutorialLinks: jsonb("tutorial_links").$type<TutorialLink[]>().notNull().default(DEFAULT_TUTORIAL_LINKS),
   /** نظام منظم المسابقات — يُخفي بطاقة "منظم فعاليات" من الصفحة الرئيسية
       وخيار التبديل للمنظّم من الهيدر. افتراضياً مفعّل (true). */
   organizerEnabled: boolean("organizer_enabled").notNull().default(true),

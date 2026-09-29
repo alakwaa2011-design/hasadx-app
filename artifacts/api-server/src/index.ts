@@ -54,6 +54,11 @@ import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 async function runSchemaMigrations() {
   try {
     await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS tutorial_links JSONB NOT NULL
+        DEFAULT '[{"id":"create-assignment","title":"إنشاء واجب في حصاد","url":"https://www.youtube.com/watch?v=oMaDMEM40l4"}]'::jsonb
+    `);
+    await db.execute(sql`
       ALTER TABLE quran_bookmarks
         ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'stopped_here';
       DO $$
