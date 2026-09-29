@@ -63,6 +63,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (val: T) => void]
 
 const formatPoints = formatRewardPoints;
 type TeacherClassOption = { className?: string | null; name?: string | null };
+type RewardStudentPoints = { points?: number | string | null };
 
 function AdventurePointsBadge({ points, className, lang = "ar" }: { points: number, className?: string; lang?: RewardLang }) {
   return (
@@ -190,10 +191,10 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
   const motivationStats = useMemo(() => {
     const allStudents = classData?.students ?? [];
     return {
-      total: allStudents.reduce((sum, student) => sum + Number(student.points ?? 0), 0),
+      total: allStudents.reduce((sum: number, student: RewardStudentPoints) => sum + Number(student.points ?? 0), 0),
       leader: allStudents
-        .filter((student) => Number(student.points ?? 0) > 0)
-        .sort((a, b) => Number(b.points ?? 0) - Number(a.points ?? 0))[0] ?? null,
+        .filter((student: RewardStudentPoints) => Number(student.points ?? 0) > 0)
+        .sort((a: RewardStudentPoints, b: RewardStudentPoints) => Number(b.points ?? 0) - Number(a.points ?? 0))[0] ?? null,
     };
   }, [classData?.students]);
 
