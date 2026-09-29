@@ -2511,3 +2511,31 @@ mtime_ms = 1790664263069
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/3888caa5-f042-47da-95cc-3ee4ce93761e/e50a76aa-93f2-45d8-8f7e-9caf3214d61b"
 storage_version_token = "1790664305696706"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "a1IRUySNiOKu5Olo074Lp"
+uri = "file://artifacts/homework-app/screenshots/tutorial-create-assignment-desktop.jpg"
+type = "image"
+title = "معاينة شرح إنشاء الواجب — سطح المكتب"
+description = "نافذة الشرح داخل منصة حصاد على سطح المكتب."
+logical_id = "e88667df-b625-47cc-8207-b14a3a8eb98c"
+content_hash = "sha256:91515450f70cf84e0e82f8ada30d85cda24f71bd4fb596b78df0222e048d3f26"
+size = 111420
+mtime_ms = 1790697742542
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/e88667df-b625-47cc-8207-b14a3a8eb98c/e03b5a68-846e-4e3f-a55b-1e893bfd0db2"
+storage_version_token = "1790697848656666"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "6M-GagE3Xr1PNmcAPdw9E"
+uri = "file://artifacts/homework-app/screenshots/tutorial-create-assignment-mobile.jpg"
+type = "image"
+title = "معاينة شرح إنشاء الواجب — الهاتف"
+description = "نافذة الشرح المتجاوبة على الهاتف."
+logical_id = "1ab0c53e-cdd4-4025-8640-567024a36746"
+content_hash = "sha256:7bd6d97c35d526247becd7f785b3d92bae0574d24f1e8f16d1ec9b955884c18c"
+size = 45375
+mtime_ms = 1790697746502
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/1ab0c53e-cdd4-4025-8640-567024a36746/1d235586-7181-47b8-99c0-0ba196f24e3d"
+storage_version_token = "1790697850503582"
+content_type = "image/jpeg"

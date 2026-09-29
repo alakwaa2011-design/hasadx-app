@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
-import { useCreateAssignment } from "@workspace/api-client-react";
+import { useCreateAssignment, useGetCurrentTeacher } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
 import { mapExtractedToActivity, extractFileError, fingerprintFilesContent } from "@/lib/map-extracted-to-activity";
 import { Layout } from "@/components/layout";
+import { TutorialVideoButton } from "@/components/tutorial-video";
 import { Input, Button, Label } from "@/components/ui-elements";
 import {
   Plus, Trash2, Save, ArrowRight, ArrowLeft, Image, CheckCircle2, X,
@@ -49,6 +50,8 @@ import {
 } from "@/lib/activity-wizard";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+const ASSIGNMENT_TUTORIAL_URL = "https://www.youtube.com/watch?v=oMaDMEM40l4";
+const assignmentTutorialHintKey = (teacherId: number) => `hasaad:tutorial:create-assignment:v1:${teacherId}`;
 
 const MAX_SOURCE_TEXT_LENGTH = 12000;
 const ADAPTIVE_SUPPORTED_QUESTION_TYPES = ["mcq", "true_false", "fill_blank"] as const;
@@ -347,6 +350,27 @@ export function PublishSuccessScreen({ publishedInfo, lang, setLocation }: {
 export default function CreateAssignment() {
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
+  const { data: tutorialTeacher } = useGetCurrentTeacher({ query: { retry: false } as any });
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [showTutorialHint, setShowTutorialHint] = useState(false);
+  useEffect(() => {
+    setShowTutorialHint(false);
+    if (!tutorialTeacher?.id) return;
+    try {
+      setShowTutorialHint(localStorage.getItem(assignmentTutorialHintKey(tutorialTeacher.id)) !== "dismissed");
+    } catch {
+      // If local storage is unavailable, do not show a hint that cannot stay dismissed.
+    }
+  }, [tutorialTeacher?.id]);
+  const dismissTutorialHint = () => {
+    setShowTutorialHint(false);
+    if (!tutorialTeacher?.id) return;
+    try {
+      localStorage.setItem(assignmentTutorialHintKey(tutorialTeacher.id), "dismissed");
+    } catch {
+      // The permanent tutorial button remains available without local storage.
+    }
+  };
   // Content-kind picker (task #595): the teacher chooses up-front whether
   // this is a homework activity (default) or a competition question pack.
   // Initialised from `?contest=1` so the existing "Create Contest" entry
@@ -1513,11 +1537,27 @@ export default function CreateAssignment() {
             <Plus className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 truncate leading-tight">
-              {isContestMode
-                ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
-                : t.createAssignment.wizardHeroTitle}
-            </h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h1 className="font-black text-lg sm:text-xl text-slate-800 dark:text-slate-100 leading-tight">
+                {isContestMode
+                  ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
+                  : (lang === "ar" ? "إنشاء واجب جديد" : "Create new homework")}
+              </h1>
+              {!isContestMode && !publishedInfo && (
+                <TutorialVideoButton
+                  title={lang === "ar" ? "إنشاء واجب في حصاد" : "Create homework in Hasaad"}
+                  description={lang === "ar" ? "شرح خطوة بخطوة" : "Step-by-step guide"}
+                  youtubeUrl={ASSIGNMENT_TUTORIAL_URL}
+                  language={lang === "ar" ? "ar" : "en"}
+                  label={lang === "ar" ? "شرح إنشاء واجب" : "Watch tutorial"}
+                  open={tutorialOpen}
+                  onOpenChange={(open) => {
+                    setTutorialOpen(open);
+                    if (open) dismissTutorialHint();
+                  }}
+                />
+              )}
+            </div>
             <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:block mt-0.5">
               {isContestMode
                 ? (lang === "ar"
@@ -1542,6 +1582,39 @@ export default function CreateAssignment() {
         <PublishSuccessScreen publishedInfo={publishedInfo} lang={lang} setLocation={setLocation} />
       ) : (
       <main className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-8">
+        {!isContestMode && showTutorialHint && (
+          <div
+            role="note"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e4d7b7] bg-[#fffcf4] px-4 py-3 text-[#1E4D35] shadow-sm dark:border-[#584c30] dark:bg-[#231f17] dark:text-[#e6f1e8]"
+            data-testid="notice-assignment-tutorial"
+          >
+            <p className="text-sm font-semibold leading-relaxed" data-testid="text-assignment-tutorial-hint">
+              <span className="block font-black">{lang === "ar" ? "أول مرة تنشئ واجبًا؟" : "Creating your first homework?"}</span>
+              {lang === "ar" ? "شاهد شرح إنشاء الواجب خطوة بخطوة." : "Watch the step-by-step homework tutorial."}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg bg-[#1E4D35] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#17382a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E4D35]"
+                onClick={() => {
+                  dismissTutorialHint();
+                  setTutorialOpen(true);
+                }}
+                data-testid="button-watch-assignment-tutorial-hint"
+              >
+                {lang === "ar" ? "▶ شاهد الشرح" : "▶ Watch tutorial"}
+              </button>
+              <button
+                type="button"
+                onClick={dismissTutorialHint}
+                className="rounded-lg px-2 py-2 text-xs font-bold text-[#536b59] hover:bg-[#f1eadb] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E4D35] dark:text-[#ccd8cc] dark:hover:bg-[#332b1d]"
+                data-testid="button-dismiss-assignment-tutorial-hint"
+              >
+                {lang === "ar" ? "لاحقًا" : "Later"}
+              </button>
+            </div>
+          </div>
+        )}
         {/* ══ Progress Bar ══ */}
         <div className="flex items-center px-2">
           {STEPS.map((step, idx) => (

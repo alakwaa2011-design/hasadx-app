@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { I18nProvider } from "@/lib/i18n";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+let tutorialTeacherId: number | undefined;
 
 vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => (props: any) => {
@@ -33,6 +34,7 @@ vi.mock("@/components/ui/sonner", () => ({
 }));
 vi.mock("@workspace/api-client-react", () => ({
   useCreateAssignment: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useGetCurrentTeacher: () => ({ data: tutorialTeacherId ? { id: tutorialTeacherId } : undefined }),
 }));
 vi.mock("@/components/credits-chip", () => ({
   useCreditsBalance: () => ({ data: { balance: 50 }, refetch: vi.fn() }),
@@ -113,6 +115,7 @@ async function openAiPanel() {
 
 beforeEach(() => {
   localStorage.removeItem("hw_lang");
+  tutorialTeacherId = undefined;
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -122,7 +125,28 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   localStorage.removeItem("hw_lang");
+  localStorage.removeItem("hasaad:tutorial:create-assignment:v1:41");
   vi.unstubAllGlobals();
+});
+
+describe("شرح إنشاء الواجب", () => {
+  it("يحفظ إخفاء التلميح محليًا لحساب المعلم ويبقي زر الشرح متاحًا", async () => {
+    tutorialTeacherId = 41;
+    mockAuthMe(false);
+    renderPage();
+    await settle();
+    expect(container.querySelector('[data-testid="notice-assignment-tutorial"]')).toBeTruthy();
+    await act(async () => {
+      (container.querySelector('[data-testid="button-dismiss-assignment-tutorial-hint"]') as HTMLButtonElement).click();
+    });
+    expect(localStorage.getItem("hasaad:tutorial:create-assignment:v1:41")).toBe("dismissed");
+    expect(container.querySelector('[data-testid="notice-assignment-tutorial"]')).toBeNull();
+    await act(async () => {
+      (container.querySelector('[data-testid="button-tutorial-video"]') as HTMLButtonElement).click();
+    });
+    expect((document.querySelector('[data-testid="iframe-tutorial-video"]') as HTMLIFrameElement).src)
+      .toBe("https://www.youtube-nocookie.com/embed/oMaDMEM40l4");
+  });
 });
 
 describe("خيار توليد الصور بالذكاء — للمسؤول فقط", () => {
