@@ -2469,3 +2469,31 @@ mtime_ms = 1790624864189
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/492c2859-fc88-42b3-8b10-f6ce7355cbd9/2a968ad2-fc9c-48c0-92e3-22bd8b738c92"
 storage_version_token = "1790625001689092"
 content_type = "image/png"
+
+[[outputs]]
+id = "SdJB4cH2fmOz2WuwAy7Q5"
+uri = "file://artifacts/homework-app/screenshots/rewards-compact/01-compact-with-goal-1440.png"
+type = "image"
+title = "لوحة التحفيز المدمجة — مع هدف الصف (1440px)"
+description = "معاينة فعلية ببيانات اختبار معزولة: مجموع النقاط والمتصدر من رصيد الطلاب الفردي."
+logical_id = "0c38cb24-75e4-4518-b45b-c963aaa0fe87"
+content_hash = "sha256:1e97dac8ef323dfc10325ac8ec42651674c463e0b5811e30cd7d8c0fdf997c6b"
+size = 178056
+mtime_ms = 1790654749620
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/0c38cb24-75e4-4518-b45b-c963aaa0fe87/aab16bb9-a5c1-4831-a869-44951824acb1"
+storage_version_token = "1790654918051807"
+content_type = "image/png"
+
+[[outputs]]
+id = "p5dovgcl1XqTdAUmRm30d"
+uri = "file://artifacts/homework-app/screenshots/rewards-compact/02-compact-no-goal-1440.png"
+type = "image"
+title = "لوحة التحفيز المدمجة — دون هدف حالي (1440px)"
+description = "تُظهر حالة الهدف القصيرة مع زر إضافة هدف دون بطاقة فارغة كبيرة."
+logical_id = "1017da27-4171-4e57-abc3-b2ba7c24da60"
+content_hash = "sha256:59b7d148938ec866caff7fe650b5c270ab4b8d7313526c5844732ba3c15939a0"
+size = 115989
+mtime_ms = 1790654752154
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/1017da27-4171-4e57-abc3-b2ba7c24da60/47fcc68d-f4e9-4aef-bee3-9c320ef3ee18"
+storage_version_token = "1790654920565892"
+content_type = "image/png"

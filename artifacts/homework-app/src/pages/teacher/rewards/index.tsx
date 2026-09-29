@@ -31,7 +31,7 @@ import { LiveBoard } from "./live-board";
 import {
   Settings, History, Volume2, VolumeX,
   Search, CheckSquare, Square, Plus, Loader2, Check, Zap, UserRound, Map, Sparkles, Orbit, SlidersHorizontal, UsersRound, ArrowRight, Target, ChevronDown,
-  Minus, School, MoreVertical
+  Minus, School, MoreVertical, Star, Trophy
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -187,6 +187,15 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
       (!memberIds || memberIds.has(s.id)) && s.name.toLowerCase().includes(search.toLowerCase())
     );
   }, [activeGroupId, classData, groupsData, search]);
+  const motivationStats = useMemo(() => {
+    const allStudents = classData?.students ?? [];
+    return {
+      total: allStudents.reduce((sum, student) => sum + Number(student.points ?? 0), 0),
+      leader: allStudents
+        .filter((student) => Number(student.points ?? 0) > 0)
+        .sort((a, b) => Number(b.points ?? 0) - Number(a.points ?? 0))[0] ?? null,
+    };
+  }, [classData?.students]);
 
   const activeGroup = groupsData?.groups?.find((group) => group.id === activeGroupId) ?? null;
   const currentClassGoal = goalsData?.goals?.find((goal) => goal.targetType === "class" && goal.status === "active");
@@ -729,29 +738,29 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
           </div>
         </header>
 
-        {/* Independent class balance and current class goal */}
+        {/* Class balance stays independent; the other figures are read-only student statistics. */}
         <section aria-label={r("ملخص الصف", "Class summary")} className="rewards-summary">
           <button type="button" onClick={() => setClassBalanceOpen(true)}
             className="rewards-balance-card group text-start focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300"
             aria-label={r(`إدارة رصيد صف ${currentClass}`, `Manage ${currentClass} class balance`)}
             data-testid="button-class-balance">
-            <span className="rewards-summary-eyebrow"><School size={19} /> {r(`رصيد صف ${currentClass}`, `Class balance · ${currentClass}`)}</span>
+            <span className="rewards-summary-eyebrow"><School size={17} /><span className="rewards-summary-label">{r(`رصيد صف ${currentClass}`, `Class balance · ${currentClass}`)}</span></span>
             <span className="rewards-balance-value" data-testid="text-class-balance">
               {classBalanceLoading ? "—" : formatPoints(classBalanceData?.balance ?? 0)}
               <small>{r("نقطة", "points")}</small>
             </span>
             <span className="rewards-balance-note">{r("هذا الرصيد مستقل ولا يغيّر نقاط أي طالب.", "This balance is separate and does not change any student's points.")}</span>
-            <span className="rewards-balance-action">{r("إدارة الرصيد", "Manage balance")} <ArrowRight size={16} /></span>
+            <span className="rewards-balance-action">{r("إدارة الرصيد", "Manage balance")} <ArrowRight size={14} /></span>
           </button>
           <div className="rewards-goal-card">
             <div className="rewards-goal-heading">
-              <span className="rewards-summary-eyebrow"><Target size={19} /> {r("هدف الصف", "Class goal")}</span>
+              <span className="rewards-summary-eyebrow"><Target size={17} /> {r("هدف الصف", "Class goal")}</span>
               {currentClassGoal && <button type="button" onClick={() => { setEditingGoal(currentClassGoal); setGoalDialogOpen(true); }}
                 className="rewards-goal-link" data-testid="button-edit-class-goal">{r("تعديل الهدف", "Edit goal")}</button>}
             </div>
             {goalsLoading ? <div className="rewards-goal-skeleton" aria-label={r("جاري تحميل الهدف", "Loading goal")} /> : currentClassGoal ? (
               <>
-                <h2 className="rewards-goal-title" data-testid="text-class-goal-title">{currentClassGoal.title}</h2>
+                <h2 className="rewards-goal-title" data-testid="text-class-goal-title" title={currentClassGoal.title}>{currentClassGoal.title}</h2>
                 <div className="rewards-goal-count"><strong>{formatPoints(currentClassGoal.currentPoints)}</strong><span>/ {formatPoints(currentClassGoal.targetPoints)} {r("نقطة", "points")}</span></div>
                 <div className="rewards-goal-track" role="progressbar" aria-valuenow={Math.min(100, Math.max(0, Math.round(currentClassGoal.currentPoints / Math.max(1, currentClassGoal.targetPoints) * 100)))} aria-valuemin={0} aria-valuemax={100} aria-label={r("تقدم هدف الصف", "Class goal progress")}>
                   <span style={{ width: `${Math.min(100, Math.max(0, currentClassGoal.currentPoints / Math.max(1, currentClassGoal.targetPoints) * 100))}%` }} />
@@ -768,6 +777,27 @@ export default function RewardsPage({ embedded = false }: { embedded?: boolean }
                 {(goalsData?.goals?.length ?? 0) > 0 && <button type="button" onClick={() => setGoalsManagerOpen(true)} className="rewards-goal-link">{r("إدارة الأهداف", "Manage goals")}</button>}
               </div>
             )}
+          </div>
+          <div className="rewards-stat-card rewards-total-card" aria-label={r("إحصائية مجموع نقاط الطلاب", "Total student points statistic")}>
+            <span className="rewards-summary-eyebrow"><Star size={17} /> {r("مجموع نقاط الطلاب", "Student points total")}</span>
+            <div className="rewards-stat-value" data-testid="text-student-points-total">
+              {loadingStudents ? "—" : formatPoints(motivationStats.total)}
+              <small>{r("نقطة", "points")}</small>
+            </div>
+            <span className="rewards-stat-note">{r("مجموع النقاط الفردية فقط", "Individual points only")}</span>
+          </div>
+          <div className="rewards-stat-card rewards-leader-card" aria-label={r("إحصائية المتصدر", "Top student statistic")}>
+            <span className="rewards-summary-eyebrow"><Trophy size={17} /> {r("المتصدر", "Top student")}</span>
+            {loadingStudents ? <span className="rewards-leader-empty">—</span> : motivationStats.leader ? (
+              <div className="rewards-leader-main" data-testid="text-rewards-leader">
+                <AvatarDisplay avatar={motivationStats.leader.avatar} fallback={motivationStats.leader.name.charAt(0)} size="lg" />
+                <div className="rewards-leader-copy">
+                  <strong title={motivationStats.leader.name}>{motivationStats.leader.name}</strong>
+                  <span><Star size={13} fill="currentColor" /> {formatPoints(motivationStats.leader.points)} {r("نقطة", "points")}</span>
+                </div>
+              </div>
+            ) : <p className="rewards-leader-empty">{r("بانتظار أول نقطة", "Waiting for the first point")}</p>}
+            <span className="rewards-stat-note">{r("أعلى رصيد فردي في الصف", "Highest individual balance in class")}</span>
           </div>
         </section>
 
