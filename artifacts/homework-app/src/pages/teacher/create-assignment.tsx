@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
-import { useCreateAssignment, useGetCurrentTeacher } from "@workspace/api-client-react";
+import { useCreateAssignment, useGetCurrentTeacher, useGetTutorialLinks } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
 import { mapExtractedToActivity, extractFileError, fingerprintFilesContent } from "@/lib/map-extracted-to-activity";
 import { Layout } from "@/components/layout";
@@ -50,7 +50,6 @@ import {
 } from "@/lib/activity-wizard";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const ASSIGNMENT_TUTORIAL_URL = "https://www.youtube.com/watch?v=oMaDMEM40l4";
 const assignmentTutorialHintKey = (teacherId: number) => `hasaad:tutorial:create-assignment:v1:${teacherId}`;
 
 const MAX_SOURCE_TEXT_LENGTH = 12000;
@@ -351,6 +350,8 @@ export default function CreateAssignment() {
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
   const { data: tutorialTeacher } = useGetCurrentTeacher({ query: { retry: false } as any });
+  const { data: tutorialLinksData } = useGetTutorialLinks({ query: { retry: false, staleTime: 0 } as any });
+  const assignmentTutorial = tutorialLinksData?.links[0];
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [showTutorialHint, setShowTutorialHint] = useState(false);
   useEffect(() => {
@@ -1543,11 +1544,11 @@ export default function CreateAssignment() {
                   ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
                   : (lang === "ar" ? "إنشاء واجب جديد" : "Create new homework")}
               </h1>
-              {!isContestMode && !publishedInfo && (
+              {!isContestMode && !publishedInfo && assignmentTutorial && (
                 <TutorialVideoButton
-                  title={lang === "ar" ? "إنشاء واجب في حصاد" : "Create homework in Hasaad"}
+                  title={assignmentTutorial.title}
                   description={lang === "ar" ? "شرح خطوة بخطوة" : "Step-by-step guide"}
-                  youtubeUrl={ASSIGNMENT_TUTORIAL_URL}
+                  youtubeUrl={assignmentTutorial.url}
                   language={lang === "ar" ? "ar" : "en"}
                   label={lang === "ar" ? "شرح إنشاء واجب" : "Watch tutorial"}
                   open={tutorialOpen}
@@ -1582,7 +1583,7 @@ export default function CreateAssignment() {
         <PublishSuccessScreen publishedInfo={publishedInfo} lang={lang} setLocation={setLocation} />
       ) : (
       <main className="max-w-2xl mx-auto px-4 pt-6 pb-8 space-y-8">
-        {!isContestMode && showTutorialHint && (
+        {!isContestMode && showTutorialHint && assignmentTutorial && (
           <div
             role="note"
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e4d7b7] bg-[#fffcf4] px-4 py-3 text-[#1E4D35] shadow-sm dark:border-[#584c30] dark:bg-[#231f17] dark:text-[#e6f1e8]"
@@ -1614,6 +1615,16 @@ export default function CreateAssignment() {
               </button>
             </div>
           </div>
+        )}
+        {!isContestMode && (tutorialLinksData?.links.length ?? 0) > 1 && (
+          <section className="rounded-2xl border border-border bg-card p-4" aria-label={lang === "ar" ? "شروحات إضافية" : "More tutorials"}>
+            <h2 className="mb-3 text-sm font-extrabold">{lang === "ar" ? "شروحات إضافية" : "More tutorials"}</h2>
+            <div className="flex flex-wrap gap-2">
+              {tutorialLinksData?.links.slice(1).map(link => (
+                <TutorialVideoButton key={link.id} title={link.title} youtubeUrl={link.url} language={lang === "ar" ? "ar" : "en"} label={link.title} />
+              ))}
+            </div>
+          </section>
         )}
         {/* ══ Progress Bar ══ */}
         <div className="flex items-center px-2">

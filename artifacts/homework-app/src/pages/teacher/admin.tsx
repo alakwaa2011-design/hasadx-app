@@ -18,6 +18,7 @@ import { MessagesTab } from "@/components/admin/messages-tab";
 import { AiCostReportTab } from "@/components/admin/ai-cost-report-tab";
 import { AdminOnOffPill } from "@/components/admin/admin-on-off-pill";
 import { LibraryMigrationTab } from "@/components/admin/library-migration-tab";
+import { TutorialLinksTab } from "@/components/admin/tutorial-links-tab";
 import { useThemeUpdater, type SocialLink } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { Switch } from "@/components/ui/switch";
@@ -92,7 +93,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "activity-log" | "rewards" | "realtime" | "messages" | "hasad-credits" | "new-pricing" | "ai-cost" | "library-migrations";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "activity-log" | "rewards" | "realtime" | "messages" | "hasad-credits" | "new-pricing" | "ai-cost" | "library-migrations" | "tutorials";
 
 /** التبويبات القديمة المُلغاة — أي وصول إليها عبر URL يُعاد توجيهه للتبويب الموحد */
 const LEGACY_CREDIT_TABS = ["billing", "credits", "new-credits"];
@@ -1435,6 +1436,7 @@ export default function AdminPage() {
       icon: Globe,
       tabs: [
         { key: "content"  as Tab, label: t.admin.tabPublicContent,                     icon: Globe      },
+        { key: "tutorials" as Tab, label: lang === "ar" ? "شروحات المعلمين" : "Teacher tutorials", icon: BookText },
         { key: "organize" as Tab, label: lang === "ar" ? "تنظيم"       : "Organize",   icon: FolderTree },
         { key: "maraqui"  as Tab, label: lang === "ar" ? "مَراقي"      : "Maraqui",    icon: Gamepad2   },
         { key: "letrly"   as Tab, label: lang === "ar" ? "تحدي الكلمة" : "Word Chal.", icon: Type       },
@@ -4113,6 +4115,7 @@ export default function AdminPage() {
 
         {activeTab === "activity-log" && <ActivityTab lang={lang} />}
         {activeTab === "library-migrations" && <LibraryMigrationTab lang={lang} />}
+        {activeTab === "tutorials" && <TutorialLinksTab lang={lang} />}
         {activeTab === "realtime" && <RealtimeTab lang={lang} />}
 
         {activeTab === "letrly" && <AdminLetrlyTab lang={lang} />}

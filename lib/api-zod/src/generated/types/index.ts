@@ -258,6 +258,8 @@ export * from './teacherScheduleEntryUpdateKind';
 export * from './teacherSession';
 export * from './teacherSessionDeviceType';
 export * from './transcribeQuranRecitationPartialBody';
+export * from './tutorialLink';
+export * from './tutorialLinks';
 export * from './updateAiVideoProjectBody';
 export * from './updateAnswerBody';
 export * from './updateAssignmentLifecycleBody';

@@ -17,6 +17,12 @@ export type ArenaImportSources = {
     homework: boolean;
     file: boolean;
 };
+export type TutorialLink = {
+    id: string;
+    title: string;
+    url: string;
+};
+export declare const DEFAULT_TUTORIAL_LINKS: TutorialLink[];
 export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "platform_settings";
     schema: undefined;
@@ -659,6 +665,25 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
             generated: undefined;
         }, {}, {
             $type: SocialLink[];
+        }>;
+        tutorialLinks: import("drizzle-orm/pg-core").PgColumn<{
+            name: "tutorial_links";
+            tableName: "platform_settings";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: TutorialLink[];
+            driverParam: unknown;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: TutorialLink[];
         }>;
         organizerEnabled: import("drizzle-orm/pg-core").PgColumn<{
             name: "organizer_enabled";

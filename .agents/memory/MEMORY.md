@@ -7,6 +7,7 @@
 - [drizzle-kit push TUI hang](drizzle-push-tui-hang.md) — interactive constraint-rename prompts hang forever in the agent shell; psql ALTER TABLE is a valid fallback for simple additive columns.
 - [Resend delivery failures](resend-connector-fetch.md) — fetch connector credentials unfiltered, and always inspect delivered=false because quota errors resolve without throwing.
 - [Runtime schema migrations required](runtime-schema-migrations.md) — new tables/columns must also be added to runSchemaMigrations in the api-server entrypoint, or prod fails with "does not exist".
+- [Deployment DB declarations](deployment-stale-db-declarations.md) — regenerate tracked library declarations after schema edits before publishing the API artifact.
 - [Solo challenge difficulty and multi-level](solo-challenge-difficulty-levels.md) — difficulty preset (easy/med/hard) + per-question duration via GameQuestion.duration; multi-level uses preserveOrder in createGame and level-transition overlay in play.tsx.
 - [API server slow build & restart](api-server-slow-build.md) — workflow restart timeouts are usually the 2-min esbuild bundle, not a crash; use 300s timeout and test dist manually to tell them apart.
 - [Pino bundle staging path](pino-bundle-staging-path.md) — Pino's esbuild plugin embeds the output directory as an absolute worker path; staged builds must retain the final directory in bundle metadata.

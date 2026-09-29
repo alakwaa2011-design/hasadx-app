@@ -16,6 +16,65 @@ const zod = {
 
 
 /**
+ * @summary Get configured YouTube tutorial links
+ */
+export const getTutorialLinksResponseLinksItemIdRegExp = new RegExp('^[a-zA-Z0-9_-]{1,80}$');
+export const getTutorialLinksResponseLinksItemTitleMax = 120;
+
+export const getTutorialLinksResponseLinksItemUrlMax = 500;
+
+export const getTutorialLinksResponseLinksMax = 30;
+
+
+
+export const GetTutorialLinksResponse = zod.object({
+  "links": zod.array(zod.object({
+  "id": zod.string().regex(getTutorialLinksResponseLinksItemIdRegExp),
+  "title": zod.string().min(1).max(getTutorialLinksResponseLinksItemTitleMax),
+  "url": zod.string().max(getTutorialLinksResponseLinksItemUrlMax).describe('HTTPS YouTube video URL')
+})).max(getTutorialLinksResponseLinksMax)
+})
+
+
+/**
+ * @summary Replace tutorial links (administrator only)
+ */
+export const saveTutorialLinksBodyLinksItemIdRegExp = new RegExp('^[a-zA-Z0-9_-]{1,80}$');
+export const saveTutorialLinksBodyLinksItemTitleMax = 120;
+
+export const saveTutorialLinksBodyLinksItemUrlMax = 500;
+
+export const saveTutorialLinksBodyLinksMax = 30;
+
+
+
+export const SaveTutorialLinksBody = zod.object({
+  "links": zod.array(zod.object({
+  "id": zod.string().regex(saveTutorialLinksBodyLinksItemIdRegExp),
+  "title": zod.string().min(1).max(saveTutorialLinksBodyLinksItemTitleMax),
+  "url": zod.string().max(saveTutorialLinksBodyLinksItemUrlMax).describe('HTTPS YouTube video URL')
+})).max(saveTutorialLinksBodyLinksMax)
+})
+
+export const saveTutorialLinksResponseLinksItemIdRegExp = new RegExp('^[a-zA-Z0-9_-]{1,80}$');
+export const saveTutorialLinksResponseLinksItemTitleMax = 120;
+
+export const saveTutorialLinksResponseLinksItemUrlMax = 500;
+
+export const saveTutorialLinksResponseLinksMax = 30;
+
+
+
+export const SaveTutorialLinksResponse = zod.object({
+  "links": zod.array(zod.object({
+  "id": zod.string().regex(saveTutorialLinksResponseLinksItemIdRegExp),
+  "title": zod.string().min(1).max(saveTutorialLinksResponseLinksItemTitleMax),
+  "url": zod.string().max(saveTutorialLinksResponseLinksItemUrlMax).describe('HTTPS YouTube video URL')
+})).max(saveTutorialLinksResponseLinksMax)
+})
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

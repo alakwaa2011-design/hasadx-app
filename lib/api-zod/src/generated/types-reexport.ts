@@ -241,6 +241,8 @@ export type * from "./types/teacherScheduleEntryUpdate";
 export type * from "./types/teacherScheduleEntryUpdateKind";
 export type * from "./types/teacherSession";
 export type * from "./types/teacherSessionDeviceType";
+export type * from "./types/tutorialLink";
+export type * from "./types/tutorialLinks";
 export type * from "./types/updateAnswerBody";
 export type * from "./types/updatePresentationDraftBodyStatus";
 export type * from "./types/updateProfileBody";

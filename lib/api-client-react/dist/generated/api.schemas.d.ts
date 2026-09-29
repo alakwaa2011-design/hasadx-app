@@ -5,6 +5,24 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface TutorialLink {
+    /** @pattern ^[a-zA-Z0-9_-]{1,80}$ */
+    id: string;
+    /**
+       * @minLength 1
+       * @maxLength 120
+       */
+    title: string;
+    /**
+       * HTTPS YouTube video URL
+       * @maxLength 500
+       */
+    url: string;
+}
+export interface TutorialLinks {
+    /** @maxItems 30 */
+    links: TutorialLink[];
+}
 export type QuranMemorizationItemStatus = typeof QuranMemorizationItemStatus[keyof typeof QuranMemorizationItemStatus];
 export declare const QuranMemorizationItemStatus: {
     readonly needs_review: "needs_review";
