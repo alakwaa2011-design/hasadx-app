@@ -147,3 +147,4 @@
 - [Quran compact toolbar alignment](quran-compact-toolbar-alignment.md) — settings stay at the left edge, navigation at the right; medium widths need modestly wider controls rather than an empty center.
 - [Quran desktop toolbar continuity](quran-desktop-toolbar-continuity.md) — keep reader controls in one balanced line; neither viewport-edge clusters nor a tiny centered pair of clusters.
 - [Quran page-picker density](quran-page-picker-density.md) — the vertical page list should be only wide enough for page numbers; direct number entry remains available separately.
+- [Third-party recitation provenance](third-party-recitation-provenance.md) — a Commons license label does not prove the uploader owned a reciter's externally sourced recording; verify upstream rights before public reuse.

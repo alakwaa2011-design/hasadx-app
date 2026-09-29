@@ -2497,3 +2497,17 @@ mtime_ms = 1790654752154
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/1017da27-4171-4e57-abc3-b2ba7c24da60/47fcc68d-f4e9-4aef-bee3-9c320ef3ee18"
 storage_version_token = "1790654920565892"
 content_type = "image/png"
+
+[[outputs]]
+id = "NDW014PzVVrERwe74Nx7Q"
+uri = "file://assets/school-adhkar-video/adhkar-school-16x9.mp4"
+type = "video"
+title = "فيديو أذكار الصباح — عرض مدرسي 16:9"
+description = "فيديو مدته 9:22 بدقة 1600×900، بتلاوة بشرية للآيات، وقراءة صوتية للأذكار، وتظليل متزامن وعدّاد واضح لكل تكرار."
+logical_id = "3888caa5-f042-47da-95cc-3ee4ce93761e"
+content_hash = "sha256:edd5e2a06313f7305b98761ed5a35d24b01ec3968281fd0444c75bd3c9137360"
+size = 14017393
+mtime_ms = 1790664263069
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/3888caa5-f042-47da-95cc-3ee4ce93761e/e50a76aa-93f2-45d8-8f7e-9caf3214d61b"
+storage_version_token = "1790664305696706"
+content_type = "video/mp4"
