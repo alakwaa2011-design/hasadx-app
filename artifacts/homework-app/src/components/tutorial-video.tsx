@@ -34,7 +34,7 @@ export function getTutorialYoutubeVideoId({ youtubeVideoId, youtubeUrl }: Pick<T
     const host = url.hostname.toLowerCase();
     let id: string | undefined | null;
     if (host === "youtu.be" || host === "www.youtu.be") {
-      id = url.pathname.split("/")[1];
+      id = url.pathname.match(/^\/([^/]+)\/?$/)?.[1];
     } else if (["youtube.com", "www.youtube.com", "m.youtube.com", "www.youtube-nocookie.com"].includes(host)) {
       if (url.pathname === "/watch") id = url.searchParams.get("v");
       else if (/^\/(embed|shorts|live)\/[^/]+\/?$/.test(url.pathname)) id = url.pathname.split("/")[2];

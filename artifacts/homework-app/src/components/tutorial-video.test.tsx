@@ -17,6 +17,7 @@ describe("tutorial video", () => {
     expect(getTutorialYoutubeVideoId({ youtubeUrl: "https://youtu.be/oMaDMEM40l4" })).toBe("oMaDMEM40l4");
     expect(getTutorialYoutubeVideoId({ youtubeVideoId: "oMaDMEM40l4" })).toBe("oMaDMEM40l4");
     expect(getTutorialYoutubeVideoId({ youtubeUrl: "https://youtube.com.evil.example/watch?v=oMaDMEM40l4" })).toBeNull();
+    expect(getTutorialYoutubeVideoId({ youtubeUrl: "https://youtu.be/oMaDMEM40l4/other" })).toBeNull();
     expect(getTutorialYoutubeVideoId({ youtubeUrl: "javascript:alert(1)" })).toBeNull();
   });
 
