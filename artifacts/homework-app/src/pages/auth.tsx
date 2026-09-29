@@ -210,9 +210,6 @@ function OptionalPhoneField({
         <label className="text-sm font-medium text-foreground leading-none">
           {lang === "ar" ? "رقم الهاتف" : "Phone Number"}
         </label>
-        <span className="text-xs text-muted-foreground">
-          ({lang === "ar" ? "اختياري" : "optional"})
-        </span>
       </div>
       <div className="flex gap-0 relative" ref={ref} dir="ltr">
         <button
