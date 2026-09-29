@@ -116,17 +116,97 @@ describe("teacher schedule image extraction", () => {
     expect(result.daySchedules[0].dayOfWeek).toBe(0);
   });
 
-  it("rejects duplicate lessons and invalid time ranges", () => {
+  it("rejects duplicate lessons", () => {
     expect(() => parseExtractedTeacherSchedule(JSON.stringify({
       daySchedules: [{
         dayOfWeek: 1,
         lessons: [
-          { lessonNumber: 1, title: "", subject: "أ", startTime: "09:00", endTime: "08:00", confidence: "high" },
+          { lessonNumber: 1, title: "", subject: "أ", startTime: "09:00", endTime: "09:45", confidence: "high" },
           { lessonNumber: 1, title: "", subject: "ب", startTime: "10:00", endTime: "11:00", confidence: "high" },
         ],
       }],
       warnings: [],
     }))).toThrow();
+  });
+
+  it("leaves ambiguous times blank with a warning and preserves sparse period numbers", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 1,
+        lessons: [
+          { lessonNumber: 1, title: "Mathematics", startTime: "08:00", endTime: "08:45", confidence: "high" },
+          { lessonNumber: 3, title: "Science", startTime: "1:30", endTime: "2:15", confidence: "high" },
+        ],
+        breaks: [],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons).toEqual([
+      expect.objectContaining({ lessonNumber: 1, startTime: "08:00", endTime: "08:45" }),
+      expect.objectContaining({ lessonNumber: 3, startTime: null, endTime: null }),
+    ]);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toContain("Monday period 3");
+    expect(result.warnings[0]).toContain("retake it straight-on");
+  });
+
+  it("returns an Arabic review warning for an ambiguous imported Arabic timetable", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 2,
+        lessons: [{ lessonNumber: 9, title: "لغة عربية", startTime: "1:30", endTime: null, confidence: "low" }],
+      }],
+      warnings: [],
+    }), "ar");
+    expect(result.daySchedules[0].lessons[0]).toMatchObject({ lessonNumber: 9, startTime: null, endTime: null });
+    expect(result.warnings[0]).toContain("الثلاثاء");
+    expect(result.warnings[0]).toContain("الخانة 9");
+  });
+
+  it("does not infer a different half-day to repair a backwards time range", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 0,
+        lessons: [{
+          lessonNumber: 4,
+          title: "Afternoon class",
+          startTime: "13:00",
+          endTime: "01:40",
+          confidence: "high",
+        }],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons[0]).toMatchObject({
+      lessonNumber: 4,
+      startTime: "13:00",
+      endTime: null,
+      confidence: "high",
+    });
+    expect(result.warnings).toEqual([
+      expect.stringContaining("Sunday period 4"),
+    ]);
+  });
+
+  it("converts clock values only when the half-day is explicit", () => {
+    const result = parseExtractedTeacherSchedule(JSON.stringify({
+      daySchedules: [{
+        dayOfWeek: 2,
+        lessons: [
+          { lessonNumber: 1, title: "Morning", startTime: "8:05 AM", endTime: "9:00 ص", confidence: "high" },
+          { lessonNumber: 2, title: "Afternoon", startTime: "1:15 PM", endTime: "2:00 م", confidence: "high" },
+        ],
+      }],
+      warnings: [],
+    }));
+
+    expect(result.daySchedules[0].lessons).toEqual([
+      expect.objectContaining({ lessonNumber: 1, startTime: "08:05", endTime: "09:00" }),
+      expect.objectContaining({ lessonNumber: 2, startTime: "13:15", endTime: "14:00" }),
+    ]);
+    expect(result.warnings).toEqual([]);
   });
 
   it("normalizes Arabic digits while preserving explicit 24-hour times", () => {
@@ -331,6 +411,9 @@ describe("teacher schedule image extraction", () => {
     expect(prompt).toContain("Never combine them into one long lesson");
     expect(prompt).toContain("Preserve ALL visible text and details");
     expect(prompt).toContain("Copy every other visible detail or line into notes");
+    expect(prompt).toContain("never compress, renumber, or fill the gap");
+    expect(prompt).toContain("Convert a 12-hour clock only when AM/PM or صباح/مساء is explicitly printed");
+    expect(prompt).toContain("set that time to null");
     expect(prompt).toContain('"readability":"unreadable"');
     expect(prompt).toContain("photographing straight above the full page with even lighting");
     expect(prompt).toContain("return no entries");

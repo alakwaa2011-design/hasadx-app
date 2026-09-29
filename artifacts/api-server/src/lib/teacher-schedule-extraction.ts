@@ -9,11 +9,11 @@ const extractedLessonSchema = z.object({
   className: z.string().trim().max(100).nullish(),
   location: z.string().trim().max(160).nullish(),
   notes: z.string().trim().max(500).nullish(),
-  startTime: z.string().regex(timePattern),
-  endTime: z.string().regex(timePattern).nullish(),
+  startTime: z.string().regex(timePattern).nullable().default(null),
+  endTime: z.string().regex(timePattern).nullable().default(null),
   confidence: z.enum(["high", "medium", "low"]).default("medium"),
 }).superRefine((lesson, ctx) => {
-  if (lesson.endTime && lesson.endTime <= lesson.startTime) {
+  if (lesson.startTime && lesson.endTime && lesson.endTime <= lesson.startTime) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["endTime"],
@@ -27,11 +27,11 @@ const extractedBreakSchema = z.object({
   breakAfterLesson: z.number().int().min(0).max(30),
   location: z.string().trim().max(160).nullish(),
   notes: z.string().trim().max(500).nullish(),
-  startTime: z.string().regex(timePattern),
-  endTime: z.string().regex(timePattern).nullish(),
+  startTime: z.string().regex(timePattern).nullable().default(null),
+  endTime: z.string().regex(timePattern).nullable().default(null),
   confidence: z.enum(["high", "medium", "low"]).default("medium"),
 }).superRefine((entry, ctx) => {
-  if (entry.endTime && entry.endTime <= entry.startTime) {
+  if (entry.startTime && entry.endTime && entry.endTime <= entry.startTime) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["endTime"],
@@ -47,7 +47,7 @@ const extractedScheduleSchema = z.object({
     lessons: z.array(extractedLessonSchema).max(30).default([]),
     breaks: z.array(extractedBreakSchema).max(50).default([]),
   })).max(7),
-  warnings: z.array(z.string().trim().min(1).max(300)).max(20).default([]),
+  warnings: z.array(z.string().trim().min(1).max(300)).max(30).default([]),
 }).superRefine((value, ctx) => {
   if (value.readability === "unreadable") {
     if (value.daySchedules.length > 0) {
@@ -146,7 +146,9 @@ function parseLooseTime(value: unknown): number | null {
   let hour = Number(match[1]);
   const minute = Number(match[2]);
   const marker = match[3];
-  if (hour > 23 || (marker && hour > 12)) return null;
+  // An unmarked one-digit hour has no reliable half-day. Only accept it when
+  // an AM/PM marker makes the conversion explicit; otherwise retain no guess.
+  if (marker ? hour < 1 || hour > 12 : match[1].length !== 2 || hour > 23) return null;
   if ((marker === "pm" || marker === "م") && hour < 12) hour += 12;
   if ((marker === "am" || marker === "ص") && hour === 12) hour = 0;
   return hour * 60 + minute;
@@ -156,61 +158,62 @@ function formatTime(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-function normalizeSchoolDayTimes(parsed: unknown): unknown {
+function normalizeSchoolDayTimes(parsed: unknown, language: "ar" | "en"): unknown {
   if (!parsed || typeof parsed !== "object") return parsed;
-  const root = parsed as { daySchedules?: unknown[] };
+  const root = parsed as { daySchedules?: unknown[]; warnings?: unknown[] };
   if (!Array.isArray(root.daySchedules)) return parsed;
 
   root.daySchedules.forEach((dayValue) => {
     if (!dayValue || typeof dayValue !== "object") return;
-    const day = dayValue as { lessons?: unknown[] };
-    if (!Array.isArray(day.lessons)) return;
+    const day = dayValue as { dayOfWeek?: unknown; lessons?: unknown[]; breaks?: unknown[] };
+    const dayName = language === "ar"
+      ? (["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"][Number(day.dayOfWeek)] ?? "هذا اليوم")
+      : (["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][Number(day.dayOfWeek)] ?? "this day");
+    const uncertainPositions = new Set<string>();
+    const normalizeEntry = (
+      entryValue: unknown,
+      position: string,
+    ) => {
+      if (!entryValue || typeof entryValue !== "object") return;
+      const entry = entryValue as { startTime?: unknown; endTime?: unknown };
+      const originalStart = entry.startTime;
+      const originalEnd = entry.endTime;
+      const start = parseLooseTime(originalStart);
+      let end = parseLooseTime(originalEnd);
+      entry.startTime = start === null ? null : formatTime(start);
 
-    day.lessons.forEach((lessonValue) => {
-      if (!lessonValue || typeof lessonValue !== "object") return;
-      const lesson = lessonValue as {
-        startTime?: unknown;
-        endTime?: unknown;
-        confidence?: unknown;
-      };
-      let start = parseLooseTime(lesson.startTime);
-      let end = parseLooseTime(lesson.endTime);
-      let adjusted = false;
-
-      if (start !== null) {
-        lesson.startTime = formatTime(start);
-      }
       if (end !== null && start !== null && end <= start) {
-        const afternoonEnd = end + 12 * 60;
-        if (afternoonEnd <= 23 * 60 + 59 && afternoonEnd > start) {
-          end = afternoonEnd;
-        } else {
-          end = null;
-          lesson.endTime = null;
-        }
-        adjusted = true;
+        // Never choose a different half-day to make the range appear valid.
+        end = null;
       }
-      if (end !== null) lesson.endTime = formatTime(end);
-      if (adjusted) lesson.confidence = "low";
+      entry.endTime = end === null ? null : formatTime(end);
+      if (start === null || originalEnd == null || end === null) {
+        uncertainPositions.add(language === "ar" ? `الخانة ${position.split(" ").at(-1)}` : position);
+      }
+    };
+
+    if (Array.isArray(day.lessons)) day.lessons.forEach((lessonValue) => {
+      if (!lessonValue || typeof lessonValue !== "object") return;
+      const lesson = lessonValue as { lessonNumber?: unknown };
+      normalizeEntry(lessonValue, `period ${String(lesson.lessonNumber ?? "?")}`);
     });
 
-    const breaks = (dayValue as { breaks?: unknown[] }).breaks;
-    if (Array.isArray(breaks)) {
-      breaks.forEach((breakValue) => {
-        if (!breakValue || typeof breakValue !== "object") return;
-        const entry = breakValue as { startTime?: unknown; endTime?: unknown; confidence?: unknown };
-        const start = parseLooseTime(entry.startTime);
-        let end = parseLooseTime(entry.endTime);
-        let adjusted = false;
-        if (start !== null) entry.startTime = formatTime(start);
-        if (end !== null && start !== null && end <= start) {
-          const afternoonEnd = end + 12 * 60;
-          end = afternoonEnd <= 23 * 60 + 59 && afternoonEnd > start ? afternoonEnd : null;
-          adjusted = true;
-        }
-        entry.endTime = end === null ? null : formatTime(end);
-        if (adjusted) entry.confidence = "low";
-      });
+    if (Array.isArray(day.breaks)) day.breaks.forEach((breakValue) => {
+      if (!breakValue || typeof breakValue !== "object") return;
+      const entry = breakValue as { breakAfterLesson?: unknown };
+      normalizeEntry(breakValue, `period ${String(entry.breakAfterLesson ?? "?")}`);
+    });
+    if (uncertainPositions.size > 0) {
+      const positions = [...uncertainPositions];
+      const displayed = positions.slice(0, 8).join(language === "ar" ? "، " : ", ");
+      const remaining = positions.length > 8
+        ? (language === "ar" ? ` و${positions.length - 8} خانات أخرى` : ` and ${positions.length - 8} more`)
+        : "";
+      const warning = language === "ar"
+        ? `راجع الأوقات المطبوعة ليوم ${dayName} في ${displayed}${remaining}؛ تُركت الأوقات غير الواضحة فارغة. قارنها بالصورة أو التقط صورة مستقيمة بإضاءة متساوية.`
+        : `Review the printed times for ${dayName} ${displayed}${remaining}; unclear times were left blank. Check the source image or retake it straight-on with even lighting.`;
+      if (!Array.isArray(root.warnings)) root.warnings = [];
+      if (!root.warnings.includes(warning)) root.warnings.push(warning);
     }
   });
 
@@ -270,6 +273,9 @@ Rules:
 - Treat the image as a fixed grid of cells. Determine each cell's column from its horizontal alignment with the visible header, not from its time, the nearest lesson, or a guessed school-day sequence.
 - Read EACH weekday independently from the image. A lesson number or slot number does not imply that its time matches the same slot on another weekday.
 - Every startTime and endTime belongs to the specific day cell being extracted. Copy the time aligned with that exact weekday and exact entry.
+- Keep each cell's printed period/lesson number exactly, including gaps. If a blank source cell separates periods 2 and 4, the later lesson remains number 4; never compress, renumber, or fill the gap.
+- Copy explicit clock values exactly into 24-hour HH:mm. Convert a 12-hour clock only when AM/PM or صباح/مساء is explicitly printed. Never infer morning or afternoon from neighboring periods, another weekday, or chronology.
+- If a cell's printed time is missing, unclear, or could refer to either half-day, keep the cell and its exact position but set that time to null. Add an actionable warning asking the teacher to check that cell or provide a clearer image. Do not omit the cell, shift another entry into its position, or guess a replacement time.
 - One numbered timetable slot must produce one entry. If one drawn or merged cell spans two or more numbered lesson columns/rows, return a separate lesson entry for EACH covered lesson number, even when the title, subject, class, location, and notes repeat.
 - For a merged double period spanning lessons 2 and 3, return lessonNumber 2 and lessonNumber 3 as two lessons. Never combine them into one long lesson and never skip the second number.
 - Each entry created from a merged cell uses the startTime and endTime printed for its own numbered slot. Do not use the combined outer time range for both entries.
@@ -277,7 +283,7 @@ Rules:
 - When the same lessonNumber has different times on different days, preserve every day's distinct times exactly. Example: Sunday lesson 1 at 08:00 and Monday lesson 1 at 09:15 must remain different.
 - A time header may be shared only when the image visibly shows that the header spans those exact weekday cells. If each weekday has its own times, the per-day times always take precedence.
 - Before returning JSON, cross-check every entry against both coordinates in the source grid: (1) its weekday row/column and (2) its lesson or period row/column.
-- Times must use 24-hour HH:mm. Infer a time only when the table clearly establishes it for that specific weekday entry; otherwise omit that entry and add a warning.
+- Times must use 24-hour HH:mm when explicit. For unclear times, use null and add a warning; do not infer a time from adjacent entries.
 - For every entry, copy the primary cell heading into title EXACTLY as written in the image; title must not be empty when visible text exists.
 - Put subject and grade/section in subject and className only when they are separately visible, without changing or translating the original title.
 - Copy a separately visible room or place into location. Copy every other visible detail or line into notes without summarizing, translating, or dropping text.
@@ -299,11 +305,11 @@ Rules:
 - No markdown fences and no prose outside the JSON.`;
 }
 
-export function parseExtractedTeacherSchedule(text: string): ExtractedTeacherSchedule {
+export function parseExtractedTeacherSchedule(text: string, language: "ar" | "en" = "en"): ExtractedTeacherSchedule {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
   const candidate = fenced || trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
-  const parsed = normalizeSchoolDayTimes(JSON.parse(candidate));
+  const parsed = normalizeSchoolDayTimes(JSON.parse(candidate), language);
   const validated = extractedScheduleSchema.parse(parsed);
   if (validated.readability === "unreadable") {
     throw new UnreadableTeacherScheduleImageError(validated.warnings);

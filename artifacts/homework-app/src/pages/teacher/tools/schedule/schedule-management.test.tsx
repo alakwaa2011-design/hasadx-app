@@ -139,7 +139,7 @@ describe("schedule management tool", () => {
 
     const entryDialog = entryScroll?.closest('[role="dialog"]');
     const entryDescription = document.getElementById(entryDialog?.getAttribute("aria-describedby") || "");
-    expect(entryDescription?.textContent).toContain("أدخل تفاصيل الحصة أو الموعد");
+    expect(entryDescription?.textContent).toContain("الاسم والوقت والصف أولًا");
     expect(entryScroll?.className).toContain("overflow-y-auto");
     expect(entryActions?.contains(button("button-save-schedule-entry"))).toBe(true);
     expect(entryScroll?.contains(button("button-save-schedule-entry"))).toBe(false);
@@ -147,17 +147,20 @@ describe("schedule management tool", () => {
     await act(async () => cancelButton.click());
 
     await click("button-add-bulk-schedule");
+    expect(document.querySelectorAll('[data-testid^="input-bulk-lesson-title-"]')).toHaveLength(9);
     expect((document.querySelector('[data-testid="input-bulk-lesson-start-1"]') as HTMLInputElement)?.value)
-      .toBe("00:00");
+      .toBe("");
     expect((document.querySelector('[data-testid="input-bulk-lesson-end-1"]') as HTMLInputElement)?.value)
-      .toBe("00:00");
+      .toBe("");
+    await click("button-add-tenth-bulk-lesson");
+    expect(document.querySelectorAll('[data-testid^="input-bulk-lesson-title-"]')).toHaveLength(10);
 
     const scrollRegion = document.querySelector('[data-testid="bulk-schedule-scroll-region"]');
     const actions = document.querySelector('[data-testid="bulk-schedule-fixed-actions"]');
 
     const bulkDialog = scrollRegion?.closest('[role="dialog"]');
     const bulkDescription = document.getElementById(bulkDialog?.getAttribute("aria-describedby") || "");
-    expect(bulkDescription?.textContent).toContain("أدخل حصص الأسبوع وأوقاتها");
+    expect(bulkDescription?.textContent).toContain("اترك الحصص الحرة فارغة");
     expect(scrollRegion?.className).toContain("overflow-y-auto");
     expect(actions?.contains(button("button-save-bulk-schedule"))).toBe(true);
     expect(scrollRegion?.contains(button("button-save-bulk-schedule"))).toBe(false);
@@ -170,14 +173,14 @@ describe("schedule management tool", () => {
     await click("button-add-schedule-entry");
     const entryDialog = document.querySelector('[data-testid="schedule-entry-scroll-region"]')?.closest('[role="dialog"]');
     const entryDescription = document.getElementById(entryDialog?.getAttribute("aria-describedby") || "");
-    expect(entryDescription?.textContent).toContain("Enter the lesson or appointment details");
+    expect(entryDescription?.textContent).toContain("Start with the name, time, and class");
     const cancelButton = document.querySelector('[data-testid="schedule-entry-fixed-actions"] button') as HTMLButtonElement;
     await act(async () => cancelButton.click());
 
     await click("button-add-bulk-schedule");
     const bulkDialog = document.querySelector('[data-testid="bulk-schedule-scroll-region"]')?.closest('[role="dialog"]');
     const bulkDescription = document.getElementById(bulkDialog?.getAttribute("aria-describedby") || "");
-    expect(bulkDescription?.textContent).toContain("Enter the week's lessons and times");
+    expect(bulkDescription?.textContent).toContain("Leave free slots blank");
   });
 
   it("lets the teacher edit every appointment, including past and later entries", async () => {
@@ -525,7 +528,7 @@ describe("schedule management tool", () => {
 
     await click("button-add-bulk-schedule");
     await click("button-bulk-day-1");
-    expect(document.body.textContent).toContain("تعدّل الآن: الاثنين");
+    expect(document.body.textContent).toContain("حصص الاثنين");
     await act(async () => {
       button("button-add-bulk-schedule").closest('[role="dialog"]')
         ?.querySelector<HTMLButtonElement>('[aria-label="Close"]')
@@ -533,7 +536,12 @@ describe("schedule management tool", () => {
     });
 
     await click("button-add-schedule-entry");
+    await typeInto("input-schedule-title", "رياضيات");
     await typeInto("input-schedule-start-time", "08:00");
+    await typeInto("input-schedule-end-time", "09:00");
+    await act(async () => {
+      (document.querySelector('[data-testid="schedule-entry-more-details"] summary') as HTMLElement).click();
+    });
     await click("button-schedule-color-0");
     await click("button-save-schedule-entry");
 
@@ -585,6 +593,9 @@ describe("schedule management tool", () => {
     await click("button-remove-bulk-lesson-2");
     await typeInto("input-bulk-lesson-title-1", "رياضيات");
     await typeInto("input-bulk-lesson-title-2", "علوم");
+    await act(async () => {
+      (document.querySelector('[data-testid="bulk-lesson-more-1"] summary') as HTMLElement).click();
+    });
     await click("button-bulk-lesson-color-1-0");
     await typeInto("input-bulk-lesson-start-1", "08:00");
     await typeInto("input-bulk-lesson-end-1", "09:00");

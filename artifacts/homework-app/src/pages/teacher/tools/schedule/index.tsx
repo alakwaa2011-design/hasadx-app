@@ -33,6 +33,7 @@ import {
   breakPositionLabel,
   buildTeacherScheduleBulkInput,
   emptyBulkLessons,
+  isEmptyBulkLessonDraft,
   emptyScheduleForm,
   getApiErrorMessage,
   getLocalDateInput,
@@ -1052,7 +1053,7 @@ export default function ScheduleManagementPage() {
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [isPreparingImage, setIsPreparingImage] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [bulkLessonCount, setBulkLessonCount] = useState(5);
+  const [bulkLessonCount, setBulkLessonCount] = useState(9);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1161,11 +1162,21 @@ export default function ScheduleManagementPage() {
         breaks: newBreaks,
         hasNumberingGaps,
       } = normalizeImportedDaySchedules(data.daySchedules);
+      // A subject or class guessed from the image is not a confirmed lesson name.
+      // Keep the imported row and ask the teacher to review its actual title.
+      data.daySchedules.forEach((day) => {
+        day.lessons.forEach((source) => {
+          if (!source.title?.trim()) {
+            const imported = newSchedules[day.dayOfWeek]?.find((entry) => entry.lessonNumber === source.lessonNumber);
+            if (imported) imported.title = "";
+          }
+        });
+      });
 
       setBulkDaySchedules(newSchedules);
       setBulkDayBreaks(newBreaks);
       setActiveBulkDay(firstDay);
-      const lessons = newSchedules[firstDay] || emptyBulkLessons(5);
+      const lessons = newSchedules[firstDay] || emptyBulkLessons(9);
       setBulkLessonCount(lessons.length);
       bulkForm.reset({ lessons });
       setImportWarnings([
@@ -1347,6 +1358,8 @@ export default function ScheduleManagementPage() {
       ...defaults,
       kind,
       title: "",
+      startTime: kind === "weekly" ? "" : defaults.startTime,
+      endTime: kind === "weekly" ? "" : defaults.endTime,
     });
     setEditingId(null);
     setDialogOpen(true);
@@ -1355,9 +1368,9 @@ export default function ScheduleManagementPage() {
   function openBulkCreate() {
     const defaultDays = [0, 1, 2, 3, 4];
     const initialDaySchedules = Object.fromEntries(
-      defaultDays.map((day) => [day, emptyBulkLessons(5)]),
+      defaultDays.map((day) => [day, emptyBulkLessons(9)]),
     );
-    setBulkLessonCount(5);
+    setBulkLessonCount(9);
     setActiveBulkDay(defaultDays[0]);
     setBulkDaySchedules(initialDaySchedules);
     setBulkDayBreaks({});
@@ -1371,6 +1384,14 @@ export default function ScheduleManagementPage() {
   function changeBulkLessonCount(nextCount: number) {
     const currentLessons = bulkForm.getValues("lessons");
     const currentCount = currentLessons.length;
+    if (nextCount < currentCount) {
+      const removed = [...currentLessons].sort((left, right) => left.lessonNumber - right.lessonNumber).slice(nextCount);
+      if (removed.some((lesson) => lesson.confidence || lesson.title.trim() || lesson.subject.trim()
+        || lesson.className.trim() || lesson.location.trim() || lesson.notes.trim()
+        || lesson.startTime || lesson.endTime)) {
+        if (!window.confirm(isAr ? "ستُحذف بيانات الحصص التي ستزيلها. هل تريد المتابعة؟" : "The removed lessons contain details. Continue?")) return;
+      }
+    }
     if (nextCount > currentCount) {
       const usedNumbers = new Set(currentLessons.map((lesson) => lesson.lessonNumber));
       const availableNumbers = Array.from({ length: 30 }, (_, index) => index + 1)
@@ -1396,7 +1417,7 @@ export default function ScheduleManagementPage() {
   function selectBulkDay(day: number) {
     if (day === activeBulkDay) return;
     const currentLessons = bulkForm.getValues("lessons");
-    const nextLessons = bulkDaySchedules[day] || emptyBulkLessons(5);
+    const nextLessons = bulkDaySchedules[day] || emptyBulkLessons(9);
     setBulkDaySchedules((current) => ({
       ...current,
       [activeBulkDay]: currentLessons,
@@ -1412,7 +1433,7 @@ export default function ScheduleManagementPage() {
     setBulkDaySchedules((current) => {
       const next = { ...current, [activeBulkDay]: currentLessons };
       SCHEDULE_DAYS.forEach(({ value }) => {
-        next[value] ||= emptyBulkLessons(5);
+        next[value] ||= emptyBulkLessons(9);
       });
       return next;
     });
@@ -1448,7 +1469,8 @@ export default function ScheduleManagementPage() {
   function addBulkBreak() {
     if ((bulkDayBreaks[activeBulkDay] || []).length >= 50) return;
     const lessons = bulkForm.getValues("lessons");
-    const afterLesson = lessons[Math.max(0, Math.floor(lessons.length / 2) - 1)]?.lessonNumber || 1;
+    const afterLesson = lessons.find((lesson) => !isEmptyBulkLessonDraft(lesson))?.lessonNumber
+      || lessons[0]?.lessonNumber || 1;
     setBulkDayBreaks((current) => ({
       ...current,
       [activeBulkDay]: [
@@ -1494,7 +1516,20 @@ export default function ScheduleManagementPage() {
   }
 
   function submitSchedule(values: ScheduleFormValues) {
-    form.clearErrors(["startTime", "endTime"]);
+    form.clearErrors(["title", "startTime", "endTime"]);
+    if (values.kind === "weekly" && !values.title.trim()) {
+      const message = isAr ? "اكتب اسم الحصة" : "Enter the lesson name";
+      form.setError("title", { type: "validate", message });
+      toast.error(message);
+      return;
+    }
+    if (!values.startTime || (values.kind === "weekly" && !values.endTime)) {
+      const fieldName = !values.startTime ? "startTime" : "endTime";
+      const message = isAr ? "حدد وقت بداية الحصة ونهايتها" : "Enter both the start and end times";
+      form.setError(fieldName, { type: "validate", message });
+      toast.error(message);
+      return;
+    }
     if (values.endTime && values.endTime <= values.startTime) {
       const fieldMessage = isAr
         ? "وقت النهاية يجب أن يكون بعد وقت البداية"
@@ -1562,25 +1597,21 @@ export default function ScheduleManagementPage() {
     };
     for (const [day, lessons] of Object.entries(schedules)) {
       const invalidIndex = lessons.findIndex((lesson) =>
-        (!(lesson.title.trim() || lesson.subject.trim() || lesson.className.trim()) && Boolean(lesson.confidence))
-        || !lesson.startTime
-        || (Boolean(lesson.endTime) && lesson.endTime <= lesson.startTime),
+        (Boolean(lesson.confidence) || !isEmptyBulkLessonDraft(lesson))
+        && (!lesson.title.trim() || !lesson.startTime || !lesson.endTime
+          || lesson.endTime <= lesson.startTime),
       );
       if (invalidIndex >= 0) {
         const targetDay = Number(day);
         const targetLessons = schedules[targetDay];
         const invalidLesson = targetLessons[invalidIndex];
-        const hasVisibleName = Boolean(
-          invalidLesson.title.trim()
-          || invalidLesson.subject.trim()
-          || invalidLesson.className.trim()
-          || !invalidLesson.confidence,
-        );
-        const fieldName = !hasVisibleName ? "title" : !invalidLesson.startTime ? "startTime" : "endTime";
-        const fieldMessage = !hasVisibleName
-          ? (isAr ? "اكتب الاسم الموجود في الجدول" : "Enter the name shown in the schedule")
+        const fieldName = !invalidLesson.title.trim() ? "title" : !invalidLesson.startTime ? "startTime" : "endTime";
+        const fieldMessage = !invalidLesson.title.trim()
+          ? (isAr ? "اكتب اسم الحصة قبل الحفظ" : "Enter the lesson name before saving")
           : !invalidLesson.startTime
           ? (isAr ? "حدد وقت بداية هذه الحصة" : "Enter this lesson's start time")
+          : !invalidLesson.endTime
+          ? (isAr ? "حدد وقت نهاية هذه الحصة" : "Enter this lesson's end time")
           : (isAr ? "وقت النهاية يجب أن يكون بعد وقت البداية" : "End time must be after start time");
         setBulkDaySchedules(schedules);
         setActiveBulkDay(targetDay);
@@ -1622,6 +1653,10 @@ export default function ScheduleManagementPage() {
       }
     }
     const payload = buildTeacherScheduleBulkInput(schedules, isAr, bulkDayBreaks);
+    if (!payload.daySchedules?.length) {
+      toast.error(isAr ? "أضف حصة أو فترة واحدة على الأقل قبل الحفظ" : "Add at least one lesson or named period before saving");
+      return;
+    }
 
     bulkMutation.mutate(
       { data: payload },
@@ -2885,9 +2920,9 @@ export default function ScheduleManagementPage() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingId(null); }}>
         <DialogContent className="flex max-h-[92dvh] max-w-xl flex-col overflow-hidden rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader className="shrink-0">
-            <DialogTitle>{editingId ? (isAr ? "تعديل الإدخال" : "Edit schedule entry") : (isAr ? "إضافة إلى الجدول" : "Add to schedule")}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {isAr ? "أدخل تفاصيل الحصة أو الموعد لإضافته إلى جدولك." : "Enter the lesson or appointment details to add it to your schedule."}
+            <DialogTitle>{editingId ? (isAr ? "تعديل الحصة" : "Edit lesson") : (isAr ? "إضافة حصة إلى الجدول" : "Add a lesson")}</DialogTitle>
+            <DialogDescription>
+              {isAr ? "الاسم والوقت والصف أولًا. يمكنك إضافة باقي التفاصيل عند الحاجة." : "Start with the name, time, and class. Add more only if needed."}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -2933,10 +2968,11 @@ export default function ScheduleManagementPage() {
                   name="title"
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
-                      <FormLabel>{isAr ? "العنوان (اختياري)" : "Title (optional)"}</FormLabel>
+                       <FormLabel>{selectedKind === "weekly" ? (isAr ? "اسم الحصة" : "Lesson name") : (isAr ? "الاسم" : "Name")}</FormLabel>
                       <FormControl>
-                        <input {...field} placeholder={isAr ? "سيُستخدم اسم تلقائي عند تركه فارغًا" : "An automatic title will be used if left blank"} style={fieldStyle} data-testid="input-schedule-title" />
+                         <input {...field} placeholder={isAr ? "مثال: لغتي الجميلة" : "e.g. Language arts"} style={fieldStyle} data-testid="input-schedule-title" />
                       </FormControl>
+                       <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -3021,7 +3057,7 @@ export default function ScheduleManagementPage() {
                     )}
                   />
                 )}
-                <div className="grid grid-cols-2 gap-2">
+                 <div className="grid grid-cols-2 gap-2 sm:col-span-2">
                   <FormField
                     control={form.control}
                     name="startTime"
@@ -3048,24 +3084,31 @@ export default function ScheduleManagementPage() {
                 </div>
                 <FormField
                   control={form.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{isAr ? "المادة (اختياري)" : "Subject (optional)"}</FormLabel>
-                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
                   name="className"
                   render={({ field }) => (
-                    <FormItem>
+                     <FormItem className="sm:col-span-2">
                       <FormLabel>{isAr ? "الصف (اختياري)" : "Class (optional)"}</FormLabel>
-                      <FormControl><input {...field} style={fieldStyle} /></FormControl>
+                       <FormControl><input {...field} placeholder={isAr ? "مثال: الخامس / أ" : "e.g. Grade 5 / A"} style={fieldStyle} data-testid="input-schedule-class" /></FormControl>
                     </FormItem>
                   )}
                 />
+                 <details className="group rounded-2xl border border-border/70 bg-muted/20 p-3 sm:col-span-2" data-testid="schedule-entry-more-details">
+                   <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold text-foreground [&::-webkit-details-marker]:hidden">
+                     <Plus className="h-4 w-4 text-emerald-700" />
+                     {isAr ? "تفاصيل إضافية" : "More details"}
+                     <ChevronDown className="ms-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                   </summary>
+                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                 <FormField
+                   control={form.control}
+                   name="subject"
+                   render={({ field }) => (
+                     <FormItem>
+                       <FormLabel>{isAr ? "المادة (اختياري)" : "Subject (optional)"}</FormLabel>
+                       <FormControl><input {...field} style={fieldStyle} data-testid="input-schedule-subject" /></FormControl>
+                     </FormItem>
+                   )}
+                 />
                 <FormField
                   control={form.control}
                   name="location"
@@ -3119,6 +3162,8 @@ export default function ScheduleManagementPage() {
                     </FormItem>
                   )}
                 />}
+                   </div>
+                 </details>
               </div>
               </div>
               <DialogFooter className="shrink-0 border-t pt-3" style={{ borderColor: C.border, background: C.card }} data-testid="schedule-entry-fixed-actions">
@@ -3148,11 +3193,11 @@ export default function ScheduleManagementPage() {
       </Dialog>
 
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-        <DialogContent className="flex max-h-[92dvh] max-w-5xl flex-col overflow-hidden rounded-3xl" dir={isAr ? "rtl" : "ltr"}>
+        <DialogContent className="flex max-h-[92dvh] max-w-4xl flex-col overflow-hidden rounded-3xl bg-[#FCFAF5]" dir={isAr ? "rtl" : "ltr"}>
           <DialogHeader className="shrink-0">
-            <DialogTitle>{isAr ? "إدخال جدول كامل" : "Enter a full schedule"}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {isAr ? "أدخل حصص الأسبوع وأوقاتها لحفظ الجدول كاملًا." : "Enter the week's lessons and times to save the full schedule."}
+            <DialogTitle className="text-xl">{isAr ? "جدول الأسبوع" : "Weekly timetable"}</DialogTitle>
+            <DialogDescription>
+              {isAr ? "اكتب اسم الحصة ووقتها وصفها. اترك الحصص الحرة فارغة؛ لن تُحفظ." : "Add each lesson's name, exact time, and class. Leave free slots blank; they won't be saved."}
             </DialogDescription>
           </DialogHeader>
           {importWarnings.length > 0 && (
@@ -3171,27 +3216,12 @@ export default function ScheduleManagementPage() {
           )}
           <Form {...bulkForm}>
             <form onSubmit={bulkForm.handleSubmit(submitBulkSchedule)} className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pb-2 pe-1" data-testid="bulk-schedule-scroll-region">
-                <div className="rounded-2xl border p-3" style={{ borderColor: C.border, background: C.surface }}>
-                  <div style={{ color: C.text, fontSize: 12, fontWeight: 900, marginBottom: 4 }}>
-                    {isAr ? "الأيام المفعّلة" : "Active days"}
-                  </div>
-                  <div style={{ color: C.subtle, fontSize: 10.5, marginBottom: 10 }}>
-                    {isAr ? "اضغط على كل يوم وأدخل حصصه بشكل مستقل. العلامة الخضراء تعني أن اليوم سيُحفظ." : "Open each day and enter its lessons independently. A green mark means the day will be saved."}
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pb-2 pe-1" data-testid="bulk-schedule-scroll-region">
+                <div className="rounded-2xl border border-[#DDE6DC] bg-[#F3F7F0] p-3 sm:p-4">
+                  <div className="mb-2 text-xs font-black tracking-wide text-[#375846]">
+                    {isAr ? "اختر اليوم" : "Choose a day"}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={selectAllBulkDays}
-                      className="rounded-xl border px-3 py-2 text-xs font-bold transition-all relative overflow-hidden group"
-                      style={{
-                        borderColor: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.border,
-                        background: Object.keys(bulkDaySchedules).length === 7 ? C.greenPale : C.card,
-                        color: Object.keys(bulkDaySchedules).length === 7 ? C.green : C.text,
-                      }}
-                    >
-                      {isAr ? "كل الأيام" : "Every day"}
-                    </button>
                     {SCHEDULE_DAYS.map((day) => {
                       const configured = day.value in bulkDaySchedules;
                       const active = day.value === activeBulkDay;
@@ -3201,12 +3231,12 @@ export default function ScheduleManagementPage() {
                           type="button"
                           onClick={() => selectBulkDay(day.value)}
                           data-testid={`button-bulk-day-${day.value}`}
-                          className={`rounded-xl border px-4 py-2 text-xs font-bold transition-all relative shadow-sm ${active ? 'scale-105 z-10' : 'hover:-translate-y-0.5'}`}
+                          className="relative rounded-xl border px-3.5 py-2 text-xs font-bold transition-colors"
                           style={{
                             borderColor: active ? C.green : configured ? C.green : C.border,
                             background: active ? C.green : configured ? C.greenPale : C.card,
                             color: active ? "#fff" : configured ? C.green : C.text,
-                            boxShadow: active ? '0 8px 20px -8px rgba(30,77,53,0.5)' : 'none'
+                            boxShadow: "none"
                           }}
                         >
                           {active && (
@@ -3217,19 +3247,17 @@ export default function ScheduleManagementPage() {
                             />
                           )}
                           <span className="relative z-10">{isAr ? day.ar : day.en}</span>
+                          {configured && !active && <span className="ms-1 text-[10px]" aria-label={isAr ? "ضمن الجدول" : "Included"}>·</span>}
                         </button>
                       );
                     })}
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3 bg-white dark:bg-black/20 p-3 rounded-xl border border-border/50">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-emerald-600" />
-                      <div className="text-sm font-black text-emerald-900 dark:text-emerald-400">
-                        {isAr
-                          ? `تعدّل الآن: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.ar}`
-                          : `Editing: ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en}`}
-                      </div>
-                    </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#DDE6DC] pt-3">
+                    <span className="text-xs font-medium text-[#52675A]">{isAr ? "الأيام المحددة تظهر بلون أخضر فاتح" : "Selected days appear in light green"}</span>
+                    <div className="flex items-center gap-3">
+                    <button type="button" onClick={selectAllBulkDays} className="text-xs font-bold text-[#285A3C] underline underline-offset-2" data-testid="button-select-all-bulk-days">
+                      {isAr ? "إضافة كل الأيام" : "Include all days"}
+                    </button>
                     {Object.keys(bulkDaySchedules).length > 1 && (
                       <button
                         type="button"
@@ -3240,22 +3268,26 @@ export default function ScheduleManagementPage() {
                         {isAr ? "إيقاف هذا اليوم" : "Disable this day"}
                       </button>
                     )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <div style={{ color: C.text, fontSize: 12, fontWeight: 900 }}>
-                      {isAr ? "عدد الحصص" : "Number of lessons"}
+                    <div className="text-base font-black text-[#183B29]">
+                      {isAr ? `حصص ${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.ar}` : `${SCHEDULE_DAYS.find((day) => day.value === activeBulkDay)?.en} lessons`}
                     </div>
-                    <div style={{ color: C.subtle, fontSize: 10.5, marginTop: 3 }}>
-                      {isAr ? "يمكنك إضافة العدد الموجود في جدولك حتى ٣٠ حصة مرقمة" : "Add the numbered lessons in your schedule, up to 30"}
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {isAr ? "٩ خانات جاهزة. أضف العاشرة إذا احتجت." : "Nine slots are ready. Add a tenth if you need it."}
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                  <label htmlFor="bulk-lesson-count" className="text-xs font-bold text-[#52675A]">{isAr ? "عدد الخانات" : "Slots"}</label>
                   <select
+                    id="bulk-lesson-count"
                     value={bulkLessonCount}
                     onChange={(event) => changeBulkLessonCount(Number(event.target.value))}
-                    style={{ ...fieldStyle, width: 170 }}
+                    className="h-10 rounded-xl border border-[#D6DDD2] bg-white px-3 text-sm font-bold text-[#183B29]"
                     data-testid="select-bulk-lesson-count"
                   >
                     {Array.from({ length: 31 }, (_, index) => index).map((number) => (
@@ -3268,169 +3300,119 @@ export default function ScheduleManagementPage() {
                       </option>
                     ))}
                   </select>
+                  {bulkLessonCount === 9 && <button type="button" onClick={() => changeBulkLessonCount(10)} className="inline-flex h-10 items-center gap-1 rounded-xl border border-[#BED7C4] bg-[#E9F4E9] px-3 text-xs font-black text-[#285A3C]" data-testid="button-add-tenth-bulk-lesson"><Plus className="h-3.5 w-3.5" />{isAr ? "الحصة ١٠" : "Slot 10"}</button>}
+                  </div>
                 </div>
 
-                <motion.div
-                  className="space-y-3 rounded-2xl border p-3"
-                  style={{ borderColor: C.border, background: C.card }}
-                  animate={{ opacity: [0.82, 1], y: [3, 0] }}
-                  transition={{ duration: 0.16 }}
-                >
+                  <div className="space-y-2.5">
                       {bulkLessonFields.fields.map((lesson, index) => {
                         const isLowConfidence = lesson.confidence === "low";
+                        const needsReview = Boolean(lesson.confidence && (!lesson.title.trim() || !lesson.startTime || !lesson.endTime || isLowConfidence));
 
                     return (
                       <div
                         key={lesson.id}
-                        className="grid grid-cols-1 gap-3 rounded-2xl border p-3 sm:grid-cols-12"
+                         className="grid grid-cols-1 items-end gap-3 rounded-2xl border p-3 sm:grid-cols-12 sm:p-4"
                         style={{
-                          borderColor: isLowConfidence ? "#F59E0B" : C.border,
-                          background: isLowConfidence ? "#FEF3C7" : C.surface
+                           borderColor: needsReview ? "#DCA76E" : "#E1E5DC",
+                           background: needsReview ? "#FFFAEF" : "#FFFFFF"
                         }}
                       >
-                        <div className="flex items-center gap-2 sm:col-span-2 sm:flex-col sm:items-start sm:justify-center relative">
-                          {isLowConfidence && (
-                            <div className="absolute -top-1 -right-1 text-amber-600" title={isAr ? "يرجى التحقق من هذه البيانات" : "Please verify these details"}>
-                              <AlertTriangle className="h-4 w-4" />
-                            </div>
-                          )}
-                          <div
-                            style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: 10,
-                              display: "grid",
-                              placeItems: "center",
-                              background: isLowConfidence ? "#FDE68A" : C.greenPale,
-                              color: isLowConfidence ? "#D97706" : C.green,
-                              fontWeight: 900,
-                              fontSize: 14,
-                            }}
-                          >
-                          {lesson.lessonNumber}
-                          </div>
-                          <div style={{ color: C.text, fontSize: 11, fontWeight: 900 }}>
-                            {lessonNumberLabel(lesson.lessonNumber, isAr)}
-                          </div>
+                         <div className="flex min-h-10 items-center gap-2 sm:col-span-2">
+                           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#E9F3EA] text-sm font-black text-[#26593B]">{lesson.lessonNumber}</div>
+                           <div className="min-w-0">
+                             <div className="text-xs font-black text-[#183B29]">{lessonNumberLabel(lesson.lessonNumber, isAr)}</div>
+                             {needsReview && <div className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-amber-800"><AlertTriangle className="h-3 w-3" />{isAr ? "راجع البيانات" : "Review details"}</div>}
+                           </div>
+                         </div>
+                         <div className="sm:col-span-4">
+                           <label className="mb-1 block text-xs font-bold text-[#52675A]">{isAr ? "اسم الحصة" : "Lesson name"}</label>
+                           <input
+                             {...bulkForm.register(`lessons.${index}.title` as const)}
+                             placeholder={isAr ? "اتركها فارغة إذا كانت حصة حرة" : "Leave blank for a free slot"}
+                             style={{ ...fieldStyle, background: "#FFFFFF", borderColor: bulkForm.formState.errors.lessons?.[index]?.title ? "#B42318" : C.border }}
+                             data-testid={`input-bulk-lesson-title-${index + 1}`}
+                           />
+                         </div>
+                         <div className="grid grid-cols-2 gap-2 sm:col-span-3">
+                           <div>
+                             <label className="mb-1 block text-xs font-bold text-[#52675A]">{isAr ? "من" : "From"}</label>
+                             <input
+                               {...bulkForm.register(`lessons.${index}.startTime` as const)}
+                               type="time"
+                               data-testid={`input-bulk-lesson-start-${index + 1}`}
+                               style={{ ...fieldStyle, background: "#FFFFFF", borderColor: bulkForm.formState.errors.lessons?.[index]?.startTime ? "#B42318" : C.border }}
+                             />
+                           </div>
+                           <div>
+                             <label className="mb-1 block text-xs font-bold text-[#52675A]">{isAr ? "إلى" : "To"}</label>
+                             <input
+                               {...bulkForm.register(`lessons.${index}.endTime` as const)}
+                               type="time"
+                               data-testid={`input-bulk-lesson-end-${index + 1}`}
+                               style={{ ...fieldStyle, background: "#FFFFFF", borderColor: bulkForm.formState.errors.lessons?.[index]?.endTime ? "#B42318" : C.border }}
+                             />
+                           </div>
+                         </div>
+                         <div className="sm:col-span-3">
+                           <label className="mb-1 block text-xs font-bold text-[#52675A]">{isAr ? "الصف" : "Class"}</label>
+                           <input {...bulkForm.register(`lessons.${index}.className` as const)} style={{ ...fieldStyle, background: "#FFFFFF" }} data-testid={`input-bulk-lesson-class-${index + 1}`} />
+                         </div>
+                         {(bulkForm.formState.errors.lessons?.[index]?.title?.message
+                           || bulkForm.formState.errors.lessons?.[index]?.startTime?.message
+                           || bulkForm.formState.errors.lessons?.[index]?.endTime?.message) && (
+                           <div className="text-xs font-bold text-destructive sm:col-span-12" role="alert">
+                             {bulkForm.formState.errors.lessons?.[index]?.title?.message
+                               || bulkForm.formState.errors.lessons?.[index]?.startTime?.message
+                               || bulkForm.formState.errors.lessons?.[index]?.endTime?.message}
+                           </div>
+                         )}
+                         <div className="flex items-center justify-between gap-3 border-t border-[#EEF0EB] pt-2 sm:col-span-12">
+                           <details className="group min-w-0 flex-1" data-testid={`bulk-lesson-more-${index + 1}`}>
+                             <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 text-xs font-bold text-[#55705E] [&::-webkit-details-marker]:hidden">
+                               {isAr ? "تفاصيل إضافية" : "More details"}
+                               {(lesson.subject || lesson.location || lesson.notes || lesson.color) && <span className="rounded-full bg-[#EAF2E9] px-1.5 py-0.5 text-[10px]">{isAr ? "محفوظة" : "Included"}</span>}
+                               <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                             </summary>
+                             <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                               <div>
+                                 <label className="mb-1 block text-xs font-bold">{isAr ? "المادة" : "Subject"}</label>
+                                 <input {...bulkForm.register(`lessons.${index}.subject` as const)} style={fieldStyle} data-testid={`input-bulk-lesson-subject-${index + 1}`} />
+                               </div>
+                               <div>
+                                 <label className="mb-1 block text-xs font-bold">{isAr ? "المكان" : "Location"}</label>
+                                 <input {...bulkForm.register(`lessons.${index}.location` as const)} style={fieldStyle} data-testid={`input-bulk-lesson-location-${index + 1}`} />
+                               </div>
+                               <div>
+                                 <label className="mb-1 block text-xs font-bold">{isAr ? "ملاحظات" : "Notes"}</label>
+                                 <input {...bulkForm.register(`lessons.${index}.notes` as const)} style={fieldStyle} data-testid={`input-bulk-lesson-notes-${index + 1}`} />
+                               </div>
+                               <div className="flex flex-wrap items-center gap-1.5 sm:col-span-3">
+                                 <span className="me-2 text-xs font-bold text-muted-foreground">{isAr ? "لون البطاقة" : "Card color"}</span>
+                                 <button type="button" onClick={() => bulkForm.setValue(`lessons.${index}.color`, "")} className={`grid h-7 w-7 place-items-center rounded-full border ${!bulkForm.watch(`lessons.${index}.color`) ? "border-[#183B29] ring-1 ring-[#183B29]" : "border-border bg-muted/30"}`} title={isAr ? "الافتراضي" : "Default"} data-testid={`button-bulk-lesson-color-${index + 1}-default`}>
+                                   {!bulkForm.watch(`lessons.${index}.color`) && <Check className="h-3 w-3" />}
+                                 </button>
+                                 {SCHEDULE_COLORS.map((color, colorIndex) => (
+                                   <button key={color.value} type="button" onClick={() => bulkForm.setValue(`lessons.${index}.color`, color.value)} data-testid={`button-bulk-lesson-color-${index + 1}-${colorIndex}`} className={`grid h-7 w-7 place-items-center rounded-full border ${color.class} ${bulkForm.watch(`lessons.${index}.color`) === color.value ? "border-[#183B29] ring-1 ring-[#183B29]" : "border-transparent"}`} title={color.label}>
+                                     {bulkForm.watch(`lessons.${index}.color`) === color.value && <Check className={`h-3 w-3 ${color.textClass}`} />}
+                                   </button>
+                                 ))}
+                               </div>
+                             </div>
+                           </details>
                           <button
                             type="button"
                             onClick={() => {
+                               const current = bulkForm.getValues(`lessons.${index}`);
+                               if (!isEmptyBulkLessonDraft(current) && !window.confirm(isAr ? "حذف هذه الحصة وبياناتها؟" : "Delete this lesson and its details?")) return;
                               bulkLessonFields.remove(index);
                               setBulkLessonCount((count) => Math.max(0, count - 1));
                             }}
                             data-testid={`button-remove-bulk-lesson-${lesson.lessonNumber}`}
-                            className="text-[10px] font-bold text-destructive disabled:opacity-40"
+                             className="shrink-0 text-xs font-bold text-destructive hover:underline"
                           >
-                            {isAr ? "حذف" : "Delete"}
+                             {isAr ? "حذف الخانة" : "Remove slot"}
                           </button>
-                        </div>
-                        <div className="sm:col-span-4">
-                          <label className="mb-1 block text-xs font-bold">{isAr ? "اسم الحصة (اختياري)" : "Lesson title (optional)"}</label>
-                          <input
-                            {...bulkForm.register(`lessons.${index}.title` as const)}
-                            placeholder={isAr ? `الافتراضي: ${lessonNumberLabel(lesson.lessonNumber, true)}` : `Default: ${lessonNumberLabel(lesson.lessonNumber, false)}`}
-                            style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                            data-testid={`input-bulk-lesson-title-${index + 1}`}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 sm:col-span-3">
-                          <div>
-                            <label className="mb-1 block text-xs font-bold">{isAr ? "من" : "From"}</label>
-                            <input
-                              {...bulkForm.register(`lessons.${index}.startTime` as const, {
-                                required: isAr ? "حدد وقت البداية" : "Enter a start time",
-                              })}
-                              type="time"
-                              data-testid={`input-bulk-lesson-start-${index + 1}`}
-                              style={{
-                                ...fieldStyle,
-                                background: isLowConfidence ? "#FFFBEB" : C.surface,
-                                borderColor: bulkForm.formState.errors.lessons?.[index]?.startTime ? "#B42318" : C.border,
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-bold">{isAr ? "إلى" : "To"}</label>
-                            <input
-                              {...bulkForm.register(`lessons.${index}.endTime` as const)}
-                              type="time"
-                              data-testid={`input-bulk-lesson-end-${index + 1}`}
-                              style={{
-                                ...fieldStyle,
-                                background: isLowConfidence ? "#FFFBEB" : C.surface,
-                                borderColor: bulkForm.formState.errors.lessons?.[index]?.endTime ? "#B42318" : C.border,
-                              }}
-                            />
-                          </div>
-                          {(bulkForm.formState.errors.lessons?.[index]?.startTime?.message
-                            || bulkForm.formState.errors.lessons?.[index]?.endTime?.message) && (
-                            <div className="col-span-2 text-xs font-bold text-destructive">
-                              {bulkForm.formState.errors.lessons?.[index]?.startTime?.message
-                                || bulkForm.formState.errors.lessons?.[index]?.endTime?.message}
-                            </div>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 sm:col-span-3">
-                          <div>
-                            <label className="mb-1 block text-xs font-bold">{isAr ? "المادة" : "Subject"}</label>
-                            <input
-                              {...bulkForm.register(`lessons.${index}.subject` as const)}
-                              style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-bold">{isAr ? "الصف" : "Class"}</label>
-                            <input
-                              {...bulkForm.register(`lessons.${index}.className` as const)}
-                              style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2 sm:col-span-12 sm:grid-cols-3">
-                          <div>
-                            <label className="mb-1 block text-xs font-bold">{isAr ? "المكان" : "Location"}</label>
-                            <input
-                              {...bulkForm.register(`lessons.${index}.location` as const)}
-                              style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                              data-testid={`input-bulk-lesson-location-${index + 1}`}
-                            />
-                          </div>
-                          <div className="sm:col-span-2">
-                            <label className="mb-1 block text-xs font-bold">{isAr ? "كل التفاصيل والملاحظات" : "All details and notes"}</label>
-                            <input
-                              {...bulkForm.register(`lessons.${index}.notes` as const)}
-                              style={{ ...fieldStyle, background: isLowConfidence ? "#FFFBEB" : C.surface }}
-                              data-testid={`input-bulk-lesson-notes-${index + 1}`}
-                            />
-                          </div>
-                        </div>
-                        <div className="sm:col-span-12 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                          <span className="text-[10px] font-bold text-muted-foreground mr-2 ml-2 whitespace-nowrap">{isAr ? "لون البطاقة:" : "Color:"}</span>
-                          <div className="flex gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => bulkForm.setValue(`lessons.${index}.color`, "")}
-                              className={`w-6 h-6 rounded-full border flex items-center justify-center bg-muted/20 ${!bulkForm.watch(`lessons.${index}.color`) ? 'border-foreground shadow-sm scale-110' : 'border-transparent hover:scale-110'}`}
-                              title={isAr ? "الافتراضي" : "Default"}
-                            >
-                              {!bulkForm.watch(`lessons.${index}.color`) && <div className="w-1.5 h-1.5 rounded-full bg-foreground" />}
-                            </button>
-                            {SCHEDULE_COLORS.map((color, colorIndex) => {
-                              const selectedColor = bulkForm.watch(`lessons.${index}.color`);
-                              return (
-                                <button
-                                  key={color.value}
-                                  type="button"
-                                  onClick={() => bulkForm.setValue(`lessons.${index}.color`, color.value)}
-                                  data-testid={`button-bulk-lesson-color-${index + 1}-${colorIndex}`}
-                                  className={`w-6 h-6 rounded-full border flex items-center justify-center ${color.class} ${selectedColor === color.value ? 'border-foreground shadow-sm scale-110' : 'border-transparent hover:scale-110'}`}
-                                  title={color.label}
-                                >
-                                  {selectedColor === color.value && <div className={`w-1.5 h-1.5 rounded-full ${color.textClass}`} />}
-                                </button>
-                              );
-                            })}
-                          </div>
                         </div>
                       </div>
                     );
@@ -3524,7 +3506,13 @@ export default function ScheduleManagementPage() {
                             {isAr ? "إزالة" : "Remove"}
                           </button>
                         </div>
-                        <div className="grid grid-cols-1 gap-2 sm:col-span-12 sm:grid-cols-3">
+                        <details className="group sm:col-span-12" data-testid={`bulk-period-more-${activeBulkDay}-${index}`}>
+                          <summary className="flex w-fit cursor-pointer list-none items-center gap-1 text-xs font-bold text-amber-900 [&::-webkit-details-marker]:hidden">
+                            {isAr ? "تفاصيل إضافية للفترة" : "More period details"}
+                            {(entry.location || entry.notes) && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px]">{isAr ? "محفوظة" : "Included"}</span>}
+                            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                          </summary>
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                           <div>
                             <label className="mb-1 block text-xs font-bold">{isAr ? "المكان" : "Location"}</label>
                             <input
@@ -3544,10 +3532,11 @@ export default function ScheduleManagementPage() {
                             />
                           </div>
                         </div>
+                        </details>
                       </div>
                     );
                   })}
-                </motion.div>
+                  </div>
               </div>
 
               <DialogFooter className="shrink-0 border-t pt-3" style={{ borderColor: C.border, background: C.card }} data-testid="bulk-schedule-fixed-actions">

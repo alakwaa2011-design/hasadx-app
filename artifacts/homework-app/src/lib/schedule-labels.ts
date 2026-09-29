@@ -201,7 +201,7 @@ export function emptyScheduleForm(): ScheduleFormValues {
   };
 }
 
-export function emptyBulkLessons(count = 5): BulkScheduleFormValues["lessons"] {
+export function emptyBulkLessons(count = 9): BulkScheduleFormValues["lessons"] {
   return Array.from({ length: count }, (_, index) => ({
     lessonNumber: index + 1,
     title: "",
@@ -210,9 +210,23 @@ export function emptyBulkLessons(count = 5): BulkScheduleFormValues["lessons"] {
     location: "",
     notes: "",
     color: "",
-    startTime: "00:00",
-    endTime: "00:00",
+    startTime: "",
+    endTime: "",
   }));
+}
+
+export function isEmptyBulkLessonDraft(lesson: BulkScheduleFormValues["lessons"][number]) {
+  // An extracted row must always be reviewed, even if the image reader could not
+  // decipher its name or time. Only untouched, manually created slots are empty.
+  return !lesson.confidence
+    && !lesson.title.trim()
+    && !lesson.subject.trim()
+    && !lesson.className.trim()
+    && !lesson.location.trim()
+    && !lesson.notes.trim()
+    && !lesson.color
+    && !lesson.startTime
+    && !lesson.endTime;
 }
 
 export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay[]) {
@@ -234,7 +248,7 @@ export function normalizeImportedDaySchedules(daySchedules: ExtractedScheduleDay
         location: extracted.location || "",
         notes: extracted.notes || "",
         color: "",
-        startTime: extracted.startTime,
+        startTime: extracted.startTime || "",
         endTime: extracted.endTime || "",
         confidence: extracted.confidence,
       }));
@@ -255,7 +269,7 @@ export function buildTeacherScheduleBulkInput(
       .sort(([left], [right]) => Number(left) - Number(right))
       .map(([day, lessons]) => ({
         dayOfWeek: Number(day),
-        lessons: lessons.map((lesson) => ({
+        lessons: lessons.filter((lesson) => !isEmptyBulkLessonDraft(lesson)).map((lesson) => ({
           lessonNumber: lesson.lessonNumber,
           title: lesson.title.trim()
             || lesson.subject.trim()
@@ -277,6 +291,7 @@ export function buildTeacherScheduleBulkInput(
           startTime: entry.startTime,
           endTime: entry.endTime || null,
         })),
-      })),
+      }))
+      .filter((day) => day.lessons.length > 0 || day.breaks.length > 0),
   };
 }

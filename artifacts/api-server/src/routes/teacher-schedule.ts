@@ -322,7 +322,7 @@ router.post(
           callKey: "schedule:vision",
         },
       });
-      const result = parseExtractedTeacherSchedule(raw);
+      const result = parseExtractedTeacherSchedule(raw, language);
       await captureCreditsOrThrow(req, result);
       res.json(result);
     } catch (err: any) {
