@@ -20,6 +20,40 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /tutorials:
+    get:
+      operationId: getTutorialLinks
+      tags: [assignments]
+      summary: Get configured YouTube tutorial links
+      responses:
+        "200":
+          description: Tutorial links
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorialLinks"
+  /admin/tutorials:
+    put:
+      operationId: saveTutorialLinks
+      tags: [assignments]
+      summary: Replace tutorial links (administrator only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TutorialLinks"
+      responses:
+        "200":
+          description: Saved tutorial links
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorialLinks"
+        "400":
+          description: Invalid URL or duplicate ID
+        "403":
+          description: Administrator access required
   /healthz:
     get:
       operationId: healthCheck
@@ -2685,6 +2719,23 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    TutorialLink:
+      type: object
+      required: [id, title, url]
+      additionalProperties: false
+      properties:
+        id: { type: string, pattern: '^[a-zA-Z0-9_-]{1,80}$' }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        url: { type: string, maxLength: 500, description: HTTPS YouTube video URL }
+    TutorialLinks:
+      type: object
+      required: [links]
+      additionalProperties: false
+      properties:
+        links:
+          type: array
+          maxItems: 30
+          items: { $ref: "#/components/schemas/TutorialLink" }
     QuranMemorizationItem:
       type: object
       required: [id, surahNumber, ayahNumber, status, intervalDays, nextReviewDate, lastAssessedAt, createdAt, updatedAt]

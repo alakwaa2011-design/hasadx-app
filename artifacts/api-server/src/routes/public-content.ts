@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable, soloChallengesTable } from "@workspace/db";
+import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable, soloChallengesTable, DEFAULT_TUTORIAL_LINKS } from "@workspace/db";
 import { eq, and, sql, desc, ne, inArray, or, isNull } from "drizzle-orm";
 import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getGame } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
@@ -8,6 +8,17 @@ import { generateSoloChallengeOgImage } from "../lib/og-image";
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 
 const router: IRouter = Router();
+
+router.get("/tutorials", async (req, res) => {
+  try {
+    const [row] = await db.select({ links: platformSettingsTable.tutorialLinks })
+      .from(platformSettingsTable).orderBy(platformSettingsTable.id).limit(1);
+    return res.json({ links: row?.links ?? DEFAULT_TUTORIAL_LINKS });
+  } catch (err) {
+    req.log.error(err, "Failed to load tutorials");
+    return res.status(500).json({ message: "حدث خطأ" });
+  }
+});
 
 async function getPublicVisibility(): Promise<string> {
   const [row] = await db
