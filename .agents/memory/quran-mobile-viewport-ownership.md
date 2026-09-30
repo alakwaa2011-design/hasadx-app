@@ -18,3 +18,9 @@ For the separate Expo reader, size the page from `useWindowDimensions`, not sole
 **Why:** In the Expo web preview, resizing from portrait to landscape did not always fire the root layout callback; the Quran page retained portrait dimensions and was clipped outside the viewport.
 
 **How to apply:** Use a window-dimensions subscription for orientation-responsive page geometry in React Native. Check a browser resize as well as a fresh landscape load; the latter alone will not expose stale dimensions.
+
+In the separate Expo reader, reserve the landscape header's height before sizing the interactive page. Make the transparent header container pointer-transparent while keeping its actual buttons active.
+
+**Why:** A short landscape preview placed the first line behind the visually transparent header; the word remained visible but taps were intercepted by its title/layout container.
+
+**How to apply:** Test tapping a word in the first line of a full (15-line) page after rotation, not just a short opening page.

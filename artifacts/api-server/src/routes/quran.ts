@@ -805,6 +805,9 @@ router.get("/quran/audio/word/:surahNumber/:ayahNumber/:wordPosition", async (re
       parsed.data.wordPosition,
     );
     res.setHeader("Cache-Control", "public, max-age=604800");
+    // Expo web is served on a different origin from the API. The redirect is
+    // public and points only to the allowlisted official word audio URL.
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.redirect(302, url);
   } catch (error) {
     if (error instanceof Error && error.message.includes("unavailable")) {

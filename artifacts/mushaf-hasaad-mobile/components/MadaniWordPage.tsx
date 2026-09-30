@@ -6,6 +6,7 @@ import { getGetQuranMadaniPageQueryKey, useGetQuranMadaniPage } from '@workspace
 import { chapterName, pageImage } from '@/data/quran';
 import { quranApiOrigin } from '@/lib/api-origin';
 import { useColors } from '@/hooks/useColors';
+import type { WordSelection } from '@/components/WordActions';
 
 type Decoration = { kind: 'surah' | 'bismillah'; chapter: number };
 const fontUrl = (page: number) => `https://static.qurancdn.com/fonts/quran/hafs/v2/ttf/p${page}.ttf`;
@@ -26,7 +27,7 @@ async function loadPageFonts(page: number) {
 export function MadaniWordPage({ page, width, height, background, selectedVerseKey, onVersePress }: {
   page: number; width: number; height: number; background: string;
   selectedVerseKey?: string | null;
-  onVersePress: (key: string, word: string | null) => void;
+  onVersePress: (word: WordSelection | { verseKey: string }) => void;
 }) {
   const colors = useColors();
   const [fontStatus, setFontStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -135,7 +136,9 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
       return <View key={row} style={[styles.line, styles.words, { justifyContent: short ? 'center' : 'space-between' }]}>
         {line.words.map(word => <Pressable key={word.id} testID={`word-${word.id}`}
           accessibilityRole="button" accessibilityLabel={`${word.text}، الآية ${word.verseKey}`}
-          onPress={() => onVersePress(word.verseKey, word.type === 'word' ? word.text : null)}
+          onPress={() => onVersePress(word.type === 'word'
+            ? { id: word.id, position: word.position, verseKey: word.verseKey, text: word.text }
+            : { verseKey: word.verseKey })}
           style={({ pressed }) => [styles.word, {
             backgroundColor: selectedVerseKey === word.verseKey ? colors.secondary : 'transparent',
             opacity: pressed ? .55 : 1,
