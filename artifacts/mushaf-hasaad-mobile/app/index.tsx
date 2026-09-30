@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, BackHandler, Keyboard, Modal, PanResponder, Platform,
-  Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View, useWindowDimensions,
+  ActivityIndicator, Animated, BackHandler, Keyboard, Modal, Platform,
+  Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View, useWindowDimensions, type ViewStyle,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ import { MadaniWordPage } from '@/components/MadaniWordPage';
 import { SimilarVersesPanel } from '@/components/SimilarVersesPanel';
 import { VerseRangePanel } from '@/components/VerseRangePanel';
 import { ReaderKeepAwake } from '@/components/ReaderKeepAwake';
+import { usePageZoom } from '@/hooks/usePageZoom';
 import { WordActions, type WordSelection } from '@/components/WordActions';
 import { VerseActions } from '@/components/VerseActions';
 import {
@@ -164,7 +165,8 @@ export default function MushafReader() {
   const pageInfo = pages[page - 1];
   const visibleVerses = pageVerses.get(page) ?? [];
   const bottomInset = Platform.OS === 'web' ? 34 : insets.bottom;
-  const compactLandscape = viewport.width > viewport.height && viewport.height < 520;
+  const landscape = viewport.width > viewport.height;
+  const compactLandscape = landscape && viewport.height < 520;
   const topInset = Platform.OS === 'web' && !compactLandscape ? Math.max(67, insets.top) : insets.top;
 
   const close = useCallback(() => { Keyboard.dismiss(); setSheet(null); }, []);
@@ -182,12 +184,9 @@ export default function MushafReader() {
   const pageRef = useRef(navigate);
   pageRef.current = navigate;
   const finishHandled = useRef(false);
-  const swipe = useMemo(() => PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 16 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-    onPanResponderRelease: (_, gesture) => {
-      if (Math.abs(gesture.dx) > 55) pageRef.current(currentPage.current + (gesture.dx > 0 ? 1 : -1));
-    },
-  }), []);
+  const turnPage = useCallback((direction: -1 | 1) => {
+    pageRef.current(currentPage.current + direction);
+  }, []);
 
   useEffect(() => {
     if (!sheet || Platform.OS === 'web') return;
@@ -556,7 +555,6 @@ export default function MushafReader() {
     if (selectedVerse) await Clipboard.setStringAsync(`${selectedVerse.content}\nسورة ${chapterName(selectedVerse.chapter_id)}، الآية ${selectedVerse.number}`);
   };
 
-  if (!reader.ready) return <View style={[styles.center, { backgroundColor: surface }]}><ActivityIndicator color={colors.primary} /></View>;
   const stageHeight = Math.max(1, compactLandscape
     ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (audioVerse ? 100 : 12)
     : viewport.height - topInset - bottomInset - (readingMode ? audioVerse ? 116 : 36 : audioVerse ? 228 : 132));
@@ -564,7 +562,15 @@ export default function MushafReader() {
   const pageInputValid = enteredPage !== null;
   const imageWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), Math.max(0, stageHeight) * (382.677 / 547.086));
   const imageHeight = imageWidth * (547.086 / 382.677);
-  const wordWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), compactLandscape ? 450 : 640);
+  const wordWidth = landscape
+    ? Math.max(1, viewport.width - insets.left - insets.right - (compactLandscape ? 100 : 24))
+    : Math.min(viewport.width - 12, 640);
+  const { panHandlers, onStageLayout, zoomStyle, zoomed, resetZoom } = usePageZoom({
+    page, display: pageDisplay, readingMode, viewportWidth: viewport.width,
+    viewportHeight: viewport.height, pageWidth: pageDisplay === 'words' ? wordWidth : imageWidth,
+    pageHeight: pageDisplay === 'words' ? stageHeight : imageHeight, onTurn: turnPage,
+  });
+  if (!reader.ready) return <View style={[styles.center, { backgroundColor: surface }]}><ActivityIndicator color={colors.primary} /></View>;
   const menuStyle = { backgroundColor: colors.card, borderColor: colors.border };
   const rangeUiChapter = audioVerse?.chapter_id ?? selectedVerse?.chapter_id ?? visibleVerses[0]?.chapter_id ?? 1;
   const rangeUiChapterLength = chapters.find(chapter => chapter.id === rangeUiChapter)?.verse_count ?? 1;
@@ -599,7 +605,13 @@ export default function MushafReader() {
         {readingMode && !compactLandscape && <Text style={[styles.readingHint, { color: colors.mutedForeground }]}>وضع القراءة · المس الصفحة لإظهار الأدوات</Text>}
       </View>
       {!!storageError && <Text style={[styles.storageWarning, { color: colors.destructive }]}>{storageError}</Text>}
-       <View style={[styles.pageStage, compactLandscape && { paddingTop: topInset + 44, paddingBottom: bottomInset }]} {...swipe.panHandlers}>
+       <View testID="page-stage" style={[styles.pageStage, compactLandscape && { paddingTop: topInset + 44, paddingBottom: bottomInset },
+         Platform.OS === 'web' && ({ touchAction: 'none' } as ViewStyle)]}
+         onLayout={onStageLayout} {...panHandlers}>
+        <Animated.View testID="page-zoom-layer" style={[{
+          width: pageDisplay === 'words' ? wordWidth : imageWidth,
+          height: pageDisplay === 'words' ? stageHeight : imageHeight,
+        }, zoomStyle]}>
         {pageDisplay === 'words'
            ? <MadaniWordPage key={page} page={page} width={wordWidth} height={stageHeight}
               background={paper} selectedVerseKey={selectedVerse ? `${selectedVerse.chapter_id}:${selectedVerse.number}` : null}
@@ -625,6 +637,13 @@ export default function MushafReader() {
                      <Pressable onPress={() => setImageError(false)}><Text style={{ color: colors.primary, textAlign: 'right' }}>إعادة تحميل الصورة</Text></Pressable>
                    </ScrollView>}
             </Pressable>}
+        </Animated.View>
+        {zoomed && <Pressable testID="reset-page-zoom" accessibilityRole="button" accessibilityLabel="إعادة الصفحة إلى الحجم الأصلي"
+          onPress={resetZoom} style={[styles.zoomReset, compactLandscape && { top: topInset + 52, bottom: undefined },
+            { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Ionicons name="contract-outline" size={18} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>الحجم الأصلي</Text>
+        </Pressable>}
         {pageDisplay === 'words' && readingMode &&
           <View style={styles.showTools}>
             <IconButton name="options-outline" label="إظهار أدوات القراءة" onPress={() => setReadingMode(false)} color={fg} />
@@ -1103,7 +1122,9 @@ const styles = StyleSheet.create({
   iconButton: { width: 43, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
   readingHint: { flex: 1, textAlign: 'center', fontSize: 12 },
   storageWarning: { textAlign: 'center', fontSize: 12, paddingHorizontal: 12 },
-  pageStage: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 0 },
+  pageStage: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'hidden' },
+  zoomReset: { position: 'absolute', bottom: 10, left: 10, flexDirection: 'row-reverse', alignItems: 'center',
+    gap: 6, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, minHeight: 38, zIndex: 2 },
   showTools: { position: 'absolute', top: 10, right: 10 },
   paper: { borderWidth: 1, overflow: 'hidden' },
   pageImage: { width: '100%', height: '100%' },
