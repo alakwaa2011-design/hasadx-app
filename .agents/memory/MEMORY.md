@@ -155,3 +155,4 @@
 - [Native Quran sync storage](native-quran-sync-storage.md) — Content Sync snapshots exceed Android AsyncStorage's usual size; keep bulk data in document files and commit only a small manifest.
 - [Mushaf word order](mushaf-word-order.md) — Content Sync position_in_line can repeat or skip; sort glyphs by unique position_in_page within each physical line.
 - [Native QCF color support](native-qcf-colrv1.md) — loading a V4 COLRv1 font does not prove that iOS and Android render its color layers; verify on physical devices.
+- [Expo device preview readiness](expo-device-preview-readiness.md) — an Expo HTTP 200 may come from an older Metro process; check the managed workflow and iOS bundle before sharing its QR.
