@@ -23,12 +23,13 @@ import { VerseRangePanel } from '@/components/VerseRangePanel';
 import { ReaderKeepAwake } from '@/components/ReaderKeepAwake';
 import { WordActions, type WordSelection } from '@/components/WordActions';
 import { VerseActions } from '@/components/VerseActions';
+import { PlaybackQuickControls } from '@/components/PlaybackQuickControls';
 import {
   PAGE_COUNT, chapterName, chapters, firstPageOfChapter, firstPageOfPart,
   normalize, pageImage, pageLabel, pageVerses, pages, parts, verses, type Verse,
 } from '@/data/quran';
 
-type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'tafsir' | 'range' | null;
+type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'repeat' | 'speed' | 'tafsir' | 'range' | null;
 type IndexTab = 'chapters' | 'parts' | 'bookmarks';
 type StopAt = 'ayah' | 'page' | 'surah';
 const repeats = [1, 3, 5, 10, -1] as const;
@@ -554,8 +555,8 @@ export default function MushafReader() {
 
   if (!reader.ready) return <View style={[styles.center, { backgroundColor: surface }]}><ActivityIndicator color={colors.primary} /></View>;
   const stageHeight = Math.max(1, compactLandscape
-    ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (audioVerse ? 54 : 12)
-    : viewport.height - topInset - bottomInset - (readingMode ? 36 : audioVerse ? 180 : 132));
+    ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (audioVerse ? 100 : 12)
+    : viewport.height - topInset - bottomInset - (readingMode ? audioVerse ? 116 : 36 : audioVerse ? 228 : 132));
   const enteredPage = pageNumberFromInput(pageInput);
   const pageInputValid = enteredPage !== null;
   const imageWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), Math.max(0, stageHeight) * (382.677 / 547.086));
@@ -626,14 +627,36 @@ export default function MushafReader() {
             <IconButton name="options-outline" label="إظهار أدوات القراءة" onPress={() => setReadingMode(false)} color={fg} />
           </View>}
       </View>
-      {!!audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
-        <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
-        <IconButton name="play-skip-forward" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
-        <IconButton name={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'pause' : 'play'}
-          label={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
-          onPress={toggleAudioPlayback} color={colors.primary} />
-        <IconButton name="play-skip-back" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
-        <Pressable onPress={() => setSheet('audio')} style={styles.audioCaption}><Text numberOfLines={1} style={{ color: fg }}>سورة {chapterName(audioVerse.chapter_id)} · {audioVerse.number}</Text></Pressable>
+       {!!audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
+         <View style={styles.audioTransport}>
+           <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
+           <IconButton name="play-skip-forward" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
+           <IconButton name={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'pause' : 'play'}
+             label={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
+             onPress={toggleAudioPlayback} color={colors.primary} />
+           <IconButton name="play-skip-back" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
+           <Pressable accessibilityRole="button" accessibilityLabel="إعدادات التلاوة" onPress={() => setSheet('audio')} style={styles.audioCaption}>
+             <Text numberOfLines={1} style={{ color: fg }}>سورة {chapterName(audioVerse.chapter_id)} · {audioVerse.number}</Text>
+           </Pressable>
+         </View>
+         <View style={styles.audioQuickRow}>
+           <Pressable testID="audio-repeat-button" accessibilityRole="button" accessibilityLabel={`خيارات التكرار، ${repeat === -1 ? 'مستمر' : `${repeat} مرات`}`}
+             onPress={() => setSheet('repeat')}
+             style={({ pressed }) => [styles.audioQuickButton, { backgroundColor: colors.card, opacity: pressed ? .6 : 1 }]}>
+             <Ionicons name="repeat-outline" size={17} color={colors.primary} />
+             <Text numberOfLines={1} style={[styles.audioQuickLabel, { color: fg }]}>
+               {compactLandscape ? 'تكرار' : 'التكرار ·'} {repeat === -1 ? compactLandscape ? '∞' : 'مستمر' : `${repeat}×`}
+             </Text>
+           </Pressable>
+           <Pressable testID="audio-speed-button" accessibilityRole="button" accessibilityLabel={`سرعة التشغيل، ${speed} ضعف`}
+             onPress={() => setSheet('speed')}
+             style={({ pressed }) => [styles.audioQuickButton, { backgroundColor: colors.card, opacity: pressed ? .6 : 1 }]}>
+             <Ionicons name="speedometer-outline" size={17} color={colors.primary} />
+             <Text numberOfLines={1} style={[styles.audioQuickLabel, { color: fg }]}>
+               {compactLandscape ? 'سرعة' : 'السرعة ·'} {speed}×
+             </Text>
+           </Pressable>
+         </View>
       </View>}
       {!readingMode && <View style={[styles.dock, compactLandscape && {
         position: 'absolute', right: 7, top: Math.max(topInset, 8) + 64,
@@ -661,7 +684,8 @@ export default function MushafReader() {
                   sheet === 'bookmarks' ? 'علاماتي' : sheet === 'settings' ? 'إعدادات القراءة' :
                     sheet === 'word' ? 'خيارات الكلمة' :
                     sheet === 'verses' ? `آيات الصفحة ${page}` : sheet === 'memorize' ? 'حفظني' :
-                      sheet === 'audio' ? 'التلاوة والتكرار' : sheet === 'tafsir' ? 'تفسير الآية' :
+                      sheet === 'audio' ? 'التلاوة والتكرار' : sheet === 'repeat' ? 'خيارات التكرار' :
+                        sheet === 'speed' ? 'سرعة التشغيل' : sheet === 'tafsir' ? 'تفسير الآية' :
                         sheet === 'range' ? 'نسخ ومشاركة نطاق آيات' : 'خيارات الآية'
               }</Text>
               <View style={{ width: 44 }} />
@@ -840,7 +864,30 @@ export default function MushafReader() {
                  onNext={next => { stopAudio(); startPractice(next.chapter_id, next.number); setSelectedVerse(next); goToPage(next.page_id); }}
                  onFinish={() => { stopAudio(); close(); }} />
             </ScrollView>}
+            {(sheet === 'repeat' || sheet === 'speed') &&
+              <PlaybackQuickControls mode={sheet} repeat={repeat} stopAt={stopAt} repeatMode={repeatMode}
+                rangeSession={rangeSession} pauseBetween={pauseBetween} speed={speed}
+                onRepeat={value => { setRepeat(value); setPlayed(0); setRangePlayed(0); }}
+                onStopAt={setStopAt}
+                onRepeatMode={value => { updateAudio({ repeatMode: value }); setPlayed(0); setRangePlayed(0); }}
+                onPauseBetween={value => updateAudio({ pauseBetween: value })}
+                onSpeed={value => { setSpeed(value); player.setPlaybackRate(value); }}
+                onOpenSettings={() => setSheet('audio')} />}
             {sheet === 'audio' && <ScrollView style={styles.list}>
+               <View style={styles.audioQuickRow}>
+                 <Pressable testID="audio-settings-repeat-button" accessibilityRole="button"
+                   accessibilityLabel="خيارات التكرار" onPress={() => setSheet('repeat')}
+                   style={[styles.audioQuickButton, { backgroundColor: colors.secondary }]}>
+                   <Ionicons name="repeat-outline" size={18} color={colors.primary} />
+                   <Text style={[styles.audioQuickLabel, { color: fg }]}>التكرار · {repeat === -1 ? 'مستمر' : `${repeat}×`}</Text>
+                 </Pressable>
+                 <Pressable testID="audio-settings-speed-button" accessibilityRole="button"
+                   accessibilityLabel="سرعة التشغيل" onPress={() => setSheet('speed')}
+                   style={[styles.audioQuickButton, { backgroundColor: colors.secondary }]}>
+                   <Ionicons name="speedometer-outline" size={18} color={colors.primary} />
+                   <Text style={[styles.audioQuickLabel, { color: fg }]}>السرعة · {speed}×</Text>
+                 </Pressable>
+               </View>
                {pageDisplay === 'images' && <Text style={[styles.note, { color: colors.mutedForeground }]}>
                  تظليل الكلمة المنطوقة يظهر في وضع الكلمات التفاعلية، وليس على صورة الصفحة.
                </Text>}
@@ -992,8 +1039,13 @@ const styles = StyleSheet.create({
   pageImage: { width: '100%', height: '100%' },
   feedback: { fontSize: 15 },
   dock: { flexDirection: 'row-reverse', justifyContent: 'center', alignItems: 'center', paddingTop: 8, gap: 6 },
-  audioDock: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 8, minHeight: 46 },
-  landscapeAudioDock: { position: 'absolute', left: 8, bottom: 0, zIndex: 3, borderRadius: 14, maxWidth: 260 },
+  audioDock: { alignItems: 'center', paddingHorizontal: 8, minHeight: 89 },
+  audioTransport: { flexDirection: 'row-reverse', alignItems: 'center', width: '100%' },
+  audioQuickRow: { flexDirection: 'row-reverse', gap: 8, width: '100%', paddingBottom: 7 },
+  audioQuickButton: { flex: 1, minHeight: 37, borderRadius: 12, flexDirection: 'row-reverse',
+    alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6 },
+  audioQuickLabel: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  landscapeAudioDock: { position: 'absolute', left: 8, bottom: 0, zIndex: 3, borderRadius: 14, width: 260, maxWidth: 260 },
   audioCaption: { flex: 1, alignItems: 'flex-end', paddingRight: 8 },
   pagePill: { borderWidth: 1, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, minWidth: 85, alignItems: 'center' },
   pagePillText: { fontSize: 15, fontWeight: '700' },
