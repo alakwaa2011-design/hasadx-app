@@ -933,8 +933,15 @@ export default function MushafReader() {
                       accessibilityLabel={`${reciter.name}، ${recitationStyleLabel(reciter.style)}`}
                       accessibilityState={{ selected }} testID={`audio-reciter-${reciter.id}`}
                       onPress={() => {
+                        const start = audioVerse ?? selectedVerse ?? visibleVerses[0];
                         setReciterId(reciter.id);
-                        if (audioVerse && reciter.id !== activeReciter) { setPlayed(0); setRangePlayed(0); void playVerse(audioVerse, reciter.id); }
+                        if (start && (!audioVerse || reciter.id !== activeReciter)) {
+                          if (!audioVerse) setRangeSession(false);
+                          setPlayed(0);
+                          setRangePlayed(0);
+                          void playVerse(start, reciter.id);
+                        }
+                        close();
                       }}
                       style={[styles.reciterCard, {
                         backgroundColor: selected ? colors.secondary : colors.card,
