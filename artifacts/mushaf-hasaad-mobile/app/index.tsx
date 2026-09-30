@@ -11,7 +11,7 @@ import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-au
 import { getListQuranRecitersQueryKey, getQuranAyahTimings, useListQuranReciters } from '@workspace/api-client-react';
 import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useReader, bookmarkCategoryLabels, type Appearance, type BookmarkCategory, type PageDisplay } from '@/context/ReaderContext';
+import { useReader, bookmarkCategoryLabels, type Appearance, type PageDisplay } from '@/context/ReaderContext';
 import { useColors } from '@/hooks/useColors';
 import { privacyUrl, quranApiOrigin } from '@/lib/api-origin';
 import { useOfflineContent } from '@/lib/offline-content';
@@ -22,6 +22,7 @@ import { SimilarVersesPanel } from '@/components/SimilarVersesPanel';
 import { VerseRangePanel } from '@/components/VerseRangePanel';
 import { ReaderKeepAwake } from '@/components/ReaderKeepAwake';
 import { WordActions, type WordSelection } from '@/components/WordActions';
+import { VerseActions } from '@/components/VerseActions';
 import {
   PAGE_COUNT, chapterName, chapters, firstPageOfChapter, firstPageOfPart,
   normalize, pageImage, pageLabel, pageVerses, pages, parts, verses, type Verse,
@@ -134,13 +135,13 @@ export default function MushafReader() {
   const setStopAt = (value: StopAt) => updateAudio({ stopAt: value });
   const setSpeed = (value: number) => updateAudio({ speed: value });
   const [audioError, setAudioError] = useState<string | null>(null);
-  const player = useAudioPlayer(null);
+  const player = useAudioPlayer(null, { updateInterval: 100 });
   const audioStatus = useAudioPlayerStatus(player);
   const wordPlayer = useAudioPlayer(null);
   const wordStatus = useAudioPlayerStatus(wordPlayer);
   const [wordAudioKey, setWordAudioKey] = useState<string | null>(null);
   const [wordError, setWordError] = useState<string | null>(null);
-  const activeWordPosition = audioSegment
+  const activeWordPosition = audioSegment && audioStatus.playing
     ? getActiveWordPosition(audioStatus.currentTime * 1000, audioSegment.startMs, audioSegment.segments)
     : null;
   const catalog = useListQuranReciters({ query: { queryKey: getListQuranRecitersQueryKey(), enabled: !!quranApiOrigin } });
@@ -627,11 +628,11 @@ export default function MushafReader() {
       </View>
       {!!audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
         <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
-        <IconButton name="play-skip-back" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
+        <IconButton name="play-skip-forward" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
         <IconButton name={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'pause' : 'play'}
           label={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
           onPress={toggleAudioPlayback} color={colors.primary} />
-        <IconButton name="play-skip-forward" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
+        <IconButton name="play-skip-back" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
         <Pressable onPress={() => setSheet('audio')} style={styles.audioCaption}><Text numberOfLines={1} style={{ color: fg }}>سورة {chapterName(audioVerse.chapter_id)} · {audioVerse.number}</Text></Pressable>
       </View>}
       {!readingMode && <View style={[styles.dock, compactLandscape && {
@@ -802,38 +803,25 @@ export default function MushafReader() {
               word={selectedWord} onPronounce={() => playWord(selectedWord)}
               playing={wordAudioKey === `${selectedWord.verseKey}:${selectedWord.position}` && wordStatus.playing}
               audioError={wordError} onVerse={() => setSheet('verse')} />}
-            {sheet === 'verse' && selectedVerse && <ScrollView style={styles.list}>
-              {!!selectedWord && <>
-                <Text style={[styles.sectionTitle, { color: colors.primary }]}>الكلمة المحددة: {selectedWord.glyphOnly ? `موضع ${selectedWord.position}` : selectedWord.text}</Text>
-                {!selectedWord.glyphOnly && <Row title="نسخ الكلمة" detail="نسخ الكلمة من بيانات المصحف" onPress={() => { Clipboard.setStringAsync(selectedWord.text).catch(() => undefined); }} colors={colors} />}
-              </>}
-              <Text selectable style={[styles.verseText, { color: fg }]}>{selectedVerse.content}</Text>
-              <Text style={[styles.note, { color: colors.mutedForeground }]}>سورة {chapterName(selectedVerse.chapter_id)} · الآية {selectedVerse.number}</Text>
-              <Text style={[styles.sectionTitle, { color: fg }]}>تصنيف العلامة المحلية</Text>
-              <View style={styles.bookmarkCategories}>
-                {(Object.entries(bookmarkCategoryLabels) as [BookmarkCategory, string][]).map(([category, label]) => {
-                  const selected = bookmarks.some(b => b.chapter === selectedVerse.chapter_id
-                    && b.verse === selectedVerse.number && b.category === category);
-                  return <Pressable key={category} accessibilityRole="button" accessibilityLabel={`علامة: ${label}`}
-                    accessibilityState={{ selected }} onPress={() => setBookmarkCategory(selectedVerse.chapter_id, selectedVerse.number, category)}
-                    style={[styles.bookmarkChip, { borderColor: colors.border, backgroundColor: selected ? colors.secondary : colors.card }]}>
-                    <Text style={{ color: selected ? colors.primary : fg }}>{selected ? '✓  ' : ''}{label}</Text>
-                  </Pressable>;
-                })}
-              </View>
-              {bookmarks.some(b => b.chapter === selectedVerse.chapter_id && b.verse === selectedVerse.number) &&
-                <Row title="إزالة العلامة" detail="لا تحذف الآية أو تقدم القراءة"
-                  onPress={() => toggleBookmark(selectedVerse.chapter_id, selectedVerse.number)} colors={colors} />}
-              <Row title="مشاركة الآية" detail="باستخدام مشاركة الجهاز" onPress={() => { shareVerse().catch(() => undefined); }} colors={colors} />
-              <Row title="نسخ الآية" detail="نسخ النص الموثق" onPress={() => { copyVerse().catch(() => undefined); }} colors={colors} />
-              <Row title="نسخ أو مشاركة نطاق آيات" detail="من آية إلى آية مع اسم السورة وأرقام الآيات"
-                onPress={() => setSheet('range')} colors={colors} />
-              <Row title="الآيات والعبارات المتشابهة" detail="علاقات منتقاة وتكرارات لفظية محلية"
-                onPress={() => { setSheet(null); setSimilarVerseKey(`${selectedVerse.chapter_id}:${selectedVerse.number}`); }} colors={colors} />
-              <Row title="استماع وتكرار" detail="اختر القارئ وعدد المرات" onPress={() => setSheet('audio')} colors={colors} />
-              <Row title="تفسير الآية" detail="من المصدر الموثق في حصاد" onPress={() => setSheet('tafsir')} colors={colors} />
-              <Row title="ابدأ حفظ هذه الآية" detail="جلسة حفظ موجهة على الجهاز" onPress={() => beginPractice(selectedVerse)} colors={colors} />
-            </ScrollView>}
+             {sheet === 'verse' && selectedVerse && <ScrollView style={styles.list}>
+               <VerseActions key={selectedVerse.id} verse={selectedVerse}
+                 category={bookmarks.find(b => b.chapter === selectedVerse.chapter_id && b.verse === selectedVerse.number)?.category ?? null}
+                 onPlay={() => {
+                   if (!activeReciter) { setSheet('audio'); return; }
+                   setRangeSession(false); setPlayed(0); setRangePlayed(0);
+                   void playVerse(selectedVerse);
+                   close();
+                 }}
+                 onTafsir={() => setSheet('tafsir')}
+                 onBookmark={category => setBookmarkCategory(selectedVerse.chapter_id, selectedVerse.number, category)}
+                 onRemoveBookmark={() => toggleBookmark(selectedVerse.chapter_id, selectedVerse.number)}
+                 onCopy={() => { void copyVerse(); close(); }}
+                 onCopyRange={() => setSheet('range')}
+                 onSimilar={() => { setSheet(null); setSimilarVerseKey(`${selectedVerse.chapter_id}:${selectedVerse.number}`); }}
+                 onShare={() => { void shareVerse(); }}
+                 onAudioSettings={() => setSheet('audio')}
+                 onPractice={() => beginPractice(selectedVerse)} />
+             </ScrollView>}
             {sheet === 'range' && (selectedVerse ?? visibleVerses[0]) &&
               <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
                 <VerseRangePanel key={(selectedVerse ?? visibleVerses[0]).id} initialVerse={(selectedVerse ?? visibleVerses[0])!} />
@@ -853,6 +841,13 @@ export default function MushafReader() {
                  onFinish={() => { stopAudio(); close(); }} />
             </ScrollView>}
             {sheet === 'audio' && <ScrollView style={styles.list}>
+               {pageDisplay === 'images' && <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                 تظليل الكلمة المنطوقة يظهر في وضع الكلمات التفاعلية، وليس على صورة الصفحة.
+               </Text>}
+               {activeReciter !== null && VERSE_FILE_RECITERS.has(activeReciter) &&
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                   تسجيل هذا القارئ بلا توقيت موثّق للكلمات؛ يظهر موضع الآية دون تظليل كلمة غير مؤكّد.
+                 </Text>}
               <Text style={[styles.sectionTitle, { color: fg }]}>الآية</Text>
               <Text style={[styles.note, { color: colors.mutedForeground }]}>
                 {selectedVerse ? `سورة ${chapterName(selectedVerse.chapter_id)} · الآية ${selectedVerse.number}` : `الآية الأولى في الصفحة ${page}`}

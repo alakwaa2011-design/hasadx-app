@@ -281,7 +281,10 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
       if (!line?.words.length) return <View key={row} style={styles.line} />;
       const short = page <= 2 || layout.partialLines.has(row) || line.words.length <= 2;
       return <View key={row} style={[styles.line, styles.words, { justifyContent: short ? 'center' : 'space-between' }]}>
-        {line.words.map(word => <Pressable key={word.id} testID={`word-${word.id}`}
+        {line.words.map(word => {
+          const playingWord = word.type === 'word'
+            && activeVerseKey === word.verseKey && activeWordPosition === word.position;
+          return <Pressable key={word.id} testID={`word-${word.id}`}
            accessibilityRole="button" accessibilityLabel={offlineData
              ? `الكلمة ${word.position}، الآية ${word.verseKey}` : `${word.text}، الآية ${word.verseKey}`}
           onPress={() => onVersePress(word.type === 'word'
@@ -289,20 +292,20 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
                  glyphOnly: !!offlineData, page }
             : { verseKey: word.verseKey })}
           style={({ pressed }) => [styles.word, {
-             backgroundColor: selectedVerseKey === word.verseKey
+             backgroundColor: playingWord ? `${colors.primary}88`
+               : selectedVerseKey === word.verseKey
                ? colors.secondary
                : activeVerseKey === word.verseKey ? `${colors.primary}18` : 'transparent',
-             borderWidth: activeVerseKey === word.verseKey && activeWordPosition === word.position ? 1 : 0,
-             borderColor: colors.primary,
-            opacity: pressed ? .55 : 1,
+             opacity: pressed ? .6 : 1,
           }]}>
           <Text allowFontScaling={false} style={[styles.glyph, {
              fontFamily: family, fontSize, lineHeight: rowHeight,
              color: word.type === 'end' ? colors.primary : colors.foreground,
              opacity: activeVerseKey === word.verseKey && activeWordPosition !== null
-               && activeWordPosition !== undefined && activeWordPosition !== word.position ? .82 : 1,
+               && !playingWord && word.type === 'word' ? .86 : 1,
           }]}>{word.glyph}</Text>
-        </Pressable>)}
+        </Pressable>;
+        })}
       </View>;
     })}
   </View>;
@@ -313,7 +316,7 @@ const styles = StyleSheet.create({
   loading: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   line: { flex: 1, minHeight: 0, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', overflow: 'visible' },
   words: { width: '100%' },
-  word: { flexShrink: 0, borderRadius: 3, paddingHorizontal: 1, overflow: 'visible' },
+  word: { flexShrink: 0, borderRadius: 4, paddingHorizontal: 1, overflow: 'visible' },
   glyph: { textAlign: 'center', includeFontPadding: false, writingDirection: 'rtl' },
   chapter: { textAlign: 'center', fontSize: 15, fontWeight: '700' },
   fallback: { position: 'absolute', top: 8, left: 8, right: 8, padding: 8, borderRadius: 8, borderWidth: 1, gap: 4, alignItems: 'center' },

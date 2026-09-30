@@ -51,17 +51,19 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
     : mode === 'translation' ? selected?.source.name : null;
   const button = (label: string, icon: React.ComponentProps<typeof Ionicons>['name'], onPress: () => void, id: string) =>
     <Pressable testID={id} accessibilityRole="button" accessibilityLabel={label}
-      onPress={onPress} style={[styles.action, { backgroundColor: colors.secondary }]}>
-      <Ionicons name={icon} size={18} color={colors.primary} />
+      onPress={onPress} style={({ pressed }) => [styles.action, { backgroundColor: colors.secondary, opacity: pressed ? .65 : 1 }]}>
+      <Ionicons name={icon} size={19} color={colors.primary} />
       <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
     </Pressable>;
 
   return <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-    <Text style={[styles.word, { color: colors.primary },
-      word.glyphOnly && { fontFamily: `qcf-v2-p${word.page}` }]}>{word.text}</Text>
-    <Text style={[styles.caption, { color: colors.mutedForeground }]}>
-      سورة {chapterName(chapter)} · الآية {verse}
-    </Text>
+    <View style={[styles.heading, { borderBottomColor: colors.border }]}>
+      <Text style={[styles.word, { color: colors.primary },
+        word.glyphOnly && { fontFamily: `qcf-v2-p${word.page}` }]}>{word.text}</Text>
+      <Text style={[styles.caption, { color: colors.mutedForeground }]}>
+        سورة {chapterName(chapter)} · الآية {verse}
+      </Text>
+    </View>
     {mode === 'actions' ? <>
       <View style={styles.actions}>
         {button(playing ? 'إيقاف النطق' : 'نطق', playing ? 'stop-circle-outline' : 'volume-high-outline', onPronounce, 'word-action-pronounce')}
@@ -70,9 +72,11 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
         {verifiedTajweed && button('تجويد', 'color-palette-outline', () => setMode('tajweed'), 'word-action-tajweed')}
       </View>
       {!!audioError && <Text style={[styles.warning, { color: colors.destructive }]}>{audioError}</Text>}
-       {!word.glyphOnly && button('نسخ الكلمة', 'copy-outline', () => { Clipboard.setStringAsync(word.text).catch(() => undefined); }, 'word-action-copy')}
        {word.glyphOnly && <Text style={[styles.source, { color: colors.mutedForeground }]}>خط الصفحة يعرض شكل الكلمة فقط؛ نصها وشرحها يحتاجان الاتصال.</Text>}
-      {button('خيارات الآية', 'list-outline', onVerse, 'word-action-verse')}
+      <View style={[styles.more, { borderTopColor: colors.border }]}>
+        {!word.glyphOnly && button('نسخ الكلمة', 'copy-outline', () => { Clipboard.setStringAsync(word.text).catch(() => undefined); }, 'word-action-copy')}
+        {button('خيارات الآية', 'list-outline', onVerse, 'word-action-verse')}
+      </View>
     </> : <>
       <Pressable testID="word-action-back" accessibilityRole="button" onPress={() => setMode('actions')} style={styles.back}>
         <Ionicons name="arrow-forward" size={17} color={colors.primary} />
@@ -110,12 +114,15 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
 
 const styles = StyleSheet.create({
   scroll: { flexShrink: 1, minHeight: 0 },
-  content: { paddingHorizontal: 14, paddingBottom: 8, gap: 8 },
-  word: { textAlign: 'center', fontSize: 24, fontWeight: '700', writingDirection: 'rtl' },
-  caption: { textAlign: 'center', fontSize: 12 },
-  actions: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
-  action: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 10, paddingHorizontal: 12, minHeight: 42 },
-  actionLabel: { fontSize: 13, fontWeight: '700' },
+  content: { paddingHorizontal: 8, paddingBottom: 16, gap: 10 },
+  heading: { paddingVertical: 13, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
+  word: { textAlign: 'center', fontSize: 26, lineHeight: 46, fontWeight: '700', writingDirection: 'rtl' },
+  caption: { textAlign: 'center', fontSize: 12, marginTop: 3 },
+  actions: { flexDirection: 'row-reverse', gap: 6, marginTop: 4 },
+  action: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderRadius: 12, paddingHorizontal: 3, minHeight: 60 },
+  actionLabel: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  more: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, flexDirection: 'row-reverse', gap: 8 },
   back: { alignSelf: 'flex-end', flexDirection: 'row-reverse', alignItems: 'center', gap: 5, paddingVertical: 5 },
   result: { borderRadius: 12, padding: 14 },
   ruleHeading: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, marginBottom: 7 },
