@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Font from 'expo-font';
 import { getGetQuranMadaniPageQueryKey, useGetQuranMadaniPage } from '@workspace/api-client-react';
-import { chapterName, pageImage } from '@/data/quran';
+import { chapterName, pageImage, pageVerses } from '@/data/quran';
 import { quranApiOrigin } from '@/lib/api-origin';
 import { useColors } from '@/hooks/useColors';
 import type { WordSelection } from '@/components/WordActions';
@@ -31,13 +31,27 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
 }) {
   const colors = useColors();
   const [fontStatus, setFontStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [fallbackImageError, setFallbackImageError] = useState(false);
+  const [offline, setOffline] = useState(
+    () => Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.onLine,
+  );
   const family = `qcf-v2-p${page}`;
   const { data, isError, isPending, refetch } = useGetQuranMadaniPage(page, {
-    query: { queryKey: getGetQuranMadaniPageQueryKey(page), enabled: !!quranApiOrigin, retry: 1, staleTime: Infinity },
+    query: { queryKey: getGetQuranMadaniPageQueryKey(page), enabled: !!quranApiOrigin && !offline, retry: 1, staleTime: Infinity },
   });
 
   useEffect(() => {
-    if (!quranApiOrigin) return;
+    if (Platform.OS !== 'web') return;
+    const update = () => setOffline(!navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
+  useEffect(() => {
+    if (!quranApiOrigin || offline) return;
     let active = true;
     const load = async () => {
       try {
@@ -50,7 +64,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     };
     load();
     return () => { active = false; };
-  }, [family, page]);
+  }, [family, page, offline]);
 
   const layout = useMemo(() => {
     const decorations = new Map<number, Decoration>();
@@ -82,15 +96,27 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     return { decorations, partialLines };
   }, [data]);
 
-  const missing = !quranApiOrigin || isError || fontStatus === 'error';
+  const missing = offline || !quranApiOrigin || isError || fontStatus === 'error';
   if (missing) {
-    return <View style={[styles.page, { width, height, backgroundColor: background, borderColor: colors.border }]}>
-      <Image source={pageImage(page)} style={StyleSheet.absoluteFill} contentFit="contain" />
+    return <View testID={offline ? 'offline-page' : undefined}
+      style={[styles.page, { width, height, backgroundColor: background, borderColor: colors.border }]}>
+      {!fallbackImageError
+        ? <Image source={pageImage(page)} style={StyleSheet.absoluteFill} contentFit="contain"
+            onError={() => setFallbackImageError(true)} />
+        : <ScrollView testID="offline-verses" style={{ flex: 1, width: '100%' }}
+            contentContainerStyle={{ padding: 22, paddingTop: 70 }}>
+            {(pageVerses.get(page) ?? []).map(verse =>
+              <Text key={verse.id} style={{ color: colors.foreground, fontSize: 22, lineHeight: 47, textAlign: 'right', writingDirection: 'rtl' }}>
+                {verse.content} ﴿{verse.number}﴾
+              </Text>)}
+          </ScrollView>}
       <View style={[styles.fallback, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={{ color: colors.foreground, textAlign: 'center', fontSize: 12 }}>
-          تعذّر تحميل الكلمات أو خطّها؛ تُعرض صورة الصفحة مؤقتًا. صور المصحف متاحة دائمًا من الإعدادات.
+          {fallbackImageError ? 'تعذّر عرض صورة الصفحة؛ يُعرض نص آياتها المحفوظ في التطبيق.'
+            : offline ? 'الاتصال غير متاح؛ تُعرض صورة الصفحة المحفوظة على الجهاز. يمكنك اختيار صور الصفحات من الإعدادات.'
+            : 'تعذّر تحميل الكلمات أو خطّها؛ تُعرض صورة الصفحة مؤقتًا. صور المصحف متاحة دائمًا من الإعدادات.'}
         </Text>
-        {!!quranApiOrigin && <Pressable accessibilityRole="button" onPress={() => {
+        {!!quranApiOrigin && !offline && <Pressable accessibilityRole="button" onPress={() => {
           setFontStatus('loading');
           loadPageFonts(page).then(() => setFontStatus('ready')).catch(() => setFontStatus('error'));
           refetch();

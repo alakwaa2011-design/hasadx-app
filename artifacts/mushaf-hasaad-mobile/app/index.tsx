@@ -389,10 +389,13 @@ export default function MushafReader() {
                 ? <Image source={pageImage(page)} style={[styles.pageImage, page <= 2 && { transform: [{ scale: 1.65 }] }]}
                     contentFit="contain" cachePolicy="disk"
                     onError={() => setImageError(true)} accessible accessibilityLabel={`صورة الصفحة ${page} من مصحف المدينة`} />
-                : <View style={styles.center}>
-                    <Text style={[styles.feedback, { color: colors.destructive }]}>تعذّر عرض الصفحة {page}</Text>
-                    <Pressable onPress={() => setImageError(false)}><Text style={{ color: colors.primary }}>إعادة المحاولة</Text></Pressable>
-                  </View>}
+                 : <ScrollView testID="offline-verses" style={{ width: '100%' }} contentContainerStyle={{ padding: 18 }}>
+                     <Text style={[styles.note, { color: colors.mutedForeground }]}>تعذّر عرض صورة الصفحة؛ يظهر نص الآيات المحفوظ بدلًا منها.</Text>
+                     {visibleVerses.map(verse => <Text key={verse.id} style={{ color: fg, fontSize: 21, lineHeight: 44, textAlign: 'right', writingDirection: 'rtl' }}>
+                       {verse.content} ﴿{verse.number}﴾
+                     </Text>)}
+                     <Pressable onPress={() => setImageError(false)}><Text style={{ color: colors.primary, textAlign: 'right' }}>إعادة تحميل الصورة</Text></Pressable>
+                   </ScrollView>}
             </Pressable>}
         {pageDisplay === 'words' && readingMode &&
           <View style={styles.showTools}>
@@ -493,6 +496,13 @@ export default function MushafReader() {
                 : <Text style={[styles.empty, { color: colors.mutedForeground }]}>لا توجد علامات بعد. اختر آية من قائمة آيات الصفحة لإضافتها.</Text>}
             </ScrollView>}
             {sheet === 'settings' && <ScrollView style={styles.list}>
+               <Text style={[styles.sectionTitle, { color: fg }]}>القراءة دون إنترنت</Text>
+               <Row title={pageDisplay === 'images' ? 'تستخدم الصفحات المحفوظة الآن' : 'افتح الصفحات المحفوظة'}
+                 detail={Platform.OS === 'web'
+                   ? 'النص محفوظ؛ صور لم تُفتح قد تحتاج اتصالًا في معاينة المتصفح'
+                   : 'صور المصحف تعمل دون اتصال · لا تشمل التلاوة والتفسير'}
+                 onPress={() => { setPageDisplay('images'); close(); }} colors={colors} />
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>في تطبيق الجوال: 604 صفحات مصورة ونص 6236 آية للبحث والفهرس، مضمنة دون تنزيل إضافي. العلامات تُحفظ على الجهاز.{Platform.OS === 'web' ? ' معاينة المتصفح تحتاج اتصالًا لصور لم تُفتح من قبل، ويظهر نص الآيات بدلًا منها عند تعذّر الصورة.' : ''}</Text>
               <Row title="القارئ والتكرار" detail="إعدادات التلاوة" onPress={() => setSheet('audio')} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
               <View style={styles.segment}>
@@ -504,7 +514,7 @@ export default function MushafReader() {
                     <Text style={[styles.segmentText, { color: pageDisplay === id ? colors.primary : fg }]}>{label}</Text>
                   </Pressable>)}
               </View>
-              <Text style={[styles.note, { color: colors.mutedForeground }]}>الكلمات التفاعلية هي العرض الأساسي وتتطلب اتصالًا لتحميل الصفحة وخطها؛ صور الصفحات محفوظة على الجهاز للقراءة دون إنترنت.</Text>
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>الكلمات التفاعلية هي العرض الأساسي وتتطلب اتصالًا لتحميل الصفحة وخطها؛ صور الصفحات مضمنة في تطبيق الجوال للقراءة دون إنترنت.</Text>
               <Text style={[styles.sectionTitle, { color: fg }]}>مظهر المصحف</Text>
               <View style={styles.segment}>
                 {([['day', 'نهاري'], ['warm', 'دافئ'], ['night', 'ليلي']] as [Appearance, string][]).map(([id, label]) =>
@@ -515,7 +525,7 @@ export default function MushafReader() {
               </View>
               <Row title="وضع القراءة" detail="إخفاء الأدوات لعرض المصحف بوضوح" onPress={() => { setReadingMode(!readingMode); close(); }} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>حول مصحف حصاد</Text>
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف. صور الصفحات والبحث والعلامات تعمل دون إنترنت؛ الكلمات التفاعلية والتلاوة والتفسير تحتاج اتصالًا.</Text>
+                <Text style={[styles.note, { color: colors.mutedForeground }]}>صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف. في تطبيق الجوال تعمل صور الصفحات والبحث والعلامات دون إنترنت؛ الكلمات التفاعلية والتلاوة والتفسير تحتاج اتصالًا.</Text>
               {privacyUrl
                 ? <Row title="سياسة الخصوصية" detail="تفتح في المتصفح"
                     onPress={() => { if (privacyUrl) Linking.openURL(privacyUrl).catch(() => undefined); }} colors={colors} />
@@ -610,7 +620,7 @@ export default function MushafReader() {
                 }}>
                 <Text style={[styles.primaryLabel, { color: colors.primaryForeground }]}>بدء التلاوة</Text>
               </Pressable>
-              <Text style={[styles.note, { color: colors.mutedForeground }]}>يُجلب الصوت من مصدر التلاوة المعتمد عند الاتصال بالإنترنت. لا تُحفظ ملفات الصوت دون إذن موثق.</Text>
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>التلاوات تحتاج اتصالًا الآن. لا يُتاح تنزيل تسجيل قارئ إلى الجهاز حتى تثبت شروط التخزين لذلك التسجيل؛ الاستماع المباشر لا يعني السماح بتنزيله.</Text>
             </ScrollView>}
           </View>
         </View>

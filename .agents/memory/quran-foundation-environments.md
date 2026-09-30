@@ -56,3 +56,9 @@ For a user-initiated tap on one Quran word, prefer Quran Foundation's dedicated 
 **Why:** chapter timing segments are incomplete or multi-pass for some recordings, while the dedicated WBW asset identifies one exact word and can begin through a same-origin redirect within the original tap gesture.
 
 **How to apply:** select the requested `words[]` record by its position, then validate that its audio path remains under `wbw/` and matches the requested surah/ayah. Do not require the filename suffix to equal the word position: pause markers can create gaps. Redirect only to the allowlisted Quran CDN, and play it in a secondary audio element that never mutates ayah-player state.
+
+Offline storage of Quran Foundation API content follows its current Developer Terms: ordinarily no more than one week, except content the Content Sync API explicitly supports when changes are applied at least every seven days. Font files and Mushaf images may be bundled as integrated app assets with an active developer account and QF credit, but the sync snapshots do not include those binaries. Audio resource metadata being syncable is not proof that every underlying reciter recording is licensed for permanent third-party downloading.
+
+**Why:** The developer terms distinguish in-app display from separately distributed content packages, impose a cache lifetime, and still require source-specific permissions. A streaming URL or a public download button on another site does not by itself authorize our app's permanent offline audio library.
+
+**How to apply:** Before adding offline tafsir, interactive page metadata, or reciter audio, verify the exact resource is sync-eligible, implement token-based sync and changes within seven days, confirm each recording's own usage rights, and avoid offering QF data as a standalone downloadable product.
