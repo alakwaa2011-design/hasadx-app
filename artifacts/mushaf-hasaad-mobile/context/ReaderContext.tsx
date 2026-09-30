@@ -5,10 +5,11 @@ import { PAGE_COUNT, verses } from '@/data/quran';
 const STORAGE_KEY = 'mushaf-hasaad:native-reader:v1';
 export type Bookmark = { page: number; chapter: number; verse: number; category: 'stopped_here' | 'review' };
 export type Appearance = 'day' | 'warm' | 'night';
+export type PageDisplay = 'words' | 'images';
 export type Practice = { chapter: number; verse: number; stage: number; repeatCount: number; revealed: boolean };
 export type AudioPreferences = { reciterId: number | null; repeat: number; stopAt: 'ayah' | 'page' | 'surah'; speed: number };
 type Saved = {
-  page: number; bookmarks: Bookmark[]; appearance: Appearance; readingMode: boolean;
+  page: number; bookmarks: Bookmark[]; appearance: Appearance; readingMode: boolean; pageDisplay: PageDisplay;
   practice: Practice | null; practiceResults: Record<string, 'mastered' | 'review'>;
   audio: AudioPreferences;
 };
@@ -17,6 +18,7 @@ type ReaderValue = Saved & {
   goToPage: (page: number) => void;
   toggleBookmark: (chapter: number, verse: number) => void;
   setAppearance: (appearance: Appearance) => void;
+  setPageDisplay: (display: PageDisplay) => void;
   setReadingMode: (mode: boolean) => void;
   startPractice: (chapter: number, verse: number) => void;
   updatePractice: (update: Partial<Pick<Practice, 'stage' | 'repeatCount' | 'revealed'>>) => void;
@@ -26,7 +28,7 @@ type ReaderValue = Saved & {
 const ReaderContext = createContext<ReaderValue | null>(null);
 const validPage = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= PAGE_COUNT;
 const initial: Saved = {
-  page: 1, bookmarks: [], appearance: 'day', readingMode: false, practice: null, practiceResults: {},
+  page: 1, bookmarks: [], appearance: 'day', readingMode: false, pageDisplay: 'words', practice: null, practiceResults: {},
   audio: { reciterId: null, repeat: 1, stopAt: 'ayah', speed: 1 },
 };
 
@@ -46,6 +48,7 @@ export function ReaderProvider({ children }: { children: React.ReactNode }) {
           : [],
         appearance: saved.appearance === 'night' || saved.appearance === 'warm' ? saved.appearance : 'day',
         readingMode: saved.readingMode === true,
+        pageDisplay: saved.pageDisplay === 'images' ? 'images' : 'words',
         practice: saved.practice && verses.some(v => v.chapter_id === saved.practice?.chapter && v.number === saved.practice?.verse)
           && Number.isInteger(saved.practice.stage) && saved.practice.stage >= 0 && saved.practice.stage <= 5
           ? { chapter: saved.practice.chapter, verse: saved.practice.verse, stage: saved.practice.stage,
@@ -89,6 +92,7 @@ export function ReaderProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
   const setAppearance = useCallback((appearance: Appearance) => setState(previous => ({ ...previous, appearance })), []);
+  const setPageDisplay = useCallback((pageDisplay: PageDisplay) => setState(previous => ({ ...previous, pageDisplay })), []);
   const setReadingMode = useCallback((readingMode: boolean) => setState(previous => ({ ...previous, readingMode })), []);
   const startPractice = useCallback((chapter: number, verse: number) => {
     setState(previous => ({
@@ -111,9 +115,9 @@ export function ReaderProvider({ children }: { children: React.ReactNode }) {
     setState(previous => ({ ...previous, audio: { ...previous.audio, ...update } }));
   }, []);
   const value = useMemo(() => ({
-    ...state, ready, storageError, goToPage, toggleBookmark, setAppearance, setReadingMode,
+    ...state, ready, storageError, goToPage, toggleBookmark, setAppearance, setPageDisplay, setReadingMode,
     startPractice, updatePractice, assessPractice, updateAudio,
-  }), [state, ready, storageError, goToPage, toggleBookmark, setAppearance, setReadingMode, startPractice, updatePractice, assessPractice, updateAudio]);
+  }), [state, ready, storageError, goToPage, toggleBookmark, setAppearance, setPageDisplay, setReadingMode, startPractice, updatePractice, assessPractice, updateAudio]);
   return <ReaderContext.Provider value={value}>{children}</ReaderContext.Provider>;
 }
 
