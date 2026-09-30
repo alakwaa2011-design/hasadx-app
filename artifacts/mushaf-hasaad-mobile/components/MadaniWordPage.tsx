@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { BlurTargetView, BlurView } from 'expo-blur';
 import * as Font from 'expo-font';
 import { File, Paths } from 'expo-file-system';
 import { getGetQuranMadaniPageQueryKey, useGetQuranMadaniPage } from '@workspace/api-client-react';
@@ -10,8 +11,26 @@ import { useColors } from '@/hooks/useColors';
 import type { WordSelection } from '@/components/WordActions';
 import { useOfflineContent, type OfflinePage } from '@/lib/offline-content';
 import { TajweedLegend } from '@/components/TajweedLegend';
+import { useReaderAppearance } from '@/context/ReaderContext';
 
 type Decoration = { kind: 'surah' | 'bismillah'; chapter: number };
+function ConcealedGlyph({ glyph, family, fontSize, lineHeight, color, night }: {
+  glyph: string; family: string; fontSize: number; lineHeight: number; color: string; night: boolean;
+}) {
+  const target = useRef<View>(null);
+  return <View style={styles.concealedGlyph}>
+    <BlurTargetView ref={target} collapsable={false}>
+      <Text allowFontScaling={false} style={[styles.glyph, {
+        fontFamily: family, fontSize, lineHeight, color, opacity: .4,
+      }]}>{glyph}</Text>
+    </BlurTargetView>
+    <BlurView pointerEvents="none" blurTarget={target}
+      blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : 'none'}
+      intensity={35} blurReductionFactor={2} tint={night ? 'dark' : 'light'}
+      style={StyleSheet.absoluteFill} />
+  </View>;
+}
+
 const bismillah = 'ﱁ ﱂ ﱃ ﱄ';
 const tajweedFontUrls = (page: number) => [
   `https://verses.quran.foundation/fonts/quran/hafs/v4/colrv1/ttf/p${page}.ttf`,
@@ -131,6 +150,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
   guidedHideActive?: boolean;
 }) {
   const colors = useColors();
+  const night = useReaderAppearance() === 'night';
   const [fontStatus, setFontStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [fontVersion, setFontVersion] = useState<'v2' | 'v4'>('v2');
   const [offlineData, setOfflineData] = useState<OfflinePage | null>(null);
@@ -301,20 +321,21 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
                  glyphOnly: !!offlineData, page }
             : { verseKey: word.verseKey })}
           style={({ pressed }) => [styles.word, {
-              backgroundColor: concealed ? colors.secondary : playingWord ? `${colors.primary}88`
+              backgroundColor: concealed ? `${colors.foreground}0D` : playingWord ? `${colors.primary}88`
                : selectedVerseKey === word.verseKey
                ? colors.secondary
                : activeVerseKey === word.verseKey ? `${colors.primary}18` : 'transparent',
              opacity: pressed ? .6 : 1,
           }]}>
-           <Text allowFontScaling={false} style={[styles.glyph, {
-             fontFamily: family, fontSize, lineHeight: rowHeight,
-             color: word.type === 'end' ? colors.primary : colors.foreground,
-              opacity: concealed ? 0 : activeVerseKey === word.verseKey && activeWordPosition !== null
-               && !playingWord && word.type === 'word' ? .86 : 1,
-           }]}>{word.glyph}</Text>
-           {concealed && <Text allowFontScaling={false} pointerEvents="none"
-             style={[StyleSheet.absoluteFill, styles.concealed, { color: colors.mutedForeground, fontSize: Math.min(15, fontSize * .8) }]}>•••</Text>}
+           {concealed && Platform.OS !== 'web'
+             ? <ConcealedGlyph glyph={word.glyph} family={family} fontSize={fontSize}
+                 lineHeight={rowHeight} color={colors.foreground} night={night} />
+             : <Text allowFontScaling={false} style={[styles.glyph, {
+                 fontFamily: family, fontSize, lineHeight: rowHeight,
+                 color: word.type === 'end' ? colors.primary : colors.foreground,
+                 opacity: concealed ? .4 : activeVerseKey === word.verseKey && activeWordPosition !== null
+                   && !playingWord && word.type === 'word' ? .86 : 1,
+               }, concealed && styles.webConceal]}>{word.glyph}</Text>}
         </Pressable>;
         })}
       </View>;
@@ -329,7 +350,8 @@ const styles = StyleSheet.create({
   words: { width: '100%' },
   word: { flexShrink: 0, borderRadius: 4, paddingHorizontal: 1, overflow: 'visible' },
   glyph: { textAlign: 'center', includeFontPadding: false, writingDirection: 'rtl' },
-  concealed: { textAlign: 'center', textAlignVertical: 'center', fontWeight: '700' },
+  concealedGlyph: { overflow: 'hidden', borderRadius: 4 },
+  webConceal: { filter: 'blur(4px)' },
   chapter: { textAlign: 'center', fontSize: 15, fontWeight: '700' },
   fallback: { position: 'absolute', top: 8, left: 8, right: 8, padding: 8, borderRadius: 8, borderWidth: 1, gap: 4, alignItems: 'center' },
 });
