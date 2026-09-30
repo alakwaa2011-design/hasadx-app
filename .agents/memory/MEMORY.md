@@ -126,6 +126,7 @@
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
 - [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait and landscape both stay interactive; short landscape uses one full-screen paper with height-sized QCF content.
 - [Expo Quran audio redirect](expo-quran-audio-redirect.md) — CORS alone cannot fix public word/verse audio redirects blocked by same-origin resource policy in Expo web.
+- [Mobile chapter recitations](mobile-quran-chapter-recitations.md) — catalog entries without an availability flag are usable; chapter-only voices need verified ayah timings and bounded playback, not the verse redirect.
 - [Manual Quran reader appearance](quran-reader-appearance.md) — night/day preference must drive the whole reader palette, not just the page surface.
 - [Quran continuous navigation](quran-continuous-navigation.md) — manual jumps in continuous mode must freeze scroll observation and reset scrollTop, or browser anchoring can cascade through pages.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.

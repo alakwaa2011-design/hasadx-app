@@ -359,6 +359,13 @@ async function serveObject(req: Request, res: Response) {
     const contentType = /(?:svg|html|xml|javascript|xhtml)/i.test(rawContentType)
       ? "application/octet-stream" : rawContentType;
 
+    // Only the reviewed, publicly readable chapter recordings may be played
+    // from Expo's separate web origin. Keep all other stored objects private.
+    if (contentType === "audio/mpeg"
+      && /^uploads\/quran-recitation\/abu-bakr-al-dhabi\/(?:00[1-9]|0[1-9][0-9]|1(?:0[0-9]|1[0-4]))\.mp3$/.test(wildcardPath)) {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    }
+
     if (contentType.startsWith("video/")) {
       const signedUrl = await objectStorageService.signFileDownloadUrl(objectFile, 3600);
       res.setHeader("Cache-Control", "private, no-store");

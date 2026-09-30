@@ -72,6 +72,21 @@ describe("legacy object reference authorization", () => {
     });
   });
 
+  it("allows cross-origin playback only for reviewed Abu Bakr chapter audio", async () => {
+    mocks.getFile.mockResolvedValue({
+      getMetadata: vi.fn().mockResolvedValue([{ contentType: "audio/mpeg", size: 8, generation: "audio" }]),
+      createReadStream: mocks.stream,
+    });
+    const publicAudio = await request(makeApp()).get("/storage/objects/uploads/quran-recitation/abu-bakr-al-dhabi/001.mp3");
+    expect(publicAudio.status).toBe(200);
+    expect(publicAudio.headers["cross-origin-resource-policy"]).toBe("cross-origin");
+
+    const otherQuran = await request(makeApp()).get("/storage/objects/uploads/quran-recitation/abu-bakr-al-dhabi/115.mp3");
+    expect(otherQuran.headers["cross-origin-resource-policy"]).not.toBe("cross-origin");
+    const privateAudio = await request(makeApp()).get("/storage/objects/uploads/quran-recitation/private/001.mp3");
+    expect(privateAudio.headers["cross-origin-resource-policy"]).not.toBe("cross-origin");
+  });
+
   it("allows a teacher to open an exact legacy object referenced by their records", async () => {
     mocks.reference.mockImplementation(async (teacherId, objectPath) =>
       teacherId === 42 && objectPath === "/objects/uploads/legacy-uuid");
