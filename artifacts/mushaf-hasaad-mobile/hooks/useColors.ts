@@ -1,5 +1,6 @@
 import { useColorScheme } from 'react-native';
 import colors from '@/constants/colors';
+import { useReaderAppearance } from '@/context/ReaderContext';
 
 /**
  * Returns the design tokens for the current color scheme.
@@ -15,6 +16,7 @@ import colors from '@/constants/colors';
  */
 export function useColors() {
   const scheme = useColorScheme();
-  const palette = scheme === 'dark' ? colors.dark : colors.light;
+  const appearance = useReaderAppearance();
+  const palette = appearance === 'night' || (!appearance && scheme === 'dark') ? colors.dark : colors.light;
   return { ...palette, radius: colors.radius };
 }

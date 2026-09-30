@@ -107,8 +107,8 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 0 },
-  content: { paddingHorizontal: 14, paddingBottom: 12, gap: 12 },
+  scroll: { flexShrink: 1, minHeight: 0 },
+  content: { paddingHorizontal: 14, paddingBottom: 8, gap: 8 },
   word: { textAlign: 'center', fontSize: 24, fontWeight: '700', writingDirection: 'rtl' },
   caption: { textAlign: 'center', fontSize: 12 },
   actions: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },

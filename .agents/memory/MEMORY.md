@@ -125,7 +125,8 @@
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
 - [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
 - [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait and landscape both stay interactive; short landscape uses one full-screen paper with height-sized QCF content.
-- [Expo Quran audio redirect](expo-quran-audio-redirect.md) — CORS alone cannot fix a public word-audio redirect blocked by same-origin resource policy in the Expo web preview.
+- [Expo Quran audio redirect](expo-quran-audio-redirect.md) — CORS alone cannot fix public word/verse audio redirects blocked by same-origin resource policy in Expo web.
+- [Manual Quran reader appearance](quran-reader-appearance.md) — night/day preference must drive the whole reader palette, not just the page surface.
 - [Quran continuous navigation](quran-continuous-navigation.md) — manual jumps in continuous mode must freeze scroll observation and reset scrollTop, or browser anchoring can cascade through pages.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
 - [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.

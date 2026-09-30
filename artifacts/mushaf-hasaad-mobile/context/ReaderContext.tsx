@@ -126,3 +126,7 @@ export function useReader() {
   if (!reader) throw new Error('ReaderProvider is missing');
   return reader;
 }
+
+export function useReaderAppearance() {
+  return useContext(ReaderContext)?.appearance;
+}

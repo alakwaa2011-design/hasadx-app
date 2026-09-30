@@ -2,15 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 
-const { getTimings, getDisplayReciters, getVerseUrl } = vi.hoisted(() => ({
+const { getTimings, getDisplayReciters, getVerseUrl, getAudioUrl } = vi.hoisted(() => ({
   getTimings: vi.fn(),
   getDisplayReciters: vi.fn(),
   getVerseUrl: vi.fn(),
+  getAudioUrl: vi.fn(),
 }));
 vi.mock("../lib/quran-foundation-client", () => ({
   getQuranFoundationAyahTimings: getTimings,
   getQuranFoundationVerseFileUrl: getVerseUrl,
-  getQuranFoundationAudioUrl: vi.fn(),
+  getQuranFoundationAudioUrl: getAudioUrl,
   getQuranFoundationMadaniPage: vi.fn(),
   getQuranFoundationSurahContent: vi.fn(),
   getQuranFoundationAyahEducation: vi.fn(),
@@ -40,6 +41,7 @@ describe("Quran ayah timings route", () => {
   beforeEach(() => {
     getTimings.mockReset();
     getVerseUrl.mockReset();
+    getAudioUrl.mockReset();
     getDisplayReciters.mockReset();
     getDisplayReciters.mockResolvedValue([
       { id: 7, name: "Verified", style: "Murattal", available: true },
@@ -73,6 +75,19 @@ describe("Quran ayah timings route", () => {
     expect(gatedAudio.status).toBe(200);
     expect(gatedAudio.headers["cache-control"]).toContain("private");
     expect((await request(app({})).get("/api/quran/audio/2000114/114/1/buffer")).status).toBe(404);
+  });
+
+  it("allows cross-origin playback only for the public verse-audio redirect", async () => {
+    getAudioUrl.mockResolvedValue("https://verses.quran.foundation/ayah.mp3");
+    const publicAudio = await request(app({})).get("/api/quran/audio/7/1/1");
+    expect(publicAudio.status).toBe(302);
+    expect(publicAudio.headers.location).toBe("https://verses.quran.foundation/ayah.mp3");
+    expect(publicAudio.headers["cross-origin-resource-policy"]).toBe("cross-origin");
+
+    const gatedAudio = await request(app({ teacherId: 1 })).get("/api/quran/audio/2000114/114/1");
+    expect(gatedAudio.status).toBe(302);
+    expect(gatedAudio.headers["cross-origin-resource-policy"]).not.toBe("cross-origin");
+    expect((await request(app({})).get("/api/quran/audio/2000114/114/1")).status).toBe(404);
   });
 
   it("does not buffer a chapter recording as an individual verse", async () => {

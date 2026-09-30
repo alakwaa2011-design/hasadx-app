@@ -106,15 +106,16 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
   }
 
   const firstLines = page <= 2 ? data.lines.filter(line => line.words.length > 0) : null;
-  const firstLineStart = firstLines ? Math.max(1, Math.floor((15 - firstLines.length) / 2) + 1) : null;
-  const rowHeight = (height * .88) / 15;
-  const fontSize = Math.min(width * .052, rowHeight * .78);
+  const rowCount = firstLines ? 9 : 15;
+  const firstLineStart = firstLines ? Math.max(1, Math.floor((rowCount - firstLines.length) / 2) + 1) : null;
+  const rowHeight = (height * .88) / rowCount;
+  const fontSize = Math.min(width * (firstLines ? .065 : .052), rowHeight * .78);
   const lineByNumber = new Map(data.lines.map(line => [line.lineNumber, line]));
   return <View testID={`word-page-${page}`} style={[styles.page, {
     width, height, paddingHorizontal: width * .075, paddingVertical: height * .06,
     backgroundColor: background, borderColor: colors.border,
   }]}>
-    {Array.from({ length: 15 }, (_, i) => i + 1).map(row => {
+    {Array.from({ length: rowCount }, (_, i) => i + 1).map(row => {
       const line = firstLines && firstLineStart
         ? firstLines[row - firstLineStart]
         : lineByNumber.get(row);

@@ -19,7 +19,12 @@ export function TafsirPanel({ verse }: { verse: Verse }) {
   if (!quranApiOrigin) return <Text style={[styles.message, { color: colors.destructive }]}>يلزم إعداد عنوان خدمة حصاد الموثوقة قبل إتاحة التفسير على نسخة الجوال النهائية.</Text>;
   if (query.isPending) return <ActivityIndicator style={styles.loader} color={colors.primary} />;
   if (query.isError || !query.data?.tafsir?.text || !query.data.tafsir.source?.name) {
-    return <Text style={[styles.message, { color: colors.destructive }]}>تعذّر تحميل تفسير موثق الآن. تحقق من الاتصال وحاول مرة أخرى.</Text>;
+    return <View>
+      <Text style={[styles.message, { color: colors.destructive }]}>تعذّر تحميل تفسير موثق الآن. تحقق من الاتصال وحاول مرة أخرى.</Text>
+      <Pressable accessibilityRole="button" onPress={() => query.refetch()} style={styles.retry}>
+        <Text style={{ color: colors.primary, fontWeight: '700' }}>إعادة المحاولة</Text>
+      </Pressable>
+    </View>;
   }
   const { text, source } = query.data.tafsir;
   return <View style={styles.body}>
@@ -42,6 +47,7 @@ const styles = StyleSheet.create({
   loader: { marginVertical: 45 },
   body: { paddingBottom: 16 },
   message: { textAlign: 'center', lineHeight: 25, paddingVertical: 35 },
+  retry: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
   explanation: { fontSize: 18, lineHeight: 34, textAlign: 'right', writingDirection: 'rtl', marginVertical: 15 },
   source: { textAlign: 'right', fontSize: 12, marginBottom: 15 },
   actions: { flexDirection: 'row-reverse', gap: 12 },

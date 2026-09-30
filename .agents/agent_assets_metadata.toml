@@ -2539,3 +2539,73 @@ mtime_ms = 1790697746502
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/1ab0c53e-cdd4-4025-8640-567024a36746/1d235586-7181-47b8-99c0-0ba196f24e3d"
 storage_version_token = "1790697850503582"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "ybw8RSq8-NoIR0UfK3MEA"
+uri = "file://screenshots/mushaf-final-portrait.jpg"
+type = "image"
+title = "صفحة المصحف — عمودي"
+description = "عرض الكلمات في الصفحة الأولى على هاتف 390×844."
+logical_id = "dd839486-0714-4f76-a91c-9e333fed86ac"
+content_hash = "sha256:0f62d89bbf3d2e6f6625b8eca93c75dcac26c52b18e4e80acba9bf311c1f9aae"
+size = 30270
+mtime_ms = 1790768623880
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/dd839486-0714-4f76-a91c-9e333fed86ac/0b56df8b-ab0b-41d7-bf76-a15102c295d2"
+storage_version_token = "1790768950006778"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "1pdrhXkxKgQDXEKYVX9l3"
+uri = "file://screenshots/mushaf-final-landscape.jpg"
+type = "image"
+title = "صفحة المصحف — أفقي"
+description = "صفحة واحدة على هاتف 844×390."
+logical_id = "4966c8c7-a8ca-40f0-9a49-aff6f3841fb8"
+content_hash = "sha256:bad588ac3339699a535f730f96a41d2bcaf3658dc32e0ec511bb0dd58638c22c"
+size = 25177
+mtime_ms = 1790768626324
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/4966c8c7-a8ca-40f0-9a49-aff6f3841fb8/f7df74f8-15f4-4c7b-9ffb-44a99b7819a6"
+storage_version_token = "1790768951529546"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "JZXvKmLOvARz44bRZaJfg"
+uri = "file://screenshots/mushaf-word-portrait.jpg"
+type = "image"
+title = "بطاقة الكلمة — عمودي"
+description = "خيارات الكلمة إِنَّ في سورة البقرة."
+logical_id = "46895d19-fd8e-40b6-99c0-45c487c9f2e6"
+content_hash = "sha256:052cdf22349d95bbd786ab09f67d545e5fdedf62718a0d8e74c789b99e0fdb7a"
+size = 50817
+mtime_ms = 1790768791341
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/46895d19-fd8e-40b6-99c0-45c487c9f2e6/1aebb79f-04cf-4e20-a26a-e0c62b9cf009"
+storage_version_token = "1790768953851683"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "EwNrEXeTCd9nQj9TS3SO5"
+uri = "file://screenshots/mushaf-word-landscape.jpg"
+type = "image"
+title = "بطاقة الكلمة — أفقي"
+description = "الأزرار كاملة داخل ارتفاع 375 بكسل."
+logical_id = "44bedd78-2dfd-4366-b7aa-452bd5b8d048"
+content_hash = "sha256:b6459d4f34747c27450bae0548ca0fab7d47d24c4927e37330ff8afd3ca78e2e"
+size = 19414
+mtime_ms = 1790768795069
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/44bedd78-2dfd-4366-b7aa-452bd5b8d048/3428b445-7d6f-4084-b3fc-a3d1dfa1c104"
+storage_version_token = "1790768955135582"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "ZvA--STR934nrf0NaZYt8"
+uri = "file://screenshots/mushaf-night-settings-portrait.jpg"
+type = "image"
+title = "المظهر الليلي والإعدادات"
+description = "لوحة الإعدادات بعد اختيار المظهر الليلي."
+logical_id = "71b4dfe4-9ce3-40a7-b729-a8e086a87594"
+content_hash = "sha256:c1fdcf659252aff44d98d1cd634d409d93743fa0ed92ad40ed842c9264a70e77"
+size = 39435
+mtime_ms = 1790768792505
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/71b4dfe4-9ce3-40a7-b729-a8e086a87594/80af5be8-4814-485a-973d-4787d5ee0cbc"
+storage_version_token = "1790768956575899"
+content_type = "image/jpeg"

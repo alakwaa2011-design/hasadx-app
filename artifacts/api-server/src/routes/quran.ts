@@ -781,6 +781,11 @@ router.get("/quran/audio/:recitationId/:surahNumber/:ayahNumber", async (req, re
       parsed.data.ayahNumber,
     );
     res.setHeader("Cache-Control", "private, max-age=604800, immutable");
+    // This public, allowlisted redirect is played by Expo web on a separate origin.
+    // Keep session-gated recordings under the default same-origin policy.
+    if (!isUnverifiedQuranRecitation(parsed.data.recitationId)) {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    }
     res.redirect(302, url);
   } catch (error) {
     if (error instanceof Error && error.message.includes("not in the trusted catalog")) {

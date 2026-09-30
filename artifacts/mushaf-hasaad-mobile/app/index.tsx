@@ -75,7 +75,7 @@ export default function MushafReader() {
   const currentPage = useRef(page);
   currentPage.current = page;
   const surface = appearance === 'night' ? colors.background : appearance === 'warm' ? '#f2e9d8' : colors.background;
-  const paper = appearance === 'night' ? '#ddd2b7' : appearance === 'warm' ? '#f3e7ce' : '#fffdf8';
+  const paper = appearance === 'night' ? colors.card : appearance === 'warm' ? '#f3e7ce' : '#fffdf8';
   const fg = colors.foreground;
   const pageInfo = pages[page - 1];
   const visibleVerses = pageVerses.get(page) ?? [];
@@ -89,6 +89,8 @@ export default function MushafReader() {
     if (next < 1 || next > PAGE_COUNT) return;
     stopWord();
     goToPage(next);
+    setSelectedVerse(null);
+    setSelectedWord(null);
     setImageError(false);
     close();
     Haptics.selectionAsync().catch(() => undefined);
@@ -154,7 +156,8 @@ export default function MushafReader() {
     }
     setPlayed(0);
     const next = verses.find(v => v.chapter_id === audioVerse.chapter_id && v.number === audioVerse.number + 1);
-    if (stopAt === 'ayah' || !next || (stopAt === 'page' && next.page_id !== audioVerse.page_id)) {
+    if (stopAt === 'ayah' || !next || (stopAt === 'page' && next.page_id !== audioVerse.page_id)
+      || (stopAt === 'surah' && next.chapter_id !== audioVerse.chapter_id)) {
       setAudioVerse(null);
       return;
     }
@@ -226,9 +229,12 @@ export default function MushafReader() {
   };
 
   if (!reader.ready) return <View style={[styles.center, { backgroundColor: surface }]}><ActivityIndicator color={colors.primary} /></View>;
-  const stageHeight = compactLandscape
+  const stageHeight = Math.max(1, compactLandscape
     ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (audioVerse ? 54 : 12)
-    : viewport.height - topInset - bottomInset - (readingMode ? 36 : audioVerse ? 180 : 132);
+    : viewport.height - topInset - bottomInset - (readingMode ? 36 : audioVerse ? 180 : 132));
+  const enteredPage = Number(pageInput);
+  const pageInputValid = /^\d{1,3}$/.test(pageInput) && Number.isInteger(enteredPage)
+    && enteredPage >= 1 && enteredPage <= PAGE_COUNT;
   const imageWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), Math.max(0, stageHeight) * (382.677 / 547.086));
   const imageHeight = imageWidth * (547.086 / 382.677);
   const wordWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), compactLandscape ? 450 : 640);
@@ -236,12 +242,12 @@ export default function MushafReader() {
 
   return (
     <View testID="mushaf-reader" style={[styles.root, { backgroundColor: surface }]}>
-      <View pointerEvents={compactLandscape ? 'box-none' : 'auto'}
-        style={[styles.header, compactLandscape && styles.landscapeHeader, { paddingTop: topInset + 4 }]}>
+       <View style={[styles.header, compactLandscape && styles.landscapeHeader,
+         { paddingTop: topInset + 4, pointerEvents: compactLandscape ? 'box-none' : 'auto' }]}>
         {!readingMode && (
           <>
             <IconButton name="menu-outline" label="الفهرس" onPress={() => setSheet('index')} color={fg} />
-            <View pointerEvents={compactLandscape ? 'none' : 'auto'} style={[styles.headerTitle, compactLandscape && { opacity: 0 }]}>
+             <View style={[styles.headerTitle, compactLandscape && { opacity: 0, pointerEvents: 'none' }]}>
               <Text numberOfLines={1} style={[styles.surahName, { color: fg }]}>{pageLabel(page)}</Text>
               <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>الجزء {pageInfo?.part_id}  ·  صفحة {page}</Text>
             </View>
@@ -256,7 +262,7 @@ export default function MushafReader() {
       {!!storageError && <Text style={[styles.storageWarning, { color: colors.destructive }]}>{storageError}</Text>}
        <View style={[styles.pageStage, compactLandscape && { paddingTop: topInset + 44, paddingBottom: bottomInset }]} {...swipe.panHandlers}>
         {pageDisplay === 'words'
-           ? <MadaniWordPage key={page} page={page} width={wordWidth} height={Math.max(200, stageHeight)}
+           ? <MadaniWordPage key={page} page={page} width={wordWidth} height={stageHeight}
               background={paper} selectedVerseKey={selectedVerse ? `${selectedVerse.chapter_id}:${selectedVerse.number}` : null}
               onVersePress={openPrintedWord} />
           : <Pressable testID="mushaf-page" accessibilityRole="button" accessibilityLabel={`صورة صفحة المصحف ${page}، اضغط لإظهار أدوات القراءة`}
@@ -307,7 +313,7 @@ export default function MushafReader() {
         <View style={styles.modalFrame}>
           <Pressable style={styles.scrim} onPress={close} accessibilityLabel="إغلاق اللوحة" />
           <View style={[styles.sheet, menuStyle, { paddingBottom: bottomInset + 14, maxHeight: viewport.height * .84 }]}>
-            <View style={styles.sheetHeading}>
+             <View style={[styles.sheetHeading, compactLandscape && { height: 50 }]}>
               <IconButton name="close" label="إغلاق" color={fg} onPress={close} />
               <Text style={[styles.sheetTitle, { color: fg }]}>{
                 sheet === 'index' ? 'فهرس المصحف' : sheet === 'search' ? 'البحث في القرآن' :
@@ -323,12 +329,15 @@ export default function MushafReader() {
                 <TextInput value={pageInput} onChangeText={setPageInput} keyboardType="number-pad" maxLength={3}
                   style={[styles.input, styles.pageInput, { color: fg, borderColor: colors.border }]}
                   placeholder="رقم الصفحة" placeholderTextColor={colors.mutedForeground} textAlign="right" />
-                <Pressable style={[styles.primaryButton, styles.pageSubmit, { backgroundColor: colors.primary }]}
-                  onPress={() => navigate(Number(pageInput))}><Text style={[styles.primaryLabel, { color: colors.primaryForeground }]}>انتقال</Text></Pressable>
+                 <Pressable accessibilityRole="button" accessibilityLabel="الانتقال إلى الصفحة" disabled={!pageInputValid}
+                   style={[styles.primaryButton, styles.pageSubmit, { backgroundColor: colors.primary, opacity: pageInputValid ? 1 : .45 }]}
+                   onPress={() => navigate(enteredPage)}><Text style={[styles.primaryLabel, { color: colors.primaryForeground }]}>انتقال</Text></Pressable>
               </View>
+               {!pageInputValid && !!pageInput.trim() && <Text style={[styles.inputHint, { color: colors.destructive }]}>أدخل رقم صفحة من 1 إلى {PAGE_COUNT}</Text>}
               <View style={styles.segment}>
                 {([['chapters', 'السور'], ['parts', 'الأجزاء'], ['bookmarks', 'العلامات']] as const).map(([id, label]) =>
-                  <Pressable key={id} style={[styles.segmentItem, tab === id && { backgroundColor: colors.secondary }]}
+                   <Pressable key={id} accessibilityRole="tab" accessibilityState={{ selected: tab === id }}
+                     style={[styles.segmentItem, tab === id && { backgroundColor: colors.secondary }]}
                     onPress={() => setTab(id)}><Text style={[styles.segmentText, { color: tab === id ? colors.primary : colors.mutedForeground }]}>{label}</Text></Pressable>)}
               </View>
               <ScrollView keyboardShouldPersistTaps="handled" style={styles.list}>
@@ -375,7 +384,8 @@ export default function MushafReader() {
               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
               <View style={styles.segment}>
                 {([['words', 'كلمات تفاعلية'], ['images', 'صور الصفحات']] as [PageDisplay, string][]).map(([id, label]) =>
-                  <Pressable key={id} accessibilityRole="button" accessibilityLabel={label} testID={`display-${id}`}
+                   <Pressable key={id} accessibilityRole="button" accessibilityLabel={label}
+                     accessibilityState={{ selected: pageDisplay === id }} testID={`display-${id}`}
                     style={[styles.segmentItem, pageDisplay === id && { backgroundColor: colors.secondary }]}
                     onPress={() => setPageDisplay(id)}>
                     <Text style={[styles.segmentText, { color: pageDisplay === id ? colors.primary : fg }]}>{label}</Text>
@@ -385,12 +395,14 @@ export default function MushafReader() {
               <Text style={[styles.sectionTitle, { color: fg }]}>مظهر المصحف</Text>
               <View style={styles.segment}>
                 {([['day', 'نهاري'], ['warm', 'دافئ'], ['night', 'ليلي']] as [Appearance, string][]).map(([id, label]) =>
-                  <Pressable key={id} style={[styles.segmentItem, appearance === id && { backgroundColor: colors.secondary }]}
+                   <Pressable key={id} accessibilityRole="button" accessibilityLabel={`مظهر ${label}`}
+                     accessibilityState={{ selected: appearance === id }}
+                     style={[styles.segmentItem, appearance === id && { backgroundColor: colors.secondary }]}
                     onPress={() => setAppearance(id)}><Text style={[styles.segmentText, { color: appearance === id ? colors.primary : fg }]}>{label}</Text></Pressable>)}
               </View>
               <Row title="وضع القراءة" detail="إخفاء الأدوات لعرض المصحف بوضوح" onPress={() => { setReadingMode(!readingMode); close(); }} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>حول مصحف حصاد</Text>
-              <Text style={[styles.note, { color: colors.mutedForeground }]}>صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف. القراءة والبحث والعلامات تعمل دون إنترنت. التلاوة والتفسير يحتاجان اتصالًا.</Text>
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف. صور الصفحات والبحث والعلامات تعمل دون إنترنت؛ الكلمات التفاعلية والتلاوة والتفسير تحتاج اتصالًا.</Text>
               {privacyUrl
                 ? <Row title="سياسة الخصوصية" detail="تفتح في المتصفح"
                     onPress={() => { if (privacyUrl) Linking.openURL(privacyUrl).catch(() => undefined); }} colors={colors} />
@@ -432,7 +444,8 @@ export default function MushafReader() {
                 verse={verses.find(v => v.chapter_id === practice.chapter && v.number === practice.verse)!}
                 onPlay={(verse, times) => { setRepeat(times); setStopAt('ayah'); setPlayed(0); playVerse(verse); }}
                 onPause={() => player.pause()} playing={audioStatus.playing} audioError={audioError}
-                onNext={next => { startPractice(next.chapter_id, next.number); setSelectedVerse(next); goToPage(next.page_id); }} />
+                 onNext={next => { stopAudio(); startPractice(next.chapter_id, next.number); setSelectedVerse(next); goToPage(next.page_id); }}
+                 onFinish={() => { stopAudio(); close(); }} />
             </ScrollView>}
             {sheet === 'audio' && <ScrollView style={styles.list}>
               <Text style={[styles.sectionTitle, { color: fg }]}>الآية</Text>
@@ -442,12 +455,16 @@ export default function MushafReader() {
               <Text style={[styles.sectionTitle, { color: fg }]}>القارئ</Text>
               {catalog.isPending && !!quranApiOrigin && <ActivityIndicator color={colors.primary} />}
               {!quranApiOrigin && <Text style={[styles.note, { color: colors.destructive }]}>تحتاج نسخة الجوال النهائية إلى عنوان خدمة حصاد الموثوقة للتلاوة.</Text>}
-              {catalog.isError && <Text style={[styles.note, { color: colors.destructive }]}>تعذّر تحميل القرّاء. تحقق من اتصال الإنترنت.</Text>}
+               {catalog.isError && <View>
+                 <Text style={[styles.note, { color: colors.destructive }]}>تعذّر تحميل القرّاء. تحقق من اتصال الإنترنت.</Text>
+                 <Pressable accessibilityRole="button" onPress={() => catalog.refetch()}><Text style={{ color: colors.primary, textAlign: 'right', fontWeight: '700' }}>إعادة المحاولة</Text></Pressable>
+               </View>}
               {reciters.map(reciter => <Row key={reciter.id} title={`${activeReciter === reciter.id ? '✓  ' : ''}${reciter.name}`}
                 detail={reciter.style ?? 'تلاوة'} onPress={() => { setReciterId(reciter.id); if (audioVerse) { setPlayed(0); playVerse(audioVerse, reciter.id); } }} colors={colors} />)}
               <Text style={[styles.sectionTitle, { color: fg }]}>عدد مرات التكرار</Text>
               <View style={styles.segment}>
-                {repeats.map(value => <Pressable key={value}
+                 {repeats.map(value => <Pressable key={value} accessibilityRole="button"
+                   accessibilityLabel={value === -1 ? 'تكرار مستمر' : `تكرار ${value}`} accessibilityState={{ selected: repeat === value }}
                   style={[styles.segmentItem, repeat === value && { backgroundColor: colors.secondary }]}
                   onPress={() => { setRepeat(value); setPlayed(0); }}>
                   <Text style={{ color: fg }}>{value === -1 ? 'مستمر' : value}</Text>
@@ -456,12 +473,16 @@ export default function MushafReader() {
               <Text style={[styles.sectionTitle, { color: fg }]}>التوقف بعد</Text>
               <View style={styles.segment}>
                 {([['ayah', 'آية'], ['page', 'صفحة'], ['surah', 'سورة']] as [StopAt, string][]).map(([id, label]) =>
-                  <Pressable key={id} style={[styles.segmentItem, stopAt === id && { backgroundColor: colors.secondary }]}
+                   <Pressable key={id} accessibilityRole="button" accessibilityLabel={`التوقف بعد ${label}`}
+                     accessibilityState={{ selected: stopAt === id }}
+                     style={[styles.segmentItem, stopAt === id && { backgroundColor: colors.secondary }]}
                     onPress={() => setStopAt(id)}><Text style={{ color: fg }}>{label}</Text></Pressable>)}
               </View>
               <Text style={[styles.sectionTitle, { color: fg }]}>السرعة</Text>
               <View style={styles.segment}>{[.75, 1, 1.25].map(value =>
-                <Pressable key={value} style={[styles.segmentItem, speed === value && { backgroundColor: colors.secondary }]}
+                 <Pressable key={value} accessibilityRole="button" accessibilityLabel={`سرعة ${value}`}
+                   accessibilityState={{ selected: speed === value }}
+                   style={[styles.segmentItem, speed === value && { backgroundColor: colors.secondary }]}
                   onPress={() => { setSpeed(value); player.setPlaybackRate(value); }}><Text style={{ color: fg }}>{value}×</Text></Pressable>)}</View>
               {!!audioError && <Text style={[styles.note, { color: colors.destructive }]}>{audioError}</Text>}
               <Pressable disabled={!activeReciter} style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: activeReciter ? 1 : .5 }]}
@@ -481,7 +502,8 @@ export default function MushafReader() {
 }
 
 function Row({ title, detail, onPress, colors }: { title: string; detail: string; onPress: () => void; colors: ReturnType<typeof useColors> }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { borderBottomColor: colors.border, opacity: pressed ? .55 : 1 }]}>
+  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}، ${detail}`}
+    style={({ pressed }) => [styles.row, { borderBottomColor: colors.border, opacity: pressed ? .55 : 1 }]}>
     <Ionicons name="chevron-back" size={19} color={colors.mutedForeground} />
     <View style={styles.rowBody}>
       <Text style={[styles.rowTitle, { color: colors.foreground }]}>{title}</Text>
@@ -515,15 +537,17 @@ const styles = StyleSheet.create({
   dockDivider: { height: 26, width: 1, marginHorizontal: 3 },
   modalFrame: { flex: 1, justifyContent: 'flex-end' },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(12,27,17,.55)' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, minHeight: 220, paddingHorizontal: 18 },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, minHeight: 220,
+    paddingHorizontal: 18, width: '100%', maxWidth: 720, alignSelf: 'center' },
   sheetHeading: { height: 62, alignItems: 'center', flexDirection: 'row-reverse', justifyContent: 'space-between' },
   sheetTitle: { fontSize: 19, fontWeight: '700' },
   segment: { flexDirection: 'row-reverse', gap: 7, marginVertical: 10 },
   segmentItem: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 42, borderRadius: 12 },
   segmentText: { fontSize: 14, fontWeight: '700' },
-  list: { maxHeight: 520 },
+  list: { maxHeight: 520, flexShrink: 1, minHeight: 0 },
   pageFormInline: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginVertical: 8 },
   pageInput: { flex: 1 },
+  inputHint: { fontSize: 12, textAlign: 'right', marginBottom: 4 },
   pageSubmit: { minWidth: 84, paddingHorizontal: 8 },
   input: { height: 48, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontSize: 16 },
   searchInput: { marginBottom: 8 },

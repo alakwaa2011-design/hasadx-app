@@ -6,9 +6,9 @@ import { useColors } from '@/hooks/useColors';
 
 const steps = ['استمع', 'اقرأ', 'إخفاء جزئي', 'سمّع', 'اربط', 'قيّم'];
 
-export function GuidedPractice({ verse, onPlay, onPause, playing, audioError, onNext }: {
+export function GuidedPractice({ verse, onPlay, onPause, playing, audioError, onNext, onFinish }: {
   verse: Verse; onPlay: (verse: Verse, repeat: number) => void; onPause: () => void;
-  playing: boolean; audioError: string | null; onNext: (verse: Verse) => void;
+  playing: boolean; audioError: string | null; onNext: (verse: Verse) => void; onFinish: () => void;
 }) {
   const colors = useColors();
   const { practice, practiceResults, updatePractice, assessPractice } = useReader();
@@ -23,14 +23,16 @@ export function GuidedPractice({ verse, onPlay, onPause, playing, audioError, on
   const solid = colors.primary;
   const soft = colors.mutedForeground;
   const button = (label: string, action: () => void, secondary = false) =>
-    <Pressable onPress={action} style={[styles.button, { backgroundColor: secondary ? colors.secondary : solid }]}>
+    <Pressable onPress={action} accessibilityRole="button" accessibilityLabel={label}
+      style={[styles.button, { backgroundColor: secondary ? colors.secondary : solid }]}>
       <Text style={[styles.buttonText, { color: secondary ? colors.secondaryForeground : colors.primaryForeground }]}>{label}</Text>
     </Pressable>;
 
   return <View style={styles.body}>
     <Text style={[styles.caption, { color: soft }]}>سورة {chapterName(verse.chapter_id)} · الآية {verse.number}</Text>
     <View style={styles.steps}>{steps.map((title, index) =>
-      <Pressable key={title} accessibilityLabel={`مرحلة ${title}`} onPress={() => step(index)}
+       <Pressable key={title} accessibilityRole="button" accessibilityLabel={`مرحلة ${title}`}
+         accessibilityState={{ selected: index === stage }} onPress={() => step(index)}
         style={[styles.step, { backgroundColor: index === stage ? colors.secondary : colors.muted }]}>
         <Text style={[styles.stepText, { color: index === stage ? solid : soft }]}>{title}</Text>
       </Pressable>)}</View>
@@ -38,7 +40,9 @@ export function GuidedPractice({ verse, onPlay, onPause, playing, audioError, on
     {stage === 0 && <>
       <Text style={[styles.caption, { color: soft }]}>استمع للآية من القارئ المحدد. يلزم الاتصال بالإنترنت للصوت.</Text>
       <View style={styles.repeatRow}>{[1, 3, 5, 10, -1].map(count =>
-        <Pressable key={count} onPress={() => updatePractice({ repeatCount: count })}
+         <Pressable key={count} accessibilityRole="button" accessibilityLabel={`تكرار ${count < 0 ? 'مستمر' : count}`}
+           accessibilityState={{ selected: count === practice.repeatCount }}
+           onPress={() => updatePractice({ repeatCount: count })}
           style={[styles.repeat, { borderColor: count === practice.repeatCount ? solid : colors.border, backgroundColor: count === practice.repeatCount ? colors.secondary : colors.card }]}>
           <Text style={{ color: solid }}>{count < 0 ? '∞' : count}</Text>
         </Pressable>)}</View>
@@ -53,7 +57,8 @@ export function GuidedPractice({ verse, onPlay, onPause, playing, audioError, on
     </>}
     {stage === 2 && <>
       <View style={styles.words}>{words.map((word, index) =>
-        <Pressable key={index} onPress={() => setHints(value => [...value, index])}
+         <Pressable key={index} accessibilityRole="button" accessibilityLabel={`الكلمة ${index + 1}${index % 2 === 0 || hints.includes(index) ? '' : ' مخفية'}`}
+           onPress={() => setHints(value => [...value, index])}
           style={[styles.word, { backgroundColor: colors.muted }]}>
           <Text style={[styles.wordText, { color: colors.foreground }]}>{index % 2 === 0 || hints.includes(index) ? word : '••••'}</Text>
         </Pressable>)}</View>
@@ -81,6 +86,7 @@ export function GuidedPractice({ verse, onPlay, onPause, playing, audioError, on
         {verdict === 'mastered' ? 'سُجل الإتقان على هذا الجهاز.' : 'سُجلت الحاجة للمراجعة على هذا الجهاز.'}
       </Text>}
       {next && button('الآية التالية', () => onNext(next), true)}
+       {verdict && !next && button('إنهاء الجلسة', onFinish, true)}
     </>}
   </View>;
 }
