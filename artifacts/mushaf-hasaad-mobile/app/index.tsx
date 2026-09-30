@@ -658,9 +658,10 @@ export default function MushafReader() {
     if (selectedVerse) await Clipboard.setStringAsync(`${selectedVerse.content}\nسورة ${chapterName(selectedVerse.chapter_id)}، الآية ${selectedVerse.number}`);
   };
 
+  const showAudioDock = !!audioVerse && !guidedOpen;
   const stageHeight = Math.max(1, compactLandscape
-    ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (audioVerse ? 100 : 12)
-    : viewport.height - topInset - bottomInset - (readingMode ? audioVerse ? 116 : 36 : audioVerse ? 228 : 132));
+    ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (showAudioDock ? 100 : 12)
+    : viewport.height - topInset - bottomInset - (readingMode ? showAudioDock ? 116 : 36 : showAudioDock ? 228 : 132));
   const enteredPage = pageNumberFromInput(pageInput);
   const pageInputValid = enteredPage !== null;
   const imageWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), Math.max(0, stageHeight) * (382.677 / 547.086));
@@ -687,7 +688,7 @@ export default function MushafReader() {
   const saveRange = (start: number, end: number) => updateAudio({
     rangeChapter: rangeUiChapter, rangeStart: start, rangeEnd: end,
   });
-  const guidedBottom = bottomInset + (audioVerse ? compactLandscape ? 105 : 174 : compactLandscape ? 4 : 68);
+  const guidedBottom = bottomInset + (compactLandscape ? 4 : readingMode ? 8 : 68);
   const guidedMaxHeight = Math.max(110, Math.min(
     compactLandscape ? 390 : viewport.height * .43,
     viewport.height - guidedBottom - topInset - 12,
@@ -780,7 +781,7 @@ export default function MushafReader() {
              onAssess={assessGuided} onClose={closeGuided} />
          </View>
        </View>}
-       {!!audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
+       {showAudioDock && audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
          <View style={styles.audioTransport}>
            <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
            <IconButton name="play-skip-forward" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
