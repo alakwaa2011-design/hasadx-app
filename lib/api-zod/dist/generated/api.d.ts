@@ -14458,6 +14458,32 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
     }[];
 }>;
 /**
+ * @summary Sync the fixed public Mushaf or Muyassar tafsir edition to this reader
+ */
+export declare const GetQuranOfflineContentParams: zodV3.ZodObject<{
+    group: zodV3.ZodEnum<["mushafs", "tafsirs"]>;
+    action: zodV3.ZodEnum<["sync", "snapshot"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    group: "mushafs" | "tafsirs";
+    action: "sync" | "snapshot";
+}, {
+    group: "mushafs" | "tafsirs";
+    action: "sync" | "snapshot";
+}>;
+export declare const getQuranOfflineContentQueryTokenMax = 4096;
+export declare const getQuranOfflineContentQueryCursorMax = 4096;
+export declare const GetQuranOfflineContentQueryParams: zodV3.ZodObject<{
+    token: zodV3.ZodOptional<zodV3.ZodString>;
+    cursor: zodV3.ZodOptional<zodV3.ZodString>;
+}, "strip", zodV3.ZodTypeAny, {
+    token?: string | undefined;
+    cursor?: string | undefined;
+}, {
+    token?: string | undefined;
+    cursor?: string | undefined;
+}>;
+export declare const GetQuranOfflineContentResponse: zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodUnknown>;
+/**
  * @summary Get verified Tajweed rules for one word, independent of color font mode
  */
 export declare const getQuranWordTajweedPathSurahNumberMax = 114;

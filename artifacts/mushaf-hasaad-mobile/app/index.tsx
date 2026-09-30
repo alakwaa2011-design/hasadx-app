@@ -11,26 +11,41 @@ import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-au
 import { getListQuranRecitersQueryKey, getQuranAyahTimings, useListQuranReciters } from '@workspace/api-client-react';
 import * as Linking from 'expo-linking';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useReader, type Appearance, type PageDisplay } from '@/context/ReaderContext';
+import { useReader, bookmarkCategoryLabels, type Appearance, type BookmarkCategory, type PageDisplay } from '@/context/ReaderContext';
 import { useColors } from '@/hooks/useColors';
 import { privacyUrl, quranApiOrigin } from '@/lib/api-origin';
 import { useOfflineContent } from '@/lib/offline-content';
 import { TafsirPanel } from '@/components/TafsirPanel';
 import { GuidedPractice } from '@/components/GuidedPractice';
 import { MadaniWordPage } from '@/components/MadaniWordPage';
+import { SimilarVersesPanel } from '@/components/SimilarVersesPanel';
+import { VerseRangePanel } from '@/components/VerseRangePanel';
+import { ReaderKeepAwake } from '@/components/ReaderKeepAwake';
 import { WordActions, type WordSelection } from '@/components/WordActions';
 import {
   PAGE_COUNT, chapterName, chapters, firstPageOfChapter, firstPageOfPart,
   normalize, pageImage, pageLabel, pageVerses, pages, parts, verses, type Verse,
 } from '@/data/quran';
 
-type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'tafsir' | null;
+type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'tafsir' | 'range' | null;
 type IndexTab = 'chapters' | 'parts' | 'bookmarks';
 type StopAt = 'ayah' | 'page' | 'surah';
 const repeats = [1, 3, 5, 10, -1] as const;
 const iconSize = 22;
 const VERSE_FILE_RECITERS = new Set([1_000_159, 2_000_032]);
-type AudioSegment = { startMs: number; endMs: number };
+type AudioSegment = {
+  startMs: number; endMs: number;
+  segments: { wordPosition: number; startMs: number; endMs: number }[];
+};
+
+function getActiveWordPosition(currentTimeMs: number, verseStartMs: number, segments: AudioSegment['segments']): number | null {
+  const relativeMs = currentTimeMs - verseStartMs;
+  if (relativeMs < 0) return null;
+  for (const segment of segments) {
+    if (relativeMs >= segment.startMs && relativeMs < segment.endMs) return segment.wordPosition;
+  }
+  return null;
+}
 
 function pageNumberFromInput(value: string): number | null {
   const digits = value.trim().replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x660))
@@ -61,28 +76,59 @@ function IconButton({
   );
 }
 
+function VerseNumberInput({ label, value, min, max, onCommit, colors }: {
+  label: string; value: number; min: number; max: number;
+  onCommit: (value: number) => void; colors: ReturnType<typeof useColors>;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const commit = () => {
+    const digits = draft.trim().replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x660))
+      .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x6f0));
+    const next = Number(digits);
+    if (/^\d{1,3}$/.test(digits) && Number.isInteger(next) && next >= min && next <= max) {
+      onCommit(next);
+    } else {
+      setDraft(String(value));
+    }
+  };
+  return <TextInput value={draft} onChangeText={setDraft} onBlur={commit} onSubmitEditing={commit}
+    keyboardType="number-pad" maxLength={3} selectTextOnFocus accessibilityLabel={`رقم ${label}`}
+    style={[styles.rangeValueInput, { color: colors.foreground, borderColor: colors.border }]} />;
+}
+
 export default function MushafReader() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const reader = useReader();
   const offlineContent = useOfflineContent();
-  const { page, goToPage, bookmarks, toggleBookmark, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, practice, startPractice, storageError, audio, updateAudio } = reader;
+  const { page, goToPage, bookmarks, toggleBookmark, setBookmarkCategory, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, keepAwake, setKeepAwake, tajweedEnabled, setTajweedEnabled, practice, startPractice, storageError, audio, updateAudio } = reader;
   const [sheet, setSheet] = useState<Sheet>(null);
   const [tab, setTab] = useState<IndexTab>('chapters');
   const [query, setQuery] = useState('');
   const [reciterQuery, setReciterQuery] = useState('');
   const [pageInput, setPageInput] = useState('');
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
+  const [similarVerseKey, setSimilarVerseKey] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<WordSelection | null>(null);
   const viewport = useWindowDimensions();
   const [imageError, setImageError] = useState(false);
   const [audioVerse, setAudioVerse] = useState<Verse | null>(null);
   const [audioSegment, setAudioSegment] = useState<AudioSegment | null>(null);
-  const [pendingSegment, setPendingSegment] = useState<(AudioSegment & { request: number }) | null>(null);
+  const [pendingSegment, setPendingSegment] = useState<(AudioSegment & { request: number; seenUnloaded: boolean }) | null>(null);
   const audioRequest = useRef(0);
+  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingAudioAction = useRef<(() => void) | null>(null);
+  const pauseRequest = useRef(0);
+  const pauseDeadline = useRef(0);
+  const pauseRemaining = useRef(0);
+  const [betweenVerses, setBetweenVerses] = useState(false);
+  const [betweenPaused, setBetweenPaused] = useState(false);
+  const ignoreStaleFinish = useRef(false);
   const currentChapterSource = useRef<string | null>(null);
   const [played, setPlayed] = useState(0);
-  const { reciterId, repeat, stopAt, speed } = audio;
+  const [rangePlayed, setRangePlayed] = useState(0);
+  const [rangeSession, setRangeSession] = useState(false);
+  const { reciterId, repeat, stopAt, speed, repeatMode, rangeChapter, rangeStart, rangeEnd, pauseBetween } = audio;
   const setReciterId = (value: number) => updateAudio({ reciterId: value });
   const setRepeat = (value: number) => updateAudio({ repeat: value });
   const setStopAt = (value: StopAt) => updateAudio({ stopAt: value });
@@ -94,6 +140,9 @@ export default function MushafReader() {
   const wordStatus = useAudioPlayerStatus(wordPlayer);
   const [wordAudioKey, setWordAudioKey] = useState<string | null>(null);
   const [wordError, setWordError] = useState<string | null>(null);
+  const activeWordPosition = audioSegment
+    ? getActiveWordPosition(audioStatus.currentTime * 1000, audioSegment.startMs, audioSegment.segments)
+    : null;
   const catalog = useListQuranReciters({ query: { queryKey: getListQuranRecitersQueryKey(), enabled: !!quranApiOrigin } });
   const reciters = catalog.data?.reciters.filter(reciter => reciter.available !== false) ?? [];
   const shownReciters = reciters.filter(reciter => {
@@ -154,12 +203,33 @@ export default function MushafReader() {
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(error => console.warn('Audio mode', error));
   }, []);
+  useEffect(() => () => {
+    ++audioRequest.current;
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pendingAudioAction.current = null;
+  }, []);
+  const schedulePendingPause = useCallback((request: number, durationMs: number) => {
+    pauseDeadline.current = Date.now() + durationMs;
+    pauseTimer.current = setTimeout(() => {
+      pauseTimer.current = null;
+      const action = pendingAudioAction.current;
+      pendingAudioAction.current = null;
+      setBetweenVerses(false);
+      setBetweenPaused(false);
+      if (request === audioRequest.current) action?.();
+    }, durationMs);
+  }, []);
   useEffect(() => {
     if (sheet !== 'audio') setReciterQuery('');
   }, [sheet]);
   useEffect(() => {
     if (!audioStatus.error) return;
     ++audioRequest.current;
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = null;
+    pendingAudioAction.current = null;
+    setBetweenVerses(false);
+    setBetweenPaused(false);
     player.pause();
     currentChapterSource.current = null;
     setPendingSegment(null);
@@ -180,9 +250,16 @@ export default function MushafReader() {
       return;
     }
     const request = ++audioRequest.current;
+    if (verse.page_id !== currentPage.current) goToPage(verse.page_id);
+    ignoreStaleFinish.current = true;
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = null;
+    pendingAudioAction.current = null;
+    setBetweenVerses(false);
+    setBetweenPaused(false);
     stopWord();
     player.pause();
-    finishHandled.current = false;
+    finishHandled.current = true;
     setAudioError(null);
     setAudioVerse(verse);
     setAudioSegment(null);
@@ -194,12 +271,18 @@ export default function MushafReader() {
         if (!timing.synchronized || timing.verseEndMs <= timing.verseStartMs) {
           throw new Error('توقيت التلاوة غير متاح');
         }
-        const segment = { startMs: timing.verseStartMs, endMs: timing.verseEndMs };
+        const segment: AudioSegment = {
+          startMs: timing.verseStartMs,
+          endMs: timing.verseEndMs,
+          segments: Array.isArray(timing.segments) ? timing.segments.filter(item =>
+            Number.isInteger(item.wordPosition) && item.wordPosition > 0
+            && Number.isFinite(item.startMs) && Number.isFinite(item.endMs) && item.endMs > item.startMs) : [],
+        };
         const audioUrl = timing.audioUrl.startsWith('/api/')
           ? `${quranApiOrigin}${timing.audioUrl}` : timing.audioUrl;
         if (currentChapterSource.current !== audioUrl) {
           currentChapterSource.current = audioUrl;
-          setPendingSegment({ ...segment, request });
+          setPendingSegment({ ...segment, request, seenUnloaded: false });
           player.replace({ uri: audioUrl });
           player.setPlaybackRate(speed);
         } else {
@@ -207,12 +290,15 @@ export default function MushafReader() {
           if (request !== audioRequest.current) return;
           setAudioSegment(segment);
           player.setPlaybackRate(speed);
+          finishHandled.current = false;
           player.play();
         }
       } else {
         currentChapterSource.current = null;
+        setAudioSegment(null);
         player.replace({ uri: `${quranApiOrigin}/api/quran/audio/${reciter}/${verse.chapter_id}/${verse.number}` });
         player.setPlaybackRate(speed);
+        finishHandled.current = false;
         player.play();
       }
     } catch (error) {
@@ -225,14 +311,22 @@ export default function MushafReader() {
       setAudioError('تعذّر تشغيل هذا القارئ أو تحميل توقيت الآية. تحقق من الاتصال أو اختر قارئًا آخر.');
       setSheet('audio');
     }
-  }, [activeReciter, player, speed, stopWord]);
+  }, [activeReciter, player, speed, stopWord, goToPage]);
   useEffect(() => {
-    if (!pendingSegment || !audioStatus.isLoaded || pendingSegment.request !== audioRequest.current) return;
-    const { request, startMs, endMs } = pendingSegment;
+    if (!pendingSegment || pendingSegment.request !== audioRequest.current) return;
+    // replace() is asynchronous on native. An isLoaded=true from the previous
+    // source must never cause us to seek to the new verse in the old recording.
+    if (!audioStatus.isLoaded) {
+      if (!pendingSegment.seenUnloaded) setPendingSegment({ ...pendingSegment, seenUnloaded: true });
+      return;
+    }
+    if (!pendingSegment.seenUnloaded) return;
+    const { request, startMs, endMs, segments } = pendingSegment;
     setPendingSegment(null);
     player.seekTo(startMs / 1000).then(() => {
       if (request !== audioRequest.current) return;
-      setAudioSegment({ startMs, endMs });
+      setAudioSegment({ startMs, endMs, segments });
+      finishHandled.current = false;
       player.play();
     }).catch(() => {
       if (request !== audioRequest.current) return;
@@ -244,9 +338,26 @@ export default function MushafReader() {
     });
   }, [pendingSegment, audioStatus.isLoaded, player]);
   useEffect(() => {
+    if (!pendingSegment) return;
+    const request = pendingSegment.request;
+    const timeout = setTimeout(() => {
+      if (request !== audioRequest.current) return;
+      ++audioRequest.current;
+      player.pause();
+      currentChapterSource.current = null;
+      setPendingSegment(null);
+      setAudioVerse(null);
+      setAudioError('انتهت مهلة تحميل تسجيل القارئ. تحقق من الاتصال وحاول مجددًا.');
+      setSheet('audio');
+    }, 15000);
+    return () => clearTimeout(timeout);
+  }, [pendingSegment?.request, player]);
+  useEffect(() => {
+    if (!audioStatus.didJustFinish) ignoreStaleFinish.current = false;
     const reachedEnd = audioSegment
       ? audioStatus.isLoaded && audioStatus.playing && player.currentTime >= audioSegment.endMs / 1000 - .08
       : audioStatus.didJustFinish;
+    if (!audioSegment && audioStatus.didJustFinish && ignoreStaleFinish.current) return;
     if (!reachedEnd) {
       if (!audioSegment && !audioStatus.didJustFinish) finishHandled.current = false;
       return;
@@ -255,33 +366,121 @@ export default function MushafReader() {
     finishHandled.current = true;
     if (!audioVerse) return;
     if (audioSegment) player.pause();
+    const request = audioRequest.current;
+    const configuredRange = rangeSession && rangeChapter === audioVerse.chapter_id
+      && rangeStart !== null && rangeEnd !== null && rangeStart <= rangeEnd;
+    const stop = () => {
+      setAudioVerse(null);
+      setAudioSegment(null);
+      setPlayed(0);
+      setRangePlayed(0);
+      setBetweenVerses(false);
+      setBetweenPaused(false);
+    };
+    const afterPause = (action: () => void) => {
+      if (pauseTimer.current) clearTimeout(pauseTimer.current);
+      pendingAudioAction.current = action;
+      pauseRequest.current = request;
+      pauseRemaining.current = pauseBetween * 1000;
+      setBetweenVerses(true);
+      setBetweenPaused(false);
+      schedulePendingPause(request, pauseRemaining.current);
+    };
+    const transitionTo = (target: Verse, nextPlayed = 0, nextRangePlayed = rangePlayed) => {
+      setPlayed(nextPlayed);
+      setRangePlayed(nextRangePlayed);
+      afterPause(() => { void playVerse(target); });
+    };
+
+    if (configuredRange && audioVerse.number >= rangeStart && audioVerse.number <= rangeEnd) {
+      if (repeatMode === 'ayah') {
+        if (repeat === -1 || played + 1 < repeat) {
+          setPlayed(value => value + 1);
+          afterPause(() => {
+            player.seekTo(audioSegment ? audioSegment.startMs / 1000 : 0).then(() => {
+              if (request !== audioRequest.current) return;
+              finishHandled.current = false;
+              player.play();
+            }).catch(() => {
+              if (request === audioRequest.current) setAudioError('تعذّر تكرار الآية');
+            });
+          });
+          return;
+        }
+        setPlayed(0);
+        if (audioVerse.number < rangeEnd) {
+          const next = verses.find(v => v.chapter_id === audioVerse.chapter_id && v.number === audioVerse.number + 1);
+          if (next) { transitionTo(next); return; }
+        }
+        stop();
+        return;
+      }
+      if (audioVerse.number < rangeEnd) {
+        const next = verses.find(v => v.chapter_id === audioVerse.chapter_id && v.number === audioVerse.number + 1);
+        if (next) { transitionTo(next); return; }
+      }
+      if (repeat === -1 || rangePlayed + 1 < repeat) {
+        const first = verses.find(v => v.chapter_id === audioVerse.chapter_id && v.number === rangeStart);
+        if (first) { transitionTo(first, 0, rangePlayed + 1); return; }
+      }
+      stop();
+      return;
+    }
+
     if (repeat === -1 || played + 1 < repeat) {
       setPlayed(value => value + 1);
-      player.seekTo((audioSegment?.startMs ?? 0) / 1000).then(() => {
-        finishHandled.current = false;
-        player.play();
-      }).catch(() => setAudioError('تعذّر تكرار الآية'));
+      afterPause(() => {
+        player.seekTo(audioSegment?.startMs ? audioSegment.startMs / 1000 : 0).then(() => {
+          if (request !== audioRequest.current) return;
+          finishHandled.current = false;
+          player.play();
+        }).catch(() => {
+          if (request === audioRequest.current) setAudioError('تعذّر تكرار الآية');
+        });
+      });
       return;
     }
     setPlayed(0);
     const next = verses.find(v => v.chapter_id === audioVerse.chapter_id && v.number === audioVerse.number + 1);
     if (stopAt === 'ayah' || !next || (stopAt === 'page' && next.page_id !== audioVerse.page_id)
       || (stopAt === 'surah' && next.chapter_id !== audioVerse.chapter_id)) {
-      setAudioVerse(null);
-      setAudioSegment(null);
+      stop();
       return;
     }
-    if (next.page_id !== currentPage.current) pageRef.current(next.page_id);
-    void playVerse(next);
+    transitionTo(next);
   }, [audioStatus.currentTime, audioStatus.didJustFinish, audioStatus.isLoaded, audioStatus.playing,
-    audioSegment, audioVerse, played, repeat, stopAt, player, playVerse]);
+    audioSegment, audioVerse, played, rangePlayed, repeat, repeatMode, rangeChapter, rangeStart, rangeEnd,
+    rangeSession, pauseBetween, stopAt, player, playVerse, schedulePendingPause]);
   const stopAudio = () => {
     ++audioRequest.current;
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = null;
+    pendingAudioAction.current = null;
+    setBetweenVerses(false);
+    setBetweenPaused(false);
     player.pause();
     setAudioVerse(null);
     setAudioSegment(null);
     setPendingSegment(null);
     setPlayed(0);
+    setRangePlayed(0);
+    setRangeSession(false);
+  };
+  const toggleAudioPlayback = () => {
+    if (betweenVerses && pendingAudioAction.current) {
+      if (betweenPaused) {
+        setBetweenPaused(false);
+        schedulePendingPause(pauseRequest.current, pauseRemaining.current);
+      } else {
+        if (pauseTimer.current) clearTimeout(pauseTimer.current);
+        pauseTimer.current = null;
+        pauseRemaining.current = Math.max(0, pauseDeadline.current - Date.now());
+        setBetweenPaused(true);
+      }
+      return;
+    }
+    if (audioStatus.playing) player.pause();
+    else player.play();
   };
   const playWord = (word: WordSelection) => {
     const key = `${word.verseKey}:${word.position}`;
@@ -305,8 +504,16 @@ export default function MushafReader() {
   };
   const moveAudio = (direction: -1 | 1) => {
     if (!audioVerse) return;
+    if (rangeSession && rangeChapter === audioVerse.chapter_id
+      && ((direction < 0 && rangeStart !== null && audioVerse.number <= rangeStart)
+        || (direction > 0 && rangeEnd !== null && audioVerse.number >= rangeEnd))) return;
     const target = verses.find(v => v.chapter_id === audioVerse.chapter_id && v.number === audioVerse.number + direction);
-    if (target) { setPlayed(0); if (target.page_id !== page) goToPage(target.page_id); playVerse(target); }
+    if (target) {
+      setPlayed(0);
+      setRangePlayed(0);
+      if (target.page_id !== page) goToPage(target.page_id);
+      playVerse(target);
+    }
   };
   const openVerse = (verse: Verse) => {
     setSelectedVerse(verse);
@@ -354,9 +561,21 @@ export default function MushafReader() {
   const imageHeight = imageWidth * (547.086 / 382.677);
   const wordWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), compactLandscape ? 450 : 640);
   const menuStyle = { backgroundColor: colors.card, borderColor: colors.border };
+  const rangeUiChapter = audioVerse?.chapter_id ?? selectedVerse?.chapter_id ?? visibleVerses[0]?.chapter_id ?? 1;
+  const rangeUiChapterLength = chapters.find(chapter => chapter.id === rangeUiChapter)?.verse_count ?? 1;
+  const rangeSuggestedStart = (audioVerse?.chapter_id === rangeUiChapter ? audioVerse.number
+    : selectedVerse?.chapter_id === rangeUiChapter ? selectedVerse.number
+      : visibleVerses.find(v => v.chapter_id === rangeUiChapter)?.number) ?? 1;
+  const rangeUiStart = rangeChapter === rangeUiChapter && rangeStart !== null ? rangeStart : rangeSuggestedStart;
+  const rangeUiEnd = rangeChapter === rangeUiChapter && rangeEnd !== null ? rangeEnd : rangeUiStart;
+  const rangeIsConfigured = rangeChapter === rangeUiChapter && rangeStart !== null && rangeEnd !== null;
+  const saveRange = (start: number, end: number) => updateAudio({
+    rangeChapter: rangeUiChapter, rangeStart: start, rangeEnd: end,
+  });
 
   return (
     <View testID="mushaf-reader" style={[styles.root, { backgroundColor: surface }]}>
+      {keepAwake && Platform.OS !== 'web' && <ReaderKeepAwake />}
        <View style={[styles.header, compactLandscape && styles.landscapeHeader,
          { paddingTop: topInset + 4, pointerEvents: compactLandscape ? 'box-none' : 'auto' }]}>
         {!readingMode && (
@@ -379,6 +598,8 @@ export default function MushafReader() {
         {pageDisplay === 'words'
            ? <MadaniWordPage key={page} page={page} width={wordWidth} height={stageHeight}
               background={paper} selectedVerseKey={selectedVerse ? `${selectedVerse.chapter_id}:${selectedVerse.number}` : null}
+               activeVerseKey={audioVerse ? `${audioVerse.chapter_id}:${audioVerse.number}` : null}
+               activeWordPosition={activeWordPosition} tajweedEnabled={tajweedEnabled}
               onVersePress={openPrintedWord} />
           : <Pressable testID="mushaf-page" accessibilityRole="button" accessibilityLabel={`صورة صفحة المصحف ${page}، اضغط لإظهار أدوات القراءة`}
               onPress={() => setReadingMode(!readingMode)} style={[styles.paper, {
@@ -406,10 +627,11 @@ export default function MushafReader() {
       </View>
       {!!audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
         <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
-        <IconButton name="play-skip-forward" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
-        <IconButton name={audioStatus.playing ? 'pause' : 'play'} label={audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
-          onPress={() => audioStatus.playing ? player.pause() : player.play()} color={colors.primary} />
-        <IconButton name="play-skip-back" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
+        <IconButton name="play-skip-back" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
+        <IconButton name={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'pause' : 'play'}
+          label={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
+          onPress={toggleAudioPlayback} color={colors.primary} />
+        <IconButton name="play-skip-forward" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
         <Pressable onPress={() => setSheet('audio')} style={styles.audioCaption}><Text numberOfLines={1} style={{ color: fg }}>سورة {chapterName(audioVerse.chapter_id)} · {audioVerse.number}</Text></Pressable>
       </View>}
       {!readingMode && <View style={[styles.dock, compactLandscape && {
@@ -438,7 +660,8 @@ export default function MushafReader() {
                   sheet === 'bookmarks' ? 'علاماتي' : sheet === 'settings' ? 'إعدادات القراءة' :
                     sheet === 'word' ? 'خيارات الكلمة' :
                     sheet === 'verses' ? `آيات الصفحة ${page}` : sheet === 'memorize' ? 'حفظني' :
-                      sheet === 'audio' ? 'التلاوة والتكرار' : sheet === 'tafsir' ? 'تفسير الآية' : 'خيارات الآية'
+                      sheet === 'audio' ? 'التلاوة والتكرار' : sheet === 'tafsir' ? 'تفسير الآية' :
+                        sheet === 'range' ? 'نسخ ومشاركة نطاق آيات' : 'خيارات الآية'
               }</Text>
               <View style={{ width: 44 }} />
             </View>
@@ -466,7 +689,7 @@ export default function MushafReader() {
                       onPress={() => navigate(firstPageOfPart(part.id))} colors={colors} />)
                       : bookmarks.map(bookmark => <Row key={`${bookmark.chapter}:${bookmark.verse}`}
                         title={`سورة ${chapterName(bookmark.chapter)} · الآية ${bookmark.verse}`}
-                        detail={`الصفحة ${bookmark.page}`} onPress={() => navigate(bookmark.page)} colors={colors} />)}
+                         detail={`${bookmarkCategoryLabels[bookmark.category]} · الصفحة ${bookmark.page}`} onPress={() => navigate(bookmark.page)} colors={colors} />)}
                   {tab === 'bookmarks' && !bookmarks.length && <Text style={[styles.empty, { color: colors.mutedForeground }]}>لا توجد علامات محفوظة</Text>}
               </ScrollView>
             </>}
@@ -489,7 +712,7 @@ export default function MushafReader() {
             {sheet === 'bookmarks' && <ScrollView style={styles.list}>
               {bookmarks.length ? bookmarks.map(bookmark =>
                 <Row key={`${bookmark.chapter}:${bookmark.verse}`} title={`سورة ${chapterName(bookmark.chapter)} · الآية ${bookmark.verse}`}
-                  detail={`الصفحة ${bookmark.page}`} onPress={() => {
+                   detail={`${bookmarkCategoryLabels[bookmark.category]} · الصفحة ${bookmark.page}`} onPress={() => {
                     navigate(bookmark.page);
                     setSelectedWord(null);
                     setSelectedVerse(verses.find(v => v.chapter_id === bookmark.chapter && v.number === bookmark.verse) ?? null);
@@ -499,11 +722,11 @@ export default function MushafReader() {
             </ScrollView>}
             {sheet === 'settings' && <ScrollView style={styles.list}>
                <Text style={[styles.sectionTitle, { color: fg }]}>القراءة دون إنترنت</Text>
-               <Row title={pageDisplay === 'images' ? 'تستخدم الصفحات المحفوظة الآن' : 'افتح الصفحات المحفوظة'}
+                <Row title={pageDisplay === 'images' ? 'اعرض الكلمات التفاعلية' : 'اعرض صور صفحات المصحف المحلية'}
                  detail={Platform.OS === 'web'
                    ? 'النص محفوظ؛ صور لم تُفتح قد تحتاج اتصالًا في معاينة المتصفح'
                    : 'صور المصحف تعمل دون اتصال · التلاوة تحتاج اتصالًا'}
-                 onPress={() => { setPageDisplay('images'); close(); }} colors={colors} />
+                  onPress={() => { setPageDisplay(pageDisplay === 'images' ? 'words' : 'images'); close(); }} colors={colors} />
                <Text style={[styles.note, { color: colors.mutedForeground }]}>في تطبيق الجوال: 604 صفحات مصورة ونص 6236 آية للبحث والفهرس، مضمنة دون تنزيل إضافي. العلامات تُحفظ على الجهاز.{Platform.OS === 'web' ? ' معاينة المتصفح تحتاج اتصالًا لصور لم تُفتح من قبل، ويظهر نص الآيات بدلًا منها عند تعذّر الصورة.' : ''}</Text>
                <Text style={[styles.sectionTitle, { color: fg }]}>محتوى إضافي دون إنترنت</Text>
                <Text style={[styles.note, { color: colors.mutedForeground }]}>مصدر بيانات الكلمات: Quran Foundation · mushafs:1 (QCF V2). مصدر الشرح: التفسير الميسر عبر Quran Foundation · tafsirs:16. اختر التنزيل أول مرة (نحو 28 م.ب للبيانات، والخطوط اختيارية ومنفصلة). تُفحص التغييرات بعد ذلك عند فتح التطبيق والعودة إليه، ولا تُعرض نسخة مرّ على فحصها 7 أيام حتى تتجدد.</Text>
@@ -532,9 +755,13 @@ export default function MushafReader() {
                    onPress={offlineContent.cancelFonts} colors={colors} />}
                </>}
                {offlineContent.error && <Text style={[styles.note, { color: colors.destructive }]}>{offlineContent.error}</Text>}
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>الخطوط مورد منفصل عن بيانات Content Sync. عدم تنزيل خط صفحة معينة يمنع عرض كلماتها بخط المصحف بلا إنترنت، وتبقى صورتها متاحة. نطق الكلمات والتجويد ومعانيها وترجمتها والتلاوة لا تدخل في هذا التنزيل وتحتاج الاتصال.</Text>
+                <Text style={[styles.note, { color: colors.mutedForeground }]}>الخطوط مورد منفصل عن بيانات Content Sync. عدم تنزيل خط صفحة معينة يمنع عرض كلماتها بخط المصحف بلا إنترنت، وتبقى صورتها متاحة. نطق الكلمات ومعانيها وترجمتها والتلاوة تحتاج الاتصال؛ خط ألوان التجويد يُحفظ عند عرضه أول مرة.</Text>
               <Row title="القارئ والتكرار" detail="إعدادات التلاوة" onPress={() => setSheet('audio')} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
+               <Row title={tajweedEnabled ? 'ألوان التجويد مفعّلة' : 'تفعيل ألوان التجويد'}
+                 detail="خط QCF V4 الرسمي للكلمات التفاعلية؛ دليل قابل للفتح على الصفحة"
+                 onPress={() => { setTajweedEnabled(!tajweedEnabled); if (pageDisplay !== 'words') setPageDisplay('words'); }}
+                 colors={colors} />
               <View style={styles.segment}>
                 {([['words', 'كلمات تفاعلية'], ['images', 'صور الصفحات']] as [PageDisplay, string][]).map(([id, label]) =>
                    <Pressable key={id} accessibilityRole="button" accessibilityLabel={label}
@@ -554,8 +781,11 @@ export default function MushafReader() {
                     onPress={() => setAppearance(id)}><Text style={[styles.segmentText, { color: appearance === id ? colors.primary : fg }]}>{label}</Text></Pressable>)}
               </View>
               <Row title="وضع القراءة" detail="إخفاء الأدوات لعرض المصحف بوضوح" onPress={() => { setReadingMode(!readingMode); close(); }} colors={colors} />
+               {Platform.OS !== 'web' && <Row title={keepAwake ? 'منع انطفاء الشاشة: يعمل' : 'منع انطفاء الشاشة: متوقف'}
+                 detail="أبقِ الشاشة مضاءة ما دام المصحف مفتوحًا؛ يمكن إيقافه هنا"
+                 onPress={() => setKeepAwake(!keepAwake)} colors={colors} />}
               <Text style={[styles.sectionTitle, { color: fg }]}>حول مصحف حصاد</Text>
-                 <Text style={[styles.note, { color: colors.mutedForeground }]}>صور صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف؛ النص المحلي من quran-db (MIT). بيانات مواضع الكلمات والتفسير من Quran Foundation، والخط QCF V2 من static.qurancdn.com. صور الصفحات والبحث والعلامات مضمنة؛ الكلمات والتفسير يعملان دون اتصال فقط بعد تنزيل مواردهما وتحديثها. الصوت ومعاني الكلمات والتجويد تحتاج الاتصال.</Text>
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>صور صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف؛ النص المحلي من quran-db (MIT). بيانات مواضع الكلمات والتفسير من Quran Foundation، والخطوط QCF V2/V4 الرسمية. الصور والبحث والعلامات والمتشابهات تعمل محليًا؛ الكلمات والتفسير يعملان دون اتصال بعد تنزيل مواردهما، وألوان التجويد بعد تحميل خط الصفحة. الصوت ومعاني الكلمات تحتاج الاتصال.</Text>
               {privacyUrl
                 ? <Row title="سياسة الخصوصية" detail="تفتح في المتصفح"
                     onPress={() => { if (privacyUrl) Linking.openURL(privacyUrl).catch(() => undefined); }} colors={colors} />
@@ -579,15 +809,35 @@ export default function MushafReader() {
               </>}
               <Text selectable style={[styles.verseText, { color: fg }]}>{selectedVerse.content}</Text>
               <Text style={[styles.note, { color: colors.mutedForeground }]}>سورة {chapterName(selectedVerse.chapter_id)} · الآية {selectedVerse.number}</Text>
-              <Row title={bookmarks.some(b => b.chapter === selectedVerse.chapter_id && b.verse === selectedVerse.number)
-                ? 'إزالة العلامة' : 'إضافة علامة'} detail="تحفظ على هذا الجهاز"
-                onPress={() => toggleBookmark(selectedVerse.chapter_id, selectedVerse.number)} colors={colors} />
+              <Text style={[styles.sectionTitle, { color: fg }]}>تصنيف العلامة المحلية</Text>
+              <View style={styles.bookmarkCategories}>
+                {(Object.entries(bookmarkCategoryLabels) as [BookmarkCategory, string][]).map(([category, label]) => {
+                  const selected = bookmarks.some(b => b.chapter === selectedVerse.chapter_id
+                    && b.verse === selectedVerse.number && b.category === category);
+                  return <Pressable key={category} accessibilityRole="button" accessibilityLabel={`علامة: ${label}`}
+                    accessibilityState={{ selected }} onPress={() => setBookmarkCategory(selectedVerse.chapter_id, selectedVerse.number, category)}
+                    style={[styles.bookmarkChip, { borderColor: colors.border, backgroundColor: selected ? colors.secondary : colors.card }]}>
+                    <Text style={{ color: selected ? colors.primary : fg }}>{selected ? '✓  ' : ''}{label}</Text>
+                  </Pressable>;
+                })}
+              </View>
+              {bookmarks.some(b => b.chapter === selectedVerse.chapter_id && b.verse === selectedVerse.number) &&
+                <Row title="إزالة العلامة" detail="لا تحذف الآية أو تقدم القراءة"
+                  onPress={() => toggleBookmark(selectedVerse.chapter_id, selectedVerse.number)} colors={colors} />}
               <Row title="مشاركة الآية" detail="باستخدام مشاركة الجهاز" onPress={() => { shareVerse().catch(() => undefined); }} colors={colors} />
               <Row title="نسخ الآية" detail="نسخ النص الموثق" onPress={() => { copyVerse().catch(() => undefined); }} colors={colors} />
+              <Row title="نسخ أو مشاركة نطاق آيات" detail="من آية إلى آية مع اسم السورة وأرقام الآيات"
+                onPress={() => setSheet('range')} colors={colors} />
+              <Row title="الآيات والعبارات المتشابهة" detail="علاقات منتقاة وتكرارات لفظية محلية"
+                onPress={() => { setSheet(null); setSimilarVerseKey(`${selectedVerse.chapter_id}:${selectedVerse.number}`); }} colors={colors} />
               <Row title="استماع وتكرار" detail="اختر القارئ وعدد المرات" onPress={() => setSheet('audio')} colors={colors} />
               <Row title="تفسير الآية" detail="من المصدر الموثق في حصاد" onPress={() => setSheet('tafsir')} colors={colors} />
               <Row title="ابدأ حفظ هذه الآية" detail="جلسة حفظ موجهة على الجهاز" onPress={() => beginPractice(selectedVerse)} colors={colors} />
             </ScrollView>}
+            {sheet === 'range' && (selectedVerse ?? visibleVerses[0]) &&
+              <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
+                <VerseRangePanel key={(selectedVerse ?? visibleVerses[0]).id} initialVerse={(selectedVerse ?? visibleVerses[0])!} />
+              </ScrollView>}
             {sheet === 'tafsir' && selectedVerse && <ScrollView style={styles.list}>
               <Text style={[styles.note, { color: colors.mutedForeground }]}>سورة {chapterName(selectedVerse.chapter_id)} · الآية {selectedVerse.number}</Text>
               <TafsirPanel verse={selectedVerse} />
@@ -595,7 +845,9 @@ export default function MushafReader() {
             {sheet === 'memorize' && practice && <ScrollView style={styles.list}>
               <GuidedPractice key={`${practice.chapter}:${practice.verse}`}
                 verse={verses.find(v => v.chapter_id === practice.chapter && v.number === practice.verse)!}
-                onPlay={(verse, times) => { setRepeat(times); setStopAt('ayah'); setPlayed(0); playVerse(verse); }}
+               onPlay={(verse, times) => {
+                 setRangeSession(false); setRangePlayed(0); setRepeat(times); setStopAt('ayah'); setPlayed(0); playVerse(verse);
+               }}
                 onPause={() => player.pause()} playing={audioStatus.playing} audioError={audioError}
                  onNext={next => { stopAudio(); startPractice(next.chapter_id, next.number); setSelectedVerse(next); goToPage(next.page_id); }}
                  onFinish={() => { stopAudio(); close(); }} />
@@ -636,6 +888,49 @@ export default function MushafReader() {
                      style={[styles.segmentItem, stopAt === id && { backgroundColor: colors.secondary }]}
                     onPress={() => setStopAt(id)}><Text style={{ color: fg }}>{label}</Text></Pressable>)}
               </View>
+               <Text style={[styles.sectionTitle, { color: fg }]}>نطاق التكرار داخل السورة</Text>
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                 سورة {chapterName(rangeUiChapter)} · {rangeIsConfigured ? 'نطاق محفوظ' : 'اختر بداية أو نهاية لتفعيل النطاق'}
+               </Text>
+               {([
+                 ['من الآية', rangeUiStart, 1, rangeUiEnd, (value: number) => saveRange(value, rangeUiEnd)],
+                 ['إلى الآية', rangeUiEnd, rangeUiStart, rangeUiChapterLength, (value: number) => saveRange(rangeUiStart, value)],
+               ] as [string, number, number, number, (value: number) => void][]).map(([label, value, min, max, setValue]) =>
+                 <View key={label} style={styles.rangeRow}>
+                   <Text style={[styles.rowTitle, { color: fg, flex: 1 }]}>{label}</Text>
+                   <Pressable accessibilityRole="button" accessibilityLabel={`${label} السابقة`}
+                     disabled={value <= min} onPress={() => setValue(value - 1)}
+                     style={[styles.rangeStep, { borderColor: colors.border, opacity: value <= min ? .4 : 1 }]}>
+                     <Ionicons name="remove" size={18} color={fg} />
+                   </Pressable>
+                    <VerseNumberInput key={`${rangeUiChapter}-${label}-${value}`} label={label}
+                      value={value} min={min} max={max} onCommit={setValue} colors={colors} />
+                   <Pressable accessibilityRole="button" accessibilityLabel={`${label} التالية`}
+                     disabled={value >= max} onPress={() => setValue(value + 1)}
+                     style={[styles.rangeStep, { borderColor: colors.border, opacity: value >= max ? .4 : 1 }]}>
+                     <Ionicons name="add" size={18} color={fg} />
+                   </Pressable>
+                 </View>)}
+               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة التكرار</Text>
+               <View style={styles.segment}>
+                 {([['ayah', 'كل آية'], ['range', 'النطاق كاملًا']] as const).map(([id, label]) =>
+                   <Pressable key={id} accessibilityRole="button" accessibilityState={{ selected: repeatMode === id }}
+                     style={[styles.segmentItem, repeatMode === id && { backgroundColor: colors.secondary }]}
+                     onPress={() => {
+                       updateAudio({ repeatMode: id, ...(id === 'range' && !rangeIsConfigured
+                         ? { rangeChapter: rangeUiChapter, rangeStart: rangeUiStart, rangeEnd: rangeUiEnd } : {}) });
+                       setPlayed(0);
+                       setRangePlayed(0);
+                     }}><Text style={{ color: fg }}>{label}</Text></Pressable>)}
+               </View>
+               <Text style={[styles.sectionTitle, { color: fg }]}>الفاصل بين الآيات والتكرار</Text>
+               <View style={styles.segment}>{[0, .5, 1, 2, 3].map(value =>
+                 <Pressable key={value} accessibilityRole="button" accessibilityLabel={`فاصل ${value} ثانية`}
+                   accessibilityState={{ selected: pauseBetween === value }}
+                   style={[styles.segmentItem, pauseBetween === value && { backgroundColor: colors.secondary }]}
+                   onPress={() => updateAudio({ pauseBetween: value })}>
+                   <Text style={{ color: fg }}>{value === 0 ? 'دون' : `${value}ث`}</Text>
+                 </Pressable>)}</View>
               <Text style={[styles.sectionTitle, { color: fg }]}>السرعة</Text>
               <View style={styles.segment}>{[.75, 1, 1.25].map(value =>
                  <Pressable key={value} accessibilityRole="button" accessibilityLabel={`سرعة ${value}`}
@@ -645,8 +940,14 @@ export default function MushafReader() {
               {!!audioError && <Text style={[styles.note, { color: colors.destructive }]}>{audioError}</Text>}
               <Pressable disabled={!activeReciter} style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: activeReciter ? 1 : .5 }]}
                 onPress={() => {
-                  const start = selectedVerse ?? visibleVerses[0];
-                  if (start) { setPlayed(0); playVerse(start); close(); }
+                   const start = rangeIsConfigured
+                     ? verses.find(v => v.chapter_id === rangeUiChapter && v.number === rangeUiStart)
+                     : selectedVerse ?? visibleVerses[0];
+                   if (start) {
+                     setPlayed(0); setRangePlayed(0); setRangeSession(rangeIsConfigured);
+                     if (start.page_id !== currentPage.current) goToPage(start.page_id);
+                     playVerse(start); close();
+                   }
                 }}>
                 <Text style={[styles.primaryLabel, { color: colors.primaryForeground }]}>بدء التلاوة</Text>
               </Pressable>
@@ -655,6 +956,15 @@ export default function MushafReader() {
           </View>
         </View>
       </Modal>
+      {!!similarVerseKey && <SimilarVersesPanel verseKey={similarVerseKey} onClose={() => setSimilarVerseKey(null)}
+        onNavigate={(verseKey, pageId) => {
+          const [chapter, ayah] = verseKey.split(':').map(Number);
+          goToPage(pageId);
+          setSelectedWord(null);
+          setSelectedVerse(verses.find(v => v.chapter_id === chapter && v.number === ayah) ?? null);
+          setSimilarVerseKey(null);
+          setSheet('verse');
+        }} />}
     </View>
   );
 }
@@ -701,7 +1011,13 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 19, fontWeight: '700' },
   segment: { flexDirection: 'row-reverse', gap: 7, marginVertical: 10 },
   segmentItem: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 42, borderRadius: 12 },
+  rangeRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 46 },
+  rangeStep: { width: 36, height: 34, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 10 },
+  rangeValueInput: { width: 62, height: 38, borderWidth: 1, borderRadius: 10, textAlign: 'center', fontSize: 16 },
+  rangeValue: { minWidth: 28, textAlign: 'center', fontWeight: '700', fontSize: 16 },
   segmentText: { fontSize: 14, fontWeight: '700' },
+  bookmarkCategories: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
+  bookmarkChip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
   list: { maxHeight: 520, flexShrink: 1, minHeight: 0 },
   pageFormInline: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginVertical: 8 },
   pageInput: { flex: 1 },

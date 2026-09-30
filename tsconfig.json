@@ -23,6 +23,9 @@
     },
     {
       "path": "./lib/slide-templates"
+    },
+    {
+      "path": "./lib/quran-similarity"
     }
   ]
 }

@@ -2,41 +2,135 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Font from 'expo-font';
+import { File, Paths } from 'expo-file-system';
 import { getGetQuranMadaniPageQueryKey, useGetQuranMadaniPage } from '@workspace/api-client-react';
 import { chapterName, pageImage, pageVerses } from '@/data/quran';
 import { quranApiOrigin } from '@/lib/api-origin';
 import { useColors } from '@/hooks/useColors';
 import type { WordSelection } from '@/components/WordActions';
 import { useOfflineContent, type OfflinePage } from '@/lib/offline-content';
+import { TajweedLegend } from '@/components/TajweedLegend';
 
 type Decoration = { kind: 'surah' | 'bismillah'; chapter: number };
 const bismillah = 'ﱁ ﱂ ﱃ ﱄ';
-async function loadPageFonts(page: number, resolveFont: (page: number, online: boolean) => Promise<string | null>, online: boolean) {
+const tajweedFontUrls = (page: number) => [
+  `https://verses.quran.foundation/fonts/quran/hafs/v4/colrv1/ttf/p${page}.ttf`,
+  `https://static.qurancdn.com/fonts/quran/hafs/v4/ttf/p${page}.ttf`,
+];
+const tajweedFontLoads = new Map<number, Promise<void>>();
+
+async function isTrueType(file: File) {
+  if (!file.exists || !file.size || file.size <= 1000) return false;
+  const header = new Uint8Array((await file.arrayBuffer()).slice(0, 4));
+  return (header[0] === 0 && header[1] === 1 && header[2] === 0 && header[3] === 0)
+    || String.fromCharCode(...header) === 'OTTO';
+}
+
+async function loadTajweedFontUncached(page: number) {
+  const family = `qcf-v4-p${page}`;
+  if (Font.isLoaded(family)) return;
+  if (Platform.OS === 'web') {
+    let lastError: unknown;
+    for (const uri of tajweedFontUrls(page)) {
+      try {
+        await Font.loadAsync({ [family]: { uri } });
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError ?? new Error(`خط QCF V4 للصفحة ${page} غير متاح`);
+  }
+
+  const target = new File(Paths.document, `qcf-v4-p${page}.ttf`);
+  if (await isTrueType(target)) {
+    // Preserve the validated offline copy if font registration fails transiently.
+    await Font.loadAsync({ [family]: { uri: target.uri } });
+    return;
+  }
+
+  let lastError: unknown;
+  for (const [index, uri] of tajweedFontUrls(page).entries()) {
+    const temporary = new File(Paths.document, `qcf-v4-p${page}-${index}.partial`);
+    try {
+      const downloaded = await File.downloadFileAsync(uri, temporary, { idempotent: true });
+      if (!(await isTrueType(downloaded))) throw new Error('ملف خط QCF V4 غير صالح');
+      // A valid target is never replaced by a competing download. Only an
+      // invalid/incomplete old target can be discarded before the move.
+      if (target.exists && !(await isTrueType(target))) target.delete();
+      downloaded.move(target);
+      await Font.loadAsync({ [family]: { uri: target.uri } });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (temporary.exists) temporary.delete();
+      // Retain the validated target even if Font.loadAsync failed.
+    }
+  }
+  throw lastError ?? new Error(`خط QCF V4 للصفحة ${page} غير متاح`);
+}
+
+function loadTajweedFont(page: number): Promise<void> {
+  const existing = tajweedFontLoads.get(page);
+  if (existing) return existing;
+  const loading = loadTajweedFontUncached(page);
+  tajweedFontLoads.set(page, loading);
+  void loading.finally(() => { if (tajweedFontLoads.get(page) === loading) tajweedFontLoads.delete(page); }).catch(() => undefined);
+  return loading;
+}
+
+async function loadV2Font(page: number, resolveFont: (page: number, online: boolean) => Promise<string | null>, online: boolean) {
   const family = `qcf-v2-p${page}`;
-  const pending: Promise<void>[] = [];
   if (!Font.isLoaded(family)) {
     const uri = await resolveFont(page, online);
     if (!uri) throw new Error(`خط QCF V2 للصفحة ${page} لم يُنزّل`);
-    pending.push(Font.loadAsync({ [family]: { uri } }));
+    await Font.loadAsync({ [family]: { uri } });
   }
-  if (!Font.isLoaded('qcf-v2-bismillah')) {
-    const uri = await resolveFont(1, online);
-    if (!uri) throw new Error('خط البسملة لم يُنزّل');
-    pending.push(Font.loadAsync({ 'qcf-v2-bismillah': { uri } }));
-  }
-  await Promise.race([
-    Promise.all(pending),
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QCF font timeout')), 15000)),
-  ]);
 }
 
-export function MadaniWordPage({ page, width, height, background, selectedVerseKey, onVersePress }: {
+async function loadBismillahFont(resolveFont: (page: number, online: boolean) => Promise<string | null>, online: boolean) {
+  if (Font.isLoaded('qcf-v2-bismillah')) return;
+  const uri = await resolveFont(1, online);
+  if (!uri) throw new Error('خط البسملة لم يُنزّل');
+  await Font.loadAsync({ 'qcf-v2-bismillah': { uri } });
+}
+
+async function loadPageFonts(
+  page: number,
+  resolveFont: (page: number, online: boolean) => Promise<string | null>,
+  online: boolean,
+  tajweedEnabled: boolean,
+): Promise<'v2' | 'v4'> {
+  let tajweedFontError: unknown;
+  if (tajweedEnabled) {
+    try {
+      await Promise.race([
+        loadTajweedFont(page),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QCF V4 font timeout')), 8000)),
+      ]);
+      await loadBismillahFont(resolveFont, online);
+      return 'v4';
+    } catch (error) {
+      tajweedFontError = error;
+    }
+  }
+  await loadV2Font(page, resolveFont, online);
+  await loadBismillahFont(resolveFont, online);
+  if (tajweedEnabled && tajweedFontError) console.warn('تعذر تحميل خط التجويد الملون؛ استُخدم خط QCF V2', tajweedFontError);
+  return 'v2';
+}
+
+export function MadaniWordPage({ page, width, height, background, selectedVerseKey, onVersePress, tajweedEnabled = false, activeVerseKey = null, activeWordPosition = null }: {
   page: number; width: number; height: number; background: string;
   selectedVerseKey?: string | null;
   onVersePress: (word: WordSelection | { verseKey: string }) => void;
+  tajweedEnabled?: boolean;
+  activeVerseKey?: string | null;
+  activeWordPosition?: number | null;
 }) {
   const colors = useColors();
   const [fontStatus, setFontStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [fontVersion, setFontVersion] = useState<'v2' | 'v4'>('v2');
   const [offlineData, setOfflineData] = useState<OfflinePage | null>(null);
   const [localReady, setLocalReady] = useState(false);
   const [fallbackImageError, setFallbackImageError] = useState(false);
@@ -44,7 +138,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
   const [offline, setOffline] = useState(
     () => Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.onLine,
   );
-  const family = `qcf-v2-p${page}`;
+  const family = `${fontVersion === 'v4' && tajweedEnabled ? 'qcf-v4' : 'qcf-v2'}-p${page}`;
   const { data: onlineData, isError, refetch } = useGetQuranMadaniPage(page, {
     query: { queryKey: getGetQuranMadaniPageQueryKey(page), enabled: !!quranApiOrigin && !offline, retry: 1, staleTime: Infinity },
   });
@@ -74,7 +168,11 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     setFontStatus('loading');
     const load = async () => {
       try {
-        await loadPageFonts(page, content.font, !offline && !!quranApiOrigin);
+        const version = await Promise.race([
+          loadPageFonts(page, content.font, !offline && !!quranApiOrigin, tajweedEnabled),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QCF font timeout')), 20000)),
+        ]);
+        if (active) setFontVersion(version);
         if (active) setFontStatus('ready');
       } catch (error) {
         console.warn('تعذر تحميل خط المصحف التفاعلي', error);
@@ -83,7 +181,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     };
     load();
     return () => { active = false; };
-  }, [family, page, offline, content.font]);
+  }, [page, offline, content.font, tajweedEnabled]);
 
   const layout = useMemo(() => {
     const decorations = new Map<number, Decoration>();
@@ -137,7 +235,9 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
         </Text>
         {!!quranApiOrigin && !offline && <Pressable accessibilityRole="button" onPress={() => {
           setFontStatus('loading');
-           loadPageFonts(page, content.font, true).then(() => setFontStatus('ready')).catch(() => setFontStatus('error'));
+           loadPageFonts(page, content.font, true, tajweedEnabled)
+             .then(version => { setFontVersion(version); setFontStatus('ready'); })
+             .catch(() => setFontStatus('error'));
           refetch();
         }}><Text style={{ color: colors.primary, fontWeight: '700' }}>إعادة المحاولة</Text></Pressable>}
       </View>
@@ -160,6 +260,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     width, height, paddingHorizontal: width * .075, paddingVertical: height * .06,
     backgroundColor: background, borderColor: colors.border,
   }]}>
+     {tajweedEnabled && <TajweedLegend fontFallback={fontVersion === 'v2' && fontStatus === 'ready'} />}
     {Array.from({ length: rowCount }, (_, i) => i + 1).map(row => {
       const line = firstLines && firstLineStart
         ? firstLines[row - firstLineStart]
@@ -188,12 +289,18 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
                  glyphOnly: !!offlineData, page }
             : { verseKey: word.verseKey })}
           style={({ pressed }) => [styles.word, {
-            backgroundColor: selectedVerseKey === word.verseKey ? colors.secondary : 'transparent',
+             backgroundColor: selectedVerseKey === word.verseKey
+               ? colors.secondary
+               : activeVerseKey === word.verseKey ? `${colors.primary}18` : 'transparent',
+             borderWidth: activeVerseKey === word.verseKey && activeWordPosition === word.position ? 1 : 0,
+             borderColor: colors.primary,
             opacity: pressed ? .55 : 1,
           }]}>
           <Text allowFontScaling={false} style={[styles.glyph, {
-            fontFamily: family, fontSize, lineHeight: rowHeight,
-            color: word.type === 'end' ? colors.primary : colors.foreground,
+             fontFamily: family, fontSize, lineHeight: rowHeight,
+             color: word.type === 'end' ? colors.primary : colors.foreground,
+             opacity: activeVerseKey === word.verseKey && activeWordPosition !== null
+               && activeWordPosition !== undefined && activeWordPosition !== word.position ? .82 : 1,
           }]}>{word.glyph}</Text>
         </Pressable>)}
       </View>;

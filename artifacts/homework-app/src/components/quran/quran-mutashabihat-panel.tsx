@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpLeft, GitCompareArrows, Loader2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { getQuranMutashabihat, type QuranMutashabihatCategory } from "@/data/quran/mutashabihat-relations";
-import { findRepeatedPhrases, getQuranPhraseIndex, getSharedPhrase, getWordDifferences, type QuranPhraseIndex } from "@/data/quran/mutashabihat-phrases";
+import { getQuranSimilarPassages, type QuranSimilarPassageCategory } from "@/data/quran/mutashabihat-relations";
+import { getQuranPhraseIndex, getSharedPhrase, getWordDifferences, type QuranPhraseIndex } from "@/data/quran/mutashabihat-phrases";
 
 type Verse = { chapter_id: number; number: number; page_id: number; content: string };
 type Chapter = { id: number; name: string };
 type Corpus = { verses: Map<string, Verse>; chapters: Map<number, string>; phraseIndex: QuranPhraseIndex };
 
-type ResultCategory = QuranMutashabihatCategory | "repeated_verse" | "repeated_phrase";
 type ResultFilter = "all" | "exact" | "phrase" | "variation";
-const categoryLabels: Record<ResultCategory, { ar: string; en: string }> = {
+const categoryLabels: Record<QuranSimilarPassageCategory, { ar: string; en: string }> = {
   repeated_verse: { ar: "نص الآية متكرر", en: "Repeated verse" },
   repeated_phrase: { ar: "عبارة مشتركة", en: "Repeated phrase" },
   lafzi: { ar: "عبارة متطابقة", en: "Shared wording" },
@@ -60,21 +59,7 @@ export function QuranMutashabihatPanel({
   useEffect(() => setVisibleCount(12), [filter]);
   const relations = useMemo(() => {
     if (!corpus) return [];
-    const curated = getQuranMutashabihat(verseKey);
-    const curatedByVerse = new Map(curated.map((relation) => [relation.otherVerseKey, relation.category]));
-    const repeated = findRepeatedPhrases(corpus.phraseIndex, verseKey);
-    const repeatedKeys = new Set(repeated.map((relation) => relation.otherVerseKey));
-    return [
-      ...repeated.map((relation) => ({
-        otherVerseKey: relation.otherVerseKey,
-        category: (relation.exactVerse
-          ? "repeated_verse"
-          : curatedByVerse.get(relation.otherVerseKey) ?? "repeated_phrase") as ResultCategory,
-        exactVerse: relation.exactVerse,
-      })),
-      ...curated.filter((relation) => !repeatedKeys.has(relation.otherVerseKey))
-        .map((relation) => ({ ...relation, exactVerse: false })),
-    ];
+    return getQuranSimilarPassages(corpus.phraseIndex, verseKey);
   }, [corpus, verseKey]);
   const filterCounts = {
     all: relations.length,
