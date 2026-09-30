@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "مصحف حصاد",
+    "slug": "mushaf-hasaad-mobile",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "mushaf-hasaad-mobile",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-splash-screen", {
+        "image": "./assets/images/icon.png",
+        "imageWidth": 140,
+        "resizeMode": "contain",
+        "backgroundColor": "#225739"
+      }]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
