@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View, type TextStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurTargetView, BlurView } from 'expo-blur';
 import * as Font from 'expo-font';
@@ -335,7 +335,9 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
                  color: word.type === 'end' ? colors.primary : colors.foreground,
                  opacity: concealed ? .4 : activeVerseKey === word.verseKey && activeWordPosition !== null
                    && !playingWord && word.type === 'word' ? .86 : 1,
-               }, concealed && styles.webConceal]}>{word.glyph}</Text>}
+                }, night && tajweedEnabled && fontVersion === 'v4' && (
+                  Platform.OS === 'web' ? styles.nightTajweedWeb : styles.nightTajweedNative
+                ), concealed && styles.webConceal]}>{word.glyph}</Text>}
         </Pressable>;
         })}
       </View>;
@@ -352,6 +354,8 @@ const styles = StyleSheet.create({
   glyph: { textAlign: 'center', includeFontPadding: false, writingDirection: 'rtl' },
   concealedGlyph: { overflow: 'hidden', borderRadius: 4 },
   webConceal: { filter: 'blur(4px)' },
+  nightTajweedWeb: { filter: 'invert(1) hue-rotate(180deg) brightness(1.4)' },
+  nightTajweedNative: { filter: [{ invert: 1 }, { hueRotate: '180deg' }, { brightness: 1.4 }] as unknown as TextStyle['filter'] },
   chapter: { textAlign: 'center', fontSize: 15, fontWeight: '700' },
   fallback: { position: 'absolute', top: 8, left: 8, right: 8, padding: 8, borderRadius: 8, borderWidth: 1, gap: 4, alignItems: 'center' },
 });

@@ -50,9 +50,14 @@ function VerseText({
         <Text
           key={`${index}-${word}`}
           style={highlighted.has(index)
-            ? { color: colors.accentForeground, backgroundColor: colors.accent }
+            ? {
+              color: colors.foreground,
+              backgroundColor: `${colors.accent}33`,
+              textDecorationLine: 'underline',
+              textDecorationColor: colors.accent,
+            }
             : different.has(index)
-              ? { color: colors.primary, backgroundColor: colors.secondary }
+              ? { color: colors.primary, backgroundColor: colors.secondary, fontWeight: '700' }
               : undefined}
         >
           {word}{' '}
@@ -128,6 +133,16 @@ export function SimilarVersesPanel({
                   <Text style={[styles.count, { color: colors.mutedForeground }]}>
                     المواضع المتشابهة: {filtered.length}
                   </Text>
+                  <View style={styles.legend} accessibilityLabel="دليل تمييز الكلمات">
+                     <View style={[styles.legendItem, { backgroundColor: `${colors.accent}33`, borderColor: colors.accent }]}>
+                      <Ionicons name="link-outline" size={15} color={colors.accent} />
+                      <Text style={[styles.legendText, { color: colors.foreground }]}>مشترك</Text>
+                    </View>
+                    <View style={[styles.legendItem, { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                      <Ionicons name="swap-horizontal-outline" size={15} color={colors.primaryForeground} />
+                      <Text style={[styles.legendText, { color: colors.primaryForeground }]}>مختلف</Text>
+                    </View>
+                  </View>
                   <View style={styles.filters} accessibilityRole="tablist">
                     {FILTERS.map(({ id, label }) => (
                       <Pressable
@@ -183,13 +198,18 @@ export function SimilarVersesPanel({
                             {categoryLabels[category]}
                           </Text>
                         </View>
-                        <Text style={[styles.caption, { color: colors.mutedForeground }]}>الآية الحالية</Text>
-                        <VerseText
-                          text={current.content}
-                          highlighted={shared.first}
-                          different={different.first}
-                          colors={colors}
-                        />
+                        <View style={[styles.currentSection, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                          <View style={styles.sectionTitle}>
+                            <Ionicons name="book-outline" size={15} color={colors.mutedForeground} />
+                            <Text style={[styles.caption, { color: colors.mutedForeground }]}>الآية الحالية</Text>
+                          </View>
+                          <VerseText
+                            text={current.content}
+                            highlighted={shared.first}
+                            different={different.first}
+                            colors={colors}
+                          />
+                        </View>
                         <Pressable
                           accessibilityRole="button"
                           accessibilityLabel={`الانتقال إلى ${heading(otherVerseKey)}`}
@@ -197,11 +217,19 @@ export function SimilarVersesPanel({
                             onNavigate(otherVerseKey, other.page_id);
                             onClose();
                           }}
-                          style={[styles.target, { borderTopColor: colors.border }]}
+                          style={[
+                            styles.target,
+                            { backgroundColor: colors.secondary, borderColor: colors.primary },
+                          ]}
                         >
                           <View style={styles.targetHeading}>
-                            <Text style={[styles.caption, { color: colors.primary }]}>{heading(otherVerseKey)}</Text>
-                            <Ionicons name="arrow-up-left-box" size={17} color={colors.primary} />
+                            <View style={styles.targetTitle}>
+                              <Text style={[styles.caption, { color: colors.primary }]}>الموضع المشابه</Text>
+                              <Text style={[styles.targetLocation, { color: colors.mutedForeground }]}>{heading(otherVerseKey)}</Text>
+                            </View>
+                            <View style={styles.navigateIcon}>
+                              <Ionicons name="arrow-up-left-box" size={21} color={colors.primary} />
+                            </View>
                           </View>
                           <VerseText
                             text={other.content}
@@ -254,18 +282,26 @@ const styles = StyleSheet.create({
   closeButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   content: { padding: 16, paddingBottom: 30, gap: 11 },
   count: { fontSize: 12, fontWeight: '600', textAlign: 'right' },
+  legend: { flexDirection: 'row-reverse', gap: 7, marginTop: -3, marginBottom: 1 },
+  legendItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 30, paddingHorizontal: 9, borderWidth: 1, borderRadius: 15 },
+  legendText: { fontSize: 11, fontWeight: '700' },
   filters: { flexDirection: 'row-reverse', gap: 6, marginBottom: 4 },
   filter: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 38, paddingHorizontal: 2, borderWidth: 1, borderRadius: 20 },
   filterText: { fontSize: 11, fontWeight: '700' },
   empty: { padding: 14, borderRadius: 12, textAlign: 'right', lineHeight: 24, overflow: 'hidden' },
-  matchCard: { borderWidth: 1, borderRadius: 16, padding: 13, gap: 7 },
+  matchCard: { borderWidth: 1, borderRadius: 16, padding: 13, gap: 9 },
   matchHeading: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 2 },
   matchTitle: { flexShrink: 1, fontSize: 14, fontWeight: '700', textAlign: 'right' },
   badge: { overflow: 'hidden', borderRadius: 13, paddingHorizontal: 9, paddingVertical: 5, fontSize: 10, fontWeight: '700' },
   caption: { fontSize: 11, fontWeight: '600', textAlign: 'right' },
   verseText: { fontSize: 20, lineHeight: 39, textAlign: 'right', writingDirection: 'rtl' },
-  target: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 3, paddingTop: 9 },
-  targetHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
+  currentSection: { borderWidth: 1, borderRadius: 13, padding: 10, gap: 5 },
+  sectionTitle: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
+  target: { borderWidth: 1, borderRadius: 13, marginTop: 1, padding: 10, minHeight: 44 },
+  targetHeading: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
+  targetTitle: { alignItems: 'flex-start', gap: 2 },
+  targetLocation: { fontSize: 10, textAlign: 'right' },
+  navigateIcon: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
   limit: { textAlign: 'center', fontSize: 12, paddingVertical: 5 },
   attribution: { fontSize: 11, lineHeight: 19, textAlign: 'right', marginTop: 3 },
   links: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 7 },

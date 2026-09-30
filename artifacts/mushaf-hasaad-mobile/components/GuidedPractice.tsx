@@ -15,20 +15,20 @@ const steps = [
 ] as const;
 
 const headings = [
-  'استمع', 'اقرأ الآية بصوت واضح', 'أكمل الكلمات المخفية',
-  'سمّع الآية دون النظر', 'اربط الآيات معًا', 'كيف كان تسميعك؟',
+  'استمع', 'اقرأ الآية بوضوح', 'أكمل الكلمات المخفية',
+  'سمّع دون النظر', 'اربط الآيات', 'قيّم تسميعك',
 ];
 const descriptions = [
-  'ستتكرر التلاوة تلقائيًا. ركز على مخارج الكلمات وترتيبها.',
-  'اقرأ معها من صفحة المصحف مرة أو مرتين حتى يثبت إيقاع الآية.',
-  'اضغط على أي كلمة مخفية في صفحة المصحف إذا احتجت تلميحًا.',
-  'بعد التسميع اكشف الآية على الصفحة وقارن ما قرأته بالنص.',
-  'اقرأ نهاية الآية السابقة مع بداية هذه الآية، ثم أعدهما دون توقف.',
-  'اختر تقييمًا صادقًا لنحدد الخطوة التالية.',
+  'استمع للتلاوة المتكررة، وركّز على مخارج الكلمات وترتيبها.',
+  'اقرأ معها من المصحف مرة أو مرتين لتثبيت إيقاع الآية.',
+  'اضغط كلمة مخفية في المصحف لطلب تلميح.',
+  'بعد التسميع، اكشف الآية وقارن قراءتك بالنص.',
+  'اقرأ نهاية الآية السابقة مع بداية هذه، ثم أعدهما بلا توقف.',
+  'قيّم تسميعك بصدق لنحدد الخطوة التالية.',
 ];
 
 export function GuidedPractice({ verse, playing, audioError, onStageChange, onRepeatCountChange,
-  onReplay, onTogglePlayback, onReveal, onAssess, onClose, maxHeight }: {
+  onReplay, onTogglePlayback, onReveal, onAssess, onMinimize, onClose, maxHeight }: {
   verse: Verse;
   playing: boolean;
   audioError: string | null;
@@ -38,6 +38,7 @@ export function GuidedPractice({ verse, playing, audioError, onStageChange, onRe
   onTogglePlayback: () => void;
   onReveal: () => void;
   onAssess: (result: 'mastered' | 'review') => void;
+  onMinimize: () => void;
   onClose: () => void;
   maxHeight: number;
 }) {
@@ -66,6 +67,10 @@ export function GuidedPractice({ verse, playing, audioError, onStageChange, onRe
           onPress={onTogglePlayback} style={[styles.icon, { backgroundColor: colors.secondary }]}>
           <Ionicons name={playing ? 'pause' : 'play'} size={20} color={primary} />
         </Pressable>
+        <Pressable testID="guided-minimize" accessibilityRole="button" accessibilityLabel="تصغير جلسة الحفظ"
+          onPress={onMinimize} style={styles.icon}>
+          <Ionicons name="chevron-down" size={21} color={colors.mutedForeground} />
+        </Pressable>
         <Pressable testID="guided-close" accessibilityRole="button" accessibilityLabel="إغلاق جلسة الحفظ"
           onPress={onClose} style={styles.icon}>
           <Ionicons name="close" size={21} color={colors.mutedForeground} />
@@ -85,7 +90,7 @@ export function GuidedPractice({ verse, playing, audioError, onStageChange, onRe
           </Pressable>)}
       </View>
       <View style={[styles.stageCard, { backgroundColor: colors.secondary }]}>
-        <Ionicons name={steps[stage].icon} size={25} color={primary} />
+        <Ionicons name={steps[stage].icon} size={22} color={primary} />
         <Text style={[styles.stageTitle, { color: primary }]}>
           {stage === 0 ? `استمع ${practice.repeatCount === -1 ? 'بتكرار مستمر' : `${practice.repeatCount} مرات`}` : headings[stage]}
         </Text>
@@ -123,7 +128,7 @@ export function GuidedPractice({ verse, playing, audioError, onStageChange, onRe
 const styles = StyleSheet.create({
   panel: { position: 'absolute', left: 12, right: 12, bottom: 0, borderWidth: 1, borderRadius: 22, zIndex: 8, overflow: 'hidden', elevation: 8,
     shadowColor: '#000', shadowOpacity: .15, shadowRadius: 18 },
-  content: { padding: 14, gap: 14 },
+  content: { padding: 12, gap: 9 },
   heading: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   eyebrow: { fontSize: 12, fontWeight: '800', textAlign: 'right' },
   verseLabel: { fontSize: 15, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
@@ -132,9 +137,9 @@ const styles = StyleSheet.create({
   step: { flex: 1, alignItems: 'center', minWidth: 0, gap: 4 },
   stepIcon: { height: 32, width: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   stepText: { fontSize: 9, fontWeight: '700', textAlign: 'center' },
-  stageCard: { borderRadius: 15, padding: 12, alignItems: 'center', gap: 5 },
+  stageCard: { borderRadius: 15, padding: 9, alignItems: 'center', gap: 3 },
   stageTitle: { fontSize: 14, fontWeight: '800', textAlign: 'center' },
-  description: { fontSize: 12, lineHeight: 19, textAlign: 'center', writingDirection: 'rtl' },
+  description: { fontSize: 12, lineHeight: 17, textAlign: 'center', writingDirection: 'rtl' },
   repeatRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   repeatLabel: { fontSize: 11, fontWeight: '700' },
   repeatOptions: { flexDirection: 'row-reverse', gap: 3 },

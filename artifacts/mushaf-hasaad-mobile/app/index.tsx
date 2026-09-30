@@ -72,7 +72,9 @@ function IconButton({
   name, label, onPress, color, active = false,
 }: { name: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void; color: string; active?: boolean }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} testID={`action-${label}`}
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
+      accessibilityHint={label === 'آيات الصفحة' ? 'يفتح قائمة الآيات الموجودة في هذه الصفحة' : undefined}
+      {...(Platform.OS === 'web' ? { title: label } : {})} testID={`action-${label}`}
       style={({ pressed }) => [styles.iconButton, { opacity: pressed ? .45 : 1, backgroundColor: active ? `${color}1e` : 'transparent' }]}>
       <Ionicons name={name} size={iconSize} color={color} />
     </Pressable>
@@ -106,6 +108,8 @@ export default function MushafReader() {
   const offlineContent = useOfflineContent();
   const { page, goToPage, bookmarks, toggleBookmark, setBookmarkCategory, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, keepAwake, setKeepAwake, tajweedEnabled, setTajweedEnabled, practice, startPractice, updatePractice, assessPractice, storageError, audio, updateAudio } = reader;
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [aboutExpanded, setAboutExpanded] = useState(false);
+  const [offlineExpanded, setOfflineExpanded] = useState(false);
   const [audioTab, setAudioTab] = useState<AudioTab>('reciters');
   const openAudio = (tab: AudioTab = 'reciters') => { setAudioTab(tab); setSheet('audio'); };
   const [tab, setTab] = useState<IndexTab>('chapters');
@@ -116,6 +120,7 @@ export default function MushafReader() {
   const [similarVerseKey, setSimilarVerseKey] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<WordSelection | null>(null);
   const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedMinimized, setGuidedMinimized] = useState(false);
   const [hiddenWords, setHiddenWords] = useState<number[]>([]);
   const [hideSeed, setHideSeed] = useState(0);
   const [silentReadPosition, setSilentReadPosition] = useState<number | null>(null);
@@ -123,6 +128,7 @@ export default function MushafReader() {
   const viewport = useWindowDimensions();
   const [imageError, setImageError] = useState(false);
   const [audioVerse, setAudioVerse] = useState<Verse | null>(null);
+  const [audioDockExpanded, setAudioDockExpanded] = useState(false);
   const [audioSegment, setAudioSegment] = useState<AudioSegment | null>(null);
   const [pendingSegment, setPendingSegment] = useState<(AudioSegment & { request: number; seenUnloaded: boolean }) | null>(null);
   const audioRequest = useRef(0);
@@ -608,6 +614,7 @@ export default function MushafReader() {
       setSelectedVerse(target);
       if (target.page_id !== page) goToPage(target.page_id);
       setGuidedOpen(true);
+      setGuidedMinimized(false);
       close();
       if (!saved || saved && practice?.stage === 0) void playVerse(target);
       if (saved && practice?.stage === 4) {
@@ -636,6 +643,7 @@ export default function MushafReader() {
     stopAudio();
     guidedLinkEnd.current = null;
     setGuidedOpen(false);
+    setGuidedMinimized(false);
   };
   const assessGuided = (result: 'mastered' | 'review') => {
     if (!guidedVerse) return;
@@ -660,8 +668,8 @@ export default function MushafReader() {
 
   const showAudioDock = !!audioVerse && !guidedOpen;
   const stageHeight = Math.max(1, compactLandscape
-    ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (showAudioDock ? 100 : 12)
-    : viewport.height - topInset - bottomInset - (readingMode ? showAudioDock ? 116 : 36 : showAudioDock ? 228 : 132));
+    ? viewport.height - Math.max(topInset, 8) - bottomInset - 44 - (showAudioDock ? audioDockExpanded ? 100 : 62 : 12)
+    : viewport.height - topInset - bottomInset - (readingMode ? showAudioDock ? audioDockExpanded ? 116 : 75 : 36 : showAudioDock ? audioDockExpanded ? 228 : 185 : 132));
   const enteredPage = pageNumberFromInput(pageInput);
   const pageInputValid = enteredPage !== null;
   const imageWidth = Math.min(viewport.width - (compactLandscape ? 110 : 12), Math.max(0, stageHeight) * (382.677 / 547.086));
@@ -762,38 +770,60 @@ export default function MushafReader() {
             <IconButton name="options-outline" label="إظهار أدوات القراءة" onPress={() => setReadingMode(false)} color={fg} />
           </View>}
       </View>
-       {guidedOpen && guidedVerse && !sheet && <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { zIndex: 5 }]}>
+        {guidedOpen && guidedVerse && !sheet && <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { zIndex: 5 }]}>
          <View style={[styles.guidedPosition, {
            bottom: guidedBottom,
            left: 12, right: compactLandscape ? Math.max(12, viewport.width - 450) : 12,
-           height: guidedMaxHeight,
+            height: guidedMinimized ? 56 : guidedMaxHeight,
          }]}>
-           <GuidedPractice verse={guidedVerse}
+            {guidedMinimized
+              ? <View testID="guided-compact" style={[styles.guidedCompact, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.guidedCompactText}>
+                    <Text numberOfLines={1} style={[styles.guidedCompactTitle, { color: fg }]}>
+                      حفظني · سورة {chapterName(guidedVerse.chapter_id)} · الآية {guidedVerse.number}
+                    </Text>
+                    <Text style={[styles.guidedCompactStage, { color: colors.primary }]}>
+                      {['استمع', 'اقرأ', 'إخفاء جزئي', 'سمّع', 'اربط', 'قيّم'][practice?.stage ?? 0]}
+                    </Text>
+                  </View>
+                  <IconButton name="chevron-up-outline" label="توسيع حفظني" onPress={() => setGuidedMinimized(false)} color={colors.primary} />
+                  <IconButton name="close-outline" label="إغلاق حفظني" onPress={closeGuided} color={fg} />
+                </View>
+              : <GuidedPractice verse={guidedVerse}
              playing={(betweenVerses && !betweenPaused) || audioStatus.playing}
              audioError={audioError}
              maxHeight={guidedMaxHeight}
+              onMinimize={() => setGuidedMinimized(true)}
              onStageChange={changeGuidedStage}
              onRepeatCountChange={count => updatePractice({ repeatCount: count })}
              onReplay={() => { setPlayed(0); setRangePlayed(0); void playVerse(guidedVerse); }}
              onTogglePlayback={() => audioVerse ? toggleAudioPlayback()
                : practice?.stage === 4 ? changeGuidedStage(4) : void playVerse(guidedVerse)}
              onReveal={() => updatePractice({ revealed: true })}
-             onAssess={assessGuided} onClose={closeGuided} />
-         </View>
+              onAssess={assessGuided} onClose={closeGuided} />}
+          </View>
        </View>}
-       {showAudioDock && audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
+        {showAudioDock && audioVerse && <View testID="audio-dock"
+          style={[styles.audioDock, !audioDockExpanded && styles.audioDockCompact,
+            compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }],
+            { backgroundColor: colors.secondary }]}>
          <View style={styles.audioTransport}>
-           <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
+            {audioDockExpanded && <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />}
            <IconButton name="play-skip-forward" label="الآية السابقة" onPress={() => moveAudio(-1)} color={fg} />
            <IconButton name={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'pause' : 'play'}
              label={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
              onPress={toggleAudioPlayback} color={colors.primary} />
            <IconButton name="play-skip-back" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
-           <Pressable accessibilityRole="button" accessibilityLabel="إعدادات التلاوة" onPress={() => openAudio()} style={styles.audioCaption}>
-             <Text numberOfLines={1} style={{ color: fg }}>سورة {chapterName(audioVerse.chapter_id)} · {audioVerse.number}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="إعدادات التلاوة" onPress={() => openAudio()} style={styles.audioCaption}>
+              <Text numberOfLines={1} style={[styles.audioCaptionText, { color: fg }]}>
+                سورة {chapterName(audioVerse.chapter_id)} · الآية {audioVerse.number}{!audioDockExpanded ? ` · ${repeat === -1 ? '∞' : repeat}×` : ''}
+              </Text>
            </Pressable>
+            <IconButton name={audioDockExpanded ? 'chevron-down-outline' : 'chevron-up-outline'}
+              label={audioDockExpanded ? 'تصغير مشغل التلاوة' : 'توسيع مشغل التلاوة'}
+              onPress={() => setAudioDockExpanded(value => !value)} color={fg} />
          </View>
-         <View style={styles.audioQuickRow}>
+          {audioDockExpanded && <View style={styles.audioQuickRow}>
            <Pressable testID="audio-repeat-button" accessibilityRole="button" accessibilityLabel={`خيارات التكرار، ${repeat === -1 ? 'مستمر' : `${repeat} مرات`}`}
              onPress={() => openAudio('playback')}
              style={({ pressed }) => [styles.audioQuickButton, { backgroundColor: colors.card, opacity: pressed ? .6 : 1 }]}>
@@ -810,7 +840,7 @@ export default function MushafReader() {
                {compactLandscape ? 'سرعة' : 'السرعة ·'} {speed}×
              </Text>
            </Pressable>
-         </View>
+         </View>}
       </View>}
       {!readingMode && <View style={[styles.dock, compactLandscape && {
         position: 'absolute', right: 7, top: Math.max(topInset, 8) + 64,
@@ -901,49 +931,10 @@ export default function MushafReader() {
                   }} colors={colors} />)
                 : <Text style={[styles.empty, { color: colors.mutedForeground }]}>لا توجد علامات بعد. اختر آية من قائمة آيات الصفحة لإضافتها.</Text>}
             </ScrollView>}
-            {sheet === 'settings' && <ScrollView style={styles.list}>
-               <Text style={[styles.sectionTitle, { color: fg }]}>القراءة دون إنترنت</Text>
-                <Row title={pageDisplay === 'images' ? 'اعرض الكلمات التفاعلية' : 'اعرض صور صفحات المصحف المحلية'}
-                 detail={Platform.OS === 'web'
-                   ? 'النص محفوظ؛ صور لم تُفتح قد تحتاج اتصالًا في معاينة المتصفح'
-                   : 'صور المصحف تعمل دون اتصال · التلاوة تحتاج اتصالًا'}
-                  onPress={() => { setPageDisplay(pageDisplay === 'images' ? 'words' : 'images'); close(); }} colors={colors} />
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>في تطبيق الجوال: 604 صفحات مصورة ونص 6236 آية للبحث والفهرس، مضمنة دون تنزيل إضافي. العلامات تُحفظ على الجهاز.{Platform.OS === 'web' ? ' معاينة المتصفح تحتاج اتصالًا لصور لم تُفتح من قبل، ويظهر نص الآيات بدلًا منها عند تعذّر الصورة.' : ''}</Text>
-               <Text style={[styles.sectionTitle, { color: fg }]}>محتوى إضافي دون إنترنت</Text>
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>مصدر بيانات الكلمات: Quran Foundation · mushafs:1 (QCF V2). مصدر الشرح: التفسير الميسر عبر Quran Foundation · tafsirs:16. اختر التنزيل أول مرة (نحو 28 م.ب للبيانات، والخطوط اختيارية ومنفصلة). تُفحص التغييرات بعد ذلك عند فتح التطبيق والعودة إليه، ولا تُعرض نسخة مرّ على فحصها 7 أيام حتى تتجدد.</Text>
-               {(['mushafs', 'tafsirs'] as const).map(group => {
-                 const meta = offlineContent.manifests[group];
-                 const title = group === 'mushafs' ? 'مواضع كلمات المصحف' : 'التفسير الميسر';
-                 return <Text key={group} style={[styles.note, { color: colors.mutedForeground }]}>
-                   {title} · {meta && offlineContent.available(group)
-                     ? `محفوظ ≈ ${(meta.bytes / 1024 / 1024).toFixed(1)} م.ب · آخر فحص ${new Date(meta.checkedAt).toLocaleDateString('ar')}`
-                     : meta ? 'يحتاج تحديثًا (مرّ 7 أيام)' : 'لم يُنزّل'}
-                 </Text>;
-               })}
-               {Platform.OS !== 'web'
-                 ? <Row title="تنزيل / تحديث الكلمات والتفسير" detail="يلزم اتصال بالإنترنت؛ نحو 28 م.ب أول مرة" onPress={() => { void offlineContent.syncNow(); }} colors={colors} />
-                 : <Text style={[styles.note, { color: colors.mutedForeground }]}>تنزيل المحتوى التفاعلي للاستخدام دون اتصال متاح في تطبيق الهاتف فقط، وليس معاينة المتصفح.</Text>}
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>
-                 خطوط QCF V2 من static.qurancdn.com (Quran Foundation) · {Platform.OS === 'web'
-                   ? 'معاينة المتصفح لا تحفظ الخطوط؛ العرض التفاعلي بلا اتصال غير متاح فيها.'
-                   : `${offlineContent.fontCount} / 604 صفحة محفوظة · ${(offlineContent.fontBytes / 1024 / 1024).toFixed(1)} م.ب`}
-               </Text>
-               {Platform.OS !== 'web' && <Row title="تنزيل خطوط الصفحات للقراءة التفاعلية" detail="تنزيل اختياري كبير، يمكن إيقافه واستكماله لاحقًا"
-                 onPress={() => { void offlineContent.downloadFonts(); }} colors={colors} />}
-               {offlineContent.progress && <>
-                 <Text testID="content-sync-progress" style={[styles.note, { color: colors.primary }]}>{offlineContent.progress}</Text>
-                 {offlineContent.progress.startsWith('خطوط') && <Row title="إيقاف تنزيل الخطوط" detail="تبقى الخطوط المكتملة محفوظة"
-                   onPress={offlineContent.cancelFonts} colors={colors} />}
-               </>}
-               {offlineContent.error && <Text style={[styles.note, { color: colors.destructive }]}>{offlineContent.error}</Text>}
-                <Text style={[styles.note, { color: colors.mutedForeground }]}>الخطوط مورد منفصل عن بيانات Content Sync. عدم تنزيل خط صفحة معينة يمنع عرض كلماتها بخط المصحف بلا إنترنت، وتبقى صورتها متاحة. نطق الكلمات ومعانيها وترجمتها والتلاوة تحتاج الاتصال؛ خط ألوان التجويد يُحفظ عند عرضه أول مرة.</Text>
-              <Row title="التلاوة" detail="القرّاء والتكرار والسرعة" onPress={() => openAudio()} colors={colors} />
-              <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
-               <Row title={tajweedEnabled ? 'ألوان التجويد مفعّلة' : 'تفعيل ألوان التجويد'}
-                 detail="خط QCF V4 الرسمي للكلمات التفاعلية؛ دليل قابل للفتح على الصفحة"
-                 onPress={() => { setTajweedEnabled(!tajweedEnabled); if (pageDisplay !== 'words') setPageDisplay('words'); }}
-                 colors={colors} />
-              <View style={styles.segment}>
+             {sheet === 'settings' && <ScrollView style={styles.list}>
+               <Row title="التلاوة" detail="القارئ · التكرار والسرعة · النطاق" onPress={() => openAudio()} colors={colors} />
+               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
+               <View style={styles.segment}>
                 {([['words', 'كلمات تفاعلية'], ['images', 'صور الصفحات']] as [PageDisplay, string][]).map(([id, label]) =>
                    <Pressable key={id} accessibilityRole="button" accessibilityLabel={label}
                      accessibilityState={{ selected: pageDisplay === id }} testID={`display-${id}`}
@@ -952,7 +943,10 @@ export default function MushafReader() {
                     <Text style={[styles.segmentText, { color: pageDisplay === id ? colors.primary : fg }]}>{label}</Text>
                   </Pressable>)}
               </View>
-                <Text style={[styles.note, { color: colors.mutedForeground }]}>الكلمات التفاعلية تعمل دون اتصال للصفحات التي حُفظت بياناتها وخطّها، وإلا تُعرض صورة الصفحة المضمّنة. صور الصفحات متاحة دائمًا على الهاتف.</Text>
+               <Row title={tajweedEnabled ? 'ألوان التجويد مفعّلة' : 'تفعيل ألوان التجويد'}
+                 detail="دليل الألوان متاح على صفحة المصحف"
+                 onPress={() => { setTajweedEnabled(!tajweedEnabled); if (pageDisplay !== 'words') setPageDisplay('words'); }}
+                 colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>مظهر المصحف</Text>
               <View style={styles.segment}>
                 {([['day', 'نهاري'], ['warm', 'دافئ'], ['night', 'ليلي']] as [Appearance, string][]).map(([id, label]) =>
@@ -965,8 +959,54 @@ export default function MushafReader() {
                {Platform.OS !== 'web' && <Row title={keepAwake ? 'منع انطفاء الشاشة: يعمل' : 'منع انطفاء الشاشة: متوقف'}
                  detail="أبقِ الشاشة مضاءة ما دام المصحف مفتوحًا؛ يمكن إيقافه هنا"
                  onPress={() => setKeepAwake(!keepAwake)} colors={colors} />}
-              <Text style={[styles.sectionTitle, { color: fg }]}>حول مصحف حصاد</Text>
+               <Row title="القراءة دون إنترنت" detail={offlineExpanded ? 'إخفاء خيارات التنزيل' : 'صور الصفحات متاحة على الهاتف · إدارة تنزيل الكلمات والتفسير'}
+                 onPress={() => setOfflineExpanded(value => !value)} colors={colors} />
+               {offlineExpanded && <>
+                 {(['mushafs', 'tafsirs'] as const).map(group => {
+                   const meta = offlineContent.manifests[group];
+                   const title = group === 'mushafs' ? 'مواضع كلمات المصحف' : 'التفسير الميسر';
+                   return <Text key={group} style={[styles.note, { color: colors.mutedForeground }]}>
+                     {title} · {meta && offlineContent.available(group)
+                       ? `محفوظ · آخر فحص ${new Date(meta.checkedAt).toLocaleDateString('ar')}`
+                       : meta ? 'يحتاج تحديثًا' : 'لم يُنزّل'}
+                   </Text>;
+                 })}
+                 {Platform.OS !== 'web'
+                   ? <>
+                       <Row title="تنزيل / تحديث الكلمات والتفسير" detail="يلزم اتصال بالإنترنت؛ نحو 28 م.ب أول مرة"
+                         onPress={() => { void offlineContent.syncNow(); }} colors={colors} />
+                       <Row title="تنزيل خطوط الصفحات للقراءة التفاعلية" detail="اختياري، يمكن إيقافه واستكماله لاحقًا"
+                         onPress={() => { void offlineContent.downloadFonts(); }} colors={colors} />
+                     </>
+                   : <Text style={[styles.note, { color: colors.mutedForeground }]}>تنزيل المحتوى التفاعلي للاستخدام دون اتصال متاح في تطبيق الهاتف فقط، وليس معاينة المتصفح.</Text>}
+                 {offlineContent.progress && <>
+                   <Text testID="content-sync-progress" style={[styles.note, { color: colors.primary }]}>{offlineContent.progress}</Text>
+                   {offlineContent.progress.startsWith('خطوط') && <Row title="إيقاف تنزيل الخطوط" detail="تبقى الخطوط المكتملة محفوظة"
+                     onPress={offlineContent.cancelFonts} colors={colors} />}
+                 </>}
+                 {offlineContent.error && <Text style={[styles.note, { color: colors.destructive }]}>{offlineContent.error}</Text>}
+               </>}
+               <Row title="حول مصحف حصاد" detail={aboutExpanded ? 'إخفاء المصادر والمعلومات التقنية' : 'المصادر والمعلومات التقنية'}
+                 onPress={() => setAboutExpanded(value => !value)} colors={colors} />
+               {aboutExpanded && <>
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>في تطبيق الجوال: 604 صفحات مصورة ونص 6236 آية للبحث والفهرس، مضمنة دون تنزيل إضافي. العلامات تُحفظ على الجهاز.{Platform.OS === 'web' ? ' معاينة المتصفح تحتاج اتصالًا لصور لم تُفتح من قبل، ويظهر نص الآيات بدلًا منها عند تعذّر الصورة.' : ''}</Text>
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>مصدر بيانات الكلمات: Quran Foundation · mushafs:1 (QCF V2). مصدر الشرح: التفسير الميسر عبر Quran Foundation · tafsirs:16. اختر التنزيل أول مرة (نحو 28 م.ب للبيانات، والخطوط اختيارية ومنفصلة). تُفحص التغييرات بعد ذلك عند فتح التطبيق والعودة إليه، ولا تُعرض نسخة مرّ على فحصها 7 أيام حتى تتجدد.</Text>
+                 {(['mushafs', 'tafsirs'] as const).map(group => {
+                   const meta = offlineContent.manifests[group];
+                   const title = group === 'mushafs' ? 'مواضع كلمات المصحف' : 'التفسير الميسر';
+                   return <Text key={group} style={[styles.note, { color: colors.mutedForeground }]}>
+                     {title} · {meta && offlineContent.available(group)
+                       ? `محفوظ ≈ ${(meta.bytes / 1024 / 1024).toFixed(1)} م.ب · آخر فحص ${new Date(meta.checkedAt).toLocaleDateString('ar')}`
+                       : meta ? 'يحتاج تحديثًا (مرّ 7 أيام)' : 'لم يُنزّل'}
+                   </Text>;
+                 })}
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>خطوط QCF V2 من static.qurancdn.com (Quran Foundation) · {Platform.OS === 'web'
+                   ? 'معاينة المتصفح لا تحفظ الخطوط؛ العرض التفاعلي بلا اتصال غير متاح فيها.'
+                   : `${offlineContent.fontCount} / 604 صفحة محفوظة · ${(offlineContent.fontBytes / 1024 / 1024).toFixed(1)} م.ب`}</Text>
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>الخطوط مورد منفصل عن بيانات Content Sync. عدم تنزيل خط صفحة معينة يمنع عرض كلماتها بخط المصحف بلا إنترنت، وتبقى صورتها متاحة. نطق الكلمات ومعانيها وترجمتها والتلاوة تحتاج الاتصال؛ خط ألوان التجويد يُحفظ عند عرضه أول مرة.</Text>
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>الكلمات التفاعلية تعمل دون اتصال للصفحات التي حُفظت بياناتها وخطّها، وإلا تُعرض صورة الصفحة المضمّنة. صور الصفحات متاحة دائمًا على الهاتف.</Text>
                  <Text style={[styles.note, { color: colors.mutedForeground }]}>صور صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف؛ النص المحلي من quran-db (MIT). بيانات مواضع الكلمات والتفسير من Quran Foundation، والخطوط QCF V2/V4 الرسمية. الصور والبحث والعلامات والمتشابهات تعمل محليًا؛ الكلمات والتفسير يعملان دون اتصال بعد تنزيل مواردهما، وألوان التجويد بعد تحميل خط الصفحة. الصوت ومعاني الكلمات تحتاج الاتصال.</Text>
+               </>}
               {privacyUrl
                 ? <Row title="سياسة الخصوصية" detail="تفتح في المتصفح"
                     onPress={() => { if (privacyUrl) Linking.openURL(privacyUrl).catch(() => undefined); }} colors={colors} />
@@ -1213,7 +1253,7 @@ export default function MushafReader() {
                 </Pressable>
               </View>
             </>}
-          </View>
+           </View>
         </View>
       </Modal>
       {!!similarVerseKey && <SimilarVersesPanel verseKey={similarVerseKey} onClose={() => setSimilarVerseKey(null)}
@@ -1253,6 +1293,11 @@ const styles = StyleSheet.create({
   storageWarning: { textAlign: 'center', fontSize: 12, paddingHorizontal: 12 },
   pageStage: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'hidden' },
   guidedPosition: { position: 'absolute' },
+  guidedCompact: { minHeight: 56, borderWidth: 1, borderRadius: 16, flexDirection: 'row-reverse',
+    alignItems: 'center', paddingHorizontal: 8, elevation: 6 },
+  guidedCompactText: { flex: 1, minWidth: 0, paddingHorizontal: 6 },
+  guidedCompactTitle: { fontSize: 12, fontWeight: '800', textAlign: 'right', writingDirection: 'rtl' },
+  guidedCompactStage: { fontSize: 11, fontWeight: '700', textAlign: 'right' },
   zoomReset: { position: 'absolute', bottom: 10, left: 10, flexDirection: 'row-reverse', alignItems: 'center',
     gap: 6, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, minHeight: 38, zIndex: 2 },
   showTools: { position: 'absolute', top: 10, right: 10 },
@@ -1261,6 +1306,7 @@ const styles = StyleSheet.create({
   feedback: { fontSize: 15 },
   dock: { flexDirection: 'row-reverse', justifyContent: 'center', alignItems: 'center', paddingTop: 8, gap: 6 },
   audioDock: { alignItems: 'center', paddingHorizontal: 8, minHeight: 89 },
+  audioDockCompact: { minHeight: 48, justifyContent: 'center' },
   audioTransport: { flexDirection: 'row-reverse', alignItems: 'center', width: '100%' },
   audioQuickRow: { flexDirection: 'row-reverse', gap: 8, width: '100%', paddingBottom: 7 },
   audioQuickButton: { flex: 1, minHeight: 37, borderRadius: 12, flexDirection: 'row-reverse',
@@ -1286,6 +1332,7 @@ const styles = StyleSheet.create({
   audioFooter: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
   landscapeAudioDock: { position: 'absolute', left: 8, bottom: 0, zIndex: 3, borderRadius: 14, width: 260, maxWidth: 260 },
   audioCaption: { flex: 1, alignItems: 'flex-end', paddingRight: 8 },
+  audioCaptionText: { fontSize: 12, textAlign: 'right', writingDirection: 'rtl' },
   pagePill: { borderWidth: 1, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, minWidth: 85, alignItems: 'center' },
   pagePillText: { fontSize: 15, fontWeight: '700' },
   dockDivider: { height: 26, width: 1, marginHorizontal: 3 },
