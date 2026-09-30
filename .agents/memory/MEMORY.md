@@ -114,27 +114,19 @@
 - [Public game start throttling](public-game-start-throttling.md) — public-link room creation is limited atomically in PostgreSQL per durable link token, never in process memory or by caller IP.
 - [PostgreSQL prepared statements](postgres-prepared-multi-command.md) — parameterized client queries must contain one SQL command; split multi-step cleanup into separate queries inside one transaction.
 - [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.
-- [Quran guided pause preference](quran-guided-pause-preference.md) — guided memorization must preserve the selected inter-ayah pause, including zero, instead of imposing its own delay.
+- [Quran audio implementation notes](quran-audio-implementation-notes.md) — pause, seamless playback, audible checks, mobile redirects, and chapter-only reciters.
 - [Quran partial hiding](quran-partial-hiding.md) — a one-ayah guided session hides alternating words; progressive range logic must not reveal the only target ayah.
 - [Quran tafsir playback follow](quran-tafsir-playback-follow.md) — tafsir follows the playing ayah unless the user locks the current explanation.
-- [Quran continuous audio handoff](quran-continuous-audio-handoff.md) — zero-pause recitation must keep chapter audio mounted and advance with prefetched timings; ayah files preload the next source.
-- [Audible Web Audio boundary checks](quran-audible-boundary-checks.md) — sample a pulled Web Audio graph at the actual boundary; UI labels, network preloads, and unconnected analysers cannot prove audibility.
 - [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — component tests need explicit cleanup and native DOM assertions; wrap audio consumers in their real provider.
 - [Public Quran delivery](public-quran-delivery.md) — ship the anonymous reader as an isolated /quran experience first; create a separate artifact only after shared Quran libraries exist.
 - [Pending recitation release gates](pending-recitation-release-gates.md) — unverified custom reciters may appear only to reader sessions; gate catalogs, timing, and direct audio routes together.
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
-- [Quran page swipe capture](quran-page-swipe-capture.md) — mount native touch capture after loading; Quran word controls are valid swipe origins, not toolbar exclusions.
-- [Quran mobile viewport ownership](quran-mobile-viewport-ownership.md) — portrait and landscape both stay interactive; short landscape uses one full-screen paper with height-sized QCF content.
-- [Expo Quran audio redirect](expo-quran-audio-redirect.md) — CORS alone cannot fix public word/verse audio redirects blocked by same-origin resource policy in Expo web.
-- [Mobile chapter recitations](mobile-quran-chapter-recitations.md) — catalog entries without an availability flag are usable; chapter-only voices need verified ayah timings and bounded playback, not the verse redirect.
-- [Manual Quran reader appearance](quran-reader-appearance.md) — night/day preference must drive the whole reader palette, not just the page surface.
+- [Quran reader interaction notes](quran-reader-interaction-notes.md) — page swipes, viewport, appearance, word actions, QCF line metrics, and toolbar density.
 - [Quran continuous navigation](quran-continuous-navigation.md) — manual jumps in continuous mode must freeze scroll observation and reset scrollTop, or browser anchoring can cascade through pages.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
 - [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.
 - [Shared upload cleanup scope](shared-upload-cleanup-scope.md) — cleanup jobs must enumerate only their own namespace; table references cannot prove ownership of every object under shared uploads.
-- [Quran ayah action ergonomics](quran-ayah-action-ergonomics.md) — ayah-number tap opens actions; word pronunciation requires a stationary long-press, while light word taps stay silent.
-- [QCF page line metrics](qcf-page-line-metrics.md) — never use normal line-height for page fonts; their oversized glyph bounds push canonical 15-line pages past the paper.
 - [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.
 - [Quran specialized bookmarks](quran-specialized-bookmarks.md) — each ayah has one categorized bookmark; old or missing categories normalize to “stopped here.”
 - [Browser film audio startup](browser-film-audio-startup.md) — canplay and paused=false do not mean narration has started; pre-roll the same audio element before the recording clock.
@@ -148,12 +140,10 @@
 - [Guided Quran plan opt-in](quran-guided-plan-opt-in.md) — “memorize from current ayah” must never enter or update My Plan; only explicitly starting from My Plan enables its prompts and progress.
 - [Mushaf Hasaad icon treatment](quran-icon-source.md) — preserve the approved square artwork untouched; never add app-side masking, rounding, framing, or overlays.
 - [Guided Quran overlay stacking](quran-guided-overlay-stacking.md) — raise the player dock only while its settings popover is open; keep the guided panel clear of the dock.
-- [Quran compact toolbar alignment](quran-compact-toolbar-alignment.md) — settings stay at the left edge, navigation at the right; medium widths need modestly wider controls rather than an empty center.
-- [Quran desktop toolbar continuity](quran-desktop-toolbar-continuity.md) — keep reader controls in one balanced line; neither viewport-edge clusters nor a tiny centered pair of clusters.
-- [Quran page-picker density](quran-page-picker-density.md) — the vertical page list should be only wide enough for page numbers; direct number entry remains available separately.
 - [Third-party recitation provenance](third-party-recitation-provenance.md) — a Commons license label does not prove the uploader owned a reciter's externally sourced recording; verify upstream rights before public reuse.
 - [Native Quran sync storage](native-quran-sync-storage.md) — Content Sync snapshots exceed Android AsyncStorage's usual size; keep bulk data in document files and commit only a small manifest.
 - [Mushaf word order](mushaf-word-order.md) — Content Sync position_in_line can repeat or skip; sort glyphs by unique position_in_page within each physical line.
 - [Native QCF color support](native-qcf-colrv1.md) — loading a V4 COLRv1 font does not prove that iOS and Android render its color layers; verify on physical devices.
 - [Expo device preview readiness](expo-device-preview-readiness.md) — an Expo HTTP 200 may come from an older Metro process; check the managed workflow and iOS bundle before sharing its QR.
 - [Expo Quran pinch gestures](expo-quran-pinch-gestures.md) — two-finger PanResponder needs browser touch-action disabled or the web preview zooms its whole viewport.
+- [Guided Quran printed-page parity](guided-quran-printed-page-parity.md) — حفظني must teach on the printed QCF page, not a second plain-text rendering; conceal unavailable page fallbacks.

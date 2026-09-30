@@ -29,7 +29,7 @@ import {
   normalize, pageImage, pageLabel, pageVerses, pages, parts, verses, type Verse,
 } from '@/data/quran';
 
-type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'tafsir' | 'range' | null;
+type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'audio' | 'tafsir' | 'range' | null;
 type IndexTab = 'chapters' | 'parts' | 'bookmarks';
 type AudioTab = 'reciters' | 'playback' | 'range';
 type StopAt = 'ayah' | 'page' | 'surah';
@@ -104,7 +104,7 @@ export default function MushafReader() {
   const insets = useSafeAreaInsets();
   const reader = useReader();
   const offlineContent = useOfflineContent();
-  const { page, goToPage, bookmarks, toggleBookmark, setBookmarkCategory, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, keepAwake, setKeepAwake, tajweedEnabled, setTajweedEnabled, practice, startPractice, storageError, audio, updateAudio } = reader;
+  const { page, goToPage, bookmarks, toggleBookmark, setBookmarkCategory, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, keepAwake, setKeepAwake, tajweedEnabled, setTajweedEnabled, practice, startPractice, updatePractice, assessPractice, storageError, audio, updateAudio } = reader;
   const [sheet, setSheet] = useState<Sheet>(null);
   const [audioTab, setAudioTab] = useState<AudioTab>('reciters');
   const openAudio = (tab: AudioTab = 'reciters') => { setAudioTab(tab); setSheet('audio'); };
@@ -115,6 +115,11 @@ export default function MushafReader() {
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
   const [similarVerseKey, setSimilarVerseKey] = useState<string | null>(null);
   const [selectedWord, setSelectedWord] = useState<WordSelection | null>(null);
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [hiddenWords, setHiddenWords] = useState<number[]>([]);
+  const [hideSeed, setHideSeed] = useState(0);
+  const [silentReadPosition, setSilentReadPosition] = useState<number | null>(null);
+  const guidedLinkEnd = useRef<string | null>(null);
   const viewport = useWindowDimensions();
   const [imageError, setImageError] = useState(false);
   const [audioVerse, setAudioVerse] = useState<Verse | null>(null);
@@ -148,6 +153,25 @@ export default function MushafReader() {
   const activeWordPosition = audioSegment && audioStatus.playing
     ? getActiveWordPosition(audioStatus.currentTime * 1000, audioSegment.startMs, audioSegment.segments)
     : null;
+  const guidedVerse = practice && verses.find(v => v.chapter_id === practice.chapter && v.number === practice.verse);
+  const guidedVerseKey = guidedVerse ? `${guidedVerse.chapter_id}:${guidedVerse.number}` : null;
+  const isWordHidden = useCallback((verseKey: string, position: number) => {
+    if (!guidedOpen || verseKey !== guidedVerseKey || !practice || hiddenWords.includes(position)) return false;
+    if (practice.stage === 3) return !practice.revealed;
+    if (practice.stage !== 2) return false;
+    const count = guidedVerse?.content.trim().split(/\s+/).length ?? 0;
+    return count <= 1 || (position + hideSeed) % 2 === 0;
+  }, [guidedOpen, guidedVerseKey, practice, hiddenWords, guidedVerse, hideSeed]);
+  useEffect(() => {
+    if (!guidedOpen || practice?.stage !== 1 || !guidedVerse) {
+      setSilentReadPosition(null);
+      return;
+    }
+    const count = Math.max(1, guidedVerse.content.trim().split(/\s+/).length);
+    setSilentReadPosition(1);
+    const timer = setInterval(() => setSilentReadPosition(position => !position || position >= count ? 1 : position + 1), 1150);
+    return () => clearInterval(timer);
+  }, [guidedOpen, practice?.stage, guidedVerse?.id]);
   const catalog = useListQuranReciters({ query: { queryKey: getListQuranRecitersQueryKey(), enabled: !!quranApiOrigin } });
   const reciters = catalog.data?.reciters.filter(reciter => reciter.available !== false) ?? [];
   const shownReciters = reciters.filter(reciter => {
@@ -395,6 +419,30 @@ export default function MushafReader() {
       setRangePlayed(nextRangePlayed);
       afterPause(() => { void playVerse(target); });
     };
+    if (guidedOpen && guidedVerse && practice) {
+      if (practice.stage === 4) {
+        if (guidedLinkEnd.current && `${audioVerse.chapter_id}:${audioVerse.number}` !== guidedLinkEnd.current) {
+          const end = guidedVerse;
+          transitionTo(end);
+        } else {
+          guidedLinkEnd.current = null;
+          stop();
+        }
+        return;
+      }
+      if (practice.stage !== 0) { stop(); return; }
+      if (practice.repeatCount === -1 || played + 1 < practice.repeatCount) {
+        setPlayed(value => value + 1);
+        afterPause(() => {
+          player.seekTo(audioSegment ? audioSegment.startMs / 1000 : 0).then(() => {
+            if (request !== audioRequest.current) return;
+            finishHandled.current = false;
+            player.play();
+          }).catch(() => { if (request === audioRequest.current) setAudioError('تعذّر تكرار الآية'); });
+        });
+      } else stop();
+      return;
+    }
 
     if (configuredRange && audioVerse.number >= rangeStart && audioVerse.number <= rangeEnd) {
       if (repeatMode === 'ayah') {
@@ -454,7 +502,8 @@ export default function MushafReader() {
     transitionTo(next);
   }, [audioStatus.currentTime, audioStatus.didJustFinish, audioStatus.isLoaded, audioStatus.playing,
     audioSegment, audioVerse, played, rangePlayed, repeat, repeatMode, rangeChapter, rangeStart, rangeEnd,
-    rangeSession, pauseBetween, stopAt, player, playVerse, schedulePendingPause]);
+    rangeSession, pauseBetween, stopAt, player, playVerse, schedulePendingPause,
+    guidedOpen, guidedVerse, practice?.stage, practice?.repeatCount]);
   const stopAudio = () => {
     ++audioRequest.current;
     if (pauseTimer.current) clearTimeout(pauseTimer.current);
@@ -525,6 +574,12 @@ export default function MushafReader() {
     setSheet('verse');
   };
   const openPrintedWord = (selection: WordSelection | { verseKey: string }) => {
+    if (guidedOpen && practice?.stage === 3 && !practice.revealed && selection.verseKey === guidedVerseKey) return;
+    if (guidedOpen && practice?.stage === 2 && 'position' in selection
+      && selection.verseKey === guidedVerseKey && isWordHidden(selection.verseKey, selection.position)) {
+      setHiddenWords(words => [...words, selection.position]);
+      return;
+    }
     const [chapter, verseNumber] = selection.verseKey.split(':').map(Number);
     const verse = visibleVerses.find(v => v.chapter_id === chapter && v.number === verseNumber);
     if (!verse) return;
@@ -534,18 +589,66 @@ export default function MushafReader() {
     setSheet('id' in selection ? 'word' : 'verse');
   };
   const beginPractice = (verse: Verse) => {
+    stopAudio();
     setSelectedVerse(verse);
     startPractice(verse.chapter_id, verse.number);
-    setSheet('memorize');
+    setHiddenWords([]);
+    if (verse.page_id !== page) goToPage(verse.page_id);
+    setGuidedOpen(true);
+    close();
+    setPlayed(0);
+    void playVerse(verse);
   };
   const resumePractice = () => {
     const saved = practice && verses.find(v => v.chapter_id === practice.chapter && v.number === practice.verse);
     const target = saved ?? visibleVerses[0];
     if (target) {
+      stopAudio();
       if (!saved) startPractice(target.chapter_id, target.number);
       setSelectedVerse(target);
-      setSheet('memorize');
+      if (target.page_id !== page) goToPage(target.page_id);
+      setGuidedOpen(true);
+      close();
+      if (!saved || saved && practice?.stage === 0) void playVerse(target);
+      if (saved && practice?.stage === 4) {
+        const previous = verses.find(v => v.chapter_id === target.chapter_id && v.number === target.number - 1);
+        guidedLinkEnd.current = previous ? `${target.chapter_id}:${target.number}` : null;
+        void playVerse(previous ?? target);
+      }
     }
+  };
+  const changeGuidedStage = (stage: number) => {
+    if (!guidedVerse) return;
+    stopAudio();
+    guidedLinkEnd.current = null;
+    updatePractice({ stage, revealed: false });
+    setHiddenWords([]);
+    setHideSeed(previous => previous + 1);
+    if (stage === 0) void playVerse(guidedVerse);
+    if (stage === 4) {
+      const previous = verses.find(v => v.chapter_id === guidedVerse.chapter_id && v.number === guidedVerse.number - 1);
+      guidedLinkEnd.current = previous ? guidedVerseKey : null;
+      if (previous && previous.page_id !== page) goToPage(previous.page_id);
+      void playVerse(previous ?? guidedVerse);
+    } else if (guidedVerse.page_id !== page) goToPage(guidedVerse.page_id);
+  };
+  const closeGuided = () => {
+    stopAudio();
+    guidedLinkEnd.current = null;
+    setGuidedOpen(false);
+  };
+  const assessGuided = (result: 'mastered' | 'review') => {
+    if (!guidedVerse) return;
+    assessPractice(result);
+    if (result === 'review') { changeGuidedStage(0); return; }
+    const next = verses.find(v => v.chapter_id === guidedVerse.chapter_id && v.number === guidedVerse.number + 1);
+    if (!next) { closeGuided(); return; }
+    stopAudio();
+    startPractice(next.chapter_id, next.number);
+    setSelectedVerse(next);
+    setHiddenWords([]);
+    if (next.page_id !== page) goToPage(next.page_id);
+    void playVerse(next);
   };
   const shareVerse = async () => {
     if (!selectedVerse) return;
@@ -565,10 +668,11 @@ export default function MushafReader() {
   const wordWidth = landscape
     ? Math.max(1, viewport.width - insets.left - insets.right - (compactLandscape ? 100 : 24))
     : Math.min(viewport.width - 12, 640);
+  const effectivePageDisplay = guidedOpen ? 'words' : pageDisplay;
   const { panHandlers, onStageLayout, zoomStyle, zoomed, resetZoom } = usePageZoom({
-    page, display: pageDisplay, readingMode, viewportWidth: viewport.width,
-    viewportHeight: viewport.height, pageWidth: pageDisplay === 'words' ? wordWidth : imageWidth,
-    pageHeight: pageDisplay === 'words' ? stageHeight : imageHeight, onTurn: turnPage,
+    page, display: effectivePageDisplay, readingMode, viewportWidth: viewport.width,
+    viewportHeight: viewport.height, pageWidth: effectivePageDisplay === 'words' ? wordWidth : imageWidth,
+    pageHeight: effectivePageDisplay === 'words' ? stageHeight : imageHeight, onTurn: turnPage,
   });
   if (!reader.ready) return <View style={[styles.center, { backgroundColor: surface }]}><ActivityIndicator color={colors.primary} /></View>;
   const menuStyle = { backgroundColor: colors.card, borderColor: colors.border };
@@ -583,6 +687,11 @@ export default function MushafReader() {
   const saveRange = (start: number, end: number) => updateAudio({
     rangeChapter: rangeUiChapter, rangeStart: start, rangeEnd: end,
   });
+  const guidedBottom = bottomInset + (audioVerse ? compactLandscape ? 105 : 174 : compactLandscape ? 4 : 68);
+  const guidedMaxHeight = Math.max(110, Math.min(
+    compactLandscape ? 390 : viewport.height * .43,
+    viewport.height - guidedBottom - topInset - 12,
+  ));
 
   return (
     <View testID="mushaf-reader" style={[styles.root, { backgroundColor: surface }]}>
@@ -609,14 +718,17 @@ export default function MushafReader() {
          Platform.OS === 'web' && ({ touchAction: 'none' } as ViewStyle)]}
          onLayout={onStageLayout} {...panHandlers}>
         <Animated.View testID="page-zoom-layer" style={[{
-          width: pageDisplay === 'words' ? wordWidth : imageWidth,
-          height: pageDisplay === 'words' ? stageHeight : imageHeight,
+           width: effectivePageDisplay === 'words' ? wordWidth : imageWidth,
+           height: effectivePageDisplay === 'words' ? stageHeight : imageHeight,
         }, zoomStyle]}>
-        {pageDisplay === 'words'
+         {effectivePageDisplay === 'words'
            ? <MadaniWordPage key={page} page={page} width={wordWidth} height={stageHeight}
               background={paper} selectedVerseKey={selectedVerse ? `${selectedVerse.chapter_id}:${selectedVerse.number}` : null}
-               activeVerseKey={audioVerse ? `${audioVerse.chapter_id}:${audioVerse.number}` : null}
-               activeWordPosition={activeWordPosition} tajweedEnabled={tajweedEnabled}
+                activeVerseKey={guidedOpen && practice?.stage === 1 ? guidedVerseKey
+                  : audioVerse ? `${audioVerse.chapter_id}:${audioVerse.number}` : null}
+                activeWordPosition={guidedOpen && practice?.stage === 1 ? silentReadPosition : activeWordPosition}
+                isWordHidden={isWordHidden} guidedHideActive={guidedOpen && (practice?.stage === 2 || practice?.stage === 3 && !practice.revealed)}
+                tajweedEnabled={tajweedEnabled}
               onVersePress={openPrintedWord} />
           : <Pressable testID="mushaf-page" accessibilityRole="button" accessibilityLabel={`صورة صفحة المصحف ${page}، اضغط لإظهار أدوات القراءة`}
               onPress={() => setReadingMode(!readingMode)} style={[styles.paper, {
@@ -644,11 +756,30 @@ export default function MushafReader() {
           <Ionicons name="contract-outline" size={18} color={colors.primary} />
           <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>الحجم الأصلي</Text>
         </Pressable>}
-        {pageDisplay === 'words' && readingMode &&
+         {effectivePageDisplay === 'words' && readingMode &&
           <View style={styles.showTools}>
             <IconButton name="options-outline" label="إظهار أدوات القراءة" onPress={() => setReadingMode(false)} color={fg} />
           </View>}
       </View>
+       {guidedOpen && guidedVerse && !sheet && <View pointerEvents="box-none" style={[StyleSheet.absoluteFill, { zIndex: 5 }]}>
+         <View style={[styles.guidedPosition, {
+           bottom: guidedBottom,
+           left: 12, right: compactLandscape ? Math.max(12, viewport.width - 450) : 12,
+           height: guidedMaxHeight,
+         }]}>
+           <GuidedPractice verse={guidedVerse}
+             playing={(betweenVerses && !betweenPaused) || audioStatus.playing}
+             audioError={audioError}
+             maxHeight={guidedMaxHeight}
+             onStageChange={changeGuidedStage}
+             onRepeatCountChange={count => updatePractice({ repeatCount: count })}
+             onReplay={() => { setPlayed(0); setRangePlayed(0); void playVerse(guidedVerse); }}
+             onTogglePlayback={() => audioVerse ? toggleAudioPlayback()
+               : practice?.stage === 4 ? changeGuidedStage(4) : void playVerse(guidedVerse)}
+             onReveal={() => updatePractice({ revealed: true })}
+             onAssess={assessGuided} onClose={closeGuided} />
+         </View>
+       </View>}
        {!!audioVerse && <View style={[styles.audioDock, compactLandscape && [styles.landscapeAudioDock, { bottom: bottomInset + 2 }], { backgroundColor: colors.secondary }]}>
          <View style={styles.audioTransport}>
            <IconButton name="close" label="إيقاف التلاوة" onPress={stopAudio} color={fg} />
@@ -708,7 +839,7 @@ export default function MushafReader() {
                 sheet === 'index' ? 'فهرس المصحف' : sheet === 'search' ? 'البحث في القرآن' :
                   sheet === 'bookmarks' ? 'علاماتي' : sheet === 'settings' ? 'إعدادات القراءة' :
                     sheet === 'word' ? 'خيارات الكلمة' :
-                    sheet === 'verses' ? `آيات الصفحة ${page}` : sheet === 'memorize' ? 'حفظني' :
+                     sheet === 'verses' ? `آيات الصفحة ${page}` :
                       sheet === 'audio' ? 'التلاوة' : sheet === 'tafsir' ? 'تفسير الآية' :
                         sheet === 'range' ? 'نسخ ومشاركة نطاق آيات' : 'خيارات الآية'
               }</Text>
@@ -877,16 +1008,6 @@ export default function MushafReader() {
             {sheet === 'tafsir' && selectedVerse && <ScrollView style={styles.list}>
               <Text style={[styles.note, { color: colors.mutedForeground }]}>سورة {chapterName(selectedVerse.chapter_id)} · الآية {selectedVerse.number}</Text>
               <TafsirPanel verse={selectedVerse} />
-            </ScrollView>}
-            {sheet === 'memorize' && practice && <ScrollView style={styles.list}>
-              <GuidedPractice key={`${practice.chapter}:${practice.verse}`}
-                verse={verses.find(v => v.chapter_id === practice.chapter && v.number === practice.verse)!}
-               onPlay={(verse, times) => {
-                 setRangeSession(false); setRangePlayed(0); setRepeat(times); setStopAt('ayah'); setPlayed(0); playVerse(verse);
-               }}
-                onPause={() => player.pause()} playing={audioStatus.playing} audioError={audioError}
-                 onNext={next => { stopAudio(); startPractice(next.chapter_id, next.number); setSelectedVerse(next); goToPage(next.page_id); }}
-                 onFinish={() => { stopAudio(); close(); }} />
             </ScrollView>}
             {sheet === 'audio' && <>
               <View style={[styles.audioTabs, { backgroundColor: colors.secondary }]}>
@@ -1130,6 +1251,7 @@ const styles = StyleSheet.create({
   readingHint: { flex: 1, textAlign: 'center', fontSize: 12 },
   storageWarning: { textAlign: 'center', fontSize: 12, paddingHorizontal: 12 },
   pageStage: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'hidden' },
+  guidedPosition: { position: 'absolute' },
   zoomReset: { position: 'absolute', bottom: 10, left: 10, flexDirection: 'row-reverse', alignItems: 'center',
     gap: 6, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, minHeight: 38, zIndex: 2 },
   showTools: { position: 'absolute', top: 10, right: 10 },

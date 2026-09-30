@@ -120,13 +120,15 @@ async function loadPageFonts(
   return 'v2';
 }
 
-export function MadaniWordPage({ page, width, height, background, selectedVerseKey, onVersePress, tajweedEnabled = false, activeVerseKey = null, activeWordPosition = null }: {
+export function MadaniWordPage({ page, width, height, background, selectedVerseKey, onVersePress, tajweedEnabled = false, activeVerseKey = null, activeWordPosition = null, isWordHidden, guidedHideActive = false }: {
   page: number; width: number; height: number; background: string;
   selectedVerseKey?: string | null;
   onVersePress: (word: WordSelection | { verseKey: string }) => void;
   tajweedEnabled?: boolean;
   activeVerseKey?: string | null;
   activeWordPosition?: number | null;
+  isWordHidden?: (verseKey: string, position: number) => boolean;
+  guidedHideActive?: boolean;
 }) {
   const colors = useColors();
   const [fontStatus, setFontStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -217,7 +219,13 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
   if (missing) {
     return <View testID={offline ? 'offline-page' : undefined}
       style={[styles.page, { width, height, backgroundColor: background, borderColor: colors.border }]}>
-      {!fallbackImageError
+       {guidedHideActive
+         ? <View style={[StyleSheet.absoluteFill, styles.loading, { padding: 24 }]}>
+             <Text style={{ color: colors.foreground, textAlign: 'center', writingDirection: 'rtl' }}>
+               لإخفاء كلمات الآية على الصفحة، حمّل بيانات كلمات الصفحة وخط المصحف التفاعلي أولًا.
+             </Text>
+           </View>
+         : !fallbackImageError
         ? <Image source={pageImage(page)} style={StyleSheet.absoluteFill} contentFit="contain"
             onError={() => setFallbackImageError(true)} />
         : <ScrollView testID="offline-verses" style={{ flex: 1, width: '100%' }}
@@ -284,26 +292,29 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
         {line.words.map(word => {
           const playingWord = word.type === 'word'
             && activeVerseKey === word.verseKey && activeWordPosition === word.position;
+           const concealed = word.type === 'word' && isWordHidden?.(word.verseKey, word.position);
           return <Pressable key={word.id} testID={`word-${word.id}`}
-           accessibilityRole="button" accessibilityLabel={offlineData
+            accessibilityRole="button" accessibilityLabel={concealed ? `الكلمة ${word.position} مخفية، اضغط لإظهارها` : offlineData
              ? `الكلمة ${word.position}، الآية ${word.verseKey}` : `${word.text}، الآية ${word.verseKey}`}
           onPress={() => onVersePress(word.type === 'word'
              ? { id: word.id, position: word.position, verseKey: word.verseKey, text: word.text,
                  glyphOnly: !!offlineData, page }
             : { verseKey: word.verseKey })}
           style={({ pressed }) => [styles.word, {
-             backgroundColor: playingWord ? `${colors.primary}88`
+              backgroundColor: concealed ? colors.secondary : playingWord ? `${colors.primary}88`
                : selectedVerseKey === word.verseKey
                ? colors.secondary
                : activeVerseKey === word.verseKey ? `${colors.primary}18` : 'transparent',
              opacity: pressed ? .6 : 1,
           }]}>
-          <Text allowFontScaling={false} style={[styles.glyph, {
+           <Text allowFontScaling={false} style={[styles.glyph, {
              fontFamily: family, fontSize, lineHeight: rowHeight,
              color: word.type === 'end' ? colors.primary : colors.foreground,
-             opacity: activeVerseKey === word.verseKey && activeWordPosition !== null
+              opacity: concealed ? 0 : activeVerseKey === word.verseKey && activeWordPosition !== null
                && !playingWord && word.type === 'word' ? .86 : 1,
-          }]}>{word.glyph}</Text>
+           }]}>{word.glyph}</Text>
+           {concealed && <Text allowFontScaling={false} pointerEvents="none"
+             style={[StyleSheet.absoluteFill, styles.concealed, { color: colors.mutedForeground, fontSize: Math.min(15, fontSize * .8) }]}>•••</Text>}
         </Pressable>;
         })}
       </View>;
@@ -318,6 +329,7 @@ const styles = StyleSheet.create({
   words: { width: '100%' },
   word: { flexShrink: 0, borderRadius: 4, paddingHorizontal: 1, overflow: 'visible' },
   glyph: { textAlign: 'center', includeFontPadding: false, writingDirection: 'rtl' },
+  concealed: { textAlign: 'center', textAlignVertical: 'center', fontWeight: '700' },
   chapter: { textAlign: 'center', fontSize: 15, fontWeight: '700' },
   fallback: { position: 'absolute', top: 8, left: 8, right: 8, padding: 8, borderRadius: 8, borderWidth: 1, gap: 4, alignItems: 'center' },
 });
