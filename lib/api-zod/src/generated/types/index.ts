@@ -73,6 +73,8 @@ export * from './examSessionResponse';
 export * from './getPresentationLinkedActivity200';
 export * from './getPresentationLinkedActivity200Activity';
 export * from './getQuranAyahEducationParams';
+export * from './getQuranOfflineContent200';
+export * from './getQuranOfflineContentParams';
 export * from './googleLoginBody';
 export * from './googleLoginBodyRole';
 export * from './healthStatus';

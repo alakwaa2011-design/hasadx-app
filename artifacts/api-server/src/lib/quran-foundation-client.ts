@@ -385,7 +385,7 @@ async function accessToken(forceRefresh = false): Promise<string> {
   return tokenRequestPromise;
 }
 
-async function requestContentJson(path: string, retryAuth = true): Promise<unknown> {
+async function requestContentJson(path: string, retryAuth = true, timeoutMs = REQUEST_TIMEOUT_MS): Promise<unknown> {
   const { clientId } = credentials();
   const token = await accessToken(!retryAuth);
   const response = await fetch(`${CONTENT_BASE_URL}/content/api/v4/${path}`, {
@@ -394,16 +394,63 @@ async function requestContentJson(path: string, retryAuth = true): Promise<unkno
       "x-client-id": clientId,
     },
     redirect: "error",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (response.status === 401 && retryAuth) {
     cachedToken = null;
-    return requestContentJson(path, false);
+    return requestContentJson(path, false, timeoutMs);
   }
   if (!response.ok) {
-    throw new Error(`Quran Foundation chapters request failed with status ${response.status}`);
+    throw new Error(`Quran Foundation content request failed with status ${response.status}`);
   }
   return response.json();
+}
+
+// Restrict the mobile sync bridge to the two editions displayed by this app.
+// Tokens and cursors are opaque and never exposed in a URL that can select
+// arbitrary upstream resources.
+export async function requestQuranOfflineSync(
+  group: "mushafs" | "tafsirs",
+  token?: string,
+  cursor?: string,
+): Promise<unknown> {
+  const id = group === "mushafs" ? 1 : TAFSIR_MUYASSAR_RESOURCE_ID;
+  let path: string;
+  if (cursor) {
+    const url = new URL(cursor, `${CONTENT_BASE_URL}/`);
+    if (url.origin !== CONTENT_BASE_URL || url.pathname !== "/api/v4/resources/sync"
+      || url.username || url.password || url.hash
+      || (url.searchParams.has("resources") && url.searchParams.get("resources") !== `${group}:${id}`)) {
+      throw new Error("Invalid Quran Foundation sync page");
+    }
+    path = `resources/sync${url.search}`;
+  } else {
+    const params = new URLSearchParams(token
+      ? { resources: `${group}:${id}`, sync_token: token, per_page: "100" }
+      : { resources: `${group}:${id}`, bootstrap: "true", per_page: "100" });
+    path = `resources/sync?${params}`;
+  }
+  const payload = await requestContentJson(path);
+  const sync = payload && typeof payload === "object" && "sync" in payload ? payload.sync : null;
+  if (!sync || typeof sync !== "object" || !("mutations" in sync)
+    || !Array.isArray(sync.mutations) || sync.mutations.some((mutation: unknown) =>
+      !mutation || typeof mutation !== "object"
+      || (mutation as { resource_group?: unknown }).resource_group !== group
+      || (mutation as { resource_id?: unknown }).resource_id !== id)) {
+    throw new Error("Quran Foundation returned unexpected sync resources");
+  }
+  return payload;
+}
+
+export async function requestQuranOfflineSnapshot(group: "mushafs" | "tafsirs"): Promise<unknown> {
+  const id = group === "mushafs" ? 1 : TAFSIR_MUYASSAR_RESOURCE_ID;
+  const payload = await requestContentJson(`resources/snapshots/${group}/${id}`, true, 90_000);
+  if (!payload || typeof payload !== "object"
+    || (payload as { resource_group?: unknown }).resource_group !== group
+    || (payload as { resource_id?: unknown }).resource_id !== id) {
+    throw new Error("Quran Foundation returned an unexpected snapshot resource");
+  }
+  return payload;
 }
 
 async function requestChapters(): Promise<unknown> {

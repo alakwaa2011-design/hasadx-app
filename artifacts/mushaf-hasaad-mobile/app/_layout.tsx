@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ReaderProvider } from '@/context/ReaderContext';
+import { OfflineContentProvider } from '@/lib/offline-content';
 import { setBaseUrl } from '@workspace/api-client-react';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
@@ -33,7 +34,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <ReaderProvider>
-              <Stack screenOptions={{ headerShown: false }} />
+              <OfflineContentProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+              </OfflineContentProvider>
             </ReaderProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

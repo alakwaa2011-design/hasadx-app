@@ -63,6 +63,7 @@ export type * from "./types/errorResponse";
 export type * from "./types/examSessionResponse";
 export type * from "./types/getPresentationLinkedActivity200";
 export type * from "./types/getPresentationLinkedActivity200Activity";
+export type * from "./types/getQuranOfflineContent200";
 export type * from "./types/googleLoginBody";
 export type * from "./types/googleLoginBodyRole";
 export type * from "./types/healthStatus";

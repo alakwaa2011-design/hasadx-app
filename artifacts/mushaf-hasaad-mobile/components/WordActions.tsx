@@ -10,7 +10,7 @@ import { chapterName } from '@/data/quran';
 import { quranApiOrigin } from '@/lib/api-origin';
 import { useColors } from '@/hooks/useColors';
 
-export type WordSelection = { id: number; position: number; verseKey: string; text: string };
+export type WordSelection = { id: number; position: number; verseKey: string; text: string; glyphOnly?: boolean; page?: number };
 type ViewMode = 'actions' | 'meaning' | 'translation' | 'tajweed';
 
 export function WordActions({ word, onPronounce, playing, audioError, onVerse }: {
@@ -57,7 +57,8 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
     </Pressable>;
 
   return <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-    <Text style={[styles.word, { color: colors.primary }]}>{word.text}</Text>
+    <Text style={[styles.word, { color: colors.primary },
+      word.glyphOnly && { fontFamily: `qcf-v2-p${word.page}` }]}>{word.text}</Text>
     <Text style={[styles.caption, { color: colors.mutedForeground }]}>
       سورة {chapterName(chapter)} · الآية {verse}
     </Text>
@@ -69,7 +70,8 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
         {verifiedTajweed && button('تجويد', 'color-palette-outline', () => setMode('tajweed'), 'word-action-tajweed')}
       </View>
       {!!audioError && <Text style={[styles.warning, { color: colors.destructive }]}>{audioError}</Text>}
-      {button('نسخ الكلمة', 'copy-outline', () => { Clipboard.setStringAsync(word.text).catch(() => undefined); }, 'word-action-copy')}
+       {!word.glyphOnly && button('نسخ الكلمة', 'copy-outline', () => { Clipboard.setStringAsync(word.text).catch(() => undefined); }, 'word-action-copy')}
+       {word.glyphOnly && <Text style={[styles.source, { color: colors.mutedForeground }]}>خط الصفحة يعرض شكل الكلمة فقط؛ نصها وشرحها يحتاجان الاتصال.</Text>}
       {button('خيارات الآية', 'list-outline', onVerse, 'word-action-verse')}
     </> : <>
       <Pressable testID="word-action-back" accessibilityRole="button" onPress={() => setMode('actions')} style={styles.back}>
@@ -96,7 +98,7 @@ export function WordActions({ word, onPronounce, playing, audioError, onVerse }:
         <Text testID="word-study-result" style={[styles.result, styles.body, { color: colors.foreground, backgroundColor: colors.secondary }]}>{text}</Text>
         <View style={styles.actions}>
           {button('نسخ النص', 'copy-outline', () => { Clipboard.setStringAsync(text).catch(() => undefined); }, 'word-result-copy')}
-          {button('مشاركة', 'share-outline', () => { Share.share({ message: `${word.text}: ${text}` }).catch(() => undefined); }, 'word-result-share')}
+           {button('مشاركة', 'share-outline', () => { Share.share({ message: `${selected?.text ?? (word.glyphOnly ? `الآية ${word.verseKey}، الكلمة ${word.position}` : word.text)}: ${text}` }).catch(() => undefined); }, 'word-result-share')}
         </View>
         {!!source && <Text style={[styles.source, { color: colors.mutedForeground }]}>المصدر: {source}</Text>}
       </> : <Text style={[styles.warning, { color: colors.mutedForeground }]}>

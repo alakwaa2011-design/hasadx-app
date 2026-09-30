@@ -122,6 +122,8 @@ import {
   getQuranFoundationWordAudioUrl,
   getQuranFoundationAyahTimings,
   getQuranFoundationMadaniPage,
+  requestQuranOfflineSync,
+  requestQuranOfflineSnapshot,
   getQuranFoundationSurahContent,
   getQuranFoundationAyahEducation,
   getQuranFoundationWordTajweed,
@@ -878,6 +880,44 @@ router.get("/quran/madani/pages/:pageNumber", async (req, res): Promise<void> =>
   } catch (error) {
     req.log.warn({ err: error, pageNumber: parsed.data.pageNumber }, "Official Madani Mushaf page unavailable");
     res.status(503).json({ error: "Official Madani Mushaf page is temporarily unavailable" });
+  }
+});
+
+// Only fixed public reader resources are bridged. Never accept an upstream
+// path/snapshot URL from a client (SSRF and arbitrary content distribution).
+const offlineSyncLimit = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false });
+router.get("/quran/offline/:group/:action", offlineSyncLimit, async (req, res): Promise<void> => {
+  const { group, action } = req.params;
+  if ((group !== "mushafs" && group !== "tafsirs") || (action !== "sync" && action !== "snapshot")) {
+    res.status(404).json({ error: "Resource unavailable" });
+    return;
+  }
+  const token = req.query.token;
+  const cursor = req.query.cursor;
+  if ((token !== undefined && (typeof token !== "string" || token.length > 4096))
+    || (cursor !== undefined && (typeof cursor !== "string" || cursor.length > 4096))
+    || (token && cursor)) {
+    res.status(400).json({ error: "Invalid sync checkpoint" });
+    return;
+  }
+  try {
+    const payload = action === "sync"
+      ? await requestQuranOfflineSync(group, token as string | undefined, cursor as string | undefined)
+      : await requestQuranOfflineSnapshot(group);
+    res.set("Cache-Control", "private, no-store");
+    res.json(payload);
+  } catch (error) {
+    if (action === "sync" && error instanceof Error && error.message === "Invalid Quran Foundation sync page") {
+      res.status(400).json({ error: "Invalid sync page" });
+      return;
+    }
+    if (action === "sync" && error instanceof Error
+      && (error.message.includes("status 410") || error.message.includes("status 422"))) {
+      res.status(410).json({ error: "resync_required" });
+      return;
+    }
+    req.log.warn({ err: error, group, action }, "Quran offline content unavailable");
+    res.status(503).json({ error: "Official Quran offline content is unavailable" });
   }
 });
 

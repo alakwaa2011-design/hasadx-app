@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReader, type Appearance, type PageDisplay } from '@/context/ReaderContext';
 import { useColors } from '@/hooks/useColors';
 import { privacyUrl, quranApiOrigin } from '@/lib/api-origin';
+import { useOfflineContent } from '@/lib/offline-content';
 import { TafsirPanel } from '@/components/TafsirPanel';
 import { GuidedPractice } from '@/components/GuidedPractice';
 import { MadaniWordPage } from '@/components/MadaniWordPage';
@@ -64,6 +65,7 @@ export default function MushafReader() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const reader = useReader();
+  const offlineContent = useOfflineContent();
   const { page, goToPage, bookmarks, toggleBookmark, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, practice, startPractice, storageError, audio, updateAudio } = reader;
   const [sheet, setSheet] = useState<Sheet>(null);
   const [tab, setTab] = useState<IndexTab>('chapters');
@@ -500,9 +502,37 @@ export default function MushafReader() {
                <Row title={pageDisplay === 'images' ? 'تستخدم الصفحات المحفوظة الآن' : 'افتح الصفحات المحفوظة'}
                  detail={Platform.OS === 'web'
                    ? 'النص محفوظ؛ صور لم تُفتح قد تحتاج اتصالًا في معاينة المتصفح'
-                   : 'صور المصحف تعمل دون اتصال · لا تشمل التلاوة والتفسير'}
+                   : 'صور المصحف تعمل دون اتصال · التلاوة تحتاج اتصالًا'}
                  onPress={() => { setPageDisplay('images'); close(); }} colors={colors} />
                <Text style={[styles.note, { color: colors.mutedForeground }]}>في تطبيق الجوال: 604 صفحات مصورة ونص 6236 آية للبحث والفهرس، مضمنة دون تنزيل إضافي. العلامات تُحفظ على الجهاز.{Platform.OS === 'web' ? ' معاينة المتصفح تحتاج اتصالًا لصور لم تُفتح من قبل، ويظهر نص الآيات بدلًا منها عند تعذّر الصورة.' : ''}</Text>
+               <Text style={[styles.sectionTitle, { color: fg }]}>محتوى إضافي دون إنترنت</Text>
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>مصدر بيانات الكلمات: Quran Foundation · mushafs:1 (QCF V2). مصدر الشرح: التفسير الميسر عبر Quran Foundation · tafsirs:16. اختر التنزيل أول مرة (نحو 28 م.ب للبيانات، والخطوط اختيارية ومنفصلة). تُفحص التغييرات بعد ذلك عند فتح التطبيق والعودة إليه، ولا تُعرض نسخة مرّ على فحصها 7 أيام حتى تتجدد.</Text>
+               {(['mushafs', 'tafsirs'] as const).map(group => {
+                 const meta = offlineContent.manifests[group];
+                 const title = group === 'mushafs' ? 'مواضع كلمات المصحف' : 'التفسير الميسر';
+                 return <Text key={group} style={[styles.note, { color: colors.mutedForeground }]}>
+                   {title} · {meta && offlineContent.available(group)
+                     ? `محفوظ ≈ ${(meta.bytes / 1024 / 1024).toFixed(1)} م.ب · آخر فحص ${new Date(meta.checkedAt).toLocaleDateString('ar')}`
+                     : meta ? 'يحتاج تحديثًا (مرّ 7 أيام)' : 'لم يُنزّل'}
+                 </Text>;
+               })}
+               {Platform.OS !== 'web'
+                 ? <Row title="تنزيل / تحديث الكلمات والتفسير" detail="يلزم اتصال بالإنترنت؛ نحو 28 م.ب أول مرة" onPress={() => { void offlineContent.syncNow(); }} colors={colors} />
+                 : <Text style={[styles.note, { color: colors.mutedForeground }]}>تنزيل المحتوى التفاعلي للاستخدام دون اتصال متاح في تطبيق الهاتف فقط، وليس معاينة المتصفح.</Text>}
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                 خطوط QCF V2 من static.qurancdn.com (Quran Foundation) · {Platform.OS === 'web'
+                   ? 'معاينة المتصفح لا تحفظ الخطوط؛ العرض التفاعلي بلا اتصال غير متاح فيها.'
+                   : `${offlineContent.fontCount} / 604 صفحة محفوظة · ${(offlineContent.fontBytes / 1024 / 1024).toFixed(1)} م.ب`}
+               </Text>
+               {Platform.OS !== 'web' && <Row title="تنزيل خطوط الصفحات للقراءة التفاعلية" detail="تنزيل اختياري كبير، يمكن إيقافه واستكماله لاحقًا"
+                 onPress={() => { void offlineContent.downloadFonts(); }} colors={colors} />}
+               {offlineContent.progress && <>
+                 <Text testID="content-sync-progress" style={[styles.note, { color: colors.primary }]}>{offlineContent.progress}</Text>
+                 {offlineContent.progress.startsWith('خطوط') && <Row title="إيقاف تنزيل الخطوط" detail="تبقى الخطوط المكتملة محفوظة"
+                   onPress={offlineContent.cancelFonts} colors={colors} />}
+               </>}
+               {offlineContent.error && <Text style={[styles.note, { color: colors.destructive }]}>{offlineContent.error}</Text>}
+               <Text style={[styles.note, { color: colors.mutedForeground }]}>الخطوط مورد منفصل عن بيانات Content Sync. عدم تنزيل خط صفحة معينة يمنع عرض كلماتها بخط المصحف بلا إنترنت، وتبقى صورتها متاحة. نطق الكلمات والتجويد ومعانيها وترجمتها والتلاوة لا تدخل في هذا التنزيل وتحتاج الاتصال.</Text>
               <Row title="القارئ والتكرار" detail="إعدادات التلاوة" onPress={() => setSheet('audio')} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
               <View style={styles.segment}>
@@ -514,7 +544,7 @@ export default function MushafReader() {
                     <Text style={[styles.segmentText, { color: pageDisplay === id ? colors.primary : fg }]}>{label}</Text>
                   </Pressable>)}
               </View>
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>الكلمات التفاعلية هي العرض الأساسي وتتطلب اتصالًا لتحميل الصفحة وخطها؛ صور الصفحات مضمنة في تطبيق الجوال للقراءة دون إنترنت.</Text>
+                <Text style={[styles.note, { color: colors.mutedForeground }]}>الكلمات التفاعلية تعمل دون اتصال للصفحات التي حُفظت بياناتها وخطّها، وإلا تُعرض صورة الصفحة المضمّنة. صور الصفحات متاحة دائمًا على الهاتف.</Text>
               <Text style={[styles.sectionTitle, { color: fg }]}>مظهر المصحف</Text>
               <View style={styles.segment}>
                 {([['day', 'نهاري'], ['warm', 'دافئ'], ['night', 'ليلي']] as [Appearance, string][]).map(([id, label]) =>
@@ -525,7 +555,7 @@ export default function MushafReader() {
               </View>
               <Row title="وضع القراءة" detail="إخفاء الأدوات لعرض المصحف بوضوح" onPress={() => { setReadingMode(!readingMode); close(); }} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>حول مصحف حصاد</Text>
-                <Text style={[styles.note, { color: colors.mutedForeground }]}>صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف. في تطبيق الجوال تعمل صور الصفحات والبحث والعلامات دون إنترنت؛ الكلمات التفاعلية والتلاوة والتفسير تحتاج اتصالًا.</Text>
+                 <Text style={[styles.note, { color: colors.mutedForeground }]}>صور صفحات مصحف المدينة برواية حفص من مجمع الملك فهد لطباعة المصحف الشريف؛ النص المحلي من quran-db (MIT). بيانات مواضع الكلمات والتفسير من Quran Foundation، والخط QCF V2 من static.qurancdn.com. صور الصفحات والبحث والعلامات مضمنة؛ الكلمات والتفسير يعملان دون اتصال فقط بعد تنزيل مواردهما وتحديثها. الصوت ومعاني الكلمات والتجويد تحتاج الاتصال.</Text>
               {privacyUrl
                 ? <Row title="سياسة الخصوصية" detail="تفتح في المتصفح"
                     onPress={() => { if (privacyUrl) Linking.openURL(privacyUrl).catch(() => undefined); }} colors={colors} />
@@ -544,8 +574,8 @@ export default function MushafReader() {
               audioError={wordError} onVerse={() => setSheet('verse')} />}
             {sheet === 'verse' && selectedVerse && <ScrollView style={styles.list}>
               {!!selectedWord && <>
-                <Text style={[styles.sectionTitle, { color: colors.primary }]}>الكلمة المحددة: {selectedWord.text}</Text>
-                <Row title="نسخ الكلمة" detail="نسخ الكلمة من بيانات المصحف" onPress={() => { Clipboard.setStringAsync(selectedWord.text).catch(() => undefined); }} colors={colors} />
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>الكلمة المحددة: {selectedWord.glyphOnly ? `موضع ${selectedWord.position}` : selectedWord.text}</Text>
+                {!selectedWord.glyphOnly && <Row title="نسخ الكلمة" detail="نسخ الكلمة من بيانات المصحف" onPress={() => { Clipboard.setStringAsync(selectedWord.text).catch(() => undefined); }} colors={colors} />}
               </>}
               <Text selectable style={[styles.verseText, { color: fg }]}>{selectedVerse.content}</Text>
               <Text style={[styles.note, { color: colors.mutedForeground }]}>سورة {chapterName(selectedVerse.chapter_id)} · الآية {selectedVerse.number}</Text>

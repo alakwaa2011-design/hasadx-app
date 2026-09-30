@@ -42,6 +42,8 @@ import type {
   ExamSessionResponse,
   GetPresentationLinkedActivity200,
   GetQuranAyahEducationParams,
+  GetQuranOfflineContent200,
+  GetQuranOfflineContentParams,
   GoogleLoginBody,
   HealthStatus,
   LinkPresentationActivity200,
@@ -6900,6 +6902,100 @@ export function useGetQuranMadaniPage<TData = Awaited<ReturnType<typeof getQuran
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetQuranMadaniPageQueryOptions(pageNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetQuranOfflineContentUrl = (group: 'mushafs' | 'tafsirs',
+    action: 'sync' | 'snapshot',
+    params?: GetQuranOfflineContentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/quran/offline/${group}/${action}?${stringifiedParams}` : `/api/quran/offline/${group}/${action}`
+}
+
+/**
+ * @summary Sync the fixed public Mushaf or Muyassar tafsir edition to this reader
+ */
+export const getQuranOfflineContent = async (group: 'mushafs' | 'tafsirs',
+    action: 'sync' | 'snapshot',
+    params?: GetQuranOfflineContentParams, options?: Parameters<typeof customFetch>[1]): Promise<GetQuranOfflineContent200> => {
+
+  return customFetch<GetQuranOfflineContent200>(getGetQuranOfflineContentUrl(group,action,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuranOfflineContentQueryKey = (group: 'mushafs' | 'tafsirs',
+    action: 'sync' | 'snapshot',
+    params?: GetQuranOfflineContentParams,) => {
+    return [
+    `/api/quran/offline/${group}/${action}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetQuranOfflineContentQueryOptions = <TData = Awaited<ReturnType<typeof getQuranOfflineContent>>, TError = ErrorType<void>>(group: 'mushafs' | 'tafsirs',
+    action: 'sync' | 'snapshot',
+    params?: GetQuranOfflineContentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranOfflineContent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuranOfflineContentQueryKey(group,action,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuranOfflineContent>>> = ({ signal }) => getQuranOfflineContent(group,action,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: group !== null && group !== undefined && action !== null && action !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuranOfflineContent>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuranOfflineContentQueryResult = NonNullable<Awaited<ReturnType<typeof getQuranOfflineContent>>>
+export type GetQuranOfflineContentQueryError = ErrorType<void>
+
+
+/**
+ * @summary Sync the fixed public Mushaf or Muyassar tafsir edition to this reader
+ */
+
+export function useGetQuranOfflineContent<TData = Awaited<ReturnType<typeof getQuranOfflineContent>>, TError = ErrorType<void>>(
+ group: 'mushafs' | 'tafsirs',
+    action: 'sync' | 'snapshot',
+    params?: GetQuranOfflineContentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuranOfflineContent>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuranOfflineContentQueryOptions(group,action,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

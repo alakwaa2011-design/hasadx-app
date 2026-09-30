@@ -7,16 +7,22 @@ import { chapterName, pageImage, pageVerses } from '@/data/quran';
 import { quranApiOrigin } from '@/lib/api-origin';
 import { useColors } from '@/hooks/useColors';
 import type { WordSelection } from '@/components/WordActions';
+import { useOfflineContent, type OfflinePage } from '@/lib/offline-content';
 
 type Decoration = { kind: 'surah' | 'bismillah'; chapter: number };
-const fontUrl = (page: number) => `https://static.qurancdn.com/fonts/quran/hafs/v2/ttf/p${page}.ttf`;
 const bismillah = 'ﱁ ﱂ ﱃ ﱄ';
-async function loadPageFonts(page: number) {
+async function loadPageFonts(page: number, resolveFont: (page: number, online: boolean) => Promise<string | null>, online: boolean) {
   const family = `qcf-v2-p${page}`;
   const pending: Promise<void>[] = [];
-  if (!Font.isLoaded(family)) pending.push(Font.loadAsync({ [family]: { uri: fontUrl(page) } }));
+  if (!Font.isLoaded(family)) {
+    const uri = await resolveFont(page, online);
+    if (!uri) throw new Error(`خط QCF V2 للصفحة ${page} لم يُنزّل`);
+    pending.push(Font.loadAsync({ [family]: { uri } }));
+  }
   if (!Font.isLoaded('qcf-v2-bismillah')) {
-    pending.push(Font.loadAsync({ 'qcf-v2-bismillah': { uri: fontUrl(1) } }));
+    const uri = await resolveFont(1, online);
+    if (!uri) throw new Error('خط البسملة لم يُنزّل');
+    pending.push(Font.loadAsync({ 'qcf-v2-bismillah': { uri } }));
   }
   await Promise.race([
     Promise.all(pending),
@@ -31,14 +37,27 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
 }) {
   const colors = useColors();
   const [fontStatus, setFontStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [offlineData, setOfflineData] = useState<OfflinePage | null>(null);
+  const [localReady, setLocalReady] = useState(false);
   const [fallbackImageError, setFallbackImageError] = useState(false);
+  const content = useOfflineContent();
   const [offline, setOffline] = useState(
     () => Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.onLine,
   );
   const family = `qcf-v2-p${page}`;
-  const { data, isError, isPending, refetch } = useGetQuranMadaniPage(page, {
+  const { data: onlineData, isError, refetch } = useGetQuranMadaniPage(page, {
     query: { queryKey: getGetQuranMadaniPageQueryKey(page), enabled: !!quranApiOrigin && !offline, retry: 1, staleTime: Infinity },
   });
+  const data = offlineData ?? (offline ? null : onlineData);
+  useEffect(() => {
+    let active = true;
+    setLocalReady(false);
+    setOfflineData(null);
+    content.page(page).then(value => { if (active) setOfflineData(value); })
+      .catch(() => { if (active) setOfflineData(null); })
+      .finally(() => { if (active) setLocalReady(true); });
+    return () => { active = false; };
+  }, [content.manifests.mushafs?.generation, content.manifests.mushafs?.checkedAt, content.freshnessTick, page]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -51,11 +70,11 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     };
   }, []);
   useEffect(() => {
-    if (!quranApiOrigin || offline) return;
     let active = true;
+    setFontStatus('loading');
     const load = async () => {
       try {
-        await loadPageFonts(page);
+        await loadPageFonts(page, content.font, !offline && !!quranApiOrigin);
         if (active) setFontStatus('ready');
       } catch (error) {
         console.warn('تعذر تحميل خط المصحف التفاعلي', error);
@@ -64,7 +83,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     };
     load();
     return () => { active = false; };
-  }, [family, page, offline]);
+  }, [family, page, offline, content.font]);
 
   const layout = useMemo(() => {
     const decorations = new Map<number, Decoration>();
@@ -96,7 +115,7 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
     return { decorations, partialLines };
   }, [data]);
 
-  const missing = offline || !quranApiOrigin || isError || fontStatus === 'error';
+  const missing = localReady && (!data || fontStatus === 'error' || (offline && !offlineData));
   if (missing) {
     return <View testID={offline ? 'offline-page' : undefined}
       style={[styles.page, { width, height, backgroundColor: background, borderColor: colors.border }]}>
@@ -113,18 +132,18 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
       <View style={[styles.fallback, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={{ color: colors.foreground, textAlign: 'center', fontSize: 12 }}>
           {fallbackImageError ? 'تعذّر عرض صورة الصفحة؛ يُعرض نص آياتها المحفوظ في التطبيق.'
-            : offline ? 'الاتصال غير متاح؛ تُعرض صورة الصفحة المحفوظة على الجهاز. يمكنك اختيار صور الصفحات من الإعدادات.'
-            : 'تعذّر تحميل الكلمات أو خطّها؛ تُعرض صورة الصفحة مؤقتًا. صور المصحف متاحة دائمًا من الإعدادات.'}
+           : fontStatus === 'error' ? `خط QCF V2 للصفحة ${page} أو خط البسملة غير متاح على الجهاز. تُعرض الصورة؛ نزّل الخط من الإعدادات عند توفر الاتصال.`
+             : `بيانات كلمات الصفحة ${page} غير محفوظة محليًا${offline ? ' والاتصال غير متاح' : isError ? ' وتعذّر جلبها' : ''}. تُعرض صورة الصفحة بدلًا منها.`}
         </Text>
         {!!quranApiOrigin && !offline && <Pressable accessibilityRole="button" onPress={() => {
           setFontStatus('loading');
-          loadPageFonts(page).then(() => setFontStatus('ready')).catch(() => setFontStatus('error'));
+           loadPageFonts(page, content.font, true).then(() => setFontStatus('ready')).catch(() => setFontStatus('error'));
           refetch();
         }}><Text style={{ color: colors.primary, fontWeight: '700' }}>إعادة المحاولة</Text></Pressable>}
       </View>
     </View>;
   }
-  if (!data || isPending || fontStatus !== 'ready') {
+   if (!localReady || !data || fontStatus !== 'ready') {
     return <View style={[styles.page, styles.loading, { width, height, backgroundColor: background, borderColor: colors.border }]}>
       <ActivityIndicator color={colors.primary} />
       <Text style={{ color: colors.mutedForeground }}>جارٍ تحميل كلمات الصفحة {page}…</Text>
@@ -162,9 +181,11 @@ export function MadaniWordPage({ page, width, height, background, selectedVerseK
       const short = page <= 2 || layout.partialLines.has(row) || line.words.length <= 2;
       return <View key={row} style={[styles.line, styles.words, { justifyContent: short ? 'center' : 'space-between' }]}>
         {line.words.map(word => <Pressable key={word.id} testID={`word-${word.id}`}
-          accessibilityRole="button" accessibilityLabel={`${word.text}، الآية ${word.verseKey}`}
+           accessibilityRole="button" accessibilityLabel={offlineData
+             ? `الكلمة ${word.position}، الآية ${word.verseKey}` : `${word.text}، الآية ${word.verseKey}`}
           onPress={() => onVersePress(word.type === 'word'
-            ? { id: word.id, position: word.position, verseKey: word.verseKey, text: word.text }
+             ? { id: word.id, position: word.position, verseKey: word.verseKey, text: word.text,
+                 glyphOnly: !!offlineData, page }
             : { verseKey: word.verseKey })}
           style={({ pressed }) => [styles.word, {
             backgroundColor: selectedVerseKey === word.verseKey ? colors.secondary : 'transparent',

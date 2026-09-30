@@ -152,3 +152,5 @@
 - [Quran desktop toolbar continuity](quran-desktop-toolbar-continuity.md) — keep reader controls in one balanced line; neither viewport-edge clusters nor a tiny centered pair of clusters.
 - [Quran page-picker density](quran-page-picker-density.md) — the vertical page list should be only wide enough for page numbers; direct number entry remains available separately.
 - [Third-party recitation provenance](third-party-recitation-provenance.md) — a Commons license label does not prove the uploader owned a reciter's externally sourced recording; verify upstream rights before public reuse.
+- [Native Quran sync storage](native-quran-sync-storage.md) — Content Sync snapshots exceed Android AsyncStorage's usual size; keep bulk data in document files and commit only a small manifest.
+- [Mushaf word order](mushaf-word-order.md) — Content Sync position_in_line can repeat or skip; sort glyphs by unique position_in_page within each physical line.

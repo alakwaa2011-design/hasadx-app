@@ -3271,6 +3271,19 @@ export type TranscribeQuranRecitationPartialBody = {
   ayahNumber: number;
 };
 
+export type GetQuranOfflineContentParams = {
+/**
+ * @maxLength 4096
+ */
+token?: string;
+/**
+ * @maxLength 4096
+ */
+cursor?: string;
+};
+
+export type GetQuranOfflineContent200 = { [key: string]: unknown };
+
 export type GetQuranAyahEducationParams = {
 /**
  * @minimum 1

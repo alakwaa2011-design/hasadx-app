@@ -4840,6 +4840,28 @@ export const GetQuranMadaniPageResponse = zod.object({
 
 
 /**
+ * @summary Sync the fixed public Mushaf or Muyassar tafsir edition to this reader
+ */
+export const GetQuranOfflineContentParams = zod.object({
+  "group": zod.enum(['mushafs', 'tafsirs']),
+  "action": zod.enum(['sync', 'snapshot'])
+})
+
+export const getQuranOfflineContentQueryTokenMax = 4096;
+
+export const getQuranOfflineContentQueryCursorMax = 4096;
+
+
+
+export const GetQuranOfflineContentQueryParams = zod.object({
+  "token": zod.coerce.string().max(getQuranOfflineContentQueryTokenMax).optional(),
+  "cursor": zod.coerce.string().max(getQuranOfflineContentQueryCursorMax).optional()
+})
+
+export const GetQuranOfflineContentResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
  * @summary Get verified Tajweed rules for one word, independent of color font mode
  */
 export const getQuranWordTajweedPathSurahNumberMax = 114;

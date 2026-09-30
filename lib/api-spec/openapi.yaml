@@ -1925,6 +1925,38 @@ paths:
         "400": { description: Invalid page number }
         "503": { description: Official Madani Mushaf page is temporarily unavailable }
 
+  /quran/offline/{group}/{action}:
+    get:
+      operationId: getQuranOfflineContent
+      tags: [quran]
+      summary: Sync the fixed public Mushaf or Muyassar tafsir edition to this reader
+      parameters:
+        - name: group
+          in: path
+          required: true
+          schema: { type: string, enum: [mushafs, tafsirs] }
+        - name: action
+          in: path
+          required: true
+          schema: { type: string, enum: [sync, snapshot] }
+        - name: token
+          in: query
+          schema: { type: string, maxLength: 4096 }
+        - name: cursor
+          in: query
+          schema: { type: string, maxLength: 4096 }
+      responses:
+        "200":
+          description: Quran Foundation Content Sync response or resource snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400": { description: Invalid checkpoint }
+        "404": { description: Resource unavailable }
+        "503": { description: Official content temporarily unavailable }
+
   /quran/tajweed/word/{surahNumber}/{ayahNumber}/{wordPosition}:
     get:
       operationId: getQuranWordTajweed
