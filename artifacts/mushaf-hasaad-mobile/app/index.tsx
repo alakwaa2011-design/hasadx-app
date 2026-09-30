@@ -23,14 +23,14 @@ import { VerseRangePanel } from '@/components/VerseRangePanel';
 import { ReaderKeepAwake } from '@/components/ReaderKeepAwake';
 import { WordActions, type WordSelection } from '@/components/WordActions';
 import { VerseActions } from '@/components/VerseActions';
-import { PlaybackQuickControls } from '@/components/PlaybackQuickControls';
 import {
   PAGE_COUNT, chapterName, chapters, firstPageOfChapter, firstPageOfPart,
   normalize, pageImage, pageLabel, pageVerses, pages, parts, verses, type Verse,
 } from '@/data/quran';
 
-type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'repeat' | 'speed' | 'tafsir' | 'range' | null;
+type Sheet = 'index' | 'search' | 'bookmarks' | 'settings' | 'verses' | 'verse' | 'word' | 'memorize' | 'audio' | 'tafsir' | 'range' | null;
 type IndexTab = 'chapters' | 'parts' | 'bookmarks';
+type AudioTab = 'reciters' | 'playback' | 'range';
 type StopAt = 'ayah' | 'page' | 'surah';
 const repeats = [1, 3, 5, 10, -1] as const;
 const iconSize = 22;
@@ -105,6 +105,8 @@ export default function MushafReader() {
   const offlineContent = useOfflineContent();
   const { page, goToPage, bookmarks, toggleBookmark, setBookmarkCategory, appearance, setAppearance, pageDisplay, setPageDisplay, readingMode, setReadingMode, keepAwake, setKeepAwake, tajweedEnabled, setTajweedEnabled, practice, startPractice, storageError, audio, updateAudio } = reader;
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [audioTab, setAudioTab] = useState<AudioTab>('reciters');
+  const openAudio = (tab: AudioTab = 'reciters') => { setAudioTab(tab); setSheet('audio'); };
   const [tab, setTab] = useState<IndexTab>('chapters');
   const [query, setQuery] = useState('');
   const [reciterQuery, setReciterQuery] = useState('');
@@ -238,7 +240,7 @@ export default function MushafReader() {
     setAudioSegment(null);
     setAudioVerse(null);
     setAudioError('تعذّر تشغيل التلاوة. تحقق من الاتصال أو اختر قارئًا آخر.');
-    setSheet('audio');
+    setAudioTab('reciters'); setSheet('audio');
   }, [audioStatus.error, player]);
   useEffect(() => {
     if (wordStatus.error && wordAudioKey) {
@@ -311,7 +313,7 @@ export default function MushafReader() {
       setAudioVerse(null);
       setPendingSegment(null);
       setAudioError('تعذّر تشغيل هذا القارئ أو تحميل توقيت الآية. تحقق من الاتصال أو اختر قارئًا آخر.');
-      setSheet('audio');
+      setAudioTab('reciters'); setSheet('audio');
     }
   }, [activeReciter, player, speed, stopWord, goToPage]);
   useEffect(() => {
@@ -336,7 +338,7 @@ export default function MushafReader() {
       currentChapterSource.current = null;
       setAudioVerse(null);
       setAudioError('تعذّر تحديد موضع الآية في تسجيل القارئ. اختر قارئًا آخر.');
-      setSheet('audio');
+      setAudioTab('reciters'); setSheet('audio');
     });
   }, [pendingSegment, audioStatus.isLoaded, player]);
   useEffect(() => {
@@ -350,7 +352,7 @@ export default function MushafReader() {
       setPendingSegment(null);
       setAudioVerse(null);
       setAudioError('انتهت مهلة تحميل تسجيل القارئ. تحقق من الاتصال وحاول مجددًا.');
-      setSheet('audio');
+      setAudioTab('reciters'); setSheet('audio');
     }, 15000);
     return () => clearTimeout(timeout);
   }, [pendingSegment?.request, player]);
@@ -376,6 +378,7 @@ export default function MushafReader() {
       setAudioSegment(null);
       setPlayed(0);
       setRangePlayed(0);
+      setRangeSession(false);
       setBetweenVerses(false);
       setBetweenPaused(false);
     };
@@ -589,7 +592,7 @@ export default function MushafReader() {
             </View>
             <IconButton name="search-outline" label="البحث" onPress={() => setSheet('search')} color={fg} />
             <IconButton name="bookmark-outline" label="العلامات" onPress={() => setSheet('bookmarks')} color={fg} />
-            <IconButton name="headset-outline" label="التلاوة" onPress={() => setSheet('audio')} color={fg} active={!!audioVerse} />
+            <IconButton name="headset-outline" label="التلاوة" onPress={() => openAudio()} color={fg} active={!!audioVerse} />
             <IconButton name="layers-outline" label="حفظني" onPress={resumePractice} color={fg} />
           </>
         )}
@@ -635,13 +638,13 @@ export default function MushafReader() {
              label={(betweenVerses && !betweenPaused) || audioStatus.playing ? 'إيقاف مؤقت' : 'استئناف'}
              onPress={toggleAudioPlayback} color={colors.primary} />
            <IconButton name="play-skip-back" label="الآية التالية" onPress={() => moveAudio(1)} color={fg} />
-           <Pressable accessibilityRole="button" accessibilityLabel="إعدادات التلاوة" onPress={() => setSheet('audio')} style={styles.audioCaption}>
+           <Pressable accessibilityRole="button" accessibilityLabel="إعدادات التلاوة" onPress={() => openAudio()} style={styles.audioCaption}>
              <Text numberOfLines={1} style={{ color: fg }}>سورة {chapterName(audioVerse.chapter_id)} · {audioVerse.number}</Text>
            </Pressable>
          </View>
          <View style={styles.audioQuickRow}>
            <Pressable testID="audio-repeat-button" accessibilityRole="button" accessibilityLabel={`خيارات التكرار، ${repeat === -1 ? 'مستمر' : `${repeat} مرات`}`}
-             onPress={() => setSheet('repeat')}
+             onPress={() => openAudio('playback')}
              style={({ pressed }) => [styles.audioQuickButton, { backgroundColor: colors.card, opacity: pressed ? .6 : 1 }]}>
              <Ionicons name="repeat-outline" size={17} color={colors.primary} />
              <Text numberOfLines={1} style={[styles.audioQuickLabel, { color: fg }]}>
@@ -649,7 +652,7 @@ export default function MushafReader() {
              </Text>
            </Pressable>
            <Pressable testID="audio-speed-button" accessibilityRole="button" accessibilityLabel={`سرعة التشغيل، ${speed} ضعف`}
-             onPress={() => setSheet('speed')}
+             onPress={() => openAudio('playback')}
              style={({ pressed }) => [styles.audioQuickButton, { backgroundColor: colors.card, opacity: pressed ? .6 : 1 }]}>
              <Ionicons name="speedometer-outline" size={17} color={colors.primary} />
              <Text numberOfLines={1} style={[styles.audioQuickLabel, { color: fg }]}>
@@ -676,7 +679,10 @@ export default function MushafReader() {
       <Modal visible={sheet !== null} transparent animationType="slide" onRequestClose={close}>
         <View style={styles.modalFrame}>
           <Pressable style={styles.scrim} onPress={close} accessibilityLabel="إغلاق اللوحة" />
-          <View style={[styles.sheet, menuStyle, { paddingBottom: bottomInset + 14, maxHeight: viewport.height * .84 }]}>
+          <View style={[styles.sheet, menuStyle, {
+            paddingBottom: bottomInset + 14,
+            maxHeight: viewport.height * (sheet === 'audio' && compactLandscape ? .94 : .84),
+          }, sheet === 'audio' && { height: Math.min(viewport.height * (compactLandscape ? .94 : .84), 700) }]}>
              <View style={[styles.sheetHeading, compactLandscape && { height: 50 }]}>
               <IconButton name="close" label="إغلاق" color={fg} onPress={close} />
               <Text style={[styles.sheetTitle, { color: fg }]}>{
@@ -684,8 +690,7 @@ export default function MushafReader() {
                   sheet === 'bookmarks' ? 'علاماتي' : sheet === 'settings' ? 'إعدادات القراءة' :
                     sheet === 'word' ? 'خيارات الكلمة' :
                     sheet === 'verses' ? `آيات الصفحة ${page}` : sheet === 'memorize' ? 'حفظني' :
-                      sheet === 'audio' ? 'التلاوة والتكرار' : sheet === 'repeat' ? 'خيارات التكرار' :
-                        sheet === 'speed' ? 'سرعة التشغيل' : sheet === 'tafsir' ? 'تفسير الآية' :
+                      sheet === 'audio' ? 'التلاوة' : sheet === 'tafsir' ? 'تفسير الآية' :
                         sheet === 'range' ? 'نسخ ومشاركة نطاق آيات' : 'خيارات الآية'
               }</Text>
               <View style={{ width: 44 }} />
@@ -781,7 +786,7 @@ export default function MushafReader() {
                </>}
                {offlineContent.error && <Text style={[styles.note, { color: colors.destructive }]}>{offlineContent.error}</Text>}
                 <Text style={[styles.note, { color: colors.mutedForeground }]}>الخطوط مورد منفصل عن بيانات Content Sync. عدم تنزيل خط صفحة معينة يمنع عرض كلماتها بخط المصحف بلا إنترنت، وتبقى صورتها متاحة. نطق الكلمات ومعانيها وترجمتها والتلاوة تحتاج الاتصال؛ خط ألوان التجويد يُحفظ عند عرضه أول مرة.</Text>
-              <Row title="القارئ والتكرار" detail="إعدادات التلاوة" onPress={() => setSheet('audio')} colors={colors} />
+              <Row title="التلاوة" detail="القرّاء والتكرار والسرعة" onPress={() => openAudio()} colors={colors} />
               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة عرض المصحف</Text>
                <Row title={tajweedEnabled ? 'ألوان التجويد مفعّلة' : 'تفعيل ألوان التجويد'}
                  detail="خط QCF V4 الرسمي للكلمات التفاعلية؛ دليل قابل للفتح على الصفحة"
@@ -831,7 +836,7 @@ export default function MushafReader() {
                <VerseActions key={selectedVerse.id} verse={selectedVerse}
                  category={bookmarks.find(b => b.chapter === selectedVerse.chapter_id && b.verse === selectedVerse.number)?.category ?? null}
                  onPlay={() => {
-                   if (!activeReciter) { setSheet('audio'); return; }
+                    if (!activeReciter) { openAudio(); return; }
                    setRangeSession(false); setPlayed(0); setRangePlayed(0);
                    void playVerse(selectedVerse);
                    close();
@@ -843,7 +848,7 @@ export default function MushafReader() {
                  onCopyRange={() => setSheet('range')}
                  onSimilar={() => { setSheet(null); setSimilarVerseKey(`${selectedVerse.chapter_id}:${selectedVerse.number}`); }}
                  onShare={() => { void shareVerse(); }}
-                 onAudioSettings={() => setSheet('audio')}
+                  onAudioSettings={() => openAudio()}
                  onPractice={() => beginPractice(selectedVerse)} />
              </ScrollView>}
             {sheet === 'range' && (selectedVerse ?? visibleVerses[0]) &&
@@ -864,137 +869,202 @@ export default function MushafReader() {
                  onNext={next => { stopAudio(); startPractice(next.chapter_id, next.number); setSelectedVerse(next); goToPage(next.page_id); }}
                  onFinish={() => { stopAudio(); close(); }} />
             </ScrollView>}
-            {(sheet === 'repeat' || sheet === 'speed') &&
-              <PlaybackQuickControls mode={sheet} repeat={repeat} stopAt={stopAt} repeatMode={repeatMode}
-                rangeSession={rangeSession} pauseBetween={pauseBetween} speed={speed}
-                onRepeat={value => { setRepeat(value); setPlayed(0); setRangePlayed(0); }}
-                onStopAt={setStopAt}
-                onRepeatMode={value => { updateAudio({ repeatMode: value }); setPlayed(0); setRangePlayed(0); }}
-                onPauseBetween={value => updateAudio({ pauseBetween: value })}
-                onSpeed={value => { setSpeed(value); player.setPlaybackRate(value); }}
-                onOpenSettings={() => setSheet('audio')} />}
-            {sheet === 'audio' && <ScrollView style={styles.list}>
-               <View style={styles.audioQuickRow}>
-                 <Pressable testID="audio-settings-repeat-button" accessibilityRole="button"
-                   accessibilityLabel="خيارات التكرار" onPress={() => setSheet('repeat')}
-                   style={[styles.audioQuickButton, { backgroundColor: colors.secondary }]}>
-                   <Ionicons name="repeat-outline" size={18} color={colors.primary} />
-                   <Text style={[styles.audioQuickLabel, { color: fg }]}>التكرار · {repeat === -1 ? 'مستمر' : `${repeat}×`}</Text>
-                 </Pressable>
-                 <Pressable testID="audio-settings-speed-button" accessibilityRole="button"
-                   accessibilityLabel="سرعة التشغيل" onPress={() => setSheet('speed')}
-                   style={[styles.audioQuickButton, { backgroundColor: colors.secondary }]}>
-                   <Ionicons name="speedometer-outline" size={18} color={colors.primary} />
-                   <Text style={[styles.audioQuickLabel, { color: fg }]}>السرعة · {speed}×</Text>
-                 </Pressable>
-               </View>
-               {pageDisplay === 'images' && <Text style={[styles.note, { color: colors.mutedForeground }]}>
-                 تظليل الكلمة المنطوقة يظهر في وضع الكلمات التفاعلية، وليس على صورة الصفحة.
-               </Text>}
-               {activeReciter !== null && VERSE_FILE_RECITERS.has(activeReciter) &&
-                 <Text style={[styles.note, { color: colors.mutedForeground }]}>
-                   تسجيل هذا القارئ بلا توقيت موثّق للكلمات؛ يظهر موضع الآية دون تظليل كلمة غير مؤكّد.
-                 </Text>}
-              <Text style={[styles.sectionTitle, { color: fg }]}>الآية</Text>
-              <Text style={[styles.note, { color: colors.mutedForeground }]}>
-                {selectedVerse ? `سورة ${chapterName(selectedVerse.chapter_id)} · الآية ${selectedVerse.number}` : `الآية الأولى في الصفحة ${page}`}
-              </Text>
-              <Text style={[styles.sectionTitle, { color: fg }]}>القارئ</Text>
-              {catalog.isPending && !!quranApiOrigin && <ActivityIndicator color={colors.primary} />}
-              {!quranApiOrigin && <Text style={[styles.note, { color: colors.destructive }]}>تحتاج نسخة الجوال النهائية إلى عنوان خدمة حصاد الموثوقة للتلاوة.</Text>}
-               {catalog.isError && <View>
-                 <Text style={[styles.note, { color: colors.destructive }]}>تعذّر تحميل القرّاء. تحقق من اتصال الإنترنت.</Text>
-                 <Pressable accessibilityRole="button" onPress={() => catalog.refetch()}><Text style={{ color: colors.primary, textAlign: 'right', fontWeight: '700' }}>إعادة المحاولة</Text></Pressable>
-               </View>}
-               {!!reciters.length && <TextInput value={reciterQuery} onChangeText={setReciterQuery}
-                 placeholder="ابحث عن قارئ أو نوع التلاوة" placeholderTextColor={colors.mutedForeground}
-                 style={[styles.input, styles.searchInput, { color: fg, borderColor: colors.border }]}
-                 textAlign="right" accessibilityLabel="البحث عن قارئ" testID="reciter-search" />}
-               {!!reciterQuery && !shownReciters.length && <Text style={[styles.empty, { color: colors.mutedForeground }]}>لا يوجد قارئ مطابق</Text>}
-               {shownReciters.map(reciter => <Row key={reciter.id} title={`${activeReciter === reciter.id ? '✓  ' : ''}${reciter.name}`}
-                detail={recitationStyleLabel(reciter.style)} onPress={() => { setReciterId(reciter.id); if (audioVerse) { setPlayed(0); void playVerse(audioVerse, reciter.id); } }} colors={colors} />)}
-              <Text style={[styles.sectionTitle, { color: fg }]}>عدد مرات التكرار</Text>
-              <View style={styles.segment}>
-                 {repeats.map(value => <Pressable key={value} accessibilityRole="button"
-                   accessibilityLabel={value === -1 ? 'تكرار مستمر' : `تكرار ${value}`} accessibilityState={{ selected: repeat === value }}
-                  style={[styles.segmentItem, repeat === value && { backgroundColor: colors.secondary }]}
-                  onPress={() => { setRepeat(value); setPlayed(0); }}>
-                  <Text style={{ color: fg }}>{value === -1 ? 'مستمر' : value}</Text>
-                </Pressable>)}
+            {sheet === 'audio' && <>
+              <View style={[styles.audioTabs, { backgroundColor: colors.secondary }]}>
+                {([['reciters', 'القرّاء'], ['playback', 'التكرار والسرعة'], ['range', 'النطاق']] as [AudioTab, string][]).map(([id, label]) =>
+                  <Pressable key={id} testID={`audio-tab-${id}`} accessibilityRole="tab"
+                    accessibilityLabel={label} accessibilityState={{ selected: audioTab === id }}
+                    onPress={() => { Keyboard.dismiss(); setAudioTab(id); }}
+                    style={[styles.audioTab, audioTab === id && { backgroundColor: colors.card }]}>
+                    <Text numberOfLines={1} style={[styles.audioTabLabel, {
+                      color: audioTab === id ? colors.primary : colors.mutedForeground,
+                    }]}>{label}</Text>
+                  </Pressable>)}
               </View>
-              <Text style={[styles.sectionTitle, { color: fg }]}>التوقف بعد</Text>
-              <View style={styles.segment}>
-                {([['ayah', 'آية'], ['page', 'صفحة'], ['surah', 'سورة']] as [StopAt, string][]).map(([id, label]) =>
-                   <Pressable key={id} accessibilityRole="button" accessibilityLabel={`التوقف بعد ${label}`}
-                     accessibilityState={{ selected: stopAt === id }}
-                     style={[styles.segmentItem, stopAt === id && { backgroundColor: colors.secondary }]}
-                    onPress={() => setStopAt(id)}><Text style={{ color: fg }}>{label}</Text></Pressable>)}
+              <View style={styles.audioContextRow}>
+                <Text numberOfLines={1} style={[styles.audioContext, { color: colors.mutedForeground }]}>
+                  {audioVerse ? `يُتلى الآن: سورة ${chapterName(audioVerse.chapter_id)} · الآية ${audioVerse.number}`
+                    : selectedVerse ? `البداية: سورة ${chapterName(selectedVerse.chapter_id)} · الآية ${selectedVerse.number}`
+                      : `البداية: الصفحة ${page}`}
+                </Text>
+                {compactLandscape && audioTab === 'playback' &&
+                  <Text style={[styles.audioScrollHint, { color: colors.mutedForeground }]}>
+                    مرّر للأسفل لبقية الخيارات ↓
+                  </Text>}
               </View>
-               <Text style={[styles.sectionTitle, { color: fg }]}>نطاق التكرار داخل السورة</Text>
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>
-                 سورة {chapterName(rangeUiChapter)} · {rangeIsConfigured ? 'نطاق محفوظ' : 'اختر بداية أو نهاية لتفعيل النطاق'}
-               </Text>
-               {([
-                 ['من الآية', rangeUiStart, 1, rangeUiEnd, (value: number) => saveRange(value, rangeUiEnd)],
-                 ['إلى الآية', rangeUiEnd, rangeUiStart, rangeUiChapterLength, (value: number) => saveRange(rangeUiStart, value)],
-               ] as [string, number, number, number, (value: number) => void][]).map(([label, value, min, max, setValue]) =>
-                 <View key={label} style={styles.rangeRow}>
-                   <Text style={[styles.rowTitle, { color: fg, flex: 1 }]}>{label}</Text>
-                   <Pressable accessibilityRole="button" accessibilityLabel={`${label} السابقة`}
-                     disabled={value <= min} onPress={() => setValue(value - 1)}
-                     style={[styles.rangeStep, { borderColor: colors.border, opacity: value <= min ? .4 : 1 }]}>
-                     <Ionicons name="remove" size={18} color={fg} />
-                   </Pressable>
-                    <VerseNumberInput key={`${rangeUiChapter}-${label}-${value}`} label={label}
-                      value={value} min={min} max={max} onCommit={setValue} colors={colors} />
-                   <Pressable accessibilityRole="button" accessibilityLabel={`${label} التالية`}
-                     disabled={value >= max} onPress={() => setValue(value + 1)}
-                     style={[styles.rangeStep, { borderColor: colors.border, opacity: value >= max ? .4 : 1 }]}>
-                     <Ionicons name="add" size={18} color={fg} />
-                   </Pressable>
-                 </View>)}
-               <Text style={[styles.sectionTitle, { color: fg }]}>طريقة التكرار</Text>
-               <View style={styles.segment}>
-                 {([['ayah', 'كل آية'], ['range', 'النطاق كاملًا']] as const).map(([id, label]) =>
-                   <Pressable key={id} accessibilityRole="button" accessibilityState={{ selected: repeatMode === id }}
-                     style={[styles.segmentItem, repeatMode === id && { backgroundColor: colors.secondary }]}
-                     onPress={() => {
-                       updateAudio({ repeatMode: id, ...(id === 'range' && !rangeIsConfigured
-                         ? { rangeChapter: rangeUiChapter, rangeStart: rangeUiStart, rangeEnd: rangeUiEnd } : {}) });
-                       setPlayed(0);
-                       setRangePlayed(0);
-                     }}><Text style={{ color: fg }}>{label}</Text></Pressable>)}
-               </View>
-               <Text style={[styles.sectionTitle, { color: fg }]}>الفاصل بين الآيات والتكرار</Text>
-               <View style={styles.segment}>{[0, .5, 1, 2, 3].map(value =>
-                 <Pressable key={value} accessibilityRole="button" accessibilityLabel={`فاصل ${value} ثانية`}
-                   accessibilityState={{ selected: pauseBetween === value }}
-                   style={[styles.segmentItem, pauseBetween === value && { backgroundColor: colors.secondary }]}
-                   onPress={() => updateAudio({ pauseBetween: value })}>
-                   <Text style={{ color: fg }}>{value === 0 ? 'دون' : `${value}ث`}</Text>
-                 </Pressable>)}</View>
-              <Text style={[styles.sectionTitle, { color: fg }]}>السرعة</Text>
-              <View style={styles.segment}>{[.75, 1, 1.25].map(value =>
-                 <Pressable key={value} accessibilityRole="button" accessibilityLabel={`سرعة ${value}`}
-                   accessibilityState={{ selected: speed === value }}
-                   style={[styles.segmentItem, speed === value && { backgroundColor: colors.secondary }]}
-                  onPress={() => { setSpeed(value); player.setPlaybackRate(value); }}><Text style={{ color: fg }}>{value}×</Text></Pressable>)}</View>
-              {!!audioError && <Text style={[styles.note, { color: colors.destructive }]}>{audioError}</Text>}
-              <Pressable disabled={!activeReciter} style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: activeReciter ? 1 : .5 }]}
-                onPress={() => {
-                   const start = rangeIsConfigured
-                     ? verses.find(v => v.chapter_id === rangeUiChapter && v.number === rangeUiStart)
-                     : selectedVerse ?? visibleVerses[0];
-                   if (start) {
-                     setPlayed(0); setRangePlayed(0); setRangeSession(rangeIsConfigured);
-                     if (start.page_id !== currentPage.current) goToPage(start.page_id);
-                     playVerse(start); close();
-                   }
-                }}>
-                <Text style={[styles.primaryLabel, { color: colors.primaryForeground }]}>بدء التلاوة</Text>
-              </Pressable>
-               <Text style={[styles.note, { color: colors.mutedForeground }]}>التلاوات تحتاج اتصالًا الآن. لا يُتاح تنزيل تسجيل قارئ إلى الجهاز حتى تثبت شروط التخزين لذلك التسجيل؛ الاستماع المباشر لا يعني السماح بتنزيله.</Text>
-            </ScrollView>}
+              <ScrollView style={styles.audioContent} contentContainerStyle={styles.audioContentBody}
+                keyboardShouldPersistTaps="handled">
+                {audioTab === 'reciters' && <>
+                  {catalog.isPending && !!quranApiOrigin && <ActivityIndicator color={colors.primary} />}
+                  {!quranApiOrigin && <Text style={[styles.note, { color: colors.destructive }]}>تحتاج التلاوة إلى عنوان خدمة حصاد الموثوقة.</Text>}
+                  {catalog.isError && <View>
+                    <Text style={[styles.note, { color: colors.destructive }]}>تعذّر تحميل القرّاء. تحقق من اتصال الإنترنت.</Text>
+                    <Pressable accessibilityRole="button" onPress={() => catalog.refetch()}>
+                      <Text style={{ color: colors.primary, textAlign: 'right', fontWeight: '700' }}>إعادة المحاولة</Text>
+                    </Pressable>
+                  </View>}
+                  {!!reciters.length && <TextInput value={reciterQuery} onChangeText={setReciterQuery}
+                    placeholder="ابحث عن قارئ أو نوع التلاوة" placeholderTextColor={colors.mutedForeground}
+                    style={[styles.input, styles.searchInput, { color: fg, borderColor: colors.border }]}
+                    textAlign="right" accessibilityLabel="البحث عن قارئ" testID="reciter-search" />}
+                  {!!reciterQuery && !shownReciters.length && <Text style={[styles.empty, { color: colors.mutedForeground }]}>لا يوجد قارئ مطابق</Text>}
+                  {shownReciters.map(reciter => {
+                    const selected = activeReciter === reciter.id;
+                    return <Pressable key={reciter.id} accessibilityRole="button"
+                      accessibilityLabel={`${reciter.name}، ${recitationStyleLabel(reciter.style)}`}
+                      accessibilityState={{ selected }} testID={`audio-reciter-${reciter.id}`}
+                      onPress={() => {
+                        setReciterId(reciter.id);
+                        if (audioVerse && reciter.id !== activeReciter) { setPlayed(0); setRangePlayed(0); void playVerse(audioVerse, reciter.id); }
+                      }}
+                      style={[styles.reciterCard, {
+                        backgroundColor: selected ? colors.secondary : colors.card,
+                        borderColor: selected ? colors.primary : colors.border,
+                      }]}>
+                      <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={23}
+                        color={selected ? colors.primary : colors.mutedForeground} />
+                      <View style={styles.rowBody}>
+                        <Text style={[styles.rowTitle, { color: fg }]}>{reciter.name}</Text>
+                        <Text style={[styles.rowDetail, { color: colors.mutedForeground }]}>{recitationStyleLabel(reciter.style)}</Text>
+                      </View>
+                    </Pressable>;
+                  })}
+                  {activeReciter !== null && VERSE_FILE_RECITERS.has(activeReciter) &&
+                    <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                      تسجيل هذا القارئ بلا توقيت موثّق للكلمات؛ يظهر موضع الآية دون تظليل كلمة غير مؤكّد.
+                    </Text>}
+                  <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                    الاستماع يحتاج اتصالًا بالإنترنت؛ تنزيل تسجيل القارئ غير متاح حاليًا.
+                  </Text>
+                </>}
+                {audioTab === 'playback' && <>
+                  <View style={compactLandscape && styles.audioPlaybackTop}>
+                  <View style={[styles.audioGroup, compactLandscape && styles.audioPlaybackColumn, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.audioGroupTitle, { color: fg }]}>عدد مرات التكرار</Text>
+                    <View style={styles.segment}>
+                      {repeats.map(value => <Pressable key={value} accessibilityRole="button"
+                        accessibilityLabel={value === -1 ? 'تكرار مستمر' : `تكرار ${value} مرات`}
+                        accessibilityState={{ selected: repeat === value }} testID={`audio-repeat-${value}`}
+                        style={[styles.audioOption, { backgroundColor: repeat === value ? colors.primary : colors.card }]}
+                        onPress={() => { setRepeat(value); setPlayed(0); setRangePlayed(0); }}>
+                        <Text style={[styles.audioOptionText, { color: repeat === value ? colors.primaryForeground : fg }]}>
+                          {value === -1 ? 'مستمر' : `${value}×`}
+                        </Text>
+                      </Pressable>)}
+                    </View>
+                  </View>
+                  <View style={[styles.audioGroup, compactLandscape && styles.audioPlaybackColumn, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.audioGroupTitle, { color: fg }]}>سرعة التشغيل</Text>
+                    <View style={styles.segment}>{[.75, 1, 1.25].map(value =>
+                      <Pressable key={value} accessibilityRole="button" accessibilityLabel={`سرعة ${value} ضعف`}
+                        accessibilityState={{ selected: speed === value }} testID={`audio-speed-${value}`}
+                        style={[styles.audioOption, { backgroundColor: speed === value ? colors.primary : colors.card }]}
+                        onPress={() => { setSpeed(value); player.setPlaybackRate(value); }}>
+                        <Text style={[styles.audioOptionText, { color: speed === value ? colors.primaryForeground : fg }]}>{value}×</Text>
+                      </Pressable>)}</View>
+                  </View>
+                  </View>
+                  {(!audioVerse || !rangeSession) ? <View style={[styles.audioGroup, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.audioGroupTitle, { color: fg }]}>التوقف بعد</Text>
+                    <View style={styles.segment}>
+                      {([['ayah', 'آية'], ['page', 'صفحة'], ['surah', 'سورة']] as [StopAt, string][]).map(([id, label]) =>
+                        <Pressable key={id} accessibilityRole="button" accessibilityLabel={`التوقف بعد ${label}`}
+                          accessibilityState={{ selected: stopAt === id }} testID={`audio-stop-${id}`}
+                          style={[styles.audioOption, { backgroundColor: stopAt === id ? colors.primary : colors.card }]}
+                          onPress={() => setStopAt(id)}>
+                          <Text style={[styles.audioOptionText, { color: stopAt === id ? colors.primaryForeground : fg }]}>{label}</Text>
+                        </Pressable>)}
+                    </View>
+                  </View> : <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                    النطاق الجاري يتوقف عند آخر آية فيه؛ يمكنك تغيير طريقة تكراره من تبويب النطاق.
+                  </Text>}
+                  <View style={[styles.audioGroup, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.audioGroupTitle, { color: fg }]}>الفاصل بين الآيات والتكرار</Text>
+                    <View style={styles.segment}>{[0, .5, 1, 2, 3].map(value =>
+                      <Pressable key={value} accessibilityRole="button" accessibilityLabel={`فاصل ${value} ثانية`}
+                        accessibilityState={{ selected: pauseBetween === value }} testID={`audio-pause-${value}`}
+                        style={[styles.audioOption, { backgroundColor: pauseBetween === value ? colors.primary : colors.card }]}
+                        onPress={() => updateAudio({ pauseBetween: value })}>
+                        <Text style={[styles.audioOptionText, { color: pauseBetween === value ? colors.primaryForeground : fg }]}>
+                          {value === 0 ? 'دون' : `${value}ث`}
+                        </Text>
+                      </Pressable>)}</View>
+                  </View>
+                  {pageDisplay === 'images' && <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                    تظليل الكلمة المنطوقة يظهر في وضع الكلمات التفاعلية، وليس على صورة الصفحة.
+                  </Text>}
+                </>}
+                {audioTab === 'range' && <>
+                  <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                    حدد آيات من سورة {chapterName(rangeUiChapter)}، ثم ابدأ النطاق من الزر أسفل اللوحة.
+                  </Text>
+                  <View style={[styles.audioGroup, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.audioGroupTitle, { color: fg }]}>حدود النطاق</Text>
+                    {([
+                      ['من الآية', rangeUiStart, 1, rangeUiEnd, (value: number) => saveRange(value, rangeUiEnd)],
+                      ['إلى الآية', rangeUiEnd, rangeUiStart, rangeUiChapterLength, (value: number) => saveRange(rangeUiStart, value)],
+                    ] as [string, number, number, number, (value: number) => void][]).map(([label, value, min, max, setValue]) =>
+                      <View key={label} style={styles.rangeRow}>
+                        <Text style={[styles.rowTitle, { color: fg, flex: 1 }]}>{label}</Text>
+                        <Pressable accessibilityRole="button" accessibilityLabel={`${label} السابقة`}
+                          disabled={value <= min} onPress={() => setValue(value - 1)}
+                          style={[styles.rangeStep, { borderColor: colors.border, opacity: value <= min ? .4 : 1 }]}>
+                          <Ionicons name="remove" size={18} color={fg} />
+                        </Pressable>
+                        <VerseNumberInput key={`${rangeUiChapter}-${label}-${value}`} label={label}
+                          value={value} min={min} max={max} onCommit={setValue} colors={colors} />
+                        <Pressable accessibilityRole="button" accessibilityLabel={`${label} التالية`}
+                          disabled={value >= max} onPress={() => setValue(value + 1)}
+                          style={[styles.rangeStep, { borderColor: colors.border, opacity: value >= max ? .4 : 1 }]}>
+                          <Ionicons name="add" size={18} color={fg} />
+                        </Pressable>
+                      </View>)}
+                  </View>
+                  <View style={[styles.audioGroup, { backgroundColor: colors.secondary }]}>
+                    <Text style={[styles.audioGroupTitle, { color: fg }]}>طريقة التكرار</Text>
+                    <View style={styles.segment}>
+                      {([['ayah', 'كل آية'], ['range', 'النطاق كاملًا']] as const).map(([id, label]) =>
+                        <Pressable key={id} accessibilityRole="button" accessibilityLabel={label}
+                          accessibilityState={{ selected: repeatMode === id }} testID={`audio-range-mode-${id}`}
+                          style={[styles.audioOption, { backgroundColor: repeatMode === id ? colors.primary : colors.card }]}
+                          onPress={() => {
+                            updateAudio({ repeatMode: id, ...(id === 'range' && !rangeIsConfigured
+                              ? { rangeChapter: rangeUiChapter, rangeStart: rangeUiStart, rangeEnd: rangeUiEnd } : {}) });
+                            setPlayed(0); setRangePlayed(0);
+                          }}>
+                          <Text style={[styles.audioOptionText, { color: repeatMode === id ? colors.primaryForeground : fg }]}>{label}</Text>
+                        </Pressable>)}
+                    </View>
+                  </View>
+                  {rangeSession && !!audioVerse && <Text style={[styles.note, { color: colors.mutedForeground }]}>
+                    لتطبيق حدود نطاق جديدة أثناء التلاوة، اضغط «بدء النطاق» مرة أخرى.
+                  </Text>}
+                </>}
+              </ScrollView>
+              {!!audioError && <Text style={[styles.audioError, { color: colors.destructive }]}>{audioError}</Text>}
+              <View style={[styles.audioFooter, { borderColor: colors.border }]}>
+                <Pressable testID="audio-start-button" accessibilityRole="button"
+                  disabled={!activeReciter && (!audioVerse || audioTab === 'range')}
+                  style={[styles.primaryButton, { backgroundColor: colors.primary,
+                    opacity: !activeReciter && (!audioVerse || audioTab === 'range') ? .5 : 1 }]}
+                  onPress={() => {
+                    if (audioVerse && audioTab !== 'range') { close(); return; }
+                    const usingRange = audioTab === 'range';
+                    const start = usingRange
+                      ? verses.find(v => v.chapter_id === rangeUiChapter && v.number === rangeUiStart)
+                      : selectedVerse ?? visibleVerses[0];
+                    if (!start) return;
+                    if (usingRange && !rangeIsConfigured) saveRange(rangeUiStart, rangeUiEnd);
+                    setPlayed(0); setRangePlayed(0); setRangeSession(usingRange);
+                    if (start.page_id !== currentPage.current) goToPage(start.page_id);
+                    void playVerse(start); close();
+                  }}>
+                  <Text style={[styles.primaryLabel, { color: colors.primaryForeground }]}>
+                    {audioTab === 'range' ? 'بدء النطاق' : audioVerse ? 'العودة للمصحف' : 'بدء التلاوة'}
+                  </Text>
+                </Pressable>
+              </View>
+            </>}
           </View>
         </View>
       </Modal>
@@ -1045,6 +1115,24 @@ const styles = StyleSheet.create({
   audioQuickButton: { flex: 1, minHeight: 37, borderRadius: 12, flexDirection: 'row-reverse',
     alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6 },
   audioQuickLabel: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  audioTabs: { flexDirection: 'row-reverse', padding: 4, borderRadius: 14, gap: 3, minHeight: 50 },
+  audioTab: { flex: 1, minWidth: 0, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
+  audioTabLabel: { fontSize: 13, fontWeight: '700', textAlign: 'center', writingDirection: 'rtl' },
+  audioContextRow: { flexDirection: 'row-reverse', alignItems: 'center' },
+  audioContext: { flex: 1, fontSize: 12, textAlign: 'right', writingDirection: 'rtl', marginVertical: 10 },
+  audioScrollHint: { fontSize: 11, textAlign: 'left' },
+  audioContent: { flex: 1, minHeight: 0 },
+  audioContentBody: { paddingBottom: 16 },
+  reciterCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 64,
+    paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderRadius: 13, marginBottom: 7 },
+  audioGroup: { borderRadius: 15, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 },
+  audioPlaybackTop: { flexDirection: 'row-reverse', gap: 10 },
+  audioPlaybackColumn: { flex: 1, minWidth: 0 },
+  audioGroupTitle: { fontSize: 15, fontWeight: '700', textAlign: 'right', writingDirection: 'rtl' },
+  audioOption: { flex: 1, minWidth: 0, minHeight: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  audioOptionText: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  audioError: { fontSize: 12, lineHeight: 19, textAlign: 'right', marginTop: 4 },
+  audioFooter: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 10 },
   landscapeAudioDock: { position: 'absolute', left: 8, bottom: 0, zIndex: 3, borderRadius: 14, width: 260, maxWidth: 260 },
   audioCaption: { flex: 1, alignItems: 'flex-end', paddingRight: 8 },
   pagePill: { borderWidth: 1, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, minWidth: 85, alignItems: 'center' },
