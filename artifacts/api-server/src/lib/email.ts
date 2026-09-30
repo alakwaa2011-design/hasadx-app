@@ -1,61 +1,7 @@
 import { Resend } from "resend";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 
-const RESEND_CONNECTOR = "resend";
 export const EMAIL_FROM = "حصاد | HasaadX <noreply@hasaadx.com>";
-
-let cachedClient: { client: Resend; expiresAt: number } | null = null;
-
-async function fetchConnectorCredentials(): Promise<{ apiKey: string } | null> {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken =
-    process.env.REPL_IDENTITY
-      ? `repl ${process.env.REPL_IDENTITY}`
-      : process.env.WEB_REPL_RENEWAL
-      ? `depl ${process.env.WEB_REPL_RENEWAL}`
-      : null;
-
-  if (!hostname || !xReplitToken) return null;
-
-  try {
-    const response = await fetch(
-      `https://${hostname}/api/v2/connection?include_secrets=true`,
-      { headers: { Accept: "application/json", X_REPLIT_TOKEN: xReplitToken } },
-    );
-    if (!response.ok) return null;
-    const data = (await response.json()) as {
-      items?: Array<{
-        connector_name?: string;
-        id?: string;
-        settings?: { api_key?: string; from_email?: string };
-      }>;
-    };
-    const item = data.items?.find(
-      (i) =>
-        i.connector_name === RESEND_CONNECTOR ||
-        i.id?.startsWith("conn_resend_"),
-    );
-    const apiKey = item?.settings?.api_key;
-    return apiKey ? { apiKey } : null;
-  } catch {
-    return null;
-  }
-}
-
-async function getResendClient(): Promise<Resend | null> {
-  const envKey = process.env.RESEND_API_KEY;
-  if (envKey) return new Resend(envKey);
-
-  if (cachedClient && cachedClient.expiresAt > Date.now()) {
-    return cachedClient.client;
-  }
-
-  const creds = await fetchConnectorCredentials();
-  if (!creds) return null;
-
-  const client = new Resend(creds.apiKey);
-  cachedClient = { client, expiresAt: Date.now() + 5 * 60 * 1000 };
-  return client;
-}
 
 export interface SendEmailParams {
   to: string;
@@ -72,24 +18,40 @@ export interface SendEmailResult {
 export async function sendEmail(
   params: SendEmailParams,
 ): Promise<SendEmailResult> {
-  const client = await getResendClient();
-  if (!client) {
-    return { delivered: false, reason: "resend_not_configured" };
-  }
-
   try {
-    const { error } = await client.emails.send({
+    const message = {
       from: EMAIL_FROM,
       to: params.to,
       subject: params.subject,
       html: params.html,
       text: params.text,
+    };
+
+    // A directly configured key remains supported, but connected credentials
+    // are intentionally not exposed through the integration's settings object.
+    if (process.env.RESEND_API_KEY) {
+      const { data, error } = await new Resend(process.env.RESEND_API_KEY).emails.send(message);
+      if (error) return { delivered: false, reason: error.message };
+      return data?.id
+        ? { delivered: true }
+        : { delivered: false, reason: "resend_missing_message_id" };
+    }
+
+    const response = await new ReplitConnectors().proxy("resend", "/emails", {
+      method: "POST",
+      body: message,
     });
-    if (error) return { delivered: false, reason: error.message };
+    if (!response.ok) {
+      return { delivered: false, reason: `resend_proxy_http_${response.status}` };
+    }
+    const data = await response.json() as { id?: unknown };
+    if (typeof data?.id !== "string" || !data.id) {
+      return { delivered: false, reason: "resend_missing_message_id" };
+    }
     return { delivered: true };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "send_failed";
-    return { delivered: false, reason: msg };
+    // Avoid recording connector exceptions, which may include request details.
+    return { delivered: false, reason: "resend_send_failed" };
   }
 }
 
