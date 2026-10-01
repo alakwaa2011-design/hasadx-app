@@ -18,6 +18,7 @@ import {
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
 import { resolveImageUrl } from "@/lib/image-url";
+import { WorksheetFormatPanel } from "./worksheet-format-panel";
 import { MathText } from "@/components/math-text";
 import { contentDirection } from "@/lib/content-direction";
 import QRCode from "react-qr-code";
@@ -228,12 +229,27 @@ function ThemedHeader({
  * breaks. When the teacher saves layout changes this callback fires with
  * the updated questions array and page-break IDs.
  */
+export interface LayoutSnapshot { questions: Question[]; pageBreaks: string[]; questionStyles: QuestionStyle[] }
+const EMPTY_STYLES: QuestionStyle[] = [];
+
 export function WorksheetPrintView({
   data,
   onLayoutChange,
+  onDraftChange,
+  flushRef,
+  onRequestSave,
+  onRequestDiscard,
 }: {
   data: WorksheetData;
+  /** When set, internal Save buttons persist through the owner instead of just committing a draft. */
+  onRequestSave?: () => void;
+  /** When set, internal Discard restores the owner's saved baseline. */
+  onRequestDiscard?: () => void;
   onLayoutChange?: (newQuestions: Question[], newPageBreaks: string[], questionStyles: QuestionStyle[]) => void;
+  /** Fires on every committed question/style/break edit so the parent holds the canonical live data. */
+  onDraftChange?: (snapshot: LayoutSnapshot) => void;
+  /** Receives a function that commits any in-progress inline edit and returns the latest snapshot synchronously. */
+  flushRef?: { current: (() => LayoutSnapshot) | null };
 }) {
   const ar = data.language === "ar";
   const dir = ar ? "rtl" : "ltr";
@@ -257,9 +273,30 @@ export function WorksheetPrintView({
   // ── Local layout-editing state ─────────────────────────────────────────
   const [localQs, setLocalQs] = useState<Question[]>(data.questions);
   const localQsRef = useRef<Question[]>(data.questions);
-  const [localBreaks, setLocalBreaks] = useState<Set<string>>(
+  const [localBreaks, setLocalBreaksState] = useState<Set<string>>(
     () => new Set(data.settings.pageBreaks ?? []),
   );
+  const localBreaksRef = useRef<Set<string>>(localBreaks);
+  const setLocalBreaks = useCallback((next: Set<string> | ((p: Set<string>) => Set<string>)) => {
+    const value = typeof next === "function" ? next(localBreaksRef.current) : next;
+    localBreaksRef.current = value;
+    setLocalBreaksState(value);
+  }, []);
+  const onDraftChangeRef = useRef(onDraftChange);
+  onDraftChangeRef.current = onDraftChange;
+  const snapshot = useCallback((): LayoutSnapshot => ({
+    questions: localQsRef.current,
+    pageBreaks: [...localBreaksRef.current],
+    questionStyles: localQuestionStylesRef.current,
+  }), []);
+  const notifyDraft = useCallback(() => { onDraftChangeRef.current?.(snapshot()); }, [snapshot]);
+  if (flushRef) {
+    flushRef.current = () => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && active !== document.body && active.closest("#ws-printable-root")) active.blur();
+      return snapshot();
+    };
+  }
   const [localQuestionStyles, setLocalQuestionStyles] = useState<QuestionStyle[]>(
     () => data.settings.questionStyles ?? [],
   );
@@ -283,37 +320,68 @@ export function WorksheetPrintView({
   const [dragQId, setDragQId] = useState<string | null>(null);
   const [dragOverPage, setDragOverPage] = useState<number | null>(null);
 
-  // Sync when the parent data is replaced (e.g. after saving).
-  const prevDataRef = useRef(data);
+  // Sync from the parent only when the parent genuinely replaced questions /
+  // styles / breaks. Header, theme and other settings edits, and the echo of
+  // our own draft notifications, must never reset uncommitted local edits.
+  const prevQsPropRef = useRef(data.questions);
+  const prevStylesPropRef = useRef(data.settings.questionStyles ?? EMPTY_STYLES);
+  const prevBreaksPropRef = useRef((data.settings.pageBreaks ?? []).join(","));
   useEffect(() => {
-    if (prevDataRef.current === data) return;
-    prevDataRef.current = data;
-    localQsRef.current = data.questions;
-    setLocalQs(data.questions);
-    setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
-    const nextQuestionStyles = data.settings.questionStyles ?? [];
-    localQuestionStylesRef.current = nextQuestionStyles;
-    setLocalQuestionStyles(nextQuestionStyles);
-    setSelectedField(null);
-    setLayoutDirty(false);
-  }, [data]);
+    const nextStyles = data.settings.questionStyles ?? EMPTY_STYLES;
+    const nextBreaksKey = (data.settings.pageBreaks ?? []).join(",");
+    let changed = false;
+    if (prevQsPropRef.current !== data.questions) {
+      prevQsPropRef.current = data.questions;
+      if (data.questions !== localQsRef.current) {
+        localQsRef.current = data.questions;
+        setLocalQs(data.questions);
+        changed = true;
+      }
+    }
+    if (prevStylesPropRef.current !== nextStyles) {
+      prevStylesPropRef.current = nextStyles;
+      if (nextStyles !== localQuestionStylesRef.current) {
+        localQuestionStylesRef.current = nextStyles;
+        setLocalQuestionStyles(nextStyles);
+        changed = true;
+      }
+    }
+    if (prevBreaksPropRef.current !== nextBreaksKey) {
+      prevBreaksPropRef.current = nextBreaksKey;
+      if ([...localBreaksRef.current].join(",") !== nextBreaksKey) {
+        setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
+        changed = true;
+      }
+    }
+    if (changed) { setSelectedField(null); setLayoutDirty(false); }
+  }, [data, setLocalBreaks]);
 
   const addBreak = useCallback((qId: string) => {
     setLocalBreaks(prev => { const n = new Set(prev); n.add(qId); return n; });
     setLayoutDirty(true);
-  }, []);
+    notifyDraft();
+  }, [notifyDraft, setLocalBreaks]);
 
   const removeBreak = useCallback((qId: string) => {
     setLocalBreaks(prev => { const n = new Set(prev); n.delete(qId); return n; });
     setLayoutDirty(true);
-  }, []);
+    notifyDraft();
+  }, [notifyDraft, setLocalBreaks]);
 
   const saveLayout = useCallback(() => {
-    onLayoutChange?.(localQsRef.current, [...localBreaks], localQuestionStylesRef.current);
+    if (onRequestSave) { onRequestSave(); return; }
+    onLayoutChange?.(localQsRef.current, [...localBreaksRef.current], localQuestionStylesRef.current);
     setLayoutDirty(false);
-  }, [localBreaks, onLayoutChange]);
+  }, [onLayoutChange, onRequestSave]);
 
   const discardLayoutChanges = useCallback(() => {
+    if (onRequestDiscard) {
+      onRequestDiscard();
+      setSelectedField(null);
+      setLayoutDirty(false);
+      setEditMode(false);
+      return;
+    }
     localQsRef.current = data.questions;
     setLocalQs(data.questions);
     setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
@@ -323,7 +391,7 @@ export function WorksheetPrintView({
     setSelectedField(null);
     setLayoutDirty(false);
     setEditMode(false);
-  }, [data]);
+  }, [data, onRequestDiscard]);
 
   // Update a single question in-place (called by QuestionView on text blur)
   const onEditQuestion = useCallback((updated: Question) => {
@@ -332,7 +400,8 @@ export function WorksheetPrintView({
     setLocalQs(nextQuestions);
     setLocalBreaks(new Set());
     setLayoutDirty(true);
-  }, []);
+    notifyDraft();
+  }, [notifyDraft, setLocalBreaks]);
 
   const updateQuestionStyle = useCallback((questionId: string, update: (current: QuestionStyle) => QuestionStyle) => {
     const currentStyles = localQuestionStylesRef.current;
@@ -343,7 +412,8 @@ export function WorksheetPrintView({
     setLocalQuestionStyles(nextStyles);
     setLocalBreaks(new Set());
     setLayoutDirty(true);
-  }, []);
+    notifyDraft();
+  }, [notifyDraft, setLocalBreaks]);
 
   const updateFieldStyle = useCallback((questionId: string, key: string, patch: Partial<Omit<FieldStyle, "key">>) => {
     updateQuestionStyle(questionId, current => {
@@ -384,7 +454,8 @@ export function WorksheetPrintView({
     localQsRef.current = nextQuestions;
     setLocalQs(nextQuestions);
     setLayoutDirty(true);
-  }, [dragQId, fontSizePt, data.settings.columns, localBreaks]);
+    notifyDraft();
+  }, [dragQId, fontSizePt, data.settings.columns, localBreaks, notifyDraft]);
 
   const labels = ar
     ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "صح", false: "خطأ", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
@@ -898,6 +969,7 @@ export function WorksheetPrintView({
               onClick={() => {
                 setLocalBreaks(new Set());
                 setLayoutDirty(true);
+                notifyDraft();
               }}
               title={ar ? "إزالة فواصل الصفحات اليدوية وإعادة توزيع الأسئلة" : "Remove manual page breaks and repaginate"}
               style={{
@@ -951,6 +1023,7 @@ export function WorksheetPrintView({
             setLocalBreaks(new Set());
             setSelectedField({ questionId: selectedField.questionId, key: "prompt" });
             setLayoutDirty(true);
+            notifyDraft();
           }}
           onQuestionEdit={onEditQuestion}
           onResetField={resetSelectedStyle}
@@ -959,6 +1032,7 @@ export function WorksheetPrintView({
             localQuestionStylesRef.current = nextStyles;
             setLocalQuestionStyles(nextStyles);
             setLayoutDirty(true);
+            notifyDraft();
           }}
         />
       )}
@@ -1098,23 +1172,171 @@ export default function WorksheetPrint() {
   const { lang: uiLang } = useI18n();
   const [, setLocation] = useLocation();
   const goBack = useSmartBack("/teacher/worksheets/create");
-  const [data, setData] = useState<WorksheetData | null>(null);
+  const [data, setDataState] = useState<WorksheetData | null>(null);
+  const dataRef = useRef<WorksheetData | null>(null);
+  const setData = useCallback((next: WorksheetData | null | ((p: WorksheetData | null) => WorksheetData | null)) => {
+    const value = typeof next === "function" ? next(dataRef.current) : next;
+    dataRef.current = value;
+    setDataState(value);
+  }, []);
+  const baselineRef = useRef<{ meta: string; questions: string } | null>(null);
+  const baselineDataRef = useRef<WorksheetData | null>(null);
+  const leaveTokenRef = useRef(0);
+  const flushRef = useRef<(() => LayoutSnapshot) | null>(null);
   const [loading, setLoading] = useState(true);
   const [wordExport, setWordExport] = useState<"visual" | "editable" | null>(null);
   const [wordProgress, setWordProgress] = useState("");
   const wordExportInFlight = useRef(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const [saveError, setSaveError] = useState("");
+  const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
+  const [, bump] = useState(0);
+
+  const metaKey = (d: WorksheetData) => JSON.stringify({ t: d.title, s: d.subject, g: d.gradeLevel, st: { ...d.settings, pageBreaks: d.settings.pageBreaks ?? [], questionStyles: d.settings.questionStyles ?? [] } });
+  const questionsKey = (d: WorksheetData) => JSON.stringify(d.questions);
+  const uiLangRef = useRef(uiLang);
+  uiLangRef.current = uiLang;
 
   useEffect(() => {
     if (!id) return;
-    fetch(`${API_BASE}/api/worksheets/${id}`, { credentials: "include" })
+    const controller = new AbortController();
+    setLoading(true);
+    fetch(`${API_BASE}/api/worksheets/${id}`, { credentials: "include", signal: controller.signal })
       .then(r => {
         if (!r.ok) throw new Error("load failed");
         return r.json();
       })
-      .then(setData)
-      .catch(() => toast.error(uiLang === "ar" ? "تعذّر تحميل ورقة العمل" : "Failed to load worksheet"))
-      .finally(() => setLoading(false));
-  }, [id, uiLang]);
+      .then((d: WorksheetData) => {
+        if (controller.signal.aborted) return;
+        baselineRef.current = { meta: metaKey(d), questions: questionsKey(d) };
+        baselineDataRef.current = d;
+        setData(d);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) toast.error(uiLangRef.current === "ar" ? "تعذّر تحميل ورقة العمل" : "Failed to load worksheet");
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [id, setData]);
+
+  const isOwner = data?.isOwner !== false;
+  const dirty = !!(data && baselineRef.current && isOwner &&
+    (metaKey(data) !== baselineRef.current.meta || questionsKey(data) !== baselineRef.current.questions));
+
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      const current = dataRef.current;
+      const baseline = baselineRef.current;
+      const snapshot = flushRef.current?.();
+      const latest = current && snapshot ? {
+        ...current, questions: snapshot.questions,
+        settings: { ...current.settings, pageBreaks: snapshot.pageBreaks, questionStyles: snapshot.questionStyles },
+      } : current;
+      const pending = latest && baseline && latest.isOwner !== false
+        && (metaKey(latest) !== baseline.meta || questionsKey(latest) !== baseline.questions);
+      if (dirtyRef.current || pending) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
+  const applySnapshot = useCallback((snap: LayoutSnapshot) => {
+    setData(prev => prev ? { ...prev, questions: snap.questions, settings: { ...prev.settings, pageBreaks: snap.pageBreaks, questionStyles: snap.questionStyles } } : prev);
+  }, [setData]);
+
+  /** Commit in-progress inline edits and return the latest canonical worksheet. */
+  const flushLatest = useCallback((): WorksheetData | null => {
+    const snap = flushRef.current?.();
+    if (snap) applySnapshot(snap);
+    const cur = dataRef.current;
+    if (!cur || !snap) return cur;
+    return { ...cur, questions: snap.questions, settings: { ...cur.settings, pageBreaks: snap.pageBreaks, questionStyles: snap.questionStyles } };
+  }, [applySnapshot]);
+
+  const save = useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) return false;
+    const latest = flushLatest();
+    const base = baselineRef.current;
+    if (!latest || !base || latest.isOwner === false) return false;
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError("");
+    const contentChanged = questionsKey(latest) !== base.questions;
+    const payload: Record<string, unknown> = {
+      title: latest.title,
+      language: latest.language,
+      gradeLevel: latest.gradeLevel,
+      subject: latest.subject,
+      questions: latest.questions,
+      settings: latest.settings,
+    };
+    // Linked graded worksheets only re-sync assignment questions when smartGrading is sent.
+    if (contentChanged && latest.linkedAssignmentId != null) payload.smartGrading = true;
+    try {
+      const res = await fetch(`${API_BASE}/api/worksheets/${latest.id}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.message || "save failed");
+      }
+      const row = await res.json().catch(() => null);
+      const server = (Array.isArray(row) ? row[0] : row) as Partial<WorksheetData> & { gradingVersioned?: boolean } | null;
+      baselineRef.current = { meta: metaKey(latest), questions: questionsKey(latest) };
+      baselineDataRef.current = latest;
+      setData(prev => prev ? {
+        ...prev,
+        linkedAssignmentId: server && "linkedAssignmentId" in server ? (server.linkedAssignmentId ?? null) : prev.linkedAssignmentId,
+      } : prev);
+      // Keep baseline aligned with merged metadata (linked id is not part of the meta key).
+      toast.success(server?.gradingVersioned
+        ? (uiLang === "ar" ? "تم الحفظ وإنشاء نسخة جديدة للتصحيح" : "Saved; grading version updated")
+        : (uiLang === "ar" ? "تم حفظ تعديلات الورقة" : "Worksheet changes saved"));
+      return true;
+    } catch (e) {
+      const msg = (e instanceof Error && e.message !== "save failed" ? e.message : "") || (uiLang === "ar" ? "تعذّر الحفظ. تعديلاتك محفوظة هنا؛ أعد المحاولة." : "Save failed. Your edits are kept here; retry.");
+      setSaveError(msg);
+      toast.error(msg);
+      return false;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+      bump(n => n + 1);
+    }
+  }, [flushLatest, setData, uiLang]);
+
+  const discard = useCallback(() => {
+    const base = baselineDataRef.current;
+    if (!base) return;
+    setSaveError("");
+    setData(prev => prev ? { ...base, linkedAssignmentId: prev.linkedAssignmentId, isOwner: prev.isOwner } : base);
+  }, [setData]);
+  const savePersist = useCallback(() => { void save(); }, [save]);
+
+  const guard = useCallback((action: () => void) => {
+    flushLatest();
+    // Allow the flushed state to settle before deciding.
+    leaveTokenRef.current += 1;
+    queueMicrotask(() => { if (dirtyRef.current || (dataRef.current && baselineRef.current && dataRef.current.isOwner !== false && (metaKey(dataRef.current) !== baselineRef.current.meta || questionsKey(dataRef.current) !== baselineRef.current.questions))) setLeaveAction(() => action); else action(); });
+  }, [flushLatest]);
+
+  const patchMeta = useCallback((patch: { title?: string; subject?: string; gradeLevel?: string }) => {
+    setData(prev => prev ? {
+      ...prev,
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.subject !== undefined ? { subject: patch.subject.trim() ? patch.subject : null } : {}),
+      ...(patch.gradeLevel !== undefined ? { gradeLevel: patch.gradeLevel.trim() ? patch.gradeLevel : null } : {}),
+    } : prev);
+  }, [setData]);
+  const patchSettings = useCallback((updater: (s: Settings) => Settings) => {
+    setData(prev => prev ? { ...prev, settings: updater(prev.settings) } : prev);
+  }, [setData]);
 
   if (loading) {
     return (
@@ -1136,6 +1358,7 @@ export default function WorksheetPrint() {
 
   const handleWord = async (mode: "visual" | "editable") => {
     if (wordExportInFlight.current) return;
+    flushLatest();
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(uiLang === "ar" ? "تعذّر إعداد الملف" : "Could not prepare file");
@@ -1181,7 +1404,7 @@ export default function WorksheetPrint() {
         className="no-print ws-action-toolbar sticky top-0 z-40 flex items-center justify-between gap-2 px-4 py-2.5 border-b shadow-sm bg-white"
       >
         <button
-          onClick={goBack}
+          onClick={() => guard(goBack)}
           className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
           style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
         >
@@ -1194,7 +1417,7 @@ export default function WorksheetPrint() {
         <div className="ws-actions flex gap-1.5 flex-wrap justify-end">
           {data.isOwner !== false && data.linkedAssignmentId != null && (
             <button
-              onClick={() => setLocation(`/teacher/worksheets/${data.id}/grade`)}
+              onClick={() => guard(() => setLocation(`/teacher/worksheets/${data.id}/grade`))}
               className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
               style={{ background: "#2f684d" }}
               title={uiLang === "ar" ? "تصحيح الأوراق بالكاميرا" : "Grade papers with camera"}
@@ -1204,16 +1427,29 @@ export default function WorksheetPrint() {
               {uiLang === "ar" ? "تصحيح" : "Grade"}
             </button>
           )}
-          {data.isOwner !== false && (
-            <button
-              onClick={() => setLocation(`/teacher/worksheets/create?edit=${data.id}`)}
-              className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
-              style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-              title={uiLang === "ar" ? "تحرير هذه الورقة" : "Edit this worksheet"}
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              {uiLang === "ar" ? "تحرير" : "Edit"}
-            </button>
+          {isOwner && (
+            <>
+              <button
+                onClick={() => setPanelOpen(o => !o)}
+                aria-expanded={panelOpen}
+                className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
+                style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY, background: panelOpen ? `${BRAND_PRIMARY}12` : undefined }}
+                data-testid="btn-toggle-format-panel"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                {uiLang === "ar" ? "الترويسة والتنسيق" : "Header & format"}
+              </button>
+              <button
+                onClick={() => void save()}
+                disabled={saving || !dirty}
+                className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm disabled:opacity-50"
+                style={{ background: dirty ? BRAND_GOLD : "#2f684d" }}
+                data-testid="btn-save-worksheet"
+              >
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {saving ? (uiLang === "ar" ? "جار الحفظ" : "Saving") : dirty ? (uiLang === "ar" ? "حفظ التعديلات" : "Save changes") : (uiLang === "ar" ? "محفوظ" : "Saved")}
+              </button>
+            </>
           )}
           <DropdownMenu dir={uiLang === "ar" ? "rtl" : "ltr"}>
             <DropdownMenuTrigger asChild>
@@ -1243,7 +1479,7 @@ export default function WorksheetPrint() {
             </DropdownMenuContent>
           </DropdownMenu>
           <button
-            onClick={() => printToPdf(data.title)}
+            onClick={() => { flushLatest(); printToPdf(data.title); }}
             className="px-4 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
             style={{ background: BRAND_PRIMARY }}
             title={uiLang === "ar" ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
@@ -1254,36 +1490,59 @@ export default function WorksheetPrint() {
         </div>
       </div>
 
+      {isOwner && (panelOpen || saveError || dirty) && (
+        <div dir={dir} className="no-print border-b bg-white px-4 py-3" data-testid="region-live-edit">
+          {(saveError || dirty) && (
+            <div role={saveError ? "alert" : "status"} className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${saveError ? "border-red-300 bg-red-50 text-red-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
+              <span className="flex-1">{saveError || (uiLang === "ar" ? "لديك تعديلات غير محفوظة. الطباعة والتصدير يستخدمان آخر تعديلاتك." : "You have unsaved edits. Print and export use your latest edits.")}</span>
+              <button onClick={() => void save()} disabled={saving} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="btn-retry-save">
+                {saveError ? (uiLang === "ar" ? "إعادة المحاولة" : "Retry") : (uiLang === "ar" ? "حفظ" : "Save")}
+              </button>
+            </div>
+          )}
+          {panelOpen && (
+            <WorksheetFormatPanel
+              ar={uiLang === "ar"}
+              settings={data.settings}
+              onSettingsChange={patchSettings}
+              meta={{ title: data.title, subject: data.subject ?? "", gradeLevel: data.gradeLevel ?? "" }}
+              onMetaChange={patchMeta}
+            />
+          )}
+        </div>
+      )}
+
       <WorksheetPrintView
         data={data}
-        onLayoutChange={data.isOwner !== false ? async (newQs, newBreaks, questionStyles) => {
-          const updated: WorksheetData = {
-            ...data,
-            questions: newQs,
-            settings: { ...data.settings, pageBreaks: newBreaks, questionStyles },
-          };
-          try {
-            const res = await fetch(`${API_BASE}/api/worksheets/${data.id}`, {
-              method: "PUT",
-              credentials: "include",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: updated.title,
-                language: updated.language,
-                gradeLevel: updated.gradeLevel,
-                subject: updated.subject,
-                questions: updated.questions,
-                settings: updated.settings,
-              }),
-            });
-            if (!res.ok) throw new Error("save failed");
-            setData(updated);
-            toast.success(uiLang === "ar" ? "تم حفظ تعديلات الورقة" : "Worksheet changes saved");
-          } catch {
-            toast.error(uiLang === "ar" ? "تعذّر الحفظ" : "Save failed");
-          }
-        } : undefined}
+        flushRef={flushRef}
+        onRequestSave={isOwner ? savePersist : undefined}
+        onRequestDiscard={isOwner ? discard : undefined}
+        onDraftChange={isOwner ? applySnapshot : undefined}
+        onLayoutChange={isOwner ? (qs, breaks, styles) => applySnapshot({ questions: qs, pageBreaks: breaks, questionStyles: styles }) : undefined}
       />
+
+      {leaveAction && (
+        <div className="no-print fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" role="alertdialog" aria-modal="true" aria-labelledby="leave-title" dir={dir}>
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h2 id="leave-title" className="font-bold text-base mb-1">{uiLang === "ar" ? "تعديلات غير محفوظة" : "Unsaved changes"}</h2>
+            <p className="text-sm text-muted-foreground mb-4">{uiLang === "ar" ? "احفظ تعديلاتك قبل المغادرة أو تجاهلها." : "Save your edits before leaving, or discard them."}</p>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button className="px-3 py-1.5 rounded-lg border text-sm font-bold" onClick={() => { leaveTokenRef.current += 1; setLeaveAction(null); }}>{uiLang === "ar" ? "البقاء" : "Stay"}</button>
+              <button className="px-3 py-1.5 rounded-lg border text-sm font-bold text-red-700" data-testid="btn-discard-leave" disabled={saving} onClick={() => { const a = leaveAction; dirtyRef.current = false; leaveTokenRef.current += 1; setLeaveAction(null); a(); }}>{uiLang === "ar" ? "تجاهل وخروج" : "Discard & leave"}</button>
+              <button className="px-3 py-1.5 rounded-lg text-sm font-bold text-white" style={{ background: BRAND_PRIMARY }} data-testid="btn-save-leave" disabled={saving} onClick={async () => {
+                const a = leaveAction;
+                const token = ++leaveTokenRef.current;
+                const ok = await save();
+                if (token !== leaveTokenRef.current) return;
+                const cur = dataRef.current; const base = baselineRef.current;
+                const stillDirty = !!(cur && base && (metaKey(cur) !== base.meta || questionsKey(cur) !== base.questions));
+                setLeaveAction(null);
+                if (ok && !stillDirty) { dirtyRef.current = false; a(); }
+              }}>{uiLang === "ar" ? "حفظ وخروج" : "Save & leave"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -3,6 +3,18 @@ import { Packer } from "docx";
 import JSZip from "jszip";
 import { buildWordDocument, downloadAsWord, printToPdf } from "./print-export";
 
+function xmlTableAt(xml: string, start: number): string {
+  const tags = /<w:tbl>|<\/w:tbl>/g;
+  tags.lastIndex = start;
+  let depth = 0;
+  let match: RegExpExecArray | null;
+  while ((match = tags.exec(xml))) {
+    depth += match[0] === "<w:tbl>" ? 1 : -1;
+    if (depth === 0) return xml.slice(start, tags.lastIndex);
+  }
+  return "";
+}
+
 describe("printToPdf", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -160,6 +172,93 @@ describe("buildWordDocument", () => {
   });
 
   it.each([
+    {
+      lang: "ar" as const,
+      dir: "rtl",
+      label: "(أ)",
+      option: "اختيار أول",
+      sectionSide: "right",
+      paragraphAlign: "start",
+    },
+    {
+      lang: "en" as const,
+      dir: "ltr",
+      label: "(A)",
+      option: "First choice",
+      sectionSide: "left",
+      paragraphAlign: "left",
+    },
+  ])("preserves $lang option direction and computed editable boxes", async ({
+    lang, dir, label, option, sectionSide, paragraphAlign,
+  }) => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page dir="${dir}" style="background-color: #fbf7ea;">
+        <div class="ws-q" style="background-color: rgba(100, 150, 200, 0.25); border: 2px solid #123456; border-radius: 8px; padding: 5px 7px;">
+          <div class="ws-q-head">
+            <span class="ws-q-num">1</span>
+            <div class="ws-q-prompt">${lang === "ar" ? "السؤال الأول" : "Question one"}</div>
+          </div>
+          <div class="ws-section-instr" style="background-color: #fff4cc; border-${sectionSide}: 3px dashed #aa5500; border-radius: 4px; padding: 4px 6px;">
+            ${lang === "ar" ? "اختر إجابة:" : "Choose an answer:"}
+          </div>
+          <ol class="ws-mcq" data-choice-columns="1">
+            <li style="background-color: #eef7ff; border: 2px dotted #13579b; border-radius: 6px; padding: 3px 5px;">
+              <span class="ws-mcq-letter">${label}</span><span class="ws-mcq-text">${option}</span>
+            </li>
+          </ol>
+          <div class="ws-lines"><span class="ws-line" style="background-color: #f5f0e8; border-bottom: 2px dashed #654321; border-radius: 4px;"></span></div>
+        </div>
+      </div>`;
+
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root,
+      title: `${lang} boxes`,
+      lang,
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+    const choiceParagraph = xml.match(new RegExp(`<w:p>.*?${label}.*?${option}.*?</w:p>`))?.[0];
+    const question = lang === "ar" ? "السؤال الأول" : "Question one";
+    const section = lang === "ar" ? "اختر إجابة:" : "Choose an answer:";
+    const sectionParagraph = xml.match(new RegExp(`<w:p>.*?${section}.*?</w:p>`))?.[0];
+    const questionTable = xmlTableAt(xml, xml.indexOf("<w:tbl>"));
+    const questionCellProperties = questionTable.match(/<w:tcPr>.*?<\/w:tcPr>/)?.[0];
+    const choiceTableStart = questionTable.indexOf("<w:tbl>", 1);
+    const choiceTable = xmlTableAt(questionTable, choiceTableStart);
+    const writingParagraph = xml.match(/<w:p>.*?<w:shd w:fill="F5F0E8".*?<\/w:p>/)?.[0];
+
+    expect(choiceParagraph).toBeDefined();
+    expect(choiceParagraph).toContain(`<w:jc w:val="${paragraphAlign}"/>`);
+    expect(questionTable).toContain(question);
+    expect(questionTable).toContain(section);
+    expect(questionTable).toContain(option);
+    expect(questionTable).toContain("F5F0E8");
+    expect(questionCellProperties).toContain('<w:shd w:fill="D5DFE2"');
+    expect(questionCellProperties).toContain('<w:top w:val="single" w:color="123456" w:sz="12"/>');
+    expect(questionCellProperties).toContain('<w:left w:val="single" w:color="123456" w:sz="12"/>');
+    expect(questionCellProperties).toContain('<w:right w:val="single" w:color="123456" w:sz="12"/>');
+    expect(questionCellProperties).toContain('<w:bottom w:val="single" w:color="123456" w:sz="12"/>');
+    expect(xml).toContain('<w:background w:color="FBF7EA"/>');
+    expect(sectionParagraph).toContain('<w:shd w:fill="FFF4CC"');
+    expect(sectionParagraph).toContain(`<w:${sectionSide} w:val="dashed" w:color="AA5500" w:sz="18"/>`);
+    expect(choiceTable).toContain('<w:shd w:fill="EEF7FF"');
+    expect(choiceTable).toContain('<w:top w:val="dotted" w:color="13579B" w:sz="12"/>');
+    expect(choiceTable).toContain('<w:left w:val="dotted" w:color="13579B" w:sz="12"/>');
+    expect(choiceTable).toContain('<w:right w:val="dotted" w:color="13579B" w:sz="12"/>');
+    expect(choiceTable).toContain('<w:bottom w:val="dotted" w:color="13579B" w:sz="12"/>');
+    expect(writingParagraph).toContain('<w:bottom w:val="dashed" w:color="654321" w:sz="12"/>');
+    expect(writingParagraph).toContain('<w:shd w:fill="F5F0E8"');
+    if (lang === "ar") {
+      expect(choiceParagraph).toContain("<w:bidi/>");
+      expect(xml).toContain("<w:bidiVisual/>");
+    } else {
+      expect(choiceParagraph).not.toContain("<w:bidi/>");
+      expect(choiceParagraph).toContain('<w:bidi w:val="false"/>');
+      expect(choiceParagraph).not.toContain("<w:rtl/>");
+    }
+  });
+
+  it.each([
     ["arabesque", "ws-arb-fields"],
     ["modern band", "ws-band-fields"],
     ["playful", "ws-play-fields"],
@@ -265,7 +364,6 @@ describe("buildWordDocument", () => {
     expect(xml).toContain('<w:color w:val="0C2238"/>');
     expect(xml).toContain("<w:u w:val=\"single\"/>");
     expect(xml).toContain('<w:shd w:fill="FFFF00"');
-    expect(xml).toContain("<w:pBdr>");
     expect(xml).toContain("<w:bidiVisual/>");
     for (const text of [
       "عنوان الورقة", "مدرسة النور", "اختيار ألف", "اختيار باء", "صح", "خطأ",

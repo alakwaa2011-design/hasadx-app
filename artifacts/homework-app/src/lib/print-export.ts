@@ -46,27 +46,120 @@ function pointsFromCss(value: string, fallback = 12): number {
   return fallback;
 }
 
-function colorFromCss(value: string, minimumAlpha = 0): string | undefined {
+interface CssColor {
+  channels: [number, number, number];
+  alpha: number;
+}
+
+function cssColor(value: string): CssColor | undefined {
   const color = value.trim().toLowerCase();
   if (!color || color === "transparent") return undefined;
   const hex = color.match(/^#([0-9a-f]{3,8})$/i)?.[1];
   if (hex) {
-    if (hex.length === 3 || hex.length === 4) {
-      return hex.slice(0, 3).split("").map(character => character + character).join("").toUpperCase();
-    }
-    return hex.slice(0, 6).toUpperCase();
+    if (![3, 4, 6, 8].includes(hex.length)) return undefined;
+    const channels = (hex.length === 3 || hex.length === 4
+      ? hex.slice(0, 3).split("").map(character => Number.parseInt(character + character, 16))
+      : (hex.slice(0, 6).match(/../g) ?? []).map(channel => Number.parseInt(channel, 16)));
+    const alphaHex = hex.length === 4 ? hex[3] + hex[3] : hex.length === 8 ? hex.slice(6, 8) : "ff";
+    const alpha = Number.parseInt(alphaHex, 16) / 255;
+    if (!Number.isFinite(alpha)) return undefined;
+    return { channels: channels as [number, number, number], alpha };
   }
   const rgb = color.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/);
   if (!rgb) return undefined;
   const alpha = rgb[4]
     ? (rgb[4].endsWith("%") ? Number.parseFloat(rgb[4]) / 100 : Number.parseFloat(rgb[4]))
     : 1;
-  if (!Number.isFinite(alpha) || alpha <= minimumAlpha) return undefined;
-  return rgb.slice(1, 4)
-    .map(channel => Math.max(0, Math.min(255, Math.round(Number(channel))))
-      .toString(16).padStart(2, "0"))
+  if (!Number.isFinite(alpha)) return undefined;
+  return {
+    channels: rgb.slice(1, 4)
+      .map(channel => Math.max(0, Math.min(255, Number(channel)))) as [number, number, number],
+    alpha: Math.max(0, Math.min(1, alpha)),
+  };
+}
+
+function colorFromCssOn(value: string, backdrop = "#ffffff", minimumAlpha = 0): string | undefined {
+  const foreground = cssColor(value);
+  if (!foreground || foreground.alpha <= minimumAlpha) return undefined;
+  const background = cssColor(backdrop) ?? { channels: [255, 255, 255] as [number, number, number], alpha: 1 };
+  const backdropChannels = background.channels.map(channel =>
+    channel * background.alpha + 255 * (1 - background.alpha));
+  const channels = foreground.channels.map((channel, index) => Math.round(
+    channel * foreground.alpha + backdropChannels[index] * (1 - foreground.alpha),
+  ));
+  return channels.map(channel => channel.toString(16).padStart(2, "0"))
     .join("")
     .toUpperCase();
+}
+
+function colorFromCss(value: string, minimumAlpha = 0): string | undefined {
+  return colorFromCssOn(value, "#ffffff", minimumAlpha);
+}
+
+function nearestSolidBackground(element: Element | null): string {
+  let ancestor = element;
+  while (ancestor) {
+    const color = cssColor(window.getComputedStyle(ancestor).backgroundColor);
+    if (color?.alpha === 1) {
+      return `#${color.channels.map(channel => Math.round(channel).toString(16).padStart(2, "0"))
+        .join("")
+        .toUpperCase()}`;
+    }
+    ancestor = ancestor.parentElement;
+  }
+  return "#FFFFFF";
+}
+
+function backgroundColorFor(element: Element, minimumAlpha = 0): string | undefined {
+  const value = window.getComputedStyle(element).backgroundColor;
+  return colorFromCssOn(value, nearestSolidBackground(element.parentElement), minimumAlpha);
+}
+
+function resolvedElementBackground(element: Element): string | undefined {
+  const value = window.getComputedStyle(element).backgroundColor;
+  return cssColor(value)
+    ? colorFromCssOn(value, nearestSolidBackground(element.parentElement))
+    : undefined;
+}
+
+type BorderSide = "top" | "bottom" | "left" | "right";
+
+function borderStyleFromCss(style: string): (typeof BorderStyle)[keyof typeof BorderStyle] {
+  if (style === "dotted") return BorderStyle.DOTTED;
+  if (style === "dashed") return BorderStyle.DASHED;
+  if (style === "double") return BorderStyle.DOUBLE;
+  return BorderStyle.SINGLE;
+}
+
+function bordersFromStyle(style: CSSStyleDeclaration) {
+  const borders: Partial<Record<BorderSide, {
+    style: (typeof BorderStyle)[keyof typeof BorderStyle];
+    size: number;
+    color?: string;
+  }>> = {};
+  for (const side of ["top", "bottom", "left", "right"] as const) {
+    const borderStyle = style.getPropertyValue(`border-${side}-style`);
+    if (!borderStyle || borderStyle === "none" || borderStyle === "hidden") continue;
+    const width = pointsFromCss(style.getPropertyValue(`border-${side}-width`), 0);
+    if (width <= 0) continue;
+    borders[side] = {
+      style: borderStyleFromCss(borderStyle),
+      size: Math.max(1, Math.round(width * 8)),
+      color: colorFromCss(style.getPropertyValue(`border-${side}-color`)),
+    };
+  }
+  return Object.keys(borders).length ? borders : undefined;
+}
+
+function cssLengthToTwips(value: string): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  if (value.endsWith("px")) return Math.round(parsed * 15);
+  if (value.endsWith("pt")) return Math.round(parsed * 20);
+  if (value.endsWith("mm")) return Math.round(parsed * 56.7);
+  if (value.endsWith("cm")) return Math.round(parsed * 567);
+  if (value.endsWith("in")) return Math.round(parsed * 1440);
+  return 0;
 }
 
 function isHidden(element: Element): boolean {
@@ -308,7 +401,7 @@ function textRuns(element: Element, direction: ContentDirection): ParagraphChild
         : contentDirection(text, direction);
       const runRtl = runDirection === "rtl";
       const foreground = colorFromCss(inline?.color || computed?.color || "");
-      const background = colorFromCss(inline?.backgroundColor || computed?.backgroundColor || "", 0.2);
+      const background = parent ? backgroundColorFor(parent, 0.2) : undefined;
       const textDecoration = inline?.textDecorationLine || inline?.textDecoration
         || computed?.textDecorationLine || computed?.textDecoration || "";
       const fontFamily = inline?.fontFamily || computed?.fontFamily || "";
@@ -380,37 +473,14 @@ function paragraphFor(
   const requestedAlignment = alignmentFor(element, paragraphRtl);
   const forcePhysicalRight = paragraphRtl && element.matches(".ws-q-head, .ws-q-prompt, .ws-section-instr")
     && requestedAlignment !== AlignmentType.CENTER;
-  const borderSource = element.matches(".ws-q-head")
-    ? element.querySelector(".ws-q-num") ?? element
-    : element;
-  const borderStyle = window.getComputedStyle(borderSource);
-  const boxColor = borderStyle.borderTopStyle !== "none"
-    ? colorFromCss(borderStyle.borderTopColor || "")
+  const boxSource = element;
+  const boxStyle = window.getComputedStyle(boxSource);
+  const paragraphBorder = options.box || element.classList.contains("ws-section-instr")
+    ? bordersFromStyle(boxStyle)
     : undefined;
-  const nativeBoxColor = boxColor ?? "C7D6D2";
-  const sectionInstructionStyle = element.classList.contains("ws-section-instr")
-    ? window.getComputedStyle(element)
-    : null;
-  const sectionStartSide = paragraphRtl ? "right" : "left";
-  const sectionStartBorderStyle = sectionInstructionStyle
-    ? (paragraphRtl ? sectionInstructionStyle.borderRightStyle : sectionInstructionStyle.borderLeftStyle)
-    : "none";
-  const sectionStartBorderColor = sectionInstructionStyle && sectionStartBorderStyle !== "none"
-    ? colorFromCss(paragraphRtl ? sectionInstructionStyle.borderRightColor : sectionInstructionStyle.borderLeftColor)
+  const background = options.box || element.classList.contains("ws-section-instr")
+    ? backgroundColorFor(boxSource)
     : undefined;
-  const sectionBackground = sectionInstructionStyle
-    ? colorFromCss(sectionInstructionStyle.backgroundColor)
-    : undefined;
-  const paragraphBorder = options.box
-    ? {
-      top: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
-      bottom: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
-      left: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
-      right: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
-    }
-    : sectionStartBorderColor
-      ? { [sectionStartSide]: { style: BorderStyle.SINGLE, size: 10, color: sectionStartBorderColor, space: 5 } }
-      : undefined;
   const separatedChildren = element.classList.contains("ws-q-head")
     ? separatedTextRuns([
       element.querySelector(":scope > .ws-q-num"),
@@ -458,17 +528,21 @@ function paragraphFor(
     alignment: forcePhysicalRight ? AlignmentType.START : requestedAlignment,
     heading: options.heading,
     keepNext: Boolean(options.heading),
-    shading: options.box
-      ? { fill: "F4F7F6", type: ShadingType.CLEAR }
-      : sectionBackground
-        ? { fill: sectionBackground, type: ShadingType.CLEAR }
-        : undefined,
+    shading: background ? { fill: background, type: ShadingType.CLEAR } : undefined,
     border: paragraphBorder,
     spacing: {
-      before: options.box ? 80 : element.classList.contains("ws-section-instr") ? 120 : 0,
-      after: options.box ? 140 : element.classList.contains("ws-section-instr") ? 100 : 100,
+      before: options.box
+        ? cssLengthToTwips(boxStyle.paddingTop)
+        : element.classList.contains("ws-section-instr") ? 120 : 0,
+      after: options.box
+        ? cssLengthToTwips(boxStyle.paddingBottom)
+        : element.classList.contains("ws-section-instr") ? 100 : 100,
       line: 300,
     },
+    indent: options.box ? {
+      left: cssLengthToTwips(boxStyle.paddingLeft),
+      right: cssLengthToTwips(boxStyle.paddingRight),
+    } : undefined,
   });
 }
 
@@ -480,10 +554,12 @@ function choiceTable(list: Element, rtl: boolean): Table {
     const label = choice.querySelector(".ws-mcq-letter");
     const content = choice.querySelector(".ws-mcq-text");
     if (!label || !content) return paragraphFor(choice, rtl);
+    const direction = directionForElement(choice, rtl ? "rtl" : "ltr");
+    const choiceRtl = direction === "rtl";
     return new Paragraph({
-      children: separatedTextRuns([label, content], rtl ? "rtl" : "ltr", " "),
-      bidirectional: rtl,
-      alignment: rtl ? AlignmentType.RIGHT : AlignmentType.LEFT,
+      children: separatedTextRuns([label, content], direction, " "),
+      bidirectional: choiceRtl,
+      alignment: alignmentFor(choice, choiceRtl),
       spacing: { before: 0, after: 100, line: 300 },
     });
   };
@@ -491,14 +567,18 @@ function choiceTable(list: Element, rtl: boolean): Table {
     rows.push(new TableRow({
       children: Array.from({ length: columns }, (_, column) => {
         const choice = choices[index + column];
+        const choiceStyle = choice ? window.getComputedStyle(choice) : null;
+        const fill = choice ? backgroundColorFor(choice) : undefined;
         return new TableCell({
           width: { size: 100 / columns, type: WidthType.PERCENTAGE },
-          borders: {
-            top: { style: BorderStyle.NONE },
-            bottom: { style: BorderStyle.NONE },
-            left: { style: BorderStyle.NONE },
-            right: { style: BorderStyle.NONE },
-          },
+          shading: fill ? { fill, type: ShadingType.CLEAR } : undefined,
+          borders: choiceStyle ? bordersFromStyle(choiceStyle) : undefined,
+          margins: choiceStyle ? {
+            top: cssLengthToTwips(choiceStyle.paddingTop),
+            bottom: cssLengthToTwips(choiceStyle.paddingBottom),
+            left: cssLengthToTwips(choiceStyle.paddingLeft),
+            right: cssLengthToTwips(choiceStyle.paddingRight),
+          } : undefined,
           children: [choice ? choiceParagraph(choice) : new Paragraph("")],
         });
       }),
@@ -818,7 +898,10 @@ function compareTable(container: Element, rtl: boolean): Table {
       width: { size: 100 / Math.max(1, panels.length), type: WidthType.PERCENTAGE },
       margins: { top: 140, bottom: 140, left: 120, right: 120 },
       shading: panel.classList.contains("ws-compare-similarities")
-        ? { fill: colorFromCss(window.getComputedStyle(panel).backgroundColor, 0.2) ?? "F4F7F6", type: ShadingType.CLEAR }
+        ? (() => {
+          const fill = backgroundColorFor(panel, 0.2);
+          return fill ? { fill, type: ShadingType.CLEAR } : undefined;
+        })()
         : undefined,
       children: Array.from(panel.children).map(child =>
         child.classList.contains("ws-compare-line") ? blankLine(child, rtl) : paragraphFor(child, rtl),
@@ -873,17 +956,51 @@ function matchingTable(container: Element, rtl: boolean): Table {
 function blankLine(element: Element, rtl: boolean): Paragraph {
   const direction = directionForElement(element, rtl ? "rtl" : "ltr");
   const style = window.getComputedStyle(element);
-  const color = style.borderBottomStyle !== "none"
-    ? colorFromCss(style.borderBottomColor || "")
-    : undefined;
+  const background = backgroundColorFor(element);
   return new Paragraph({
     children: [new TextRun({ text: " ", rightToLeft: direction === "rtl" })],
     bidirectional: direction === "rtl",
     alignment: direction === "rtl" ? AlignmentType.START : AlignmentType.LEFT,
-    border: {
-      bottom: { style: BorderStyle.SINGLE, size: 4, color: color ?? "AABAB6", space: 1 },
-    },
+    border: bordersFromStyle(style),
+    shading: background ? { fill: background, type: ShadingType.CLEAR } : undefined,
     spacing: { after: 120, line: 300 },
+  });
+}
+
+function questionContainerTable(
+  container: Element,
+  children: WordChild[],
+  rtl: boolean,
+): Table | null {
+  const style = window.getComputedStyle(container);
+  const borders = bordersFromStyle(style);
+  const fill = backgroundColorFor(container);
+  if (!borders && !fill) return null;
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    visuallyRightToLeft: rtl,
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
+    },
+    rows: [new TableRow({
+      children: [new TableCell({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders,
+        shading: fill ? { fill, type: ShadingType.CLEAR } : undefined,
+        margins: {
+          top: cssLengthToTwips(style.paddingTop),
+          bottom: cssLengthToTwips(style.paddingBottom),
+          left: cssLengthToTwips(style.paddingLeft),
+          right: cssLengthToTwips(style.paddingRight),
+        },
+        children,
+      })],
+    })],
   });
 }
 
@@ -907,76 +1024,90 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
   const lineClasses = [
     "ws-line", "ws-short-line", "ws-fill-rule", "ws-work-step-line", "ws-compare-line",
   ];
-  const visit = (element: Element) => {
+  const visit = (element: Element, target: WordChild[] = output) => {
     if (isHidden(element) || element.classList.contains("no-print") || element.classList.contains("ws-watermark")
       || element.classList.contains("ws-corner") || element.classList.contains("ws-divider")) return;
+    if (element.matches(".ws-q")) {
+      const children: WordChild[] = [];
+      Array.from(element.childNodes).forEach(node => {
+        if (node instanceof Element) {
+          visit(node, children);
+        } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+          children.push(paragraphFor(element, rtl, node.textContent.replace(/\s+/g, " ").trim()));
+        }
+      });
+      const table = questionContainerTable(element, children, rtl);
+      if (table) target.push(table);
+      else target.push(...children);
+      return;
+    }
     if (element.matches(".ws-fields, .ws-arb-fields, .ws-band-fields, .ws-play-fields, .ws-clip-fields, .ws-mast-fields")
       || isTabularFieldRow(element)) {
-      output.push(fieldsTable(element, rtl));
+      target.push(fieldsTable(element, rtl));
       return;
     }
     if (element.matches(".ws-headrow, .ws-headgrid, .ws-tab-toprow")) {
-      output.push(headerTable(element, rtl));
+      target.push(headerTable(element, rtl));
       return;
     }
     if (element.matches(".ws-cont-header")) {
-      output.push(continuationHeaderTable(element, rtl));
+      target.push(continuationHeaderTable(element, rtl));
       return;
     }
     if (element.matches(".ws-mcq")) {
-      output.push(choiceTable(element, rtl));
+      target.push(choiceTable(element, rtl));
       return;
     }
     if (element.matches(".ws-match")) {
-      output.push(matchingTable(element, rtl));
+      target.push(matchingTable(element, rtl));
       return;
     }
     if (element.matches(".ws-word-bank")) {
-      output.push(wordBankTable(element, rtl));
+      target.push(wordBankTable(element, rtl));
       return;
     }
     if (element.matches(".ws-tic-board")) {
-      output.push(ticTacToeTable(element, rtl));
+      target.push(ticTacToeTable(element, rtl));
       return;
     }
     if (element.matches(".ws-compare-organizer")) {
-      output.push(compareTable(element, rtl));
+      target.push(compareTable(element, rtl));
       return;
     }
     if (element.matches(".ws-field-rule, .ws-final-answer > span, .ws-tic-writing > span, .ws-word-bank-blank")) {
-      output.push(blankLine(element, rtl));
+      target.push(blankLine(element, rtl));
       return;
     }
     if (lineClasses.some(className => element.classList.contains(className))) {
-      output.push(blankLine(element, rtl));
+      target.push(blankLine(element, rtl));
       return;
     }
     if (element.tagName === "IMG") {
-      output.push(inlineImageParagraph(element, rtl));
+      target.push(inlineImageParagraph(element, rtl));
       return;
     }
     const heading = headings.get(element.tagName);
     if (heading || paragraphClasses.some(className => element.classList.contains(className))) {
       if (element.matches(".ws-q-head, .ws-answer-line, .ws-instructions, .ws-incorrect-box, .ws-word-bank")) {
-        output.push(paragraphFor(element, rtl, undefined, { box: true }));
+        target.push(paragraphFor(element, rtl, undefined, { box: true }));
       } else {
-        output.push(paragraphFor(element, rtl, undefined, { heading }));
+        target.push(paragraphFor(element, rtl, undefined, { heading }));
       }
       return;
     }
     if (!element.children.length) {
-      if (element.textContent?.trim()) output.push(paragraphFor(element, rtl));
+      if (element.textContent?.trim()) target.push(paragraphFor(element, rtl));
       return;
     }
     Array.from(element.childNodes).forEach(node => {
       if (node instanceof Element) {
-        visit(node);
+        visit(node, target);
       } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-        output.push(paragraphFor(element, rtl, node.textContent.replace(/\s+/g, " ").trim()));
+        target.push(paragraphFor(element, rtl, node.textContent.replace(/\s+/g, " ").trim()));
       }
     });
   };
-  Array.from(page.children).forEach(visit);
+  Array.from(page.children).forEach(child => visit(child));
   return output.length ? output : [paragraphFor(page, rtl)];
 }
 
@@ -990,6 +1121,11 @@ export function buildWordDocument({
     "[data-worksheet-page], [data-answer-key-page], .lp-page",
   ));
   const sourcePages = pages.length ? pages : [element];
+  const pageBackgrounds = sourcePages.map(resolvedElementBackground);
+  const documentBackground = pageBackgrounds[0]
+    && pageBackgrounds.every(background => background === pageBackgrounds[0])
+    ? pageBackgrounds[0]
+    : undefined;
   const children: WordChild[] = [];
   sourcePages.forEach((page, index) => {
     if (index > 0) {
@@ -1010,6 +1146,7 @@ export function buildWordDocument({
     creator: "Hasad",
     title,
     description: rtl ? "ورقة عمل من منصة حصاد" : "Worksheet from Hasad",
+    background: documentBackground ? { color: documentBackground } : undefined,
     styles: {
       default: {
         document: {

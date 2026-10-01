@@ -27,7 +27,8 @@ import { toast } from "@/components/ui/sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
+import { WorksheetFormatPanel } from "@/pages/teacher/worksheet-format-panel";
+import { WorksheetPrintView, type WorksheetData, type LayoutSnapshot } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
@@ -2063,273 +2064,30 @@ export default function WorksheetCreate() {
 
         {/* 3. Settings Area (Header Info & Design/Format) */}
         <Card id="worksheet-formatting" className="scroll-mt-24 border border-border/60 shadow-sm overflow-hidden">
-          <Tabs defaultValue="header" className="w-full text-start" dir={dir}>
-            <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
-                   <LayoutTemplate className="w-4 h-4" />
-                 </div>
-                 <h3 className="font-bold text-sm text-foreground">{ar ? "تنسيق الورقة" : "Worksheet Formatting"}</h3>
-               </div>
-               <TabsList className="bg-muted/50 w-full sm:w-auto h-auto p-1 justify-start">
-                 <TabsTrigger value="header" className="flex-1 sm:flex-none text-xs font-bold gap-1.5 py-1.5"><Building2 className="w-3.5 h-3.5"/>{ar ? "بيانات الترويسة" : "Header Data"}</TabsTrigger>
-                 <TabsTrigger value="design" className="flex-1 sm:flex-none text-xs font-bold gap-1.5 py-1.5"><SettingsIcon className="w-3.5 h-3.5"/>{ar ? "التصميم" : "Design"}</TabsTrigger>
-               </TabsList>
+          <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+              <LayoutTemplate className="w-4 h-4" />
             </div>
-
-            <TabsContent value="header" className="p-5 outline-none m-0">
-
-<div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                  <Save className="w-3.5 h-3.5" />
-                  {ar ? "تُحفظ تلقائياً لكل أوراقك القادمة" : "Saved automatically for future sheets"}
-                </p>
-                {(settings.schoolName || settings.section || settings.teacherName || settings.logoUrl || (settings.customFields ?? []).length > 0) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearTeacherProfile();
-                      setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
-                    }}
-                    className="text-[11px] font-bold text-destructive hover:underline"
-                  >
-                    {ar ? "مسح المحفوظ" : "Clear saved"}
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label={ar ? "اسم المدرسة" : "School name"}>
-                  <input
-                    value={settings.schoolName ?? ""}
-                    onChange={e => setSettings(s => ({ ...s, schoolName: e.target.value }))}
-                    placeholder={ar ? "مدرسة الأمل" : "Al-Amal School"}
-                    maxLength={200}
-                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
-                  />
-                </Field>
-                <Field label={ar ? "اسم المعلم" : "Teacher"}>
-                  <input
-                    value={settings.teacherName ?? ""}
-                    onChange={e => setSettings(s => ({ ...s, teacherName: e.target.value }))}
-                    placeholder={ar ? "أ. محمد" : "Mr. Ahmed"}
-                    maxLength={100}
-                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
-                  />
-                </Field>
-                <Field label={ar ? "القسم" : "Department"} className="sm:col-span-2">
-                  <input
-                    value={settings.section ?? ""}
-                    onChange={e => setSettings(s => ({ ...s, section: e.target.value }))}
-                    placeholder={ar ? "قسم اللغة العربية" : "English Dept"}
-                    maxLength={100}
-                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary"
-                  />
-                </Field>
-              </div>
-
-              <div className="pt-2 border-t border-border/50">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-bold text-foreground">
-                    {ar ? "حقول إضافية (اختياري)" : "Extra fields"}
-                  </span>
-                  <button
-                    onClick={() => {
-                      const cur = settings.customFields ?? [];
-                      if (cur.length >= MAX_CUSTOM_FIELDS) {
-                        toast.error(ar ? `الحد الأقصى ${MAX_CUSTOM_FIELDS} حقول` : `Max ${MAX_CUSTOM_FIELDS} fields`);
-                        return;
-                      }
-                      setSettings(s => ({ ...s, customFields: [...(s.customFields ?? []), { label: "", value: "" }] }));
-                    }}
-                    className="text-[10px] font-bold px-2 py-1 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors"
-                  >
-                    <Plus className="w-3 h-3 inline-block" /> {ar ? "إضافة" : "Add"}
-                  </button>
-                </div>
-                {(settings.customFields ?? []).length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground">{ar ? "مثال: العام الدراسي، الدرجة، الفصل…" : "e.g., Academic Year, Marks, Term…"}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {(settings.customFields ?? []).map((f, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <input
-                          value={f.label}
-                          onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], label: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
-                          placeholder={ar ? "اسم الحقل" : "Label"}
-                          maxLength={40}
-                          className="w-1/3 h-8 px-2 rounded border bg-background text-xs outline-none focus:border-primary"
-                        />
-                        <input
-                          value={f.value}
-                          onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], value: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
-                          placeholder={ar ? "القيمة" : "Value"}
-                          maxLength={120}
-                          className="flex-1 h-8 px-2 rounded border bg-background text-xs outline-none focus:border-primary"
-                        />
-                        <button onClick={() => { const next = (settings.customFields ?? []).filter((_, j) => j !== i); setSettings(s => ({ ...s, customFields: next })); }} className="p-1 rounded text-destructive hover:bg-destructive/10 transition-colors">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            </TabsContent>
-
-            <TabsContent value="design" className="p-5 outline-none m-0">
-
-<div className="space-y-5">
-              {/* Template Picker */}
-              <div>
-                <div className="text-[11px] font-bold mb-2 text-muted-foreground flex justify-between items-center">
-                  <span>{ar ? "القالب المرئي" : "Visual Template"}</span>
-                  <span className="font-normal text-[10px]">{ar ? "(يُختار تلقائياً أحياناً)" : "(auto-selected)"}</span>
-                </div>
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                  <button
-                    onClick={() => setSettings(s => ({ ...s, template: undefined }))}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 p-1.5 rounded-lg border-2 transition-all",
-                      !settings.template ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted"
-                    )}
-                  >
-                    <div className="w-full h-8 rounded flex items-center justify-center border border-dashed border-primary/40 bg-background">
-                      <span className="text-[9px] font-bold text-primary">{ar ? "كلاسيك" : "Classic"}</span>
-                    </div>
-                  </button>
-                  {(Object.values(THEMES) as typeof THEMES[ThemeId][]).map(t => {
-                    const isActive = settings.template === t.id;
-                    const [c1, c2] = t.swatchColors;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => setSettings(s => ({ ...s, template: s.template === t.id ? undefined : t.id }))}
-                        title={t.description}
-                        className={cn(
-                          "flex flex-col items-center gap-1.5 p-1.5 rounded-lg border-2 transition-all",
-                          isActive ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted"
-                        )}
-                        style={{ borderColor: isActive ? c1 : "transparent", background: isActive ? `${c1}10` : undefined }}
-                      >
-                        <div className="w-full h-8 rounded overflow-hidden shadow-sm" style={{ background: c1 }}>
-                          <div className="h-[40%]" style={{ background: c1 }} />
-                          <div className="h-[60%]" style={{ background: "white" }}>
-                            <div className="mx-1 mt-0.5 h-px rounded" style={{ background: `${c1}44` }} />
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Field label={ar ? "الأعمدة" : "Columns"}>
-                  <SegmentedControl value={settings.columns} onChange={v => setSettings(s => ({...s, columns: v}))} options={[{label: ar?"1":"1", value:1}, {label:ar?"2":"2", value:2}]} />
-                </Field>
-                <Field label={ar ? "نوع الخط" : "Font"}>
-                  <select value={settings.fontFamily} onChange={e => setSettings(s => ({ ...s, fontFamily: e.target.value as FontFamily }))} className="w-full h-11 px-2 rounded-lg border bg-background text-xs outline-none focus:border-primary">
-                    <option value="default">{ar ? "افتراضي" : "Default"}</option>
-                    <option value="cairo">Cairo</option>
-                    <option value="tajawal">Tajawal</option>
-                    <option value="amiri">Amiri</option>
-                    <option value="noto-naskh">Noto Naskh</option>
-                    <option value="inter">Inter</option>
-                    <option value="georgia">Georgia</option>
-                  </select>
-                </Field>
-                <Field label={ar ? `حجم الخط (${settings.fontSizePt}pt)` : `Font size (${settings.fontSizePt}pt)`}>
-                  <input type="range" min={9} max={18} step={1} value={settings.fontSizePt}
-                    onChange={e => setSettings(s => ({ ...s, fontSizePt: parseInt(e.target.value, 10) }))}
-                    className="w-full mt-3" />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-[11px] font-bold mb-1.5 text-muted-foreground">{ar ? "لون الورقة" : "Accent color"}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {THEME_PRESETS.map(p => (
-                      <button
-                        key={p.color}
-                        title={p.label}
-                        onClick={() => setSettings(s => ({ ...s, themeColor: s.themeColor === p.color ? undefined : p.color }))}
-                        className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 shadow-sm"
-                        style={{
-                          background: p.color,
-                          borderColor: settings.themeColor === p.color ? "#fff" : "transparent",
-                          boxShadow: settings.themeColor === p.color ? `0 0 0 2px ${p.color}` : "none",
-                        }}
-                      />
-                    ))}
-                    <label className="w-6 h-6 rounded-full border-2 border-dashed border-border hover:border-primary flex items-center justify-center cursor-pointer hover:scale-110 transition-all bg-background shadow-sm" title={ar ? "لون مخصص" : "Custom"}>
-                      <input type="color" className="sr-only" value={settings.themeColor ?? "#225739"} onChange={e => setSettings(s => ({ ...s, themeColor: e.target.value }))} />
-                      <Plus className="w-3 h-3 text-muted-foreground" />
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[11px] font-bold mb-1.5 text-muted-foreground">{ar ? "الشعار (اختياري)" : "Logo"}</div>
-                  {settings.logoUrl ? (
-                    <div className="flex items-center gap-3">
-                      <img src={settings.logoUrl} alt="logo" className="h-8 w-auto rounded border object-contain bg-white" />
-                      <button onClick={() => setSettings(s => ({ ...s, logoUrl: undefined }))} className="text-[11px] text-destructive hover:underline">{ar ? "إزالة" : "Remove"}</button>
-                    </div>
-                  ) : (
-                    <label className="flex items-center justify-center gap-2 cursor-pointer h-8 rounded-lg border border-dashed border-border bg-background hover:bg-muted transition-colors text-xs text-muted-foreground">
-                      <ImageIcon className="w-3.5 h-3.5" />
-                      <span>{ar ? "رفع صورة (PNG/JPG)" : "Upload (PNG/JPG)"}</span>
-                      <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" className="sr-only"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 500 * 1024) { toast.error(ar ? "الحجم يجب أن يكون أقل من 500KB" : "Under 500KB"); return; }
-                          const reader = new FileReader();
-                          reader.onload = ev => setSettings(s => ({ ...s, logoUrl: ev.target?.result as string }));
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label={ar ? "ملاحظة الترويسة" : "Header note"}>
-                  <input value={settings.headerNote ?? ""} onChange={e => setSettings(s => ({ ...s, headerNote: e.target.value }))} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={300} />
-                </Field>
-                <Field label={ar ? "ملاحظة التذييل" : "Footer note"}>
-                  <input value={settings.footerNote ?? ""} onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={300} />
-                </Field>
-              </div>
-
-              <Field label={ar ? "تعليمات الطالب" : "Instructions"}>
-                <textarea
-                  value={settings.instructions ?? ""}
-                  onChange={e => setSettings(s => ({ ...s, instructions: e.target.value }))}
-                  rows={2}
-                  className="w-full p-2 rounded-lg border bg-background text-sm outline-none focus:border-primary"
-                />
-              </Field>
-
-              <Field label={ar ? "جملة الختام" : "Closing line"}>
-                 <input value={settings.goodLuck ?? ""} onChange={e => setSettings(s => ({ ...s, goodLuck: e.target.value }))} placeholder={ar ? "نتمنى لك التوفيق (الافتراضي)" : "Good luck! (default)"} className="w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary" maxLength={200} />
-              </Field>
-
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
-                <Toggle label={ar ? "الاسم" : "Name"} value={settings.includeName} onChange={v => setSettings(s => ({ ...s, includeName: v }))} icon={<User className="w-3.5 h-3.5" />} />
-                <Toggle label={ar ? "التاريخ" : "Date"} value={settings.includeDate} onChange={v => setSettings(s => ({ ...s, includeDate: v }))} />
-                <Toggle label={ar ? "الصف" : "Class"} value={settings.includeClass} onChange={v => setSettings(s => ({ ...s, includeClass: v }))} icon={<GraduationCap className="w-3.5 h-3.5" />} />
-                <Toggle label={ar ? "الإجابات" : "Answers"} value={settings.includeAnswerKey} onChange={v => setSettings(s => ({ ...s, includeAnswerKey: v }))} />
-                <Toggle label={ar ? "علامة مائية" : "Watermark"} value={settings.showWatermark} onChange={v => setSettings(s => ({ ...s, showWatermark: v }))} />
-              </div>
-            </div>
-            </TabsContent>
-          </Tabs>
+            <h3 className="font-bold text-sm text-foreground">{ar ? "تنسيق الورقة" : "Worksheet Formatting"}</h3>
+          </div>
+          <div className="p-5" dir={dir}>
+            <WorksheetFormatPanel
+              ar={ar}
+              showProfileNote
+              settings={settings}
+              onSettingsChange={setSettings}
+              meta={{ title, subject, gradeLevel }}
+              onMetaChange={patch => {
+                if (patch.title !== undefined) setTitle(patch.title);
+                if (patch.subject !== undefined) setSubject(patch.subject);
+                if (patch.gradeLevel !== undefined) setGradeLevel(patch.gradeLevel);
+              }}
+              onClearProfile={() => {
+                clearTeacherProfile();
+                setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
+              }}
+            />
+          </div>
         </Card>
 
         {/* 4. Questions List */}
@@ -2672,6 +2430,13 @@ export default function WorksheetCreate() {
               subject: subject.trim() || null,
               questions,
               settings,
+            }}
+            onChange={patch => {
+              if (patch.title !== undefined) setTitle(patch.title);
+              if (patch.subject !== undefined) setSubject(patch.subject ?? "");
+              if (patch.gradeLevel !== undefined) setGradeLevel(patch.gradeLevel ?? "");
+              if (patch.questions !== undefined) setQuestions(patch.questions as Question[]);
+              if (patch.settings !== undefined) setSettings(patch.settings);
             }}
             onClose={() => setPreviewing(false)}
           />
@@ -3373,11 +3138,28 @@ function QuestionEditor({
 }
 
 function PreviewOverlay({
-  ar, data: initialData, onClose,
-}: { ar: boolean; data: WorksheetData; onClose: () => void }) {
-  const [data, setData] = useState<WorksheetData>(initialData);
+  ar, data, onChange, onClose,
+}: {
+  ar: boolean;
+  data: WorksheetData;
+  onChange: (patch: Partial<Pick<WorksheetData, "title" | "subject" | "gradeLevel" | "questions" | "settings">>) => void;
+  onClose: () => void;
+}) {
+  const flushRef = useRef<(() => LayoutSnapshot) | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
+  // Always merge onto the latest settings so header edits and layout edits never clobber each other.
+  const settingsRef = useRef(data.settings);
+  settingsRef.current = data.settings;
+
+  const applySnapshot = (snap: LayoutSnapshot) => {
+    const next = { ...settingsRef.current, pageBreaks: snap.pageBreaks, questionStyles: snap.questionStyles };
+    settingsRef.current = next;
+    onChange({ questions: snap.questions, settings: next });
+  };
+  const flush = () => { const snap = flushRef.current?.(); if (snap) applySnapshot(snap); };
 
   const handleWord = () => {
+    flush();
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(ar ? "تعذّر إعداد الملف" : "Could not prepare file");
@@ -3386,17 +3168,7 @@ function PreviewOverlay({
     downloadAsWord({ element: root, title: data.title, lang: data.language });
   };
 
-  const handleLayoutChange = (
-    newQuestions: Question[],
-    newPageBreaks: string[],
-    questionStyles: NonNullable<WorksheetData["settings"]["questionStyles"]>,
-  ) => {
-    setData(prev => ({
-      ...prev,
-      questions: newQuestions,
-      settings: { ...prev.settings, pageBreaks: newPageBreaks, questionStyles },
-    }));
-  };
+  const close = () => { flush(); onClose(); };
 
   return (
     <motion.div
@@ -3407,39 +3179,71 @@ function PreviewOverlay({
       className="fixed inset-0 z-[100] bg-neutral-200 overflow-auto"
       dir={data.language === "ar" ? "rtl" : "ltr"}
     >
-      <div
-        className="no-print sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 border-b shadow-sm bg-white"
-      >
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 hover:bg-muted transition-colors text-primary border-primary/30"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {ar ? "رجوع للتعديل" : "Back to edit"}
-        </button>
-        <div className="text-sm font-bold truncate flex-1 text-center text-primary hidden sm:block">
-          {ar ? "معاينة بدون حفظ" : "Preview (not saved)"} · {data.title}
-        </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+      <div className="no-print sticky top-0 z-10 border-b shadow-sm bg-white">
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
           <button
-            onClick={handleWord}
-            className="px-4 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
+            onClick={close}
+            data-testid="button-close-preview"
+            className="px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 hover:bg-muted transition-colors text-primary border-primary/30"
           >
-            <FileType className="w-4 h-4" /> {ar ? "وورد (Word)" : "Word"}
+            <ArrowLeft className="w-4 h-4" />
+            {ar ? "رجوع للمحرر" : "Back to editor"}
           </button>
-          <button
-            onClick={() => printToPdf(data.title)}
-            className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
-            title={ar ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
-          >
-            <Download className="w-4 h-4" /> {ar ? "حفظ PDF" : "Save PDF"}
-          </button>
+          <div className="text-xs font-bold truncate flex-1 text-center text-primary hidden sm:block">
+            {ar ? "التعديلات هنا تنتقل إلى الورقة، واحفظها من المحرر" : "Edits here carry into the worksheet; save from the editor"} · {data.title}
+          </div>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <button
+              onClick={() => setPanelOpen(o => !o)}
+              aria-expanded={panelOpen}
+              className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 flex items-center gap-2"
+            >
+              <SettingsIcon className="w-4 h-4" /> {ar ? "الترويسة والتنسيق" : "Header & format"}
+            </button>
+            <button
+              onClick={handleWord}
+              className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
+            >
+              <FileType className="w-4 h-4" /> {ar ? "وورد (Word)" : "Word"}
+            </button>
+            <button
+              onClick={() => { flush(); printToPdf(data.title); }}
+              className="px-3 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
+              title={ar ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
+            >
+              <Download className="w-4 h-4" /> {ar ? "حفظ PDF" : "Save PDF"}
+            </button>
+          </div>
         </div>
+        {panelOpen && (
+          <div className="px-4 pb-3 max-h-[45vh] overflow-auto border-t pt-3" dir={ar ? "rtl" : "ltr"}>
+            <WorksheetFormatPanel
+              ar={ar}
+              settings={data.settings}
+              onSettingsChange={updater => {
+                const next = updater(settingsRef.current);
+                settingsRef.current = next;
+                onChange({ settings: next });
+              }}
+              meta={{ title: data.title, subject: data.subject ?? "", gradeLevel: data.gradeLevel ?? "" }}
+              onMetaChange={patch => onChange({
+                ...(patch.title !== undefined ? { title: patch.title } : {}),
+                ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
+                ...(patch.gradeLevel !== undefined ? { gradeLevel: patch.gradeLevel } : {}),
+              })}
+            />
+          </div>
+        )}
       </div>
 
       <div className="p-4 sm:p-8 flex justify-center pb-32">
         <div className="max-w-[210mm] w-full bg-white shadow-2xl relative" style={{ minHeight: "297mm" }}>
-          <WorksheetPrintView data={data} onLayoutChange={handleLayoutChange} />
+          <WorksheetPrintView
+            data={data}
+            flushRef={flushRef}
+            onDraftChange={applySnapshot}
+            onLayoutChange={(qs, breaks, styles) => applySnapshot({ questions: qs, pageBreaks: breaks, questionStyles: styles })}
+          />
         </div>
       </div>
     </motion.div>
