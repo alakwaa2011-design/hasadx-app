@@ -7,6 +7,36 @@
  */
 import * as zodV3 from 'zod';
 /**
+ * Requires worksheet ownership or access to a published admin-shared worksheet. Runs in an isolated browser without executing submitted JavaScript or accessing the server session.
+ * @summary Render one worksheet page as a browser-native PNG
+ */
+export declare const RenderWorksheetPageParams: zodV3.ZodObject<{
+    id: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const renderWorksheetPageBodyHtmlMax = 2097152;
+export declare const renderWorksheetPageBodyWidthMin = 100;
+export declare const renderWorksheetPageBodyWidthMax = 900;
+export declare const renderWorksheetPageBodyHeightMin = 100;
+export declare const renderWorksheetPageBodyHeightMax = 1800;
+export declare const RenderWorksheetPageBody: zodV3.ZodObject<{
+    html: zodV3.ZodString;
+    width: zodV3.ZodNumber;
+    height: zodV3.ZodNumber;
+}, "strip", zodV3.ZodTypeAny, {
+    html: string;
+    width: number;
+    height: number;
+}, {
+    html: string;
+    width: number;
+    height: number;
+}>;
+export declare const RenderWorksheetPageResponse: zodV3.ZodUnknown;
+/**
  * @summary Get configured YouTube tutorial links
  */
 export declare const getTutorialLinksResponseLinksItemIdRegExp: RegExp;
@@ -2752,8 +2782,8 @@ export declare const ListPresentationsResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     slideCount: number;
@@ -2768,8 +2798,8 @@ export declare const ListPresentationsResponseItem: zodV3.ZodObject<{
     publishedAt?: Date | null | undefined;
     ownerIsAdmin?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     slideCount: number;
@@ -2801,8 +2831,8 @@ export declare const ListPresentationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     slideCount: number;
@@ -2817,8 +2847,8 @@ export declare const ListPresentationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     publishedAt?: Date | null | undefined;
     ownerIsAdmin?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     slideCount: number;
@@ -3134,8 +3164,8 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -3206,8 +3236,8 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -3555,8 +3585,8 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -3627,8 +3657,8 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -4359,8 +4389,8 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -4431,8 +4461,8 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -4797,8 +4827,8 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -4869,8 +4899,8 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -5218,8 +5248,8 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -5290,8 +5320,8 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -5711,8 +5741,8 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -5783,8 +5813,8 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    status: "draft" | "published";
     id: number;
+    status: "draft" | "published";
     title: string;
     language: "ar" | "en";
     createdAt: Date;
@@ -6297,8 +6327,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -6359,8 +6389,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -6841,8 +6871,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -6903,8 +6933,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             skipped?: number[] | undefined;
         } | null | undefined;
     }, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -6991,8 +7021,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "failed" | "queued" | "running" | "succeeded";
     id: number;
+    status: "failed" | "queued" | "running" | "succeeded";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -7019,8 +7049,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -7087,8 +7117,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         };
     }) | null | undefined;
 }, {
-    status: "failed" | "queued" | "running" | "succeeded";
     id: number;
+    status: "failed" | "queued" | "running" | "succeeded";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -7115,8 +7145,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -7509,8 +7539,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -7571,8 +7601,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             skipped?: number[] | undefined;
         } | null | undefined;
     }, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -7659,8 +7689,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "failed" | "queued" | "running" | "succeeded";
     id: number;
+    status: "failed" | "queued" | "running" | "succeeded";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -7687,8 +7717,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -7755,8 +7785,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         };
     }) | null | undefined;
 }, {
-    status: "failed" | "queued" | "running" | "succeeded";
     id: number;
+    status: "failed" | "queued" | "running" | "succeeded";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -7783,8 +7813,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -8177,8 +8207,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -8239,8 +8269,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             skipped?: number[] | undefined;
         } | null | undefined;
     }, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -8327,8 +8357,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "failed" | "queued" | "running" | "succeeded";
     id: number;
+    status: "failed" | "queued" | "running" | "succeeded";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -8355,8 +8385,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -8423,8 +8453,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         };
     }) | null | undefined;
 }, {
-    status: "failed" | "queued" | "running" | "succeeded";
     id: number;
+    status: "failed" | "queued" | "running" | "succeeded";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -8451,8 +8481,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         id: number;
+        status: "draft" | "outline_ready" | "building" | "built" | "failed";
         createdAt: Date;
         teacherId: number;
         updatedAt: Date;
@@ -8853,8 +8883,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -8915,8 +8945,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -9190,8 +9220,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -9252,8 +9282,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -9563,8 +9593,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -9625,8 +9655,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -10134,8 +10164,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -10196,8 +10226,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     id: number;
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
     createdAt: Date;
     teacherId: number;
     updatedAt: Date;
@@ -10536,8 +10566,8 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         title: string;
         createdAt: Date;
         teacherId: number;
@@ -10597,8 +10627,8 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
         renderApproval?: Record<string, unknown> | null | undefined;
         renderQuote?: Record<string, unknown> | null | undefined;
     }, {
-        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         title: string;
         createdAt: Date;
         teacherId: number;
@@ -10660,8 +10690,8 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     projects: {
-        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         title: string;
         createdAt: Date;
         teacherId: number;
@@ -10723,8 +10753,8 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
     }[];
 }, {
     projects: {
-        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
+        status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         title: string;
         createdAt: Date;
         teacherId: number;
@@ -10805,35 +10835,35 @@ export declare const UploadAiVideoSourceImageResponse: zodV3.ZodObject<{
         width: zodV3.ZodNumber;
         height: zodV3.ZodNumber;
     }, "strip", zodV3.ZodTypeAny, {
+        width: number;
+        height: number;
         name: string;
         size: number;
         contentType: "image/jpeg" | "image/png" | "image/webp";
-        width: number;
-        height: number;
     }, {
+        width: number;
+        height: number;
         name: string;
         size: number;
         contentType: "image/jpeg" | "image/png" | "image/webp";
-        width: number;
-        height: number;
     }>;
 }, "strip", zodV3.ZodTypeAny, {
     objectPath: string;
     metadata: {
+        width: number;
+        height: number;
         name: string;
         size: number;
         contentType: "image/jpeg" | "image/png" | "image/webp";
-        width: number;
-        height: number;
     };
 }, {
     objectPath: string;
     metadata: {
+        width: number;
+        height: number;
         name: string;
         size: number;
         contentType: "image/jpeg" | "image/png" | "image/webp";
-        width: number;
-        height: number;
     };
 }>;
 /**
@@ -11155,8 +11185,8 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -11216,8 +11246,8 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
     renderApproval?: Record<string, unknown> | null | undefined;
     renderQuote?: Record<string, unknown> | null | undefined;
 }, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -11550,8 +11580,8 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -11611,8 +11641,8 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
     renderApproval?: Record<string, unknown> | null | undefined;
     renderQuote?: Record<string, unknown> | null | undefined;
 }, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -12215,8 +12245,8 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -12276,8 +12306,8 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
     renderApproval?: Record<string, unknown> | null | undefined;
     renderQuote?: Record<string, unknown> | null | undefined;
 }, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -12643,8 +12673,8 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -12704,8 +12734,8 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
     renderApproval?: Record<string, unknown> | null | undefined;
     renderQuote?: Record<string, unknown> | null | undefined;
 }, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -13130,8 +13160,8 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -13191,8 +13221,8 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
     renderApproval?: Record<string, unknown> | null | undefined;
     renderQuote?: Record<string, unknown> | null | undefined;
 }, {
-    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
+    status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     title: string;
     createdAt: Date;
     teacherId: number;
@@ -14378,15 +14408,15 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
             text: zodV3.ZodString;
             type: zodV3.ZodString;
         }, "strip", zodV3.ZodTypeAny, {
-            type: string;
             id: number;
+            type: string;
             text: string;
             verseKey: string;
             position: number;
             glyph: string;
         }, {
-            type: string;
             id: number;
+            type: string;
             text: string;
             verseKey: string;
             position: number;
@@ -14394,8 +14424,8 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
         }>, "many">;
     }, "strip", zodV3.ZodTypeAny, {
         words: {
-            type: string;
             id: number;
+            type: string;
             text: string;
             verseKey: string;
             position: number;
@@ -14404,8 +14434,8 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
         lineNumber: number;
     }, {
         words: {
-            type: string;
             id: number;
+            type: string;
             text: string;
             verseKey: string;
             position: number;
@@ -14426,8 +14456,8 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
     }[];
     lines: {
         words: {
-            type: string;
             id: number;
+            type: string;
             text: string;
             verseKey: string;
             position: number;
@@ -14447,8 +14477,8 @@ export declare const GetQuranMadaniPageResponse: zodV3.ZodObject<{
     }[];
     lines: {
         words: {
-            type: string;
             id: number;
+            type: string;
             text: string;
             verseKey: string;
             position: number;
@@ -15203,8 +15233,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
         assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -15216,8 +15246,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         dueDate: string | null;
         assignmentRequestId: string | null;
     }, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -15240,8 +15270,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
         recitedDate: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -15250,8 +15280,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         mistakeCounts: Record<string, number> | null;
         recitedDate: string;
     }, {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -15275,8 +15305,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     wards: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -15289,8 +15319,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         assignmentRequestId: string | null;
     }[];
     recentRecitations: {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -15314,8 +15344,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     wards: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -15328,8 +15358,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         assignmentRequestId: string | null;
     }[];
     recentRecitations: {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -15419,8 +15449,8 @@ export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15432,8 +15462,8 @@ export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15459,8 +15489,8 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15472,8 +15502,8 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15505,8 +15535,8 @@ export declare const ListMyQuranWardsResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15518,8 +15548,8 @@ export declare const ListMyQuranWardsResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15545,8 +15575,8 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15558,8 +15588,8 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15635,8 +15665,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         dueDate: zodV3.ZodNullable<zodV3.ZodString>;
         status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
         surahName: string;
@@ -15645,8 +15675,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         assignedDate: string;
         dueDate: string | null;
     }, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
         surahName: string;
@@ -15763,8 +15793,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     nextWard: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
         surahName: string;
@@ -15815,8 +15845,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     nextWard: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
         surahName: string;
@@ -15947,8 +15977,8 @@ export declare const GetMyQuranWardResponse: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -15960,8 +15990,8 @@ export declare const GetMyQuranWardResponse: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16080,8 +16110,8 @@ export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16093,8 +16123,8 @@ export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16120,8 +16150,8 @@ export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObj
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16133,8 +16163,8 @@ export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObj
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16203,8 +16233,8 @@ export declare const CreateQuranWardResponse: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16216,8 +16246,8 @@ export declare const CreateQuranWardResponse: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16336,8 +16366,8 @@ export declare const AssignQuranCircleTaskResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16349,8 +16379,8 @@ export declare const AssignQuranCircleTaskResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16376,8 +16406,8 @@ export declare const AssignQuranCircleTaskResponse: zodV3.ZodArray<zodV3.ZodObje
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16389,8 +16419,8 @@ export declare const AssignQuranCircleTaskResponse: zodV3.ZodArray<zodV3.ZodObje
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16463,8 +16493,8 @@ export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16476,8 +16506,8 @@ export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16516,8 +16546,8 @@ export declare const ListQuranRecitationsResponseItem: zodV3.ZodObject<{
     teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
     recitedDate: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "completed" | "needs_review" | "absent" | "not_recited";
     id: number;
+    status: "completed" | "needs_review" | "absent" | "not_recited";
     teacherNote: string | null;
     studentId: number;
     wardId: number;
@@ -16526,8 +16556,8 @@ export declare const ListQuranRecitationsResponseItem: zodV3.ZodObject<{
     mistakeCounts: Record<string, number> | null;
     recitedDate: string;
 }, {
-    status: "completed" | "needs_review" | "absent" | "not_recited";
     id: number;
+    status: "completed" | "needs_review" | "absent" | "not_recited";
     teacherNote: string | null;
     studentId: number;
     wardId: number;
@@ -16547,8 +16577,8 @@ export declare const ListQuranRecitationsResponse: zodV3.ZodArray<zodV3.ZodObjec
     teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
     recitedDate: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "completed" | "needs_review" | "absent" | "not_recited";
     id: number;
+    status: "completed" | "needs_review" | "absent" | "not_recited";
     teacherNote: string | null;
     studentId: number;
     wardId: number;
@@ -16557,8 +16587,8 @@ export declare const ListQuranRecitationsResponse: zodV3.ZodArray<zodV3.ZodObjec
     mistakeCounts: Record<string, number> | null;
     recitedDate: string;
 }, {
-    status: "completed" | "needs_review" | "absent" | "not_recited";
     id: number;
+    status: "completed" | "needs_review" | "absent" | "not_recited";
     teacherNote: string | null;
     studentId: number;
     wardId: number;
@@ -16622,8 +16652,8 @@ export declare const CreateQuranRecitationResponse: zodV3.ZodObject<{
     teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
     recitedDate: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "completed" | "needs_review" | "absent" | "not_recited";
     id: number;
+    status: "completed" | "needs_review" | "absent" | "not_recited";
     teacherNote: string | null;
     studentId: number;
     wardId: number;
@@ -16632,8 +16662,8 @@ export declare const CreateQuranRecitationResponse: zodV3.ZodObject<{
     mistakeCounts: Record<string, number> | null;
     recitedDate: string;
 }, {
-    status: "completed" | "needs_review" | "absent" | "not_recited";
     id: number;
+    status: "completed" | "needs_review" | "absent" | "not_recited";
     teacherNote: string | null;
     studentId: number;
     wardId: number;
@@ -16662,8 +16692,8 @@ export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16675,8 +16705,8 @@ export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16708,8 +16738,8 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16721,8 +16751,8 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
     id: number;
+    status: "assigned" | "in_progress" | "completed" | "needs_review";
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
     surahNumber: number;
@@ -16793,8 +16823,8 @@ export declare const ListMyQuranSubmissionsResponseItem: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16806,8 +16836,8 @@ export declare const ListMyQuranSubmissionsResponseItem: zodV3.ZodObject<{
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16833,8 +16863,8 @@ export declare const ListMyQuranSubmissionsResponse: zodV3.ZodArray<zodV3.ZodObj
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16846,8 +16876,8 @@ export declare const ListMyQuranSubmissionsResponse: zodV3.ZodArray<zodV3.ZodObj
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16897,8 +16927,8 @@ export declare const FinalizeQuranSubmissionResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16910,8 +16940,8 @@ export declare const FinalizeQuranSubmissionResponse: zodV3.ZodObject<{
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16952,8 +16982,8 @@ export declare const GetMyQuranSubmissionResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -16965,8 +16995,8 @@ export declare const GetMyQuranSubmissionResponse: zodV3.ZodObject<{
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17000,8 +17030,8 @@ export declare const ListQuranSubmissionReviewQueueResponseItem: zodV3.ZodInters
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17013,8 +17043,8 @@ export declare const ListQuranSubmissionReviewQueueResponseItem: zodV3.ZodInters
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17058,8 +17088,8 @@ export declare const ListQuranSubmissionReviewQueueResponse: zodV3.ZodArray<zodV
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17071,8 +17101,8 @@ export declare const ListQuranSubmissionReviewQueueResponse: zodV3.ZodArray<zodV
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17176,8 +17206,8 @@ export declare const ReviewQuranSubmissionResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17189,8 +17219,8 @@ export declare const ReviewQuranSubmissionResponse: zodV3.ZodObject<{
     mistakeCounts: Record<string, number> | null;
     fileSize: number;
 }, {
-    status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
+    status: "submitted" | "reviewed" | "needs_resubmission";
     createdAt: Date;
     updatedAt: Date;
     feedback: string | null;
@@ -17229,8 +17259,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
         assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -17242,8 +17272,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         dueDate: string | null;
         assignmentRequestId: string | null;
     }, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -17272,8 +17302,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         teacherNote: zodV3.ZodNullable<zodV3.ZodString>;
         recitedDate: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -17282,8 +17312,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         mistakeCounts: Record<string, number> | null;
         recitedDate: string;
     }, {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -17294,8 +17324,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     dueWards: ({
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -17310,8 +17340,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         studentName: string;
     })[];
     todayRecitations: {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -17322,8 +17352,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
     }[];
 }, {
     dueWards: ({
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
         id: number;
+        status: "assigned" | "in_progress" | "completed" | "needs_review";
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -17338,8 +17368,8 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         studentName: string;
     })[];
     todayRecitations: {
-        status: "completed" | "needs_review" | "absent" | "not_recited";
         id: number;
+        status: "completed" | "needs_review" | "absent" | "not_recited";
         teacherNote: string | null;
         studentId: number;
         wardId: number;
@@ -17537,8 +17567,8 @@ export declare const GetMyQuranMemorizationResponseItem: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17547,8 +17577,8 @@ export declare const GetMyQuranMemorizationResponseItem: zodV3.ZodObject<{
     nextReviewDate: string;
     lastAssessedAt: Date | null;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17568,8 +17598,8 @@ export declare const GetMyQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodObj
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17578,8 +17608,8 @@ export declare const GetMyQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodObj
     nextReviewDate: string;
     lastAssessedAt: Date | null;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17620,8 +17650,8 @@ export declare const AssessMyQuranMemorizationResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17630,8 +17660,8 @@ export declare const AssessMyQuranMemorizationResponse: zodV3.ZodObject<{
     nextReviewDate: string;
     lastAssessedAt: Date | null;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17655,8 +17685,8 @@ export declare const GetDueQuranMemorizationResponseItem: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17665,8 +17695,8 @@ export declare const GetDueQuranMemorizationResponseItem: zodV3.ZodObject<{
     nextReviewDate: string;
     lastAssessedAt: Date | null;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17686,8 +17716,8 @@ export declare const GetDueQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodOb
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17696,8 +17726,8 @@ export declare const GetDueQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodOb
     nextReviewDate: string;
     lastAssessedAt: Date | null;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     createdAt: Date;
     updatedAt: Date;
     surahNumber: number;
@@ -17888,8 +17918,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "needs_review" | "learning" | "memorized";
         id: number;
+        status: "needs_review" | "learning" | "memorized";
         createdAt: Date;
         updatedAt: Date;
         surahNumber: number;
@@ -17898,8 +17928,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         nextReviewDate: string;
         lastAssessedAt: Date | null;
     }, {
-        status: "needs_review" | "learning" | "memorized";
         id: number;
+        status: "needs_review" | "learning" | "memorized";
         createdAt: Date;
         updatedAt: Date;
         surahNumber: number;
@@ -17917,8 +17947,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         linked: boolean;
     };
     items: {
-        status: "needs_review" | "learning" | "memorized";
         id: number;
+        status: "needs_review" | "learning" | "memorized";
         createdAt: Date;
         updatedAt: Date;
         surahNumber: number;
@@ -17936,8 +17966,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         linked: boolean;
     };
     items: {
-        status: "needs_review" | "learning" | "memorized";
         id: number;
+        status: "needs_review" | "learning" | "memorized";
         createdAt: Date;
         updatedAt: Date;
         surahNumber: number;
@@ -17968,8 +17998,8 @@ export declare const ListTeacherQuranMemorizationHistoryResponseItem: zodV3.ZodO
     nextReviewDate: zodV3.ZodString;
     assessedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     requestId: string;
     intervalDays: number;
     nextReviewDate: string;
@@ -17977,8 +18007,8 @@ export declare const ListTeacherQuranMemorizationHistoryResponseItem: zodV3.ZodO
     memorizationItemId: number;
     assessedAt: Date;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     requestId: string;
     intervalDays: number;
     nextReviewDate: string;
@@ -17996,8 +18026,8 @@ export declare const ListTeacherQuranMemorizationHistoryResponse: zodV3.ZodArray
     nextReviewDate: zodV3.ZodString;
     assessedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     requestId: string;
     intervalDays: number;
     nextReviewDate: string;
@@ -18005,8 +18035,8 @@ export declare const ListTeacherQuranMemorizationHistoryResponse: zodV3.ZodArray
     memorizationItemId: number;
     assessedAt: Date;
 }, {
-    status: "needs_review" | "learning" | "memorized";
     id: number;
+    status: "needs_review" | "learning" | "memorized";
     requestId: string;
     intervalDays: number;
     nextReviewDate: string;

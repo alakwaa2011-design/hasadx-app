@@ -20,6 +20,38 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /worksheets/{id}/render-page:
+    post:
+      operationId: renderWorksheetPage
+      tags: [assignments]
+      summary: Render one worksheet page as a browser-native PNG
+      description: Requires worksheet ownership or access to a published admin-shared worksheet. Runs in an isolated browser without executing submitted JavaScript or accessing the server session.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorksheetPageRenderInput"
+      responses:
+        "200":
+          description: PNG screenshot rendered at 2x device pixel ratio
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        "400": { description: "Invalid worksheet id, body, or dimensions" }
+        "401": { description: Not authenticated }
+        "403": { description: Worksheet access denied }
+        "404": { description: Worksheet not found }
+        "413": { description: HTML exceeds the 2 MB limit }
+        "422": { description: Worksheet resources could not be loaded or rendered }
+        "429": { description: Rate limit exceeded or renderer is busy }
+        "503": { description: Renderer unavailable }
+        "504": { description: Rendering timed out }
   /tutorials:
     get:
       operationId: getTutorialLinks
@@ -2751,6 +2783,17 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    WorksheetPageRenderInput:
+      type: object
+      required: [html, width, height]
+      additionalProperties: false
+      properties:
+        html:
+          type: string
+          maxLength: 2097152
+          description: Serialized worksheet page HTML; data URIs should be used for images.
+        width: { type: integer, minimum: 100, maximum: 900 }
+        height: { type: integer, minimum: 100, maximum: 1800 }
     TutorialLink:
       type: object
       required: [id, title, url]

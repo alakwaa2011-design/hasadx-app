@@ -4,13 +4,14 @@ import {
   VerticalPositionAlign, VerticalPositionRelativeFrom,
 } from "docx";
 import type { WordExportOptions } from "./print-export";
+import { freezeWorksheetPage } from "./worksheet-page-snapshot";
 
 const PAGE_SELECTOR = "[data-worksheet-page], [data-answer-key-page]";
 const A4_WIDTH = 11906;
 const A4_HEIGHT = 16838;
 
 export class VisualWordExportError extends Error {
-  constructor(public readonly code: "pages" | "image" | "capture") {
+  constructor(public readonly code: "pages" | "image" | "capture" | "busy") {
     super(`Visual Word export failed: ${code}`);
   }
 }
@@ -110,7 +111,20 @@ async function inlineImages(original: HTMLElement, clone: HTMLElement): Promise<
 }
 
 async function stablePages(element: HTMLElement): Promise<void> {
-  if ("fonts" in document) await document.fonts.ready;
+  if ("fonts" in document) {
+    // An unrelated web font can remain loading indefinitely on a device.
+    // The authenticated renderer loads the worksheet fonts independently;
+    // don't leave the Word button spinning forever on the preview's font set.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        document.fonts.ready.catch(() => undefined),
+        new Promise<void>(resolve => { timer = setTimeout(resolve, 8_000); }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   let previous = "";
   let same = 0;
   for (let attempt = 0; attempt < 20 && same < 3; attempt += 1) {
@@ -149,73 +163,48 @@ async function waitForImages(element: HTMLElement): Promise<void> {
 /** Freeze the displayed pages, including answer keys, before rasterizing sequentially. */
 export async function captureWorksheetPages(
   element: HTMLElement,
+  worksheetId: number,
   onProgress?: (done: number, total: number) => void,
 ): Promise<WordPageImage[]> {
+  if (!Number.isSafeInteger(worksheetId) || worksheetId <= 0) throw new VisualWordExportError("pages");
   await waitForImages(element);
   await stablePages(element);
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.removeAttribute("id");
-  const inherited = getComputedStyle(element);
-  Object.assign(clone.style, {
-    position: "fixed", left: "-100000px", top: "0",
-    width: `${Math.max(element.scrollWidth, 810)}px`, fontFamily: inherited.fontFamily,
-    maxWidth: "none", overflow: "visible",
-    direction: inherited.direction, pointerEvents: "none",
-  });
-  // Phone fitting is screen-only: rasterize at the original A4 size, not phone resolution.
-  clone.style.setProperty("--ws-preview-scale", "1");
-  clone.querySelectorAll(".no-print").forEach(node => node.remove());
-  clone.querySelectorAll(".ws-q-selected").forEach(node => node.classList.remove("ws-q-selected"));
-  clone.querySelectorAll<HTMLElement>(".ws-editable").forEach(node => {
-    node.style.background = "transparent";
-    node.style.boxShadow = "none";
-    node.style.outline = "none";
-  });
-  clone.querySelectorAll("[contenteditable]").forEach(node => node.removeAttribute("contenteditable"));
-  document.body.appendChild(clone);
   try {
-    await inlineImages(element, clone);
-    const pages = Array.from(clone.querySelectorAll<HTMLElement>(PAGE_SELECTOR));
-    if (!pages.length) throw new VisualWordExportError("pages");
-    const { default: html2canvas } = await import("html2canvas");
+    const sourcePages = Array.from(element.querySelectorAll<HTMLElement>(PAGE_SELECTOR));
+    if (!sourcePages.length) throw new VisualWordExportError("pages");
+    // Freeze all pages before the first request, so edits cannot change later
+    // pages halfway through a download.
+    const pages = sourcePages.map(freezeWorksheetPage);
+    await Promise.all(sourcePages.map((source, index) => inlineImages(source, pages[index])));
     const images: WordPageImage[] = [];
     for (const [index, page] of pages.entries()) {
-      page.style.boxShadow = "none";
-      const bounds = page.getBoundingClientRect();
-      if (bounds.width <= 0 || bounds.height <= 0) throw new VisualWordExportError("capture");
-      const canvas = await html2canvas(page, {
-        scale: 2, useCORS: true, logging: false,
-        backgroundColor: "#ffffff", scrollX: 0, scrollY: 0,
-        ignoreElements: node => node.classList.contains("no-print"),
+      const width = sourcePages[index].offsetWidth || 210 / 25.4 * 96;
+      const height = sourcePages[index].offsetHeight || 297 / 25.4 * 96;
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/worksheets/${worksheetId}/render-page`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(90000),
+        body: JSON.stringify({ html: page.outerHTML, width, height }),
       });
-      try {
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(value => value ? resolve(value) : reject(new VisualWordExportError("capture")), "image/png");
-        });
-        images.push({
-          data: new Uint8Array(await blob.arrayBuffer()),
-          width: bounds.width,
-          height: bounds.height,
-        });
-      } finally {
-        canvas.width = 0;
-        canvas.height = 0;
+      if (response.status === 429) throw new VisualWordExportError("busy");
+      if (!response.ok || !response.headers.get("content-type")?.includes("image/png")) {
+        throw new VisualWordExportError("capture");
       }
+      images.push({ data: new Uint8Array(await response.arrayBuffer()), width, height });
       onProgress?.(index + 1, pages.length);
     }
     return images;
   } catch (error) {
     if (error instanceof VisualWordExportError) throw error;
     throw new VisualWordExportError("capture");
-  } finally {
-    clone.remove();
   }
 }
 
 export async function downloadVisualWorksheetWord(
-  options: WordExportOptions & { onProgress?: (done: number, total: number) => void },
+  options: WordExportOptions & { worksheetId: number; onProgress?: (done: number, total: number) => void },
 ): Promise<void> {
-  const pages = await captureWorksheetPages(options.element, options.onProgress);
+  const pages = await captureWorksheetPages(options.element, options.worksheetId, options.onProgress);
   const blob = await Packer.toBlob(buildVisualWordDocument(pages, options.title, options.lang));
   const filename = options.title.replace(/[\\/:*?"<>|\x00-\x1f]+/g, "-").trim().slice(0, 80) || "worksheet";
   const url = URL.createObjectURL(blob);

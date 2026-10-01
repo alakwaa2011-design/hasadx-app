@@ -16,6 +16,36 @@ const zod = {
 
 
 /**
+ * Requires worksheet ownership or access to a published admin-shared worksheet. Runs in an isolated browser without executing submitted JavaScript or accessing the server session.
+ * @summary Render one worksheet page as a browser-native PNG
+ */
+
+
+
+export const RenderWorksheetPageParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const renderWorksheetPageBodyHtmlMax = 2097152;
+
+export const renderWorksheetPageBodyWidthMin = 100;
+export const renderWorksheetPageBodyWidthMax = 900;
+
+export const renderWorksheetPageBodyHeightMin = 100;
+export const renderWorksheetPageBodyHeightMax = 1800;
+
+
+
+export const RenderWorksheetPageBody = zod.object({
+  "html": zod.string().max(renderWorksheetPageBodyHtmlMax).describe('Serialized worksheet page HTML; data URIs should be used for images.'),
+  "width": zod.int().min(renderWorksheetPageBodyWidthMin).max(renderWorksheetPageBodyWidthMax),
+  "height": zod.int().min(renderWorksheetPageBodyHeightMin).max(renderWorksheetPageBodyHeightMax)
+})
+
+export const RenderWorksheetPageResponse = zod.unknown()
+
+
+/**
  * @summary Get configured YouTube tutorial links
  */
 export const getTutorialLinksResponseLinksItemIdRegExp = new RegExp('^[a-zA-Z0-9_-]{1,80}$');

@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Packer } from "docx";
 import JSZip from "jszip";
-import { buildWordDocument, printToPdf } from "./print-export";
+import { buildWordDocument, downloadAsWord, printToPdf } from "./print-export";
 
 describe("printToPdf", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("waits for a stable worksheet layout and uses its title as the PDF filename", async () => {
@@ -78,18 +79,134 @@ describe("buildWordDocument", () => {
     });
     const zip = await JSZip.loadAsync(await Packer.toBuffer(wordDocument));
     const xml = await zip.file("word/document.xml")!.async("string");
+    const stylesXml = await zip.file("word/styles.xml")!.async("string");
     expect(xml).toContain("<w:document");
     expect(xml).toContain("<w:bidi");
     expect(xml).toContain("<w:rtl");
     expect(xml).toContain("<w:bidiVisual/>");
     expect(xml).toContain("<w:sz w:val=\"28\"");
+    expect(xml).toContain("<w:szCs w:val=\"28\"");
     expect(xml).toContain("<w:b");
     expect(xml).toContain("<w:jc w:val=\"center\"");
+    expect(stylesXml).toContain('w:ascii="Arial"');
+    expect(stylesXml).toContain('w:cs="Cairo"');
+    expect(stylesXml).toContain('<w:szCs w:val="24"/>');
     expect(xml.match(/<w:tr>/g)).toHaveLength(2);
     expect(xml.match(/<w:tc>/g)).toHaveLength(4);
     for (const text of ["١", "السؤال الأول", "الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"]) {
       expect(xml).toContain(text);
     }
+  });
+
+  it("keeps Arabic question and section paragraphs physically right-aligned and fields in one editable row", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page dir="rtl">
+        <div class="ws-q-head">
+          <span class="ws-q-num">1</span>
+          <div class="ws-q-prompt">السؤال الأول</div>
+        </div>
+        <div class="ws-section-instr">اختر الإجابة الصحيحة:</div>
+        <div class="ws-fields">
+          <div class="ws-field-line"><span class="ws-field-label">الاسم:</span></div>
+          <div class="ws-field-line short"><span class="ws-field-label">الصف:</span></div>
+          <div class="ws-field-line short"><span class="ws-field-label">التاريخ:</span></div>
+        </div>
+        <ol class="ws-mcq" data-choice-columns="1">
+          <li><span class="ws-mcq-letter">(أ)</span><span class="ws-mcq-text">اختيار أول</span></li>
+        </ol>
+        <div class="ws-cont-header">
+          <span class="ws-cont-title">متابعة الورقة</span>
+          <span class="ws-cont-page">صفحة ٢</span>
+        </div>
+      </div>`;
+
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root,
+      title: "تخطيط RTL",
+      lang: "ar",
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+
+    for (const text of ["السؤال الأول", "اختر الإجابة الصحيحة:"]) {
+      const paragraph = xml.match(new RegExp(`<w:p>.*?${text}.*?</w:p>`))?.[0];
+      expect(paragraph).toBeDefined();
+      expect(paragraph).toContain("<w:bidi/>");
+      // Word resolves START to the paragraph's leading edge; with w:bidi that
+      // is the physical right edge, avoiding Mac Word's mirrored RIGHT case.
+      expect(paragraph).toContain('<w:jc w:val="start"/>');
+    }
+
+    const tables = xml.match(/<w:tbl>.*?<\/w:tbl>/g) ?? [];
+    expect(tables).toHaveLength(3);
+    const fieldsTableXml = tables[0];
+    expect(fieldsTableXml.match(/<w:tr>/g)).toHaveLength(1);
+    expect(fieldsTableXml.match(/<w:tc>/g)).toHaveLength(3);
+    expect(fieldsTableXml).toContain('w:w="47%"');
+    expect(fieldsTableXml).toContain('w:w="25%"');
+    expect(fieldsTableXml).toContain('w:w="28%"');
+    for (const label of ["الاسم:", "الصف:", "التاريخ:"]) {
+      expect(fieldsTableXml).toContain(label);
+      expect(fieldsTableXml).toContain("________");
+    }
+
+    const choiceParagraph = xml.match(/<w:p>.*?\(أ\).*?اختيار أول.*?<\/w:p>/)?.[0];
+    expect(choiceParagraph).toBeDefined();
+    expect(choiceParagraph).toContain('<w:t xml:space="preserve"> </w:t>');
+    expect(tables[2].match(/<w:tr>/g)).toHaveLength(1);
+    expect(tables[2].match(/<w:tc>/g)).toHaveLength(2);
+    expect(tables[2]).toContain("متابعة الورقة");
+    expect(tables[2]).toContain("صفحة ٢");
+  });
+
+  it.each([
+    ["arabesque", "ws-arb-fields"],
+    ["modern band", "ws-band-fields"],
+    ["playful", "ws-play-fields"],
+    ["clipboard", "ws-clip-fields"],
+    ["masthead", "ws-mast-fields"],
+    ["tabular", ""],
+  ])("keeps %s theme student fields horizontal in the actual Word layout", async (_, fieldClass) => {
+    const root = document.createElement("div");
+    root.innerHTML = `<article data-worksheet-page dir="rtl">
+      <div class="${fieldClass ? "ws-theme-header" : "ws-tab-header"}">
+        <div class="${fieldClass}" style="display:grid">
+          <div style="color:#3b0f3f">الاسم<span></span></div>
+          <div style="color:#3b0f3f">الصف<span></span></div>
+          <div style="color:#3b0f3f">التاريخ<span></span></div>
+        </div>
+      </div>
+    </article>`;
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root, title: "حقول الطالب", lang: "ar",
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+    const fields = (xml.match(/<w:tbl>.*?<\/w:tbl>/g) ?? []).find(table =>
+      table.includes("الاسم") && table.includes("الصف") && table.includes("التاريخ"));
+    expect(fields).toBeDefined();
+    expect(fields?.match(/<w:tr>/g)).toHaveLength(1);
+    expect(fields?.match(/<w:tc>/g)).toHaveLength(3);
+    expect(fields).toContain("________");
+  });
+
+  it("embeds available data-URL images as editable-document media rather than replacing them with alt text", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page>
+        <img alt="School logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC">
+      </div>`;
+
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root,
+      title: "Image export",
+      lang: "en",
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+    const mediaFiles = Object.keys(zip.files).filter(path => path.startsWith("word/media/") && !path.endsWith("/"));
+
+    expect(mediaFiles).toHaveLength(1);
+    expect(xml).toContain("<w:drawing>");
+    expect(xml).not.toContain("<w:t>School logo</w:t>");
   });
 
   it("preserves editable formatting and content across all worksheet question types", async () => {
@@ -340,5 +457,90 @@ describe("buildWordDocument", () => {
     expect(equations[2]).toMatch(
       /<m:f>.*?<m:num>.*?<m:sSup>.*?<m:t>x<\/m:t>.*?<m:t>2<\/m:t>.*?<\/m:sSup>.*?<\/m:num>.*?<m:den>.*?<m:rad>.*?<m:sSup>.*?<m:t>y<\/m:t>.*?<m:t>3<\/m:t>.*?<\/m:sSup>.*?<\/m:rad>.*?<\/m:den>.*?<\/m:f>/,
     );
+  });
+});
+
+describe("downloadAsWord", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    document.head.querySelectorAll("[data-word-test-style]").forEach(style => style.remove());
+    document.body.querySelectorAll("[data-word-test-source]").forEach(element => element.remove());
+  });
+
+  it("builds from a connected offscreen clone so stylesheet-only formatting is retained, and always removes it", async () => {
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:worksheet-export"),
+      revokeObjectURL: vi.fn(),
+    });
+    const realSetTimeout = globalThis.setTimeout;
+    vi.spyOn(globalThis, "setTimeout").mockImplementation(((handler, timeout, ...args) => {
+      if (timeout === 1500) return 0 as ReturnType<typeof setTimeout>;
+      return realSetTimeout(handler, timeout, ...args);
+    }) as typeof setTimeout);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    const style = document.createElement("style");
+    style.dataset.wordTestStyle = "true";
+    style.textContent = `
+      .print-host[data-responsive-preview] { width: 100%; min-width: 0; max-width: 100%; overflow-x: clip; }
+      .print-host[data-responsive-preview] .ws-title {
+        color: rgb(128, 0, 128); font-family: Arial; font-size: 24pt; text-align: center;
+      }
+      .print-host[data-responsive-preview] .ws-section-instr {
+        border-right: 4px solid rgb(12, 34, 56); font-size: 18pt;
+      }`;
+    document.head.appendChild(style);
+
+    const source = document.createElement("div");
+    source.dataset.wordTestSource = "true";
+    source.className = "print-host";
+    source.setAttribute("data-responsive-preview", "");
+    source.innerHTML = `
+      <div data-worksheet-page dir="rtl">
+        <h1 class="ws-title">Purple title</h1>
+        <div class="ws-section-instr">تعليمات</div>
+      </div>`;
+    document.body.appendChild(source);
+
+    let packedBlob: Blob | undefined;
+    let rejectPacking = false;
+    vi.spyOn(Packer, "toBlob").mockImplementation(async wordDocument => {
+      const stagingRoot = document.querySelector<HTMLElement>("[data-word-export-staging]");
+      expect(stagingRoot).not.toBeNull();
+      expect(stagingRoot!.isConnected).toBe(true);
+      expect(stagingRoot!.style.position).toBe("fixed");
+      expect(stagingRoot!.style.width).toBe("810px");
+      expect(stagingRoot!.style.minWidth).toBe("810px");
+      expect(stagingRoot!.style.maxWidth).toBe("none");
+      expect(stagingRoot!.style.overflow).toBe("visible");
+      expect(stagingRoot!.style.pointerEvents).toBe("none");
+      expect(stagingRoot!.style.getPropertyValue("--ws-preview-scale")).toBe("1");
+      const title = stagingRoot!.querySelector(".ws-title")!;
+      expect(window.getComputedStyle(title).color).toBe("rgb(128, 0, 128)");
+      expect(window.getComputedStyle(title).textAlign).toBe("center");
+      const bytes = await Packer.toBuffer(wordDocument);
+      if (rejectPacking) throw new Error("Packer failed");
+      packedBlob = new Blob([bytes]);
+      return packedBlob;
+    });
+
+    await downloadAsWord({ element: source, title: "Connected formatting", lang: "ar" });
+    expect(document.querySelector("[data-word-export-staging]")).toBeNull();
+    const zip = await JSZip.loadAsync(packedBlob!);
+    const xml = await zip.file("word/document.xml")!.async("string");
+    const heading = xml.match(/<w:p>.*?Purple title.*?<\/w:p>/)?.[0];
+    const instruction = xml.match(/<w:p>.*?تعليمات.*?<\/w:p>/)?.[0];
+    expect(heading).toContain('<w:color w:val="800080"/>');
+    expect(heading).toContain('<w:sz w:val="48"/>');
+    expect(heading).toContain('<w:jc w:val="center"/>');
+    expect(instruction).toContain('<w:sz w:val="36"/>');
+    expect(instruction).toContain('<w:right w:val="single" w:color="0C2238"');
+
+    rejectPacking = true;
+    await expect(downloadAsWord({ element: source, title: "Failed formatting", lang: "ar" }))
+      .rejects.toThrow("Packer failed");
+    expect(document.querySelector("[data-word-export-staging]")).toBeNull();
   });
 });

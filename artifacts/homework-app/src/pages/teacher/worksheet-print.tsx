@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksheet-word-visual";
 import { useWorksheetPreview } from "@/lib/use-worksheet-preview";
+import { worksheetLogoUrl } from "@/lib/worksheet-logo";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   type ThemeId, type ThemeSpec, THEMES, THEME_BACKGROUNDS,
@@ -251,7 +252,7 @@ export function WorksheetPrintView({
   const showWatermark = data.settings.showWatermark !== false;
   // Teacher's manual color always wins; theme provides a default; fallback to brand green
   const themeColor = data.settings.themeColor ?? theme?.defaultColor ?? BRAND_PRIMARY;
-  const logoUrl = data.settings.logoUrl;
+  const logoUrl = worksheetLogoUrl(data.settings.logoUrl);
 
   // ── Local layout-editing state ─────────────────────────────────────────
   const [localQs, setLocalQs] = useState<Question[]>(data.questions);
@@ -1146,7 +1147,7 @@ export default function WorksheetPrint() {
     try {
       if (mode === "visual") {
         await downloadVisualWorksheetWord({
-          element: root, title: data.title, lang: data.language,
+          element: root, title: data.title, lang: data.language, worksheetId: data.id,
           onProgress: (done, total) => setWordProgress(`${done}/${total}`),
         });
       } else {
@@ -1159,7 +1160,10 @@ export default function WorksheetPrint() {
       toast.success(uiLang === "ar" ? "تم تجهيز ملف Word للتنزيل" : "Word file ready for download");
     } catch (error) {
       const imageFailed = error instanceof VisualWordExportError && error.code === "image";
-      toast.error(imageFailed
+      const busy = error instanceof VisualWordExportError && error.code === "busy";
+      toast.error(busy
+        ? (uiLang === "ar" ? "خدمة التصدير مشغولة الآن؛ أعد المحاولة بعد قليل." : "The export service is busy. Please retry shortly.")
+        : imageFailed
         ? (uiLang === "ar" ? "تعذّر تحميل إحدى صور التصميم. لم يُصدّر ملف ناقص؛ أعد المحاولة بعد اكتمال تحميل الصور." : "A design image could not be loaded. No incomplete file was exported; retry after images finish loading.")
         : (uiLang === "ar" ? "تعذّر تصدير ملف Word. يرجى المحاولة مرة أخرى." : "Could not export the Word file. Please try again."));
     } finally {
@@ -2584,7 +2588,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         opacity: 0.022;
         transform: rotate(-16deg);
         white-space: nowrap;
-        letter-spacing: 0.035em;
+        letter-spacing: ${isAr ? "0" : "0.035em"};
         user-select: none;
       }
 

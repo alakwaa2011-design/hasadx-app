@@ -253,3 +253,4 @@ export type * from "./types/updateRoleBodyRole";
 export type * from "./types/uploadAiVideoSourceImage201";
 export type * from "./types/uploadAiVideoSourceImage201Metadata";
 export type * from "./types/uploadAiVideoSourceImage201MetadataContentType";
+export type * from "./types/worksheetPageRenderInput";

@@ -69,8 +69,10 @@ function resolveChromiumPath(): string {
 }
 
 let cachedBrowser: Browser | null = null;
-async function getBrowser(): Promise<Browser> {
+let browserLaunchPromise: Promise<Browser> | null = null;
+export async function getBrowser(): Promise<Browser> {
   if (cachedBrowser && cachedBrowser.connected) return cachedBrowser;
+  if (browserLaunchPromise) return browserLaunchPromise;
   /* Args tuned for Replit's containerized environment:
        --no-sandbox / --disable-setuid-sandbox: containers don't grant
          the syscalls Chrome's sandbox needs.
@@ -105,18 +107,104 @@ async function getBrowser(): Promise<Browser> {
     timeout: 60_000,
     protocolTimeout: 60_000,
   };
+  const launch = (async (): Promise<Browser> => {
+    try {
+      cachedBrowser = await puppeteer.launch(opts);
+      logger.info({ executablePath }, "chromium launched");
+      return cachedBrowser;
+    } catch (err) {
+      logger.error({ err, executablePath }, "puppeteer.launch failed");
+      /* Invalidate the cached path so a follow-up can re-probe. */
+      cachedExecPath = null;
+      throw new Error(
+        `Failed to launch Chromium (path=${executablePath}): ${(err as Error).message}`,
+      );
+    }
+  })();
+  browserLaunchPromise = launch;
   try {
-    cachedBrowser = await puppeteer.launch(opts);
-    logger.info({ executablePath }, "chromium launched");
-    return cachedBrowser;
+    return await launch;
+  } finally {
+    if (browserLaunchPromise === launch) browserLaunchPromise = null;
+  }
+}
+
+/* Worksheet page rendering needs incognito browser contexts, which
+   Chromium's single-process mode cannot create. Keep a separate cached
+   multi-process browser for that untrusted markup; it never visits
+   teacher pages or receives export/session tokens. The trusted PDF
+   browser above retains its production-tested launch flags. */
+let cachedWorksheetRenderBrowser: Browser | null = null;
+let worksheetRenderBrowserLaunchPromise: Promise<Browser> | null = null;
+export async function getWorksheetRenderBrowser(): Promise<Browser> {
+  if (cachedWorksheetRenderBrowser?.connected) return cachedWorksheetRenderBrowser;
+  if (worksheetRenderBrowserLaunchPromise) return worksheetRenderBrowserLaunchPromise;
+
+  const executablePath = resolveChromiumPath();
+  const launch = (async (): Promise<Browser> => {
+    try {
+      cachedWorksheetRenderBrowser = await puppeteer.launch({
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-software-rasterizer",
+          "--hide-scrollbars",
+          "--mute-audio",
+          "--no-zygote",
+        ],
+        executablePath,
+        headless: true,
+        timeout: 20_000,
+        protocolTimeout: 30_000,
+      });
+      logger.info({ executablePath }, "worksheet screenshot chromium launched");
+      return cachedWorksheetRenderBrowser;
+    } catch (err) {
+      logger.warn({ errorName: err instanceof Error ? err.name : "UnknownError" }, "Multiprocess worksheet Chromium unavailable; renderer may use its isolated fallback");
+      throw new Error("Multiprocess worksheet Chromium unavailable");
+    }
+  })();
+  worksheetRenderBrowserLaunchPromise = launch;
+  try {
+    return await launch;
+  } finally {
+    if (worksheetRenderBrowserLaunchPromise === launch) {
+      worksheetRenderBrowserLaunchPromise = null;
+    }
+  }
+}
+
+/* A one-job, screenshot-only fallback for containers where Chromium can
+   launch only in single-process mode. The caller must close this browser
+   after the job; it is never shared with PDF pages and receives no secrets. */
+export async function launchWorksheetRenderFallbackBrowser(): Promise<Browser> {
+  const executablePath = resolveChromiumPath();
+  try {
+    return await puppeteer.launch({
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--no-zygote",
+        "--single-process",
+      ],
+      executablePath,
+      headless: true,
+      timeout: 20_000,
+      protocolTimeout: 30_000,
+    });
   } catch (err) {
-    logger.error({ err, executablePath }, "puppeteer.launch failed");
-    /* Invalidate the cached path so a follow-up request can re-probe
-       (e.g. if the operator installs a different chromium). */
-    cachedExecPath = null;
-    throw new Error(
-      `Failed to launch Chromium for PDF export (path=${executablePath}): ${(err as Error).message}`,
+    logger.error(
+      { executablePath, errorName: err instanceof Error ? err.name : "UnknownError" },
+      "Screenshot-only Chromium fallback failed to launch",
     );
+    throw new Error("Screenshot-only Chromium fallback unavailable");
   }
 }
 

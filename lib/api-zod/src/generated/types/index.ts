@@ -278,3 +278,4 @@ export * from './uploadAiVideoSourceImage201';
 export * from './uploadAiVideoSourceImage201Metadata';
 export * from './uploadAiVideoSourceImage201MetadataContentType';
 export * from './uploadAiVideoSourceImageBody';
+export * from './worksheetPageRenderInput';

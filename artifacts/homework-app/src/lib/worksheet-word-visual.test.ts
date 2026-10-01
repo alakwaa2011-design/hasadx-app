@@ -1,17 +1,29 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Packer } from "docx";
 import JSZip from "jszip";
 import { buildVisualWordDocument, captureWorksheetPages, VisualWordExportError } from "./worksheet-word-visual";
 
-const capture = vi.hoisted(() => vi.fn());
-vi.mock("html2canvas", () => ({ default: capture }));
+const render = vi.fn();
 const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII="), c => c.charCodeAt(0));
+const nativeStyle = window.getComputedStyle.bind(window);
+
+beforeEach(() => {
+  vi.stubGlobal("getComputedStyle", (element: Element, pseudo?: string) => pseudo
+    ? { getPropertyValue: () => "none" }
+    : nativeStyle(element));
+  vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) => { fn(0); return 1; });
+  vi.stubGlobal("fetch", render);
+  render.mockResolvedValue({
+    ok: true, headers: new Headers({ "Content-Type": "image/png" }),
+    arrayBuffer: async () => png.buffer,
+  });
+});
 
 afterEach(() => {
   document.body.innerHTML = "";
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  capture.mockReset();
+  render.mockReset();
 });
 
 describe("visual worksheet Word", () => {
@@ -47,9 +59,8 @@ describe("visual worksheet Word", () => {
 
   it("captures worksheet and answer pages at double resolution, strips editing tools, and leaves originals intact", async () => {
     vi.stubGlobal("requestAnimationFrame", (fn: FrameRequestCallback) => { fn(0); return 1; });
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
-      width: 794, height: 1123, x: 0, y: 0, top: 0, left: 0, right: 794, bottom: 1123, toJSON: () => ({}),
-    });
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(794);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(1123);
     const root = document.createElement("div");
     root.id = "ws-printable-root";
     root.setAttribute("data-responsive-preview", "");
@@ -57,17 +68,15 @@ describe("visual worksheet Word", () => {
     root.innerHTML = `<article data-worksheet-page><div class="ws-q-selected"><span contenteditable="true">سؤال</span><button class="no-print">حذف</button></div></article><article data-answer-key-page>الإجابة</article>`;
     document.body.appendChild(root);
     const progress = vi.fn();
-    capture.mockImplementation(async (page: HTMLElement) => {
-      expect(page.parentElement?.style.getPropertyValue("--ws-preview-scale")).toBe("1");
-      expect(parseFloat(page.parentElement!.style.width)).toBeGreaterThanOrEqual(810);
-      expect(page.querySelector(".no-print")).toBeNull();
-      expect(page.querySelector(".ws-q-selected")).toBeNull();
-      expect(page.querySelector("[contenteditable]")).toBeNull();
-      return { width: 1588, height: 2246, toBlob: (fn: (blob: unknown) => void) => fn({ arrayBuffer: async () => png.buffer }) };
-    });
-    const pages = await captureWorksheetPages(root, progress);
+    const pages = await captureWorksheetPages(root, 987, progress);
     expect(pages).toHaveLength(2);
-    expect(capture.mock.calls[0][1]).toMatchObject({ scale: 2 });
+    expect(render.mock.calls[0][0]).toBe("/api/worksheets/987/render-page");
+    const payload = JSON.parse(render.mock.calls[0][1].body);
+    expect(payload).toMatchObject({ width: 794, height: 1123 });
+    expect(payload.html).not.toContain("no-print");
+    expect(payload.html).not.toContain("contenteditable");
+    expect(payload.html).toContain("zoom: 1");
+    expect(payload.html).toContain("سؤال");
     expect(progress.mock.calls).toEqual([[1, 2], [2, 2]]);
     expect(root.querySelector(".no-print")).not.toBeNull();
     expect(root.querySelector("[contenteditable]")).not.toBeNull();
@@ -81,8 +90,8 @@ describe("visual worksheet Word", () => {
     const root = document.createElement("div");
     root.innerHTML = "<article data-worksheet-page>سؤال</article>";
     document.body.appendChild(root);
-    capture.mockRejectedValue(new Error("tainted canvas"));
-    await expect(captureWorksheetPages(root)).rejects.toBeInstanceOf(VisualWordExportError);
+    render.mockRejectedValue(new Error("renderer unavailable"));
+    await expect(captureWorksheetPages(root, 987)).rejects.toBeInstanceOf(VisualWordExportError);
     expect(document.body.children).toHaveLength(1);
   });
 
@@ -98,9 +107,20 @@ describe("visual worksheet Word", () => {
     const root = document.createElement("div");
     root.innerHTML = '<article data-worksheet-page><img src="/design-image.png" loading="lazy"></article>';
     document.body.appendChild(root);
-    await expect(captureWorksheetPages(root)).rejects.toMatchObject({ code: "image" });
-    expect(capture).not.toHaveBeenCalled();
+    await expect(captureWorksheetPages(root, 987)).rejects.toMatchObject({ code: "image" });
     expect(root.querySelector("img")?.getAttribute("loading")).toBe("lazy");
     expect(document.body.children).toHaveLength(1);
+  });
+
+  it("reports a busy renderer explicitly instead of switching to corrupted canvas output", async () => {
+    render.mockResolvedValue({ ok: false, status: 429 });
+    const root = document.createElement("div");
+    root.innerHTML = "<article data-worksheet-page>غزوة بدر</article>";
+    await expect(captureWorksheetPages(root, 987)).rejects.toMatchObject({ code: "busy" });
+  });
+
+  it("rejects missing authorization context before making a renderer request", async () => {
+    await expect(captureWorksheetPages(document.createElement("div"), 0)).rejects.toMatchObject({ code: "pages" });
+    expect(render).not.toHaveBeenCalled();
   });
 });

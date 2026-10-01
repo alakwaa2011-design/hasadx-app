@@ -5,6 +5,24 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface WorksheetPageRenderInput {
+  /**
+     * Serialized worksheet page HTML; data URIs should be used for images.
+     * @maxLength 2097152
+     */
+  html: string;
+  /**
+     * @minimum 100
+     * @maximum 900
+     */
+  width: number;
+  /**
+     * @minimum 100
+     * @maximum 1800
+     */
+  height: number;
+}
+
 export interface TutorialLink {
   /** @pattern ^[a-zA-Z0-9_-]{1,80}$ */
   id: string;

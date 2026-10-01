@@ -1,3 +1,4 @@
+import { worksheetLogoUrl } from "@/lib/worksheet-logo";
 /**
  * worksheet-themes.tsx
  * ─────────────────────────────────────────────────────────────────
@@ -991,7 +992,7 @@ export function TabularHeader({ data, labels, TC, ar, hasIdentity, customFields 
     <div className="ws-tab-header">
       {data.settings.logoUrl && (
         <div className="ws-logo-wrap" style={{ marginBottom: "3mm", justifyContent: ar ? "flex-end" : "flex-start" }}>
-          <img src={data.settings.logoUrl} alt="" className="ws-logo-img" />
+          <img src={worksheetLogoUrl(data.settings.logoUrl)} alt="" className="ws-logo-img" />
         </div>
       )}
       <div className="ws-tab-toprow">
@@ -1056,7 +1057,7 @@ export function ArabesqueHeader({ data, labels, TC, GOLD, ar, hasIdentity, custo
     <div className="ws-arb-header">
       {data.settings.logoUrl && (
         <div className="ws-logo-wrap" style={{ marginBottom: "4mm" }}>
-          <img src={data.settings.logoUrl} alt="" className="ws-logo-img" />
+          <img src={worksheetLogoUrl(data.settings.logoUrl)} alt="" className="ws-logo-img" />
         </div>
       )}
       <ArabesqueOrnament GOLD={GOLD} />
@@ -1129,7 +1130,7 @@ export function BandHeader({ data, labels, TC, GOLD, ar, hasIdentity, customFiel
       <div className="ws-band-top">
         {data.settings.logoUrl && (
           <div style={{ position: "absolute", top: "4mm", [ar ? "left" : "right"]: "16mm" }}>
-            <img src={data.settings.logoUrl} alt="" style={{ height: "12mm", width: "auto", objectFit: "contain", filter: "brightness(10)" }} />
+            <img src={worksheetLogoUrl(data.settings.logoUrl)} alt="" style={{ height: "12mm", width: "auto", objectFit: "contain", filter: "brightness(10)" }} />
           </div>
         )}
         {chips.length > 0 && (
@@ -1234,7 +1235,7 @@ export function ClipboardHeader({ data, labels, TC, GOLD, ar, hasIdentity, custo
     <div className="ws-clip-header">
       <div className="ws-clip-badges">
         {data.settings.logoUrl && (
-          <img src={data.settings.logoUrl} alt="" style={{ height: "10mm", width: "auto", objectFit: "contain" }} />
+          <img src={worksheetLogoUrl(data.settings.logoUrl)} alt="" style={{ height: "10mm", width: "auto", objectFit: "contain" }} />
         )}
         {data.subject && <span className="ws-clip-badge">{data.subject}</span>}
         {data.gradeLevel && <span className="ws-clip-badge-sec">{data.gradeLevel}</span>}
@@ -1290,7 +1291,7 @@ export function MastheadHeader({ data, labels, TC, GOLD, ar, hasIdentity, custom
       <div className="ws-mast-rule-mid" />
       {data.settings.logoUrl && (
         <div className="ws-logo-wrap" style={{ margin: "2mm auto" }}>
-          <img src={data.settings.logoUrl} alt="" className="ws-logo-img" />
+          <img src={worksheetLogoUrl(data.settings.logoUrl)} alt="" className="ws-logo-img" />
         </div>
       )}
       <h1 className="ws-mast-title" lang={data.language}>{data.title}</h1>

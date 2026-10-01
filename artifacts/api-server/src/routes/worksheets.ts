@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
+import { rateLimit } from "express-rate-limit";
 import { db, worksheetsTable, teachersTable, assignmentsTable, questionsTable, submissionsTable, answersTable, studentsTable } from "@workspace/db";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, captureCreditsOrThrow, refundCredits } from "../lib/check-credits";
 import { featureAccess } from "@workspace/billing";
 import { z } from "zod";
-import { worksheetSettingsSchema } from "@workspace/api-zod";
+import { RenderWorksheetPageBody, worksheetSettingsSchema } from "@workspace/api-zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -19,10 +20,20 @@ import {
 import { resolveAiContentLanguage } from "../lib/ai-content-language";
 import { trackAiUsageCall } from "../lib/ai-usage-ledger";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { renderWorksheetPage, WorksheetPageRenderError } from "../lib/worksheet-page-render";
 import type { Request } from "express";
 
 const router: IRouter = Router();
 const MAX_SOURCE_TEXT_LENGTH = 12_000;
+const MAX_RENDER_HTML_BYTES = 2 * 1024 * 1024;
+const worksheetPageRenderLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => `teacher:${(req as any).session?.teacherId ?? "unauthenticated"}`,
+  message: { message: "Worksheet page export limit reached. Try again later." },
+});
 
 /* ── File upload middleware (multi-file). Tier-aware caps are enforced
    inside the route handler via `processUploadedFiles` after we look up
@@ -620,6 +631,85 @@ router.get("/worksheets/:id", requireTeacher, async (req, res) => {
     res.status(500).json({ message: "Failed to load worksheet" });
   }
 });
+
+/* ── Render one already-authorized worksheet page as a native Chromium PNG.
+   This endpoint deliberately accepts only markup and never navigates the
+   worker to a user-controlled URL. */
+router.post(
+  "/worksheets/:id/render-page",
+  requireTeacher,
+  worksheetPageRenderLimiter,
+  async (req, res): Promise<void> => {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    if (!/^[1-9]\d*$/.test(rawId)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const id = Number(rawId);
+    if (!Number.isSafeInteger(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+
+    const html = (req.body as { html?: unknown } | null)?.html;
+    if (typeof html === "string" && Buffer.byteLength(html, "utf8") > MAX_RENDER_HTML_BYTES) {
+      res.status(413).json({ message: "Worksheet HTML exceeds the 2 MB limit" });
+      return;
+    }
+    if (
+      req.body &&
+      typeof req.body === "object" &&
+      !Array.isArray(req.body) &&
+      Object.keys(req.body).some((key) => !["html", "width", "height"].includes(key))
+    ) {
+      res.status(400).json({ message: "Invalid render request" });
+      return;
+    }
+    const parsed = RenderWorksheetPageBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "Invalid render request", errors: parsed.error.issues });
+      return;
+    }
+
+    try {
+      const teacherId = (req as any).session.teacherId as number;
+      const [row] = await db
+        .select({
+          worksheet: worksheetsTable,
+          owner: teachersTable,
+        })
+        .from(worksheetsTable)
+        .innerJoin(teachersTable, eq(teachersTable.id, worksheetsTable.teacherId))
+        .where(eq(worksheetsTable.id, id))
+        .limit(1);
+
+      if (!row) {
+        res.status(404).json({ message: "Not found" });
+        return;
+      }
+      const isOwner = row.worksheet.teacherId === teacherId;
+      const isAdminShared = row.worksheet.isShared && row.owner.isAdmin;
+      if (!isOwner && !isAdminShared) {
+        res.status(403).json({ message: "Forbidden" });
+        return;
+      }
+
+      const png = await renderWorksheetPage(parsed.data.html, parsed.data.width, parsed.data.height);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Type", "image/png");
+      res.status(200).send(png);
+    } catch (error) {
+      if (error instanceof WorksheetPageRenderError) {
+        if (error.statusCode >= 500) req.log.error({ err: error }, "Worksheet page rendering failed");
+        res.status(error.statusCode).json({ message: error.message });
+        return;
+      }
+      req.log.error({ err: error }, "Render worksheet page failed");
+      res.status(500).json({ message: "Failed to render worksheet page" });
+    }
+  },
+);
 
 /* ── Create. */
 router.post("/worksheets", requireTeacher, async (req, res) => {

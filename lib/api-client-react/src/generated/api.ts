@@ -143,7 +143,8 @@ import type {
   UpdateRoleBody,
   UpdateSubmissionBody,
   UploadAiVideoSourceImage201,
-  UploadAiVideoSourceImageBody
+  UploadAiVideoSourceImageBody,
+  WorksheetPageRenderInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -172,6 +173,88 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getRenderWorksheetPageUrl = (id: number,) => {
+
+
+
+
+  return `/api/worksheets/${id}/render-page`
+}
+
+/**
+ * Requires worksheet ownership or access to a published admin-shared worksheet. Runs in an isolated browser without executing submitted JavaScript or accessing the server session.
+ * @summary Render one worksheet page as a browser-native PNG
+ */
+export const renderWorksheetPage = async (id: number,
+    worksheetPageRenderInput: WorksheetPageRenderInput, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<Blob>(getRenderWorksheetPageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(worksheetPageRenderInput)
+  }
+);}
+
+
+
+
+
+export const getRenderWorksheetPageMutationKey = () => ['renderWorksheetPage'] as const;
+
+export const getRenderWorksheetPageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renderWorksheetPage>>, TError,RenderWorksheetPageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renderWorksheetPage>>, TError,RenderWorksheetPageMutationVariables, TContext> => {
+
+const mutationKey = getRenderWorksheetPageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renderWorksheetPage>>, RenderWorksheetPageMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  renderWorksheetPage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenderWorksheetPageMutationResult = NonNullable<Awaited<ReturnType<typeof renderWorksheetPage>>>
+    export type RenderWorksheetPageMutationBody = BodyType<WorksheetPageRenderInput>
+    export type RenderWorksheetPageMutationError = ErrorType<void>
+    export type RenderWorksheetPageMutationVariables = {id: number;data: BodyType<WorksheetPageRenderInput>}
+
+    /**
+ * @summary Render one worksheet page as a browser-native PNG
+ */
+export const useRenderWorksheetPage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renderWorksheetPage>>, TError,RenderWorksheetPageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof renderWorksheetPage>>,
+        TError,
+        RenderWorksheetPageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRenderWorksheetPageMutationOptions(options));
+    }
 
 export const getGetTutorialLinksUrl = () => {
 
