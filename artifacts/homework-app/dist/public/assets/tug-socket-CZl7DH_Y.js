@@ -1,1 +1,0 @@
-import{b8 as n}from"./index-CaEZ_YVz.js";let e=null;function c(){if(!e){const t=window.location.origin,o="/".replace(/\/$/,"");e=n(`${t}/tug`,{path:`${o}/api/socket.io`.replace(/\/\//g,"/"),transports:["polling","websocket"],withCredentials:!0,reconnection:!0,reconnectionAttempts:1/0,reconnectionDelay:800,reconnectionDelayMax:8e3,timeout:25e3})}return e}export{c as g};

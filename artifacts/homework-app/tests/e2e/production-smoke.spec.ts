@@ -18,6 +18,7 @@
  *      definitive signal that the JS bundle executed and React committed.
  *   3. #root contains at least one element that is not #hasad-splash and not
  *      a <noscript> block — i.e. a genuine React-rendered DOM node.
+ *   4. The root ErrorBoundary did not render its fallback.
  */
 
 import { test, expect, type Page } from "@playwright/test";
@@ -107,6 +108,14 @@ async function assertReactMounted(page: Page): Promise<string | null> {
     );
   }
 
+  // A rendered root ErrorBoundary fallback is not a healthy app mount.
+  const rootErrorFallbackCount = await page
+    .getByTestId("root-error-boundary-fallback")
+    .count();
+  if (rootErrorFallbackCount > 0) {
+    return "The root ErrorBoundary rendered its fallback instead of the application.";
+  }
+
   return null;
 }
 
@@ -117,6 +126,8 @@ async function assertReactMounted(page: Page): Promise<string | null> {
 for (const route of ROUTES) {
   test(`smoke: ${route.description} (${route.path})`, async ({ page }) => {
     const url = `${BASE}${route.path}`;
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
 
     // 1. HTTP 200 ----------------------------------------------------------
     const response = await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -128,5 +139,9 @@ for (const route of ROUTES) {
     // 2 & 3. React mounted; splash removed; real children present ----------
     const error = await assertReactMounted(page);
     expect(error, error ?? undefined).toBeNull();
+
+    // Anonymous auth requests may receive the expected 401; only uncaught
+    // JavaScript exceptions indicate a failed application startup.
+    expect(pageErrors, "Expected no uncaught JavaScript page errors").toEqual([]);
   });
 }

@@ -82,6 +82,7 @@ class LocalizedErrorBoundary extends Component<LocalizedProps, State> {
 
     return (
       <div
+        data-testid={this.props.label === "HasadX" ? "root-error-boundary-fallback" : undefined}
         dir={isAr ? "rtl" : "ltr"}
         className="min-h-screen flex items-center justify-center p-6"
         style={{
