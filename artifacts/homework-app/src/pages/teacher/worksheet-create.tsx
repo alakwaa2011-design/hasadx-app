@@ -29,6 +29,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { WorksheetLivePaper } from "@/pages/teacher/worksheet-live-paper";
 import { WorksheetFormatPanel } from "@/pages/teacher/worksheet-format-panel";
+import { WorksheetModeSwitch } from "@/pages/teacher/worksheet-workspace-controls";
 import { WorksheetPrintView, type WorksheetData, type LayoutSnapshot } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf, pdfExportErrorMessage } from "@/lib/print-export";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
@@ -606,6 +607,7 @@ export default function WorksheetCreate() {
   const [autoSaveError, setAutoSaveError] = useState("");
   const [smartGrading, setSmartGrading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [workspaceInitialMode, setWorkspaceInitialMode] = useState<"edit" | "preview">("edit");
   const [canvasEditorOpen, setCanvasEditorOpen] = useState(false);
   const saveInFlightRef = useRef(false);
   const saveBlockedRef = useRef(false);
@@ -1438,21 +1440,25 @@ export default function WorksheetCreate() {
     }, false);
   };
 
-  const saveAndPreview = async () => {
-    const id = await saveWorksheet();
-    if (id) setLocation(`/teacher/worksheets/${id}/print`);
-  };
-
   const [editQuestionId, setEditQuestionId] = useState<string | null>(null);
   const [exportRequest, setExportRequest] = useState<"pdf" | "word" | null>(null);
   const livePaperFlushRef = useRef<(() => LayoutSnapshot) | null>(null);
+  const openWorksheet = (questionId?: string) => {
+    livePaperFlushRef.current?.();
+    setEditQuestionId(questionId ?? null);
+    setExportRequest(null);
+    setWorkspaceInitialMode("edit");
+    setPreviewing(true);
+  };
   const requestPreview = (exp: "pdf" | "word" | null) => {
+    if (!exp) { openWorksheet(); return; }
     if (!canSave) {
       toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
       return;
     }
     livePaperFlushRef.current?.();
     setExportRequest(exp);
+    setWorkspaceInitialMode("preview");
     setPreviewing(true);
   };
   const livePaperData: WorksheetData = {
@@ -1607,6 +1613,7 @@ export default function WorksheetCreate() {
         </nav>
 
         {/* 3. Settings Area (Header Info & Design/Format) */}
+        {!previewing && (
         <Card id="worksheet-details" className="scroll-mt-24 border border-border/60 shadow-sm overflow-hidden">
           <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
@@ -1635,6 +1642,7 @@ export default function WorksheetCreate() {
             />
           </div>
         </Card>
+        )}
 
         {/* 2. Smart Generator Block */}
         <Card id="worksheet-generator" className="scroll-mt-24 border-2 border-primary/20 shadow-lg relative overflow-hidden bg-gradient-to-b from-primary/5 to-transparent">
@@ -2120,8 +2128,8 @@ export default function WorksheetCreate() {
                           : `${aiActivityDuration} target minutes · ${totalPoints > 0 ? `${totalPoints} points` : "ungraded activity"} · ${aiPages} target page(s)`}
                       </p>
                     </div>
-                    <button type="button" onClick={() => setPreviewing(true)} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-bold text-primary hover:bg-primary/5">
-                      {ar ? "فتح المعاينة" : "Open preview"}
+                    <button type="button" onClick={() => openWorksheet()} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-bold text-primary hover:bg-primary/5">
+                      {ar ? "فتح الورقة" : "Open worksheet"}
                     </button>
                   </div>
                   {qualityIssues.length > 0 && (
@@ -2204,8 +2212,8 @@ export default function WorksheetCreate() {
             data={livePaperData}
             flushRef={livePaperFlushRef}
             onDraftChange={applyLivePaperSnapshot}
-            onEnlarge={() => setPreviewing(true)}
-            onRequestEdit={id => { setEditQuestionId(id); setPreviewing(true); }}
+            onEnlarge={() => openWorksheet()}
+            onRequestEdit={id => openWorksheet(id)}
           />
         )}
       </aside>
@@ -2282,7 +2290,7 @@ export default function WorksheetCreate() {
                 disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
                 className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Eye className="w-4 h-4" />{ar ? "معاينة" : "Preview"}
+                <Pencil className="w-4 h-4" />{ar ? "فتح الورقة" : "Open worksheet"}
               </button>
               <button
                 data-testid="button-ws-pdf"
@@ -2323,14 +2331,6 @@ export default function WorksheetCreate() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                data-testid="button-ws-save-open"
-                onClick={saveAndPreview}
-                disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-                className="h-10 px-3.5 rounded-xl font-bold border border-primary/30 text-primary hover:bg-primary/5 text-sm flex items-center gap-2 disabled:opacity-50"
-              >
-                {ar ? "حفظ وفتح صفحة الطباعة" : "Save & open print page"}
-              </button>
-              <button
                 data-testid="button-ws-save"
                 onClick={() => saveWorksheet()}
                 disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
@@ -2365,9 +2365,8 @@ export default function WorksheetCreate() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
         {previewing && (
-          <PreviewOverlay
+          <WorksheetWorkspaceOverlay
             ar={ar}
             data={{
               id: editingId ?? 0,
@@ -2385,14 +2384,20 @@ export default function WorksheetCreate() {
               if (patch.questions !== undefined) setQuestions(patch.questions as Question[]);
               if (patch.settings !== undefined) setSettings(patch.settings);
             }}
-            onSave={(latest) => { void saveWorksheet({ questions: latest.questions as Question[], settings: latest.settings }); }}
+            onSave={(latest) => saveWorksheet({ questions: latest.questions as Question[], settings: latest.settings })}
+            saving={saving}
+            initialMode={workspaceInitialMode}
+            gradeSuggestions={gradeLevels.map(g => g.gradeLevel)}
+            onClearProfile={() => {
+              clearTeacherProfile();
+              setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
+            }}
             initialEditQuestionId={editQuestionId}
             autoExport={exportRequest}
             onAutoExportHandled={() => setExportRequest(null)}
             onClose={() => { setPreviewing(false); setEditQuestionId(null); }}
           />
         )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {savedOpen && (
@@ -3088,11 +3093,15 @@ function QuestionEditor({
   );
 }
 
-function PreviewOverlay({
-  ar, data, onChange, onClose, autoExport, onAutoExportHandled, onSave, initialEditQuestionId,
+function WorksheetWorkspaceOverlay({
+  ar, data, onChange, onClose, autoExport, onAutoExportHandled, onSave, initialEditQuestionId, initialMode = "edit", saving = false, gradeSuggestions, onClearProfile,
 }: {
   /** Persists the canonical draft (called after the overlay flushes its live edits). */
-  onSave?: (latest: { questions: Question[]; settings: WorksheetData["settings"] }) => void;
+  onSave?: (latest: { questions: Question[]; settings: WorksheetData["settings"] }) => Promise<number | null>;
+  saving?: boolean;
+  initialMode?: "edit" | "preview";
+  gradeSuggestions?: string[];
+  onClearProfile?: () => void;
   initialEditQuestionId?: string | null;
   autoExport?: "pdf" | "word" | null;
   onAutoExportHandled?: () => void;
@@ -3102,7 +3111,8 @@ function PreviewOverlay({
   onClose: () => void;
 }) {
   const flushRef = useRef<(() => LayoutSnapshot) | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
+  const exportInFlightRef = useRef(false);
+  const [mode, setMode] = useState<"edit" | "preview">(initialMode);
   // Always merge onto the latest settings so header edits and layout edits never clobber each other.
   const settingsRef = useRef(data.settings);
   settingsRef.current = data.settings;
@@ -3113,41 +3123,61 @@ function PreviewOverlay({
     onChange({ questions: snap.questions, settings: next });
   };
   const flush = () => { const snap = flushRef.current?.(); if (snap) applySnapshot(snap); };
+  const changeMode = (next: "edit" | "preview") => {
+    if (exportInFlightRef.current) return;
+    flush();
+    setMode(next);
+  };
 
-  const handleWord = () => {
+  const handleWord = async () => {
+    if (exportInFlightRef.current || saving) return;
     flush();
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(ar ? "تعذّر إعداد الملف" : "Could not prepare file");
       return;
     }
-    downloadAsWord({ element: root, title: data.title, lang: data.language });
+    exportInFlightRef.current = true;
+    setExportBusy(true);
+    try {
+      await downloadAsWord({ element: root, title: data.title, lang: data.language });
+    } catch {
+      toast.error(ar ? "تعذّر تصدير ملف Word. يرجى المحاولة مرة أخرى." : "Could not export the Word file. Please try again.");
+    } finally {
+      exportInFlightRef.current = false;
+      setExportBusy(false);
+    }
   };
 
-  const close = () => { flush(); onClose(); };
+  const close = () => {
+    if (exportInFlightRef.current) return;
+    flush();
+    onClose();
+  };
 
   const [exportBusy, setExportBusy] = useState(false);
   const handlersRef = useRef({ handleWord, flush, title: data.title, onSave });
   handlersRef.current = { handleWord, flush, title: data.title, onSave };
   const [pdfFailed, setPdfFailed] = useState<string | null>(null);
   const runPdf = async () => {
-    if (exportBusy) return;
+    if (exportInFlightRef.current || saving) return;
+    exportInFlightRef.current = true;
     setExportBusy(true);
     setPdfFailed(null);
     try { flush(); await printToPdf(data.title); }
     catch (error) { setPdfFailed(pdfExportErrorMessage(error, ar)); }
-    finally { setExportBusy(false); }
+    finally { exportInFlightRef.current = false; setExportBusy(false); }
   };
 
   const runPdfRef = useRef(runPdf);
   runPdfRef.current = runPdf;
 
   const handleSave = () => {
-    if (exportBusy) return;
+    if (exportInFlightRef.current || saving) return;
     // Use the exact flushed snapshot; no timing dependency on React commits.
     const snap = flushRef.current?.();
     if (snap) applySnapshot(snap);
-    handlersRef.current.onSave?.({
+    void handlersRef.current.onSave?.({
       questions: (snap?.questions ?? data.questions) as Question[],
       settings: settingsRef.current,
     });
@@ -3188,13 +3218,12 @@ function PreviewOverlay({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       transition={{ duration: 0.18 }}
       className="fixed inset-0 z-[100] bg-neutral-200 overflow-auto"
       dir={data.language === "ar" ? "rtl" : "ltr"}
     >
-      <div className="no-print sticky top-0 z-10 border-b shadow-sm bg-white">
-        <div className="flex items-center justify-between gap-2 px-4 py-3">
+      <div className="no-print sticky top-0 z-40 border-b shadow-sm bg-white" data-testid="toolbar-worksheet-workspace">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-3 py-2.5 sm:px-5">
           <button
             onClick={close}
             disabled={exportBusy}
@@ -3202,32 +3231,29 @@ function PreviewOverlay({
             className="px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 hover:bg-muted transition-colors text-primary border-primary/30"
           >
             <ArrowLeft className="w-4 h-4" />
-            {ar ? "رجوع للمحرر" : "Back to editor"}
+            {ar ? "رجوع" : "Back"}
           </button>
-          <div className="text-xs font-bold truncate flex-1 text-center text-primary hidden sm:block">
+          <div className="min-w-0 flex-1 truncate text-sm font-bold text-primary hidden sm:block">
             {data.title}
           </div>
-          <div className="flex gap-2 flex-wrap justify-end">
-            <button
-              onClick={() => setPanelOpen(o => !o)}
-              aria-expanded={panelOpen}
-              className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 flex items-center gap-2"
-            >
-              <SettingsIcon className="w-4 h-4" /> {ar ? "الترويسة والتنسيق" : "Header & format"}
-            </button>
+          <div className="order-3 flex w-full justify-center sm:order-none sm:w-auto">
+            <WorksheetModeSwitch ar={ar} mode={mode} onChange={changeMode} disabled={exportBusy} />
+          </div>
+          <div className="ms-auto flex gap-2 flex-wrap justify-end">
             {onSave && (
               <button
                 onClick={handleSave}
-                disabled={exportBusy}
+                disabled={exportBusy || saving}
                 data-testid="button-preview-save"
                 className="px-4 py-2 rounded-xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
               >
-                <Save className="w-4 h-4" /> {ar ? "حفظ" : "Save"}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? (ar ? "جار الحفظ" : "Saving") : (ar ? "حفظ" : "Save")}
               </button>
             )}
             <button
               onClick={handleWord}
-              disabled={exportBusy}
+              disabled={exportBusy || saving}
               data-testid="button-preview-word"
               className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
             >
@@ -3235,7 +3261,7 @@ function PreviewOverlay({
             </button>
             <button
               onClick={() => void runPdf()}
-              disabled={exportBusy}
+              disabled={exportBusy || saving}
               data-testid="button-preview-pdf"
               className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
               title={ar ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
@@ -3250,10 +3276,13 @@ function PreviewOverlay({
             <button onClick={() => void runPdf()} disabled={exportBusy} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="button-retry-preview-pdf">{ar ? "إعادة المحاولة" : "Retry"}</button>
           </div>
         )}
-        {panelOpen && (
-          <div className="px-4 pb-3 max-h-[45vh] overflow-auto border-t pt-3" dir={ar ? "rtl" : "ltr"}>
+      </div>
+          <div inert={exportBusy || undefined} className={`no-print mx-auto max-w-7xl px-3 py-3 sm:px-5 ${mode === "preview" ? "hidden" : ""}`} dir={ar ? "rtl" : "ltr"}>
             <WorksheetFormatPanel
               ar={ar}
+              showProfileNote
+              gradeSuggestions={gradeSuggestions}
+              onClearProfile={onClearProfile}
               settings={data.settings}
               onSettingsChange={updater => {
                 const next = updater(settingsRef.current);
@@ -3268,10 +3297,7 @@ function PreviewOverlay({
               })}
             />
           </div>
-        )}
-      </div>
-
-      <div className="p-4 sm:p-8 flex justify-center pb-32">
+      <div inert={exportBusy || undefined} className="px-2 py-3 sm:px-5 sm:py-5 flex justify-center pb-16" data-worksheet-mode={mode}>
         <div className="max-w-[210mm] w-full bg-white shadow-2xl relative" style={{ minHeight: "297mm" }}>
           <WorksheetPrintView
             data={data}
@@ -3279,6 +3305,8 @@ function PreviewOverlay({
             onDraftChange={applySnapshot}
             onLayoutChange={(qs, breaks, styles) => applySnapshot({ questions: qs, pageBreaks: breaks, questionStyles: styles })}
             initialEditQuestionId={initialEditQuestionId}
+            editing={mode === "edit"}
+            onEditingChange={editing => changeMode(editing ? "edit" : "preview")}
           />
         </div>
       </div>

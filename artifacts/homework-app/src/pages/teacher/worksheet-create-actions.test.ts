@@ -36,10 +36,15 @@ describe("worksheet builder navigation and destructive actions", () => {
     expect(panel).toContain("cur === t.id ? null : t.id");
   });
 
-  it("mounts a single real live paper and one Save / Preview / PDF / Word hierarchy", () => {
+  it("mounts a single real live paper and one Save / Open / PDF / Word hierarchy", () => {
     expect(source).toContain("<WorksheetLivePaper");
     expect(source).toContain("{!previewing && (");
     for (const id of ["button-ws-save", "button-ws-preview", "button-ws-pdf", "button-ws-word"]) expect(source).toContain(id);
+    expect(source).not.toContain("button-ws-save-open");
+    expect(source).not.toContain("Header & format");
+    expect(source).toContain('<WorksheetModeSwitch');
+    expect(source).toContain('setWorkspaceInitialMode("edit")');
+    expect(source).not.toMatch(/<AnimatePresence>\s*\{previewing/);
   });
 
   it("exposes Add Question actions via a DropdownMenu rather than flat buttons", () => {

@@ -26,7 +26,9 @@ vi.mock("@/lib/credit-aware-fetch", () => ({
   isInsufficientCreditsResponse: () => false,
 }));
 vi.mock("@/components/ui/sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
-vi.mock("@/pages/teacher/worksheet-print", () => ({ WorksheetPrintView: () => <div data-testid="print-preview-stub" /> }));
+vi.mock("@/pages/teacher/worksheet-print", () => ({
+  WorksheetPrintView: ({ editing }: { editing?: boolean }) => <div id="ws-printable-root" data-testid="print-preview-stub" data-editing={String(editing)} />,
+}));
 vi.mock("@/pages/teacher/worksheet-canvas-editor", () => ({ default: () => null }));
 vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -69,13 +71,24 @@ describe("worksheet creator format overlay", () => {
     if (!overlay) throw new Error("Expected the creator preview overlay");
 
     const overlayPanel = within(overlay);
+    expect(overlayPanel.getByTestId("button-worksheet-mode-edit").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getAllByTestId("panel-worksheet-format")).toHaveLength(1);
+    expect(overlayPanel.queryByText("Header & format")).toBeNull();
+    expect(overlayPanel.getByTestId("print-preview-stub").getAttribute("data-editing")).toBe("true");
     fireEvent.click(overlayPanel.getByTestId("tab-format-info"));
     fireEvent.change(overlayPanel.getByTestId("input-ws-title"), { target: { value: "Edited in preview" } });
     fireEvent.click(overlayPanel.getByTestId("tab-format-design"));
     fireEvent.change(overlayPanel.getByTestId("select-ws-font"), { target: { value: "georgia" } });
+    fireEvent.click(overlayPanel.getByTestId("button-worksheet-mode-preview"));
+    expect(overlayPanel.getByTestId("button-worksheet-mode-preview").getAttribute("aria-pressed")).toBe("true");
+    expect(overlayPanel.getByTestId("panel-worksheet-format").closest(".hidden")).not.toBeNull();
+    expect(overlayPanel.getByTestId("print-preview-stub").getAttribute("data-editing")).toBe("false");
+    fireEvent.click(overlayPanel.getByTestId("button-worksheet-mode-edit"));
+    expect((overlayPanel.getByTestId("select-ws-font") as HTMLSelectElement).value).toBe("georgia");
     fireEvent.click(closeButton);
 
-    expect(document.querySelectorAll("#ws-printable-root").length).toBeLessThanOrEqual(1);
+    expect(document.querySelectorAll("#ws-printable-root")).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("tab-format-info"));
     expect((screen.getByTestId("input-ws-title") as HTMLInputElement).value).toBe("Edited in preview");
     fireEvent.click(screen.getByTestId("tab-format-design"));
     expect((screen.getByTestId("select-ws-font") as HTMLSelectElement).value).toBe("georgia");

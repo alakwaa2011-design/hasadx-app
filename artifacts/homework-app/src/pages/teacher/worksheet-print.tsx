@@ -19,10 +19,11 @@ import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/workshee
 import type { WorksheetSettings } from "@workspace/api-zod";
 import { resolveImageUrl } from "@/lib/image-url";
 import { WorksheetFormatPanel } from "./worksheet-format-panel";
+import { WorksheetModeSwitch } from "./worksheet-workspace-controls";
 import { MathText } from "@/components/math-text";
 import { contentDirection } from "@/lib/content-direction";
 import QRCode from "react-qr-code";
-import { Loader2, Download, ArrowLeft, Edit3, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon, Minus, Plus, RotateCcw, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import { Loader2, Download, ArrowLeft, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon, Minus, Plus, RotateCcw, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -241,8 +242,13 @@ export function WorksheetPrintView({
   onRequestDiscard,
   onRequestEdit,
   initialEditQuestionId,
+  editing,
+  onEditingChange,
 }: {
   data: WorksheetData;
+  /** Controlled edit mode. When defined the parent owns edit/preview and the internal toggle is hidden. */
+  editing?: boolean;
+  onEditingChange?: (editing: boolean) => void;
   /** Read-only embeddings: shows a per-question edit pencil that hands editing to the owner (e.g. the full editor). */
   onRequestEdit?: (questionId: string) => void;
   /** Opens directly in edit mode with this question selected. */
@@ -340,7 +346,20 @@ export function WorksheetPrintView({
   const [showPanel, setShowPanel] = useState(false);
   const [layoutDirty, setLayoutDirty] = useState(false);
   // ── Inline text-editing state ──────────────────────────────────────────
-  const [editMode, setEditMode] = useState(!!initialEditQuestionId && !!onLayoutChange);
+  const controlled = editing !== undefined;
+  const [editModeState, setEditModeState] = useState(!!initialEditQuestionId && !!onLayoutChange);
+  const editMode = controlled ? !!editing : editModeState;
+  const editModeRef = useRef(editMode);
+  editModeRef.current = editMode;
+  const onEditingChangeRef = useRef(onEditingChange);
+  onEditingChangeRef.current = onEditingChange;
+  const setEditMode = useCallback((next: boolean | ((v: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(editModeRef.current) : next;
+    editModeRef.current = value;
+    setEditModeState(value);
+    onEditingChangeRef.current?.(value);
+  }, []);
+  useEffect(() => { if (!editMode) setSelectedField(null); }, [editMode]);
   const [dragQId, setDragQId] = useState<string | null>(null);
   const [dragOverPage, setDragOverPage] = useState<number | null>(null);
 
@@ -403,7 +422,7 @@ export function WorksheetPrintView({
       onRequestDiscard();
       setSelectedField(null);
       setLayoutDirty(false);
-      setEditMode(false);
+      if (!controlled) setEditMode(false);
       return;
     }
     localQsRef.current = data.questions;
@@ -414,8 +433,8 @@ export function WorksheetPrintView({
     setLocalQuestionStyles(nextQuestionStyles);
     setSelectedField(null);
     setLayoutDirty(false);
-    setEditMode(false);
-  }, [data, onRequestDiscard]);
+    if (!controlled) setEditMode(false);
+  }, [data, onRequestDiscard, controlled, setEditMode]);
 
   // Update a single question in-place (called by QuestionView on text blur)
   const onEditQuestion = useCallback((updated: Question) => {
@@ -951,7 +970,7 @@ export function WorksheetPrintView({
       </div>
 
       {/* ── Edit strip: one in-flow control row (no floating pill) ── */}
-      {onLayoutChange && (
+      {onLayoutChange && (!controlled || editMode) && (
         <div
           className="no-print ws-edit-strip"
           dir={dir}
@@ -959,24 +978,26 @@ export function WorksheetPrintView({
           aria-label={ar ? "أدوات التعديل" : "Edit tools"}
           data-testid="strip-worksheet-edit"
         >
+          {!controlled && (
           <button
-            type="button"
-            className={`ws-strip-btn ${editMode ? "is-primary" : ""}`}
-            data-testid="button-toggle-edit-mode"
-            aria-pressed={editMode}
-            onClick={() => {
-              setEditMode(v => {
-                if (v) setSelectedField(null);
-                return !v;
-              });
-              dismissHint();
-            }}
-          >
-            <PenLine style={{ width: 14, height: 14 }} />
-            {editMode
-              ? (ar ? "إنهاء التعديل" : "Done editing")
-              : (ar ? "تحرير الورقة" : "Edit worksheet")}
-          </button>
+              type="button"
+              className={`ws-strip-btn ${editMode ? "is-primary" : ""}`}
+              data-testid="button-toggle-edit-mode"
+              aria-pressed={editMode}
+              onClick={() => {
+                setEditMode(v => {
+                  if (v) setSelectedField(null);
+                  return !v;
+                });
+                dismissHint();
+              }}
+            >
+              <PenLine style={{ width: 14, height: 14 }} />
+              {editMode
+                ? (ar ? "إنهاء التعديل" : "Done editing")
+                : (ar ? "تحرير الورقة" : "Edit worksheet")}
+            </button>
+          )}
           {editMode && layoutDirty && (
             <button
               type="button"
@@ -1003,7 +1024,7 @@ export function WorksheetPrintView({
               {ar ? "توزيع تلقائي" : "Auto layout"}
             </button>
           )}
-          {!hintSeen && !editMode && (
+          {!hintSeen && (controlled ? editMode : !editMode) && (
             <span className="ws-edit-hint" role="note" data-testid="hint-edit-first-use">
               {ar ? "انقر على أي نص في الورقة لتعديله مباشرة، أو على القلم بجانب السؤال." : "Click any text on the paper to edit it, or use the pencil beside a question."}
               <button type="button" onClick={dismissHint} aria-label={ar ? "إخفاء التلميح" : "Dismiss hint"} data-testid="button-dismiss-edit-hint">
@@ -1053,7 +1074,7 @@ export function WorksheetPrintView({
         id="ws-printable-root"
         ref={previewRef}
         data-responsive-preview
-        className={`print-host ${selectedField ? "ws-format-toolbar-open " : ""}${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`}
+        className={`print-host ${editMode && selectedField ? "ws-format-toolbar-open " : ""}${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`}
         dir={dir}
         style={editMode ? { outline: "none" } : undefined}
       >
@@ -1090,12 +1111,13 @@ export function WorksheetPrintView({
                         ar={ar}
                         labels={labels}
                         editMode={editMode}
+                        showPencil={controlled && editMode}
                         onEdit={onEditQuestion}
                         showTypeHeader={firstOfTypeSet.has(q.id)}
                         questionStyle={localQuestionStyles.find(style => style.questionId === q.id)}
                         onSelectField={key => setSelectedField({ questionId: q.id, key })}
-                        selected={selectedField?.questionId === q.id}
-                        onStartEdit={onLayoutChange || onRequestEdit ? () => startEditingQuestion(q.id) : undefined}
+                        selected={editMode && selectedField?.questionId === q.id}
+                        onStartEdit={(onLayoutChange || onRequestEdit) && !(controlled && !editMode) ? () => startEditingQuestion(q.id) : undefined}
                         onSelectQuestion={() => setSelectedField({ questionId: q.id, key: "prompt" })}
                         onMatchingWidthChange={matchingLeftWidth => {
                           updateQuestionStyle(q.id, current => ({ ...current, matchingLeftWidth }));
@@ -1198,11 +1220,12 @@ export default function WorksheetPrint() {
   const [loading, setLoading] = useState(true);
   const [wordExport, setWordExport] = useState<"visual" | "editable" | null>(null);
   const [wordProgress, setWordProgress] = useState("");
-  const wordExportInFlight = useRef(false);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const exportInFlightRef = useRef(false);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const exporting = pdfBusy || wordExport !== null;
   const savingRef = useRef(false);
   const [saveError, setSaveError] = useState("");
   const [leaveAction, setLeaveAction] = useState<(() => void) | null>(null);
@@ -1271,7 +1294,8 @@ export default function WorksheetPrint() {
     return { ...cur, questions: snap.questions, settings: { ...cur.settings, pageBreaks: snap.pageBreaks, questionStyles: snap.questionStyles } };
   }, [applySnapshot]);
   const runSavedPdf = async () => {
-    if (pdfBusy) return;
+    if (exportInFlightRef.current || savingRef.current) return;
+    exportInFlightRef.current = true;
     setPdfBusy(true);
     setPdfError(null);
     try {
@@ -1280,12 +1304,13 @@ export default function WorksheetPrint() {
     } catch (error) {
       setPdfError(pdfExportErrorMessage(error, uiLang === "ar"));
     } finally {
+      exportInFlightRef.current = false;
       setPdfBusy(false);
     }
   };
 
   const save = useCallback(async (): Promise<boolean> => {
-    if (savingRef.current) return false;
+    if (savingRef.current || exportInFlightRef.current) return false;
     const latest = flushLatest();
     const base = baselineRef.current;
     if (!latest || !base || latest.isOwner === false) return false;
@@ -1347,6 +1372,7 @@ export default function WorksheetPrint() {
   const savePersist = useCallback(() => { void save(); }, [save]);
 
   const guard = useCallback((action: () => void) => {
+    if (exportInFlightRef.current) return;
     flushLatest();
     // Allow the flushed state to settle before deciding.
     leaveTokenRef.current += 1;
@@ -1383,15 +1409,21 @@ export default function WorksheetPrint() {
 
   const dir = data.language === "ar" ? "rtl" : "ltr";
 
+  const changeMode = (next: "edit" | "preview") => {
+    if (next === mode || exportInFlightRef.current) return;
+    flushLatest();
+    setMode(next);
+  };
+
   const handleWord = async (mode: "visual" | "editable") => {
-    if (wordExportInFlight.current) return;
+    if (exportInFlightRef.current || savingRef.current) return;
     flushLatest();
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(uiLang === "ar" ? "تعذّر إعداد الملف" : "Could not prepare file");
       return;
     }
-    wordExportInFlight.current = true;
+    exportInFlightRef.current = true;
     setWordExport(mode);
     setWordProgress("");
     try {
@@ -1417,7 +1449,7 @@ export default function WorksheetPrint() {
         ? (uiLang === "ar" ? "تعذّر تحميل إحدى صور التصميم. لم يُصدّر ملف ناقص؛ أعد المحاولة بعد اكتمال تحميل الصور." : "A design image could not be loaded. No incomplete file was exported; retry after images finish loading.")
         : (uiLang === "ar" ? "تعذّر تصدير ملف Word. يرجى المحاولة مرة أخرى." : "Could not export the Word file. Please try again."));
     } finally {
-      wordExportInFlight.current = false;
+      exportInFlightRef.current = false;
       setWordExport(null);
       setWordProgress("");
     }
@@ -1432,6 +1464,7 @@ export default function WorksheetPrint() {
       >
         <button
           onClick={() => guard(goBack)}
+          disabled={exporting}
           className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
           style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
         >
@@ -1441,10 +1474,14 @@ export default function WorksheetPrint() {
         <div className="text-xs font-bold truncate flex-1 text-center" style={{ color: BRAND_PRIMARY }}>
           {data.title}
         </div>
+        {isOwner && (
+          <WorksheetModeSwitch ar={uiLang === "ar"} mode={mode} onChange={changeMode} disabled={exporting} />
+        )}
         <div className="ws-actions flex gap-1.5 flex-wrap justify-end">
           {data.isOwner !== false && data.linkedAssignmentId != null && (
             <button
               onClick={() => guard(() => setLocation(`/teacher/worksheets/${data.id}/grade`))}
+              disabled={exporting}
               className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
               style={{ background: "#2f684d" }}
               title={uiLang === "ar" ? "تصحيح الأوراق بالكاميرا" : "Grade papers with camera"}
@@ -1457,18 +1494,8 @@ export default function WorksheetPrint() {
           {isOwner && (
             <>
               <button
-                onClick={() => setPanelOpen(o => !o)}
-                aria-expanded={panelOpen}
-                className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
-                style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY, background: panelOpen ? `${BRAND_PRIMARY}12` : undefined }}
-                data-testid="btn-toggle-format-panel"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                {uiLang === "ar" ? "الترويسة والتنسيق" : "Header & format"}
-              </button>
-              <button
                 onClick={() => void save()}
-                disabled={saving || !dirty}
+                disabled={saving || exporting || !dirty}
                 className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm disabled:opacity-50"
                 style={{ background: dirty ? BRAND_PRIMARY : "#2f684d" }}
                 data-testid="btn-save-worksheet"
@@ -1481,7 +1508,7 @@ export default function WorksheetPrint() {
           <DropdownMenu dir={uiLang === "ar" ? "rtl" : "ltr"}>
             <DropdownMenuTrigger asChild>
               <button
-                disabled={wordExport !== null}
+                disabled={exporting || saving}
                 aria-busy={wordExport !== null}
                 className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5 disabled:opacity-60"
                 style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
@@ -1495,11 +1522,11 @@ export default function WorksheetPrint() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuItem onSelect={() => void handleWord("visual")} disabled={wordExport !== null} className="flex-col items-start gap-1 py-3" data-testid="word-export-visual">
+              <DropdownMenuItem onSelect={() => void handleWord("visual")} disabled={exporting || saving} className="flex-col items-start gap-1 py-3" data-testid="word-export-visual">
                 <span className="font-bold">{uiLang === "ar" ? "Word مطابق للتصميم" : "Word — visual design"}</span>
                 <span className="text-xs text-muted-foreground">{uiLang === "ar" ? "نفس المظهر كصور صفحات؛ النص غير قابل للتحرير." : "Same appearance as page images; text is not editable."}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleWord("editable")} disabled={wordExport !== null} className="flex-col items-start gap-1 py-3" data-testid="word-export-editable">
+              <DropdownMenuItem onSelect={() => void handleWord("editable")} disabled={exporting || saving} className="flex-col items-start gap-1 py-3" data-testid="word-export-editable">
                 <span className="font-bold">{uiLang === "ar" ? "Word قابل للتحرير" : "Word — editable"}</span>
                 <span className="text-xs text-muted-foreground">{uiLang === "ar" ? "نصوص وجداول بتنسيق محسّن؛ قد يختلف توزيع الصفحات." : "Formatted text and tables; pagination may differ."}</span>
               </DropdownMenuItem>
@@ -1507,7 +1534,7 @@ export default function WorksheetPrint() {
           </DropdownMenu>
           <button
             onClick={() => void runSavedPdf()}
-            disabled={pdfBusy}
+            disabled={exporting || saving}
             aria-busy={pdfBusy}
             className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
             style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
@@ -1523,12 +1550,12 @@ export default function WorksheetPrint() {
       {pdfError && (
         <div role="alert" dir={dir} className="no-print mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-800" data-testid="alert-pdf-error">
           <span className="flex-1">{pdfError}</span>
-          <button onClick={() => void runSavedPdf()} disabled={pdfBusy} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="btn-retry-pdf">{uiLang === "ar" ? "إعادة المحاولة" : "Retry"}</button>
+          <button onClick={() => void runSavedPdf()} disabled={exporting || saving} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="btn-retry-pdf">{uiLang === "ar" ? "إعادة المحاولة" : "Retry"}</button>
         </div>
       )}
 
-      {isOwner && (panelOpen || saveError || dirty) && (
-        <div dir={dir} className="no-print border-b bg-white px-4 py-3" data-testid="region-live-edit">
+      {isOwner && (
+        <div inert={exporting || undefined} dir={dir} hidden={mode === "preview" && !saveError && !dirty} className="no-print border-b bg-white px-4 py-3" data-testid="region-live-edit">
           {(saveError || dirty) && (
             <div role={saveError ? "alert" : "status"} className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${saveError ? "border-red-300 bg-red-50 text-red-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
               <span className="flex-1">{saveError || (uiLang === "ar" ? "لديك تعديلات غير محفوظة. الطباعة والتصدير يستخدمان آخر تعديلاتك." : "You have unsaved edits. Print and export use your latest edits.")}</span>
@@ -1539,7 +1566,8 @@ export default function WorksheetPrint() {
               )}
             </div>
           )}
-          {panelOpen && (
+          {(
+            <div hidden={mode !== "edit"}>
             <WorksheetFormatPanel
               ar={uiLang === "ar"}
               settings={data.settings}
@@ -1547,18 +1575,23 @@ export default function WorksheetPrint() {
               meta={{ title: data.title, subject: data.subject ?? "", gradeLevel: data.gradeLevel ?? "" }}
               onMetaChange={patchMeta}
             />
+            </div>
           )}
         </div>
       )}
 
+      <div inert={exporting || undefined} aria-busy={exporting}>
       <WorksheetPrintView
         data={data}
         flushRef={flushRef}
+        editing={isOwner ? mode === "edit" : undefined}
+        onEditingChange={isOwner ? (e: boolean) => setMode(e ? "edit" : "preview") : undefined}
         onRequestSave={isOwner ? savePersist : undefined}
         onRequestDiscard={isOwner ? discard : undefined}
         onDraftChange={isOwner ? applySnapshot : undefined}
         onLayoutChange={isOwner ? (qs, breaks, styles) => applySnapshot({ questions: qs, pageBreaks: breaks, questionStyles: styles }) : undefined}
       />
+      </div>
 
       {leaveAction && (
         <div className="no-print fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" role="alertdialog" aria-modal="true" aria-labelledby="leave-title" dir={dir}>
@@ -2351,13 +2384,14 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onStartEdit, onSelectQuestion, onMatchingWidthChange, onQuestionStyleChange,
+  index, q, ar, labels, editMode, showPencil, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onStartEdit, onSelectQuestion, onMatchingWidthChange, onQuestionStyleChange,
 }: {
   index: string;
   q: Question;
   ar: boolean;
   labels: { question: string; true: string; false: string; correct: string };
   editMode?: boolean;
+  showPencil?: boolean;
   onEdit?: (updated: Question) => void;
   showTypeHeader?: boolean;
   questionStyle?: QuestionStyle;
@@ -2401,7 +2435,7 @@ function QuestionView({
       }}
       data-question-selected={selected || undefined}
     >
-      {onStartEdit && !em && (
+      {onStartEdit && (!em || showPencil) && (
         <button
           type="button"
           className="no-print ws-q-pencil"

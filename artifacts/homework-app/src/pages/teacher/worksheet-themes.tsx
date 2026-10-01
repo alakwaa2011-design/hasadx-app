@@ -361,11 +361,14 @@ export const THEMES: Record<ThemeId, ThemeSpec> = {
         .ws-theme-modern_band .ws-bubble { border-color: ${TC}55; }
         .ws-theme-modern_band .ws-footer { border-top-color: ${TC}22; }
         .ws-theme-modern_band .ws-match-col li { border-color: ${TC}22; }
-        /* Band header CSS — negative margins break out of ws-content padding */
+        /* This theme's ws-content has no top/side padding; keep the band
+           inside that full-width box rather than bleeding past the A4 page. */
         .ws-band-top {
           background: ${TC};
           padding: 8mm 18mm 6mm;
-          margin: -18mm -18mm 5mm;
+          margin: 0 0 5mm;
+          width: 100%;
+          box-sizing: border-box;
           position: relative;
           overflow: hidden;
         }

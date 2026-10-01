@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Eye, FileText } from "lucide-react";
+import { Pencil, FileText } from "lucide-react";
 import { WorksheetPrintView, type WorksheetData, type LayoutSnapshot } from "@/pages/teacher/worksheet-print";
 
 const A4_PX = 793.7; // 210mm at 96dpi
@@ -53,7 +53,7 @@ export function WorksheetLivePaper({
         </span>
         <button type="button" data-testid="button-enlarge-paper" onClick={onEnlarge} disabled={empty}
           className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-primary hover:bg-primary/5 disabled:opacity-40">
-          <Eye className="w-3.5 h-3.5" />{ar ? "معاينة كاملة" : "Full preview"}
+          <Pencil className="w-3.5 h-3.5" />{ar ? "فتح الورقة" : "Open worksheet"}
         </button>
       </div>
       <div ref={hostRef} className="p-2 max-h-[58dvh] overflow-y-auto lg:max-h-none lg:overflow-visible" dir={data.language === "ar" ? "rtl" : "ltr"}>

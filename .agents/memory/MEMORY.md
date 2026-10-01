@@ -31,7 +31,7 @@
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
 - [Direct play links architecture](direct-play-links.md) — opaque public links support assignments, saved games, and display modes; session-backed games create fresh rooms per open.
 - [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
-- [Browser test environment notes](browser-test-notes.md) — pointers for isolated fixtures, browser runtimes, viewport assertions, and Quran audio test routing.
+- [Browser test environment notes](browser-test-notes.md) — pointers for isolated fixtures, browser resets, viewport assertions, print capture, and Quran audio routing.
 - [Autosave idempotency](autosave-idempotency.md) — generated-content retries use a stable client key and must atomically include every create-side effect.
 - [Shared library Wameeth access](shared-library-wameeth-access.md) — cross-teacher direct play is limited to visibly published activities and only Wameeth class/independent modes.
 - [Independent game control isolation](independent-game-control-isolation.md) — treat control taps as immediate actions and fence question events while an exit dialog is active.
@@ -119,7 +119,7 @@
 - [Quran audio implementation notes](quran-audio-implementation-notes.md) — pause, seamless playback, audible checks, mobile redirects, and chapter-only reciters.
 - [Quran partial hiding](quran-partial-hiding.md) — a one-ayah guided session hides alternating words; progressive range logic must not reveal the only target ayah.
 - [Quran tafsir playback follow](quran-tafsir-playback-follow.md) — tafsir follows the playing ayah unless the user locks the current explanation.
-- [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — component tests need explicit cleanup and native DOM assertions; wrap audio consumers in their real provider.
+- [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — use cleanup, native assertions and real providers; blur-dependent saves require native focus.
 - [Public Quran delivery](public-quran-delivery.md) — ship the anonymous reader as an isolated /quran experience first; create a separate artifact only after shared Quran libraries exist.
 - [Pending recitation release gates](pending-recitation-release-gates.md) — unverified custom reciters may appear only to reader sessions; gate catalogs, timing, and direct audio routes together.
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
@@ -128,6 +128,7 @@
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
 - [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.
+- [Worksheet workspace invariants](worksheet-workspace-invariants.md) — one settings organization; printable renderers cannot overlap during transitions; freeze the live draft during export.
 - [Shared upload cleanup scope](shared-upload-cleanup-scope.md) — cleanup jobs must enumerate only their own namespace; table references cannot prove ownership of every object under shared uploads.
 - [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.
 - [Quran specialized bookmarks](quran-specialized-bookmarks.md) — each ayah has one categorized bookmark; old or missing categories normalize to “stopped here.”

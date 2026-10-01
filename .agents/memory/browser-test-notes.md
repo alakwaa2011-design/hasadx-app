@@ -15,3 +15,4 @@ description: Index of browser test fixture, runtime, and assertion lessons.
 - [Quran reader DOM readiness](quran-reader-dom-readiness.md)
 - [Authenticated preview captures](authenticated-preview-captures.md)
 - [Source freeze before persistence checks](browser-source-freeze.md)
+- [Print-capture lifecycle](browser-print-lifecycle.md)
