@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "pnpm run validate:mushaf && node scripts/generate-image-sitemap.mjs && vite build --config vite.config.ts && pnpm run prerender",
+    "build": "pnpm run validate:mushaf && node scripts/generate-image-sitemap.mjs && vite build --config vite.config.ts && pnpm run prerender && pnpm run test:smoke:built",
     "prerender": "tsx scripts/prerender.ts",
     "serve": "node serve.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -14,7 +14,9 @@
     "validate:mushaf:production": "node scripts/validate-mushaf-deployment.mjs",
     "test:mushaf:production-validator": "node --test scripts/validate-mushaf-deployment.test.mjs",
     "test:e2e": "playwright test",
-    "test:smoke": "playwright test tests/e2e/production-smoke.spec.ts"
+    "test:smoke": "playwright test --config playwright.smoke.config.ts --project built-app",
+    "test:smoke:built": "node scripts/production-smoke.mjs",
+    "test:smoke:guards": "playwright test --config playwright.smoke.config.ts --project guard-regressions"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

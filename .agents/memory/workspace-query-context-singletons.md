@@ -14,3 +14,9 @@ HTTP 200, a removed splash, and nonempty React markup are not enough to establis
 **Why:** Those checks reported the site as available while users saw its crash screen.
 
 **How to apply:** Production smoke checks must reject the root error fallback and uncaught JavaScript errors, and verify meaningful page controls after asynchronous startup.
+
+Release startup checks should use the final prerendered output and synthetic anonymous API responses, not authenticated production sessions.
+
+**Why:** Static crawler content can disguise a failed React startup, while live accounts and automatic telemetry can turn a release check into unintended production reads or writes.
+
+**How to apply:** Require React-only home/login controls after session resolution; intercept telemetry locally, block other mutations and WebSockets, and treat browser installation or launch failure as a failed gate. Backend availability and real authentication need separate isolated tests.
