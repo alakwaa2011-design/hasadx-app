@@ -52,10 +52,14 @@ describe("visual worksheet Word", () => {
     });
     const root = document.createElement("div");
     root.id = "ws-printable-root";
+    root.setAttribute("data-responsive-preview", "");
+    root.style.setProperty("--ws-preview-scale", "0.45");
     root.innerHTML = `<article data-worksheet-page><div class="ws-q-selected"><span contenteditable="true">سؤال</span><button class="no-print">حذف</button></div></article><article data-answer-key-page>الإجابة</article>`;
     document.body.appendChild(root);
     const progress = vi.fn();
     capture.mockImplementation(async (page: HTMLElement) => {
+      expect(page.parentElement?.style.getPropertyValue("--ws-preview-scale")).toBe("1");
+      expect(parseFloat(page.parentElement!.style.width)).toBeGreaterThanOrEqual(810);
       expect(page.querySelector(".no-print")).toBeNull();
       expect(page.querySelector(".ws-q-selected")).toBeNull();
       expect(page.querySelector("[contenteditable]")).toBeNull();
@@ -67,6 +71,7 @@ describe("visual worksheet Word", () => {
     expect(progress.mock.calls).toEqual([[1, 2], [2, 2]]);
     expect(root.querySelector(".no-print")).not.toBeNull();
     expect(root.querySelector("[contenteditable]")).not.toBeNull();
+    expect(root.style.getPropertyValue("--ws-preview-scale")).toBe("0.45");
     expect(document.body.children).toHaveLength(1);
   });
 

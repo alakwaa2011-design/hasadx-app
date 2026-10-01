@@ -21,7 +21,7 @@ describe("worksheet PDF page sizing", () => {
   });
 
   it("includes theme borders inside the physical A4 page height", () => {
-    const pageRule = source.match(/\.ws-page\s*\{[\s\S]*?\}/)?.[0] ?? "";
+    const pageRule = source.match(/^\s*\.ws-page\s*\{[\s\S]*?\}/m)?.[0] ?? "";
     expect(pageRule).toContain("box-sizing: border-box");
     expect(pageRule).toContain("min-height: 297mm");
   });
@@ -40,7 +40,7 @@ describe("worksheet PDF page sizing", () => {
 
   it("moves questions when a rendered worksheet page still exceeds A4", () => {
     expect(source).toContain("data-worksheet-page");
-    expect(source).toContain("page.getBoundingClientRect().height > a4HeightPx + 2");
+    expect(source).toContain("page.offsetHeight > a4HeightPx + 2");
     expect(source).toContain("next[overflowIndex].pop()");
   });
 
@@ -54,6 +54,23 @@ describe("worksheet PDF page sizing", () => {
     expect(source).toContain("discardLayoutChanges");
     expect(source).toContain('"تجاهل التعديلات"');
     expect(source).toContain("setLocalQs(data.questions)");
+  });
+});
+
+describe("worksheet phone preview isolation", () => {
+  it("fits the paper on screen without changing the physical A4 stylesheet", () => {
+    expect(source).toContain("data-responsive-preview");
+    expect(source).toContain("zoom: var(--ws-preview-scale, 1)");
+    expect(source).toMatch(/@media screen\s*\{[\s\S]*?zoom: var/);
+    expect(source).toContain('width: "210mm", height: 0, overflow: "hidden"');
+    expect(source.match(/page\.offsetHeight > a4HeightPx \+ 2/g)).toHaveLength(2);
+  });
+  it("wraps narrow-screen formatting groups rather than clipping controls into horizontal scrollers", () => {
+    const mobile = source.slice(source.indexOf("@media (max-width: 640px)"));
+    const group = mobile.match(/\.ws-format-group\s*\{[\s\S]*?\}/)?.[0] ?? "";
+    expect(group).toContain("flex-wrap: wrap");
+    expect(group).toContain("overflow-x: visible");
+    expect(group).toContain("box-sizing: border-box");
   });
 });
 

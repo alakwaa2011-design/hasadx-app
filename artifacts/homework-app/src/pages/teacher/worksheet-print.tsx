@@ -5,6 +5,7 @@ import { useSmartBack } from "@/lib/nav-history";
 import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
 import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksheet-word-visual";
+import { useWorksheetPreview } from "@/lib/use-worksheet-preview";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   type ThemeId, type ThemeSpec, THEMES, THEME_BACKGROUNDS,
@@ -406,6 +407,7 @@ export function WorksheetPrintView({
   const answerItems = buildAnswerItems(localQs, ar, labels);
   const [answerPages, setAnswerPages] = useState<AnswerItem[][]>(() => [answerItems]);
   const measureRef = useRef<HTMLDivElement>(null);
+  const previewRef = useWorksheetPreview();
   const lastKeyRef = useRef("");
 
   // After each render, measure actual heights and re-paginate
@@ -590,7 +592,8 @@ export function WorksheetPrintView({
     if (!root) return;
     const pageEls = Array.from(root.querySelectorAll<HTMLElement>("[data-worksheet-page]"));
     const a4HeightPx = (297 / 25.4) * 96;
-    const overflowIndex = pageEls.findIndex((page) => page.getBoundingClientRect().height > a4HeightPx + 2);
+    // offsetHeight is the unscaled layout height, including on a fitted phone preview.
+    const overflowIndex = pageEls.findIndex((page) => page.offsetHeight > a4HeightPx + 2);
     if (overflowIndex < 0 || (pages[overflowIndex]?.length ?? 0) <= 1) return;
 
     setPages(prev => {
@@ -612,7 +615,7 @@ export function WorksheetPrintView({
     if (!root) return;
     const pageEls = Array.from(root.querySelectorAll<HTMLElement>("[data-answer-key-page]"));
     const a4HeightPx = (297 / 25.4) * 96;
-    const overflowIndex = pageEls.findIndex((page) => page.getBoundingClientRect().height > a4HeightPx + 2);
+    const overflowIndex = pageEls.findIndex((page) => page.offsetHeight > a4HeightPx + 2);
     if (overflowIndex < 0) return;
 
     setAnswerPages(prev => {
@@ -766,8 +769,8 @@ export function WorksheetPrintView({
         // فئة القالب ضرورية هنا: بدونها تُقاس الأسئلة بالتنسيق الافتراضي
         // بينما تُعرض ببطاقات القالب الأكبر، فتمتلئ الصفحة أكثر من طاقتها
         // وتنقسم عند الطباعة إلى صفحات مكررة.
-        className={`print-host${themeId ? ` ws-theme-${themeId}` : ""}`}
-        style={{ position: "absolute", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none" }}
+        className={`no-print print-host${themeId ? ` ws-theme-${themeId}` : ""}`}
+        style={{ position: "fixed", left: 0, top: 0, width: "210mm", height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}
         dir={dir}
       >
         <div data-header-measure style={{ width: "174mm" }}>{page1Header}</div>
@@ -824,7 +827,7 @@ export function WorksheetPrintView({
       {/* ── Edit mode floating bar (no-print) ──────────────────── */}
       {onLayoutChange && (
         <div
-          className="no-print"
+          className="no-print ws-edit-tools"
           style={{
             position: "fixed",
             bottom: 16,
@@ -962,6 +965,8 @@ export function WorksheetPrintView({
       {/* ── Visible paginated pages ──────────────────────────────── */}
       <div
         id="ws-printable-root"
+        ref={previewRef}
+        data-responsive-preview
         className={`print-host ${selectedField ? "ws-format-toolbar-open " : ""}${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`}
         dir={dir}
         style={editMode ? { outline: "none" } : undefined}
@@ -1169,7 +1174,7 @@ export default function WorksheetPrint() {
       {/* Action toolbar (hidden when printing) */}
       <div
         dir={dir}
-        className="no-print sticky top-0 z-40 flex items-center justify-between gap-2 px-4 py-2.5 border-b shadow-sm bg-white"
+        className="no-print ws-action-toolbar sticky top-0 z-40 flex items-center justify-between gap-2 px-4 py-2.5 border-b shadow-sm bg-white"
       >
         <button
           onClick={goBack}
@@ -1182,7 +1187,7 @@ export default function WorksheetPrint() {
         <div className="text-xs font-bold truncate flex-1 text-center" style={{ color: BRAND_PRIMARY }}>
           {data.title}
         </div>
-        <div className="flex gap-1.5 flex-wrap justify-end">
+        <div className="ws-actions flex gap-1.5 flex-wrap justify-end">
           {data.isOwner !== false && data.linkedAssignmentId != null && (
             <button
               onClick={() => setLocation(`/teacher/worksheets/${data.id}/grade`)}
@@ -2483,6 +2488,53 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;700&family=Reem+Kufi:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
       .print-host { font-family: ${fontFamily}; }
+      @media screen {
+        .print-host[data-responsive-preview] {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          overflow-x: clip;
+        }
+        .print-host[data-responsive-preview] > .ws-page {
+          zoom: var(--ws-preview-scale, 1);
+          flex-shrink: 0;
+        }
+      }
+      @media screen and (max-width: 640px) {
+        .ws-action-toolbar {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          gap: 8px;
+          padding: 10px 12px;
+        }
+        .ws-action-toolbar > .ws-actions {
+          grid-column: 1 / -1;
+          justify-content: flex-start;
+          gap: 6px;
+          min-width: 0;
+        }
+        .ws-action-toolbar button {
+          min-height: 40px;
+          justify-content: center;
+        }
+        .ws-actions > button {
+          flex: 1 1 auto;
+          padding: 8px 10px;
+          white-space: nowrap;
+        }
+        .ws-edit-tools {
+          max-width: calc(100vw - 32px);
+          box-sizing: border-box;
+          flex-wrap: wrap;
+          justify-content: center;
+          border-radius: 16px !important;
+          bottom: max(16px, env(safe-area-inset-bottom)) !important;
+        }
+      }
       .ws-page {
         position: relative;
         box-sizing: border-box;
@@ -3160,18 +3212,30 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         }
         .ws-format-group {
           width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
           justify-content: flex-start;
-          flex-wrap: nowrap;
-          overflow-x: auto;
+          flex-wrap: wrap;
+          overflow-x: visible;
           padding: 3px 2px;
-          scrollbar-width: thin;
+          gap: 6px;
         }
         .ws-format-toolbar button {
           min-width: 38px;
           height: 38px;
           flex: 0 0 auto;
         }
-        .ws-format-text-btn { min-width: max-content !important; }
+        .ws-format-text-btn {
+          min-width: 0 !important;
+          max-width: 100%;
+          height: auto !important;
+          min-height: 38px;
+          white-space: normal;
+          padding-block: 6px;
+        }
+        .ws-format-type { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+        .ws-format-control { max-width: 100%; white-space: normal; }
         .ws-format-toolbar-open {
           padding-bottom: min(46vh, 270px) !important;
         }

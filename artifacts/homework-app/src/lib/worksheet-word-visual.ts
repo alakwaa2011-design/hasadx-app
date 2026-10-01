@@ -157,10 +157,13 @@ export async function captureWorksheetPages(
   clone.removeAttribute("id");
   const inherited = getComputedStyle(element);
   Object.assign(clone.style, {
-    position: "absolute", left: "-100000px", top: "0",
-    width: `${element.scrollWidth}px`, fontFamily: inherited.fontFamily,
+    position: "fixed", left: "-100000px", top: "0",
+    width: `${Math.max(element.scrollWidth, 810)}px`, fontFamily: inherited.fontFamily,
+    maxWidth: "none", overflow: "visible",
     direction: inherited.direction, pointerEvents: "none",
   });
+  // Phone fitting is screen-only: rasterize at the original A4 size, not phone resolution.
+  clone.style.setProperty("--ws-preview-scale", "1");
   clone.querySelectorAll(".no-print").forEach(node => node.remove());
   clone.querySelectorAll(".ws-q-selected").forEach(node => node.classList.remove("ws-q-selected"));
   clone.querySelectorAll<HTMLElement>(".ws-editable").forEach(node => {
