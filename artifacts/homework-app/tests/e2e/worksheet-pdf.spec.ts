@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
 import sharp from "sharp";
 import {
@@ -46,6 +47,58 @@ const arabicLongAnswerWorksheetIds = new Map<
   number
 >();
 const execFileAsync = promisify(execFile);
+
+async function installPrintDialogStub(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const printWindow = window as typeof window & { __worksheetPrintCalls?: number };
+    printWindow.__worksheetPrintCalls = 0;
+    printWindow.print = () => {
+      printWindow.__worksheetPrintCalls = (printWindow.__worksheetPrintCalls ?? 0) + 1;
+    };
+  });
+}
+
+async function createPdfWithPrintHandler(
+  page: Page,
+  printButton: Locator,
+  afterPdfBeforePrintCleanup?: () => Promise<void>,
+): Promise<Buffer> {
+  const printCalls = await page.evaluate(() => {
+    const printWindow = window as typeof window & { __worksheetPrintCalls?: number };
+    return printWindow.__worksheetPrintCalls ?? 0;
+  });
+
+  await printButton.click();
+  await expect
+    .poll(
+      () => page.evaluate(() => {
+        const printWindow = window as typeof window & { __worksheetPrintCalls?: number };
+        return printWindow.__worksheetPrintCalls ?? 0;
+      }),
+      { timeout: 15_000 },
+    )
+    .toBe(printCalls + 1);
+  await expect(page.locator("#ws-printable-root[data-worksheet-print-target]"))
+    .toHaveCount(1);
+  await expect(page.locator("[data-worksheet-print-path]")).not.toHaveCount(0);
+
+  // PrintToPDF runs while the real application export handler has scoped the
+  // selected worksheet's ancestor chain for print. The stub keeps the
+  // simulated print dialog open.
+  const pdf = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    preferCSSPageSize: true,
+  });
+  await afterPdfBeforePrintCleanup?.();
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await expect(page.locator("[data-worksheet-print-target]")).toHaveCount(0);
+  await expect(page.locator("[data-worksheet-print-path]")).toHaveCount(0);
+  if (!afterPdfBeforePrintCleanup) {
+    await expect(page.locator("#ws-printable-root")).toBeAttached();
+  }
+  return pdf;
+}
 
 function countChromiumPdfPages(pdf: Buffer): number {
   // Chromium writes every physical page as a /Type /Page object. The word
@@ -603,6 +656,7 @@ test("Arabic question formatting and option layout survive save, reload, and PDF
 test("A4 PDF preserves every DOM page without duplicated questions or a detached footer", async ({
   page,
 }) => {
+  await installPrintDialogStub(page);
   await page.goto(`/teacher/worksheets/${worksheetId}/print`);
     const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
@@ -673,11 +727,10 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
   const answerPage = printable.locator("[data-answer-key-page]");
   await expect(answerPage.locator(".ws-answer")).toHaveCount(questionCount);
 
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      preferCSSPageSize: true,
-    });
+  const pdf = await createPdfWithPrintHandler(
+    page,
+    page.getByRole("button", { name: "Save PDF", exact: true }),
+  );
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
@@ -685,6 +738,7 @@ test("A4 PDF preserves every DOM page without duplicated questions or a detached
 test("framed Kids Play pages keep usable A4 space in preview and Chromium PDF", async ({
   page,
 }) => {
+  await installPrintDialogStub(page);
   await page.goto(`/teacher/worksheets/${framedWorksheetId}/print`);
   const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
@@ -714,11 +768,10 @@ test("framed Kids Play pages keep usable A4 space in preview and Chromium PDF", 
   }
 
   const domPageCount = await printable.locator(".ws-page").count();
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true,
-    preferCSSPageSize: true,
-  });
+  const pdf = await createPdfWithPrintHandler(
+    page,
+    page.getByRole("button", { name: "Save PDF", exact: true }),
+  );
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
 });
@@ -726,6 +779,7 @@ test("framed Kids Play pages keep usable A4 space in preview and Chromium PDF", 
 test("long answer keys become numbered A4 DOM pages that match the PDF", async ({
   page,
 }) => {
+  await installPrintDialogStub(page);
   await page.goto(`/teacher/worksheets/${longAnswerWorksheetId}/print`);
     const printable = page.locator("#ws-printable-root");
   await expect(printable).toBeVisible({ timeout: 20_000 });
@@ -754,13 +808,372 @@ test("long answer keys become numbered A4 DOM pages that match the PDF", async (
   }
 
     const domPageCount = await printable.locator(".ws-page").count();
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      preferCSSPageSize: true,
-    });
+  const pdf = await createPdfWithPrintHandler(
+    page,
+    page.getByRole("button", { name: "Save PDF", exact: true }),
+  );
   expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
   expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+});
+
+test("creator PDF export isolates exact question pages at multiple overlay scroll positions", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await installPrintDialogStub(page);
+
+  const blockedApiWrites: Array<{ method: string; path: string }> = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path.includes("/socket.io/")) return route.abort();
+    if (!["GET", "HEAD"].includes(request.method())) {
+      blockedApiWrites.push({ method: request.method(), path });
+      return route.abort();
+    }
+
+    const emptyListPaths = new Set([
+      "/api/teacher/schedule",
+      "/api/notifications",
+      "/api/teacher/grade-levels",
+      "/api/me/achievements",
+      "/api/direct-messages",
+    ]);
+    const body = path === "/api/auth/me"
+      ? {
+        id: 998_877,
+        name: "PDF Baseline Teacher",
+        email: "worksheet-pdf-baseline@example.invalid",
+        role: "teacher",
+        isAdmin: false,
+      }
+      : emptyListPaths.has(path) || path.includes("/worksheets")
+        ? []
+        : {};
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+
+  await page.addInitScript(() => {
+    localStorage.setItem("hw_lang", "en");
+  });
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  const artifactDir = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../../.local/worksheet-pdf-baseline/creator-after",
+  );
+  await mkdir(artifactDir, { recursive: true });
+
+  const markerFor = (prefix: string, index: number) =>
+    `CREATOR-${prefix}-Q${String(index).padStart(2, "0")}-QUESTION-MARKER`;
+  const answerFor = (index: number) =>
+    `CREATOR-KEY-A${String(index).padStart(2, "0")}-ANSWER-MARKER`;
+  const questionMarkerPattern = /CREATOR-(?:TWO|THREE|LONG|KEY)-Q\d+-QUESTION-MARKER/g;
+  const answerMarkerPattern = /CREATOR-KEY-A\d+-ANSWER-MARKER/g;
+
+  const openCreatorPreview = async (
+    label: string,
+    prefix: "TWO" | "THREE" | "LONG" | "KEY",
+    count: number,
+  ) => {
+    await page.goto("/teacher/worksheets/create");
+    await page.getByTestId("tab-format-info").click();
+    await page.getByTestId("input-ws-title").fill(label);
+    for (let index = 0; index < count; index += 1) {
+      await page.getByRole("button", { name: "Add Question", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Short Answer", exact: true }).click();
+    }
+
+    const prompts = page.getByPlaceholder("Question text");
+    await expect(prompts).toHaveCount(count);
+    const cards = page.locator('[id^="worksheet-question-"]');
+    for (let index = 0; index < count; index += 1) {
+      await prompts.nth(index).fill(markerFor(prefix, index + 1));
+      const card = cards.nth(index);
+      await card
+        .locator("label")
+        .filter({ hasText: "Lines for printing" })
+        .locator("input")
+        .fill("18");
+      await card
+        .locator("label")
+        .filter({ hasText: "Model answer (key)" })
+        .locator("input")
+          .fill(prefix === "KEY"
+            ? `${answerFor(index + 1)} ${"A detailed model answer used to verify long answer-key page boundaries. ".repeat(12)}`
+            : `CREATOR-${prefix}-A${index + 1}-MODEL-ANSWER`);
+    }
+
+    await page.getByTestId("button-ws-preview").click();
+    const overlay = page
+      .locator("div.fixed.inset-0")
+      .filter({ has: page.getByTestId("button-close-preview") })
+      .last();
+    await expect(overlay).toBeVisible();
+    await expect(overlay.locator("#ws-printable-root")).toBeVisible();
+    return { overlay, root: overlay.locator("#ws-printable-root") };
+  };
+
+  const setScrollPosition = async (overlay: Locator, pageIndex: number) => {
+    const targetTop = await overlay.evaluate((element, index) => {
+      const pageNode = element.querySelectorAll("[data-worksheet-page], [data-answer-key-page]")[index];
+      if (!pageNode) throw new Error(`Expected worksheet page at scroll index ${index}`);
+      return pageNode.getBoundingClientRect().top
+        - element.getBoundingClientRect().top
+        + element.scrollTop;
+    }, pageIndex);
+    await overlay.evaluate((element, top) => {
+      element.scrollTop = top;
+    }, targetTop);
+    if (pageIndex > 0) {
+      await expect.poll(() => overlay.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    }
+    const visiblePageIndices = await overlay.evaluate(element =>
+      Array.from(element.querySelectorAll("[data-worksheet-page], [data-answer-key-page]"))
+        .map((pageNode, index) => ({
+          index,
+          bounds: pageNode.getBoundingClientRect(),
+        }))
+        .filter(({ bounds }) =>
+          bounds.bottom > element.getBoundingClientRect().top
+          && bounds.top < element.getBoundingClientRect().bottom,
+        )
+        .map(({ index }) => index),
+    );
+    expect(visiblePageIndices).toContain(pageIndex);
+  };
+
+  const captureCreatorPdf = async (
+    captureName: string,
+    prefix: "TWO" | "THREE" | "LONG" | "KEY",
+    questionCountForCase: number,
+    overlay: Locator,
+    root: Locator,
+    scrollPageIndex: number,
+    withAnswerKey = false,
+    closePreviewWhilePrintIsOpen = false,
+  ) => {
+    await setScrollPosition(overlay, scrollPageIndex);
+    const worksheetPages = root.locator("[data-worksheet-page]");
+    const answerPages = root.locator("[data-answer-key-page]");
+    const worksheetPageCount = await worksheetPages.count();
+    const answerPageCount = await answerPages.count();
+    const domPageCount = worksheetPageCount + answerPageCount;
+    const questionMarkers = Array.from(
+      { length: questionCountForCase },
+      (_, index) => markerFor(prefix, index + 1),
+    );
+    const domQuestionMarkers = await worksheetPages.evaluateAll(pages =>
+      pages.flatMap(pageNode =>
+        Array.from(pageNode.querySelectorAll(".ws-q-prompt"))
+          .map(prompt => prompt.textContent?.match(/CREATOR-(?:TWO|THREE|LONG|KEY)-Q\d+-QUESTION-MARKER/)?.[0])
+          .filter((marker): marker is string => Boolean(marker)),
+      ),
+    );
+    expect(domQuestionMarkers).toEqual(questionMarkers);
+
+    const pdf = await createPdfWithPrintHandler(
+      page,
+      overlay.getByRole("button", { name: "Save PDF", exact: true }),
+      closePreviewWhilePrintIsOpen
+        ? async () => {
+          await overlay.getByTestId("button-close-preview").click();
+          await expect(page.locator("div.fixed.inset-0").filter({
+            has: page.getByTestId("button-close-preview"),
+          })).toHaveCount(0);
+          await expect(page.getByTestId("button-ws-preview")).toBeVisible();
+        }
+        : undefined,
+    );
+    expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+    const pdfPath = join(artifactDir, `${captureName}.pdf`);
+    await writeFile(pdfPath, pdf);
+    const extracted = await execFileAsync("pdftotext", ["-layout", pdfPath, "-"], {
+      encoding: "utf8",
+    });
+    const pdfText = String(extracted.stdout);
+    const physicalPages = pdfText.split("\f").filter(text => text.trim().length > 0);
+    expect(physicalPages).toHaveLength(domPageCount);
+
+    const worksheetPdfText = physicalPages.slice(0, worksheetPageCount).join("\n");
+    const answerPdfText = physicalPages.slice(worksheetPageCount).join("\n");
+    const printedQuestionMarkers = worksheetPdfText.match(questionMarkerPattern) ?? [];
+    expect(printedQuestionMarkers).toEqual(questionMarkers);
+    for (const marker of questionMarkers) {
+      expect(printedQuestionMarkers.filter(value => value === marker)).toHaveLength(1);
+    }
+    expect(pdfText).not.toContain("Worksheet Builder");
+    expect(pdfText).not.toContain("Preview & print");
+    if (withAnswerKey) {
+      const expectedAnswers = Array.from(
+        { length: questionCountForCase },
+        (_, index) => answerFor(index + 1),
+      );
+      const printedAnswerMarkers = answerPdfText.match(answerMarkerPattern) ?? [];
+      expect(printedAnswerMarkers).toEqual(expectedAnswers);
+      expect(answerPageCount).toBeGreaterThan(0);
+      expect(answerPageCount).toBeGreaterThan(1);
+      for (const marker of expectedAnswers) {
+        expect(printedAnswerMarkers.filter(value => value === marker)).toHaveLength(1);
+      }
+    } else {
+      expect(answerPageCount).toBe(0);
+      expect(pdfText.match(answerMarkerPattern) ?? []).toHaveLength(0);
+    }
+
+    await writeFile(join(artifactDir, `${captureName}.txt`), pdfText);
+    await writeFile(
+      join(artifactDir, `${captureName}.json`),
+      JSON.stringify({
+        browser: "Playwright Chromium",
+        viewport: { width: 1280, height: 1000 },
+        mockedApi: "All GET /api responses intercepted; all non-read API requests aborted.",
+        blockedApiWrites,
+        pageErrors,
+        captureName,
+        overlayScrollPageIndex: scrollPageIndex,
+        domPageCounts: { worksheet: worksheetPageCount, answerKey: answerPageCount, total: domPageCount },
+        physicalPageCount: countChromiumPdfPages(pdf),
+        pdfBytes: pdf.length,
+        questionMarkers: domQuestionMarkers,
+        answerMarkers: withAnswerKey ? answerPdfText.match(answerMarkerPattern) ?? [] : [],
+        baseline: ".local/worksheet-pdf-baseline/creator/two-question-pages.pdf",
+      }, null, 2),
+    );
+    expect(countChromiumPdfPages(pdf)).toBe(domPageCount);
+    expect(pageErrors).toEqual([]);
+  };
+
+  const pendingPreview = await openCreatorPreview(
+    "CREATOR CANCELLED EXPORT REGRESSION",
+    "TWO",
+    2,
+  );
+  await page.evaluate(() => {
+    localStorage.setItem("e2e-worksheet-pdf-persistent-print-count", "0");
+    const nativePrint = window.print.bind(window);
+    window.print = () => {
+      const count = Number(localStorage.getItem("e2e-worksheet-pdf-persistent-print-count") ?? "0");
+      localStorage.setItem("e2e-worksheet-pdf-persistent-print-count", String(count + 1));
+      nativePrint();
+    };
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { ready: new Promise<FontFaceSet>(() => {}) },
+    });
+  });
+  await pendingPreview.overlay.getByRole("button", { name: "Save PDF", exact: true }).click();
+  await expect(pendingPreview.root).toHaveAttribute("data-worksheet-print-target", "");
+  await expect(pendingPreview.overlay.getByTestId("button-close-preview")).toBeDisabled();
+  // The UI intentionally keeps Close disabled while export is preparing.
+  // A real browser navigation still unmounts the selected worksheet; verify
+  // readiness cancellation survives that unmount without starting print.
+  await page.goto("/teacher/worksheets");
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem("e2e-worksheet-pdf-persistent-print-count"),
+  )).toBe("0");
+  await expect(page.locator("[data-worksheet-print-target], [data-worksheet-print-path]"))
+    .toHaveCount(0);
+  expect(pageErrors).toEqual([]);
+
+  const two = await openCreatorPreview("CREATOR TWO PAGE REGRESSION", "TWO", 2);
+  await expect(two.root.locator("[data-worksheet-page]")).toHaveCount(2);
+  await captureCreatorPdf(
+    "creator-two-scroll-page-1",
+    "TWO",
+    2,
+    two.overlay,
+    two.root,
+    0,
+    false,
+    true,
+  );
+
+  const three = await openCreatorPreview("CREATOR THREE PAGE REGRESSION", "THREE", 3);
+  await expect(three.root.locator("[data-worksheet-page]")).toHaveCount(3);
+  await captureCreatorPdf("creator-three-scroll-page-1", "THREE", 3, three.overlay, three.root, 0);
+  await captureCreatorPdf("creator-three-scroll-page-2", "THREE", 3, three.overlay, three.root, 1);
+
+  const longer = await openCreatorPreview("CREATOR LONG QUESTION PAPER REGRESSION", "LONG", 6);
+  await expect.poll(async () => longer.root.locator("[data-worksheet-page]").count())
+    .toBeGreaterThan(3);
+  await captureCreatorPdf("creator-long-questions-scroll-page-4", "LONG", 6, longer.overlay, longer.root, 3);
+
+  const keyed = await openCreatorPreview("CREATOR LONG ANSWER KEY REGRESSION", "KEY", 6);
+  const formatPanelButton = keyed.overlay.getByRole("button", { name: /Header & format/ });
+  if (await formatPanelButton.getAttribute("aria-expanded") !== "true") {
+    await formatPanelButton.click();
+  }
+  await keyed.overlay.getByTestId("tab-format-header").click();
+  await keyed.overlay.getByTestId("toggle-ws-answers").click();
+  await keyed.overlay.getByTestId("tab-format-design").click();
+  await keyed.overlay.getByTestId("theme-kids_play").click();
+  await keyed.overlay.getByTestId("select-ws-font").selectOption("georgia");
+  await keyed.overlay.getByTestId("tab-format-header").click();
+  await keyed.overlay.getByTestId("input-ws-school").fill(
+    "CREATOR LONG HEADER SCHOOL DISTRICT AND CAMPUS NAME",
+  );
+  await keyed.overlay.getByTestId("input-ws-teacher").fill("PDF Baseline Teacher");
+  await expect.poll(async () => keyed.root.locator("[data-answer-key-page]").count())
+    .toBeGreaterThan(0);
+  await expect.poll(async () => keyed.root.locator("[data-worksheet-page]").count())
+    .toBeGreaterThan(2);
+  const longHeader = await keyed.overlay.getByTestId("input-ws-school").inputValue();
+  expect(longHeader).toContain("CREATOR LONG HEADER");
+  const fontFamily = await keyed.root.evaluate(root =>
+    getComputedStyle(root).fontFamily.toLowerCase(),
+  );
+  expect(fontFamily).toContain("georgia");
+  await captureCreatorPdf(
+    "creator-kids-play-long-key-scroll-answer-page",
+    "KEY",
+    6,
+    keyed.overlay,
+    keyed.root,
+    (await keyed.root.locator("[data-worksheet-page], [data-answer-key-page]").count()) - 1,
+    true,
+  );
+
+  await keyed.overlay.getByTestId("tab-format-info").click();
+  await keyed.overlay.getByTestId("input-ws-title").fill("LONG ANSWER KEY");
+  await keyed.overlay.getByTestId("tab-format-design").click();
+  await keyed.overlay.getByTestId("theme-science_lab").click();
+  const logoBuffer = await sharp({
+    create: {
+      width: 32,
+      height: 32,
+      channels: 4,
+      background: { r: 34, g: 87, b: 57, alpha: 1 },
+    },
+  }).png().toBuffer();
+  await keyed.overlay.getByTestId("input-ws-logo").setInputFiles({
+    name: "worksheet-logo.png",
+    mimeType: "image/png",
+    buffer: logoBuffer,
+  });
+  await expect(
+    keyed.overlay.getByTestId("panel-worksheet-format").getByAltText("Logo"),
+  ).toBeVisible();
+  await expect.poll(async () => keyed.root.locator("img").evaluateAll(images =>
+    images.some(image => (image as HTMLImageElement).naturalWidth > 0),
+  )).toBe(true);
+  await captureCreatorPdf(
+    "creator-science-lab-logo-key-scroll-answer-page",
+    "KEY",
+    6,
+    keyed.overlay,
+    keyed.root,
+    (await keyed.root.locator("[data-worksheet-page], [data-answer-key-page]").count()) - 1,
+    true,
+  );
+
+  expect(blockedApiWrites.every(write => !["GET", "HEAD"].includes(write.method))).toBe(true);
+  expect(pageErrors).toEqual([]);
 });
 
 test("one huge answer is split across contextual DOM pages that match the PDF", async ({

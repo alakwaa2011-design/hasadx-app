@@ -45,6 +45,7 @@ function renderToolbar(ar = false) {
 describe("worksheet formatting toolbar accessibility", () => {
   it("moves focus through controls with arrows, Home, and End", () => {
     const { host } = renderToolbar();
+    act(() => host.querySelector<HTMLButtonElement>('[data-testid="button-toggle-question-details"]')?.click());
     const controls = Array.from(host.querySelectorAll<HTMLElement>("button, select, input"));
     controls[0].focus();
 
@@ -60,6 +61,14 @@ describe("worksheet formatting toolbar accessibility", () => {
     resetButton?.focus();
     act(() => resetButton?.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })));
     expect(document.activeElement).toBe(controls[0]);
+  });
+
+  it("keeps question details collapsed until expanded, then exposes every question control", () => {
+    const { host } = renderToolbar();
+    expect(host.querySelector('[data-testid="select-question-spacing"]')).toBeNull();
+    act(() => host.querySelector<HTMLButtonElement>('[data-testid="button-toggle-question-details"]')?.click());
+    expect(host.querySelector('[data-testid="select-question-spacing"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="button-reset-question-formatting"]')).not.toBeNull();
   });
 
   it("announces selected states and activates a focused tool", () => {

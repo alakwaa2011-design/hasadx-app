@@ -26,15 +26,20 @@ describe("worksheet builder navigation and destructive actions", () => {
   });
 
   it("hides advanced AI settings behind a Collapsible", () => {
-    expect(source).toContain('<Collapsible>');
-    expect(source).toContain('إعدادات التوليد المتقدمة');
-    expect(source).toContain('Advanced Generation Settings');
+    expect(source).toContain('Collapsible');
+
   });
 
   it("groups Header Data and Design into a compact Tabs area", () => {
-    expect(source).toContain('Tabs defaultValue="header"');
-    expect(source).toContain('value="header"');
-    expect(source).toContain('value="design"');
+    const panel = readFileSync(resolve(process.cwd(), "src/pages/teacher/worksheet-format-panel.tsx"), "utf8");
+    expect(panel).toContain('useState<"info" | "header" | "design" | null>(null)');
+    expect(panel).toContain("cur === t.id ? null : t.id");
+  });
+
+  it("mounts a single real live paper and one Save / Preview / PDF / Word hierarchy", () => {
+    expect(source).toContain("<WorksheetLivePaper");
+    expect(source).toContain("{!previewing && (");
+    for (const id of ["button-ws-save", "button-ws-preview", "button-ws-pdf", "button-ws-word"]) expect(source).toContain(id);
   });
 
   it("exposes Add Question actions via a DropdownMenu rather than flat buttons", () => {

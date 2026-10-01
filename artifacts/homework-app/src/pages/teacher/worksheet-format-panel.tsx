@@ -35,6 +35,8 @@ interface Props {
   /** Creator only: shows the "saved for future sheets" note. */
   showProfileNote?: boolean;
   readOnly?: boolean;
+  /** Optional grade suggestions for the grade field. */
+  gradeSuggestions?: string[];
 }
 
 const inputCls = "w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
@@ -68,9 +70,9 @@ function Check({ label, value, onChange, testId }: { label: string; value: boole
  * Used by the creator, the creator preview overlay and the saved print route.
  */
 export function WorksheetFormatPanel({
-  ar, settings, onSettingsChange, meta, onMetaChange, onClearProfile, showProfileNote, readOnly,
+  ar, settings, onSettingsChange, meta, onMetaChange, onClearProfile, showProfileNote, readOnly, gradeSuggestions,
 }: Props) {
-  const [tab, setTab] = useState<"info" | "header" | "design">("info");
+  const [tab, setTab] = useState<"info" | "header" | "design" | null>(null);
   const set = (patch: Partial<Settings>) => onSettingsChange(s => ({ ...s, ...patch }));
   const fields = settings.customFields ?? [];
   const hasProfile = !!(settings.schoolName || settings.section || settings.teacherName || settings.logoUrl || fields.length);
@@ -83,15 +85,16 @@ export function WorksheetFormatPanel({
 
   return (
     <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0" data-testid="panel-worksheet-format">
-      <div role="tablist" className="flex gap-1 p-1 bg-muted/50 rounded-lg mb-4 w-full sm:w-auto sm:inline-flex">
+      <div role="tablist" className={`flex gap-1 p-1 bg-muted/50 rounded-lg w-full sm:w-auto sm:inline-flex ${tab ? "mb-3" : ""}`}>
         {tabs.map(t => (
           <button
             key={t.id}
             role="tab"
             type="button"
             aria-selected={tab === t.id}
+            aria-expanded={tab === t.id}
             data-testid={`tab-format-${t.id}`}
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(cur => (cur === t.id ? null : t.id))}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold ${tab === t.id ? "bg-background shadow-sm text-primary" : "text-muted-foreground"}`}
           >
             {t.icon}{t.label}
@@ -108,8 +111,9 @@ export function WorksheetFormatPanel({
             <input data-testid="input-ws-subject" value={meta.subject} maxLength={100} onChange={e => onMetaChange({ subject: e.target.value })} className={inputCls} />
           </Lbl>
           <Lbl label={ar ? "الصف" : "Grade"}>
-            <input data-testid="input-ws-grade" value={meta.gradeLevel} maxLength={100} onChange={e => onMetaChange({ gradeLevel: e.target.value })} className={inputCls} />
+            <input data-testid="input-ws-grade" list={gradeSuggestions?.length ? "ws-grade-suggestions" : undefined} value={meta.gradeLevel} maxLength={100} onChange={e => onMetaChange({ gradeLevel: e.target.value })} className={inputCls} />
           </Lbl>
+          {gradeSuggestions?.length ? <datalist id="ws-grade-suggestions">{gradeSuggestions.map(g => <option key={g} value={g} />)}</datalist> : null}
         </div>
       )}
 

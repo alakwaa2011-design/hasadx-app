@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { useSmartBack } from "@/lib/nav-history";
 import { toast } from "@/components/ui/sonner";
-import { downloadAsWord, printToPdf } from "@/lib/print-export";
+import { downloadAsWord, printToPdf, pdfExportErrorMessage } from "@/lib/print-export";
 import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksheet-word-visual";
 import { useWorksheetPreview } from "@/lib/use-worksheet-preview";
 import { worksheetLogoUrl } from "@/lib/worksheet-logo";
@@ -239,8 +239,14 @@ export function WorksheetPrintView({
   flushRef,
   onRequestSave,
   onRequestDiscard,
+  onRequestEdit,
+  initialEditQuestionId,
 }: {
   data: WorksheetData;
+  /** Read-only embeddings: shows a per-question edit pencil that hands editing to the owner (e.g. the full editor). */
+  onRequestEdit?: (questionId: string) => void;
+  /** Opens directly in edit mode with this question selected. */
+  initialEditQuestionId?: string | null;
   /** When set, internal Save buttons persist through the owner instead of just committing a draft. */
   onRequestSave?: () => void;
   /** When set, internal Discard restores the owner's saved baseline. */
@@ -301,7 +307,25 @@ export function WorksheetPrintView({
     () => data.settings.questionStyles ?? [],
   );
   const localQuestionStylesRef = useRef<QuestionStyle[]>(data.settings.questionStyles ?? []);
-  const [selectedField, setSelectedField] = useState<SelectedField | null>(null);
+  const [selectedField, setSelectedField] = useState<SelectedField | null>(
+    initialEditQuestionId && onLayoutChange ? { questionId: initialEditQuestionId, key: "prompt" } : null,
+  );
+  const [hintSeen, setHintSeen] = useState(() => {
+    try { return localStorage.getItem("hasad:ws:edit-hint-seen") === "1"; } catch { return true; }
+  });
+  const dismissHint = useCallback(() => {
+    setHintSeen(true);
+    try { localStorage.setItem("hasad:ws:edit-hint-seen", "1"); } catch { /* ignore */ }
+  }, []);
+  const startEditingQuestion = useCallback((questionId: string) => {
+    if (onLayoutChange) {
+      setEditMode(true);
+      setSelectedField({ questionId, key: "prompt" });
+      dismissHint();
+    } else {
+      onRequestEdit?.(questionId);
+    }
+  }, [onLayoutChange, onRequestEdit, dismissHint]);
 
   // IDs of questions that are the first in a consecutive run of the same type.
   // These get a one-time section instruction printed above them.
@@ -316,7 +340,7 @@ export function WorksheetPrintView({
   const [showPanel, setShowPanel] = useState(false);
   const [layoutDirty, setLayoutDirty] = useState(false);
   // ── Inline text-editing state ──────────────────────────────────────────
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(!!initialEditQuestionId && !!onLayoutChange);
   const [dragQId, setDragQId] = useState<string | null>(null);
   const [dragOverPage, setDragOverPage] = useState<number | null>(null);
 
@@ -482,10 +506,26 @@ export function WorksheetPrintView({
   const previewRef = useWorksheetPreview();
   const lastKeyRef = useRef("");
 
+  // Font readiness: a late-loading body/heading font changes text metrics, so
+  // bump an epoch that invalidates the measurement key and re-runs the
+  // rendered-overflow guards once fonts settle (pagination algorithm unchanged).
+  const [fontEpoch, setFontEpoch] = useState(0);
+  const fontSignature = `${fontFamily}|${headingFont}`;
+  useEffect(() => {
+    const fonts = typeof document !== "undefined" ? document.fonts : undefined;
+    if (!fonts) return;
+    let alive = true;
+    const bump = () => { if (alive) setFontEpoch(n => n + 1); };
+    void fonts.ready.then(bump).catch(() => undefined);
+    fonts.addEventListener?.("loadingdone", bump);
+    return () => { alive = false; fonts.removeEventListener?.("loadingdone", bump); };
+  }, [fontSignature]);
+
   // After each render, measure actual heights and re-paginate
   useLayoutEffect(() => {
     const key = [
       JSON.stringify(localQs),
+      data.title, data.subject ?? "", data.gradeLevel ?? "",
       cols, fontSizePt,
       data.settings.schoolName ?? "", data.settings.section ?? "",
       data.settings.teacherName ?? "", logoUrl ? "logo" : "",
@@ -493,9 +533,13 @@ export function WorksheetPrintView({
       data.settings.includeDate ? "d" : "",
       data.settings.includeClass ? "c" : "",
       data.settings.instructions ?? "",
+      data.settings.headerNote ?? "", data.settings.footerNote ?? "",
+      data.settings.goodLuck ?? "", JSON.stringify(customFields),
+      data.settings.learningObjective ?? "", data.settings.activityDuration ?? "",
       themeId ?? "",
       [...localBreaks].sort().join(","),
       JSON.stringify(localQuestionStyles),
+      fontSignature, fontEpoch,
     ].join("|");
     if (key === lastKeyRef.current) return;
     const root = measureRef.current;
@@ -666,7 +710,13 @@ export function WorksheetPrintView({
     const a4HeightPx = (297 / 25.4) * 96;
     // offsetHeight is the unscaled layout height, including on a fitted phone preview.
     const overflowIndex = pageEls.findIndex((page) => page.offsetHeight > a4HeightPx + 2);
-    if (overflowIndex < 0 || (pages[overflowIndex]?.length ?? 0) <= 1) return;
+    if (overflowIndex < 0) return;
+    // A complete identity header and one large question may each fit A4,
+    // but not together. Keep the header as a real first page instead of
+    // letting the browser create an uncounted physical page. Never keep
+    // moving an oversized continuation singleton: that would loop forever.
+    const firstPageSingleton = overflowIndex === 0 && pages[0]?.length === 1;
+    if ((pages[overflowIndex]?.length ?? 0) <= 1 && !firstPageSingleton) return;
 
     setPages(prev => {
       const next = prev.map(page => [...page]);
@@ -676,7 +726,7 @@ export function WorksheetPrintView({
       else next.push([moved]);
       return next;
     });
-  }, [pages]);
+  }, [pages, fontEpoch, fontSignature]);
 
   // Answer keys need the same rendered-height protection as worksheet pages:
   // a long answer or a late-loading font must never make Chromium create an
@@ -706,7 +756,7 @@ export function WorksheetPrintView({
       else next.push([moved]);
       return next;
     });
-  }, [answerPages, data.settings.includeAnswerKey]);
+  }, [answerPages, data.settings.includeAnswerKey, fontEpoch, fontSignature]);
 
   // ── Classic (default) header — used when no theme is active ──
   const classicHeader = (
@@ -715,7 +765,10 @@ export function WorksheetPrintView({
           Both side columns are fixed width so the title stays truly centered
           and the logo faces the identity text at exactly the same height.
           dir is forced so the flex order is right→center→left in Arabic. */}
-      <div className="ws-headrow" dir={ar ? "rtl" : "ltr"}>
+      <div
+        className={`ws-headrow${!logoUrl && !data.settings.schoolName && !data.settings.section && !data.settings.teacherName && customFields.length === 0 ? " ws-headrow-title-only" : ""}`}
+        dir={ar ? "rtl" : "ltr"}
+      >
         {/* START side (right in Arabic): teacher-written identity info */}
         <div className="ws-headstart">
           {data.settings.schoolName && (
@@ -820,6 +873,7 @@ export function WorksheetPrintView({
   return (
     <>
       <PrintStyles fontFamily={fontFamily} headingFont={headingFont} fontSizePt={fontSizePt} lang={data.language} themeColor={themeColor} />
+      <EditorChromeStyles TC={themeColor} />
       {/* Theme-specific CSS overrides injected after the base styles */}
       {theme && (
         <ThemeStyles
@@ -896,69 +950,40 @@ export function WorksheetPrintView({
         ))}
       </div>
 
-      {/* ── Edit mode floating bar (no-print) ──────────────────── */}
+      {/* ── Edit strip: one in-flow control row (no floating pill) ── */}
       {onLayoutChange && (
         <div
-          className="no-print ws-edit-tools"
-          style={{
-            position: "fixed",
-            bottom: 16,
-            [ar ? "left" : "right"]: 16,
-            zIndex: 40,
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            background: editMode ? BRAND_GOLD : "white",
-            border: `2px solid ${editMode ? BRAND_GOLD : BRAND_PRIMARY}`,
-            borderRadius: 999,
-            padding: "7px 14px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-            fontFamily: "inherit",
-            fontWeight: 700,
-            fontSize: 13,
-            color: editMode ? "white" : BRAND_PRIMARY,
-            cursor: "pointer",
-            transition: "all 0.18s",
-          }}
+          className="no-print ws-edit-strip"
+          dir={dir}
           role="group"
           aria-label={ar ? "أدوات التعديل" : "Edit tools"}
+          data-testid="strip-worksheet-edit"
         >
-          {editMode && layoutDirty && (
-            <button
-              onClick={saveLayout}
-              style={{
-                background: "white",
-                color: BRAND_PRIMARY,
-                border: "none",
-                borderRadius: 999,
-                padding: "3px 12px",
-                fontWeight: 800,
-                fontSize: 12,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <CheckCheck style={{ width: 14, height: 14 }} />
-              {ar ? "حفظ" : "Save"}
-            </button>
-          )}
+          <button
+            type="button"
+            className={`ws-strip-btn ${editMode ? "is-primary" : ""}`}
+            data-testid="button-toggle-edit-mode"
+            aria-pressed={editMode}
+            onClick={() => {
+              setEditMode(v => {
+                if (v) setSelectedField(null);
+                return !v;
+              });
+              dismissHint();
+            }}
+          >
+            <PenLine style={{ width: 14, height: 14 }} />
+            {editMode
+              ? (ar ? "إنهاء التعديل" : "Done editing")
+              : (ar ? "تحرير الورقة" : "Edit worksheet")}
+          </button>
           {editMode && layoutDirty && (
             <button
               type="button"
+              className="ws-strip-btn"
               onClick={discardLayoutChanges}
+              data-testid="button-strip-discard"
               title={ar ? "إلغاء تعديلات هذه الجلسة والعودة إلى آخر نسخة محفوظة" : "Discard this session's changes"}
-              style={{
-                background: "transparent",
-                color: "white",
-                border: "1px solid rgba(255,255,255,0.75)",
-                borderRadius: 999,
-                padding: "3px 10px",
-                fontWeight: 800,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
             >
               {ar ? "تجاهل التعديلات" : "Discard"}
             </button>
@@ -966,40 +991,26 @@ export function WorksheetPrintView({
           {editMode && localBreaks.size > 0 && (
             <button
               type="button"
+              className="ws-strip-btn"
+              data-testid="button-auto-layout"
               onClick={() => {
                 setLocalBreaks(new Set());
                 setLayoutDirty(true);
                 notifyDraft();
               }}
               title={ar ? "إزالة فواصل الصفحات اليدوية وإعادة توزيع الأسئلة" : "Remove manual page breaks and repaginate"}
-              style={{
-                background: "white",
-                color: BRAND_PRIMARY,
-                border: "none",
-                borderRadius: 999,
-                padding: "3px 12px",
-                fontWeight: 800,
-                fontSize: 12,
-                cursor: "pointer",
-              }}
             >
               {ar ? "توزيع تلقائي" : "Auto layout"}
             </button>
           )}
-          <button
-            onClick={() => {
-              setEditMode(v => {
-                if (v) setSelectedField(null);
-                return !v;
-              });
-            }}
-            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "inherit", fontWeight: 700, fontSize: 13, padding: 0 }}
-          >
-            <PenLine style={{ width: 15, height: 15 }} />
-            {editMode
-              ? (ar ? "إنهاء التعديل" : "Done editing")
-              : (ar ? "تحرير الورقة" : "Edit worksheet")}
-          </button>
+          {!hintSeen && !editMode && (
+            <span className="ws-edit-hint" role="note" data-testid="hint-edit-first-use">
+              {ar ? "انقر على أي نص في الورقة لتعديله مباشرة، أو على القلم بجانب السؤال." : "Click any text on the paper to edit it, or use the pencil beside a question."}
+              <button type="button" onClick={dismissHint} aria-label={ar ? "إخفاء التلميح" : "Dismiss hint"} data-testid="button-dismiss-edit-hint">
+                {ar ? "فهمت" : "Got it"}
+              </button>
+            </span>
+          )}
         </div>
       )}
 
@@ -1084,6 +1095,7 @@ export function WorksheetPrintView({
                         questionStyle={localQuestionStyles.find(style => style.questionId === q.id)}
                         onSelectField={key => setSelectedField({ questionId: q.id, key })}
                         selected={selectedField?.questionId === q.id}
+                        onStartEdit={onLayoutChange || onRequestEdit ? () => startEditingQuestion(q.id) : undefined}
                         onSelectQuestion={() => setSelectedField({ questionId: q.id, key: "prompt" })}
                         onMatchingWidthChange={matchingLeftWidth => {
                           updateQuestionStyle(q.id, current => ({ ...current, matchingLeftWidth }));
@@ -1188,6 +1200,8 @@ export default function WorksheetPrint() {
   const [wordProgress, setWordProgress] = useState("");
   const wordExportInFlight = useRef(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [saveError, setSaveError] = useState("");
@@ -1256,6 +1270,19 @@ export default function WorksheetPrint() {
     if (!cur || !snap) return cur;
     return { ...cur, questions: snap.questions, settings: { ...cur.settings, pageBreaks: snap.pageBreaks, questionStyles: snap.questionStyles } };
   }, [applySnapshot]);
+  const runSavedPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    setPdfError(null);
+    try {
+      flushLatest();
+      await printToPdf(dataRef.current?.title ?? "");
+    } catch (error) {
+      setPdfError(pdfExportErrorMessage(error, uiLang === "ar"));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const save = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) return false;
@@ -1443,7 +1470,7 @@ export default function WorksheetPrint() {
                 onClick={() => void save()}
                 disabled={saving || !dirty}
                 className="px-3 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm disabled:opacity-50"
-                style={{ background: dirty ? BRAND_GOLD : "#2f684d" }}
+                style={{ background: dirty ? BRAND_PRIMARY : "#2f684d" }}
                 data-testid="btn-save-worksheet"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -1457,7 +1484,7 @@ export default function WorksheetPrint() {
                 disabled={wordExport !== null}
                 aria-busy={wordExport !== null}
                 className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5 disabled:opacity-60"
-                style={{ borderColor: `${BRAND_GOLD}88`, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
+                style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
                 title={uiLang === "ar" ? "اختر نسخة Word" : "Choose a Word version"}
                 data-testid="btn-word-export"
               >
@@ -1479,25 +1506,37 @@ export default function WorksheetPrint() {
             </DropdownMenuContent>
           </DropdownMenu>
           <button
-            onClick={() => { flushLatest(); printToPdf(data.title); }}
-            className="px-4 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
-            style={{ background: BRAND_PRIMARY }}
+            onClick={() => void runSavedPdf()}
+            disabled={pdfBusy}
+            aria-busy={pdfBusy}
+            className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
+            style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+            data-testid="btn-pdf-export"
             title={uiLang === "ar" ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
           >
-            <Download className="w-3.5 h-3.5" />
-            {uiLang === "ar" ? "حفظ PDF" : "Save PDF"}
+            {pdfBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            {pdfBusy ? (uiLang === "ar" ? "جار تجهيز PDF" : "Preparing PDF") : (uiLang === "ar" ? "حفظ PDF" : "Save PDF")}
           </button>
         </div>
       </div>
+
+      {pdfError && (
+        <div role="alert" dir={dir} className="no-print mx-4 mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-800" data-testid="alert-pdf-error">
+          <span className="flex-1">{pdfError}</span>
+          <button onClick={() => void runSavedPdf()} disabled={pdfBusy} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="btn-retry-pdf">{uiLang === "ar" ? "إعادة المحاولة" : "Retry"}</button>
+        </div>
+      )}
 
       {isOwner && (panelOpen || saveError || dirty) && (
         <div dir={dir} className="no-print border-b bg-white px-4 py-3" data-testid="region-live-edit">
           {(saveError || dirty) && (
             <div role={saveError ? "alert" : "status"} className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${saveError ? "border-red-300 bg-red-50 text-red-800" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
               <span className="flex-1">{saveError || (uiLang === "ar" ? "لديك تعديلات غير محفوظة. الطباعة والتصدير يستخدمان آخر تعديلاتك." : "You have unsaved edits. Print and export use your latest edits.")}</span>
-              <button onClick={() => void save()} disabled={saving} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="btn-retry-save">
-                {saveError ? (uiLang === "ar" ? "إعادة المحاولة" : "Retry") : (uiLang === "ar" ? "حفظ" : "Save")}
-              </button>
+              {saveError && (
+                <button onClick={() => void save()} disabled={saving} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="btn-retry-save">
+                  {uiLang === "ar" ? "إعادة المحاولة" : "Retry"}
+                </button>
+              )}
             </div>
           )}
           {panelOpen && (
@@ -1958,6 +1997,27 @@ export function QuestionFormattingToolbar({
   onResetField: () => void;
   onResetQuestion: () => void;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [anchor, setAnchor] = useState<CSSProperties | undefined>(undefined);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const target = document.querySelector<HTMLElement>("[data-question-selected]");
+      const bar = toolbarRef.current;
+      if (!target || !bar || window.innerWidth < 768) { setAnchor(undefined); return; }
+      const rect = target.getBoundingClientRect();
+      const barW = Math.min(620, window.innerWidth - 24);
+      const barH = bar.offsetHeight || 48;
+      const left = Math.min(Math.max(12, rect.left + rect.width / 2 - barW / 2), window.innerWidth - barW - 12);
+      const below = rect.bottom + 8;
+      const top = below + barH <= window.innerHeight - 8 ? below : Math.max(8, Math.min(rect.top - barH - 8, window.innerHeight - barH - 8));
+      setAnchor({ position: "fixed", top, left, bottom: "auto", transform: "none", width: barW });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => { window.removeEventListener("scroll", place, true); window.removeEventListener("resize", place); };
+  }, [questionNumber, detailsOpen]);
   const fontSize = fieldStyle?.fontSizePt ?? 12;
   const alignments: Array<{ value: FieldAlign; Icon: typeof AlignLeft }> = [
     { value: "start", Icon: ar ? AlignRight : AlignLeft },
@@ -1986,6 +2046,8 @@ export function QuestionFormattingToolbar({
   };
   return (
     <div
+      ref={toolbarRef}
+      style={anchor}
       className="no-print ws-format-toolbar"
       dir={ar ? "rtl" : "ltr"}
       role="toolbar"
@@ -1996,6 +2058,15 @@ export function QuestionFormattingToolbar({
       <div className="ws-format-selection" aria-live="polite">
         {ar ? `تعديل السؤال ${questionNumber}` : `Editing question ${questionNumber}`}
       </div>
+      <button
+        type="button"
+        className={`ws-format-details-toggle${detailsOpen ? " is-active" : ""}`}
+        aria-expanded={detailsOpen}
+        onClick={() => setDetailsOpen(o => !o)}
+        data-testid="button-toggle-question-details"
+      >
+        {ar ? "تفاصيل السؤال" : "Question details"}
+      </button>
       <div className="ws-format-group">
         <span className="ws-format-label">{ar ? "النص" : "Text"}</span>
         <button type="button" onClick={() => onFieldChange({ fontSizePt: Math.max(8, fontSize - 1) })} aria-label={ar ? "تصغير الخط" : "Decrease font size"} data-testid="button-decrease-font-size">
@@ -2017,7 +2088,8 @@ export function QuestionFormattingToolbar({
           <RotateCcw />
         </button>
       </div>
-      <div className="ws-format-group">
+      {detailsOpen && (
+      <div className="ws-format-group ws-format-details">
         <span className="ws-format-label">{ar ? "السؤال" : "Question"}</span>
         <label className="ws-format-type">
           <span>{ar ? "نوعه" : "Type"}</span>
@@ -2215,6 +2287,7 @@ export function QuestionFormattingToolbar({
           <RotateCcw />
         </button>
       </div>
+      )}
     </div>
   );
 }
@@ -2278,7 +2351,7 @@ function EditSpan({
 }
 
 function QuestionView({
-  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onSelectQuestion, onMatchingWidthChange, onQuestionStyleChange,
+  index, q, ar, labels, editMode, onEdit, showTypeHeader, questionStyle, onSelectField, selected, onStartEdit, onSelectQuestion, onMatchingWidthChange, onQuestionStyleChange,
 }: {
   index: string;
   q: Question;
@@ -2290,6 +2363,7 @@ function QuestionView({
   questionStyle?: QuestionStyle;
   onSelectField?: (key: string) => void;
   selected?: boolean;
+  onStartEdit?: () => void;
   onSelectQuestion?: () => void;
   onMatchingWidthChange?: (leftWidth: number) => void;
   onQuestionStyleChange?: (patch: Partial<Omit<QuestionStyle, "questionId" | "fields">>) => void;
@@ -2313,11 +2387,31 @@ function QuestionView({
     <div
       className={`ws-question-block ws-q-spacing-${questionStyle?.spacing ?? "normal"}${em ? " ws-q-editable" : ""}${selected ? " ws-q-selected" : ""}`}
       onClick={event => {
-        if (!em || (event.target as HTMLElement).closest(".ws-editable")) return;
+        const target = event.target as HTMLElement;
+        if (!em) {
+          // Direct entry: tapping the question or its text starts editing it.
+          if (!onStartEdit || target.closest("button, a, input, select, textarea, [contenteditable='true']")) return;
+          const selection = typeof window !== "undefined" ? window.getSelection() : null;
+          if (selection && !selection.isCollapsed) return;
+          onStartEdit();
+          return;
+        }
+        if (target.closest(".ws-editable")) return;
         onSelectQuestion?.();
       }}
       data-question-selected={selected || undefined}
     >
+      {onStartEdit && !em && (
+        <button
+          type="button"
+          className="no-print ws-q-pencil"
+          onClick={event => { event.stopPropagation(); onStartEdit(); }}
+          aria-label={ar ? `تعديل السؤال ${index}` : `Edit question ${index}`}
+          data-testid={`button-edit-question-${index}`}
+        >
+          <PenLine />
+        </button>
+      )}
       {showTypeHeader && (
         <div className="ws-section-instr">{sectionInstruction(q.type, ar, questionStyle)}</div>
       )}
@@ -2739,6 +2833,30 @@ export function matchingColumnFractions(pairs: Array<{ left: string; right: stri
   return { left, right: Math.round((1 - left) * 100) / 100 };
 }
 
+/** Screen-only editor chrome (strip, pencil, lighter selection, compact tools). Never affects print. */
+function EditorChromeStyles({ TC }: { TC: string }) {
+  return <style>{`
+    @media screen {
+      .ws-edit-strip { position: sticky; top: 52px; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; padding: 6px 12px; background: #fbfaf5; border-bottom: 1px solid ${TC}22; }
+      .ws-strip-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 10px; border: 1px solid ${TC}44; background: #fff; color: ${TC}; font-size: 12px; font-weight: 800; cursor: pointer; }
+      .ws-strip-btn:hover { background: ${TC}0f; }
+      .ws-strip-btn.is-primary { background: ${TC}; color: #fff; border-color: ${TC}; }
+      .ws-edit-hint { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #4b5a53; }
+      .ws-edit-hint button { border: 0; background: transparent; color: ${TC}; font-weight: 800; text-decoration: underline; cursor: pointer; }
+      .ws-question-block { position: relative; }
+      .ws-q-pencil { position: absolute; top: 2px; inset-inline-end: -4px; z-index: 5; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 999px; border: 1px solid ${TC}44; background: #fff; color: ${TC}; cursor: pointer; opacity: 0; transition: opacity 120ms ease; }
+      .ws-q-pencil svg { width: 14px; height: 14px; }
+      .ws-question-block:hover .ws-q-pencil, .ws-q-pencil:focus-visible { opacity: 1; }
+      .ws-q-pencil { width: calc(28px * var(--ws-inv-scale, 1) * var(--ws-fit-inv-scale, 1)); height: calc(28px * var(--ws-inv-scale, 1) * var(--ws-fit-inv-scale, 1)); }
+      @media (hover: none) { .ws-q-pencil { opacity: 1; width: calc(44px * var(--ws-inv-scale, 1) * var(--ws-fit-inv-scale, 1)); height: calc(44px * var(--ws-inv-scale, 1) * var(--ws-fit-inv-scale, 1)); top: -4px; } .ws-q-pencil svg { width: calc(20px * var(--ws-inv-scale, 1) * var(--ws-fit-inv-scale, 1)); height: calc(20px * var(--ws-inv-scale, 1) * var(--ws-fit-inv-scale, 1)); } }
+      .ws-q-selected { outline: 1px solid ${TC}77 !important; outline-offset: 3px; background: ${TC}07 !important; }
+      .ws-format-toolbar { padding: 6px 8px !important; border-width: 1px !important; gap: 5px 8px !important; box-shadow: 0 6px 20px rgba(20,40,32,0.2) !important; }
+      .ws-format-details-toggle { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid ${TC}44; background: #fff; color: ${TC}; font-size: 11px; font-weight: 800; cursor: pointer; }
+      .ws-format-details-toggle.is-active { background: ${TC}14; }
+    }
+  `}</style>;
+}
+
 function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: { fontFamily: string; headingFont: string; fontSizePt: number; lang: "ar" | "en"; themeColor: string }) {
   const isAr = lang === "ar";
   const startSide = isAr ? "right" : "left";
@@ -2883,6 +3001,14 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         display: flex;
         align-items: flex-start;
         justify-content: center;
+      }
+      .ws-headrow-title-only .ws-headstart,
+      .ws-headrow-title-only .ws-headend {
+        display: none;
+      }
+      .ws-headrow-title-only .ws-headcenter {
+        flex: 1;
+        min-width: 0;
       }
       .ws-headcenter {
         display: flex; flex-direction: column; align-items: center;
@@ -3774,6 +3900,9 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         .ws-content {
           box-sizing: border-box !important;
           min-height: calc(297mm - var(--ws-frame, 0px) - 10px) !important;
+          /* Keep the unscaled A4 box inside its page when a long header and
+             near-full-page question leave only a pixel-scale safety margin. */
+          padding-bottom: calc(16mm - 4px) !important;
         }
         /* Core base elements */
         .ws-watermark, .ws-watermark-word,

@@ -36,7 +36,7 @@ describe("worksheet preview fitting", () => {
     });
     function Preview() {
       const ref = useWorksheetPreview();
-      return <div ref={ref} style={{ padding: "0 8px" }}><article className="ws-page" /></div>;
+      return <div ref={ref} style={{ padding: "0 8px", ["--ws-inv-scale" as string]: "2" }}><article className="ws-page" /></div>;
     }
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -44,9 +44,13 @@ describe("worksheet preview fitting", () => {
     await act(async () => root.render(<Preview />));
     const host = container.firstElementChild as HTMLElement;
     expect(Number(host.style.getPropertyValue("--ws-preview-scale"))).toBeCloseTo(374 / 794);
+    expect(Number(host.style.getPropertyValue("--ws-fit-inv-scale"))).toBeCloseTo(794 / 374);
+    expect(host.style.getPropertyValue("--ws-inv-scale")).toBe("2");
     width = 844;
     resize?.();
     expect(host.style.getPropertyValue("--ws-preview-scale")).toBe("1");
+    expect(host.style.getPropertyValue("--ws-fit-inv-scale")).toBe("1");
+    expect(host.style.getPropertyValue("--ws-inv-scale")).toBe("2");
     await act(async () => root.unmount());
     expect(disconnect).toHaveBeenCalledOnce();
   });

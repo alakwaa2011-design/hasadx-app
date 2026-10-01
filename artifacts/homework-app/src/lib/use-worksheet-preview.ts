@@ -24,6 +24,9 @@ export function useWorksheetPreview() {
       if (host.style.getPropertyValue("--ws-preview-scale") !== value) {
         host.style.setProperty("--ws-preview-scale", value);
       }
+      // The live creator can also apply an outer transform. Keep this
+      // inverse separate so touch controls compensate for both fit layers.
+      host.style.setProperty("--ws-fit-inv-scale", String(1 / scale));
     };
     fit();
     const observer = typeof ResizeObserver === "function" ? new ResizeObserver(fit) : null;

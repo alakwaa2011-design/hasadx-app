@@ -92,6 +92,10 @@ function setupRoute(
   return { ...view, fetchMock };
 }
 
+function openInfoSection() {
+  if (!screen.queryByTestId("input-ws-title")) fireEvent.click(screen.getByTestId("tab-format-info"));
+}
+
 async function openHeaderPanel() {
   await waitFor(() => expect(screen.getByTestId("btn-toggle-format-panel")).toBeTruthy());
   fireEvent.click(screen.getByRole("button", { name: "Header & format" }));
@@ -144,7 +148,7 @@ describe("saved worksheet unified print editor", () => {
 
     fireEvent.click(screen.getByTestId("tab-format-design"));
     fireEvent.change(screen.getByTestId("select-ws-font"), { target: { value: "georgia" } });
-    fireEvent.click(screen.getByTestId("tab-format-info"));
+    openInfoSection();
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "Fractions — latest" } });
 
     fireEvent.click(screen.getByText("Edit worksheet"));
@@ -209,6 +213,7 @@ describe("saved worksheet unified print editor", () => {
   it("exports the current title and inline draft rather than the loaded worksheet values", async () => {
     const { container } = setupRoute();
     await openHeaderPanel();
+    openInfoSection();
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "Current export title" } });
 
     fireEvent.click(screen.getByText("Edit worksheet"));
@@ -234,7 +239,7 @@ describe("saved worksheet unified print editor", () => {
   });
 
   it.each(["Auto layout", "Question type conversion", "Question-style reset"])(
-    "makes %s a saved draft and routes its floating Save through PUT",
+    "makes %s a saved draft and routes its edit-strip Save through PUT",
     async action => {
       const initial: WorksheetData = action === "Auto layout"
         ? { ...originalWorksheet, settings: { ...originalWorksheet.settings, pageBreaks: ["q1"] } }
@@ -260,6 +265,8 @@ describe("saved worksheet unified print editor", () => {
       } else {
         const prompt = editablePrompt(container);
         fireEvent.focus(prompt);
+        expect(screen.queryByRole("combobox", { name: "Change question type" })).toBeNull();
+        fireEvent.click(screen.getByTestId("button-toggle-question-details"));
         if (action === "Question type conversion") {
           fireEvent.change(screen.getByRole("combobox", { name: "Change question type" }), {
             target: { value: "short_answer" },
@@ -271,9 +278,8 @@ describe("saved worksheet unified print editor", () => {
 
       const parentSave = screen.getByTestId("btn-save-worksheet") as HTMLButtonElement;
       await waitFor(() => expect(parentSave.disabled).toBe(false));
-      const floatingSave = within(container.querySelector(".ws-edit-tools") as HTMLElement)
-        .getByRole("button", { name: "Save", exact: true });
-      fireEvent.click(floatingSave);
+      expect(screen.queryByTestId("button-strip-save")).toBeNull();
+      fireEvent.click(parentSave);
       await waitFor(() => expect(putBody).toBeDefined());
 
       if (action === "Auto layout") expect(putBody?.settings.pageBreaks).toEqual([]);
@@ -285,6 +291,7 @@ describe("saved worksheet unified print editor", () => {
   it("discards floating-editor changes back to the last saved worksheet baseline", async () => {
     const { container } = setupRoute();
     await openHeaderPanel();
+    openInfoSection();
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "Unsaved title" } });
     fireEvent.click(screen.getByText("Edit worksheet"));
     const prompt = editablePrompt(container);
@@ -307,12 +314,14 @@ describe("saved worksheet unified print editor", () => {
     const pendingPut = new Promise<Response>(resolve => { resolvePut = resolve; });
     const { fetchMock } = setupRoute(originalWorksheet, async () => pendingPut);
     await openHeaderPanel();
+    openInfoSection();
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "First draft" } });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     await screen.findByRole("alertdialog");
 
     fireEvent.click(screen.getByTestId("btn-save-leave"));
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(true));
+    openInfoSection();
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "Newer draft" } });
     resolvePut?.(response(originalWorksheet));
 
@@ -326,6 +335,7 @@ describe("saved worksheet unified print editor", () => {
     const pendingPut = new Promise<Response>(resolve => { resolvePut = resolve; });
     const { fetchMock } = setupRoute(originalWorksheet, async () => pendingPut);
     await openHeaderPanel();
+    openInfoSection();
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "Draft to save" } });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     await screen.findByRole("alertdialog");
@@ -340,5 +350,62 @@ describe("saved worksheet unified print editor", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(cancellationAvailable).toBe(true);
     expect(mocks.setLocation).not.toHaveBeenCalled();
+  });
+});
+describe("worksheet editor chrome", () => {
+  it("has no floating edit pill and offers a dismissible first-use hint plus per-question pencil", async () => {
+    localStorage.removeItem("hasad:ws:edit-hint-seen");
+    const { container } = setupRoute();
+    await waitFor(() => expect(screen.getByTestId("btn-toggle-format-panel")).toBeTruthy());
+    expect(container.querySelector(".ws-edit-tools")).toBeNull();
+    expect(screen.getByTestId("hint-edit-first-use")).toBeTruthy();
+    expect(screen.getAllByTestId(/button-edit-question-/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId("button-dismiss-edit-hint"));
+    expect(screen.queryByTestId("hint-edit-first-use")).toBeNull();
+    expect(localStorage.getItem("hasad:ws:edit-hint-seen")).toBe("1");
+    fireEvent.click(screen.getAllByTestId(/button-edit-question-/)[0]);
+    expect(screen.getByTestId("toolbar-question-formatting")).toBeTruthy();
+  });
+
+  it("enters edit mode by tapping a question's text directly, and keeps a single Save", async () => {
+    const { container } = setupRoute();
+    await waitFor(() => expect(screen.getByTestId("btn-toggle-format-panel")).toBeTruthy());
+    const block = container.querySelector<HTMLElement>("#ws-printable-root .ws-q-prompt");
+    if (!block) throw new Error("Expected a question prompt");
+    expect(screen.queryByTestId("toolbar-question-formatting")).toBeNull();
+    fireEvent.click(block);
+    expect(screen.getByTestId("toolbar-question-formatting")).toBeTruthy();
+    expect(screen.queryAllByRole("button", { name: "Save", exact: true })).toHaveLength(0);
+  });
+});
+
+describe("classic header layout", () => {
+  const withSettings = (patch: Record<string, unknown>): WorksheetData => ({
+    ...originalWorksheet,
+    settings: { ...originalWorksheet.settings, schoolName: "", section: "", teacherName: "", ...patch },
+  });
+
+  it("gives a long title the full width when there is no identity, logo or custom field", async () => {
+    const { container } = setupRoute(withSettings({}));
+    await waitFor(() => expect(screen.getByTestId("btn-toggle-format-panel")).toBeTruthy());
+    expect(container.querySelector("#ws-printable-root .ws-headrow-title-only")).not.toBeNull();
+  });
+
+  it("keeps the identity columns when a school name is set", async () => {
+    const { container } = setupRoute(withSettings({ schoolName: "Al Noor School" }));
+    await waitFor(() => expect(screen.getByTestId("btn-toggle-format-panel")).toBeTruthy());
+    expect(container.querySelector("#ws-printable-root .ws-headrow")).not.toBeNull();
+    expect(container.querySelector("#ws-printable-root .ws-headrow-title-only")).toBeNull();
+  });
+
+  it("re-evaluates the header when the title changes through the canonical draft", async () => {
+    const { container } = setupRoute(withSettings({}));
+    await waitFor(() => expect(screen.getByTestId("btn-toggle-format-panel")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("btn-toggle-format-panel"));
+    if (!screen.queryByTestId("input-ws-title")) fireEvent.click(screen.getByTestId("tab-format-info"));
+    const longTitle = "A very long worksheet title about adding and comparing unlike fractions in everyday life";
+    fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: longTitle } });
+    await waitFor(() => expect(container.querySelector("#ws-printable-root")?.textContent).toContain(longTitle));
+    expect(container.querySelector("#ws-printable-root .ws-headrow-title-only")).not.toBeNull();
   });
 });

@@ -14,3 +14,4 @@ description: Index of browser test fixture, runtime, and assertion lessons.
 - [Quran audio routing in E2E](quran-e2e-audio-routing.md)
 - [Quran reader DOM readiness](quran-reader-dom-readiness.md)
 - [Authenticated preview captures](authenticated-preview-captures.md)
+- [Source freeze before persistence checks](browser-source-freeze.md)

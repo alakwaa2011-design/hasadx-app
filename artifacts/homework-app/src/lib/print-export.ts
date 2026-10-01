@@ -1256,49 +1256,378 @@ export async function downloadAsWord(options: WordExportOptions): Promise<void> 
  */
 let printInFlight: Promise<void> | null = null;
 
-async function waitForStablePrintLayout(): Promise<void> {
-  if ("fonts" in document) {
-    await document.fonts.ready.catch(() => undefined);
+const worksheetPagesSelector = "[data-worksheet-page], [data-answer-key-page]";
+const printTargetAttribute = "data-worksheet-print-target";
+const printPathAttribute = "data-worksheet-print-path";
+const printReadinessTimeoutMs = 30_000;
+const a4PrintHeightLimitPx = (297 / 25.4) * 96 + 2;
+
+export type PrintLayoutOverflowCode = "A4_PAGE_OVERFLOW";
+
+export class A4PrintOverflowError extends Error {
+  readonly code: PrintLayoutOverflowCode = "A4_PAGE_OVERFLOW";
+
+  constructor(
+    readonly pageKind: "worksheet" | "answer-key",
+    readonly pageNumber: number,
+    readonly actualHeightPx: number,
+    readonly maximumHeightPx: number,
+  ) {
+    const pageLabel = pageKind === "answer-key" ? "answer-key" : "worksheet";
+    super(
+      `The ${pageLabel} page ${pageNumber} exceeds the printable A4 height `
+      + `(${actualHeightPx}px > ${maximumHeightPx.toFixed(1)}px). `
+      + "Shorten or simplify this page's content before exporting the PDF.",
+    );
+    this.name = "A4PrintOverflowError";
   }
+}
+
+export function pdfExportErrorMessage(error: unknown, ar: boolean): string {
+  if (error instanceof A4PrintOverflowError) {
+    if (!ar) return error.message;
+    const kind = error.pageKind === "answer-key" ? "الإجابات" : "الأسئلة";
+    return `صفحة ${kind} ${error.pageNumber} تتجاوز حجم A4. قلّل حجم الخط أو المسافات أو طول الترويسة ثم أعد التصدير. لم يُحذف أي محتوى من الورقة.`;
+  }
+  return ar
+    ? "تعذّر تجهيز ملف PDF. تحقق من الاتصال ثم أعد المحاولة."
+    : "Could not prepare the PDF. Check your connection and try again.";
+}
+
+function assertA4PrintPagesFit(root: HTMLElement): void {
+  let worksheetPageNumber = 0;
+  let answerPageNumber = 0;
+  const pages = Array.from(root.querySelectorAll<HTMLElement>(worksheetPagesSelector));
+  for (const page of pages) {
+    const isAnswerPage = page.hasAttribute("data-answer-key-page");
+    const pageNumber = isAnswerPage ? ++answerPageNumber : ++worksheetPageNumber;
+    const height = page.offsetHeight;
+    // JSDOM has no layout engine; only enforce this physical-page guard when
+    // Chromium supplied a real, measurable article height.
+    if (height > 0 && height > a4PrintHeightLimitPx) {
+      throw new A4PrintOverflowError(
+        isAnswerPage ? "answer-key" : "worksheet",
+        pageNumber,
+        height,
+        a4PrintHeightLimitPx,
+      );
+    }
+  }
+}
+
+async function waitForStablePrintLayout(
+  root: HTMLElement,
+  requireWorksheetPages = false,
+  waitForImages = true,
+  signal?: AbortSignal,
+  registerImageCleanup?: (cleanup: () => void) => () => void,
+): Promise<void> {
+  const throwIfAborted = () => {
+    if (signal?.aborted) throw new Error("Worksheet PDF export was cancelled before printing.");
+  };
+
+  throwIfAborted();
+  if ("fonts" in document) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      throw new Error("Could not prepare worksheet fonts for PDF export.");
+    }
+  }
+  throwIfAborted();
+
+  const images = waitForImages
+    ? Array.from(root.querySelectorAll<HTMLImageElement>("img"))
+      .filter(image => image.currentSrc || image.src)
+    : [];
+  await Promise.all(images.map(async image => {
+    const previousLoading = image.getAttribute("loading");
+    let loadingRestored = false;
+    const restoreLoading = () => {
+      if (loadingRestored) return;
+      loadingRestored = true;
+      if (previousLoading === null) image.removeAttribute("loading");
+      else image.setAttribute("loading", previousLoading);
+    };
+    const unregisterCleanup = registerImageCleanup?.(restoreLoading);
+    image.loading = "eager";
+    try {
+      throwIfAborted();
+      if (typeof image.decode === "function") {
+        await image.decode();
+      } else if (!image.complete) {
+        await new Promise<void>((resolve, reject) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener("error", () => reject(new Error(
+            `Could not prepare worksheet image${image.alt ? ` "${image.alt}"` : ""} for PDF export.`,
+          )), { once: true });
+        });
+      }
+      if (image.naturalWidth === 0 || image.naturalHeight === 0) {
+        throw new Error(
+          `Could not prepare worksheet image${image.alt ? ` "${image.alt}"` : ""} for PDF export.`,
+        );
+      }
+    } catch {
+      throw new Error(
+        `Could not prepare worksheet image${image.alt ? ` "${image.alt}"` : ""} for PDF export.`,
+      );
+    } finally {
+      restoreLoading();
+      unregisterCleanup?.();
+    }
+  }));
+  throwIfAborted();
 
   const nextFrame = () => new Promise<void>(resolve => {
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
     else window.setTimeout(resolve, 0);
   });
+  const getSignature = () => {
+    const pages = Array.from(root.querySelectorAll<HTMLElement>(worksheetPagesSelector));
+    const bounds = root.getBoundingClientRect();
+    const rootSignature = [bounds.width, bounds.height, root.scrollHeight].join(":");
+    return [rootSignature, ...pages.map(page => {
+      const bounds = page.getBoundingClientRect();
+      return [
+        bounds.width,
+        bounds.height,
+        page.scrollHeight,
+        page.textContent?.length ?? 0,
+      ].join(":");
+    })].join("|");
+  };
+
   let previousSignature: string | null = null;
   let stableFrames = 0;
-  for (let attempt = 0; attempt < 12 && stableFrames < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 120 && stableFrames < 2; attempt += 1) {
     await nextFrame();
-    const pages = Array.from(document.querySelectorAll<HTMLElement>("[data-worksheet-page], [data-answer-key-page]"));
-    const signature = pages
-      .map(page => `${page.getBoundingClientRect().height}:${page.scrollHeight}:${page.textContent?.length ?? 0}`)
-      .join("|");
+    throwIfAborted();
+    const signature = getSignature();
     stableFrames = signature === previousSignature ? stableFrames + 1 : 0;
     previousSignature = signature;
   }
+  if (stableFrames < 2 || (requireWorksheetPages && root.querySelectorAll(worksheetPagesSelector).length === 0)) {
+    throw new Error("Worksheet pages did not finish paginating for PDF export.");
+  }
+}
+
+interface IsolatedWorksheet {
+  cleanup: () => void;
+}
+
+function isolateWorksheetForPrint(root: HTMLElement): IsolatedWorksheet {
+  const originalAttributes: Array<{
+    element: HTMLElement;
+    name: string;
+    value: string | null;
+  }> = [];
+  const markAttribute = (element: HTMLElement, name: string) => {
+    originalAttributes.push({ element, name, value: element.getAttribute(name) });
+    element.setAttribute(name, "");
+  };
+  markAttribute(root, printTargetAttribute);
+  let ancestor = root.parentElement;
+  while (ancestor) {
+    markAttribute(ancestor, printPathAttribute);
+    if (ancestor === document.documentElement) break;
+    ancestor = ancestor.parentElement;
+  }
+
+  const isolationStyles = document.createElement("style");
+  isolationStyles.dataset.worksheetPrintIsolation = "";
+  isolationStyles.textContent = `
+    @media print {
+      html,
+      body {
+        position: static !important;
+        overflow: visible !important;
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+      }
+
+      [${printPathAttribute}] {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        clip: auto !important;
+        clip-path: none !important;
+        transform: none !important;
+        filter: none !important;
+        perspective: none !important;
+        contain: none !important;
+        content-visibility: visible !important;
+        will-change: auto !important;
+      }
+
+      [${printPathAttribute}] > *:not([${printPathAttribute}]):not([${printTargetAttribute}]) {
+        display: none !important;
+      }
+
+      [${printTargetAttribute}] {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        clip: auto !important;
+        clip-path: none !important;
+        transform: none !important;
+        filter: none !important;
+        perspective: none !important;
+        contain: none !important;
+        content-visibility: visible !important;
+        will-change: auto !important;
+      }
+    }
+  `;
+
+  try {
+    document.head.appendChild(isolationStyles);
+  } catch (error) {
+    for (const { element, name, value } of originalAttributes) {
+      if (value === null) element.removeAttribute(name);
+      else element.setAttribute(name, value);
+    }
+    throw error;
+  }
+
+  let restored = false;
+  return {
+    cleanup: () => {
+      if (restored) return;
+      restored = true;
+      isolationStyles.remove();
+      for (const { element, name, value } of originalAttributes) {
+        if (value === null) element.removeAttribute(name);
+        else element.setAttribute(name, value);
+      }
+    },
+  };
 }
 
 export function printToPdf(title?: string): Promise<void> {
   if (printInFlight) return printInFlight;
-  printInFlight = (async () => {
-    await waitForStablePrintLayout();
-  const previousTitle = document.title;
-  if (title?.trim()) document.title = sanitizeFilename(title);
+  const operation = (async () => {
+    const root = document.getElementById("ws-printable-root");
+    const readinessRoot = root
+      ?? document.getElementById("lp-printable-root")
+      ?? document.getElementById("lesson-plan-preview-container")
+      ?? document.body;
 
-  const restoreTitle = () => {
-    document.title = previousTitle;
-    window.removeEventListener("afterprint", restoreTitle);
-  };
+    const previousTitle = document.title;
+    const printIsolation = root ? isolateWorksheetForPrint(root) : null;
+    const imageCleanupCallbacks = new Set<() => void>();
+    const abortController = new AbortController();
+    let cleanedUp = false;
+    let fallbackTimer: number | undefined;
+    let printStarted = false;
+    let resolvePrintFinished: (() => void) | undefined;
+    let rejectReadinessTimeout: ((error: Error) => void) | undefined;
+    let rejectPreviewClosed: ((error: Error) => void) | undefined;
+    let rootDisconnectObserver: MutationObserver | undefined;
+    const printFinished = new Promise<void>(resolve => {
+      resolvePrintFinished = resolve;
+    });
+    const readinessTimeout = new Promise<never>((_, reject) => {
+      rejectReadinessTimeout = reject;
+    });
+    const previewClosed = new Promise<never>((_, reject) => {
+      rejectPreviewClosed = reject;
+    });
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      abortController.abort();
+      rootDisconnectObserver?.disconnect();
+      if (fallbackTimer !== undefined) window.clearTimeout(fallbackTimer);
+      window.removeEventListener("afterprint", finishPrint);
+      for (const restoreImageLoading of imageCleanupCallbacks) restoreImageLoading();
+      imageCleanupCallbacks.clear();
+      printIsolation?.cleanup();
+      document.title = previousTitle;
+    };
+    const finishPrint = () => {
+      if (cleanedUp) return;
+      cleanup();
+      resolvePrintFinished?.();
+    };
 
-  window.addEventListener("afterprint", restoreTitle, { once: true });
-  try {
-    window.print();
-  } finally {
-    // Chromium blocks until the dialog closes; other browsers may not emit
-    // afterprint reliably, so keep a fallback without changing the PDF name.
-    window.setTimeout(restoreTitle, 1000);
-  }
-  })().finally(() => {
+    try {
+      // The deadline starts before font, image, and layout preparation so
+      // readiness failures cannot strand the single-flight export state.
+      fallbackTimer = window.setTimeout(() => {
+        if (printStarted) {
+          finishPrint();
+        } else {
+          cleanup();
+          rejectReadinessTimeout?.(new Error(
+            "Worksheet PDF export preparation timed out before fonts, images, and pages were ready.",
+          ));
+        }
+      }, printReadinessTimeoutMs);
+      if (root) {
+        rootDisconnectObserver = new MutationObserver(() => {
+          if (!printStarted && !root.isConnected) {
+            abortController.abort();
+            rejectPreviewClosed?.(new Error("Worksheet preview closed before PDF export could start."));
+          }
+        });
+        rootDisconnectObserver.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+        });
+      }
+      await Promise.race([
+        waitForStablePrintLayout(
+          readinessRoot,
+          Boolean(root),
+          readinessRoot !== document.body,
+          abortController.signal,
+          restoreImageLoading => {
+            imageCleanupCallbacks.add(restoreImageLoading);
+            return () => imageCleanupCallbacks.delete(restoreImageLoading);
+          },
+        ),
+        readinessTimeout,
+        previewClosed,
+      ]);
+      if (root && !root.isConnected) {
+        throw new Error("Worksheet preview closed before PDF export could start.");
+      }
+      if (root) assertA4PrintPagesFit(root);
+
+      if (title?.trim()) document.title = sanitizeFilename(title);
+      window.addEventListener("afterprint", finishPrint, { once: true });
+      printStarted = true;
+      window.print();
+      await Promise.race([printFinished, readinessTimeout]);
+    } catch (error) {
+      cleanup();
+      throw error;
+    } finally {
+      cleanup();
+    }
+  })();
+  printInFlight = operation.finally(() => {
     printInFlight = null;
   });
   return printInFlight;

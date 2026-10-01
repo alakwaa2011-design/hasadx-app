@@ -362,7 +362,7 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
                 </div>
               )}
 
-              <nav className="hidden md:flex items-center gap-2.5">
+              <nav className="hidden md:flex items-center gap-1 lg:gap-2.5">
                 <button
                   onClick={toggleLang}
                   className={cn(
@@ -533,7 +533,7 @@ export function Layout({ children, noHeader, hideFooter }: LayoutProps) {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex items-center gap-0.5 [&>a]:px-2 lg:[&>a]:px-3">
                     <Link
                       href="/"
                       className={cn(

@@ -1,7 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { Packer } from "docx";
 import JSZip from "jszip";
-import { buildWordDocument, downloadAsWord, printToPdf } from "./print-export";
+import {
+  A4PrintOverflowError,
+  buildWordDocument,
+  downloadAsWord,
+  printToPdf,
+} from "./print-export";
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 function xmlTableAt(xml: string, start: number): string {
   const tags = /<w:tbl>|<\/w:tbl>/g;
@@ -17,36 +26,61 @@ function xmlTableAt(xml: string, start: number): string {
 
 describe("printToPdf", () => {
   afterEach(() => {
+    document.body.replaceChildren();
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
+  function mountPrintableWorksheet() {
+    const container = document.createElement("div");
+    const root = document.createElement("div");
+    container.dataset.previewOverlay = "";
+    root.id = "ws-printable-root";
+    root.innerHTML = '<article data-worksheet-page><p>Worksheet content</p></article>';
+    container.appendChild(root);
+    document.body.appendChild(container);
+    return { container, root };
+  }
+
   it("waits for a stable worksheet layout and uses its title as the PDF filename", async () => {
+    const { container, root } = mountPrintableWorksheet();
     document.title = "منصة حصاد";
     let titleAtPrint = "";
+    let rootIsIsolatedAtPrint = false;
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
       return 1;
     });
     vi.spyOn(window, "print").mockImplementation(() => {
       titleAtPrint = document.title;
+      rootIsIsolatedAtPrint = root.hasAttribute("data-worksheet-print-target")
+        && container.hasAttribute("data-worksheet-print-path")
+        && root.parentElement === container;
+      window.dispatchEvent(new Event("afterprint"));
     });
 
     await printToPdf("ورقة الكسور / الصف الخامس");
 
     expect(titleAtPrint).toBe("ورقة الكسور - الصف الخامس");
-    window.dispatchEvent(new Event("afterprint"));
+    expect(rootIsIsolatedAtPrint).toBe(true);
+    expect(root.parentElement).toBe(container);
+    expect(root.hasAttribute("data-worksheet-print-target")).toBe(false);
+    expect(container.hasAttribute("data-worksheet-print-path")).toBe(false);
+    expect(document.querySelector("[data-worksheet-print-isolation]")).toBeNull();
     expect(document.title).toBe("منصة حصاد");
   });
 
   it("coalesces repeated PDF clicks while the layout is still preparing", async () => {
+    mountPrintableWorksheet();
     let resolveFrame: (() => void) | undefined;
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       resolveFrame = () => callback(0);
       return 1;
     });
-    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    const print = vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
 
     const first = printToPdf("الأولى");
     const second = printToPdf("الثانية");
@@ -56,6 +90,192 @@ describe("printToPdf", () => {
       await Promise.resolve();
     }
     await first;
+    expect(print).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels when React unmounts the preview while fonts are pending and permits retry", async () => {
+    const host = document.createElement("div");
+    host.dataset.previewOverlay = "";
+    document.body.appendChild(host);
+    const reactRoot = createRoot(host);
+    act(() => {
+      reactRoot.render(createElement(
+        "div",
+        { id: "ws-printable-root" },
+        createElement("article", { "data-worksheet-page": "" }, "React worksheet content"),
+      ));
+    });
+    const root = host.querySelector<HTMLElement>("#ws-printable-root")!;
+    const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
+    const previousTitle = document.title;
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { ready: new Promise<FontFaceSet>(() => {}) },
+    });
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    const print = vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
+    let unmounted = false;
+
+    try {
+      const pending = printToPdf("Cancelled before React unmount");
+      const cancelled = expect(pending).rejects.toThrow(/preview closed before PDF export/i);
+      expect(root.hasAttribute("data-worksheet-print-target")).toBe(true);
+      expect(host.hasAttribute("data-worksheet-print-path")).toBe(true);
+
+      act(() => {
+        reactRoot.unmount();
+      });
+      unmounted = true;
+      await cancelled;
+
+      expect(print).not.toHaveBeenCalled();
+      expect(root.isConnected).toBe(false);
+      expect(root.hasAttribute("data-worksheet-print-target")).toBe(false);
+      expect(host.hasAttribute("data-worksheet-print-path")).toBe(false);
+      expect(document.querySelector("[data-worksheet-print-isolation]")).toBeNull();
+      expect(document.title).toBe(previousTitle);
+
+      if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
+      else delete (document as Document & { fonts?: FontFaceSet }).fonts;
+      const { root: retryRoot } = mountPrintableWorksheet();
+      await printToPdf("Retry after React unmount");
+
+      expect(print).toHaveBeenCalledTimes(1);
+      expect(retryRoot.hasAttribute("data-worksheet-print-target")).toBe(false);
+    } finally {
+      if (!unmounted) {
+        act(() => {
+          reactRoot.unmount();
+        });
+      }
+      if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
+      else delete (document as Document & { fonts?: FontFaceSet }).fonts;
+    }
+  });
+
+  it("fails closed on an oversized A4 article, restores isolation, and permits retry", async () => {
+    const { container, root } = mountPrintableWorksheet();
+    const article = root.querySelector<HTMLElement>("[data-worksheet-page]")!;
+    const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
+    const previousTitle = document.title;
+    const a4OverflowThreshold = (297 / 25.4) * 96 + 2;
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { ready: Promise.resolve({} as FontFaceSet) },
+    });
+    Object.defineProperty(article, "offsetHeight", {
+      configurable: true,
+      value: a4OverflowThreshold + 20,
+    });
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    const print = vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
+
+    try {
+      const error = await printToPdf("Retry after A4 overflow").then(
+        () => null,
+        reason => reason,
+      );
+
+      expect(error).toBeInstanceOf(A4PrintOverflowError);
+      expect(error).toMatchObject({
+        code: "A4_PAGE_OVERFLOW",
+        pageKind: "worksheet",
+        pageNumber: 1,
+      });
+      expect((error as A4PrintOverflowError).message).toMatch(/shorten or simplify/i);
+      expect(print).not.toHaveBeenCalled();
+      expect(root.hasAttribute("data-worksheet-print-target")).toBe(false);
+      expect(container.hasAttribute("data-worksheet-print-path")).toBe(false);
+      expect(document.querySelector("[data-worksheet-print-isolation]")).toBeNull();
+      expect(document.title).toBe(previousTitle);
+
+      if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
+      else delete (document as Document & { fonts?: FontFaceSet }).fonts;
+      Object.defineProperty(article, "offsetHeight", { configurable: true, value: 0 });
+
+      await printToPdf("Retry after A4 overflow");
+
+      expect(print).toHaveBeenCalledTimes(1);
+      expect(root.hasAttribute("data-worksheet-print-target")).toBe(false);
+      expect(container.hasAttribute("data-worksheet-print-path")).toBe(false);
+    } finally {
+      if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
+      else delete (document as Document & { fonts?: FontFaceSet }).fonts;
+    }
+  });
+
+  it("times out font readiness, restores isolation, and allows a retry", async () => {
+    const { container, root } = mountPrintableWorksheet();
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { ready: new Promise<FontFaceSet>(() => {}) },
+    });
+    const print = vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
+
+    const first = printToPdf("Retry after font timeout");
+    expect(root.hasAttribute("data-worksheet-print-target")).toBe(true);
+    const timedOut = expect(first).rejects.toThrow(/preparation timed out/i);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await timedOut;
+    expect(root.parentElement).toBe(container);
+    expect(root.hasAttribute("data-worksheet-print-target")).toBe(false);
+    expect(container.hasAttribute("data-worksheet-print-path")).toBe(false);
+
+    Object.defineProperty(document, "fonts", {
+      configurable: true,
+      value: { ready: Promise.resolve({} as FontFaceSet) },
+    });
+    await printToPdf("Retry after font timeout");
+    expect(print).toHaveBeenCalledTimes(1);
+    if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
+    else delete (document as Document & { fonts?: FontFaceSet }).fonts;
+  });
+
+  it("times out a pending image decode, restores loading state, and allows a retry", async () => {
+    const { container, root } = mountPrintableWorksheet();
+    const image = document.createElement("img");
+    image.src = "data:image/png;base64,AA==";
+    image.setAttribute("loading", "lazy");
+    image.decode = () => new Promise<void>(() => {});
+    root.appendChild(image);
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    const print = vi.spyOn(window, "print").mockImplementation(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
+
+    const first = printToPdf("Retry after image timeout");
+    expect(root.hasAttribute("data-worksheet-print-target")).toBe(true);
+    const timedOut = expect(first).rejects.toThrow(/preparation timed out/i);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await timedOut;
+    expect(image.getAttribute("loading")).toBe("lazy");
+    expect(root.hasAttribute("data-worksheet-print-target")).toBe(false);
+    expect(container.hasAttribute("data-worksheet-print-path")).toBe(false);
+
+    image.remove();
+    await printToPdf("Retry after image timeout");
     expect(print).toHaveBeenCalledTimes(1);
   });
 });

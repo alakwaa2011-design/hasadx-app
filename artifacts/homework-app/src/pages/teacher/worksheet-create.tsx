@@ -27,9 +27,10 @@ import { toast } from "@/components/ui/sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { WorksheetLivePaper } from "@/pages/teacher/worksheet-live-paper";
 import { WorksheetFormatPanel } from "@/pages/teacher/worksheet-format-panel";
 import { WorksheetPrintView, type WorksheetData, type LayoutSnapshot } from "@/pages/teacher/worksheet-print";
-import { downloadAsWord, printToPdf } from "@/lib/print-export";
+import { downloadAsWord, printToPdf, pdfExportErrorMessage } from "@/lib/print-export";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
@@ -1420,7 +1421,7 @@ export default function WorksheetCreate() {
     return null;
   };
 
-  const saveWorksheet = async (): Promise<number | null> => {
+  const saveWorksheet = async (override?: { questions: Question[]; settings: Settings }): Promise<number | null> => {
     const err = validateBeforeSave();
     if (err) {
       toast.error(err);
@@ -1431,8 +1432,8 @@ export default function WorksheetCreate() {
       language: contentLang,
       gradeLevel: gradeLevel.trim() || null,
       subject: subject.trim() || null,
-      questions,
-      settings,
+      questions: override?.questions ?? questions,
+      settings: override?.settings ?? settings,
       smartGrading,
     }, false);
   };
@@ -1440,6 +1441,32 @@ export default function WorksheetCreate() {
   const saveAndPreview = async () => {
     const id = await saveWorksheet();
     if (id) setLocation(`/teacher/worksheets/${id}/print`);
+  };
+
+  const [editQuestionId, setEditQuestionId] = useState<string | null>(null);
+  const [exportRequest, setExportRequest] = useState<"pdf" | "word" | null>(null);
+  const livePaperFlushRef = useRef<(() => LayoutSnapshot) | null>(null);
+  const requestPreview = (exp: "pdf" | "word" | null) => {
+    if (!canSave) {
+      toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
+      return;
+    }
+    livePaperFlushRef.current?.();
+    setExportRequest(exp);
+    setPreviewing(true);
+  };
+  const livePaperData: WorksheetData = {
+    id: editingId ?? 0,
+    title: title.trim() || (ar ? "ورقة عمل" : "Worksheet"),
+    language: contentLang,
+    gradeLevel: gradeLevel.trim() || null,
+    subject: subject.trim() || null,
+    questions,
+    settings,
+  };
+  const applyLivePaperSnapshot = (snap: LayoutSnapshot) => {
+    setQuestions(snap.questions as Question[]);
+    setSettings(cur => ({ ...cur, pageBreaks: snap.pageBreaks, questionStyles: snap.questionStyles }));
   };
 
   const loadSaved = async () => {
@@ -1497,10 +1524,11 @@ export default function WorksheetCreate() {
     <Layout>
       <div
         dir={dir}
-        className={cn("max-w-4xl mx-auto px-4 py-8 space-y-6", questions.length > 0 ? "pb-56" : "pb-8")}
+        className={cn("max-w-7xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,46%)] lg:items-start", questions.length > 0 ? "pb-40" : "pb-8")}
         onInput={markEditDirty}
         onChange={markEditDirty}
       >
+      <div className="min-w-0 space-y-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
@@ -1530,77 +1558,6 @@ export default function WorksheetCreate() {
           </button>
         </div>
 
-        <aside className={cn(
-          "hidden xl:block fixed top-24 z-30 w-44 2xl:w-56",
-          ar ? "left-2 2xl:left-8" : "right-2 2xl:right-8",
-        )}>
-          <Card className="overflow-hidden border-border/70 shadow-xl">
-            <div className="flex items-center justify-between border-b bg-card px-3 py-2.5">
-              <span className="flex items-center gap-1.5 text-xs font-black">
-                <Eye className="w-3.5 h-3.5 text-primary" />
-                {ar ? "معاينة حية" : "Live preview"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPreviewing(true)}
-                disabled={questions.length === 0}
-                className="text-[10px] font-bold text-primary disabled:opacity-40"
-              >
-                {ar ? "تكبير" : "Enlarge"}
-              </button>
-            </div>
-            <div className="bg-muted/50 p-3">
-              <div className="mx-auto aspect-[210/297] w-full overflow-hidden rounded-sm border bg-white p-3 text-neutral-800 shadow-sm" dir={contentLang === "ar" ? "rtl" : "ltr"}>
-                <div className="border-b-2 border-primary/40 pb-2 text-center">
-                  <div className="truncate text-[10px] font-black">{title.trim() || (ar ? "عنوان ورقة العمل" : "Worksheet title")}</div>
-                  <div className="mt-0.5 truncate text-[6px] text-neutral-500">{[subject, gradeLevel].filter(Boolean).join(" · ") || (ar ? "المادة · الصف" : "Subject · Grade")}</div>
-                </div>
-                {aiLearningObjective.trim() && (
-                  <div className="mt-2 rounded-sm bg-primary/5 px-1.5 py-1 text-[5.5px] leading-relaxed text-primary">
-                    <strong>{ar ? "الهدف: " : "Objective: "}</strong>{aiLearningObjective.trim()}
-                  </div>
-                )}
-                <div className="mt-2 space-y-2">
-                  {questions.length === 0 ? (
-                    <div className="grid h-28 place-items-center rounded border border-dashed text-center text-[7px] leading-relaxed text-neutral-400">
-                      {ar ? "ستظهر الأسئلة هنا فور إضافتها أو توليدها" : "Questions will appear here as you add or generate them"}
-                    </div>
-                  ) : questions.slice(0, 5).map((question, index) => (
-                    <div key={question.id} className="flex gap-1.5">
-                      <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-primary text-[5px] font-black text-white">{index + 1}</span>
-                      {question.type === "tic_tac_toe" ? (
-                        <div className="grid flex-1 grid-cols-3 gap-0.5">
-                          {question.cells.map((cell, cellIndex) => (
-                            <div key={cellIndex} className="aspect-square overflow-hidden rounded-[1px] border bg-primary/[0.02] p-0.5 text-[3.5px] leading-tight">
-                              {cell.text}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="min-w-0 flex-1">
-                          <div className="line-clamp-2 text-[6px] font-bold leading-relaxed">{question.prompt || (ar ? "نص السؤال" : "Question prompt")}</div>
-                          <div className="mt-1 space-y-0.5">
-                            <div className="h-px bg-neutral-200" />
-                            {(question.type === "short_answer" || question.type === "fill_blank") && <div className="h-px bg-neutral-200" />}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {questions.length > 5 && (
-                  <div className="mt-2 text-center text-[5px] font-bold text-neutral-400">
-                    {ar ? `+ ${questions.length - 5} أسئلة أخرى` : `+ ${questions.length - 5} more questions`}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t bg-card px-3 py-2 text-[10px] font-bold text-muted-foreground">
-              <span>{questions.length} {ar ? "عنصر" : "items"}</span>
-              <span>{totalPoints} {ar ? "درجة" : "pts"}</span>
-            </div>
-          </Card>
-        </aside>
 
         <nav className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-2xl border border-border/60 bg-card p-2 shadow-sm" aria-label={ar ? "مراحل بناء الورقة" : "Worksheet building steps"}>
           {[
@@ -1649,37 +1606,33 @@ export default function WorksheetCreate() {
           ))}
         </nav>
 
-        {/* 1. Worksheet Details Prominent Near Top */}
-        <Card id="worksheet-details" className="scroll-mt-24 p-5 border border-border/60 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Field label={ar ? "عنوان الورقة" : "Worksheet Title"} className="md:col-span-1">
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder={ar ? "مثال: مراجعة عامة" : "e.g., General Review"}
-                className="w-full h-11 px-3 rounded-xl border bg-background font-semibold text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
-              />
-            </Field>
-            <Field label={ar ? "المادة" : "Subject"}>
-              <input
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                placeholder={ar ? "رياضيات، علوم..." : "Math, Science..."}
-                className="w-full h-11 px-3 rounded-xl border bg-background font-medium text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
-              />
-            </Field>
-            <Field label={ar ? "المرحلة الدراسية" : "Grade"}>
-              <input
-                value={gradeLevel}
-                onChange={e => setGradeLevel(e.target.value)}
-                placeholder={ar ? "الصف الخامس..." : "Grade 5..."}
-                list="ws-grade-levels"
-                className="w-full h-11 px-3 rounded-xl border bg-background font-medium text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all shadow-sm"
-              />
-              <datalist id="ws-grade-levels">
-                {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel} />)}
-              </datalist>
-            </Field>
+        {/* 3. Settings Area (Header Info & Design/Format) */}
+        <Card id="worksheet-details" className="scroll-mt-24 border border-border/60 shadow-sm overflow-hidden">
+          <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+              <LayoutTemplate className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-sm text-foreground">{ar ? "الورقة" : "Worksheet"}</h3>
+            <span data-testid="text-ws-title-summary" className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{[title.trim(), subject.trim(), gradeLevel.trim()].filter(Boolean).join(" · ") || (ar ? "افتح بيانات الورقة لإضافة العنوان والمادة والصف" : "Open Details to add the title, subject and grade")}</span>
+          </div>
+          <div className="p-3" dir={dir}>
+            <WorksheetFormatPanel
+              ar={ar}
+              showProfileNote
+              gradeSuggestions={gradeLevels.map(g => g.gradeLevel)}
+              settings={settings}
+              onSettingsChange={setSettings}
+              meta={{ title, subject, gradeLevel }}
+              onMetaChange={patch => {
+                if (patch.title !== undefined) setTitle(patch.title);
+                if (patch.subject !== undefined) setSubject(patch.subject);
+                if (patch.gradeLevel !== undefined) setGradeLevel(patch.gradeLevel);
+              }}
+              onClearProfile={() => {
+                clearTeacherProfile();
+                setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
+              }}
+            />
           </div>
         </Card>
 
@@ -1860,15 +1813,7 @@ export default function WorksheetCreate() {
               )}
             </AnimatePresence>
 
-            <Collapsible defaultOpen>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 mb-2 rounded-lg hover:bg-muted text-sm font-bold text-foreground transition-colors group text-start">
-                <span className="flex items-center gap-2">
-                  <SettingsIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  {ar ? "ضبط المحتوى والتقييم" : "Content & Assessment Setup"}
-                </span>
-                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 mt-2">
+            <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                    <Field label={ar ? "لغة المحتوى" : "Language"}>
                       <SegmentedControl
@@ -1902,6 +1847,45 @@ export default function WorksheetCreate() {
                    </Field>
                 </div>
 
+                {/* Counts row - compact */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
+                  <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
+                  </div>
+                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
+                    <CompactStepper
+                      key={k}
+                      label={typeLabel(k, ar)}
+                      value={aiCounts[k]}
+                      max={["matching", "word_bank", "compare"].includes(k) ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                      onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
+                    />
+                  ))}
+                  <Collapsible className="w-full">
+                    <CollapsibleTrigger className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-[11px] font-bold text-primary hover:bg-primary/5">
+                      <Plus className="w-3.5 h-3.5" />
+                      {ar ? "أنواع إضافية" : "More question types"}
+                      <ChevronDown className="w-3.5 h-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/50 bg-background/70 p-3">
+                      {(["worked_problem", "extended_response", "error_correction", "word_bank", "compare"] as const).map(k => (
+                        <CompactStepper
+                          key={k}
+                          label={typeLabel(k, ar)}
+                          value={aiCounts[k]}
+                          max={["word_bank", "compare"].includes(k) ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
+                          onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
+                        />
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+                <Collapsible>
+                  <CollapsibleTrigger data-testid="button-generator-advanced" className="group flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-start text-sm font-bold text-foreground hover:bg-muted">
+                    <span className="flex items-center gap-2"><SettingsIcon className="w-4 h-4 text-muted-foreground" />{ar ? "إعدادات متقدمة" : "Advanced settings"}</span>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 mt-3">
                 {/* Learning Objective & Cognitive Skill */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Field label={ar ? "الهدف التعليمي (اختياري)" : "Learning Objective (Optional)"}>
@@ -1947,41 +1931,9 @@ export default function WorksheetCreate() {
                   </Field>
                 </div>
 
-                {/* Counts row - compact */}
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
-                  <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
-                    <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
-                  </div>
-                  {(["mcq", "true_false", "short_answer", "fill_blank", "matching"] as const).map(k => (
-                    <CompactStepper
-                      key={k}
-                      label={typeLabel(k, ar)}
-                      value={aiCounts[k]}
-                      max={["matching", "word_bank", "compare"].includes(k) ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
-                      onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
-                    />
-                  ))}
-                  <Collapsible className="w-full">
-                    <CollapsibleTrigger className="mt-1 inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-[11px] font-bold text-primary hover:bg-primary/5">
-                      <Plus className="w-3.5 h-3.5" />
-                      {ar ? "أنواع إضافية" : "More question types"}
-                      <ChevronDown className="w-3.5 h-3.5 transition-transform group-data-[state=open]:rotate-180" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-border/50 bg-background/70 p-3">
-                      {(["worked_problem", "extended_response", "error_correction", "word_bank", "compare"] as const).map(k => (
-                        <CompactStepper
-                          key={k}
-                          label={typeLabel(k, ar)}
-                          value={aiCounts[k]}
-                          max={["word_bank", "compare"].includes(k) ? Math.min(10, aiPages * 4) : Math.min(40, aiPages * 14)}
-                          onChange={v => setAiCounts(prev => ({ ...prev, [k]: v }))}
-                        />
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+                  </CollapsibleContent>
+                </Collapsible>
+            </div>
 
             {(() => {
               if (aiTotal === 0) return null;
@@ -2029,7 +1981,7 @@ export default function WorksheetCreate() {
               <button
                  onClick={activeAiTab === "topic" ? generateWithAI : extractFromFile}
                  disabled={generating || extracting || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-                 className="flex-1 h-14 text-lg font-black rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
+                 className="flex-1 sm:flex-none sm:px-8 h-11 text-sm font-black rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 bg-primary text-primary-foreground disabled:opacity-50 transform hover:-translate-y-0.5 active:translate-y-0"
               >
                  {(generating || extracting)
                    ? <><Loader2 className="w-5 h-5 animate-spin"/> {ar ? "جارٍ التوليد..." : "Generating..."}</>
@@ -2054,7 +2006,7 @@ export default function WorksheetCreate() {
               <button
                 onClick={handleWsRestoreDefaults}
                 title={ar ? "استعادة الإعدادات الافتراضية" : "Restore defaults"}
-                className="h-14 w-14 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors flex-shrink-0"
+                className="h-11 w-11 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors flex-shrink-0"
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
@@ -2062,37 +2014,9 @@ export default function WorksheetCreate() {
           </div>
         </Card>
 
-        {/* 3. Settings Area (Header Info & Design/Format) */}
-        <Card id="worksheet-formatting" className="scroll-mt-24 border border-border/60 shadow-sm overflow-hidden">
-          <div className="border-b border-border/50 bg-muted/20 px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shadow-inner">
-              <LayoutTemplate className="w-4 h-4" />
-            </div>
-            <h3 className="font-bold text-sm text-foreground">{ar ? "تنسيق الورقة" : "Worksheet Formatting"}</h3>
-          </div>
-          <div className="p-5" dir={dir}>
-            <WorksheetFormatPanel
-              ar={ar}
-              showProfileNote
-              settings={settings}
-              onSettingsChange={setSettings}
-              meta={{ title, subject, gradeLevel }}
-              onMetaChange={patch => {
-                if (patch.title !== undefined) setTitle(patch.title);
-                if (patch.subject !== undefined) setSubject(patch.subject);
-                if (patch.gradeLevel !== undefined) setGradeLevel(patch.gradeLevel);
-              }}
-              onClearProfile={() => {
-                clearTeacherProfile();
-                setSettings(s => ({ ...s, schoolName: "", section: "", teacherName: "", logoUrl: undefined, customFields: [] }));
-              }}
-            />
-          </div>
-        </Card>
-
         {/* 4. Questions List */}
         <div id="worksheet-questions" className="scroll-mt-24 space-y-4">
-          <div className="flex items-center justify-between gap-3 bg-muted/40 p-4 rounded-2xl border border-border/50 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/40 p-4 rounded-2xl border border-border/50 shadow-sm">
             <DropdownMenu dir={dir}>
               <DropdownMenuTrigger asChild>
                 <button className="px-4 py-2.5 rounded-xl border border-primary bg-primary text-primary-foreground hover:bg-primary/90 transition-all text-sm font-bold flex items-center gap-2 shadow-sm">
@@ -2115,7 +2039,7 @@ export default function WorksheetCreate() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
               {questions.length > 0 && (
                 <>
                   <button
@@ -2273,6 +2197,19 @@ export default function WorksheetCreate() {
         </div>
 
       </div>
+      <aside id="worksheet-paper" className={cn("min-w-0 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-auto order-first lg:order-none")}>
+        {!previewing && (
+          <WorksheetLivePaper
+            ar={ar}
+            data={livePaperData}
+            flushRef={livePaperFlushRef}
+            onDraftChange={applyLivePaperSnapshot}
+            onEnlarge={() => setPreviewing(true)}
+            onRequestEdit={id => { setEditQuestionId(id); setPreviewing(true); }}
+          />
+        )}
+      </aside>
+      </div>
 
       {/* Sticky Bottom Bar - PRIMARY ACTION */}
       {questions.length > 0 && (
@@ -2337,62 +2274,72 @@ export default function WorksheetCreate() {
               </div>
             )}
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => {
-                if (!canSave) {
-                  toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
-                  return;
-                }
-                setCanvasEditorOpen(true);
-              }}
-              disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-              className="min-w-0 px-2 sm:px-4 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-xs sm:text-sm"
-            >
-              <Layers className="w-4 h-4 text-primary" />
-              {ar ? "تصميم حر" : "Canvas"}
-              {(settings.layout?.elements?.length ?? 0) > 0 && (
-                <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                  {settings.layout!.elements.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => {
-                if (!canSave) {
-                  toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
-                  return;
-                }
-                setPreviewing(true);
-              }}
-              disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-              className="min-w-0 px-2 sm:px-4 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-amber-600 border-amber-600/30 text-xs sm:text-sm"
-            >
-              <Eye className="w-4 h-4" />
-              <span className="sm:hidden">{ar ? "معاينة" : "Preview"}</span>
-              <span className="hidden sm:inline">{ar ? "معاينة بدون حفظ" : "Preview without saving"}</span>
-            </button>
-
-            <button
-              onClick={() => saveWorksheet()}
-              disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-              className="min-w-0 px-2 sm:px-4 py-2.5 rounded-xl font-bold border flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 bg-background hover:bg-muted transition-colors text-primary border-primary/30 text-xs sm:text-sm"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {ar ? "حفظ كمسودة" : "Save Draft"}
-            </button>
-          </div>
-
-          <button
-            onClick={saveAndPreview}
-            disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
-            className="w-full sm:w-auto flex-shrink-0 h-14 px-8 md:px-14 text-lg font-black rounded-2xl bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 text-primary-foreground transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:translate-y-0"
-          >
-            {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Printer className="w-6 h-6" />}
-            {ar ? "المعاينة والطباعة" : "Preview & Print"}
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-2" data-testid="bar-worksheet-actions">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                data-testid="button-ws-preview"
+                onClick={() => requestPreview(null)}
+                disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                <Eye className="w-4 h-4" />{ar ? "معاينة" : "Preview"}
+              </button>
+              <button
+                data-testid="button-ws-pdf"
+                onClick={() => requestPreview("pdf")}
+                disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                <Printer className="w-4 h-4" />PDF
+              </button>
+              <button
+                data-testid="button-ws-word"
+                onClick={() => requestPreview("word")}
+                disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                <FileType className="w-4 h-4" />Word
+              </button>
+              <button
+                data-testid="button-ws-canvas"
+                onClick={() => {
+                  if (!canSave) {
+                    toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
+                    return;
+                  }
+                  setCanvasEditorOpen(true);
+                }}
+                disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                <Layers className="w-4 h-4 text-primary" />
+                {ar ? "تصميم حر" : "Canvas"}
+                {(settings.layout?.elements?.length ?? 0) > 0 && (
+                  <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                    {settings.layout!.elements.length}
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                data-testid="button-ws-save-open"
+                onClick={saveAndPreview}
+                disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                className="h-10 px-3.5 rounded-xl font-bold border border-primary/30 text-primary hover:bg-primary/5 text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                {ar ? "حفظ وفتح صفحة الطباعة" : "Save & open print page"}
+              </button>
+              <button
+                data-testid="button-ws-save"
+                onClick={() => saveWorksheet()}
+                disabled={!canSave || saving || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                className="h-10 px-5 rounded-xl font-black bg-primary text-primary-foreground hover:bg-primary/90 text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {ar ? "حفظ" : "Save"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2438,7 +2385,11 @@ export default function WorksheetCreate() {
               if (patch.questions !== undefined) setQuestions(patch.questions as Question[]);
               if (patch.settings !== undefined) setSettings(patch.settings);
             }}
-            onClose={() => setPreviewing(false)}
+            onSave={(latest) => { void saveWorksheet({ questions: latest.questions as Question[], settings: latest.settings }); }}
+            initialEditQuestionId={editQuestionId}
+            autoExport={exportRequest}
+            onAutoExportHandled={() => setExportRequest(null)}
+            onClose={() => { setPreviewing(false); setEditQuestionId(null); }}
           />
         )}
       </AnimatePresence>
@@ -3138,8 +3089,13 @@ function QuestionEditor({
 }
 
 function PreviewOverlay({
-  ar, data, onChange, onClose,
+  ar, data, onChange, onClose, autoExport, onAutoExportHandled, onSave, initialEditQuestionId,
 }: {
+  /** Persists the canonical draft (called after the overlay flushes its live edits). */
+  onSave?: (latest: { questions: Question[]; settings: WorksheetData["settings"] }) => void;
+  initialEditQuestionId?: string | null;
+  autoExport?: "pdf" | "word" | null;
+  onAutoExportHandled?: () => void;
   ar: boolean;
   data: WorksheetData;
   onChange: (patch: Partial<Pick<WorksheetData, "title" | "subject" | "gradeLevel" | "questions" | "settings">>) => void;
@@ -3170,6 +3126,64 @@ function PreviewOverlay({
 
   const close = () => { flush(); onClose(); };
 
+  const [exportBusy, setExportBusy] = useState(false);
+  const handlersRef = useRef({ handleWord, flush, title: data.title, onSave });
+  handlersRef.current = { handleWord, flush, title: data.title, onSave };
+  const [pdfFailed, setPdfFailed] = useState<string | null>(null);
+  const runPdf = async () => {
+    if (exportBusy) return;
+    setExportBusy(true);
+    setPdfFailed(null);
+    try { flush(); await printToPdf(data.title); }
+    catch (error) { setPdfFailed(pdfExportErrorMessage(error, ar)); }
+    finally { setExportBusy(false); }
+  };
+
+  const runPdfRef = useRef(runPdf);
+  runPdfRef.current = runPdf;
+
+  const handleSave = () => {
+    if (exportBusy) return;
+    // Use the exact flushed snapshot; no timing dependency on React commits.
+    const snap = flushRef.current?.();
+    if (snap) applySnapshot(snap);
+    handlersRef.current.onSave?.({
+      questions: (snap?.questions ?? data.questions) as Question[],
+      settings: settingsRef.current,
+    });
+  };
+
+  // Export only once the single renderer is mounted, its flush ref exists and
+  // pagination has produced a stable set of pages (no fixed delay).
+  useEffect(() => {
+    if (!autoExport) return;
+    const kind = autoExport;
+    onAutoExportHandled?.();
+    let cancelled = false;
+    let frame = 0;
+    const run = async () => {
+      try { await document.fonts?.ready; } catch { /* ignore */ }
+      let stable = 0;
+      let lastCount = -1;
+      const started = performance.now();
+      while (!cancelled && performance.now() - started < 5000) {
+        await new Promise<void>(resolve => { frame = requestAnimationFrame(() => resolve()); });
+        const root = document.getElementById("ws-printable-root");
+        const pagesNow = root ? root.querySelectorAll("[data-worksheet-page]").length : 0;
+        const ready = !!root && pagesNow > 0 && !!flushRef.current;
+        stable = ready && pagesNow === lastCount ? stable + 1 : 0;
+        lastCount = pagesNow;
+        if (stable >= 3) break;
+      }
+      if (cancelled) return;
+      if (kind === "word") handlersRef.current.handleWord();
+      else { void runPdfRef.current(); }
+    };
+    void run();
+    return () => { cancelled = true; cancelAnimationFrame(frame); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -3183,6 +3197,7 @@ function PreviewOverlay({
         <div className="flex items-center justify-between gap-2 px-4 py-3">
           <button
             onClick={close}
+            disabled={exportBusy}
             data-testid="button-close-preview"
             className="px-4 py-2 rounded-xl border text-sm font-bold flex items-center gap-2 hover:bg-muted transition-colors text-primary border-primary/30"
           >
@@ -3190,7 +3205,7 @@ function PreviewOverlay({
             {ar ? "رجوع للمحرر" : "Back to editor"}
           </button>
           <div className="text-xs font-bold truncate flex-1 text-center text-primary hidden sm:block">
-            {ar ? "التعديلات هنا تنتقل إلى الورقة، واحفظها من المحرر" : "Edits here carry into the worksheet; save from the editor"} · {data.title}
+            {data.title}
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
             <button
@@ -3200,21 +3215,41 @@ function PreviewOverlay({
             >
               <SettingsIcon className="w-4 h-4" /> {ar ? "الترويسة والتنسيق" : "Header & format"}
             </button>
+            {onSave && (
+              <button
+                onClick={handleSave}
+                disabled={exportBusy}
+                data-testid="button-preview-save"
+                className="px-4 py-2 rounded-xl text-sm font-black bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Save className="w-4 h-4" /> {ar ? "حفظ" : "Save"}
+              </button>
+            )}
             <button
               onClick={handleWord}
+              disabled={exportBusy}
+              data-testid="button-preview-word"
               className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
             >
               <FileType className="w-4 h-4" /> {ar ? "وورد (Word)" : "Word"}
             </button>
             <button
-              onClick={() => { flush(); printToPdf(data.title); }}
-              className="px-3 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
+              onClick={() => void runPdf()}
+              disabled={exportBusy}
+              data-testid="button-preview-pdf"
+              className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
               title={ar ? "حفظ الورقة كملف PDF" : "Save worksheet as PDF"}
             >
               <Download className="w-4 h-4" /> {ar ? "حفظ PDF" : "Save PDF"}
             </button>
           </div>
         </div>
+        {pdfFailed && (
+          <div role="alert" className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-bold text-red-800" data-testid="alert-preview-pdf-error">
+            <span className="flex-1">{pdfFailed}</span>
+            <button onClick={() => void runPdf()} disabled={exportBusy} className="px-3 py-1 rounded-md bg-white border font-bold" data-testid="button-retry-preview-pdf">{ar ? "إعادة المحاولة" : "Retry"}</button>
+          </div>
+        )}
         {panelOpen && (
           <div className="px-4 pb-3 max-h-[45vh] overflow-auto border-t pt-3" dir={ar ? "rtl" : "ltr"}>
             <WorksheetFormatPanel
@@ -3243,6 +3278,7 @@ function PreviewOverlay({
             flushRef={flushRef}
             onDraftChange={applySnapshot}
             onLayoutChange={(qs, breaks, styles) => applySnapshot({ questions: qs, pageBreaks: breaks, questionStyles: styles })}
+            initialEditQuestionId={initialEditQuestionId}
           />
         </div>
       </div>

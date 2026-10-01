@@ -56,22 +56,26 @@ describe("worksheet creator format overlay", () => {
   it("keeps controlled title and design edits after closing the preview overlay", () => {
     render(<WorksheetCreate />);
 
+    expect(screen.queryByTestId("input-ws-title")).toBeNull();
+    fireEvent.click(screen.getByTestId("tab-format-info"));
     fireEvent.change(screen.getByTestId("input-ws-title"), { target: { value: "Overlay worksheet" } });
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
     fireEvent.click(screen.getByRole("button", { name: "Short Answer" }));
     fireEvent.change(screen.getByPlaceholderText("Question text"), { target: { value: "Explain your answer" } });
 
-    fireEvent.click(screen.getByRole("button", { name: "Enlarge" }));
+    fireEvent.click(screen.getByTestId("button-enlarge-paper"));
     const closeButton = screen.getByTestId("button-close-preview");
     const overlay = closeButton.closest(".fixed");
     if (!overlay) throw new Error("Expected the creator preview overlay");
 
     const overlayPanel = within(overlay);
+    fireEvent.click(overlayPanel.getByTestId("tab-format-info"));
     fireEvent.change(overlayPanel.getByTestId("input-ws-title"), { target: { value: "Edited in preview" } });
     fireEvent.click(overlayPanel.getByTestId("tab-format-design"));
     fireEvent.change(overlayPanel.getByTestId("select-ws-font"), { target: { value: "georgia" } });
     fireEvent.click(closeButton);
 
+    expect(document.querySelectorAll("#ws-printable-root").length).toBeLessThanOrEqual(1);
     expect((screen.getByTestId("input-ws-title") as HTMLInputElement).value).toBe("Edited in preview");
     fireEvent.click(screen.getByTestId("tab-format-design"));
     expect((screen.getByTestId("select-ws-font") as HTMLSelectElement).value).toBe("georgia");
