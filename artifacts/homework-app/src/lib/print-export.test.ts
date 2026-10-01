@@ -48,6 +48,16 @@ describe("printToPdf", () => {
 });
 
 describe("buildWordDocument", () => {
+  it("omits editing controls even when nested inside an exported paragraph", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `<div data-worksheet-page><button class="no-print">DELETE-CONTROL</button><div class="ws-q-head"><span class="ws-q-num">١</span><div class="ws-q-prompt">النص المطلوب<span class="no-print">EDIT-CONTROL</span></div></div></div>`;
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({ element: root, title: "Test" })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+    expect(xml).toContain("النص المطلوب");
+    expect(xml).not.toContain("DELETE-CONTROL");
+    expect(xml).not.toContain("EDIT-CONTROL");
+  });
+
   it("creates native OOXML with RTL formatting and a two-column choice table", async () => {
     const root = document.createElement("div");
     root.innerHTML = `
@@ -71,6 +81,7 @@ describe("buildWordDocument", () => {
     expect(xml).toContain("<w:document");
     expect(xml).toContain("<w:bidi");
     expect(xml).toContain("<w:rtl");
+    expect(xml).toContain("<w:bidiVisual/>");
     expect(xml).toContain("<w:sz w:val=\"28\"");
     expect(xml).toContain("<w:b");
     expect(xml).toContain("<w:jc w:val=\"center\"");
@@ -79,6 +90,75 @@ describe("buildWordDocument", () => {
     for (const text of ["١", "السؤال الأول", "الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"]) {
       expect(xml).toContain(text);
     }
+  });
+
+  it("preserves editable formatting and content across all worksheet question types", async () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div data-worksheet-page dir="rtl">
+        <h1 style="color: #123456">عنوان الورقة</h1>
+        <h2>بيانات المدرسة</h2>
+        <div class="ws-school-cell"><span>المدرسة</span><span>مدرسة النور</span></div>
+        <div class="ws-q-head">
+          <span class="ws-q-num">١</span>
+          <div class="ws-q-prompt">سؤال <span style="color: rgb(12, 34, 56); text-decoration: underline; background-color: #ffff00">منسق</span></div>
+        </div>
+        <ol class="ws-mcq" data-choice-columns="2"><li>اختيار ألف</li><li>اختيار باء</li></ol>
+        <div class="ws-tf-choices">
+          <span class="ws-tf-choice"><span class="ws-tf-box" aria-hidden="true"></span>صح</span>
+          <span class="ws-tf-choice"><span class="ws-tf-box" aria-hidden="true"></span>خطأ</span>
+        </div>
+        <div class="ws-lines"><span class="ws-line"></span><span class="ws-line"></span></div>
+        <div class="ws-fill"><span class="ws-fill-rule"></span></div>
+        <div class="ws-match">
+          <ul class="ws-match-col">
+            <li class="ws-match-pair"><span dir="rtl">١. </span><span dir="ltr">-8°C</span></li>
+          </ul>
+          <div class="ws-match-divider"></div>
+          <ul class="ws-match-col"><li class="ws-match-pair"><span>بارد</span></li></ul>
+        </div>
+        <div class="ws-tic-board">
+          <div class="ws-tic-cell"><span class="ws-tic-text">مهمة اللوحة ١</span><span class="ws-tic-writing"><span></span></span></div>
+          <div class="ws-tic-cell"><span class="ws-tic-text">مهمة اللوحة ٢</span></div>
+          <div class="ws-tic-cell"><span class="ws-tic-text">مهمة اللوحة ٣</span></div>
+        </div>
+        <div class="ws-worked-problem"><div class="ws-response-label">خطوات الحل</div><div class="ws-work-step"><span class="ws-work-step-num">١</span><span class="ws-work-step-line"></span></div><div class="ws-final-answer"><strong>الإجابة النهائية</strong><span></span></div></div>
+        <div class="ws-extended-response"><span class="ws-line"></span></div>
+        <div class="ws-error-correction">
+          <div class="ws-incorrect-box"><strong>النص غير الصحيح:</strong><span>٢ + ٢ = ٥</span></div>
+          <div class="ws-correction-area"><div class="ws-response-label">التصحيح</div><span class="ws-line"></span></div>
+          <div class="ws-explanation-area"><div class="ws-response-label">التفسير</div><span class="ws-line"></span></div>
+        </div>
+        <div class="ws-word-bank"><strong>بنك الكلمات</strong><div><span>ماء</span><span>هواء</span></div></div>
+        <div class="ws-compare-organizer">
+          <div class="ws-compare-panel"><strong>العنصر أ</strong><span class="ws-compare-subtitle">الاختلافات</span><span class="ws-compare-line"></span></div>
+          <div class="ws-compare-panel ws-compare-similarities"><strong>أوجه الشبه</strong><span class="ws-compare-line"></span></div>
+          <div class="ws-compare-panel"><strong>العنصر ب</strong><span class="ws-compare-subtitle">الاختلافات</span></div>
+        </div>
+      </div>`;
+
+    const zip = await JSZip.loadAsync(await Packer.toBuffer(buildWordDocument({
+      element: root,
+      title: "اختبار التغطية",
+      lang: "ar",
+    })));
+    const xml = await zip.file("word/document.xml")!.async("string");
+
+    expect(xml).toContain('<w:pStyle w:val="Heading1"/>');
+    expect(xml).toContain('<w:color w:val="0C2238"/>');
+    expect(xml).toContain("<w:u w:val=\"single\"/>");
+    expect(xml).toContain('<w:shd w:fill="FFFF00"');
+    expect(xml).toContain("<w:pBdr>");
+    expect(xml).toContain("<w:bidiVisual/>");
+    for (const text of [
+      "عنوان الورقة", "مدرسة النور", "اختيار ألف", "اختيار باء", "صح", "خطأ",
+      "-8°C", "بارد", "مهمة اللوحة ١", "مهمة اللوحة ٢", "مهمة اللوحة ٣",
+      "خطوات الحل", "الإجابة النهائية", "النص غير الصحيح:", "٢ + ٢ = ٥", "التصحيح",
+      "التفسير", "بنك الكلمات", "ماء", "هواء", "العنصر أ", "أوجه الشبه", "العنصر ب",
+    ]) {
+      expect(xml).toContain(text);
+    }
+    expect(xml.match(/<w:tbl>/g)).toHaveLength(5);
   });
 
   it("keeps equations and signed choices LTR inside an Arabic Word document", async () => {

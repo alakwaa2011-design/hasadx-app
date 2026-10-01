@@ -2,6 +2,7 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
+  HeadingLevel,
   Math as WordMath,
   MathFraction,
   MathRadical,
@@ -10,6 +11,7 @@ import {
   Packer,
   PageBreak,
   Paragraph,
+  ShadingType,
   Table,
   TableCell,
   TableRow,
@@ -40,6 +42,35 @@ function pointsFromCss(value: string, fallback = 12): number {
   if (value.endsWith("px")) return parsed * 0.75;
   if (value.endsWith("pt")) return parsed;
   return fallback;
+}
+
+function colorFromCss(value: string, minimumAlpha = 0): string | undefined {
+  const color = value.trim().toLowerCase();
+  if (!color || color === "transparent") return undefined;
+  const hex = color.match(/^#([0-9a-f]{3,8})$/i)?.[1];
+  if (hex) {
+    if (hex.length === 3 || hex.length === 4) {
+      return hex.slice(0, 3).split("").map(character => character + character).join("").toUpperCase();
+    }
+    return hex.slice(0, 6).toUpperCase();
+  }
+  const rgb = color.match(/^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/);
+  if (!rgb) return undefined;
+  const alpha = rgb[4]
+    ? (rgb[4].endsWith("%") ? Number.parseFloat(rgb[4]) / 100 : Number.parseFloat(rgb[4]))
+    : 1;
+  if (!Number.isFinite(alpha) || alpha <= minimumAlpha) return undefined;
+  return rgb.slice(1, 4)
+    .map(channel => Math.max(0, Math.min(255, Math.round(Number(channel))))
+      .toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+}
+
+function isHidden(element: Element): boolean {
+  if (element.hasAttribute("hidden") || element.getAttribute("aria-hidden") === "true") return true;
+  const style = window.getComputedStyle(element);
+  return style.display === "none" || style.visibility === "hidden";
 }
 
 function alignmentFor(
@@ -177,8 +208,10 @@ function nativeMath(latex: string): WordMath | null {
 
 function textRuns(element: Element, direction: ContentDirection): ParagraphChild[] {
   const runs: ParagraphChild[] = [];
-  const visit = (node: Node, inherited: Partial<CSSStyleDeclaration> = {}) => {
+  let pendingSpace = false;
+  const visit = (node: Node) => {
     if (node instanceof Element) {
+      if (node.classList.contains("no-print") || isHidden(node)) return;
       const latex = node.getAttribute("data-math-latex");
       if (latex != null) {
         runs.push(nativeMath(latex) ?? new TextRun({
@@ -192,27 +225,40 @@ function textRuns(element: Element, direction: ContentDirection): ParagraphChild
     }
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent?.replace(/\s+/g, " ") ?? "";
-      if (!text.trim()) return;
+      if (!text.trim()) {
+        if (runs.length) pendingSpace = true;
+        return;
+      }
       const parent = node.parentElement;
       const computed = parent ? window.getComputedStyle(parent) : null;
       const inline = parent?.style;
       const size = pointsFromCss(inline?.fontSize || computed?.fontSize || "", 12);
-      const weight = inline?.fontWeight || computed?.fontWeight || inherited.fontWeight || "";
+      const weight = inline?.fontWeight || computed?.fontWeight || "";
       const runDirection = parent
         ? directionForTextParent(parent, direction)
         : contentDirection(text, direction);
       const runRtl = runDirection === "rtl";
+      const foreground = colorFromCss(inline?.color || computed?.color || "");
+      const background = colorFromCss(inline?.backgroundColor || computed?.backgroundColor || "", 0.2);
+      const textDecoration = inline?.textDecorationLine || inline?.textDecoration
+        || computed?.textDecorationLine || computed?.textDecoration || "";
+      const fontFamily = inline?.fontFamily || computed?.fontFamily || "";
       runs.push(new TextRun({
-        text,
+        text: `${pendingSpace ? " " : ""}${text}`,
         bold: Number.parseInt(weight, 10) >= 600 || weight === "bold",
         italics: (inline?.fontStyle || computed?.fontStyle) === "italic",
         size: Math.round(size * 2),
-        font: inline?.fontFamily?.split(",")[0]?.replace(/['"]/g, "") || (runRtl ? "Cairo" : "Arial"),
+        font: fontFamily.split(",")[0]?.replace(/['"]/g, "") || (runRtl ? "Cairo" : "Arial"),
+        color: foreground,
+        underline: /underline/.test(textDecoration) ? {} : undefined,
+        strike: /line-through/.test(textDecoration),
+        shading: background ? { fill: background, type: ShadingType.CLEAR } : undefined,
         rightToLeft: runRtl,
       }));
+      pendingSpace = false;
       return;
     }
-    node.childNodes.forEach(child => visit(child, inherited));
+    node.childNodes.forEach(visit);
   };
   visit(element);
   return runs.length
@@ -220,16 +266,87 @@ function textRuns(element: Element, direction: ContentDirection): ParagraphChild
     : [new TextRun({ text: "", rightToLeft: direction === "rtl" })];
 }
 
-function paragraphFor(element: Element, rtl: boolean, text?: string): Paragraph {
+function separatedTextRuns(
+  elements: Array<Element | null>,
+  direction: ContentDirection,
+  separator = " ",
+): ParagraphChild[] {
+  const runs: ParagraphChild[] = [];
+  elements.filter((element): element is Element => element !== null).forEach((element, index) => {
+    if (index > 0) {
+      runs.push(new TextRun({
+        text: separator,
+        font: direction === "rtl" ? "Cairo" : "Arial",
+        rightToLeft: direction === "rtl",
+      }));
+    }
+    runs.push(...textRuns(element, direction));
+  });
+  return runs;
+}
+
+function paragraphFor(
+  element: Element,
+  rtl: boolean,
+  text?: string,
+  options: { heading?: (typeof HeadingLevel)[keyof typeof HeadingLevel]; box?: boolean } = {},
+): Paragraph {
   const direction = directionForElement(element, rtl ? "rtl" : "ltr");
   const paragraphRtl = direction === "rtl";
+  const borderSource = element.matches(".ws-q-head")
+    ? element.querySelector(".ws-q-num") ?? element
+    : element;
+  const borderStyle = window.getComputedStyle(borderSource);
+  const boxColor = borderStyle.borderTopStyle !== "none"
+    ? colorFromCss(borderStyle.borderTopColor || "")
+    : undefined;
+  const nativeBoxColor = boxColor ?? "C7D6D2";
+  const separatedChildren = element.classList.contains("ws-q-head")
+    ? separatedTextRuns([
+      element.querySelector(":scope > .ws-q-num"),
+      element.querySelector(".ws-q-typeline"),
+      element.querySelector(".ws-q-prompt"),
+    ], direction, "  ")
+    : element.classList.contains("ws-school-cell")
+      ? (() => {
+        const label = element.querySelector(".ws-school-label");
+        const value = element.querySelector(".ws-school-value");
+        return label && value
+          ? separatedTextRuns([label, value], direction, ": ")
+          : separatedTextRuns(Array.from(element.children), direction, ": ");
+      })()
+      : element.classList.contains("ws-learning-objective")
+        ? separatedTextRuns([
+          element.querySelector(":scope > strong"),
+          element.querySelector(":scope > span"),
+          element.querySelector(":scope > small"),
+        ], direction)
+        : element.classList.contains("ws-incorrect-box") || element.classList.contains("ws-rubric")
+          ? separatedTextRuns(Array.from(element.children), direction)
+          : null;
+  const children = text == null
+    ? separatedChildren ?? (element.classList.contains("ws-tf-choices")
+      ? Array.from(element.children).flatMap(choice => [
+        new TextRun({ text: "□ ", rightToLeft: paragraphRtl }),
+        ...textRuns(choice, direction),
+        new TextRun({ text: "  ", rightToLeft: paragraphRtl }),
+      ])
+      : textRuns(element, direction))
+    : [new TextRun({ text, rightToLeft: paragraphRtl, font: paragraphRtl ? "Cairo" : "Arial", size: 24 })];
   return new Paragraph({
-    children: text == null
-      ? textRuns(element, direction)
-      : [new TextRun({ text, rightToLeft: paragraphRtl, font: paragraphRtl ? "Cairo" : "Arial", size: 24 })],
+    children,
     bidirectional: paragraphRtl,
     alignment: alignmentFor(element, paragraphRtl),
-    spacing: { after: 100, line: 300 },
+    heading: options.heading,
+    keepNext: Boolean(options.heading),
+    shading: options.box ? { fill: "F4F7F6", type: ShadingType.CLEAR } : undefined,
+    border: options.box ? {
+      top: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
+      left: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
+      right: { style: BorderStyle.SINGLE, size: 4, color: nativeBoxColor, space: 3 },
+    } : undefined,
+    spacing: { before: options.box ? 80 : 0, after: options.box ? 140 : 100, line: 300 },
   });
 }
 
@@ -256,6 +373,7 @@ function choiceTable(list: Element, rtl: boolean): Table {
   }
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
+    visuallyRightToLeft: rtl,
     borders: {
       top: { style: BorderStyle.NONE },
       bottom: { style: BorderStyle.NONE },
@@ -266,6 +384,87 @@ function choiceTable(list: Element, rtl: boolean): Table {
     },
     rows,
   });
+}
+
+function simpleTable(
+  rows: TableRow[],
+  rtl: boolean,
+  borders: boolean,
+): Table {
+  const edge = borders
+    ? { style: BorderStyle.SINGLE, color: "B9C9C5", size: 5 }
+    : { style: BorderStyle.NONE };
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    visuallyRightToLeft: rtl,
+    borders: {
+      top: edge,
+      bottom: edge,
+      left: edge,
+      right: edge,
+      insideHorizontal: edge,
+      insideVertical: edge,
+    },
+    rows,
+  });
+}
+
+function wordBankTable(container: Element, rtl: boolean): Table {
+  const title = container.querySelector<HTMLElement>(":scope > strong");
+  const words = Array.from(container.querySelectorAll<HTMLElement>(":scope > div > span"));
+  const cellChildren = [
+    paragraphFor(title ?? container, rtl),
+    ...words.map(word => paragraphFor(word, rtl)),
+  ];
+  return simpleTable([new TableRow({
+    children: [new TableCell({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      shading: { fill: "F4F7F6", type: ShadingType.CLEAR },
+      margins: { top: 100, bottom: 100, left: 140, right: 140 },
+      children: cellChildren,
+    })],
+  })], rtl, true);
+}
+
+function ticTacToeTable(container: Element, rtl: boolean): Table {
+  const cells = Array.from(container.querySelectorAll<HTMLElement>(":scope > .ws-tic-cell"));
+  const rows: TableRow[] = [];
+  for (let index = 0; index < cells.length; index += 3) {
+    rows.push(new TableRow({
+      children: Array.from({ length: 3 }, (_, column) => {
+        const cell = cells[index + column];
+        const cellChildren = cell ? [
+          paragraphFor(cell, rtl),
+          ...Array.from(cell.querySelectorAll(".ws-tic-writing > span")).map(line => blankLine(line, rtl)),
+        ] : [new Paragraph("")];
+        return new TableCell({
+          width: { size: 100 / 3, type: WidthType.PERCENTAGE },
+          margins: { top: 180, bottom: 180, left: 120, right: 120 },
+          verticalAlign: "center",
+          shading: { fill: "FFFFFF", type: ShadingType.CLEAR },
+          children: cellChildren,
+        });
+      }),
+    }));
+  }
+  return simpleTable(rows, rtl, true);
+}
+
+function compareTable(container: Element, rtl: boolean): Table {
+  const panels = Array.from(container.querySelectorAll<HTMLElement>(":scope > .ws-compare-panel"));
+  const row = new TableRow({
+    children: panels.map(panel => new TableCell({
+      width: { size: 100 / Math.max(1, panels.length), type: WidthType.PERCENTAGE },
+      margins: { top: 140, bottom: 140, left: 120, right: 120 },
+      shading: panel.classList.contains("ws-compare-similarities")
+        ? { fill: colorFromCss(window.getComputedStyle(panel).backgroundColor, 0.2) ?? "F4F7F6", type: ShadingType.CLEAR }
+        : undefined,
+      children: Array.from(panel.children).map(child =>
+        child.classList.contains("ws-compare-line") ? blankLine(child, rtl) : paragraphFor(child, rtl),
+      ),
+    })),
+  });
+  return simpleTable([row], rtl, true);
 }
 
 function matchingTable(container: Element, rtl: boolean): Table {
@@ -310,17 +509,45 @@ function matchingTable(container: Element, rtl: boolean): Table {
   });
 }
 
+function blankLine(element: Element, rtl: boolean): Paragraph {
+  const direction = directionForElement(element, rtl ? "rtl" : "ltr");
+  const style = window.getComputedStyle(element);
+  const color = style.borderBottomStyle !== "none"
+    ? colorFromCss(style.borderBottomColor || "")
+    : undefined;
+  return new Paragraph({
+    children: [new TextRun({ text: " ", rightToLeft: direction === "rtl" })],
+    bidirectional: direction === "rtl",
+    border: {
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: color ?? "AABAB6", space: 1 },
+    },
+    spacing: { after: 120, line: 300 },
+  });
+}
+
 function pageChildren(page: Element, rtl: boolean): WordChild[] {
   const output: WordChild[] = [];
-  const selectors = [
-    "h1", "h2", "h3",
-    ".ws-kicker-center", ".ws-cont-title", ".ws-cont-page",
-    ".ws-identity-cell", ".ws-field-label", ".ws-subtitle", ".ws-instructions",
-    ".ws-section-instr", ".ws-q-head", ".ws-q-prompt", ".ws-answer-line",
-    ".ws-tf-choice", ".ws-match", ".ws-match-pair", ".ws-footer-note", ".ws-good-luck",
-    ".ws-mcq",
-  ].join(",");
-  page.querySelectorAll(selectors).forEach(element => {
+  const headings = new Map<string, (typeof HeadingLevel)[keyof typeof HeadingLevel]>([
+    ["H1", HeadingLevel.HEADING_1],
+    ["H2", HeadingLevel.HEADING_2],
+    ["H3", HeadingLevel.HEADING_3],
+    ["H4", HeadingLevel.HEADING_4],
+    ["H5", HeadingLevel.HEADING_5],
+    ["H6", HeadingLevel.HEADING_6],
+  ]);
+  const paragraphClasses = [
+    "ws-kicker-center", "ws-cont-title", "ws-cont-page", "ws-school-cell",
+    "ws-subtitle", "ws-instructions", "ws-learning-objective", "ws-section-instr",
+    "ws-q-head", "ws-q-prompt", "ws-answer-line", "ws-tf-choices",
+    "ws-footer-note", "ws-good-luck", "ws-rubric", "ws-incorrect-box", "ws-response-label",
+    "ws-field-line",
+  ];
+  const lineClasses = [
+    "ws-line", "ws-short-line", "ws-fill-rule", "ws-work-step-line", "ws-compare-line",
+  ];
+  const visit = (element: Element) => {
+    if (isHidden(element) || element.classList.contains("no-print") || element.classList.contains("ws-watermark")
+      || element.classList.contains("ws-corner") || element.classList.contains("ws-divider")) return;
     if (element.matches(".ws-mcq")) {
       output.push(choiceTable(element, rtl));
       return;
@@ -329,12 +556,53 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
       output.push(matchingTable(element, rtl));
       return;
     }
-    if (element.closest(".ws-mcq")) return;
-    if (element.closest(".ws-match")) return;
-    if (element.matches(".ws-q-prompt") && element.closest(".ws-q-head")) return;
-    const text = element.textContent?.trim();
-    if (text) output.push(paragraphFor(element, rtl));
-  });
+    if (element.matches(".ws-word-bank")) {
+      output.push(wordBankTable(element, rtl));
+      return;
+    }
+    if (element.matches(".ws-tic-board")) {
+      output.push(ticTacToeTable(element, rtl));
+      return;
+    }
+    if (element.matches(".ws-compare-organizer")) {
+      output.push(compareTable(element, rtl));
+      return;
+    }
+    if (element.matches(".ws-field-rule, .ws-final-answer > span, .ws-tic-writing > span, .ws-word-bank-blank")) {
+      output.push(blankLine(element, rtl));
+      return;
+    }
+    if (lineClasses.some(className => element.classList.contains(className))) {
+      output.push(blankLine(element, rtl));
+      return;
+    }
+    if (element.tagName === "IMG") {
+      const alt = element.getAttribute("alt")?.trim();
+      if (alt) output.push(paragraphFor(element, rtl, alt));
+      return;
+    }
+    const heading = headings.get(element.tagName);
+    if (heading || paragraphClasses.some(className => element.classList.contains(className))) {
+      if (element.matches(".ws-q-head, .ws-answer-line, .ws-instructions, .ws-incorrect-box, .ws-word-bank")) {
+        output.push(paragraphFor(element, rtl, undefined, { box: true }));
+      } else {
+        output.push(paragraphFor(element, rtl, undefined, { heading }));
+      }
+      return;
+    }
+    if (!element.children.length) {
+      if (element.textContent?.trim()) output.push(paragraphFor(element, rtl));
+      return;
+    }
+    Array.from(element.childNodes).forEach(node => {
+      if (node instanceof Element) {
+        visit(node);
+      } else if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+        output.push(paragraphFor(element, rtl, node.textContent.replace(/\s+/g, " ").trim()));
+      }
+    });
+  };
+  Array.from(page.children).forEach(visit);
   return output.length ? output : [paragraphFor(page, rtl)];
 }
 

@@ -4,6 +4,8 @@ import { useI18n } from "@/lib/i18n";
 import { useSmartBack } from "@/lib/nav-history";
 import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
+import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksheet-word-visual";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   type ThemeId, type ThemeSpec, THEMES, THEME_BACKGROUNDS,
   resolveThemeHeadingFont,
@@ -1092,6 +1094,9 @@ export default function WorksheetPrint() {
   const goBack = useSmartBack("/teacher/worksheets/create");
   const [data, setData] = useState<WorksheetData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wordExport, setWordExport] = useState<"visual" | "editable" | null>(null);
+  const [wordProgress, setWordProgress] = useState("");
+  const wordExportInFlight = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -1123,13 +1128,40 @@ export default function WorksheetPrint() {
 
   const dir = data.language === "ar" ? "rtl" : "ltr";
 
-  const handleWord = () => {
+  const handleWord = async (mode: "visual" | "editable") => {
+    if (wordExportInFlight.current) return;
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(uiLang === "ar" ? "تعذّر إعداد الملف" : "Could not prepare file");
       return;
     }
-    downloadAsWord({ element: root, title: data.title, lang: data.language });
+    wordExportInFlight.current = true;
+    setWordExport(mode);
+    setWordProgress("");
+    try {
+      if (mode === "visual") {
+        await downloadVisualWorksheetWord({
+          element: root, title: data.title, lang: data.language,
+          onProgress: (done, total) => setWordProgress(`${done}/${total}`),
+        });
+      } else {
+        await downloadAsWord({
+          element: root,
+          title: `${data.title} - ${uiLang === "ar" ? "قابل للتحرير" : "Editable"}`,
+          lang: data.language,
+        });
+      }
+      toast.success(uiLang === "ar" ? "تم تجهيز ملف Word للتنزيل" : "Word file ready for download");
+    } catch (error) {
+      const imageFailed = error instanceof VisualWordExportError && error.code === "image";
+      toast.error(imageFailed
+        ? (uiLang === "ar" ? "تعذّر تحميل إحدى صور التصميم. لم يُصدّر ملف ناقص؛ أعد المحاولة بعد اكتمال تحميل الصور." : "A design image could not be loaded. No incomplete file was exported; retry after images finish loading.")
+        : (uiLang === "ar" ? "تعذّر تصدير ملف Word. يرجى المحاولة مرة أخرى." : "Could not export the Word file. Please try again."));
+    } finally {
+      wordExportInFlight.current = false;
+      setWordExport(null);
+      setWordProgress("");
+    }
   };
 
   return (
@@ -1174,15 +1206,33 @@ export default function WorksheetPrint() {
               {uiLang === "ar" ? "تحرير" : "Edit"}
             </button>
           )}
-          <button
-            onClick={handleWord}
-            className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5"
-            style={{ borderColor: `${BRAND_GOLD}88`, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
-            title={uiLang === "ar" ? "تنزيل كملف وورد" : "Download as Word"}
-          >
-            <FileType className="w-3.5 h-3.5" />
-            {uiLang === "ar" ? "وورد" : "Word"}
-          </button>
+          <DropdownMenu dir={uiLang === "ar" ? "rtl" : "ltr"}>
+            <DropdownMenuTrigger asChild>
+              <button
+                disabled={wordExport !== null}
+                aria-busy={wordExport !== null}
+                className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5 disabled:opacity-60"
+                style={{ borderColor: `${BRAND_GOLD}88`, color: BRAND_GOLD, background: `${BRAND_GOLD}10` }}
+                title={uiLang === "ar" ? "اختر نسخة Word" : "Choose a Word version"}
+                data-testid="btn-word-export"
+              >
+                {wordExport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileType className="w-3.5 h-3.5" />}
+                <span aria-live="polite">
+                  {wordExport ? `${uiLang === "ar" ? "جار التجهيز" : "Preparing"} ${wordProgress}` : (uiLang === "ar" ? "وورد" : "Word")}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuItem onSelect={() => void handleWord("visual")} disabled={wordExport !== null} className="flex-col items-start gap-1 py-3" data-testid="word-export-visual">
+                <span className="font-bold">{uiLang === "ar" ? "Word مطابق للتصميم" : "Word — visual design"}</span>
+                <span className="text-xs text-muted-foreground">{uiLang === "ar" ? "نفس المظهر كصور صفحات؛ النص غير قابل للتحرير." : "Same appearance as page images; text is not editable."}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void handleWord("editable")} disabled={wordExport !== null} className="flex-col items-start gap-1 py-3" data-testid="word-export-editable">
+                <span className="font-bold">{uiLang === "ar" ? "Word قابل للتحرير" : "Word — editable"}</span>
+                <span className="text-xs text-muted-foreground">{uiLang === "ar" ? "نصوص وجداول بتنسيق محسّن؛ قد يختلف توزيع الصفحات." : "Formatted text and tables; pagination may differ."}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             onClick={() => printToPdf(data.title)}
             className="px-4 py-1.5 rounded-lg font-bold text-white flex items-center gap-1.5 text-sm"
