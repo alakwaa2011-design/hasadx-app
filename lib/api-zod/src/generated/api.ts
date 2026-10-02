@@ -16,6 +16,38 @@ const zod = {
 
 
 /**
+ * Does not create a game or change the destination's authorization. Guest hosts may create aliases.
+ * @summary Get a permanent short alias for an existing public game destination
+ */
+export const createGameShareLinkBodyPathMax = 8192;
+
+
+
+export const CreateGameShareLinkBody = zod.object({
+  "path": zod.string().max(createGameShareLinkBodyPathMax)
+})
+
+export const createGameShareLinkResponseCodeRegExp = new RegExp('^[a-z2-7]{10}$');
+
+
+export const CreateGameShareLinkResponse = zod.object({
+  "code": zod.string().regex(createGameShareLinkResponseCodeRegExp),
+  "path": zod.string(),
+  "shortPath": zod.string()
+})
+
+
+/**
+ * @summary Redirect anonymously to the original game URL
+ */
+export const ResolveGameShareLinkParams = zod.object({
+  "code": zod.coerce.string()
+})
+
+export const ResolveGameShareLinkResponse = zod.void()
+
+
+/**
  * Requires worksheet ownership or access to a published admin-shared worksheet. Runs in an isolated browser without executing submitted JavaScript or accessing the server session.
  * @summary Render one worksheet page as a browser-native PNG
  */

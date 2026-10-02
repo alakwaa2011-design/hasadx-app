@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Share2, Loader2, RotateCcw, Lock, Award, ListChecks } from "lucide-react";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
+import { toast } from "@/components/ui/sonner";
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
 
@@ -74,11 +76,7 @@ export function SoloChallengeResults({
       ? sessionStorage.getItem("solo_challenge_slug")
       : null,
   );
-  const [soloShortSlug] = useState<string | null>(() =>
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("solo_challenge_short_slug")
-      : null,
-  );
+  const shareLink = useGameShareUrl(soloSlug ? `/solo/${encodeURIComponent(soloSlug)}` : "");
   const [soloPlayerName] = useState<string | null>(() =>
     typeof window !== "undefined"
       ? sessionStorage.getItem("solo_challenge_player")
@@ -290,15 +288,7 @@ export function SoloChallengeResults({
   const pct =
     displayTotal > 0 ? Math.round((displayCorrect / displayTotal) * 100) : 0;
 
-  const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
-  // Share URL strategy:
-  //  1. Prefer /s/:shortSlug — short ASCII URL (e.g. hasaadx.com/s/eid-quiz-k4x2)
-  //     handled by the API server, returns OG HTML so FB/WhatsApp show a rich card.
-  //  2. Fall back to /api/share/solo/:slug for challenges created before shortSlug
-  //     was introduced (both work identically for social-card unfurling).
-  const shareUrl = soloShortSlug
-    ? `${window.location.origin}/api/s/${encodeURIComponent(soloShortSlug)}`
-    : `${window.location.origin}/api/share/solo/${encodeURIComponent(soloSlug!)}`;
+  const shareUrl = shareLink.status === "ready" ? shareLink.url : "";
 
   // Performance tier — drives the celebratory headline + tier color.
   // Static "well done" regardless of score kills the dopamine hit; tier-aware
@@ -356,29 +346,28 @@ export function SoloChallengeResults({
         : 20,
   );
 
-  const handleShare = () => {
-    if (typeof navigator.share === "function") {
-      navigator
-        .share({
+  const handleShare = async () => {
+    if (!shareUrl) return;
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
           title:
             soloChallengeTitle || (isAr ? "تحدي حصاد" : "Hasaad Challenge"),
           text: shareText,
           url: shareUrl,
-        })
-        .catch(() => {
-          navigator.clipboard.writeText(shareText).catch(() => {});
         });
-    } else {
-      navigator.clipboard.writeText(shareText).catch(() => {});
+      } else {
+        await navigator.clipboard.writeText(shareText);
+      }
+    } catch {
+      try { await navigator.clipboard.writeText(shareText); }
+      catch { toast.error(isAr ? "تعذّرت مشاركة الرابط" : "Could not share link"); }
     }
   };
 
   const handleWhatsApp = () => {
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(shareText)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    if (!shareUrl) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
   };
 
   // Retry: return to the entry page; the previously entered name is restored
@@ -411,6 +400,8 @@ export function SoloChallengeResults({
             boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
           }}
         >
+          {shareLink.status === "pending" && <p role="status" className="text-center text-xs text-white/60">{isAr ? "جارٍ تجهيز رابط التحدي القصير…" : "Preparing short challenge link…"}</p>}
+          {shareLink.status === "error" && <button type="button" role="alert" onClick={shareLink.retry} className="w-full text-center text-xs text-red-300 underline">{isAr ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
           <ListChecks className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-blue-300" />
           <h1 className="mt-3 text-xl sm:text-2xl font-black text-blue-200">
             {isAr
@@ -871,6 +862,8 @@ export function SoloChallengeResults({
           transition={{ delay: 0.28 }}
           className="mt-3 sm:mt-4 space-y-2"
         >
+          {shareLink.status === "pending" && <p role="status" className="text-center text-xs text-white/60">{isAr ? "جارٍ تجهيز رابط التحدي القصير…" : "Preparing short challenge link…"}</p>}
+          {shareLink.status === "error" && <button type="button" role="alert" onClick={shareLink.retry} className="w-full text-center text-xs text-red-300 underline">{isAr ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
           {/* PRIMARY: Challenge friends on WhatsApp — the viral engine.
               Full-width green CTA with pulse-glow halo. For Arabic-speaking
               markets, WhatsApp is THE social channel; this single button
@@ -878,6 +871,7 @@ export function SoloChallengeResults({
               it gets the dominant visual weight. */}
           <motion.button
             onClick={handleWhatsApp}
+            disabled={shareLink.status !== "ready"}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: 0.97 }}
@@ -934,6 +928,7 @@ export function SoloChallengeResults({
 
             <button
               onClick={handleShare}
+              disabled={shareLink.status !== "ready"}
               className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black text-white transition-all duration-200 active:scale-[0.97] hover:bg-white/[0.08]"
               style={{
                 background: "rgba(255,255,255,0.05)",

@@ -7,6 +7,7 @@ import { Trophy, Radio, ChevronLeft, ChevronRight, Loader2, Users, ArrowRight, A
 import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
 import { HostJoinBar } from "@/components/host-join-bar";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { useGameAudio } from "./useGameAudio";
 import { resolveImageUrl } from "@/lib/image-url";
 
@@ -68,6 +69,7 @@ export default function MillionBroadcastHost() {
   const audio = useGameAudio();
   const bgStartedRef = useRef(false);
   const joinUrl = pin ? `${typeof window !== "undefined" ? window.location.origin : ""}${import.meta.env.BASE_URL}game/million/join/${pin}` : "";
+  const shortLink = useGameShareUrl(joinUrl);
 
   // Start background music after first user interaction (browser autoplay policy)
   useEffect(() => {
@@ -200,7 +202,8 @@ export default function MillionBroadcastHost() {
               <span className="text-amber-200 text-xs font-bold mb-1">
                 {lang === "ar" ? "للانضمام: امسح الباركود أو افتح الرابط أو أدخل الرقم" : "To join: scan QR, open link, or enter PIN"}
               </span>
-              <span className="text-blue-200 text-[11px] opacity-80 break-all max-w-md">{joinUrl}</span>
+              <span className="text-blue-200 text-[11px] opacity-80 break-all max-w-md">{shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}</span>
+              {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-xs underline text-red-300">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
             </div>
             <HostJoinBar pin={pin} joinUrl={joinUrl} variant="dark" compact />
           </div>

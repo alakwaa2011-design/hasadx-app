@@ -40,6 +40,8 @@ import type {
   DeletedSubmissionsResult,
   ErrorResponse,
   ExamSessionResponse,
+  GameShareLink,
+  GameShareLinkInput,
   GetPresentationLinkedActivity200,
   GetQuranAyahEducationParams,
   GetQuranOfflineContent200,
@@ -173,6 +175,164 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCreateGameShareLinkUrl = () => {
+
+
+
+
+  return `/api/game-share-links`
+}
+
+/**
+ * Does not create a game or change the destination's authorization. Guest hosts may create aliases.
+ * @summary Get a permanent short alias for an existing public game destination
+ */
+export const createGameShareLink = async (gameShareLinkInput: GameShareLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<GameShareLink> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<GameShareLink>(getCreateGameShareLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(gameShareLinkInput)
+  }
+);}
+
+
+
+
+
+export const getCreateGameShareLinkMutationKey = () => ['createGameShareLink'] as const;
+
+export const getCreateGameShareLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameShareLink>>, TError,CreateGameShareLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGameShareLink>>, TError,CreateGameShareLinkMutationVariables, TContext> => {
+
+const mutationKey = getCreateGameShareLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGameShareLink>>, CreateGameShareLinkMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createGameShareLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGameShareLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createGameShareLink>>>
+    export type CreateGameShareLinkMutationBody = BodyType<GameShareLinkInput>
+    export type CreateGameShareLinkMutationError = ErrorType<void>
+    export type CreateGameShareLinkMutationVariables = {data: BodyType<GameShareLinkInput>}
+
+    /**
+ * @summary Get a permanent short alias for an existing public game destination
+ */
+export const useCreateGameShareLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGameShareLink>>, TError,CreateGameShareLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createGameShareLink>>,
+        TError,
+        CreateGameShareLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateGameShareLinkMutationOptions(options));
+    }
+
+export const getResolveGameShareLinkUrl = (code: string,) => {
+
+
+
+
+  return `/api/game-share-links/${code}/redirect`
+}
+
+/**
+ * @summary Redirect anonymously to the original game URL
+ */
+export const resolveGameShareLink = async (code: string, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getResolveGameShareLinkUrl(code),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getResolveGameShareLinkQueryKey = (code: string,) => {
+    return [
+    `/api/game-share-links/${code}/redirect`
+    ] as const;
+    }
+
+
+export const getResolveGameShareLinkQueryOptions = <TData = Awaited<ReturnType<typeof resolveGameShareLink>>, TError = ErrorType<void>>(code: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof resolveGameShareLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getResolveGameShareLinkQueryKey(code);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof resolveGameShareLink>>> = ({ signal }) => resolveGameShareLink(code, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: code !== null && code !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof resolveGameShareLink>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ResolveGameShareLinkQueryResult = NonNullable<Awaited<ReturnType<typeof resolveGameShareLink>>>
+export type ResolveGameShareLinkQueryError = ErrorType<void>
+
+
+/**
+ * @summary Redirect anonymously to the original game URL
+ */
+
+export function useResolveGameShareLink<TData = Awaited<ReturnType<typeof resolveGameShareLink>>, TError = ErrorType<void>>(
+ code: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof resolveGameShareLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getResolveGameShareLinkQueryOptions(code,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getRenderWorksheetPageUrl = (id: number,) => {
 

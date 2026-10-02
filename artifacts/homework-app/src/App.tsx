@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -22,6 +22,7 @@ import {
   getWameethSetupAssignmentId,
   getWameethSetupPath,
 } from "@/lib/wameeth-entry";
+import { shareRedirectPath } from "@/lib/game-share-url";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
@@ -314,6 +315,23 @@ function LoadingFallback() {
   );
 }
 
+function GameShareRedirect() {
+  const params = useParams<{ code: string }>();
+  const { lang } = useI18n();
+  const [invalidCode, setInvalidCode] = useState(false);
+  useEffect(() => {
+    if (!params.code) return;
+    try {
+      window.location.replace(shareRedirectPath(params.code));
+    } catch {
+      setInvalidCode(true);
+    }
+  }, [params.code]);
+  return invalidCode
+    ? <div role="alert" className="min-h-screen flex items-center justify-center text-center p-6">{lang === "ar" ? "رابط اللعبة غير صالح" : "Invalid game share link"}</div>
+    : <LoadingFallback />;
+}
+
 /* Dark variant of the lazy-chunk fallback used by full-screen surfaces
    (present mode, public viewer, print preview). The default fallback is
    white-on-white, which made a slow-loading chunk look like a dead
@@ -343,6 +361,7 @@ function Router() {
     <Suspense fallback={<LoadingFallback />}>
       <Switch>
         {/* Feature landing pages — public, no auth */}
+        <Route path="/s/:code" component={GameShareRedirect} />
         <Route path="/features/wameeth"          component={FeatureWameeth} />
         <Route path="/features/games"            component={FeatureGames} />
         <Route path="/features/worksheet-ai"     component={FeatureWorksheetAI} />

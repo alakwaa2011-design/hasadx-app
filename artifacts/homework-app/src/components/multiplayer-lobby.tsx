@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Copy, Check, Loader2, Users, Swords, Link2, Search, MessageCircle, User, Play, Bot, RotateCcw } from "lucide-react";
 import { getSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { toast } from "@/components/ui/sonner";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import type { ArenaOpponent } from "@/lib/use-arena";
@@ -38,6 +39,7 @@ export function MultiplayerLobby({ gameId, gameTitle, playUrl, playerName: propN
 
   const [phase, setPhase] = useState<LobbyPhase>(initName ? "menu" : "name_input");
   const [pin, setPin] = useState("");
+  const shareLink = useGameShareUrl(pin ? `${window.location.pathname}?arenaPin=${encodeURIComponent(pin)}` : "");
   const [joinPin, setJoinPin] = useState("");
   const [joinError, setJoinError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -258,9 +260,9 @@ export function MultiplayerLobby({ gameId, gameTitle, playUrl, playerName: propN
   };
 
   const handleCopyLink = async () => {
+    if (shareLink.status !== "ready") return;
     try {
-      const url = `${window.location.origin}${window.location.pathname}?arenaPin=${pin}`;
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast.success(isRtl ? "تم نسخ الرابط" : "Link copied!");
@@ -268,7 +270,8 @@ export function MultiplayerLobby({ gameId, gameTitle, playUrl, playerName: propN
   };
 
   const handleWhatsApp = () => {
-    const url = `${window.location.origin}${window.location.pathname}?arenaPin=${pin}`;
+    if (shareLink.status !== "ready") return;
+    const url = shareLink.url;
     const msg = isRtl
       ? `تحدّيتك في ${gameTitle}! انضم باستخدام الرمز: ${pin}\n${url}`
       : `I challenge you in ${gameTitle}! Join with PIN: ${pin}\n${url}`;
@@ -308,15 +311,17 @@ export function MultiplayerLobby({ gameId, gameTitle, playUrl, playerName: propN
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           {isRtl ? "نسخ PIN" : "Copy PIN"}
         </button>
-        <button onClick={handleCopyLink} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/15 transition-colors">
+        <button onClick={handleCopyLink} disabled={shareLink.status !== "ready"} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/15 transition-colors disabled:opacity-50">
           <Link2 className="w-3.5 h-3.5" />
           {isRtl ? "نسخ الرابط" : "Copy Link"}
         </button>
       </div>
-      <button onClick={handleWhatsApp} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-bold hover:bg-green-500/20 transition-colors">
+      <button onClick={handleWhatsApp} disabled={shareLink.status !== "ready"} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-bold hover:bg-green-500/20 transition-colors disabled:opacity-50">
         <MessageCircle className="w-3.5 h-3.5" />
         {isRtl ? "شارك عبر واتساب" : "Share on WhatsApp"}
       </button>
+      {shareLink.status === "pending" && <p role="status" className="mt-2 text-xs text-muted-foreground">{isRtl ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+      {shareLink.status === "error" && <button type="button" role="alert" onClick={shareLink.retry} className="mt-2 text-xs text-red-500 underline">{isRtl ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
     </div>
   );
 

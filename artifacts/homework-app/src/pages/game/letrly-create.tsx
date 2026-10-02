@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import {
   CATEGORY_LABELS,
   CATEGORY_EMOJI,
@@ -63,9 +64,8 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
     })();
   }, [dir]);
 
-  const shareUrl = createdPin
-    ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/game/letrly/play?pin=${createdPin}`
-    : "";
+  const shortGameLink = useGameShareUrl(createdPin ? `/game/letrly/play?pin=${encodeURIComponent(createdPin)}` : "");
+  const shareUrl = shortGameLink.status === "ready" ? shortGameLink.url : "";
 
   const submit = async () => {
     if (!word.trim()) { toast.error(copy.enterWordFirst); return; }
@@ -247,12 +247,14 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
               </div>
 
               <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-xs font-mono text-zinc-700 break-all" dir="ltr">
-                {shareUrl}
+                {shareUrl || (shortGameLink.status === "pending" ? (dir === "rtl" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortGameLink.error)}
               </div>
+              {shortGameLink.status === "error" && <button type="button" onClick={shortGameLink.retry} className="text-xs text-red-500 underline">{dir === "rtl" ? "إعادة المحاولة" : "Retry"}</button>}
 
               <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   onClick={shareLink}
+                  disabled={shortGameLink.status !== "ready"}
                   className="inline-flex items-center gap-1.5 bg-[hsl(145,55%,32%)] hover:bg-[hsl(145,55%,28%)] text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors"
                 >
                   <Share2 className="w-4 h-4" />
@@ -260,6 +262,7 @@ export default function LetrlyCreate({ embedded = false }: { embedded?: boolean 
                 </button>
                 <button
                   onClick={copyLink}
+                  disabled={shortGameLink.status !== "ready"}
                   className="inline-flex items-center gap-1.5 bg-white border-2 border-zinc-200 text-zinc-700 hover:bg-zinc-50 font-bold text-sm px-4 py-2.5 rounded-xl transition-colors"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}

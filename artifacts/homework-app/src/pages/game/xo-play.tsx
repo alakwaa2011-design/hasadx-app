@@ -6,6 +6,7 @@ import { getXoSocket } from "@/lib/xo-socket";
 import { QuestionImage } from "@/components/game/question-image";
 import { toast } from "@/components/ui/sonner";
 import { QRModalButton } from "@/components/game-qr-code";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
@@ -193,6 +194,8 @@ export default function XoPlay() {
   const permanentUrl = directToken
     ? `${window.location.origin}${import.meta.env.BASE_URL || "/"}play/${encodeURIComponent(directToken)}`
     : null;
+  const primaryShare = useGameShareUrl(permanentUrl || joinUrl);
+  const roomShare = useGameShareUrl(joinUrl);
   const turn = snapshot.turn ?? "x";
   const team = normalizeXoTeamName(snapshot.teamNames?.[turn], turn, ar ? "ar" : "en");
   const myTeam = snapshot.players?.find(p => p.id === playerId)?.team;
@@ -233,11 +236,12 @@ export default function XoPlay() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-           {creator && <QRModalButton url={joinUrl} pin={pin} label="QR" variant="light" />}
+           {creator && <QRModalButton url={permanentUrl || joinUrl} pin={pin} label="QR" variant="light" />}
           <button
              onClick={async () => {
                try {
-                 await navigator.clipboard?.writeText(permanentUrl || joinUrl);
+                 if (primaryShare.status !== "ready") return;
+                 await navigator.clipboard?.writeText(primaryShare.url);
                  toast.success(permanentUrl ? (ar ? "تم نسخ الرابط الدائم" : "Permanent link copied") : (ar ? "تم نسخ الرابط" : "Link copied"));
                } catch {
                  toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
@@ -245,6 +249,7 @@ export default function XoPlay() {
              }}
              aria-label={permanentUrl ? (ar ? "نسخ الرابط الدائم" : "Copy permanent link") : (ar ? "نسخ رابط الانضمام" : "Copy join link")}
             className="rounded-lg border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+            disabled={primaryShare.status !== "ready"}
           >
             <Copy className="h-5 w-5" />
           </button>
@@ -253,13 +258,15 @@ export default function XoPlay() {
                type="button"
                onClick={async () => {
                  try {
-                   await navigator.clipboard?.writeText(joinUrl);
+                   if (roomShare.status !== "ready") return;
+                   await navigator.clipboard?.writeText(roomShare.url);
                    toast.success(ar ? "تم نسخ رابط الانضمام المؤقت" : "Temporary join link copied");
                  } catch {
                    toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
                  }
                }}
                className="hidden rounded-lg border bg-card px-2 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted hover:text-foreground sm:block"
+               disabled={roomShare.status !== "ready"}
              >
                {ar ? "رابط الغرفة" : "Room link"}
              </button>
@@ -273,6 +280,8 @@ export default function XoPlay() {
           </button>
         </div>
       </header>
+      {primaryShare.status === "pending" && <p role="status" className="text-center text-xs text-muted-foreground">{ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+      {primaryShare.status === "error" && <button type="button" role="alert" onClick={primaryShare.retry} className="text-center text-xs text-red-500 underline">{ar ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
 
       <div className="relative z-10 flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_1fr] xl:gap-10 h-full">

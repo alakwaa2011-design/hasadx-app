@@ -16,6 +16,7 @@ import { GameLibraryPublishChoice } from "@/components/game/game-library-publish
 import { saveGameActivity } from "@/lib/saved-game-activities";
 import QRCode from "react-qr-code";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -210,11 +211,12 @@ export default function RocketCreate() {
     && !questions.some(q => !q.text.trim() || q.options.some(option => !option.trim()));
 
   const joinUrl = gamePin ? `${window.location.origin}/game/rocket/join/${gamePin}` : "";
+  const shortLink = useGameShareUrl(joinUrl);
 
   const copyLink = async () => {
-    if (!joinUrl) return;
+    if (shortLink.status !== "ready") return;
     try {
-      await navigator.clipboard.writeText(joinUrl);
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
       toast.success(ar ? "تم نسخ الرابط!" : "Link copied!");
@@ -340,7 +342,7 @@ export default function RocketCreate() {
             {/* QR + info */}
             <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
               <div style={{ background: "#fff", borderRadius: 14, padding: 10, flexShrink: 0 }}>
-                <QRCode value={joinUrl} size={120} />
+                {shortLink.status === "ready" && <QRCode value={shortLink.url} size={120} />}
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{
@@ -353,10 +355,11 @@ export default function RocketCreate() {
                   direction: "ltr",
                   wordBreak: "break-all",
                 }}>
-                  {joinUrl}
+                  {shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}
                 </div>
                 <button
                   onClick={copyLink}
+                  disabled={shortLink.status !== "ready"}
                   style={{
                     padding: "12px 16px",
                     borderRadius: 14,
@@ -379,6 +382,7 @@ export default function RocketCreate() {
                   {copied ? <Check size={18} /> : <Copy size={18} />}
                   {copied ? (ar ? "✓ تم النسخ!" : "✓ Copied!") : (ar ? "نسخ الرابط" : "Copy Link")}
                 </button>
+                {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-sm underline text-red-300">{ar ? "إعادة المحاولة" : "Retry"}</button>}
                 <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}>
                   <Users size={13} />
                   {ar ? `${questions.length} سؤال · ${duration} ث لكل سؤال` : `${questions.length} questions · ${duration}s each`}

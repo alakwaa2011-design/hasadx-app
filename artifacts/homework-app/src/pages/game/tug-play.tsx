@@ -16,6 +16,7 @@ import {
 } from "@/components/game/tug-shared";
 import { TugGiftPicker, TugMysteryBoxBar } from "@/components/game/tug-gifts-ui";
 import type { MysteryGift } from "@/lib/tug-class-engine";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 type Phase =
   | "connecting"
@@ -1012,6 +1013,7 @@ export default function TugPlay() {
     t === "blue" ? (lang === "ar" ? "الفريق الأزرق" : "Blue Team") : (lang === "ar" ? "الفريق الأحمر" : "Red Team");
 
   const joinUrl = typeof window !== "undefined" ? `${window.location.origin}/game/tug/join/${pin}` : "";
+  const shortLink = useGameShareUrl(joinUrl);
 
   if (error) {
     return (
@@ -1132,11 +1134,14 @@ export default function TugPlay() {
             </div>
             <div className="text-sm font-mono font-black bg-white/20 text-white px-2.5 py-0.5 rounded-lg">#{pin}</div>
             <motion.button whileTap={{ scale: 0.9 }}
-              onClick={() => { navigator.clipboard.writeText(joinUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+              disabled={shortLink.status !== "ready"}
+              onClick={() => { if (shortLink.status === "ready") navigator.clipboard.writeText(shortLink.url).then(() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }).catch(() => {}); }}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${linkCopied ? "bg-green-500 text-white" : "bg-slate-700/80 dark:bg-white/15 text-slate-200 dark:text-white/70 hover:bg-slate-600/80 dark:hover:bg-white/25"}`}
             >
               {linkCopied ? "✓" : "📋"} {linkCopied ? (lang === "ar" ? "تم!" : "Done!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}
             </motion.button>
+            {shortLink.status === "pending" && <span role="status" className="text-[10px] text-white/60">{lang === "ar" ? "جارٍ تجهيز الرابط…" : "Preparing link…"}</span>}
+            {shortLink.status === "error" && <button type="button" role="alert" onClick={shortLink.retry} className="text-[10px] text-red-300 underline">{lang === "ar" ? "فشل الرابط — إعادة المحاولة" : "Link failed — retry"}</button>}
           </div>
           <div className="flex items-center gap-2">
             {/* زر الصوت واضح في أعلى اللعبة لكل من المعلم والطالب */}

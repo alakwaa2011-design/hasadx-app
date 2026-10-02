@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Share2, Copy, Check } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 interface ShareButtonsProps {
   text: string;
@@ -29,12 +30,16 @@ const XIcon = () => (
 export function ShareButtons({ text, url }: ShareButtonsProps) {
   const { lang } = useI18n();
   const [copied, setCopied] = useState(false);
-  const shareUrl = url || (typeof window !== "undefined" ? window.location.href : "");
+  const [copyError, setCopyError] = useState("");
+  const targetUrl = url || (typeof window !== "undefined" ? window.location.href : "");
+  const shortLink = useGameShareUrl(targetUrl);
+  const shareUrl = shortLink.status === "ready" ? shortLink.url : "";
   const encodedText = encodeURIComponent(text);
   const encodedUrl = encodeURIComponent(shareUrl);
   const hasNativeShare = typeof navigator !== "undefined" && "share" in navigator;
 
   const handleCopy = async () => {
+    if (!shareUrl) return;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
@@ -49,14 +54,17 @@ export function ShareButtons({ text, url }: ShareButtonsProps) {
         document.body.removeChild(el);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      } catch {}
+      } catch {
+        setCopyError(lang === "ar" ? "تعذّر نسخ الرابط القصير" : "Could not copy short link");
+      }
     }
   };
 
   const handleNativeShare = async () => {
+    if (!shareUrl) return;
     try {
       await navigator.share({ text, url: shareUrl });
-    } catch {}
+    } catch { setCopyError(lang === "ar" ? "تعذّرت مشاركة الرابط" : "Could not share link"); }
   };
 
   const socialLinks = [
@@ -82,6 +90,9 @@ export function ShareButtons({ text, url }: ShareButtonsProps) {
 
   return (
     <div className="flex flex-col items-center gap-2">
+      {shortLink.status === "pending" && <p role="status" className="text-xs text-muted-foreground">{lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+      {shortLink.status === "error" && <button type="button" role="alert" onClick={shortLink.retry} className="text-xs text-red-500 underline">{shortLink.error} · {lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
+      {copyError && <p role="alert" className="text-xs text-red-500">{copyError}</p>}
       <p className="text-xs text-muted-foreground flex items-center gap-1">
         <Share2 className="w-3 h-3" />
         {lang === "ar" ? "شارك نتيجتك" : "Share your result"}
@@ -92,11 +103,13 @@ export function ShareButtons({ text, url }: ShareButtonsProps) {
           return (
             <a
               key={link.label}
-              href={link.href}
+              href={shareUrl ? link.href : undefined}
+              aria-disabled={!shareUrl}
+              onClick={event => { if (!shareUrl) event.preventDefault(); }}
               target="_blank"
               rel="noopener noreferrer"
               title={link.label}
-              className={`w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-95 ${link.bg}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-95 ${link.bg} ${!shareUrl ? "opacity-50 cursor-not-allowed" : ""}`}
               aria-label={`${lang === "ar" ? "شارك على" : "Share on"} ${link.label}`}
             >
               <Icon />
@@ -105,6 +118,7 @@ export function ShareButtons({ text, url }: ShareButtonsProps) {
         })}
 
         <button
+          disabled={!shareUrl}
           onClick={handleCopy}
           title={lang === "ar" ? "نسخ الرابط" : "Copy link"}
           className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-95 bg-gray-500 hover:bg-gray-600"
@@ -115,6 +129,7 @@ export function ShareButtons({ text, url }: ShareButtonsProps) {
 
         {hasNativeShare && (
           <button
+            disabled={!shareUrl}
             onClick={handleNativeShare}
             title={lang === "ar" ? "مشاركة" : "Share"}
             className="w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-95 bg-indigo-500 hover:bg-indigo-600"

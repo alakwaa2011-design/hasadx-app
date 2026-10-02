@@ -18,6 +18,7 @@ import {
   User, UsersRound, Gamepad2, Flame,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
@@ -176,6 +177,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [showControls, setShowControls] = useState(true);
   const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
   const [activePin, setActivePin] = useState<string | null>(null);
+  const activePinShare = useGameShareUrl(activePin ? `/game/join/${encodeURIComponent(activePin)}` : "");
   const [showGameModeModal, setShowGameModeModal] = useState(false);
   const [selectedGameMode, setSelectedGameMode] = useState<"solo" | "teams" | "rocket" | "hotseat">("solo");
   const [selectedTeamCount, setSelectedTeamCount] = useState(2);
@@ -670,14 +672,36 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
               padding: 12,
               boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
             }}>
-              <QRCodeSVG
-                value={`${window.location.origin}/game/join/${activePin}`}
-                size={160}
-                fgColor="#1f2937"
-                bgColor="#ffffff"
-                level="M"
-              />
+              {activePinShare.status === "ready" ? (
+                <QRCodeSVG
+                  value={activePinShare.url}
+                  size={160}
+                  fgColor="#1f2937"
+                  bgColor="#ffffff"
+                  level="M"
+                />
+              ) : (
+                <div style={{ width: 160, height: 160, display: "grid", placeItems: "center", background: "#f3f4f6", color: "#6b7280", fontSize: 12, textAlign: "center", padding: 12 }}>
+                  {activePinShare.status === "error"
+                    ? (isAr ? "تعذّر تجهيز الرابط" : "Could not prepare link")
+                    : (isAr ? "جارٍ تجهيز الرابط…" : "Preparing link…")}
+                </div>
+              )}
             </div>
+            {activePinShare.status === "pending" && (
+              <div role="status" style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
+                {isAr ? "جارٍ تجهيز رابط المشاركة…" : "Preparing share link…"}
+              </div>
+            )}
+            {activePinShare.status === "error" && (
+              <button
+                type="button"
+                onClick={activePinShare.retry}
+                style={{ color: "#fecaca", fontSize: 13, textDecoration: "underline" }}
+              >
+                {isAr ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}
+              </button>
+            )}
 
             {/* PIN digits */}
             <div style={{

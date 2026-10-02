@@ -28,6 +28,7 @@ import {
   trackSavedGameEvent,
   type SavedGameActivity,
 } from "@/lib/saved-game-activities";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { EVENTS } from "@/lib/analytics";
 import {
   creditAwareFetch,
@@ -2977,8 +2978,7 @@ function SavedGameActivitiesList({ isAr }: { isAr: boolean }) {
   const copyPlayLink = async (game: SavedGameActivity) => {
     if (game.gameType.toLowerCase().trim() !== "xo") return;
     try {
-      const token = await createSavedGamePlayLink(game.id);
-      await navigator.clipboard.writeText(savedGamePlayUrl(token));
+      await copyGameShortUrl(createSavedGamePlayLink(game.id).then(savedGamePlayUrl));
       toast.success(T.linkCopied);
     } catch (cause) {
       toast.error(cause instanceof Error && cause.message ? cause.message : T.linkFailed);

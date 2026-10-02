@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { io as socketIO, Socket } from "socket.io-client";
 import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, QrCode, RotateCcw, CheckCircle2, Clock, Plus, EyeOff, Timer, Monitor } from "lucide-react";
-import QRCode from "react-qr-code";
+import { GameQRCode } from "@/components/game-qr-code";
 import { useI18n } from "@/lib/i18n";
 
 function playAllReadyChime() {
@@ -100,7 +100,7 @@ function QRPanel({ token, teamName, teamColor, scanned }: { token: string; teamN
       style={{ background: `${teamColor}10`, borderColor: `${teamColor}40` }}>
       <p className="text-xs font-black" style={{ color: teamColor }}>{teamName}</p>
       <div className="bg-white p-1.5 rounded-lg">
-        <QRCode value={url} size={110} />
+        <GameQRCode url={url} pin="" size={110} />
       </div>
       <p className="text-[10px] font-bold" style={{ color: scanned ? "#22c55e" : teamColor }}>
         {scanned ? t.secretGame.scanned : t.secretGame.scanCode}

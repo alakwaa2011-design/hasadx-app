@@ -21,6 +21,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -522,20 +523,23 @@ export default function VideoLive() {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     return `${window.location.origin}${base}/watch/${roomCode}`;
   }, [roomCode]);
+  const shortLiveShare = useGameShareUrl(roomCode ? `/watch/${encodeURIComponent(roomCode)}` : "");
 
-  const copyLiveJoinLinkAndOpenShare = () => {
-    if (!liveJoinUrl) return;
-    navigator.clipboard.writeText(liveJoinUrl).then(() => {
+  const copyLiveJoinLinkAndOpenShare = async () => {
+    if (shortLiveShare.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortLiveShare.url);
       toast.success(isAr ? "تم نسخ الرابط — يمكنك مشاركة QR مع الطلاب" : "Link copied — share the QR with students");
       setShareLiveModalOpen(true);
-    });
+    } catch { toast.error(isAr ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   };
 
-  const copyLiveJoinLinkOnly = () => {
-    if (!liveJoinUrl) return;
-    navigator.clipboard.writeText(liveJoinUrl).then(() => {
+  const copyLiveJoinLinkOnly = async () => {
+    if (shortLiveShare.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortLiveShare.url);
       toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
-    });
+    } catch { toast.error(isAr ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   };
 
   const handlePlayPause = () => {
@@ -772,11 +776,13 @@ export default function VideoLive() {
                 <button
                   type="button"
                   onClick={copyLiveJoinLinkAndOpenShare}
+                  disabled={shortLiveShare.status !== "ready"}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-bold text-sm"
                 >
                   <Copy className="w-4 h-4" />
                   {isAr ? "نسخ الرابط" : "Copy link"}
                 </button>
+                {shortLiveShare.status === "error" && <button type="button" onClick={shortLiveShare.retry} className="text-xs underline text-red-600">{isAr ? "فشل الرابط — إعادة المحاولة" : "Link failed — retry"}</button>}
               </div>
             </div>
           </Card>
@@ -1102,7 +1108,7 @@ export default function VideoLive() {
                 <p className="text-sm text-muted-foreground mb-2">
                   {isAr ? "رابط انضمام الطلاب" : "Student join link"}
                 </p>
-                <p className="text-xs font-mono bg-muted p-2 rounded break-all">{liveJoinUrl}</p>
+                <p className="text-xs font-mono bg-muted p-2 rounded break-all">{shortLiveShare.status === "ready" ? shortLiveShare.url : shortLiveShare.status === "pending" ? (isAr ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLiveShare.error}</p>
               </Card>
             )}
           </div>
@@ -1165,12 +1171,12 @@ export default function VideoLive() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     readOnly
-                    value={liveJoinUrl}
+                    value={shortLiveShare.status === "ready" ? shortLiveShare.url : ""}
                     className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs sm:text-sm font-mono text-foreground outline-none focus:ring-2 focus:ring-primary/25"
                     dir="ltr"
                     onFocus={(e) => e.target.select()}
                   />
-                  <Button type="button" variant="outline" className="gap-2 font-bold shrink-0" onClick={copyLiveJoinLinkOnly}>
+                  <Button type="button" variant="outline" className="gap-2 font-bold shrink-0" onClick={copyLiveJoinLinkOnly} disabled={shortLiveShare.status !== "ready"}>
                     <Copy className="w-4 h-4" />
                     {isAr ? "نسخ الرابط" : "Copy URL"}
                   </Button>
@@ -1182,8 +1188,9 @@ export default function VideoLive() {
                   {isAr ? "رمز QR — تصويره بالهاتف للدخول السريع" : "QR code — scan with a phone camera"}
                 </p>
                 <div className="rounded-2xl bg-white p-4 border shadow-inner dark:bg-white">
-                  <QRCodeSVG value={liveJoinUrl} size={200} level="M" includeMargin />
+                  {shortLiveShare.status === "ready" && <QRCodeSVG value={shortLiveShare.url} size={200} level="M" includeMargin />}
                 </div>
+                {shortLiveShare.status === "error" && <button type="button" onClick={shortLiveShare.retry} className="text-xs underline text-red-500">{isAr ? "إعادة تجهيز الرابط" : "Retry short link"}</button>}
               </div>
 
               <Button type="button" className="w-full gap-2 font-black min-h-11" onClick={() => setShareLiveModalOpen(false)}>

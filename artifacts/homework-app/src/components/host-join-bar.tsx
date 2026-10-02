@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Check, Link as LinkIcon, QrCode, X, Download } from "lucide-react";
 import QRCode from "react-qr-code";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
+import { copyGameShareText } from "@/lib/game-share-url";
 
 interface HostJoinBarProps {
   pin: string;
@@ -15,23 +17,19 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
   const { lang, dir } = useI18n();
   const [copied, setCopied] = useState<"link" | "pin" | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
+  const shortLink = useGameShareUrl(joinUrl);
 
   const copy = async (value: string, what: "link" | "pin") => {
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(value);
+      await copyGameShareText(value);
       setCopied(what);
       setTimeout(() => setCopied(c => (c === what ? null : c)), 1500);
     } catch {
-      const ta = document.createElement("textarea");
-      ta.value = value;
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand("copy"); } catch { /* ignore */ }
-      document.body.removeChild(ta);
-      setCopied(what);
-      setTimeout(() => setCopied(c => (c === what ? null : c)), 1500);
+      setCopyError(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link");
     }
   };
+  const [copyError, setCopyError] = useState("");
 
   const downloadQR = () => {
     const svg = document.getElementById(`host-qr-svg-${pin}`);
@@ -91,23 +89,33 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
         </button>
         <button
           type="button"
-          onClick={() => copy(joinUrl, "link")}
+          disabled={shortLink.status !== "ready"}
+          onClick={() => copy(shortLink.status === "ready" ? shortLink.url : "", "link")}
           aria-label={linkLabel}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${baseChip}`}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${baseChip}`}
         >
           {copied === "link" ? <Check className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
           {linkLabel}
         </button>
         <button
           type="button"
-          onClick={() => setQrOpen(true)}
+          disabled={shortLink.status !== "ready"}
+          onClick={() => shortLink.status === "ready" && setQrOpen(true)}
           aria-label={lang === "ar" ? "فتح رمز QR" : "Open QR code"}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${baseChip}`}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${baseChip}`}
         >
           <QrCode className="w-4 h-4" />
           {qrLabel}
         </button>
       </div>
+      {shortLink.status === "pending" && <p role="status" className="w-full text-xs opacity-70">{lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+      {shortLink.status === "error" && (
+        <div role="alert" className="w-full flex items-center gap-2 text-xs text-red-500">
+          <span>{shortLink.error || (lang === "ar" ? "تعذّر تجهيز الرابط" : "Could not prepare the short link")}</span>
+          <button type="button" onClick={shortLink.retry} className="underline font-bold">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>
+        </div>
+      )}
+      {copyError && <p role="alert" className="w-full text-xs text-red-500">{copyError}</p>}
 
       <AnimatePresence>
         {qrOpen && (
@@ -137,23 +145,25 @@ export function HostJoinBar({ pin, joinUrl, variant = "dark", compact = false }:
               </div>
 
               <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100">
-                <QRCode id={`host-qr-svg-${pin}`} value={joinUrl} size={240} />
+                <QRCode id={`host-qr-svg-${pin}`} value={shortLink.status === "ready" ? shortLink.url : ""} size={240} />
               </div>
 
               <div className="text-center space-y-1">
                 <p className="text-3xl font-black tracking-[0.3em] text-purple-700 dark:text-purple-300 font-mono" dir="ltr">{pin}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 break-all max-w-[260px]">{joinUrl}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-all max-w-[260px]">{shortLink.status === "ready" ? shortLink.url : ""}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2 w-full">
                 <button
-                  onClick={() => copy(joinUrl, "link")}
+                  disabled={shortLink.status !== "ready"}
+                  onClick={() => copy(shortLink.status === "ready" ? shortLink.url : "", "link")}
                   className="py-3 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100 font-bold flex items-center justify-center gap-2"
                 >
                   {copied === "link" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   {lang === "ar" ? "نسخ الرابط" : "Copy link"}
                 </button>
                 <button
+                  disabled={shortLink.status !== "ready"}
                   onClick={downloadQR}
                   className="py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center justify-center gap-2"
                 >

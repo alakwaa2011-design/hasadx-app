@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout";
 import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import {
   Trophy, Copy, Check, ArrowRight, ArrowLeft, Crown, Medal,
   Loader2, Users, Star, Wifi, WifiOff,
@@ -62,6 +63,7 @@ export default function MillionClassHost() {
   const socketRef = useRef(getSocket());
 
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/million/join/${pin}`;
+  const shortLink = useGameShareUrl(joinUrl);
 
   useEffect(() => {
     if (!pin || !hostToken) {
@@ -98,12 +100,14 @@ export default function MillionClassHost() {
     };
   }, [pin, hostToken, lang, setLocation]);
 
-  function copyLink() {
-    navigator.clipboard.writeText(joinUrl).then(() => {
+  async function copyLink() {
+    if (shortLink.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
       toast.success(lang === "ar" ? "تم نسخ الرابط" : "Link copied!");
-    });
+    } catch { toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   }
 
   const rankIcon = (i: number) => {
@@ -161,7 +165,7 @@ export default function MillionClassHost() {
               className="md:col-span-1 rounded-2xl p-5 flex flex-col items-center gap-4 bg-white/80 dark:bg-white/5 border border-gray-200 dark:border-white/10"
             >
               <div className="bg-white dark:bg-gray-100 rounded-2xl p-3">
-                <QRCodeSVG value={joinUrl} size={160} level="H" />
+                {shortLink.status === "ready" && <QRCodeSVG value={shortLink.url} size={160} level="H" />}
               </div>
 
               <div className="text-center">
@@ -173,6 +177,7 @@ export default function MillionClassHost() {
 
               <button
                 onClick={copyLink}
+                disabled={shortLink.status !== "ready"}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-105 border ${copied ? "bg-green-500/20 border-green-500/40" : "bg-blue-500/20 border-blue-500/30"}`}
               >
                 {copied ? <Check className="w-4 h-4 text-green-600 dark:text-green-400" /> : <Copy className="w-4 h-4 text-blue-600 dark:text-blue-300" />}
@@ -183,7 +188,8 @@ export default function MillionClassHost() {
                 </span>
               </button>
 
-              <p className="text-blue-600 dark:text-blue-500 text-xs text-center break-all">{joinUrl}</p>
+              <p className="text-blue-600 dark:text-blue-500 text-xs text-center break-all">{shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}</p>
+              {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-xs underline text-red-500">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
             </motion.div>
 
             <motion.div

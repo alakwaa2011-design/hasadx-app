@@ -1598,6 +1598,19 @@ async function runSchemaMigrations() {
   // ── Direct Play Links ─────────────────────────────────────────────────────
   try {
     await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS game_share_links (
+        code TEXT PRIMARY KEY,
+        destination_hash TEXT NOT NULL UNIQUE,
+        destination TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  } catch (err) {
+    logger.error(err, "Game share link migration failed");
+  }
+
+  try {
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS direct_play_links (
         id            SERIAL PRIMARY KEY,
         token         TEXT NOT NULL UNIQUE,

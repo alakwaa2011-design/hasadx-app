@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Save, Copy, Check, Shuffle, BookOpen, LogIn, Eye, Send, MessageSquare, Type } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
@@ -86,6 +87,7 @@ export default function ScrambleCreate() {
   const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string; id: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  const shortLink = useGameShareUrl(result ? `/game/scramble/play?pin=${result.pin}` : "");
   const [showTemplates, setShowTemplates] = useState(false);
   const loadedSavedGameRef = useRef(false);
 
@@ -228,16 +230,16 @@ export default function ScrambleCreate() {
     setSaving(false);
   };
 
-  const handleCopy = () => {
-    if (!result) return;
-    const url = `${window.location.origin}/game/scramble/play?pin=${result.pin}`;
+  const handleCopy = async () => {
+    if (!result || shortLink.status !== "ready") return;
     const text = lang === "ar"
-      ? `🔤 الكلمات المبعثرة — ${title}\n🔑 الرمز: ${result.pin}\n🔗 ${url}`
-      : `🔤 Scrambled Words — ${title}\n🔑 PIN: ${result.pin}\n🔗 ${url}`;
-    navigator.clipboard.writeText(text).then(() => {
+      ? `🔤 الكلمات المبعثرة — ${title}\n🔑 الرمز: ${result.pin}\n🔗 ${shortLink.url}`
+      : `🔤 Scrambled Words — ${title}\n🔑 PIN: ${result.pin}\n🔗 ${shortLink.url}`;
+    try {
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
+    } catch { alert(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   };
 
   if (result) {
@@ -259,11 +261,13 @@ export default function ScrambleCreate() {
               </div>
 
               <div className="space-y-2">
-                <button onClick={handleCopy}
+                <button onClick={handleCopy} disabled={shortLink.status !== "ready"}
                   className="w-full py-3 rounded-xl bg-card border-2 border-purple-300 dark:border-purple-700 font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center gap-2 transition-all hover:bg-purple-50 dark:hover:bg-purple-950/20">
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                   {copied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط والرمز" : "Copy link & PIN")}
                 </button>
+                {shortLink.status === "pending" && <p role="status" className="text-xs text-muted-foreground">{lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+                {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-xs underline text-red-500">{lang === "ar" ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
 
                 <button
                   onClick={() => setLocation(`/game/scramble/monitor?pin=${result.pin}&title=${encodeURIComponent(title)}`)}

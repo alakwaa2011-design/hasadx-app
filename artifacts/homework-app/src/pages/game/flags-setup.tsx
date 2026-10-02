@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, Play, Globe, Trophy, Star, Users, User, Copy, Check, QrCode, Share2, Swords } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { LEVELS, DURATIONS, getCountriesByTier, shuffleArray, generateDistractors, type Country, getFlagUrl } from "@/data/countries";
@@ -27,6 +28,7 @@ export default function FlagsSetup() {
   const [players, setPlayers] = useState<{ name: string; score: number; connected: boolean }[]>([]);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const shortLink = useGameShareUrl(pin ? `/game/flags/join/${encodeURIComponent(pin)}` : "");
   const [showArenaLobby, setShowArenaLobby] = useState(false);
   const isPreview = new URLSearchParams(window.location.search).get("preview") === "1";
 
@@ -122,23 +124,24 @@ export default function FlagsSetup() {
     });
   };
 
-  const copyPin = () => {
-    const link = `${window.location.origin}/game/flags/join/${pin}`;
-    navigator.clipboard.writeText(link).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const shareGame = () => {
-    const link = `${window.location.origin}/game/flags/join/${pin}`;
-    const text = g.shareText.replace("{pin}", pin);
-    if (navigator.share) {
-      navigator.share({ title: g.shareTitle, text, url: link }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(`${text}\n${link}`).catch(() => {});
+  const copyPin = async () => {
+    if (shortLink.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }
+    } catch { setError(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy the link"); }
+  };
+
+  const shareGame = async () => {
+    if (shortLink.status !== "ready") return;
+    const text = g.shareText.replace("{pin}", pin);
+    try {
+      if (navigator.share) await navigator.share({ title: g.shareTitle, text, url: shortLink.url });
+      else await navigator.clipboard.writeText(`${text}\n${shortLink.url}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { setError(lang === "ar" ? "تعذّرت مشاركة الرابط" : "Could not share the link"); }
   };
 
   const handleSetupBack = () => {
@@ -174,18 +177,19 @@ export default function FlagsSetup() {
                 ))}
               </div>
               <div className="flex items-center justify-center gap-2">
-                <button onClick={copyPin} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs font-bold hover:bg-sky-200 transition-colors">
+                <button onClick={copyPin} disabled={shortLink.status !== "ready"} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs font-bold hover:bg-sky-200 transition-colors disabled:opacity-50">
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? g.copied : g.copyLink}
                 </button>
-                <button onClick={shareGame} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-200 transition-colors">
+                <button onClick={shareGame} disabled={shortLink.status !== "ready"} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-200 transition-colors disabled:opacity-50">
                   <Share2 className="w-3.5 h-3.5" />
                   {g.share}
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                {g.visitLink} /game/flags/join/{pin}
+                {shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}
               </p>
+              {shortLink.status === "error" && <button type="button" role="alert" onClick={shortLink.retry} className="text-xs text-red-500 underline">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card border border-border/60 rounded-2xl p-5 shadow-md mb-4">

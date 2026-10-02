@@ -70,6 +70,8 @@ export * from './createQuestionBodyQuestionType';
 export * from './deletedSubmissionsResult';
 export * from './errorResponse';
 export * from './examSessionResponse';
+export * from './gameShareLink';
+export * from './gameShareLinkInput';
 export * from './getPresentationLinkedActivity200';
 export * from './getPresentationLinkedActivity200Activity';
 export * from './getQuranAyahEducationParams';

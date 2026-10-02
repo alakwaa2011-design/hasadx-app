@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { copyGameShareText, copyGameShortUrl } from "@/lib/game-share-url";
 import { playVictoryFanfare, playCorrectSound, playGiftSound, playNotificationSound } from "@/lib/game-sounds";
 import { QuestionImage } from "@/components/game/question-image";
 import { useWheelAudio } from "@/lib/wheel-audio";
@@ -203,7 +204,7 @@ export default function WheelPlay() {
 
     if (directPlayLink) {
       try {
-        await navigator.clipboard.writeText(directPlayLink);
+        await copyGameShareText(directPlayLink);
         toast.success(ar ? "تم نسخ رابط اللعبة" : "Game link copied");
       } catch {
         toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
@@ -213,25 +214,21 @@ export default function WheelPlay() {
 
     setDirectLinkLoading(true);
     try {
-      const res = await fetch(
+      const playTarget = fetch(
         `${API_BASE}/api/wheel-templates/${templateId}/play-links`,
         { method: "POST", credentials: "include" },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || typeof data.token !== "string") {
-        toast.error(data.message || (ar ? "تعذّر إنشاء الرابط المباشر" : "Could not create the direct link"));
-        return;
-      }
-      const link = `${window.location.origin}/play/${data.token}`;
+      ).then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || typeof data.token !== "string") {
+          throw new Error(data.message || (ar ? "تعذّر إنشاء الرابط المباشر" : "Could not create the direct link"));
+        }
+        return `/play/${encodeURIComponent(data.token)}`;
+      });
+      const link = await copyGameShortUrl(playTarget);
       setDirectPlayLink(link);
-      try {
-        await navigator.clipboard.writeText(link);
-        toast.success(ar ? "تم إنشاء الرابط ونسخه" : "Direct link created and copied");
-      } catch {
-        toast.success(ar ? "تم إنشاء الرابط المباشر" : "Direct link created");
-      }
-    } catch {
-      toast.error(ar ? "تعذّر إنشاء الرابط المباشر" : "Could not create the direct link");
+      toast.success(ar ? "تم إنشاء الرابط ونسخه" : "Direct link created and copied");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (ar ? "تعذّر إنشاء الرابط المباشر" : "Could not create the direct link"));
     } finally {
       setDirectLinkLoading(false);
     }

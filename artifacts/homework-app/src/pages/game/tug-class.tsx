@@ -30,6 +30,7 @@ import {
   type ClassQuestion, type ClassState, type MysteryGift, type TeamId, type TeamState,
 } from "@/lib/tug-class-engine";
 import { createSavedGamePlayLink, type SavedGameActivity } from "@/lib/saved-game-activities";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { toast } from "@/components/ui/sonner";
 import { TugGiftPicker, TugMysteryBoxBar } from "@/components/game/tug-gifts-ui";
 
@@ -1458,14 +1459,17 @@ export default function TugClass() {
 
   const handleShare = async () => {
     try {
-      let token = shareToken;
-      if (!token) {
+      let target: string | Promise<string>;
+      if (shareToken) {
+        target = `/game/tug/class?token=${encodeURIComponent(shareToken)}`;
+      } else {
         if (!setup?.savedActivityId) throw new Error(ar ? "أعد فتح اللعبة من صفحة الإنشاء لإنشاء الرابط" : "Reopen the game from its setup page to create a link");
-        token = await createSavedGamePlayLink(setup.savedActivityId);
-        setShareToken(token);
+        target = createSavedGamePlayLink(setup.savedActivityId).then(token => {
+          setShareToken(token);
+          return `/game/tug/class?token=${encodeURIComponent(token)}`;
+        });
       }
-      const url = `${window.location.origin}/game/tug/class?token=${encodeURIComponent(token)}`;
-      await navigator.clipboard.writeText(url);
+      await copyGameShortUrl(target);
       toast.success(ar ? "تم نسخ رابط اللعب المباشر" : "Direct-play link copied");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : (ar ? "تعذّر نسخ الرابط" : "Could not copy link"));

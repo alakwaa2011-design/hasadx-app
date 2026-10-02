@@ -17,6 +17,7 @@ import {
   type GuestDraft, type GuestQuestion, type GuestQuestionType,
 } from "@/lib/guest-draft";
 import { contentDirection } from "@/lib/content-direction";
+import { HostJoinBar } from "@/components/host-join-bar";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GUEST_AI_COUNT_KEY = "guestAiUsageCount";
@@ -392,6 +393,10 @@ export default function GuestCreatePage() {
                   {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
+            </div>
+            <div className="mb-5 rounded-2xl bg-white/5 p-4">
+              <p className="text-white/70 text-xs mb-3">{lang === "ar" ? "شارك رابط الانضمام القصير أو رمز QR" : "Share the short join link or QR code"}</p>
+              <HostJoinBar pin={gameResult.pin} joinUrl={`/game/join/${gameResult.pin}`} variant="dark" />
             </div>
 
             {!started ? (

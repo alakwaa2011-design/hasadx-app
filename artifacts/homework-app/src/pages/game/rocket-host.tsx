@@ -12,6 +12,7 @@ import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 import { QuestionImage } from "@/components/game/question-image";
 import { AvatarDisplay } from "@/components/avatar-display";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 const GREEN = "#225739";
 const GOLD = "#D9A521";
@@ -293,10 +294,12 @@ export default function RocketHost() {
   }, [pin]);
 
   const joinUrl = `${window.location.origin}/game/rocket/join/${pin}`;
+  const shortLink = useGameShareUrl(joinUrl);
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(joinUrl);
+      if (shortLink.status !== "ready") return;
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast.success(ar ? "تم نسخ الرابط" : "Link copied");
@@ -399,7 +402,7 @@ export default function RocketHost() {
               cursor: "pointer",
             }}
           >
-            <QRCode value={joinUrl} size={44} />
+            {shortLink.status === "ready" && <QRCode value={shortLink.url} size={44} />}
           </button>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
             <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5 }}>
@@ -479,7 +482,7 @@ export default function RocketHost() {
                   {pin}
                 </div>
                 <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-                  <button onClick={copyLink} style={btnAction(GREEN)}>
+                  <button onClick={copyLink} disabled={shortLink.status !== "ready"} style={btnAction(GREEN)}>
                     {copied ? <Check size={16} /> : <Copy size={16} />}
                     {copied ? (ar ? "تم النسخ" : "Copied") : (ar ? "نسخ الرابط" : "Copy Link")}
                   </button>
@@ -492,7 +495,7 @@ export default function RocketHost() {
 
               {/* Right: small QR */}
               <div style={{ background: "#fff", borderRadius: 14, padding: 12 }}>
-                <QRCode value={joinUrl} size={170} />
+                {shortLink.status === "ready" && <QRCode value={shortLink.url} size={170} />}
               </div>
             </div>
           </div>
@@ -930,14 +933,15 @@ export default function RocketHost() {
                 </button>
               </div>
               <div style={{ background: "#fff", padding: 16, border: "1px solid #f1f1f1", borderRadius: 14 }}>
-                <QRCode value={joinUrl} size={240} />
+                {shortLink.status === "ready" && <QRCode value={shortLink.url} size={240} />}
               </div>
               <p style={{ margin: 0, fontSize: 36, fontWeight: 900, color: GREEN, fontFamily: "monospace", letterSpacing: "0.2em" }} dir="ltr">
                 {pin}
               </p>
               <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", wordBreak: "break-all", textAlign: "center" }}>
-                {joinUrl}
+                {shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}
               </p>
+              {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-red-500 underline">{ar ? "إعادة المحاولة" : "Retry"}</button>}
             </motion.div>
           </motion.div>
         )}

@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
@@ -129,6 +130,7 @@ export default function StroopCreate() {
   const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string; title: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const shortLink = useGameShareUrl(result ? `/game/stroop/play?pin=${result.pin}` : "");
   const [showTemplates, setShowTemplates] = useState(false);
   const loadedSavedGameRef = useRef(false);
   const usingDefaultItemsRef = useRef(true);
@@ -319,7 +321,7 @@ export default function StroopCreate() {
   };
 
   if (result) {
-    const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL || "/"}game/stroop/play?pin=${result.pin}`;
+    const shareUrl = shortLink.status === "ready" ? shortLink.url : "";
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 dark:from-red-950/20 dark:via-orange-950/20 dark:to-yellow-950/20 py-8 px-4" dir={dir}>
@@ -348,8 +350,9 @@ export default function StroopCreate() {
                 </div>
                 <p className="text-xs text-muted-foreground">{lang === "ar" ? "شارك هذا الكود مع طلابك" : "Share this code with your students"}</p>
                 <div className="mt-3 flex items-center gap-2 bg-muted/50 rounded-xl p-2">
-                  <p className="text-xs font-mono text-foreground flex-1 truncate" dir="ltr">{shareUrl}</p>
+                  <p className="text-xs font-mono text-foreground flex-1 truncate" dir="ltr">{shareUrl || (shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error)}</p>
                 </div>
+                {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="mt-2 text-xs underline text-red-500">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
               </div>
 
               <div className="flex flex-col gap-3">

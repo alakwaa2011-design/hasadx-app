@@ -12,6 +12,7 @@ import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-so
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { saveGameActivity, createSavedGamePlayLink, savedGamePlayUrl } from "@/lib/saved-game-activities";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 import { cn } from "@/lib/utils";
 
@@ -181,10 +182,10 @@ export default function TugCreate() {
     }
     setCopyingLink(true);
     try {
-      const activity = await persistActivity();
-      const token = await createSavedGamePlayLink(activity.id);
-      const link = savedGamePlayUrl(token);
-      await navigator.clipboard.writeText(link);
+      const playUrl = persistActivity()
+        .then(activity => createSavedGamePlayLink(activity.id))
+        .then(savedGamePlayUrl);
+      await copyGameShortUrl(playUrl);
       toast.success(ar ? "تم نسخ الرابط بنجاح! يمكن إرساله للطلاب الآن." : "Link copied! You can share it with students.");
     } catch {
       toast.error(ar ? "تعذّر إنشاء الرابط. حاول مرة أخرى." : "Could not create link. Please try again.");

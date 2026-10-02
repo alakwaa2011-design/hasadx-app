@@ -86,6 +86,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 import { WameethLaunch } from "@/components/wameeth-launch";
 import { resolveImageUrl } from "@/lib/image-url";
 import { toast } from "@/components/ui/sonner";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { MathText } from "@/components/math-text";
 import {
   clearIndependentControlToken,
@@ -967,9 +968,7 @@ function IndependentResults({
   const copyLink = async () => {
     if (!token) return;
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/play/${encodeURIComponent(token)}`,
-      );
+      await copyGameShortUrl(`/play/${encodeURIComponent(token)}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -1305,9 +1304,7 @@ export default function GamePlay() {
   const copyIndependentLink = useCallback(async () => {
     if (!independentTokenParam) return;
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/play/${encodeURIComponent(independentTokenParam)}`,
-      );
+      await copyGameShortUrl(`/play/${encodeURIComponent(independentTokenParam)}`);
       setShareCopied(true);
       window.setTimeout(() => setShareCopied(false), 1800);
     } catch {
@@ -4801,9 +4798,7 @@ export default function GamePlay() {
                 onClick={async () => {
                   if (isIndependentRef.current && independentTokenParam) {
                     try {
-                      await navigator.clipboard.writeText(
-                        `${window.location.origin}/play/${encodeURIComponent(independentTokenParam)}`,
-                      );
+                      await copyGameShortUrl(`/play/${encodeURIComponent(independentTokenParam)}`);
                       setShareCopied(true);
                       window.setTimeout(() => setShareCopied(false), 1800);
                     } catch {

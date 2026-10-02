@@ -5,6 +5,16 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface GameShareLinkInput {
+    /** @maxLength 8192 */
+    path: string;
+}
+export interface GameShareLink {
+    /** @pattern ^[a-z2-7]{10}$ */
+    code: string;
+    path: string;
+    shortPath: string;
+}
 export interface WorksheetPageRenderInput {
     /**
        * Serialized worksheet page HTML; data URIs should be used for images.

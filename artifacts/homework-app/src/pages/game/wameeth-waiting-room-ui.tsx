@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { ClassSelector } from "@/components/teacher/class-selector";
 import { GameQRCode } from "@/components/game-qr-code";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { AvatarDisplay } from "@/components/avatar-display";
 import {
   Play,
@@ -1018,7 +1019,9 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
   } = props;
 
   const hackPanelRef = useRef<HTMLElement>(null);
-  const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`;
+  const joinTarget = pin ? `/game/join/${encodeURIComponent(pin)}` : "";
+  const joinShare = useGameShareUrl(joinTarget);
+  const joinUrl = joinTarget;
   const playerProgressPct = Math.min(100, (players.length / MAX_LOBBY_PLAYERS) * 100);
   const humanCount = players.filter((p) => !p.isBot).length;
 
@@ -1030,18 +1033,20 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     document.getElementById("game-settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     const shareText = isAr ? `انضم إلى لعبة وميض! الكود: ${pin}` : `Join Wameeth! Code: ${pin}`;
+    if (joinShare.status !== "ready") return;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({
+        void navigator.share({
           title: isAr ? "وميض — غرفة الانتظار" : "Wameeth — waiting room",
           text: shareText,
-          url: joinUrl,
-        });
+          url: joinShare.url,
+        }).catch(() => onCopyLink());
         return;
       } catch {
-        /* cancelled or unsupported */
+        onCopyLink();
+        return;
       }
     }
     onCopyLink();
@@ -1256,17 +1261,30 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 <button
                   type="button"
                   onClick={handleShare}
+                  disabled={joinShare.status !== "ready"}
                   className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition-transform active:scale-[0.98]"
                   style={{
                     borderColor: "rgba(212,166,58,0.45)",
                     background: "rgba(212,166,58,0.12)",
                     color: P.goldLight,
+                    opacity: joinShare.status === "ready" ? 1 : 0.5,
+                    cursor: joinShare.status === "ready" ? "pointer" : "not-allowed",
                   }}
                 >
                   <Share2 className="h-4 w-4" />
                   {isAr ? "مشاركة" : "Share"}
                 </button>
               </div>
+              {joinShare.status === "pending" && (
+                <p role="status" className="mt-2 text-center text-xs text-[#a8c4ad]">
+                  {isAr ? "جارٍ تجهيز رابط المشاركة…" : "Preparing share link…"}
+                </p>
+              )}
+              {joinShare.status === "error" && (
+                <button type="button" onClick={joinShare.retry} className="mt-2 block w-full text-center text-xs text-red-300 underline">
+                  {isAr ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}
+                </button>
+              )}
             </div>
           </motion.section>
 

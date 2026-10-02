@@ -8,6 +8,7 @@ import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-so
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { createSavedGamePlayLink, getSavedGameActivity, normalizeSavedGameQuestions, savedGamePlayUrl, saveGameActivity } from "@/lib/saved-game-activities";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { toast } from "@/components/ui/sonner";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
@@ -228,8 +229,7 @@ export default function XoCreate() {
   const copyPermanentLink = async () => {
     setLinkCreating(true);
     try {
-      const token = await ensurePermanentLink();
-      await navigator.clipboard.writeText(savedGamePlayUrl(token));
+      await copyGameShortUrl(ensurePermanentLink().then(savedGamePlayUrl));
       toast.success(ar ? "تم نسخ الرابط الدائم" : "Permanent link copied");
     } catch (error) {
       toast.error(error instanceof Error && error.message

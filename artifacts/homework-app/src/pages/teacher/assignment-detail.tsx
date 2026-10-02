@@ -15,6 +15,7 @@ import { fileToBase64 } from "@/lib/utils";
 import { getSuggestions } from "@/lib/suggestions";
 import { resolveImageUrl } from "@/lib/image-url";
 import { getWameethSetupPath } from "@/lib/wameeth-entry";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { SelfChallengeIcon } from "@/components/game-icons";
 import { AssignmentEditor } from "./assignment-editor";
 import {
@@ -206,8 +207,12 @@ export default function TeacherAssignmentDetail() {
       const data = await res.json();
       if (!res.ok) { toast.error(data.message || "خطأ"); return; }
       setSoloChallenge(data);
-      const url = `${window.location.origin}/solo/${data.slug}`;
-      navigator.clipboard.writeText(url);
+      try {
+        await copyGameShortUrl(`/solo/${encodeURIComponent(data.slug)}`);
+      } catch {
+        toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link");
+        return;
+      }
       toast.success(lang === "ar" ? "تم إنشاء الرابط ونسخه!" : "Link created and copied!");
     } catch {
       toast.error(lang === "ar" ? "تعذّر الإنشاء" : "Failed to create");
@@ -216,13 +221,16 @@ export default function TeacherAssignmentDetail() {
     }
   };
 
-  const copySoloLink = () => {
+  const copySoloLink = async () => {
     if (!soloChallenge) return;
-    const url = `${window.location.origin}/solo/${soloChallenge.slug}`;
-    navigator.clipboard.writeText(url);
-    setSoloCopied(true);
-    setTimeout(() => setSoloCopied(false), 2000);
-    toast.success(lang === "ar" ? "تم نسخ رابط المسابقة الذاتية" : "Self Challenge link copied!");
+    try {
+      await copyGameShortUrl(`/solo/${encodeURIComponent(soloChallenge.slug)}`);
+      setSoloCopied(true);
+      setTimeout(() => setSoloCopied(false), 2000);
+      toast.success(lang === "ar" ? "تم نسخ رابط المسابقة الذاتية" : "Self Challenge link copied!");
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link");
+    }
   };
 
   useEffect(() => {

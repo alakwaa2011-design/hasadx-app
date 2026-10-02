@@ -13,6 +13,8 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { copyGameShortUrl } from "@/lib/game-share-url";
+import { openGameShareWindow, useGameShareUrl } from "@/lib/use-game-share-url";
 import { Layout } from "@/components/layout";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -31,6 +33,48 @@ interface SoloChallengeRow {
   createdAt: string;
   isStandalone: boolean;
   isExpired: boolean;
+}
+
+function SoloChallengeWhatsAppButton({ slug, title }: { slug: string; title: string }) {
+  const { t, lang } = useI18n();
+  const s = t.soloChallenges;
+  const shortLink = useGameShareUrl(`/solo/${encodeURIComponent(slug)}`);
+  const ready = shortLink.status === "ready";
+
+  const share = () => {
+    if (shortLink.status !== "ready") return;
+    const text = `${s.shareText?.replace("{title}", title) || title}\n${shortLink.url}`;
+    const opened = openGameShareWindow(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    if (!opened) toast.error(lang === "ar" ? "تعذّر فتح واتساب" : "Could not open WhatsApp");
+  };
+
+  return (
+    <div className="flex flex-1 sm:flex-none flex-col items-center">
+      <button
+        onClick={share}
+        disabled={!ready}
+        className={`flex w-full items-center justify-center p-2 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/15 transition-colors text-emerald-600 ${!ready ? "opacity-50 cursor-not-allowed" : ""}`}
+        title={s.shareWhatsApp}
+      >
+        <Share2 className="w-4 h-4" />
+      </button>
+      {shortLink.status === "pending" && (
+        <span role="status" className="mt-1 text-[9px] text-muted-foreground whitespace-nowrap">
+          {lang === "ar" ? "جارٍ تجهيز الرابط…" : "Preparing link…"}
+        </span>
+      )}
+      {shortLink.status === "error" && (
+        <button
+          type="button"
+          onClick={shortLink.retry}
+          title={shortLink.error}
+          className="mt-1 text-[9px] text-red-600 underline whitespace-nowrap"
+        >
+          {lang === "ar" ? "إعادة المحاولة" : "Retry"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function SoloChallengesPage() {
@@ -52,16 +96,13 @@ export default function SoloChallengesPage() {
       .finally(() => setLoading(false));
   }, [user, authLoading, setLocation]);
 
-  const copyLink = (slug: string) => {
-    const url = `${window.location.origin}/solo/${slug}`;
-    navigator.clipboard.writeText(url).catch(() => {});
-    toast.success(s.linkCopied);
-  };
-
-  const shareWhatsApp = (slug: string, title: string) => {
-    const url = `${window.location.origin}/solo/${slug}`;
-    const text = `${s.shareText?.replace("{title}", title) || title}\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  const copyLink = async (slug: string) => {
+    try {
+      await copyGameShortUrl(`/solo/${encodeURIComponent(slug)}`);
+      toast.success(s.linkCopied);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : (dir === "rtl" ? "تعذّر تجهيز الرابط" : "Could not prepare link"));
+    }
   };
 
   const deleteChallenge = async (slug: string, title: string) => {
@@ -274,13 +315,7 @@ export default function SoloChallengesPage() {
                         >
                           <Copy className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => shareWhatsApp(ch.slug, ch.assignmentTitle)}
-                          className="flex-1 sm:flex-none flex items-center justify-center p-2 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/15 transition-colors text-emerald-600"
-                          title={s.shareWhatsApp}
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </button>
+                        <SoloChallengeWhatsAppButton slug={ch.slug} title={ch.assignmentTitle} />
                         <a
                           href={`/solo/${ch.slug}`}
                           target="_blank"

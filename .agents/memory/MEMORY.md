@@ -30,6 +30,7 @@
 - [Meta Pixel purchase proof](meta-pixel-purchase-proof.md) — emit Purchase only after a unique server-confirmed payment status, not a subscription return URL or balance change.
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
 - [Direct play links architecture](direct-play-links.md) — opaque public links support assignments, saved games, and display modes; session-backed games create fresh rooms per open.
+- [روابط مشاركة الألعاب](game-share-link-contract.md) — كل الألعاب الحالية والمستقبلية تستخدم رابط حصاد قصيرًا وثابتًا للمشاركة والنسخ وQR دون تغيير الصلاحيات أو كسر الروابط القديمة.
 - [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
 - [Browser test environment notes](browser-test-notes.md) — pointers for isolated fixtures, browser resets, viewport assertions, print capture, and Quran audio routing.
 - [Autosave idempotency](autosave-idempotency.md) — generated-content retries use a stable client key and must atomically include every create-side effect.

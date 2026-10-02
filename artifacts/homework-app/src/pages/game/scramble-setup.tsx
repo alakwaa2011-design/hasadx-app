@@ -12,6 +12,8 @@ import { CATEGORIES, CATEGORY_LABELS, getDifficultyLabel } from "@/lib/scramble-
 import type { ScrambleDifficulty } from "@/lib/scramble-engine";
 import { GameSetupLayout } from "@/components/game/game-setup-layout";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
+import { copyGameShareText, createGameShortUrl } from "@/lib/game-share-url";
+import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -102,15 +104,18 @@ export default function ScrambleSetup() {
     }
   };
 
-  const handleCopyPin = (p: string) => {
-    const url = `${window.location.origin}/game/scramble/play?pin=${p}`;
-    const text = t.gamePages.scramble.sharePin
-      .replace("{pin}", p)
-      .replace("{url}", url);
-    navigator.clipboard.writeText(text).then(() => {
+  const handleCopyPin = async (p: string) => {
+    try {
+      const url = await createGameShortUrl(`/game/scramble/play?pin=${encodeURIComponent(p)}`);
+      const text = t.gamePages.scramble.sharePin
+        .replace("{pin}", p)
+        .replace("{url}", url);
+      await copyGameShareText(text);
       setCopiedPin(p);
       setTimeout(() => setCopiedPin(null), 2000);
-    }).catch(() => {});
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : (lang === "ar" ? "تعذّر تجهيز الرابط" : "Could not prepare link"));
+    }
   };
 
   const handleDeleteSet = async (id: number) => {

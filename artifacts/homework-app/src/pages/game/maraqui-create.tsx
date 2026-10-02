@@ -7,6 +7,7 @@ import {
   Sparkles, LogIn, ChevronDown, ChevronUp, Loader2, X, Pencil,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { toast } from "@/components/ui/sonner";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
@@ -70,6 +71,7 @@ export default function MaraquiCreate() {
   const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string; title: string; isEdit?: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  const shortLink = useGameShareUrl(result ? `/game/maraqui?pin=${result.pin}` : "");
   const [aiLoadingStage, setAiLoadingStage] = useState<number | null>(null);
   const [aiTopic, setAiTopic] = useState("");
   const [aiSourceText, setAiSourceText] = useState("");
@@ -324,7 +326,7 @@ export default function MaraquiCreate() {
   };
 
   if (result) {
-    const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL || "/"}game/maraqui?pin=${result.pin}`;
+    const shareUrl = shortLink.status === "ready" ? shortLink.url : "";
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-teal-50 via-emerald-50 to-cyan-50 dark:from-teal-950/20 dark:via-emerald-950/20 dark:to-cyan-950/20 py-8 px-4" dir={dir}>
@@ -349,8 +351,9 @@ export default function MaraquiCreate() {
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">{isRtl ? "كود المسار — شاركه مع الطلاب" : "Path PIN — share with students"}</p>
                 <div className="mt-3 flex items-center gap-2 bg-muted/50 rounded-xl p-2">
-                  <p className="text-xs font-mono text-foreground flex-1 truncate" dir="ltr">{shareUrl}</p>
+                  <p className="text-xs font-mono text-foreground flex-1 truncate" dir="ltr">{shareUrl || (shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error)}</p>
                 </div>
+                {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="mt-2 text-xs underline text-red-500">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
               </div>
 
               <div className="flex flex-col gap-3">

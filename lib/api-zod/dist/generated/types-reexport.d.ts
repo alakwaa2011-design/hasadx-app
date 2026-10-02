@@ -57,6 +57,8 @@ export type * from "./types/createQuestionBodyQuestionType";
 export type * from "./types/deletedSubmissionsResult";
 export type * from "./types/errorResponse";
 export type * from "./types/examSessionResponse";
+export type * from "./types/gameShareLink";
+export type * from "./types/gameShareLinkInput";
 export type * from "./types/getPresentationLinkedActivity200";
 export type * from "./types/getPresentationLinkedActivity200Activity";
 export type * from "./types/getQuranOfflineContent200";

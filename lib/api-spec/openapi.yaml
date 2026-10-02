@@ -20,6 +20,53 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /game-share-links:
+    post:
+      operationId: createGameShareLink
+      tags: [assignments]
+      summary: Get a permanent short alias for an existing public game destination
+      description: Does not create a game or change the destination's authorization. Guest hosts may create aliases.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameShareLinkInput"
+      responses:
+        "200":
+          description: Existing stable alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameShareLink"
+        "201":
+          description: New stable alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameShareLink"
+        "400": { description: Invalid or external destination }
+        "429": { description: Too many requests }
+        "503": { description: Sharing service temporarily unavailable }
+  /game-share-links/{code}/redirect:
+    get:
+      operationId: resolveGameShareLink
+      tags: [assignments]
+      summary: Redirect anonymously to the original game URL
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "302":
+          description: Same-origin game destination
+          headers:
+            Location:
+              schema: { type: string }
+        "404": { description: Unknown sharing link }
+        "429": { description: Too many requests }
+        "503": { description: Sharing service temporarily unavailable }
   /worksheets/{id}/render-page:
     post:
       operationId: renderWorksheetPage
@@ -2783,6 +2830,18 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    GameShareLinkInput:
+      type: object
+      required: [path]
+      properties:
+        path: { type: string, maxLength: 8192 }
+    GameShareLink:
+      type: object
+      required: [code, path, shortPath]
+      properties:
+        code: { type: string, pattern: "^[a-z2-7]{10}$" }
+        path: { type: string }
+        shortPath: { type: string }
     WorksheetPageRenderInput:
       type: object
       required: [html, width, height]

@@ -7,6 +7,8 @@ import { useI18n } from "@/lib/i18n";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
+import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -71,6 +73,7 @@ export default function MemoryCreate() {
   const [isShared, setIsShared] = useState(false);
   const [result, setResult] = useState<{ pin: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const shortLink = useGameShareUrl(result ? `/game/memory/play/${result.pin}` : "");
   const [showTemplates, setShowTemplates] = useState(false);
   const loadedSavedGameRef = useRef(false);
 
@@ -210,17 +213,17 @@ export default function MemoryCreate() {
     setSaving(false);
   };
 
-  const handleCopy = () => {
-    if (!result) return;
-    const url = `${window.location.origin}${import.meta.env.BASE_URL || "/"}game/memory/play/${result.pin}`;
-    navigator.clipboard.writeText(url).then(() => {
+  const handleCopy = async () => {
+    if (shortLink.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch { toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   };
 
   if (result) {
-    const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL || "/"}game/memory/play/${result.pin}`;
+    const shareUrl = shortLink.status === "ready" ? shortLink.url : "";
     return (
       <Layout>
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-950/20 dark:via-purple-950/20 dark:to-pink-950/20 py-8 px-4" dir={dir}>
@@ -240,11 +243,12 @@ export default function MemoryCreate() {
               <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-lg mb-6">
                 <p className="text-xs text-muted-foreground mb-2">{lang === "ar" ? "رابط المشاركة" : "Share Link"}</p>
                 <div className="flex items-center gap-2 bg-muted/50 rounded-xl p-3">
-                  <p className="text-xs font-mono text-foreground flex-1 truncate" dir="ltr">{shareUrl}</p>
-                  <button onClick={handleCopy} className="p-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors shrink-0">
+                  <p className="text-xs font-mono text-foreground flex-1 truncate" dir="ltr">{shareUrl || (shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error)}</p>
+                  <button onClick={handleCopy} disabled={shortLink.status !== "ready"} className="p-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors shrink-0 disabled:opacity-50">
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
+                {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="mt-2 text-xs underline text-red-500">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
                 <p className="text-xs text-muted-foreground mt-2">{lang === "ar" ? `الكود: ${result.pin}` : `PIN: ${result.pin}`}</p>
               </div>
 

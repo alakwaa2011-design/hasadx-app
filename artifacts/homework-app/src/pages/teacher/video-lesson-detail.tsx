@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -194,18 +195,23 @@ export default function VideoLessonDetail() {
     }
     return path;
   }, [id, lesson?.accessMode, lesson?.accessCode]);
+  const shortShare = useGameShareUrl(shareUrl);
 
-  const copyStudentLinkOnly = () => {
-    navigator.clipboard.writeText(shareUrl);
-    toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
+  const copyStudentLinkOnly = async () => {
+    if (shortShare.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortShare.url);
+      toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
+    } catch { toast.error(isAr ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   };
 
-  const copyStudentLinkAndOpenShareCard = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setShareModalOpen(true);
-    toast.success(
-      isAr ? "تم نسخ الرابط — يمكنك مشاركة البطاقة مع الطلاب" : "Link copied — share the card with students",
-    );
+  const copyStudentLinkAndOpenShareCard = async () => {
+    if (shortShare.status !== "ready") return;
+    try {
+      await navigator.clipboard.writeText(shortShare.url);
+      setShareModalOpen(true);
+      toast.success(isAr ? "تم نسخ الرابط — يمكنك مشاركة البطاقة مع الطلاب" : "Link copied — share the card with students");
+    } catch { toast.error(isAr ? "تعذّر نسخ الرابط" : "Could not copy link"); }
   };
 
   const copyAccessCodeOnly = () => {
@@ -407,7 +413,7 @@ export default function VideoLessonDetail() {
               {sharingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
               {lesson.isShared ? (isAr ? "مشاركة المعلمين ✓" : "Teachers’ share ✓") : (isAr ? "مشاركة المعلمين" : "Teachers’ share")}
             </Button>
-            <Button onClick={copyStudentLinkAndOpenShareCard} variant="outline" className="gap-2 py-1.5 px-3 h-auto">
+            <Button onClick={copyStudentLinkAndOpenShareCard} disabled={shortShare.status !== "ready"} variant="outline" className="gap-2 py-1.5 px-3 h-auto">
               <Copy className="w-4 h-4" />
               {isAr ? "نسخ الرابط" : "Copy link"}
             </Button>
@@ -728,12 +734,12 @@ export default function VideoLessonDetail() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       readOnly
-                      value={shareUrl}
+                      value={shortShare.status === "ready" ? shortShare.url : ""}
                       className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs sm:text-sm font-mono text-foreground outline-none focus:ring-2 focus:ring-primary/25"
                       dir="ltr"
                       onFocus={(e) => e.target.select()}
                     />
-                    <Button type="button" variant="outline" className="gap-2 font-bold shrink-0" onClick={copyStudentLinkOnly}>
+                    <Button type="button" variant="outline" className="gap-2 font-bold shrink-0" onClick={copyStudentLinkOnly} disabled={shortShare.status !== "ready"}>
                       <Copy className="w-4 h-4" />
                       {isAr ? "نسخ الرابط" : "Copy URL"}
                     </Button>
@@ -745,9 +751,11 @@ export default function VideoLessonDetail() {
                     {isAr ? "رمز QR — تصويره بالهاتف للدخول السريع" : "QR code — scan with a phone camera"}
                   </p>
                   <div className="rounded-2xl bg-white p-4 border shadow-inner dark:bg-white">
-                    <QRCodeSVG value={shareUrl} size={200} level="M" includeMargin />
+                    {shortShare.status === "ready" && <QRCodeSVG value={shortShare.url} size={200} level="M" includeMargin />}
                   </div>
                 </div>
+                {shortShare.status === "pending" && <p role="status" className="text-xs text-center">{isAr ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+                {shortShare.status === "error" && <button type="button" onClick={shortShare.retry} className="text-xs underline text-red-500">{isAr ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
 
                 <Button type="button" className="w-full gap-2 font-black min-h-11" onClick={() => setShareModalOpen(false)}>
                   {isAr ? "تم" : "Done"}

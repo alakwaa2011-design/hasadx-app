@@ -106,6 +106,18 @@ const server = http.createServer((req, res) => {
         return;
     }
     const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+    // Exact app-owned path, never an API artifact "/s" prefix (which would
+    // accidentally capture /solo, /student and /solve). Crawlers and browsers
+    // can follow this without JavaScript or a signed-in session.
+    const gameShareMatch = /^\/s\/([a-z2-7]{10})\/?$/.exec(url.pathname);
+    if (gameShareMatch) {
+        res.writeHead(302, {
+            Location: `/api/game-share-links/${gameShareMatch[1]}/redirect`,
+            "Cache-Control": "no-store",
+        });
+        res.end();
+        return;
+    }
     // Instagram campaign short link: intentionally temporary (302), server-side
     // only, and canonical-host only. Keep the fixed campaign tags while carrying
     // through other visitor parameters such as fbclid/gclid.

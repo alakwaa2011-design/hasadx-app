@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import QRCode from "react-qr-code";
 import { X, QrCode, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 interface GameQRCodeProps {
   url: string;
@@ -12,14 +13,22 @@ interface GameQRCodeProps {
 }
 
 export function GameQRCode({ url, pin, size = 160, className = "" }: GameQRCodeProps) {
+  const share = useGameShareUrl(url);
   return (
     <div className={`flex flex-col items-center gap-2 ${className}`}>
-      <div className="bg-white p-3 rounded-2xl shadow-lg">
-        <QRCode value={url} size={size} />
-      </div>
+      {share.status === "ready"
+        ? <div className="bg-white p-3 rounded-2xl shadow-lg"><QRCode value={share.url} size={size} /></div>
+        : <ShareStatus status={share.status} error={share.error} retry={share.retry} />}
       <p className="text-xs text-center opacity-70 font-bold" dir="ltr">{pin}</p>
     </div>
   );
+}
+
+function ShareStatus({ status, error, retry }: { status: "idle" | "pending" | "error" | "ready"; error: string; retry: () => void }) {
+  const { lang } = useI18n();
+  if (status === "pending") return <p role="status" className="text-xs">{lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>;
+  if (status === "error") return <div role="alert" className="text-xs text-red-500 text-center">{error}<button type="button" onClick={retry} className="block underline mx-auto">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button></div>;
+  return null;
 }
 
 interface QRModalButtonProps {
@@ -33,9 +42,11 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
   const { lang, dir } = useI18n();
   const isAr = lang === "ar";
   const [open, setOpen] = useState(false);
+  const share = useGameShareUrl(url);
+  const qrId = useId();
 
   const downloadQR = () => {
-    const svg = document.getElementById("game-qr-svg");
+    const svg = document.getElementById(`game-qr-svg-${qrId}`);
     if (!svg) return;
     const serializer = new XMLSerializer();
     const svgStr = serializer.serializeToString(svg);
@@ -60,16 +71,19 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        disabled={share.status !== "ready"}
+        onClick={() => share.status === "ready" && setOpen(true)}
+        aria-disabled={share.status !== "ready"}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-sm transition-all ${
           variant === "dark"
             ? "bg-white/15 hover:bg-white/25 text-white border border-white/20"
             : "bg-primary/10 hover:bg-primary/20 text-primary"
-        }`}
+        } disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         <QrCode className="w-4 h-4" />
         {label || "QR"}
       </button>
+      <ShareStatus status={share.status} error={share.error} retry={share.retry} />
 
       <AnimatePresence>
         {open && (
@@ -99,7 +113,7 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
               </div>
 
               <div className="bg-white p-4 rounded-2xl shadow-md border border-gray-100">
-                <QRCode id="game-qr-svg" value={url} size={220} />
+            {share.status === "ready" && <QRCode id={`game-qr-svg-${qrId}`} value={share.url} size={220} />}
               </div>
 
               <div className="text-center">
@@ -108,12 +122,13 @@ export function QRModalButton({ url, pin, label, variant = "light" }: QRModalBut
                     {pin}
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground break-all max-w-[240px]">{url}</p>
+                <p className="text-xs text-muted-foreground break-all max-w-[240px]">{share.status === "ready" ? share.url : ""}</p>
               </div>
 
               <button
+                disabled={share.status !== "ready"}
                 onClick={downloadQR}
-                className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
                  {isAr ? "تنزيل رمز QR" : "Download QR code"}
@@ -135,16 +150,19 @@ export function InlineQR({ url, pin }: InlineQRProps) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const [expanded, setExpanded] = useState(false);
+  const share = useGameShareUrl(url);
 
   return (
     <div className="flex flex-col items-center">
       <button
-        onClick={() => setExpanded(!expanded)}
+        disabled={share.status !== "ready"}
+        onClick={() => share.status === "ready" && setExpanded(!expanded)}
         className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 border border-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
       >
         <QrCode className="w-3.5 h-3.5" />
          {expanded ? (isAr ? "إخفاء" : "Hide") : (isAr ? "رمز QR" : "QR code")}
       </button>
+      <ShareStatus status={share.status} error={share.error} retry={share.retry} />
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -154,7 +172,7 @@ export function InlineQR({ url, pin }: InlineQRProps) {
             className="overflow-hidden mt-2"
           >
             <div className="bg-white p-2 rounded-xl">
-              <QRCode value={url} size={80} />
+              {share.status === "ready" && <QRCode value={share.url} size={80} />}
             </div>
           </motion.div>
         )}

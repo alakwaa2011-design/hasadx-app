@@ -10,6 +10,7 @@ import RaceTrack from "@/components/race-track";
 import { toggleMute, playVictoryFanfare, playClapSound, playFireworkSound, playGameStartSound, playTimeUpSound, playHackMarathonLoop, stopHackMarathonLoop, toggleHackMusicMuted, getIsHackMusicMuted, getIsMuted } from "@/lib/game-sounds";
 import { useI18n } from "@/lib/i18n";
 import { InlineQR, GameQRCode } from "@/components/game-qr-code";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { WameethWaitingRoomUI } from "./wameeth-waiting-room-ui";
 import { toast } from "@/components/ui/sonner";
@@ -902,21 +903,14 @@ export default function TeacherGame() {
   };
 
   const copyLink = async () => {
-    const { toast } = await import("@/components/ui/sonner");
-
-    // /api/g/:pin is a server endpoint that:
-    //  1. Serves HTML with OG meta tags (game title, Hasad branding) so
-    //     WhatsApp / Telegram previews look right.
-    //  2. Immediately redirects the student's browser to /game/join/:pin.
-    const shareLink = `${window.location.origin}/api/g/${pin}`;
-
-    navigator.clipboard.writeText(shareLink).then(() => {
+    try {
+      await copyGameShortUrl(`/game/join/${pin}`);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
       toast.success(t.teacherGame.joinLinkCopied);
-    }).catch(() => {
+    } catch {
       toast.error(t.teacherGame.joinLinkCopyFailed);
-    });
+    }
   };
 
   const teamsByName = currentGameMode === "teams" ? (() => {

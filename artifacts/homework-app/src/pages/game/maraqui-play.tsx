@@ -7,6 +7,7 @@ import {
   CheckCircle2, XCircle, Share2, Loader2,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { ShareButtons } from "@/components/share-buttons";
 import { useArena } from "@/lib/use-arena";
 import { ArenaBar } from "@/components/multiplayer-lobby";
@@ -259,6 +260,8 @@ export default function MaraquiPlay() {
   const [copiedStage, setCopiedStage] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   const [stageWrongCount, setStageWrongCount] = useState(0);
+  const playPin = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("pin") || "" : "";
+  const shareLink = useGameShareUrl(playPin ? `/game/maraqui?pin=${encodeURIComponent(playPin)}` : "");
 
   const playerNameRef = useRef("");
   const pinRef = useRef("");
@@ -585,7 +588,8 @@ export default function MaraquiPlay() {
 
   const handleShare = async () => {
     if (!path) return;
-    const url = `${window.location.origin}/game/maraqui?pin=${pinRef.current}`;
+    if (shareLink.status !== "ready") return;
+    const url = shareLink.url;
     const text = `أكملت مَراقي "${path.title}" بـ ${totalAttempts} محاولة! 🏆 جرّبها: ${url}`;
     if (navigator.share) {
       try { await navigator.share({ title: `مَراقي — ${path.title}`, text }); return; } catch { /* fallback */ }
@@ -601,7 +605,8 @@ export default function MaraquiPlay() {
 
   const handleShareStage = async (type: "wrong" | "stage_clear") => {
     if (!path) return;
-    const url = `${window.location.origin}/game/maraqui?pin=${pinRef.current}`;
+    if (shareLink.status !== "ready") return;
+    const url = shareLink.url;
     const text = type === "wrong"
       ? `وصلت للمرحلة ${currentStageNum} في مَراقي "${path.title}"! هل يمكنك التفوق عليّ؟ 🪜 ${url}`
       : `أكملت المرحلة ${currentStageNum}/${path.stages.length} في مَراقي "${path.title}"! انضم الآن 🏆 ${url}`;
@@ -814,6 +819,7 @@ export default function MaraquiPlay() {
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleShare}
+                disabled={shareLink.status !== "ready"}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black shadow-lg flex items-center justify-center gap-2 transition-opacity active:opacity-90"
               >
                 <Share2 className="w-5 h-5" />
@@ -821,6 +827,8 @@ export default function MaraquiPlay() {
                   ? (isRtl ? "تم النسخ! ✓" : "Copied! ✓")
                   : (isRtl ? "شارك نتيجتك" : "Share Result")}
               </button>
+              {shareLink.status === "pending" && <p role="status" className="text-xs text-center text-muted-foreground">{isRtl ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+              {shareLink.status === "error" && <button type="button" role="alert" onClick={shareLink.retry} className="text-xs text-center underline text-red-500">{isRtl ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
               <button
                 onClick={() => setLocation(`/game/maraqui?pin=${pinRef.current}`)}
                 className="w-full py-3 rounded-2xl bg-card border border-border text-foreground font-bold flex items-center justify-center gap-2"
@@ -983,6 +991,7 @@ export default function MaraquiPlay() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.75 }}
                 onClick={() => handleShareStage("stage_clear")}
+                disabled={shareLink.status !== "ready"}
                 className="w-full py-2.5 rounded-2xl bg-card border border-border text-foreground text-sm font-bold flex items-center justify-center gap-2"
               >
                 <Share2 className="w-4 h-4 text-teal-500" />

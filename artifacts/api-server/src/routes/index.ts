@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import shortenRouter from "./shorten";
+import gameShareLinksRouter from "./game-share-links";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import assignmentsRouter from "./assignments";
@@ -84,6 +85,7 @@ import quranRouter from "./quran";
 
 const router: IRouter = Router();
 
+router.use(gameShareLinksRouter);
 router.use(publicContentRouter);
 router.use(quickChallengeRouter);
 router.use(healthRouter);

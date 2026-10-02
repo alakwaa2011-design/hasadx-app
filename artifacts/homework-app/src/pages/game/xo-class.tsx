@@ -10,6 +10,7 @@ import { QRModalButton } from "@/components/game-qr-code";
 import { toast } from "@/components/ui/sonner";
 import { decodeXoClassSetup, type XoClassSetup } from "@/lib/xo-class-share";
 import { createSavedGamePlayLink, savedGamePlayUrl } from "@/lib/saved-game-activities";
+import { copyGameShortUrl } from "@/lib/game-share-url";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { cn } from "@/lib/utils";
 import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
@@ -286,19 +287,20 @@ export default function XoClass() {
 
   const copyShareLink = async () => {
     try {
-      let shortUrl = shareUrl;
-      if (!shortUrl && setup?.savedActivityId) {
+      let target: string | Promise<string> = shareUrl;
+      if (!target && setup?.savedActivityId) {
         setShareLinkLoading(true);
-        const token = await createSavedGamePlayLink(setup.savedActivityId);
-        setShareToken(token);
-        shortUrl = savedGamePlayUrl(token);
+        target = createSavedGamePlayLink(setup.savedActivityId).then(token => {
+          setShareToken(token);
+          return savedGamePlayUrl(token);
+        });
       }
-      if (!shortUrl) {
+      if (!target) {
         throw new Error(ar
           ? "أنشئ اللعبة من صفحة إعداد X O للحصول على رابط مختصر"
           : "Create the game from X O setup to get a short link");
       }
-      await navigator.clipboard.writeText(shortUrl);
+      await copyGameShortUrl(target);
       toast.success(ar ? "تم نسخ رابط وضع الصف" : "Classroom link copied");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (ar ? "تعذّر نسخ الرابط" : "Could not copy the link"));

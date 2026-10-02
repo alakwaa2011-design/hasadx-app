@@ -14,6 +14,7 @@ import { useTeamGameAudio } from "./useTeamGameAudio";
 import { HarvestCoin } from "@/components/harvest-coin";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { QRCodeSVG } from "qrcode.react";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -491,6 +492,7 @@ export default function MillionTeamHost() {
   }, [renameInput, teamNames]);
 
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/million/team-play/${pin}`;
+  const shortLink = useGameShareUrl(joinUrl);
 
   const optionLabel = (key: OptionKey) => {
     const map: Record<OptionKey, string> = { A: "أ", B: "ب", C: "ج", D: "د" };
@@ -746,7 +748,8 @@ export default function MillionTeamHost() {
                   {pin}
                 </div>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(joinUrl); toast.success(lang === "ar" ? "تم نسخ الرابط" : "Link copied"); }}
+                  onClick={() => { if (shortLink.status === "ready") navigator.clipboard.writeText(shortLink.url).then(() => toast.success(lang === "ar" ? "تم نسخ الرابط" : "Link copied")).catch(() => toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link")); }}
+                  disabled={shortLink.status !== "ready"}
                   className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-white transition-colors flex items-center gap-1 border border-gray-300 dark:border-white/15"
                 >
                   <Share2 className="w-3 h-3" />
@@ -951,10 +954,11 @@ export default function MillionTeamHost() {
                             className="flex-1 text-xs text-blue-700 dark:text-blue-200 bg-black/10 dark:bg-black/20 px-3 py-2 rounded-lg text-left overflow-hidden text-ellipsis whitespace-nowrap"
                             dir="ltr"
                           >
-                            {joinUrl}
+                            {shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}
                           </code>
                           <button
-                            onClick={() => { navigator.clipboard.writeText(joinUrl); toast.success(lang === "ar" ? "تم نسخ الرابط ✓" : "Link copied ✓"); }}
+                            onClick={() => { if (shortLink.status === "ready") navigator.clipboard.writeText(shortLink.url).then(() => toast.success(lang === "ar" ? "تم نسخ الرابط ✓" : "Link copied ✓")).catch(() => toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link")); }}
+                            disabled={shortLink.status !== "ready"}
                             className="px-3 py-2 rounded-lg text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 shrink-0 flex items-center gap-1"
                             style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)" }}
                           >
@@ -964,10 +968,11 @@ export default function MillionTeamHost() {
                         </div>
                       </div>
                       <div className="shrink-0 p-2 rounded-xl bg-white dark:bg-gray-100">
-                        <QRCodeSVG value={joinUrl} size={96} />
+                        {shortLink.status === "ready" && <QRCodeSVG value={shortLink.url} size={96} />}
                       </div>
                     </div>
                   </div>
+                  {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-xs text-red-500 underline">{lang === "ar" ? "إعادة المحاولة" : "Retry"}</button>}
 
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="p-3 rounded-xl text-center bg-blue-500/10 border border-blue-500/20">

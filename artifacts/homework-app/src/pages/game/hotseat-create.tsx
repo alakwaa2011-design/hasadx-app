@@ -10,6 +10,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { HotSeatIcon } from "@/components/game-icons";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 const FIRE = "#FF6B2B";
 const FIRE2 = "#FF9F43";
@@ -221,10 +222,12 @@ export default function HotSeatCreate() {
   };
 
   const joinUrl = gamePin ? `${window.location.origin}/game/hotseat/join/${gamePin}` : "";
+  const shortLink = useGameShareUrl(joinUrl);
 
   const copyLink = async () => {
+    if (shortLink.status !== "ready") return;
     try {
-      await navigator.clipboard.writeText(joinUrl);
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
       toast.success(ar ? "تم نسخ الرابط!" : "Link copied!");
@@ -242,9 +245,10 @@ export default function HotSeatCreate() {
     const sessionInfo = [grade, subject, topic].filter(Boolean).join(" · ");
 
     const shareWhatsApp = () => {
+      if (shortLink.status !== "ready") return;
       const text = ar
-        ? `[الكرسي الساخن]${sessionInfo ? `\n${sessionInfo}` : ""}\n\nرمز الدخول:\n${gamePin}\n\nأو افتح الرابط:\n${joinUrl}`
-        : `[HotSeat Game]${sessionInfo ? `\n${sessionInfo}` : ""}\n\nRoom Code:\n${gamePin}\n\nOr open:\n${joinUrl}`;
+        ? `[الكرسي الساخن]${sessionInfo ? `\n${sessionInfo}` : ""}\n\nرمز الدخول:\n${gamePin}\n\nأو افتح الرابط:\n${shortLink.url}`
+        : `[HotSeat Game]${sessionInfo ? `\n${sessionInfo}` : ""}\n\nRoom Code:\n${gamePin}\n\nOr open:\n${shortLink.url}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     };
 
@@ -330,11 +334,11 @@ export default function HotSeatCreate() {
             <div className="flex items-center justify-center gap-2 mb-6 opacity-60">
               <Smartphone size={14} color="#fff" />
               <p style={{ color: "#fff", fontSize: 11, textAlign: "center", margin: 0, direction: "ltr" }}>
-                {joinUrl.replace("https://", "")}
+                {shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <button onClick={copyLink} style={{
+              <button onClick={copyLink} disabled={shortLink.status !== "ready"} style={{
                 padding: "12px 8px", borderRadius: 16, border: "none",
                 background: copied ? "rgba(22,163,74,0.3)" : "rgba(255,255,255,0.06)",
                 color: copied ? "#4ade80" : "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer",
@@ -343,7 +347,7 @@ export default function HotSeatCreate() {
                 {copied ? <Check size={20} /> : <Copy size={20} />}
                 <span>{copied ? (ar ? "تم!" : "Copied!") : (ar ? "نسخ" : "Copy")}</span>
               </button>
-              <button onClick={shareWhatsApp} style={{
+              <button onClick={shareWhatsApp} disabled={shortLink.status !== "ready"} style={{
                 padding: "12px 8px", borderRadius: 16, border: "none",
                 background: "rgba(37,211,102,0.15)", color: "#25D366",
                 fontWeight: 800, fontSize: 13, cursor: "pointer",
@@ -353,7 +357,7 @@ export default function HotSeatCreate() {
                 <span>{ar ? "مشاركة" : "Share"}</span>
               </button>
               <div style={{ padding: "8px", borderRadius: 16, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <QRCode value={joinUrl} size={64} style={{ width: "100%", height: "100%" }} />
+                {shortLink.status === "ready" && <QRCode value={shortLink.url} size={64} style={{ width: "100%", height: "100%" }} />}
               </div>
             </div>
           </motion.div>

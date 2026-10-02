@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { getHotSeatSocket } from "@/lib/hotseat-socket";
 import { toast } from "@/components/ui/sonner";
 import { HotSeatIcon } from "@/components/game-icons";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 const FIRE = "#FF6B2B";
 const FIRE2 = "#FF9F43";
@@ -61,6 +62,8 @@ export default function HotSeatHost() {
   const { lang } = useI18n();
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
+  const joinUrl = pin ? `${window.location.origin}/game/hotseat/join/${pin}` : "";
+  const shortLink = useGameShareUrl(joinUrl);
 
   const [state, setState] = useState<GameState | null>(null);
   const [timerVal, setTimerVal] = useState(0);
@@ -155,15 +158,14 @@ export default function HotSeatHost() {
   const sortedStudents = [...students].sort((a, b) => b.score - a.score);
   const totalVoters = students.filter(s => !s.isOnSeat).length;
   const votesCast = votes.yes + votes.no;
-  const joinUrl = `${window.location.origin}/game/hotseat/join/${state.pin}`;
-
   // ── LOBBY VIEW ─────────────────────────────────────────────────────────────
   if (phase === "lobby") {
     const pinDigits = state.pin.split("");
     const shareWhatsApp = () => {
+      if (shortLink.status !== "ready") return;
       const text = ar
-        ? `[الكرسي الساخن]\n${state.grade} · ${state.subject}${state.topic ? ` · ${state.topic}` : ""}\n\nرمز الدخول: ${state.pin}\n${joinUrl}`
-        : `[HotSeat Game]\n${state.grade} · ${state.subject}\n\nCode: ${state.pin}\n${joinUrl}`;
+        ? `[الكرسي الساخن]\n${state.grade} · ${state.subject}${state.topic ? ` · ${state.topic}` : ""}\n\nرمز الدخول: ${state.pin}\n${shortLink.url}`
+        : `[HotSeat Game]\n${state.grade} · ${state.subject}\n\nCode: ${state.pin}\n${shortLink.url}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     };
     return (
@@ -222,14 +224,20 @@ export default function HotSeatHost() {
             <div className="flex items-center justify-center gap-2 mb-5 opacity-60">
               <Smartphone size={14} color="#fff" />
               <p style={{ color: "#fff", fontSize: 11, textAlign: "center", margin: 0, direction: "ltr" }}>
-                {joinUrl.replace("https://", "")}
+                {shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? (ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…") : shortLink.error}
               </p>
             </div>
+            {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="mb-3 text-xs text-red-300 underline">{ar ? "إعادة المحاولة" : "Retry"}</button>}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <button
                 onClick={async () => {
-                  try { await navigator.clipboard.writeText(joinUrl); toast.success(ar ? "تم النسخ!" : "Copied!"); } catch { toast.error("Error"); }
+                  try {
+                    if (shortLink.status !== "ready") return;
+                    await navigator.clipboard.writeText(shortLink.url);
+                    toast.success(ar ? "تم النسخ!" : "Copied!");
+                  } catch { toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy link"); }
                 }}
+                disabled={shortLink.status !== "ready"}
                 style={{
                   padding: "12px", borderRadius: 14, border: "none",
                   background: "rgba(255,255,255,0.08)", color: "#fff",
@@ -241,6 +249,7 @@ export default function HotSeatHost() {
               </button>
               <button
                 onClick={shareWhatsApp}
+                disabled={shortLink.status !== "ready"}
                 style={{
                   padding: "12px", borderRadius: 14, border: "none",
                   background: "rgba(37,211,102,0.15)", color: "#25D366",
@@ -380,11 +389,13 @@ export default function HotSeatHost() {
           <button
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(joinUrl);
+                if (shortLink.status !== "ready") return;
+                await navigator.clipboard.writeText(shortLink.url);
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 2500);
               } catch { toast.error("Error"); }
             }}
+            disabled={shortLink.status !== "ready"}
             style={{
               padding: "5px 10px", borderRadius: 10, border: "none", cursor: "pointer",
               background: linkCopied ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.1)",

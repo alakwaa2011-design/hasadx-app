@@ -8,6 +8,7 @@ import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 import {
   Volume2, VolumeX, X as XIcon, Zap, Flame,
   CheckCircle, XCircle, Snowflake, School, Trophy, Crown,
@@ -1246,11 +1247,11 @@ function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch,
   const handleUseGift     = useCallback((team: TeamId, g: GiftType) => dispatch({ type:"use-gift",     fromTeam:team, gift:g }), []);
   const handlePickMystery = useCallback((team: TeamId, idx: number)  => dispatch({ type:"pick-mystery", team, idx }), []);
   const handleToggleMute  = () => { const m=toggleMute(); setMuted(m); };
+  const classShare = useGameShareUrl(shareToken ? `/game/wameeth/class?token=${encodeURIComponent(shareToken)}` : "");
   const handleCopyClassLink = async () => {
-    if (!shareToken) return;
-    const url = `${window.location.origin}/game/wameeth/class?token=${encodeURIComponent(shareToken)}`;
+    if (classShare.status !== "ready") return;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(classShare.url);
       setShareCopied(true);
       window.setTimeout(() => setShareCopied(false), 1800);
     } catch {
@@ -1303,6 +1304,7 @@ function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch,
             <button
               type="button"
               onClick={handleCopyClassLink}
+              disabled={classShare.status !== "ready"}
               data-testid="button-copy-wameeth-class-link"
               className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1.5 text-[11px] font-black text-amber-200 hover:bg-amber-300/20 transition-colors flex items-center gap-1.5"
               aria-label={ar ? "نسخ رابط وميض الصف" : "Copy Wameeth Class link"}
@@ -1315,6 +1317,8 @@ function WameethClassGame({ setup, shareToken, blueOnRight, settings, onRematch,
               </span>
             </button>
           )}
+          {shareToken && classShare.status === "pending" && <p role="status" className="text-xs text-amber-200">{ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+          {shareToken && classShare.status === "error" && <button type="button" onClick={classShare.retry} className="text-xs text-red-300 underline">{ar ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
           <button onClick={handleToggleMute}
             className="rounded-full border border-white/15 bg-black/40 p-1.5 text-white/60 hover:text-white transition-colors"
             aria-label={muted?"unmute":"mute"}>

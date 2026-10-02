@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { QRCodeSVG } from "qrcode.react";
 import { Layout } from "@/components/layout";
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 type NavMode = "auto" | "manual";
 
@@ -34,7 +35,6 @@ export default function HackShare() {
 
   const [copiedPin, setCopiedPin] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [origin, setOrigin] = useState("");
 
   const [navMode, setNavMode] = useState<NavMode>("auto");
   const [giftsOn, setGiftsOn] = useState(true);
@@ -42,15 +42,12 @@ export default function HackShare() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [bots, setBots] = useState(4);
 
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
-
-  const joinUrl = origin ? `${origin}/game/hack/join/${pin}` : "";
+  const shortLink = useGameShareUrl(pin ? `/game/hack/join/${pin}` : "");
 
   const copy = async (value: string, kind: "pin" | "link") => {
+    if (kind === "link" && shortLink.status !== "ready") return;
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(kind === "link" ? shortLink.url : value);
       if (kind === "pin") {
         setCopiedPin(true);
         setTimeout(() => setCopiedPin(false), 1500);
@@ -198,9 +195,9 @@ export default function HackShare() {
                     boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
                   }}
                 >
-                  {joinUrl ? (
+                  {shortLink.status === "ready" ? (
                     <QRCodeSVG
-                      value={joinUrl}
+                      value={shortLink.url}
                       size={96}
                       bgColor="#ffffff"
                       fgColor="#1A3A28"
@@ -267,7 +264,8 @@ export default function HackShare() {
                   </div>
                 </div>
                 <button
-                  onClick={() => copy(joinUrl, "link")}
+                  onClick={() => copy(shortLink.status === "ready" ? shortLink.url : "", "link")}
+                  disabled={shortLink.status !== "ready"}
                   className="flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-bold transition-colors"
                   style={{
                     background: "rgba(255,255,255,0.1)",
@@ -283,6 +281,8 @@ export default function HackShare() {
                   )}
                   {isAr ? "نسخ رابط الانضمام" : "Copy join link"}
                 </button>
+                {shortLink.status === "pending" && <p role="status" className="text-xs text-white/60">{isAr ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+                {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="text-xs text-red-300 underline">{isAr ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
               </div>
             </div>
           </motion.div>

@@ -16,6 +16,8 @@ import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { copyGameShortUrl } from "@/lib/game-share-url";
+import { openGameShareWindow, useGameShareUrl } from "@/lib/use-game-share-url";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -107,6 +109,8 @@ function fmtTime(sec: number | null): string {
 
 export default function SoloChallengeManagePage() {
   const { slug } = useParams<{ slug: string }>();
+  const challengeTarget = slug ? `/solo/${encodeURIComponent(slug)}` : "";
+  const challengeShare = useGameShareUrl(challengeTarget);
   const [, setLocation] = useLocation();
   const { t, dir, lang } = useI18n();
   const s = t.soloChallenges;
@@ -335,17 +339,20 @@ export default function SoloChallengeManagePage() {
     }
   };
 
-  const copyLink = () => {
-    const url = `${window.location.origin}/solo/${slug}`;
-    navigator.clipboard.writeText(url).catch(() => {});
-    toast.success(s.linkCopied);
+  const copyLink = async () => {
+    try {
+      await copyGameShortUrl(challengeTarget);
+      toast.success(s.linkCopied);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : (lang === "ar" ? "تعذّر تجهيز الرابط" : "Could not prepare link"));
+    }
   };
 
   const shareWA = () => {
-    if (!challenge) return;
-    const url = `${window.location.origin}/solo/${slug}`;
-    const text = `${s.shareText.replace("{title}", challenge.assignmentTitle)}\n${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    if (!challenge || challengeShare.status !== "ready") return;
+    const text = `${s.shareText.replace("{title}", challenge.assignmentTitle)}\n${challengeShare.url}`;
+    const opened = openGameShareWindow(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    if (!opened) toast.error(lang === "ar" ? "تعذّر فتح واتساب" : "Could not open WhatsApp");
   };
 
   const mark = () => setSettingsDirty(true);
@@ -482,8 +489,7 @@ export default function SoloChallengeManagePage() {
 
   if (!challenge) return null;
 
-  const challengeUrl = `${window.location.origin}/solo/${slug}`;
-  const challengeQrUrl = `${window.location.origin}/solo/${encodeURIComponent(slug!)}`;
+  const challengeQrUrl = challengeTarget;
 
   // Use the active language for icon direction, rather than the inherited
   // document direction, so the Arabic back affordance is always ">".
@@ -610,22 +616,39 @@ export default function SoloChallengeManagePage() {
 
                     <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
                       <div className="flex-1 min-w-0 bg-background rounded-2xl px-5 py-4 text-sm font-mono font-bold text-muted-foreground truncate border border-border/60 shadow-inner" dir="ltr">
-                        {challengeUrl}
+                        {challengeShare.status === "ready"
+                          ? challengeShare.url
+                          : challengeShare.status === "error"
+                            ? challengeShare.error
+                            : (lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…")}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <button data-testid="button-copy-link" onClick={copyLink} className="flex-1 md:flex-none px-5 py-4 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground transition-colors flex items-center justify-center gap-2 font-black text-sm shadow-md" title={s.copyLink}>
                           <Copy className="w-5 h-5" />
                           <span className="md:hidden">{s.copyLink}</span>
                         </button>
-                        <button data-testid="button-share-wa" onClick={shareWA} className="flex-1 md:flex-none px-5 py-4 rounded-2xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] transition-colors flex items-center justify-center gap-2 font-black text-sm" title={s.shareWhatsApp}>
+                        <button data-testid="button-share-wa" onClick={shareWA} disabled={challengeShare.status !== "ready"} className={`flex-1 md:flex-none px-5 py-4 rounded-2xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] transition-colors flex items-center justify-center gap-2 font-black text-sm ${challengeShare.status !== "ready" ? "opacity-50 cursor-not-allowed" : ""}`} title={s.shareWhatsApp}>
                           <Share2 className="w-5 h-5" />
                           <span className="md:hidden">{s.shareWhatsApp}</span>
                         </button>
                         <QRModalButton url={challengeQrUrl} pin="" label="" />
-                        <a href={challengeUrl} target="_blank" rel="noopener noreferrer" className="px-5 py-4 rounded-2xl bg-muted/60 hover:bg-muted text-muted-foreground transition-colors flex items-center justify-center gap-2" title={s.openGameLink}>
+                        <a
+                          href={challengeShare.status === "ready" ? challengeShare.url : undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-disabled={challengeShare.status !== "ready"}
+                          onClick={event => { if (challengeShare.status !== "ready") event.preventDefault(); }}
+                          className={`px-5 py-4 rounded-2xl bg-muted/60 hover:bg-muted text-muted-foreground transition-colors flex items-center justify-center gap-2 ${challengeShare.status !== "ready" ? "opacity-50 cursor-not-allowed" : ""}`}
+                          title={s.openGameLink}
+                        >
                           <ExternalLink className="w-5 h-5" />
                         </a>
                       </div>
+                      {challengeShare.status === "error" && (
+                        <button type="button" onClick={challengeShare.retry} className="mt-2 text-xs underline text-red-500">
+                          {lang === "ar" ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>

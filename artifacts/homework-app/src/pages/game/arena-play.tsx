@@ -82,7 +82,8 @@ import {
   submitArenaReport,
 } from "@/lib/arena-content";
 import { io as socketIOClient } from "socket.io-client";
-import QRCodeLib from "react-qr-code";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
+import { GameQRCode } from "@/components/game-qr-code";
 import { useI18n } from "@/lib/i18n";
 
 /** Base difficulty tiers shown on the board. 800 is only added when
@@ -3339,11 +3340,13 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
   const chrome = useArenaChrome();
   const code = useMemo(() => getOrCreateShareCode(), []);
   const url = useMemo(() => buildAudienceUrl(code), [code]);
-  const qrUrl = buildAudienceQrUrl(url, 260);
+  const shortLink = useGameShareUrl(`/game/arena/audience?code=${encodeURIComponent(code)}`);
+  const qrUrl = shortLink.status === "ready" ? buildAudienceQrUrl(shortLink.url, 260) : "";
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      if (shortLink.status !== "ready") return;
+      await navigator.clipboard.writeText(shortLink.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -3384,7 +3387,7 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
           {chrome("امسح الرمز أو افتح الرابط على الشاشة الكبيرة ليصوّت الجمهور أو يتابع اللعبة")}
         </p>
         <div className="bg-white p-3 rounded-2xl inline-block mb-4 shadow-2xl">
-          <img src={qrUrl} alt="QR" className="w-56 h-56 block" />
+          {shortLink.status === "ready" && <img src={qrUrl} alt="QR" className="w-56 h-56 block" />}
         </div>
         <div className="text-amber-200 font-mono font-extrabold text-2xl tracking-[0.3em] mb-3">
           {code}
@@ -3392,12 +3395,13 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
         <div className="flex items-center gap-2 bg-black/40 rounded-lg p-2 mb-3">
           <input
             readOnly
-            value={url}
+            value={shortLink.status === "ready" ? shortLink.url : shortLink.status === "pending" ? "Preparing short link…" : shortLink.error}
             className="flex-1 bg-transparent text-emerald-100 text-xs px-2 py-1 outline-none"
             onFocus={(e) => e.currentTarget.select()}
           />
           <button
             onClick={copy}
+            disabled={shortLink.status !== "ready"}
             className="px-3 py-1.5 rounded-md font-bold bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm"
           >
             {copied ? (
@@ -3408,6 +3412,7 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
             {copied ? chrome("نُسخ") : chrome("نسخ")}
           </button>
         </div>
+        {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="mb-3 text-sm underline text-red-300">Retry short link</button>}
         <button
           onClick={onClose}
           className="w-full py-2.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20"
@@ -3863,11 +3868,13 @@ function EndScreen({
   const [copied, setCopied] = useState(false);
 
   const shareCode = useMemo(() => getOrCreateShareCode(), []);
-  const audienceUrl = useMemo(() => buildAudienceUrl(shareCode), [shareCode]);
-  const qrUrl = buildAudienceQrUrl(audienceUrl, 220);
+  const shortLink = useGameShareUrl(`/game/arena/audience?code=${encodeURIComponent(shareCode)}`);
+  const audienceUrl = shortLink.status === "ready" ? shortLink.url : "";
+  const qrUrl = audienceUrl ? buildAudienceQrUrl(audienceUrl, 220) : "";
 
   const copyUrl = async () => {
     try {
+      if (!audienceUrl) return;
       await navigator.clipboard.writeText(audienceUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
@@ -4054,7 +4061,11 @@ function EndScreen({
                     {chrome("امسح الرمز ليرى المتأخرون النتيجة النهائية على شاشتهم")}
                   </p>
                   <div className="bg-white p-2.5 rounded-xl inline-block mb-3 shadow-lg" style={{ border: "1px solid #ebe2cd" }}>
-                    <img src={qrUrl} alt="QR" className="w-44 h-44 block" />
+                    {audienceUrl ? <img src={qrUrl} alt="QR" className="w-44 h-44 block" /> : (
+                      <p role={shortLink.status === "error" ? "alert" : "status"} className="w-44 h-44 flex items-center justify-center text-xs text-center">
+                        {shortLink.status === "error" ? shortLink.error : "Preparing short link…"}
+                      </p>
+                    )}
                   </div>
                   <div className="font-mono font-extrabold text-xl tracking-[0.3em] mb-3" style={{ color: "#a07f37" }}>
                     {shareCode}
@@ -4069,6 +4080,7 @@ function EndScreen({
                     />
                     <button
                       onClick={copyUrl}
+                      disabled={!audienceUrl}
                       className="px-3 py-1.5 rounded-md font-bold inline-flex items-center gap-1.5 text-sm hover:opacity-90"
                       style={{ background: "#c9a14b", color: "white" }}
                     >
@@ -4080,6 +4092,7 @@ function EndScreen({
                       {copied ? chrome("نُسخ") : chrome("نسخ")}
                     </button>
                   </div>
+                  {shortLink.status === "error" && <button type="button" onClick={shortLink.retry} className="mt-2 text-xs underline">{chrome("إعادة المحاولة")}</button>}
                 </div>
               </motion.div>
             )}
@@ -5242,7 +5255,7 @@ function SecretArenaActivity({
                       {gameState.teams[qrTeam].name}
                     </p>
                     <div className="bg-white p-2 rounded-xl">
-                      <QRCodeLib value={revealUrl} size={130} />
+                      <GameQRCode url={revealUrl} pin="" size={130} />
                     </div>
                     <p className="text-xs text-gray-400">{chrome("امسح الباركود لرؤية سرّك")}</p>
                   </div>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { copyGameShareText, copyGameShortUrl } from "@/lib/game-share-url";
 import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
@@ -399,25 +400,21 @@ export default function WheelCreate() {
     if (editingTemplateId === null) return;
     setDirectLinkLoading(true);
     try {
-      const res = await fetch(
+      const playTarget = fetch(
         `${API_BASE}/api/wheel-templates/${editingTemplateId}/play-links`,
         { method: "POST", credentials: "include" },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || typeof data.token !== "string") {
-        toast.error(data.message || (contentLang === "ar" ? "تعذّر إنشاء رابط العرض" : "Couldn't create display link"));
-        return;
-      }
-      const link = `${window.location.origin}/play/${data.token}`;
+      ).then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || typeof data.token !== "string") {
+          throw new Error(data.message || (contentLang === "ar" ? "تعذّر إنشاء رابط العرض" : "Couldn't create display link"));
+        }
+        return `/play/${encodeURIComponent(data.token)}`;
+      });
+      const link = await copyGameShortUrl(playTarget);
       setDirectPlayLink(link);
-      try {
-        await navigator.clipboard.writeText(link);
-        toast.success(contentLang === "ar" ? "تم إنشاء الرابط ونسخه" : "Link created and copied");
-      } catch {
-        toast.success(contentLang === "ar" ? "تم إنشاء رابط العرض" : "Display link created");
-      }
-    } catch {
-      toast.error(contentLang === "ar" ? "تعذّر إنشاء رابط العرض" : "Couldn't create display link");
+      toast.success(contentLang === "ar" ? "تم إنشاء الرابط ونسخه" : "Link created and copied");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (contentLang === "ar" ? "تعذّر إنشاء رابط العرض" : "Couldn't create display link"));
     } finally {
       setDirectLinkLoading(false);
     }
@@ -426,7 +423,7 @@ export default function WheelCreate() {
   const copyDirectPlayLink = async () => {
     if (!directPlayLink) return;
     try {
-      await navigator.clipboard.writeText(directPlayLink);
+      await copyGameShareText(directPlayLink);
       toast.success(contentLang === "ar" ? "تم نسخ الرابط" : "Link copied");
     } catch {
       toast.error(contentLang === "ar" ? "تعذّر نسخ الرابط" : "Couldn't copy link");

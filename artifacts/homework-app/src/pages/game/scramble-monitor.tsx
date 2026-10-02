@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket } from "@/lib/socket";
+import { useGameShareUrl } from "@/lib/use-game-share-url";
+import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -40,6 +42,7 @@ export default function ScrambleMonitor() {
   const params = new URLSearchParams(searchString);
   const pin = params.get("pin") || "";
   const title = params.get("title") || "";
+  const shareLink = useGameShareUrl(pin ? `/game/scramble/play?pin=${encodeURIComponent(pin)}` : "");
 
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [connected, setConnected] = useState(false);
@@ -99,20 +102,23 @@ export default function ScrambleMonitor() {
   }, [players.length]);
 
   const shareText = useCallback(() => {
-    const url = `${window.location.origin}/game/scramble/play?pin=${pin}`;
+    if (shareLink.status !== "ready") return "";
+    const url = shareLink.url;
     return lang === "ar"
       ? `🔤 الكلمات المبعثرة — ${title || "لعبة"}\n🔑 الرمز: ${pin}\n🔗 ${url}`
       : `🔤 Scrambled Words — ${title || "Game"}\n🔑 PIN: ${pin}\n🔗 ${url}`;
-  }, [pin, title, lang]);
+  }, [shareLink.status, shareLink.status === "ready" ? shareLink.url : "", pin, title, lang]);
 
   const handleCopy = useCallback(() => {
+    if (!shareText()) return;
     navigator.clipboard.writeText(shareText()).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
+    }).catch(() => toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link"));
   }, [shareText]);
 
   const handleWhatsApp = useCallback(() => {
+    if (!shareText()) return;
     const url = `https://wa.me/?text=${encodeURIComponent(shareText())}`;
     window.open(url, "_blank");
   }, [shareText]);
@@ -156,18 +162,20 @@ export default function ScrambleMonitor() {
                 <p className="text-3xl font-black text-purple-400 tracking-[0.2em]" dir="ltr">{pin}</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={handleCopy}
+                <button onClick={handleCopy} disabled={shareLink.status !== "ready"}
                   className="px-3 py-2 rounded-lg bg-purple-600/30 text-purple-300 font-bold text-xs flex items-center gap-1.5 hover:bg-purple-600/50 transition-all">
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   {copied ? (lang === "ar" ? "تم!" : "Copied!") : (lang === "ar" ? "نسخ" : "Copy")}
                 </button>
-                <button onClick={handleWhatsApp}
+                <button onClick={handleWhatsApp} disabled={shareLink.status !== "ready"}
                   className="px-3 py-2 rounded-lg bg-green-600/30 text-green-300 font-bold text-xs flex items-center gap-1.5 hover:bg-green-600/50 transition-all">
                   <MessageCircle className="w-4 h-4" />
                   {lang === "ar" ? "واتساب" : "WhatsApp"}
                 </button>
               </div>
             </div>
+            {shareLink.status === "pending" && <p role="status" className="mt-2 text-xs text-white/60">{lang === "ar" ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
+            {shareLink.status === "error" && <button type="button" role="alert" onClick={shareLink.retry} className="mt-2 text-xs underline text-red-300">{lang === "ar" ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
           </div>
 
           {wordSet && (
