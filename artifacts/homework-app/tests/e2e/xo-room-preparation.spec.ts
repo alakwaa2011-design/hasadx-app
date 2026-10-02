@@ -174,6 +174,10 @@ test("online XO setup prepares, shares, restores and enters the same teacher roo
     expect(new URL(student.url()).searchParams.get("creator")).not.toBe("1");
     expect(await student.evaluate(p => sessionStorage.getItem(`xo-control-${p}`), pin)).toBeNull();
     await expect(student.getByRole("heading", { name: new RegExp(`^${fixture!.title}`) })).toBeVisible();
+    // The roster broadcast precedes the join acknowledgement. Wait for the
+    // device identity too, not just the room's visible player count.
+    await expect.poll(() => student.evaluate(roomPin =>
+      !!JSON.parse(localStorage.getItem(`xo-player-${roomPin}`) || "{}").rejoinToken, pin)).toBe(true);
     return student;
   };
   const studentOne = await joinStudent("Student One");
@@ -184,6 +188,36 @@ test("online XO setup prepares, shares, restores and enters the same teacher roo
   }
   expect(new URL(studentOne.url()).pathname).toBe(new URL(studentTwo.url()).pathname);
 
+  const studentIdentity = async (student: Page) => student.evaluate(() =>
+    Object.keys(localStorage).filter(key => key.startsWith("xo-player-")).map(key => [key, localStorage.getItem(key)]));
+  const identities = await Promise.all([studentIdentity(studentOne), studentIdentity(studentTwo)]);
+  expect(identities.every(entries => entries.length === 1)).toBe(true);
+  await page.getByTestId("button-edit-room-settings").click();
+  await expect(page.getByTestId("button-mode-classroom")).toBeDisabled();
+  await page.getByTestId("input-team-x").fill("Edited Blue");
+  await page.getByTestId("input-team-o").fill("Edited Gold");
+  await page.getByTestId("select-duration").selectOption("30");
+  await expect(page.getByTestId("button-start-game")).toBeDisabled();
+  await page.getByTestId("input-team-x").fill("");
+  await page.getByTestId("button-save-room-settings").click();
+  await expect(page.getByText("Check the questions, names and duration, then save again.")).toBeVisible();
+  await expect(page.getByTestId("button-save-room-settings")).toBeVisible();
+  await page.getByTestId("input-team-x").fill("Edited Blue");
+  await page.getByTestId("button-save-room-settings").click();
+  await expect(page.getByText("Room settings saved; the student link and team members are unchanged.")).toBeVisible();
+  await expect(page.getByTestId("input-team-x")).toBeDisabled();
+  for (const student of [studentOne, studentTwo]) {
+    await expect(student.getByText("Edited Blue", { exact: true }).first()).toBeVisible();
+    await expect(student.getByText("Edited Gold", { exact: true }).first()).toBeVisible();
+    await expect(student.getByTestId("xo-team-count-x")).toContainText("1 of 1");
+    await expect(student.getByTestId("xo-team-count-o")).toContainText("1 of 1");
+  }
+  expect(await Promise.all([studentIdentity(studentOne), studentIdentity(studentTwo)])).toEqual(identities);
+  await page.getByTestId("button-edit-room-settings").click();
+  await page.getByTestId("input-team-x").fill("Cancelled edit");
+  await page.getByTestId("button-cancel-room-settings").click();
+  await expect(page.getByTestId("input-team-x")).toHaveValue("Edited Blue");
+
   await copyRoom.click();
   await expect(page.getByTestId("xo-prepared-room")).toContainText(pin!);
   const secondLink = await page.evaluate(() => navigator.clipboard.readText());
@@ -192,11 +226,30 @@ test("online XO setup prepares, shares, restores and enters the same teacher roo
 
   await page.reload();
   await expect(page.getByTestId("xo-prepared-room")).toContainText(pin!, { timeout: 20_000 });
+  await expect(page.getByTestId("input-team-x")).toHaveValue("Edited Blue");
+  await expect(page.getByTestId("input-team-o")).toHaveValue("Edited Gold");
+  await expect(page.getByTestId("select-duration")).toHaveValue("30");
   await expect(page.getByTestId("button-copy-room-link")).toBeVisible();
   await page.getByTestId("button-copy-room-link").click();
   await expect(page.getByTestId("xo-prepared-room")).toContainText(pin!);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(firstLink);
   await expect.poll(() => startRequests.length).toBe(1);
+
+  const setupUrl = page.url();
+  const storedRoom = await page.evaluate(() => ({
+    room: sessionStorage.getItem("xo-prepared-room-v1"),
+    control: Object.keys(sessionStorage).filter(key => key.startsWith("xo-control-")).map(key => [key, sessionStorage.getItem(key)]),
+  }));
+  const otherSetup = await context.newPage();
+  await otherSetup.goto(setupUrl);
+  await otherSetup.evaluate(stored => {
+    sessionStorage.setItem("xo-prepared-room-v1", stored.room!);
+    stored.control.forEach(([key, value]) => sessionStorage.setItem(key!, value!));
+  }, storedRoom);
+  await otherSetup.reload();
+  await expect(otherSetup.getByTestId("button-edit-room-settings")).toBeEnabled();
+  await otherSetup.getByTestId("button-edit-room-settings").click();
+  await otherSetup.getByTestId("input-team-x").fill("Unsaved while starting");
 
   await page.getByTestId("button-start-game").click();
   await expect(page).toHaveURL(new RegExp(`/game/xo/play/${pin}\\?creator=1`));
@@ -206,6 +259,11 @@ test("online XO setup prepares, shares, restores and enters the same teacher roo
   expect(new URL(page.url()).pathname).toBe(new URL(studentOne.url()).pathname);
   await expect.poll(() => startRequests.length).toBe(1);
   await page.getByTestId("xo-start-game").click();
+  await expect(otherSetup.getByText("The match has started; room settings are locked.")).toBeVisible();
+  await expect(otherSetup.getByTestId("button-edit-room-settings")).toBeDisabled();
+  await expect(otherSetup.getByTestId("button-save-room-settings")).toHaveCount(0);
+  await expect(otherSetup.getByTestId("input-team-x")).toHaveValue("Edited Blue");
+  await otherSetup.close();
 
   const answer = (student: Page) => student.getByRole("button", { name: /^[A-D]\s*الصحيح$/ });
   await expect(answer(studentOne)).toBeVisible();

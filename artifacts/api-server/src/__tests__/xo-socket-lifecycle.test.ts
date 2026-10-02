@@ -76,6 +76,69 @@ afterEach(() => {
 });
 
 describe("XO socket lifecycle", () => {
+  it("updates the existing waiting room without changing its two students or rejoin identities", () => {
+    const sockets = makeSocketServer();
+    const created = createXoGameFromRest({ questions, teamX: "Old X", teamO: "Old O" });
+    const host = new TestSocket("edit-host"), x = new TestSocket("edit-x"), o = new TestSocket("edit-o");
+    [host, x, o].forEach(s => sockets.connect(s));
+    const control = { pin: created.pin, controlToken: created.controlToken };
+    emitWithCallback(host, "xo:reclaim-host", control);
+    const px = emitWithCallback(x, "xo:join", { pin: created.pin, name: "X", avatar: "x" }).player;
+    const po = emitWithCallback(o, "xo:join", { pin: created.pin, name: "O", avatar: "o" }).player;
+    const roster = sockets.namespace.latestState()!.players;
+    const changed = questions.map(q => ({ ...q, text: `Edited ${q.text}`, imageUrl: "/api/objects/test.png" }));
+    const result = emitWithCallback(host, "xo:update-setup", { ...control, questions: changed, title: "Edited title", teamX: "New X", teamO: "New O", duration: 30 });
+    expect(result).toMatchObject({ success: true, pin: created.pin, phase: "waiting", started: false, title: "Edited title", teamNames: { x: "New X", o: "New O" } });
+    expect(result.players).toEqual(roster);
+    expect(result.setup.questions).toHaveLength(2);
+    expect(result.setup.questions.every((q: any) => q.duration === 30 && q.text.startsWith("Edited"))).toBe(true);
+    expect(sockets.namespace.latestState()).not.toHaveProperty("setup");
+    expect(sockets.namespace.latestState()!.question).toBeNull();
+    expect(emitWithCallback(x, "xo:join", { pin: created.pin, playerId: px.id, rejoinToken: px.rejoinToken }).player).toEqual(px);
+    expect(emitWithCallback(o, "xo:join", { pin: created.pin, playerId: po.id, rejoinToken: po.rejoinToken }).player).toEqual(po);
+    expect(emitWithCallback(host, "xo:start", control)).toMatchObject({ success: true });
+    expect(sockets.namespace.latestState()!.question).toMatchObject({ duration: 30, imageUrl: "/api/objects/test.png" });
+    emitWithCallback(host, "xo:end", control);
+  });
+
+  it.each(["start-first", "update-first"])("serializes setup saving and match start atomically: %s", order => {
+    const sockets = makeSocketServer();
+    const host = new TestSocket(`race-host-${order}`, 7), x = new TestSocket(`race-x-${order}`), o = new TestSocket(`race-o-${order}`);
+    [host, x, o].forEach(s => sockets.connect(s));
+    const { pin } = emitWithCallback(host, "xo:create", { questions, teamX: "Original X" });
+    emitWithCallback(x, "xo:join", { pin, name: "X" });
+    emitWithCallback(o, "xo:join", { pin, name: "O" });
+    const update = () => emitWithCallback(host, "xo:update-setup", { pin, questions, duration: 45, teamX: "Updated X", teamO: "Updated O", title: "Updated" });
+    if (order === "start-first") {
+      emitWithCallback(host, "xo:start", { pin });
+      const before = structuredClone(sockets.namespace.latestState());
+      expect(update()).toMatchObject({ code: "xo-room-started" });
+      expect(sockets.namespace.latestState()).toEqual(before);
+      expect(emitWithCallback(host, "xo:reclaim-host", { pin }).setup.teamX).toBe("Original X");
+    } else {
+      expect(update()).toMatchObject({ success: true });
+      expect(emitWithCallback(host, "xo:start", { pin })).toMatchObject({ success: true });
+      expect(sockets.namespace.latestState()).toMatchObject({ started: true, title: "Updated", question: { duration: 45 }, teamNames: { x: "Updated X" } });
+      expect(update()).toMatchObject({ code: "xo-room-started" });
+    }
+    emitWithCallback(host, "xo:end", { pin });
+  });
+
+  it("rejects non-host edits and invalid settings without partially changing the waiting room", () => {
+    const sockets = makeSocketServer();
+    const host = new TestSocket("validation-host", 7), stranger = new TestSocket("validation-stranger", 8);
+    [host, stranger].forEach(s => sockets.connect(s));
+    const { pin } = emitWithCallback(host, "xo:create", { questions });
+    const update = { pin, questions, duration: 20, teamX: "X", teamO: "O", title: "Valid" };
+    expect(emitWithCallback(stranger, "xo:update-setup", update)).toMatchObject({ code: "xo-room-forbidden" });
+    const before = emitWithCallback(host, "xo:reclaim-host", { pin });
+    for (const invalid of [{ teamX: "" }, { teamO: "O".repeat(41) }, { title: null }, { duration: 12 }, { duration: NaN }, { questions: [questions[0]] }, { questions: [{ ...questions[0], correct: 8 }, questions[1]] }]) {
+      expect(emitWithCallback(host, "xo:update-setup", { ...update, ...invalid })).toMatchObject({ code: "xo-room-invalid" });
+      expect(emitWithCallback(host, "xo:reclaim-host", { pin })).toEqual(before);
+    }
+    emitWithCallback(host, "xo:end", { pin });
+  });
+
   it("runs the public REST-created room with one host and two students in the same room", () => {
     const sockets = makeSocketServer();
     const created = createXoGameFromRest({ questions, teamX: "Team X", teamO: "Team O" });

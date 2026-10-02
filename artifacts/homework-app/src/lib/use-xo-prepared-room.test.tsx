@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useXoPreparedRoom } from "./use-xo-prepared-room";
 
-const socket = vi.hoisted(() => ({ emit: vi.fn(), timeout: vi.fn() }));
+const socket = vi.hoisted(() => ({ emit: vi.fn(), timeout: vi.fn(), on: vi.fn(), off: vi.fn() }));
 vi.mock("./xo-socket", () => ({ getXoSocket: () => socket }));
 const save = vi.fn();
 const fetchRoom = vi.fn();
@@ -55,6 +55,17 @@ describe("X O room preparation", () => {
     expect(other.result.current.room).toBeNull();
   });
 
+  it("does not use a previously prepared room for a different saved activity or new board setup", async () => {
+    const first = renderHook(() => useXoPreparedRoom(7, "draft", save));
+    await act(async () => { await first.result.current.prepare(); });
+    first.unmount();
+    const unrelated = renderHook(() => useXoPreparedRoom(7, "different", save, "99"));
+    expect(unrelated.result.current.room).toBeNull();
+    unrelated.unmount();
+    const board = renderHook(() => useXoPreparedRoom(7, "new-board", save, null));
+    expect(board.result.current.room).toBeNull();
+  });
+
   it("reports a closed room before allowing a new link, rather than replacing it silently", async () => {
     const { result } = renderHook(() => useXoPreparedRoom(7, "draft", save));
     await act(async () => { await result.current.prepare(); });
@@ -88,5 +99,50 @@ describe("X O room preparation", () => {
     const { result } = renderHook(() => useXoPreparedRoom(undefined, "draft", save));
     await expect(result.current.prepare()).rejects.toThrow("xo-room-login");
     expect(fetchRoom).not.toHaveBeenCalled();
+  });
+
+  it("never creates a replacement when the draft changes; updates and restores the same room", async () => {
+    const hook = renderHook(({ key }) => useXoPreparedRoom(7, key, save), { initialProps: { key: "draft" } });
+    await act(async () => { await hook.result.current.prepare(); });
+    hook.rerender({ key: "edited" });
+    await act(async () => { await hook.result.current.prepare(); });
+    const setup = { title: "Updated", questions: [], duration: 30, teamX: "Blue", teamO: "Gold" };
+    socket.emit.mockImplementationOnce((_event, _data, cb) => cb(null, { success: true, pin: "123456", phase: "waiting", started: false, setup }));
+    await act(async () => { await hook.result.current.update(setup); });
+    expect(hook.result.current.state?.setup).toEqual(setup);
+    expect(hook.result.current.room).toMatchObject({ pin: "123456", token: "saved-token", draftKey: "edited" });
+    expect(socket.emit).toHaveBeenCalledWith("xo:update-setup", { ...setup, pin: "123456", controlToken: "test-only-control" }, expect.any(Function));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(fetchRoom).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(sessionStorage.getItem("xo-prepared-room-v1")!).pin).toBe("123456");
+  });
+
+  it("keeps the old preparation and link when saving races with start or times out", async () => {
+    const { result } = renderHook(() => useXoPreparedRoom(7, "draft", save));
+    await act(async () => { await result.current.prepare(); });
+    const setup = { title: "Updated", questions: [], duration: 30, teamX: "Blue", teamO: "Gold" };
+    socket.emit.mockImplementationOnce((_event, _data, cb) => cb(null, { code: "xo-room-started" }));
+    await act(async () => { await expect(result.current.update(setup)).rejects.toThrow("xo-room-started"); });
+    socket.emit.mockImplementationOnce((_event, _data, cb) => cb(new Error("timeout")));
+    await act(async () => { await expect(result.current.update(setup)).rejects.toThrow("xo-room-connection"); });
+    expect(result.current.room).toMatchObject({ pin: "123456", draftKey: "draft" });
+    expect(fetchRoom).toHaveBeenCalledTimes(1);
+  });
+
+  it("tracks started/disconnected state and refreshes the host snapshot on reconnect", async () => {
+    const { result } = renderHook(() => useXoPreparedRoom(7, "draft", save));
+    await act(async () => { await result.current.prepare(); });
+    const handler = (event: string) => socket.on.mock.calls.find(([name]) => name === event)![1];
+    act(() => handler("xo:state")({ pin: "999999", phase: "question", started: true }));
+    expect(result.current.state?.started).not.toBe(true);
+    act(() => handler("xo:state")({ pin: "123456", phase: "question", started: true }));
+    expect(result.current.state?.started).toBe(true);
+    act(() => handler("disconnect")());
+    expect(result.current.state).toBeNull();
+    expect(result.current.connectionError).toBe("xo-room-connection");
+    socket.emit.mockImplementationOnce((_event, _data, cb) => cb(null, { success: true, pin: "123456", phase: "question", started: true }));
+    await act(async () => { handler("connect")(); });
+    expect(result.current.state?.started).toBe(true);
+    expect(result.current.connectionError).toBeNull();
   });
 });

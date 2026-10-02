@@ -54,6 +54,7 @@ function fillVacantRepresentative(game: XoGame) {
   if (game.state.phase === "placement") game.state.placementPlayerId = game.activePlayerId;
 }
 const publicState = (game: XoGame) => ({
+  pin: game.pin,
   ...game.state,
   phase: game.started ? game.state.phase : "waiting",
   board: [...game.state.board],
@@ -77,6 +78,12 @@ const publicState = (game: XoGame) => ({
   players: players(game),
   teamNames: game.teamNames,
   title: game.title,
+});
+// Answer-bearing preparation is returned to the authorized host only.
+const hostSetup = (game: XoGame) => ({
+  questions: game.questions,
+  duration: game.questions[0].duration,
+  teamX: game.teamNames.x, teamO: game.teamNames.o, title: game.title,
 });
 function socketControlToken(socket: { request: unknown }, suppliedToken?: unknown): string | undefined {
   if (typeof suppliedToken === "string" && suppliedToken.length > 0) return suppliedToken;
@@ -320,7 +327,32 @@ export function setupXoSocket(io: Server) {
       }
       game.hostSocketId = socket.id;
       socket.join(room(game.pin));
-      cb({ success: true, ...publicState(game) });
+      cb({ success: true, ...publicState(game), setup: hostSetup(game) });
+    });
+
+    socket.on("xo:update-setup", (data: XoRestSetup & { pin: string; controlToken?: string }, cb: (result: object) => void = () => {}) => {
+      const game = games.get(data?.pin);
+      if (!game) return cb({ error: "الغرفة غير موجودة.", code: "xo-room-expired" });
+      if (!isHost(socket, game, data?.controlToken)) return cb({ error: "فقط مضيف الغرفة يمكنه تعديل إعداداتها.", code: "xo-room-forbidden" });
+      if (game.started || game.state.phase === "finished") return cb({ error: "بدأت المباراة؛ لا يمكن تعديل إعداداتها.", code: "xo-room-started" });
+      const validName = (value: unknown, max: number): value is string =>
+        typeof value === "string" && !!value.trim() && value.trim().length <= max;
+      if (!validName(data.teamX, 40) || !validName(data.teamO, 40) || !validName(data.title, 160)
+        || typeof data.duration !== "number" || ![10, 15, 20, 30, 45].includes(data.duration)) {
+        return cb({ error: "تحقق من أسماء الفريقين والعنوان ومدة السؤال.", code: "xo-room-invalid" });
+      }
+      const validated = validateXoQuestions(data.questions, data.duration);
+      if (!validated || validated.length < 2 || validated.length > 20) {
+        return cb({ error: "أضف من سؤالين إلى 20 سؤالاً بخيارات وإجابات صحيحة.", code: "xo-room-invalid" });
+      }
+      // No await between the waiting check and mutation: start and update
+      // are serialized in the same event loop against this exact room.
+      game.questions = shuffledQuestions(validated.map(q => ({ ...q, duration: data.duration as number })));
+      game.activeQuestion = game.questions[0];
+      game.teamNames = { x: data.teamX.trim(), o: data.teamO.trim() };
+      game.title = data.title.trim();
+      emitState(ns, game);
+      cb({ success: true, ...publicState(game), setup: hostSetup(game) });
     });
 
     socket.on("xo:join", (data: { pin: string; name?: string; avatar?: string; playerId?: string; rejoinToken?: string }, cb: (result: object) => void = () => {}) => {

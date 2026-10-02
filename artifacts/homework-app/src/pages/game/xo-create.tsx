@@ -71,6 +71,8 @@ export default function XoCreate() {
   const [creating, setCreating] = useState(false);
   const [linkCreating, setLinkCreating] = useState(false);
   const [copyingRoom, setCopyingRoom] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(false);
+  const [savingRoom, setSavingRoom] = useState(false);
   const { data: teacher } = useGetCurrentTeacher();
   const [savedActivityId, setSavedActivityId] = useState<number | string | null>(null);
   const [permanentToken, setPermanentToken] = useState<string | null>(null);
@@ -87,6 +89,10 @@ export default function XoCreate() {
   const savedActivityIdRef = useRef<number | string | null>(null);
 
   const handleFlowBack = () => {
+    if (editingRoom) {
+      setSetupStep("settings");
+      return;
+    }
     if (setupStep === "settings") {
       setSetupStep("questions");
       return;
@@ -235,15 +241,39 @@ export default function XoCreate() {
     questions: questions.map(q => ({ ...q, type: q.type || "mcq", imageUrl: q.imageUrl || null })),
     duration, teamX, teamO, playMode,
   });
-  const { room: preparedRoom, prepare: prepareRoom } = useXoPreparedRoom(
+  const { room: preparedRoom, state: roomState, connectionError, prepare: prepareRoom, update: updateRoom } = useXoPreparedRoom(
     teacher?.id, roomDraftKey, async () => {
       const token = await ensurePermanentLink();
       if (savedActivityIdRef.current == null) throw new Error("xo-room-create");
       return { token, savedActivityId: savedActivityIdRef.current };
     },
+    new URLSearchParams(window.location.search).get("savedGameId"),
   );
-  const roomReady = playMode === "online" && preparedRoom?.draftKey === roomDraftKey;
-  const busy = creating || linkCreating || copyingRoom;
+  const roomReady = playMode === "online" && !!preparedRoom;
+  const canEditRoom = roomReady && roomState?.phase === "waiting" && !roomState.started && !connectionError;
+  const busy = creating || linkCreating || copyingRoom || savingRoom;
+  const applyRoomSetup = () => {
+    const setup = roomState?.setup;
+    if (!setup) return;
+    setQuestions(toXoQuestions(setup.questions));
+    setTitle(setup.title);
+    setTeamX(setup.teamX);
+    setTeamO(setup.teamO);
+    setDuration(setup.duration);
+  };
+  useEffect(() => {
+    if (!roomReady || !roomState?.setup || editingRoom) return;
+    applyRoomSetup();
+    setSetupStep("settings");
+  // The server's current setup wins over the saved activity after restore.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomReady, roomState?.setup, editingRoom, savedActivityId]);
+  useEffect(() => {
+    if (roomState?.started) {
+      setEditingRoom(false);
+      setSetupStep("settings");
+    }
+  }, [roomState?.started]);
   const roomError = (error: unknown) => {
     const message = error instanceof Error ? error.message : "";
     const messages: Record<string, string> = {
@@ -252,8 +282,21 @@ export default function XoCreate() {
       "xo-room-connection": ar ? "تعذّر الاتصال بالغرفة. حاول مجددًا؛ لم يتغيّر رابط الطلاب." : "Could not connect. Try again; the student link has not changed.",
       "xo-room-create": ar ? "تعذّر تجهيز الغرفة" : "Could not prepare the room",
       "xo-room-cancelled": ar ? "أُلغي تجهيز الغرفة" : "Room preparation was cancelled",
+      "xo-room-started": ar ? "بدأت المباراة؛ لم تُحفظ التعديلات." : "The match has started; changes were not saved.",
+      "xo-room-forbidden": ar ? "لا تملك صلاحية تعديل هذه الغرفة." : "You are not authorized to edit this room.",
+      "xo-room-invalid": ar ? "تحقق من الأسئلة والأسماء والمدة ثم أعد الحفظ." : "Check the questions, names and duration, then save again.",
     };
     return messages[message] || message || messages["xo-room-create"];
+  };
+  const saveRoom = async () => {
+    setSavingRoom(true);
+    try {
+      await updateRoom({ questions, title: title || getDefaultXoTitle(ar ? "ar" : "en"), teamX, teamO, duration });
+      setEditingRoom(false);
+      toast.success(ar ? "تم حفظ إعدادات الغرفة؛ رابط الطلاب والفريقان لم يتغيّرا." : "Room settings saved; the student link and team members are unchanged.");
+    } catch (error) {
+      toast.error(roomError(error));
+    } finally { setSavingRoom(false); }
   };
   const rememberSetup = (room: { savedActivityId: number | string }) => {
     loadedSavedGameRef.current = true;
@@ -387,13 +430,20 @@ export default function XoCreate() {
               </div>
             </header>
 
-            <fieldset disabled={busy || roomReady} className="p-6 space-y-8">
+            <fieldset disabled={busy || (roomReady && (!editingRoom || !canEditRoom))} className="p-6 space-y-8">
+              {roomReady && editingRoom && <label className="block">
+                <span className="mb-2 block text-sm font-bold">{ar ? "عنوان الغرفة" : "Room title"}</span>
+                <input data-testid="input-room-title" value={title || ""} maxLength={160}
+                  onChange={e => setTitle(e.target.value)}
+                  className="w-full rounded-xl border-2 border-muted bg-transparent px-4 py-3 font-bold focus:border-primary focus:outline-none" />
+              </label>}
               <section>
                 <h2 className="mb-1 text-sm font-black uppercase tracking-wider text-muted-foreground">{ar ? "نمط اللعب" : "Play mode"}</h2>
                 <p className="mb-4 text-sm text-muted-foreground">{ar ? "اختر طريقة مشاركة اللعبة مع الطلاب" : "Choose how students will play"}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
+                    disabled={roomReady}
                     data-testid="button-mode-classroom"
                     onClick={() => setPlayMode("classroom")}
                     className={cn(
@@ -413,6 +463,7 @@ export default function XoCreate() {
 
                   <button
                     type="button"
+                    disabled={roomReady}
                     data-testid="button-mode-online"
                     onClick={() => setPlayMode("online")}
                     className={cn(
@@ -448,6 +499,7 @@ export default function XoCreate() {
                     <div className="relative">
                       <div className="pointer-events-none absolute inset-y-0 start-0 flex w-12 items-center justify-center text-blue-500 font-black text-xl">X</div>
                       <input
+                        maxLength={40}
                         value={teamX}
                         onChange={e => setTeamX(e.target.value)}
                         data-testid="input-team-x"
@@ -462,6 +514,7 @@ export default function XoCreate() {
                     <div className="relative">
                       <div className="pointer-events-none absolute inset-y-0 start-0 flex w-12 items-center justify-center text-amber-500 font-black text-xl">O</div>
                       <input
+                        maxLength={40}
                         value={teamO}
                         onChange={e => setTeamO(e.target.value)}
                         data-testid="input-team-o"
@@ -502,26 +555,47 @@ export default function XoCreate() {
               {playMode === "online" && (
                 <p role="status" data-testid="xo-prepared-room" className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-foreground">
                   {roomReady
-                    ? (ar ? <>الغرفة جاهزة — الرمز <b dir="ltr">{preparedRoom!.pin}</b>. أرسل الرابط للطلاب، ثم ادخل الغرفة نفسها عندما تكون جاهزًا. تم تثبيت إعداداتها.</>
-                      : <>Room ready — PIN <b>{preparedRoom!.pin}</b>. Share the link, then enter the same room when ready. Its settings are now fixed.</>)
+                    ? (ar ? <>الغرفة جاهزة — الرمز <b dir="ltr">{preparedRoom!.pin}</b>. رابط الطلاب ثابت. يمكنك تعديل إعداداتها وحفظها قبل بدء المباراة فقط.</>
+                      : <>Room ready — PIN <b>{preparedRoom!.pin}</b>. The student link stays unchanged. Edit and save settings only before the match starts.</>)
                     : (ar ? "انسخ رابط انضمام الطلاب دون دخول اللعبة؛ تُجهَّز غرفة واحدة يمكنك دخولها لاحقًا." : "Copy the student join link without entering the game. One room is prepared for you to enter later.")}
                 </p>
+              )}
+              {roomReady && connectionError && <p role="alert" className="mb-3 text-sm text-destructive">{roomError(new Error(connectionError))}</p>}
+              {roomReady && roomState?.started && <p role="status" className="mb-3 text-sm">{ar ? "بدأت المباراة؛ إعدادات الغرفة مقفلة." : "The match has started; room settings are locked."}</p>}
+              {roomReady && (
+                <div className="mb-4 flex flex-wrap gap-3">
+                  {editingRoom ? <>
+                    <button type="button" data-testid="button-save-room-settings" disabled={busy || !canEditRoom}
+                      onClick={() => void saveRoom()} className="rounded-xl bg-primary px-5 py-3 font-bold text-primary-foreground disabled:opacity-50">
+                      {savingRoom ? (ar ? "جارٍ الحفظ…" : "Saving…") : (ar ? "حفظ إعدادات الغرفة" : "Save room settings")}
+                    </button>
+                    <button type="button" data-testid="button-cancel-room-settings" disabled={busy}
+                      onClick={() => { applyRoomSetup(); setEditingRoom(false); setSetupStep("settings"); }}
+                      className="rounded-xl bg-muted px-5 py-3 font-bold">
+                      {ar ? "إلغاء التعديل" : "Cancel changes"}
+                    </button>
+                  </> : <button type="button" data-testid="button-edit-room-settings" disabled={busy || !canEditRoom}
+                    onClick={() => { applyRoomSetup(); setEditingRoom(true); }}
+                    className="rounded-xl border px-5 py-3 font-bold disabled:opacity-50">
+                    {ar ? "تعديل إعدادات الغرفة الحالية" : "Edit current room settings"}
+                  </button>}
+                </div>
               )}
               <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 onClick={() => {
-                  setQuestions([]);
+                  if (!roomReady) setQuestions([]);
                   setSetupStep("questions");
                 }}
                 data-testid="button-change-questions"
-                disabled={busy || roomReady}
+                disabled={busy || (roomReady && (!editingRoom || !canEditRoom))}
                 className="w-full sm:w-auto rounded-xl border-2 border-transparent bg-muted px-6 py-3.5 font-bold text-muted-foreground transition hover:bg-muted/80 hover:text-foreground"
               >
                 {ar ? "تغيير الأسئلة" : "Change questions"}
               </button>
               <button
                 onClick={create}
-                disabled={busy}
+                disabled={busy || editingRoom}
                 data-testid="button-start-game"
                 className="group flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3.5 px-6 font-black text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
               >
@@ -540,7 +614,7 @@ export default function XoCreate() {
               <button
                 type="button"
                 onClick={() => void (playMode === "online" ? copyRoomLink() : copyPermanentLink())}
-                disabled={busy}
+                disabled={busy || editingRoom}
                 data-testid={playMode === "online" ? "button-copy-room-link" : "button-copy-permanent-link"}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 py-3.5 px-5 font-black text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
