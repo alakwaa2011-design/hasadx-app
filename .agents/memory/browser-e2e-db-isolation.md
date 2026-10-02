@@ -26,3 +26,9 @@ An isolated test database can still be unusable when its schema predates the che
 **Why:** E2E failures from missing columns can look like a product regression even though the app and test code never reach the route under test.
 
 **How to apply:** When E2E setup fails on a missing relation or column, report the stale test schema separately and do not alter product code or point fixtures at the shared database to bypass it.
+
+Keep the isolated browser-test Vite server's dependency cache separate from the managed preview server.
+
+**Why:** Concurrent servers using the same optimized-dependency cache can invalidate each other's module URLs and return `504 Outdated Optimize Dep`. The app's chunk-error screen then says a new update is available even though the failure is a cache collision, not a platform notice.
+
+**How to apply:** Use a distinct test-only Vite cache directory. When an isolated browser run shows the update screen, inspect module network failures before attributing it to Replit or altering application behavior.

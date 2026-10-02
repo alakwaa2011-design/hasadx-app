@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Server } from "socket.io";
-import { setupXoSocket } from "../game/xo-handlers";
+import { createXoGameFromRest, setupXoSocket } from "../game/xo-handlers";
 
 type SocketEventHandler = (...args: any[]) => void;
 
 class TestSocket {
   readonly request: { session?: { teacherId?: number } };
   readonly join = vi.fn();
+  readonly leave = vi.fn();
   private readonly handlers = new Map<string, SocketEventHandler>();
 
   constructor(
@@ -75,6 +76,111 @@ afterEach(() => {
 });
 
 describe("XO socket lifecycle", () => {
+  it("runs the public REST-created room with one host and two students in the same room", () => {
+    const sockets = makeSocketServer();
+    const created = createXoGameFromRest({ questions, teamX: "Team X", teamO: "Team O" });
+    const host = new TestSocket("public-host");
+    const x = new TestSocket("public-x");
+    const o = new TestSocket("public-o");
+    sockets.connect(host); sockets.connect(x); sockets.connect(o);
+    expect(emitWithCallback(host, "xo:reclaim-host", { pin: created.pin, controlToken: "invalid" })).toHaveProperty("error");
+    expect(emitWithCallback(host, "xo:reclaim-host", { pin: created.pin, controlToken: created.controlToken })).toMatchObject({ success: true, started: false });
+    expect(emitWithCallback(host, "xo:start", { pin: created.pin, controlToken: created.controlToken })).toHaveProperty("error");
+    const px = emitWithCallback(x, "xo:join", { pin: created.pin, name: "X" }).player;
+    emitWithCallback(o, "xo:join", { pin: created.pin, name: "O" });
+    expect(emitWithCallback(x, "xo:start", { pin: created.pin })).toHaveProperty("error");
+    expect(emitWithCallback(host, "xo:start", { pin: created.pin, controlToken: created.controlToken })).toMatchObject({ success: true });
+    const state = sockets.namespace.latestState()!;
+    expect(state.activePlayerId).toBe(px.id);
+    expect(state).not.toHaveProperty("controlToken");
+    expect(state).not.toHaveProperty("publicHostControlToken");
+    expect(state.players).toHaveLength(2);
+    expect(emitWithCallback(x, "xo:answer", { pin: created.pin, playerId: px.id, turnId: state.turnId, answerIndex: 0 })).toMatchObject({ success: true, correct: true });
+    expect(emitWithCallback(x, "xo:place", { pin: created.pin, playerId: px.id, turnId: state.turnId })).toHaveProperty("error");
+    expect(emitWithCallback(x, "xo:place", { pin: created.pin, playerId: px.id, turnId: sockets.namespace.latestState()!.turnId, cell: 0 })).toMatchObject({ success: true });
+    expect(sockets.namespace.latestState()?.board[0]).toBe("x");
+    emitWithCallback(host, "xo:end", { pin: created.pin, controlToken: created.controlToken });
+  });
+
+  it("rotates representatives in each team and rejects teammates, rivals and stale actions", () => {
+    const sockets = makeSocketServer();
+    const host = new TestSocket("rotation-host", 7);
+    const students = Array.from({ length: 6 }, (_, i) => new TestSocket(`rotation-${i}`));
+    sockets.connect(host); students.forEach(s => sockets.connect(s));
+    const { pin } = emitWithCallback(host, "xo:create", { questions });
+    const joined = students.map((s, i) => emitWithCallback(s, "xo:join", { pin, name: `Student ${i}` }).player);
+    expect(joined.map(p => p.team)).toEqual(["x", "o", "x", "o", "x", "o"]);
+    // A repeated initialise on the same connection does not duplicate a student.
+    expect(emitWithCallback(students[0], "xo:join", { pin, name: "Student 0" }).player.id).toBe(joined[0].id);
+    expect(sockets.namespace.latestState()?.players).toHaveLength(6);
+    emitWithCallback(host, "xo:start", { pin });
+    const firstTurnId = sockets.namespace.latestState()!.turnId;
+    expect(emitWithCallback(students[2], "xo:answer", { pin, answerIndex: 0 })).toMatchObject({ error: "هذا الدور لممثل فريقك الحالي." });
+    expect(emitWithCallback(students[1], "xo:answer", { pin, answerIndex: 0 })).toMatchObject({ error: "ليس دور فريقك." });
+    const representatives: string[] = [];
+    for (let round = 0; round < 8; round++) {
+      representatives.push(sockets.namespace.latestState()!.activePlayerId);
+      emitWithCallback(host, "xo:skip", { pin });
+    }
+    expect(representatives).toEqual([0, 1, 2, 3, 4, 5, 0, 1].map(i => joined[i].id));
+    expect(emitWithCallback(students[2], "xo:answer", { pin, turnId: firstTurnId, answerIndex: 0 })).toMatchObject({ error: "تغير الدور، انتظر تحديث اللعبة." });
+    emitWithCallback(host, "xo:end", { pin });
+  });
+
+  it("counts only connected players for start and transfers a disconnected representative without extending the timer", () => {
+    vi.useFakeTimers();
+    const sockets = makeSocketServer();
+    const host = new TestSocket("online-host", 7);
+    const x = new TestSocket("online-x"); const o = new TestSocket("online-o"); const x2 = new TestSocket("online-x2");
+    [host, x, o, x2].forEach(s => sockets.connect(s));
+    const { pin } = emitWithCallback(host, "xo:create", { questions });
+    const px = emitWithCallback(x, "xo:join", { pin, name: "X" }).player;
+    const po = emitWithCallback(o, "xo:join", { pin, name: "O" }).player;
+    emitWithCallback(x2, "xo:join", { pin, name: "X2" });
+    o.trigger("disconnect");
+    expect(emitWithCallback(host, "xo:start", { pin })).toMatchObject({ error: "يجب أن ينضم لاعب واحد على الأقل لكل فريق." });
+    emitWithCallback(o, "xo:join", { pin, playerId: po.id, rejoinToken: po.rejoinToken });
+    emitWithCallback(host, "xo:start", { pin });
+    const deadline = sockets.namespace.latestState()!.timerExpiresAt;
+    vi.advanceTimersByTime(2100);
+    x.trigger("disconnect");
+    const state = sockets.namespace.latestState()!;
+    expect(state.activePlayerId).not.toBe(px.id);
+    expect(state.players.find((p: any) => p.id === px.id).connected).toBe(false);
+    expect(state.timerExpiresAt).toBe(deadline);
+    expect(state.question.remainingSecs).toBe(8);
+    expect(emitWithCallback(x, "xo:answer", { pin, answerIndex: 0 })).toMatchObject({ error: "أنت لست في هذه اللعبة." });
+    emitWithCallback(x, "xo:join", { pin, playerId: px.id, rejoinToken: px.rejoinToken });
+    expect(sockets.namespace.latestState()!.activePlayerId).toBe(state.activePlayerId);
+    expect(sockets.namespace.latestState()!.players).toHaveLength(3);
+    emitWithCallback(host, "xo:end", { pin });
+  });
+
+  it("transfers earned placement on leave, handles an entirely offline team and resumes on rejoin", () => {
+    vi.useFakeTimers();
+    const sockets = makeSocketServer();
+    const host = new TestSocket("placement-host", 7);
+    const x = new TestSocket("placement-x"); const o = new TestSocket("placement-o"); const x2 = new TestSocket("placement-x2");
+    [host, x, o, x2].forEach(s => sockets.connect(s));
+    const { pin } = emitWithCallback(host, "xo:create", { questions });
+    const px = emitWithCallback(x, "xo:join", { pin, name: "X" }).player;
+    emitWithCallback(o, "xo:join", { pin, name: "O" });
+    const px2 = emitWithCallback(x2, "xo:join", { pin, name: "X2" }).player;
+    emitWithCallback(host, "xo:start", { pin });
+    emitWithCallback(x, "xo:answer", { pin, answerIndex: 0 });
+    const deadline = sockets.namespace.latestState()!.timerExpiresAt;
+    vi.advanceTimersByTime(5000);
+    x.trigger("xo:leave", { pin });
+    expect(sockets.namespace.latestState()).toMatchObject({ phase: "placement", activePlayerId: px2.id, placementPlayerId: px2.id, timerExpiresAt: deadline });
+    expect(x.leave).toHaveBeenCalledWith(`xo:${pin}`);
+    x2.trigger("disconnect");
+    expect(sockets.namespace.latestState()).toMatchObject({ phase: "placement", activePlayerId: null, placementPlayerId: null, timerExpiresAt: deadline });
+    emitWithCallback(x, "xo:join", { pin, playerId: px.id, rejoinToken: px.rejoinToken });
+    expect(sockets.namespace.latestState()).toMatchObject({ activePlayerId: px.id, placementPlayerId: px.id, timerExpiresAt: deadline });
+    expect(emitWithCallback(x, "xo:place", { pin, cell: 2 })).toMatchObject({ success: true });
+    expect(sockets.namespace.latestState()?.board[2]).toBe("x");
+    emitWithCallback(host, "xo:end", { pin });
+  });
   it("runs a complete two-player match with turn changes, one placement, occupied-cell rejection, and a win", () => {
     const sockets = makeSocketServer();
     const teacher = new TestSocket("teacher", 7);

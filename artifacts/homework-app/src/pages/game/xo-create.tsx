@@ -230,7 +230,9 @@ export default function XoCreate() {
     setLinkCreating(true);
     try {
       await copyGameShortUrl(ensurePermanentLink().then(savedGamePlayUrl));
-      toast.success(ar ? "تم نسخ الرابط الدائم" : "Permanent link copied");
+      toast.success(playMode === "online"
+        ? (ar ? "تم نسخ رابط إنشاء مباراة جديدة — شارك رابط انضمام الطلاب من داخل الغرفة" : "New-match link copied — share the student join link from inside the room")
+        : (ar ? "تم نسخ الرابط الدائم" : "Permanent link copied"));
     } catch (error) {
       toast.error(error instanceof Error && error.message
         ? error.message
@@ -392,7 +394,7 @@ export default function XoCreate() {
                     <strong className="block text-base text-foreground">{ar ? "الدخول عن بُعد" : "Remote join"}</strong>
                     <span className="mt-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                       <QrCode className="h-4 w-4" />
-                      {ar ? "كود ورابط وQR لكل طالب" : "Code, link and QR for students"}
+                      {ar ? "غرفة واحدة للفريقين مع تناوب الطلاب" : "One shared room with rotating team representatives"}
                     </span>
                   </button>
                 </div>
@@ -503,7 +505,9 @@ export default function XoCreate() {
                 )}
                 {linkCreating
                   ? (ar ? "جارٍ إنشاء الرابط..." : "Creating link...")
-                  : (ar ? "نسخ الرابط الدائم" : "Copy permanent link")}
+                  : playMode === "online"
+                    ? (ar ? "رابط إنشاء مباراة جديدة" : "New-match link")
+                    : (ar ? "نسخ الرابط الدائم" : "Copy permanent link")}
               </button>
               </div>
             </footer>

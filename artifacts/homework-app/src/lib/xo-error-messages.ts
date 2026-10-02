@@ -21,6 +21,8 @@ const ENGLISH_XO_ERRORS: Record<string, string> = {
   "هذه الفرصة للاعب الذي أجاب صحيحاً.": "This move belongs to the player who answered correctly.",
   "خانة غير صالحة.": "Invalid square.",
   "هذه الخانة مشغولة.": "This square is occupied.",
+  "هذا الدور لممثل فريقك الحالي.": "Only your team's current representative may answer.",
+  "تغير الدور، انتظر تحديث اللعبة.": "The turn has changed. Wait for the game to update.",
 };
 
 export function localizeXoError(message: unknown, ar: boolean, fallback: string): string {

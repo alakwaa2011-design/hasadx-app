@@ -13,6 +13,11 @@ const includeRuntimeErrorOverlay = process.env.E2E_TEST !== "1";
 
 export default defineConfig({
   base: basePath,
+  // Isolated browser tests and the managed preview run simultaneously; sharing
+  // optimized dependencies makes one server invalidate the other's module URLs.
+  cacheDir: process.env.E2E_TEST === "1"
+    ? path.resolve(import.meta.dirname, "node_modules/.vite-e2e")
+    : undefined,
   plugins: [
     react(),
     tailwindcss(),

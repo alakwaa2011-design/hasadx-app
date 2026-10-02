@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
-import { Grid3X3, Volume2, VolumeX, Copy, Play, SkipForward, Square, Circle, X, CheckCircle, XCircle, Clock, Trophy, LogOut } from "lucide-react";
+import { Grid3X3, Volume2, VolumeX, Copy, Play, SkipForward, Square, Circle, X, CheckCircle, XCircle, Clock, Trophy, LogOut, Users } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getXoSocket } from "@/lib/xo-socket";
 import { QuestionImage } from "@/components/game/question-image";
@@ -13,6 +13,7 @@ import { XO_ANSWER_COLORS } from "@/lib/xo-answer-colors";
 import { localizeXoError } from "@/lib/xo-error-messages";
 import { useSmartBack } from "@/lib/nav-history";
 import { XoName, XoTitle, normalizeXoTeamName } from "@/components/game/xo-display";
+import { XoTeamRoster } from "@/components/game/xo-team-roster";
 import {
   getIsMuted,
   playCorrectSound,
@@ -36,8 +37,8 @@ type Question = {
   duration?: number;
   remainingSecs?: number;
 };
-type Player = { id: string; name: string; team: "x" | "o" };
-type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; timerRemainingSecs?: number; players?: Player[]; teamNames?: { x: string; o: string }; title?: string; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
+type Player = { id: string; name: string; team: "x" | "o"; connected: boolean };
+type Snapshot = { board?: Mark[]; turn?: "x" | "o"; phase?: string; question?: Question | null; timerRemainingSecs?: number; timerExpiresAt?: number | null; turnId?: number; activePlayerId?: string | null; players?: Player[]; teamNames?: { x: string; o: string }; title?: string; placementPlayerId?: string | null; started?: boolean; winner?: "x" | "o" | "draw" | null };
 
 function getWinningCells(board: Mark[]): number[] {
   const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
@@ -47,16 +48,21 @@ function getWinningCells(board: Mark[]): number[] {
 export default function XoPlay() {
   const { pin = "" } = useParams<{ pin: string }>();
   const search = useSearch();
-  const [, navigate] = useLocation();
   const { lang } = useI18n();
   const ar = lang === "ar";
   const creator = new URLSearchParams(search).get("creator") === "1";
-  const directToken = new URLSearchParams(search).get("token");
   const controlToken = creator && typeof sessionStorage !== "undefined"
     ? sessionStorage.getItem(`xo-control-${pin}`) || undefined
     : undefined;
   const name = new URLSearchParams(search).get("name") || "";
-  const leaveGameSafely = useSmartBack(creator ? "/game/xo/create" : "/game/xo/join");
+  const [, navigate] = useLocation();
+  const goBack = useSmartBack(creator ? "/game/xo/create" : "/game/xo/join");
+  const leaveGameSafely = useCallback(() => {
+    // Returning to a permanent public launch link would immediately create a
+    // new room after the host ended this one.
+    if (creator && controlToken) navigate("/game/xo/create", { replace: true });
+    else goBack();
+  }, [creator, controlToken, goBack, navigate]);
 
   const [snapshot, setSnapshot] = useState<Snapshot>({ board: Array(9).fill(null), phase: "connecting" });
   const [selected, setSelected] = useState<number | null>(null);
@@ -64,83 +70,135 @@ export default function XoPlay() {
   const [muted, setMuted] = useState(getIsMuted);
   const [time, setTime] = useState(0);
   const [playerId, setPlayerId] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const pendingRef = useRef(false);
+  const mountedRef = useRef(false);
+  const playerIdRef = useRef<string | null>(null);
+  const snapshotRef = useRef(snapshot);
+  const arRef = useRef(ar);
+  arRef.current = ar;
+  const leaveRef = useRef(leaveGameSafely);
+  leaveRef.current = leaveGameSafely;
+  const initialiseRef = useRef<() => void>(() => {});
   const socketRef = useRef(getXoSocket());
   const previousStarted = useRef(false);
   const previousWinner = useRef<Snapshot["winner"]>(null);
   const previousBoard = useRef<Mark[]>(Array(9).fill(null));
 
   const merge = useCallback((data: Snapshot) => {
-    setSnapshot(p => {
-      // Reset when either the question or its freshly shuffled answer order changes.
-      if (data.question && p.question && (
-        data.question.text !== p.question.text
-        || data.question.options.join("\u0000") !== p.question.options.join("\u0000")
-      )) {
-        setSelected(null);
-        setAnswerResult(null);
-      }
-      return { ...p, ...data, board: data.board ?? p.board, question: data.question === null ? null : data.question ?? p.question };
-    });
+    const previous = snapshotRef.current;
+    if (data.turnId !== previous.turnId || data.activePlayerId !== previous.activePlayerId || data.phase !== previous.phase) {
+      setSelected(null);
+      setAnswerResult(null);
+      pendingRef.current = false;
+      setPendingAction(null);
+    }
+    const next = { ...previous, ...data, board: data.board ?? previous.board, question: data.question === null ? null : data.question ?? previous.question };
+    snapshotRef.current = next;
+    setSnapshot(next);
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     const socket = socketRef.current;
+    let disposed = false;
     const initialise = () => {
-      if (creator) socket.emit("xo:reclaim-host", { pin, controlToken }, (r: Snapshot & { error?: string }) =>
-        r.error
-          ? toast.error(localizeXoError(r.error, ar, ar ? "تعذر استعادة غرفة المعلم" : "Could not restore the teacher room"))
-          : merge(r)
-      );
+      setConnected(socket.connected);
+      setReady(false);
+      setConnectionError("");
+      const onFailure = (message: unknown) => {
+        if (disposed) return;
+        setConnectionError(localizeXoError(message, arRef.current, arRef.current ? "تعذر الاتصال بالغرفة، حاول مجددًا" : "Could not connect to the room. Please retry."));
+      };
+      if (creator) socket.timeout(8000).emit("xo:reclaim-host", { pin, controlToken }, (err: Error | null, r?: Snapshot & { error?: string }) => {
+        if (disposed) return;
+        if (err || r?.error || !r) return onFailure(r?.error);
+        merge(r);
+        setReady(true);
+      });
       else {
         let stored: { id?: string; rejoinToken?: string } = {};
         try { stored = JSON.parse(localStorage.getItem(`xo-player-${pin}`) || "{}"); } catch {}
-        socket.emit("xo:join", { pin, name, playerId: stored.id, rejoinToken: stored.rejoinToken }, (joined: { error?: string; state?: Snapshot; player?: { id: string; rejoinToken: string } }) => {
-          if (joined.error) {
-            toast.error(localizeXoError(joined.error, ar, ar ? "تعذر الانضمام إلى اللعبة" : "Could not join the game"));
-            return;
-          }
+        socket.timeout(8000).emit("xo:join", { pin, name, playerId: stored.id, rejoinToken: stored.rejoinToken }, (err: Error | null, joined?: { error?: string; state?: Snapshot; player?: { id: string; rejoinToken: string } }) => {
+          if (disposed) return;
+          if (err || joined?.error || !joined?.state || !joined.player) return onFailure(joined?.error);
           if (joined.player) {
+            playerIdRef.current = joined.player.id;
             setPlayerId(joined.player.id);
-            localStorage.setItem(`xo-player-${pin}`, JSON.stringify(joined.player));
+            try { localStorage.setItem(`xo-player-${pin}`, JSON.stringify(joined.player)); } catch {}
           }
           if (joined.state) merge(joined.state);
+          setReady(true);
         });
       }
     };
-    socket.on("connect", initialise); if (socket.connected) initialise();
+    initialiseRef.current = initialise;
+    const onDisconnect = () => {
+      setConnected(false);
+      setReady(false);
+      pendingRef.current = false;
+      setPendingAction(null);
+      setSelected(null);
+    };
+    const onConnectError = () => {
+      onDisconnect();
+      setConnectionError(arRef.current ? "تعذر الاتصال بالخادم. نعيد المحاولة تلقائيًا." : "Could not connect to the server. Retrying automatically.");
+    };
+    socket.on("connect", initialise);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    if (!socket.connected) socket.connect();
     const events: Array<[string, (d: Snapshot) => void]> = [["xo:state", merge]];
     events.forEach(([e, h]) => socket.on(e, h));
 
-    socket.on("xo:answer-result", (d: { correct?: boolean }) => {
+    const onAnswerResult = (d: { correct?: boolean; playerId?: string }) => {
       if (typeof d.correct === "boolean") {
-        setAnswerResult(d.correct);
+        if (d.playerId === playerIdRef.current) setAnswerResult(d.correct);
         d.correct ? playCorrectSound() : playWrongSound();
       }
-    });
+    };
+    socket.on("xo:answer-result", onAnswerResult);
 
-    socket.on("xo:ended", () => {
-      if (!creator) toast.info(ar ? "أنهى المعلم اللعبة" : "The teacher ended the game");
-      leaveGameSafely();
-    });
-    socket.on("xo:error", (d: { message?: string } | string) => {
+    const onEnded = () => {
+      if (!creator) toast.info(arRef.current ? "أنهى المعلم اللعبة" : "The teacher ended the game");
+      leaveRef.current();
+    };
+    socket.on("xo:ended", onEnded);
+    const onError = (d: { message?: string } | string) => {
       const message = typeof d === "string" ? d : d.message;
-      toast.error(localizeXoError(message, ar, ar ? "خطأ في اللعبة" : "X O error"));
-    });
-    return () => { events.forEach(([e, h]) => socket.off(e, h)); socket.off("connect", initialise); socket.off("xo:answer-result"); socket.off("xo:ended"); socket.off("xo:error"); };
-  }, [ar, creator, leaveGameSafely, merge, name, pin]);
+      toast.error(localizeXoError(message, arRef.current, arRef.current ? "خطأ في اللعبة" : "X O error"));
+    };
+    socket.on("xo:error", onError);
+    if (socket.connected) initialise();
+    return () => {
+      mountedRef.current = false;
+      disposed = true;
+      events.forEach(([e, h]) => socket.off(e, h));
+      socket.off("connect", initialise);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.off("xo:answer-result", onAnswerResult);
+      socket.off("xo:ended", onEnded);
+      socket.off("xo:error", onError);
+      if (socket.connected) socket.emit("xo:leave", { pin });
+      // Don't leave a background socket connected when this game screen closes.
+      socket.disconnect();
+    };
+  }, [creator, controlToken, merge, name, pin]);
 
   useEffect(() => {
-    const q = snapshot.question;
-    if (snapshot.phase === "placement") { setTime(snapshot.timerRemainingSecs ?? 20); return; }
-    if (!q || snapshot.phase !== "question") return;
-    setTime(q.remainingSecs ?? q.duration ?? 20);
-  }, [snapshot.question, snapshot.phase, snapshot.timerRemainingSecs]);
-
-  useEffect(() => {
-    if (!time || snapshot.phase !== "question") return;
-    const t = window.setInterval(() => setTime(v => Math.max(0, v - 1)), 1000);
+    if (!snapshot.started || !snapshot.timerExpiresAt || !["question", "placement"].includes(snapshot.phase || "")) {
+      setTime(0);
+      return;
+    }
+    const tick = () => setTime(Math.max(0, Math.ceil((snapshot.timerExpiresAt! - Date.now()) / 1000)));
+    tick();
+    const t = window.setInterval(tick, 250);
     return () => clearInterval(t);
-  }, [time, snapshot.phase]);
+  }, [snapshot.started, snapshot.timerExpiresAt, snapshot.phase]);
 
   useEffect(() => {
     const active = snapshot.started && snapshot.phase !== "finished" && !snapshot.winner;
@@ -173,11 +231,32 @@ export default function XoPlay() {
     previousBoard.current = [...nextBoard];
   }, [snapshot.board]);
 
-  const emit = (event: string, data: object = {}) => socketRef.current.emit(`xo:${event}`, {
-    pin,
-    ...(creator && controlToken ? { controlToken } : {}),
-    ...data,
-  });
+  const emit = (event: string, data: object = {}) => {
+    if (pendingRef.current) return;
+    if (!connected || !ready) {
+      toast.error(ar ? "انتظر استعادة الاتصال بالغرفة" : "Wait for the room connection to recover");
+      return;
+    }
+    pendingRef.current = true;
+    setPendingAction(event);
+    const sentTurnId = snapshotRef.current.turnId;
+    socketRef.current.timeout(8000).emit(`xo:${event}`, {
+      pin,
+      turnId: sentTurnId,
+      ...(creator && controlToken ? { controlToken } : {}),
+      ...data,
+    }, (err: Error | null, response?: { error?: string; success?: boolean }) => {
+      if (!mountedRef.current) return;
+      if (snapshotRef.current.turnId !== sentTurnId) return;
+      pendingRef.current = false;
+      setPendingAction(null);
+      if (err || response?.error || !response?.success) {
+        if (event === "answer") setSelected(null);
+        toast.error(localizeXoError(response?.error, arRef.current, arRef.current ? "تعذر تنفيذ الإجراء، حاول مجددًا" : "The action failed. Please retry."));
+        if (err) initialiseRef.current();
+      }
+    });
+  };
   const toggleMute = () => {
     const nextMuted = toggleGameMute();
     setMuted(nextMuted);
@@ -189,16 +268,17 @@ export default function XoPlay() {
   const question = snapshot.question;
   const board = snapshot.board || Array(9).fill(null);
   const winningCells = getWinningCells(board);
-  const canPlace = snapshot.phase === "placement" && snapshot.placementPlayerId === playerId;
+  const canPlace = !creator && ready && connected && !pendingAction && snapshot.phase === "placement" && snapshot.placementPlayerId === playerId;
+  const canAnswer = !creator && ready && connected && !pendingAction && snapshot.started && snapshot.phase === "question" && snapshot.activePlayerId === playerId;
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/xo/join/${pin}`;
-  const permanentUrl = directToken
-    ? `${window.location.origin}${import.meta.env.BASE_URL || "/"}play/${encodeURIComponent(directToken)}`
-    : null;
-  const primaryShare = useGameShareUrl(permanentUrl || joinUrl);
-  const roomShare = useGameShareUrl(joinUrl);
+  // During a match every share entry must join THIS room, never create a new host room.
+  const primaryShare = useGameShareUrl(joinUrl);
   const turn = snapshot.turn ?? "x";
   const team = normalizeXoTeamName(snapshot.teamNames?.[turn], turn, ar ? "ar" : "en");
   const myTeam = snapshot.players?.find(p => p.id === playerId)?.team;
+  const activePlayer = snapshot.players?.find(p => p.id === snapshot.activePlayerId);
+  const connectedPlayers = snapshot.players?.filter(p => p.connected) || [];
+  const teamsReady = connectedPlayers.some(p => p.team === "x") && connectedPlayers.some(p => p.team === "o");
   const isFinished = snapshot.phase === "finished" || snapshot.winner;
 
   return (
@@ -223,54 +303,46 @@ export default function XoPlay() {
           }}
         />
       </div>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-[#0d1e2d]/90 px-4 py-3 text-white shadow-[0_12px_32px_rgba(0,0,0,0.22)] backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+      {/* A CSS backdrop filter here traps the QR overlay's fixed positioning inside this header. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-white/10 bg-[#0d1e2d] px-4 py-3 text-white shadow-[0_12px_32px_rgba(0,0,0,0.22)]">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <Grid3X3 className="h-6 w-6" />
           </div>
-          <div>
-            <h1 className="font-black leading-tight text-foreground"><XoTitle title={snapshot.title} lang={ar ? "ar" : "en"} /></h1>
+          <div className="min-w-0">
+            <h1 title={snapshot.title} className="truncate font-black leading-tight text-white"><XoTitle title={snapshot.title} lang={ar ? "ar" : "en"} /></h1>
             <div className="text-xs font-bold tracking-widest text-muted-foreground flex items-center gap-1.5" dir="ltr">
               {ar ? "الرمز" : "PIN"}: <span className="font-mono text-primary">{pin}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-           {creator && <QRModalButton url={permanentUrl || joinUrl} pin={pin} label="QR" variant="light" />}
+        <div className="flex shrink-0 items-center gap-1.5">
+           {creator && <QRModalButton url={joinUrl} pin={pin} label="QR" variant="light" />}
           <button
              onClick={async () => {
                try {
                  if (primaryShare.status !== "ready") return;
                  await navigator.clipboard?.writeText(primaryShare.url);
-                 toast.success(permanentUrl ? (ar ? "تم نسخ الرابط الدائم" : "Permanent link copied") : (ar ? "تم نسخ الرابط" : "Link copied"));
+                  toast.success(ar ? "تم نسخ رابط انضمام الطلاب لهذه الغرفة" : "Student join link copied");
                } catch {
                  toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
                }
              }}
-             aria-label={permanentUrl ? (ar ? "نسخ الرابط الدائم" : "Copy permanent link") : (ar ? "نسخ رابط الانضمام" : "Copy join link")}
+              aria-label={ar ? "نسخ رابط انضمام الطلاب" : "Copy student join link"}
             className="rounded-lg border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             disabled={primaryShare.status !== "ready"}
           >
             <Copy className="h-5 w-5" />
           </button>
-           {creator && permanentUrl && (
-             <button
-               type="button"
-               onClick={async () => {
-                 try {
-                   if (roomShare.status !== "ready") return;
-                   await navigator.clipboard?.writeText(roomShare.url);
-                   toast.success(ar ? "تم نسخ رابط الانضمام المؤقت" : "Temporary join link copied");
-                 } catch {
-                   toast.error(ar ? "تعذّر نسخ الرابط" : "Could not copy the link");
-                 }
-               }}
-               className="hidden rounded-lg border bg-card px-2 py-1 text-[11px] font-bold text-muted-foreground hover:bg-muted hover:text-foreground sm:block"
-               disabled={roomShare.status !== "ready"}
-             >
-               {ar ? "رابط الغرفة" : "Room link"}
-             </button>
-           )}
+            <button
+              type="button"
+              aria-label={ar ? "الخروج من اللعبة" : "Leave game"}
+              onClick={() => creator ? emit("end") : leaveGameSafely()}
+              disabled={creator && (!ready || !connected || !!pendingAction)}
+              className="rounded-lg border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           <button
             onClick={toggleMute}
             aria-label={muted ? (ar ? "تشغيل الصوت" : "Unmute") : (ar ? "كتم الصوت" : "Mute")}
@@ -282,8 +354,25 @@ export default function XoPlay() {
       </header>
       {primaryShare.status === "pending" && <p role="status" className="text-center text-xs text-muted-foreground">{ar ? "جارٍ تجهيز الرابط القصير…" : "Preparing short link…"}</p>}
       {primaryShare.status === "error" && <button type="button" role="alert" onClick={primaryShare.retry} className="text-center text-xs text-red-500 underline">{ar ? "تعذّر تجهيز الرابط — إعادة المحاولة" : "Could not prepare link — retry"}</button>}
+      {(!connected || connectionError) && (
+        <div role="alert" className="relative z-20 flex flex-wrap items-center justify-center gap-3 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950">
+          <span>{connectionError || (ar ? "جارٍ الاتصال بالغرفة… لا تغلق الصفحة" : "Connecting to the room… keep this page open")}</span>
+          <button type="button" className="underline" onClick={() => socketRef.current.connected ? initialiseRef.current() : socketRef.current.connect()}>
+            {ar ? "إعادة المحاولة" : "Retry"}
+          </button>
+          {connectionError && <button type="button" className="underline" onClick={leaveGameSafely}>{ar ? "رجوع" : "Go back"}</button>}
+        </div>
+      )}
 
       <div className="relative z-10 flex-1 overflow-y-auto p-4 lg:p-6">
+        <div className="mx-auto mb-5 max-w-5xl">
+          <XoTeamRoster players={snapshot.players || []} teamNames={snapshot.teamNames} activePlayerId={isFinished ? null : snapshot.activePlayerId} myPlayerId={playerId} started={!!snapshot.started} ar={ar} />
+          {creator && !snapshot.started && (
+            <p className="mt-3 text-center text-sm font-bold text-white/90">
+              {ar ? "شارك رابط الانضمام أو QR؛ يبدأ اللعب بعد اتصال طالب واحد على الأقل في كل فريق." : "Share the join link or QR. At least one student must be online in each team to start."}
+            </p>
+          )}
+        </div>
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_1fr] xl:gap-10 h-full">
 
           {/* Question / Status Panel */}
@@ -297,7 +386,7 @@ export default function XoPlay() {
                 {ar ? "دور" : "Turn"}: {team}
               </span>
 
-              {snapshot.phase === "question" && (
+              {snapshot.started && (snapshot.phase === "question" || snapshot.phase === "placement") && (
                 <span className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-black transition-colors",
                   time <= 5 ? "bg-red-100 text-red-600 animate-pulse" : "bg-muted text-muted-foreground"
@@ -311,6 +400,13 @@ export default function XoPlay() {
             <div className="flex-1 flex flex-col justify-center z-10">
               {question ? (
                 <div className="animate-in fade-in duration-500 space-y-5">
+                   <p role="status" data-testid="xo-turn-status" className="text-center text-sm font-bold text-primary">
+                     {canAnswer
+                       ? (ar ? "أنت ممثل فريقك الآن — أجب عن السؤال" : "You represent your team now — answer the question")
+                       : activePlayer
+                         ? (ar ? `بانتظار إجابة ${activePlayer.name} — سيتناوب أعضاء الفريق` : `Waiting for ${activePlayer.name} — team members take turns`)
+                         : (ar ? "بانتظار اتصال ممثل الفريق" : "Waiting for a team representative to connect")}
+                   </p>
                   <h2 className="text-xl sm:text-2xl font-black leading-relaxed text-foreground text-center">{question.text}</h2>
 
                   {question.imageUrl && (
@@ -334,15 +430,19 @@ export default function XoPlay() {
                       return (
                         <button
                           key={i}
-                          disabled={selected !== null || snapshot.phase !== "question" || creator}
-                          onClick={() => { setSelected(i); emit("answer", { answerIndex: i, playerId }); }}
+                          disabled={selected !== null || !canAnswer}
+                          onClick={() => {
+                            if (!canAnswer || pendingRef.current) return;
+                            setSelected(i);
+                            emit("answer", { answerIndex: i, playerId });
+                          }}
                           className={cn(
                             "group flex min-h-[4rem] items-center rounded-2xl border-2 p-3 text-start font-bold transition-all",
                             btnState === "default" && "border-white/20 text-white hover:brightness-110",
                             btnState === "selected" && "border-primary bg-primary/10 shadow-sm",
                             btnState === "correct" && "fb-correct-once border-green-500 bg-green-500 text-white shadow-lg",
                             btnState === "wrong" && "fb-wrong-once border-red-500 bg-red-500 text-white shadow-lg",
-                            (selected !== null && !isSelected) && "opacity-50 cursor-not-allowed"
+                            ((selected !== null && !isSelected) || !canAnswer) && "opacity-50 cursor-not-allowed"
                           )}
                           style={btnState === "default" ? { background: answerColor.background, boxShadow: answerColor.shadow } : undefined}
                         >
@@ -374,13 +474,16 @@ export default function XoPlay() {
                   ) : snapshot.phase === "placement" ? (
                     <>
                       <Clock className="h-10 w-10 animate-pulse text-primary mb-2" />
-                      <p className="text-lg font-bold">{ar ? "بانتظار اختيار الخانة..." : "Waiting for a cell selection..."}</p>
+                      <p className="text-lg font-bold">{activePlayer
+                        ? (ar ? `${activePlayer.name} يختار الخانة` : `${activePlayer.name} is choosing a cell`)
+                        : (ar ? "بانتظار اتصال زميل لاختيار الخانة…" : "Waiting for a teammate to connect and choose…")}</p>
                       {canPlace && <p className="text-primary font-black animate-bounce mt-2">{ar ? "اختر خانتك الآن!" : "Choose your cell now!"}</p>}
                     </>
                   ) : (
                     <>
-                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-muted border-t-primary mb-2" />
-                      <p className="text-lg font-bold">{ar ? "في انتظار بدء السؤال..." : "Waiting for next question..."}</p>
+                      <Users className="h-10 w-10 text-primary" />
+                      <p className="text-lg font-bold">{ar ? "غرفة الانتظار" : "Waiting room"}</p>
+                      <p className="text-sm">{ar ? "ينضم الطلاب ثم يبدأ المعلم المباراة" : "Students join, then the teacher starts the match"}</p>
                     </>
                   )}
                 </div>
@@ -391,15 +494,15 @@ export default function XoPlay() {
             {creator && !isFinished && (
               <div className="mt-6 flex flex-wrap gap-2 border-t pt-4 z-10">
                 {snapshot.phase === "connecting" || !snapshot.started ? (
-                  <button onClick={() => emit("start")} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground hover:bg-primary/90">
+                  <button data-testid="xo-start-game" disabled={!ready || !connected || !teamsReady || !!pendingAction} onClick={() => emit("start")} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 font-bold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
                     <Play className="h-5 w-5 fill-current" /> {ar ? "ابدأ اللعبة" : "Start Game"}
                   </button>
                 ) : (
                   <>
-                    <button onClick={() => emit("skip")} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-500/10 px-4 py-3 font-bold text-amber-600 hover:bg-amber-500/20">
+                    <button disabled={!ready || !connected || !!pendingAction} onClick={() => emit("skip")} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amber-500/10 px-4 py-3 font-bold text-amber-600 hover:bg-amber-500/20 disabled:opacity-50">
                       <SkipForward className="h-5 w-5" /> {ar ? "تخطي السؤال" : "Skip Question"}
                     </button>
-                    <button onClick={() => emit("end-early")} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 font-bold text-destructive hover:bg-destructive/20">
+                    <button disabled={!ready || !connected || !!pendingAction} onClick={() => emit("end-early")} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-destructive/10 px-4 py-3 font-bold text-destructive hover:bg-destructive/20 disabled:opacity-50">
                       <Square className="h-5 w-5 fill-current" /> {ar ? "إنهاء مبكر" : "End Early"}
                     </button>
                   </>
@@ -442,8 +545,9 @@ export default function XoPlay() {
               ) : (
                 <h2 className={cn("text-lg font-black", canPlace ? "text-primary animate-pulse" : "text-foreground")}>
                   {canPlace ? (ar ? "اختر خانة خلال 20 ثانية" : "Choose a cell within 20 seconds")
-                   : snapshot.phase === "placement" ? (ar ? "اللاعب صاحب الإجابة يختار الخانة" : "The correct responder chooses a cell")
-                   : (ar ? "أجب لتضع علامتك" : "Answer correctly to place your mark")}
+                    : snapshot.phase === "placement" ? (ar ? "ممثل الفريق يختار الخانة" : "The team representative chooses a cell")
+                    : !snapshot.started ? (ar ? "اللوحة المشتركة للفريقين" : "Shared board for both teams")
+                    : (ar ? "أجب لتضع علامتك" : "Answer correctly to place your mark")}
                 </h2>
               )}
             </div>

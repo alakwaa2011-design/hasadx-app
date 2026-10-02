@@ -152,3 +152,4 @@
 - [Expo device preview readiness](expo-device-preview-readiness.md) — an Expo HTTP 200 may come from an older Metro process; check the managed workflow and iOS bundle before sharing its QR.
 - [Expo Quran pinch gestures](expo-quran-pinch-gestures.md) — two-finger PanResponder needs browser touch-action disabled or the web preview zooms its whole viewport.
 - [Guided Quran printed-page parity](guided-quran-printed-page-parity.md) — حفظني must teach on the printed QCF page, not a second plain-text rendering; conceal unavailable page fallbacks.
+- [X O remote team participation](xo-remote-team-participation.md) — one shared room, rotating connected representatives; room join links differ from permanent new-match links.
