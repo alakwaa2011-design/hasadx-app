@@ -536,6 +536,67 @@ paths:
         "403": { description: Not an admin }
         "404": { description: Video lesson not found }
 
+  /admin/directory/{kind}:
+    get:
+      operationId: listAdminDirectory
+      tags: [admin]
+      summary: Search a paginated admin directory across all matching records
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [teachers, students, activities]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000000
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 120
+            default: ""
+        - name: section
+          in: query
+          schema:
+            type: string
+            enum: [assignments, games, video, tug, memory]
+            default: assignments
+        - name: lookup
+          in: query
+          description: Lightweight teacher recipient lookup without content counts
+          schema:
+            type: string
+            enum: ["true", "false"]
+            default: "false"
+      responses:
+        "200":
+          description: Matching records with stable newest-first pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDirectoryPage"
+        "400":
+          description: Invalid search or pagination
+        "401":
+          description: Not authenticated
+        "403":
+          description: Administrator permissions required
+        "500":
+          description: Directory could not be loaded
+
   /admin/teachers:
     get:
       operationId: listAllTeachers
@@ -5220,6 +5281,45 @@ components:
         - sessionId
         - startedAt
         - expiresAt
+
+    AdminDirectoryPage:
+      type: object
+      required: [items, page, pageSize, total, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 1
+        summary:
+          type: object
+          required: [totalAssignments, totalGames, totalVideoLessons, totalTugGames, totalMemorySets, totalSubmissions]
+          properties:
+            totalAssignments:
+              type: integer
+            totalGames:
+              type: integer
+            totalVideoLessons:
+              type: integer
+            totalTugGames:
+              type: integer
+            totalMemorySets:
+              type: integer
+            totalSubmissions:
+              type: integer
 
     AdminTeacherSummary:
       type: object

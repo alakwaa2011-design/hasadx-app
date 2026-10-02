@@ -4,6 +4,8 @@ import { eq, sql, desc, asc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
 import { invalidateTeacherXpRewardsCache } from "../lib/xp/teacher-xp-rewards-flag";
+import { listAdminDirectory, listLegacyAdminTeachers } from "../lib/admin-directory";
+import { ListAdminDirectoryParams, ListAdminDirectoryQueryParams, ListAdminDirectoryResponse } from "@workspace/api-zod";
 
 const adminObjectStorage = new ObjectStorageService();
 
@@ -127,44 +129,33 @@ async function requireAdmin(req: any, res: any): Promise<boolean> {
   return true;
 }
 
+router.get("/admin/directory/:kind", async (req, res): Promise<void> => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const params = ListAdminDirectoryParams.safeParse(req.params);
+    // Reject repeated query values instead of silently coercing arrays to strings.
+    const query = ListAdminDirectoryQueryParams.safeParse(req.query);
+    if (!params.success || !query.success || Object.values(req.query).some(Array.isArray)) {
+      res.status(400).json({ message: "معايير البحث أو رقم الصفحة غير صالح" });
+      return;
+    }
+    const result = await listAdminDirectory(params.data.kind, {
+      ...query.data, lookup: query.data.lookup === "true",
+    });
+    // JSON serialization converts timestamp values before applying the wire contract.
+    res.set("Cache-Control", "private, no-store");
+    res.json(ListAdminDirectoryResponse.parse(JSON.parse(JSON.stringify(result))));
+  } catch (err) {
+    req.log.error(err, "Failed to load admin directory");
+    res.status(500).json({ message: "تعذر تحميل القائمة. حاول مرة أخرى" });
+  }
+});
+
 router.get("/admin/teachers", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
 
-    const teachers = await db
-      .select({
-        id: teachersTable.id,
-        name: teachersTable.name,
-        email: teachersTable.email,
-        phone: teachersTable.phone,
-        isAdmin: teachersTable.isAdmin,
-        isBlocked: teachersTable.isBlocked,
-        aiTier: teachersTable.aiTier,
-        hasProDesign: teachersTable.hasProDesign,
-        presentationsProEnabled: teachersTable.presentationsProEnabled,
-        lastLoginAt: teachersTable.lastLoginAt,
-        createdAt: teachersTable.createdAt,
-        assignmentCount: sql<number>`(SELECT COUNT(*) FROM assignments WHERE assignments.teacher_id = teachers.id)::int`,
-        submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions s JOIN assignments a ON s.assignment_id = a.id WHERE a.teacher_id = teachers.id)::int`,
-        studentCount: sql<number>`(SELECT COUNT(*) FROM students WHERE students.teacher_id = teachers.id)::int`,
-        questionCount: sql<number>`(SELECT COUNT(*) FROM question_bank WHERE question_bank.teacher_id = teachers.id)::int`,
-        soloChallengeCount: sql<number>`(SELECT COUNT(*) FROM solo_challenges WHERE solo_challenges.teacher_id = teachers.id)::int`,
-        presentationCount: sql<number>`(SELECT COUNT(*) FROM presentations WHERE presentations.teacher_id = teachers.id)::int`,
-        worksheetCount: sql<number>`(SELECT COUNT(*) FROM worksheets WHERE worksheets.teacher_id = teachers.id)::int`,
-        lessonPlanCount: sql<number>`(SELECT COUNT(*) FROM lesson_plans WHERE lesson_plans.teacher_id = teachers.id)::int`,
-        videoLessonCount: sql<number>`(SELECT COUNT(*) FROM video_lessons WHERE video_lessons.teacher_id = teachers.id)::int`,
-        tugTemplateCount: sql<number>`(SELECT COUNT(*) FROM tug_templates WHERE tug_templates.teacher_id = teachers.id)::int`,
-        wheelTemplateCount: sql<number>`(SELECT COUNT(*) FROM wheel_templates WHERE wheel_templates.teacher_id = teachers.id)::int`,
-        rocketTemplateCount: sql<number>`(SELECT COUNT(*) FROM rocket_templates WHERE rocket_templates.teacher_id = teachers.id)::int`,
-        letrlyPuzzleCount: sql<number>`(SELECT COUNT(*) FROM letrly_puzzles WHERE letrly_puzzles.creator_teacher_id = teachers.id)::int`,
-        collectionCount: sql<number>`(SELECT COUNT(*) FROM content_collections WHERE content_collections.teacher_id = teachers.id)::int`,
-        totalXp: sql<number>`COALESCE(${teacherStatsTable.totalXp}, 0)::int`,
-        xpLevel: sql<number>`COALESCE(${teacherStatsTable.level}, 1)::int`,
-        displayLevelOverride: teacherStatsTable.displayLevelOverride,
-      })
-      .from(teachersTable)
-      .leftJoin(teacherStatsTable, eq(teachersTable.id, teacherStatsTable.teacherId))
-      .orderBy(sql`${teachersTable.createdAt} DESC`);
+    const teachers = await listLegacyAdminTeachers();
 
     res.json(teachers);
   } catch (err) {

@@ -84,6 +84,7 @@
 - [PostgreSQL UPDATE RETURNING scope](postgres-update-returning-scope.md) — RETURNING may use the updated row, not aliases introduced through UPDATE FROM; mocks do not validate this SQL.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
+- [Production replica statistics](production-replica-statistics.md) — zero pg_stat_user_tables counters do not prove empty tables; verify row counts before concluding a database mismatch.
 - [Integration schema synchronization](integration-schema-synchronization.md) — sync Drizzle onto the existing test schema; rebuilding public deletes reference seeds required across the integration suite.
 - [Quran Foundation integration](quran-foundation-environments.md) — QCF V2 is the Madani page source; production also needs strict counts, no auth redirects, and exact-origin audio.
 - [Maher Al-Muaiqly standard recitation](maher-standard-recitation.md) — use the familiar ayah-scoped 128kbps recording, not Quranicaudio’s year1440 chapter recording.

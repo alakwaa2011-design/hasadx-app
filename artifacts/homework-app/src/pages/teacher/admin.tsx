@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useAdminDirectory } from "@/hooks/use-admin-directory";
+import { DirectoryPager, DirectorySearch, DirectoryStatus } from "@/components/admin/directory-controls";
 import { Layout } from "@/components/layout";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -405,14 +407,16 @@ export default function AdminPage() {
   useEffect(() => {
     if (urlTab && urlTab !== activeTab) setActiveTab(urlTab);
   }, [urlTab]);
-  const [teachers, setTeachers] = useState<TeacherData[]>([]);
-  const [students, setStudents] = useState<StudentData[]>([]);
+  const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
+  const teachersDir = useAdminDirectory<TeacherData>({ kind: "teachers", accountId: currentTeacherId, enabled: activeTab === "teachers" });
+  const studentsDir = useAdminDirectory<StudentData>({ kind: "students", accountId: currentTeacherId, enabled: activeTab === "students" });
+  const teachers = teachersDir.items;
+  const students = studentsDir.items;
+  const setTeachers = (fn: (p: TeacherData[]) => TeacherData[]) => teachersDir.patchItems(fn);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [expandedTeacher, setExpandedTeacher] = useState<number | null>(null);
-  const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
   const [publicVisibility, setPublicVisibility] = useState<"all" | "none" | "selective">("selective");
   const [contentAssignments, setContentAssignments] = useState<ContentAssignment[]>([]);
   const [contentTugTemplates, setContentTugTemplates] = useState<{ id: number; title: string; duration: number; isShared: boolean; teacherName: string | null; teacherIsAdmin: boolean | null; createdAt: string }[]>([]);
@@ -482,9 +486,15 @@ export default function AdminPage() {
   const [onlineData, setOnlineData] = useState<OnlineData | null>(null);
   const [onlineLoading, setOnlineLoading] = useState(false);
 
-  const [activitiesData, setActivitiesData] = useState<ActivitiesData | null>(null);
-  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activitiesSection, setActivitiesSection] = useState<"assignments" | "games" | "video" | "tug" | "memory">("assignments");
+  const actDir = useAdminDirectory<any>({ kind: "activities", accountId: currentTeacherId, enabled: activeTab === "activities", section: activitiesSection });
+  const activitiesData = actDir.summary ? { summary: actDir.summary } : null;
+  const activitiesLoading = actDir.isFetching;
+  const actAssignments = actDir.items as ActivityAssignment[];
+  const actGames = actDir.items as ActivityGame[];
+  const actVideos = actDir.items as ActivityVideoLesson[];
+  const actTugs = actDir.items as ActivityTug[];
+  const actMemory = actDir.items as ActivityMemory[];
 
   interface FullStatsData {
     counts: { teachers: number; studentAccounts: number; rosterStudents: number; assignments: number; submissions: number; adventureGames: number; questions: number };
@@ -496,6 +506,7 @@ export default function AdminPage() {
   }
   const [fullStats, setFullStats] = useState<FullStatsData | null>(null);
   const [fullStatsLoading, setFullStatsLoading] = useState(false);
+  const [fullStatsDone, setFullStatsDone] = useState(false);
   interface AcqStatItem { source: string; count: number; }
   const [acqStats, setAcqStats] = useState<{ bySource: AcqStatItem[]; total: number } | null>(null);
   interface CountryStatItem { country: string; country_code: string; count: number; }
@@ -774,18 +785,22 @@ export default function AdminPage() {
         const me = await meRes.json();
         if (!me.isAdmin) { setLocation("/teacher"); toast.error(t.admin.accessDenied || (lang === "ar" ? "غير مصرح" : "Admin access required")); return; }
         setCurrentTeacherId(me.id);
-        const [tRes, sRes, stRes, psRes, cRes] = await Promise.all([
-          fetch(`${API_BASE}/api/admin/teachers`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/admin/students`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/admin/stats`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/admin/platform-settings`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/admin/content`, { credentials: "include" }),
-        ]);
-        if (tRes.ok) setTeachers(await tRes.json());
-        if (sRes.ok) setStudents(await sRes.json());
-        if (stRes.ok) setStats(await stRes.json());
-        if (psRes.ok) {
-          const ps = await psRes.json();
+      } catch {} finally { setLoading(false); }
+    })();
+  }, []);
+
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [settingsError, setSettingsError] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const loadSettings = async () => {
+    setSettingsLoading(true); setSettingsError(false);
+    try {
+      const [psRes, cRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/platform-settings`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/admin/content`, { credentials: "include" }),
+      ]);
+      if (!psRes.ok) throw new Error("settings");
+      const ps = await psRes.json();
           setPublicVisibility(ps.publicVisibility ?? "selective");
           if (ps.guestLimit !== undefined) { setGuestLimit(ps.guestLimit); setGuestLimitInput(ps.guestLimit); }
           if (ps.primaryColor) setAppearancePrimaryColor(ps.primaryColor);
@@ -839,11 +854,21 @@ export default function AdminPage() {
             setPresentationLimits(ps.presentationLimits);
             setPresentationLimitsInput(ps.presentationLimits);
           }
-        }
-        if (cRes.ok) { const c = await cRes.json(); setContentAssignments(c.assignments ?? []); setContentTugTemplates(c.tugTemplates ?? []); }
-      } catch {} finally { setLoading(false); }
-    })();
-  }, []);
+      if (cRes.ok) { const c = await cRes.json(); setContentAssignments(c.assignments ?? []); setContentTugTemplates(c.tugTemplates ?? []); }
+      setSettingsReady(true);
+    } catch { setSettingsError(true); } finally { setSettingsLoading(false); }
+  };
+  useEffect(() => {
+    if (loading || currentTeacherId === null) return;
+    if ((activeTab === "content" || activeTab === "appearance") && !settingsReady && !settingsLoading && !settingsError) void loadSettings();
+  }, [activeTab, loading, currentTeacherId, settingsReady, settingsLoading, settingsError]);
+
+  useEffect(() => {
+    // basic stats are only a fallback when full-stats failed
+    if (activeTab !== "stats" || stats || !fullStatsDone || fullStats || currentTeacherId === null) return;
+    fetch(`${API_BASE}/api/admin/stats`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d); }).catch(() => {});
+  }, [activeTab, currentTeacherId, fullStatsDone]);
 
   useEffect(() => {
     if (activeTab !== "feedback" || feedbackItems.length > 0) return;
@@ -881,20 +906,6 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  const loadActivities = () => {
-    setActivitiesLoading(true);
-    fetch(`${API_BASE}/api/admin/activities`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setActivitiesData(d); })
-      .catch(() => {})
-      .finally(() => setActivitiesLoading(false));
-  };
-
-  useEffect(() => {
-    if (activeTab !== "activities") return;
-    if (!activitiesData) loadActivities();
-  }, [activeTab]);
-
   useEffect(() => {
     if (activeTab !== "stats") return;
     if (!fullStats) {
@@ -903,7 +914,7 @@ export default function AdminPage() {
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setFullStats(d); })
         .catch(() => {})
-        .finally(() => setFullStatsLoading(false));
+        .finally(() => { setFullStatsLoading(false); setFullStatsDone(true); });
     }
     if (!acqStats) {
       fetch(`${API_BASE}/api/admin/acquisition-stats`, { credentials: "include" })
@@ -1167,6 +1178,7 @@ export default function AdminPage() {
     const res = await fetch(`${API_BASE}/api/admin/teachers/${id}`, { method: "DELETE", credentials: "include" });
     if (res.ok) {
       setTeachers(prev => prev.filter(t => t.id !== id));
+      teachersDir.afterRemove();
       toast.success(lang === "ar" ? "تم حذف المعلم" : "Teacher deleted");
     }
   };
@@ -1372,14 +1384,6 @@ export default function AdminPage() {
     }
   };
 
-  const filteredTeachers = teachers.filter(t =>
-    t.name.includes(search) || t.email?.includes(search) || t.phone?.includes(search)
-  );
-
-  const filteredStudents = students.filter(s =>
-    s.name.includes(search) || s.studentClass?.includes(search) || s.teacherName?.includes(search)
-  );
-
   if (loading) return (
     <Layout>
       <div className="flex h-96 items-center justify-center">
@@ -1500,7 +1504,7 @@ export default function AdminPage() {
             return (
               <button
                 key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setSearch(""); onSelect?.(); }}
+                onClick={() => { setActiveTab(tab.key); onSelect?.(); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all text-start border ${
                   isActive
                     ? "bg-primary/10 text-primary border-primary/20 shadow-sm"
@@ -1652,7 +1656,7 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 className="shrink-0 gap-2"
-                onClick={() => { setActiveTab("ai-cost"); setSearch(""); }}
+                onClick={() => { setActiveTab("ai-cost"); }}
               >
                 <Bot className="h-4 w-4" />
                 {lang === "ar" ? "فتح تقرير التكلفة" : "Open cost report"}
@@ -1666,7 +1670,7 @@ export default function AdminPage() {
 
         {activeTab === "rewards" && <RewardsTab />}
 
-        {activeTab === "messages" && <MessagesTab />}
+        {activeTab === "messages" && <MessagesTab accountId={currentTeacherId} />}
 
         {activeTab === "new-pricing" && (
           <div className="space-y-3">
@@ -1802,7 +1806,7 @@ export default function AdminPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">{lang === "ar" ? "جميع أنشطة المعلمين" : "All Teacher Activities"}</h2>
               <button
-                onClick={loadActivities}
+                onClick={actDir.refetch}
                 disabled={activitiesLoading}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -1811,8 +1815,8 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {activitiesLoading && !activitiesData ? (
-              <div className="text-center py-12 text-muted-foreground">{lang === "ar" ? "جاري التحميل..." : "Loading..."}</div>
+            {!activitiesData ? (
+              <DirectoryStatus isLoading={actDir.isLoading} isError={actDir.isError} count={0} onRetry={actDir.refetch} emptyLabel={lang === "ar" ? "لا توجد أنشطة" : "No activities"} />
             ) : activitiesData ? (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
@@ -1848,17 +1852,23 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {activitiesSection === "assignments" && (
+                <div className="flex items-center gap-3">
+                  <DirectorySearch value={actDir.search} onChange={actDir.setSearch} busy={actDir.isFetching} placeholder={lang === "ar" ? "ابحث بالعنوان أو المعلم أو المادة أو الرمز..." : "Search title, teacher, subject, or PIN..."} />
+                  <span className="text-sm text-muted-foreground font-bold">{actDir.total}</span>
+                </div>
+                {actDir.isLoading && <DirectoryStatus isLoading isError={false} count={0} onRetry={actDir.refetch} emptyLabel="" />}
+                {actDir.isError && <DirectoryStatus isLoading={false} isError count={1} onRetry={actDir.refetch} emptyLabel="" />}
+                {!actDir.isLoading && activitiesSection === "assignments" && (
                   <Card className="p-4">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                       <FileCheck className="w-4 h-4 text-blue-600" />
-                      {lang === "ar" ? `الواجبات والاختبارات (${activitiesData.assignments.length})` : `Assignments (${activitiesData.assignments.length})`}
+                      {lang === "ar" ? `الواجبات والاختبارات (${actDir.total})` : `Assignments (${actDir.total})`}
                     </h3>
-                    {activitiesData.assignments.length === 0 ? (
+                    {actAssignments.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{lang === "ar" ? "لا توجد واجبات بعد" : "No assignments yet"}</p>
                     ) : (
                       <div className="divide-y divide-border">
-                        {activitiesData.assignments.map(a => (
+                        {actAssignments.map(a => (
                           <div key={a.id} className="py-3 first:pt-0 last:pb-0">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1">
@@ -1886,17 +1896,17 @@ export default function AdminPage() {
                   </Card>
                 )}
 
-                {activitiesSection === "games" && (
+                {!actDir.isLoading && activitiesSection === "games" && (
                   <Card className="p-4">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                       <Zap className="w-4 h-4 text-amber-600" />
-                      {lang === "ar" ? `ألعاب وميض (${activitiesData.games.length})` : `Wameeth Games (${activitiesData.games.length})`}
+                      {lang === "ar" ? `ألعاب وميض (${actDir.total})` : `Wameeth Games (${actDir.total})`}
                     </h3>
-                    {activitiesData.games.length === 0 ? (
+                    {actGames.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{lang === "ar" ? "لا توجد ألعاب بعد" : "No games yet"}</p>
                     ) : (
                       <div className="divide-y divide-border">
-                        {activitiesData.games.map(g => (
+                        {actGames.map(g => (
                           <div key={g.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-sm truncate">{g.title}</p>
@@ -1917,17 +1927,17 @@ export default function AdminPage() {
                   </Card>
                 )}
 
-                {activitiesSection === "video" && (
+                {!actDir.isLoading && activitiesSection === "video" && (
                   <Card className="p-4">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                       <Eye className="w-4 h-4 text-purple-600" />
-                      {lang === "ar" ? `دروس الفيديو (${activitiesData.videoLessons.length})` : `Video Lessons (${activitiesData.videoLessons.length})`}
+                      {lang === "ar" ? `دروس الفيديو (${actDir.total})` : `Video Lessons (${actDir.total})`}
                     </h3>
-                    {activitiesData.videoLessons.length === 0 ? (
+                    {actVideos.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{lang === "ar" ? "لا توجد دروس فيديو بعد" : "No video lessons yet"}</p>
                     ) : (
                       <div className="divide-y divide-border">
-                        {activitiesData.videoLessons.map(v => (
+                        {actVideos.map(v => (
                           <div key={v.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-sm truncate">{v.title}</p>
@@ -1946,17 +1956,17 @@ export default function AdminPage() {
                   </Card>
                 )}
 
-                {activitiesSection === "tug" && (
+                {!actDir.isLoading && activitiesSection === "tug" && (
                   <Card className="p-4">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                       <Gamepad2 className="w-4 h-4 text-red-600" />
-                      {lang === "ar" ? `شد الحبل (${activitiesData.tugGames.length})` : `Tug of War (${activitiesData.tugGames.length})`}
+                      {lang === "ar" ? `شد الحبل (${actDir.total})` : `Tug of War (${actDir.total})`}
                     </h3>
-                    {activitiesData.tugGames.length === 0 ? (
+                    {actTugs.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{lang === "ar" ? "لا توجد ألعاب شد الحبل بعد" : "No tug of war games yet"}</p>
                     ) : (
                       <div className="divide-y divide-border">
-                        {activitiesData.tugGames.map(t2 => (
+                        {actTugs.map(t2 => (
                           <div key={t2.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-sm truncate">{t2.title}</p>
@@ -1973,17 +1983,17 @@ export default function AdminPage() {
                   </Card>
                 )}
 
-                {activitiesSection === "memory" && (
+                {!actDir.isLoading && activitiesSection === "memory" && (
                   <Card className="p-4">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                       <HelpCircle className="w-4 h-4 text-emerald-600" />
-                      {lang === "ar" ? `تطابق الذاكرة (${activitiesData.memorySets.length})` : `Memory Match (${activitiesData.memorySets.length})`}
+                      {lang === "ar" ? `تطابق الذاكرة (${actDir.total})` : `Memory Match (${actDir.total})`}
                     </h3>
-                    {activitiesData.memorySets.length === 0 ? (
+                    {actMemory.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">{lang === "ar" ? "لا توجد مجموعات ذاكرة بعد" : "No memory sets yet"}</p>
                     ) : (
                       <div className="divide-y divide-border">
-                        {activitiesData.memorySets.map(m => (
+                        {actMemory.map(m => (
                           <div key={m.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-sm truncate">{m.title}</p>
@@ -2002,6 +2012,7 @@ export default function AdminPage() {
                     )}
                   </Card>
                 )}
+                <DirectoryPager page={actDir.page} totalPages={actDir.totalPages} total={actDir.total} pageSize={actDir.pageSize} isFetching={actDir.isFetching} onPage={actDir.setPage} />
               </>
             ) : null}
           </div>
@@ -2345,15 +2356,13 @@ export default function AdminPage() {
         {activeTab === "teachers" && (
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className={`absolute ${lang === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
-                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === "ar" ? "ابحث بالاسم أو البريد أو الهاتف..." : "Search by name, email, or phone..."} className={lang === "ar" ? "pr-10" : "pl-10"} />
-              </div>
-              <span className="text-sm text-muted-foreground font-bold">{filteredTeachers.length} {lang === "ar" ? "معلم" : "teachers"}</span>
+              <DirectorySearch value={teachersDir.search} onChange={teachersDir.setSearch} busy={teachersDir.isFetching} placeholder={lang === "ar" ? "ابحث بالاسم أو البريد أو الهاتف..." : "Search by name, email, or phone..."} />
+              <span className="text-sm text-muted-foreground font-bold">{teachersDir.total} {lang === "ar" ? "معلم" : "teachers"}</span>
             </div>
+            <DirectoryStatus isLoading={teachersDir.isLoading} isError={teachersDir.isError} count={teachers.length} onRetry={teachersDir.refetch} emptyLabel={lang === "ar" ? "لا يوجد معلمون" : "No teachers found"} />
 
             <div className="space-y-2">
-              {filteredTeachers.map((teacher, i) => (
+              {teachers.map((teacher, i) => (
                 <motion.div key={teacher.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i * 0.02, 0.5) }}>
                   <Card className={`transition-colors ${teacher.isBlocked ? "border-red-300 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10" : ""}`}>
                     <div
@@ -2365,7 +2374,7 @@ export default function AdminPage() {
                         teacher.isBlocked ? "bg-red-100 dark:bg-red-900/30 text-red-600" :
                         "bg-primary/10 text-primary"
                       }`}>
-                        {teacher.isAdmin ? <Crown className="w-5 h-5" /> : teacher.isBlocked ? <Ban className="w-5 h-5" /> : i + 1}
+                        {teacher.isAdmin ? <Crown className="w-5 h-5" /> : teacher.isBlocked ? <Ban className="w-5 h-5" /> : (teachersDir.page - 1) * teachersDir.pageSize + i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -2588,20 +2597,19 @@ export default function AdminPage() {
                 </motion.div>
               ))}
             </div>
+            <DirectoryPager page={teachersDir.page} totalPages={teachersDir.totalPages} total={teachersDir.total} pageSize={teachersDir.pageSize} isFetching={teachersDir.isFetching} onPage={teachersDir.setPage} />
           </div>
         )}
 
         {activeTab === "students" && (
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className={`absolute ${lang === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
-                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={lang === "ar" ? "ابحث بالاسم أو الصف أو المعلم..." : "Search by name, class, or teacher..."} className={lang === "ar" ? "pr-10" : "pl-10"} />
-              </div>
-              <span className="text-sm text-muted-foreground font-bold">{filteredStudents.length} {lang === "ar" ? "طالب" : "students"}</span>
+              <DirectorySearch value={studentsDir.search} onChange={studentsDir.setSearch} busy={studentsDir.isFetching} placeholder={lang === "ar" ? "ابحث بالاسم أو الصف أو المعلم أو هاتف ولي الأمر..." : "Search name, class, teacher, or parent phone..."} />
+              <span className="text-sm text-muted-foreground font-bold">{studentsDir.total} {lang === "ar" ? "طالب" : "students"}</span>
             </div>
+            <DirectoryStatus isLoading={studentsDir.isLoading} isError={studentsDir.isError} count={students.length} onRetry={studentsDir.refetch} emptyLabel={lang === "ar" ? "لا يوجد طلاب" : "No students"} />
 
-            {filteredStudents.length > 0 ? (
+            {students.length > 0 ? (
               <div className="rounded-xl border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -2616,9 +2624,9 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredStudents.map((s, i) => (
+                      {students.map((s, i) => (
                         <tr key={s.id} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-2.5 text-muted-foreground text-xs font-bold">{i + 1}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground text-xs font-bold">{(studentsDir.page - 1) * studentsDir.pageSize + i + 1}</td>
                           <td className="px-4 py-2.5 font-medium text-foreground">{s.name}</td>
                           <td className="px-4 py-2.5 text-muted-foreground">{s.studentClass || "—"}</td>
                           <td className="px-4 py-2.5 text-muted-foreground" dir="ltr">{s.parentPhone || "—"}</td>
@@ -2630,15 +2638,18 @@ export default function AdminPage() {
                   </table>
                 </div>
               </div>
-            ) : (
-              <Card className="py-12 text-center border-dashed">
-                <GraduationCap className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-                <h3 className="text-lg font-bold text-foreground">{lang === "ar" ? "لا يوجد طلاب" : "No students"}</h3>
-              </Card>
-            )}
+            ) : null}
+            <DirectoryPager page={studentsDir.page} totalPages={studentsDir.totalPages} total={studentsDir.total} pageSize={studentsDir.pageSize} isFetching={studentsDir.isFetching} onPage={studentsDir.setPage} />
           </div>
         )}
-        {activeTab === "content" && (
+        {(activeTab === "content") && !settingsReady && (
+          <div className="py-10 text-center" role="status" data-testid="settings-status">
+            {settingsError ? (
+              <div role="alert" className="space-y-3"><p className="text-sm text-red-600 font-bold">{lang === "ar" ? "تعذّر تحميل الإعدادات" : "Could not load settings"}</p><Button variant="outline" onClick={() => { setSettingsError(false); }}>{lang === "ar" ? "إعادة المحاولة" : "Retry"}</Button></div>
+            ) : <div className="h-40 rounded-xl bg-muted/50 animate-pulse" aria-label={lang === "ar" ? "جاري التحميل" : "Loading"} />}
+          </div>
+        )}
+        {activeTab === "content" && settingsReady && (
           <div className="space-y-6">
             {/* Pro AI access */}
             <Card className="p-5">
@@ -3540,7 +3551,14 @@ export default function AdminPage() {
           </div>
         )}
 
-        {activeTab === "appearance" && (
+        {(activeTab === "appearance") && !settingsReady && (
+          <div className="py-10 text-center" role="status" data-testid="settings-status">
+            {settingsError ? (
+              <div role="alert" className="space-y-3"><p className="text-sm text-red-600 font-bold">{lang === "ar" ? "تعذّر تحميل الإعدادات" : "Could not load settings"}</p><Button variant="outline" onClick={() => { setSettingsError(false); }}>{lang === "ar" ? "إعادة المحاولة" : "Retry"}</Button></div>
+            ) : <div className="h-40 rounded-xl bg-muted/50 animate-pulse" aria-label={lang === "ar" ? "جاري التحميل" : "Loading"} />}
+          </div>
+        )}
+        {activeTab === "appearance" && settingsReady && (
           <div className="space-y-6 max-w-2xl">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">

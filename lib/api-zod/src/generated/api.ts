@@ -507,6 +507,58 @@ export const AdminUnhideVideoLessonResponse = zod.unknown()
 
 
 /**
+ * @summary Search a paginated admin directory across all matching records
+ */
+export const ListAdminDirectoryParams = zod.object({
+  "kind": zod.enum(['teachers', 'students', 'activities'])
+})
+
+export const listAdminDirectoryQueryPageDefault = 1;
+export const listAdminDirectoryQueryPageMax = 1000000;
+
+export const listAdminDirectoryQueryPageSizeDefault = 25;
+export const listAdminDirectoryQueryPageSizeMax = 100;
+
+export const listAdminDirectoryQueryQDefault = ``;
+export const listAdminDirectoryQueryQMax = 120;
+
+export const listAdminDirectoryQuerySectionDefault = `assignments`;
+export const listAdminDirectoryQueryLookupDefault = `false`;
+
+export const ListAdminDirectoryQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).max(listAdminDirectoryQueryPageMax).default(listAdminDirectoryQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listAdminDirectoryQueryPageSizeMax).default(listAdminDirectoryQueryPageSizeDefault),
+  "q": zod.coerce.string().max(listAdminDirectoryQueryQMax).default(listAdminDirectoryQueryQDefault),
+  "section": zod.enum(['assignments', 'games', 'video', 'tug', 'memory']).default(listAdminDirectoryQuerySectionDefault),
+  "lookup": zod.enum(['true', 'false']).default(listAdminDirectoryQueryLookupDefault).describe('Lightweight teacher recipient lookup without content counts')
+})
+
+
+export const listAdminDirectoryResponsePageSizeMax = 100;
+
+export const listAdminDirectoryResponseTotalMin = 0;
+
+
+
+
+export const ListAdminDirectoryResponse = zod.object({
+  "items": zod.array(zod.record(zod.string(), zod.unknown())),
+  "page": zod.int().min(1),
+  "pageSize": zod.int().min(1).max(listAdminDirectoryResponsePageSizeMax),
+  "total": zod.int().min(listAdminDirectoryResponseTotalMin),
+  "totalPages": zod.int().min(1),
+  "summary": zod.object({
+  "totalAssignments": zod.int(),
+  "totalGames": zod.int(),
+  "totalVideoLessons": zod.int(),
+  "totalTugGames": zod.int(),
+  "totalMemorySets": zod.int(),
+  "totalSubmissions": zod.int()
+}).optional()
+})
+
+
+/**
  * @summary List all registered teachers with stats
  */
 export const ListAllTeachersResponseItem = zod.object({

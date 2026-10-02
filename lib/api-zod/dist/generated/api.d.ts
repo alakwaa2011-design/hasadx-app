@@ -910,6 +910,102 @@ export declare const AdminUnhideVideoLessonParams: zodV3.ZodObject<{
 }>;
 export declare const AdminUnhideVideoLessonResponse: zodV3.ZodUnknown;
 /**
+ * @summary Search a paginated admin directory across all matching records
+ */
+export declare const ListAdminDirectoryParams: zodV3.ZodObject<{
+    kind: zodV3.ZodEnum<["teachers", "students", "activities"]>;
+}, "strip", zodV3.ZodTypeAny, {
+    kind: "activities" | "teachers" | "students";
+}, {
+    kind: "activities" | "teachers" | "students";
+}>;
+export declare const listAdminDirectoryQueryPageDefault = 1;
+export declare const listAdminDirectoryQueryPageMax = 1000000;
+export declare const listAdminDirectoryQueryPageSizeDefault = 25;
+export declare const listAdminDirectoryQueryPageSizeMax = 100;
+export declare const listAdminDirectoryQueryQDefault = "";
+export declare const listAdminDirectoryQueryQMax = 120;
+export declare const listAdminDirectoryQuerySectionDefault = "assignments";
+export declare const listAdminDirectoryQueryLookupDefault = "false";
+export declare const ListAdminDirectoryQueryParams: zodV3.ZodObject<{
+    page: zodV3.ZodDefault<zodV3.ZodNumber>;
+    pageSize: zodV3.ZodDefault<zodV3.ZodNumber>;
+    q: zodV3.ZodDefault<zodV3.ZodString>;
+    section: zodV3.ZodDefault<zodV3.ZodEnum<["assignments", "games", "video", "tug", "memory"]>>;
+    lookup: zodV3.ZodDefault<zodV3.ZodEnum<["true", "false"]>>;
+}, "strip", zodV3.ZodTypeAny, {
+    page: number;
+    pageSize: number;
+    q: string;
+    section: "assignments" | "games" | "video" | "tug" | "memory";
+    lookup: "false" | "true";
+}, {
+    page?: number | undefined;
+    pageSize?: number | undefined;
+    q?: string | undefined;
+    section?: "assignments" | "games" | "video" | "tug" | "memory" | undefined;
+    lookup?: "false" | "true" | undefined;
+}>;
+export declare const listAdminDirectoryResponsePageSizeMax = 100;
+export declare const listAdminDirectoryResponseTotalMin = 0;
+export declare const ListAdminDirectoryResponse: zodV3.ZodObject<{
+    items: zodV3.ZodArray<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodUnknown>, "many">;
+    page: zodV3.ZodNumber;
+    pageSize: zodV3.ZodNumber;
+    total: zodV3.ZodNumber;
+    totalPages: zodV3.ZodNumber;
+    summary: zodV3.ZodOptional<zodV3.ZodObject<{
+        totalAssignments: zodV3.ZodNumber;
+        totalGames: zodV3.ZodNumber;
+        totalVideoLessons: zodV3.ZodNumber;
+        totalTugGames: zodV3.ZodNumber;
+        totalMemorySets: zodV3.ZodNumber;
+        totalSubmissions: zodV3.ZodNumber;
+    }, "strip", zodV3.ZodTypeAny, {
+        totalAssignments: number;
+        totalGames: number;
+        totalVideoLessons: number;
+        totalTugGames: number;
+        totalMemorySets: number;
+        totalSubmissions: number;
+    }, {
+        totalAssignments: number;
+        totalGames: number;
+        totalVideoLessons: number;
+        totalTugGames: number;
+        totalMemorySets: number;
+        totalSubmissions: number;
+    }>>;
+}, "strip", zodV3.ZodTypeAny, {
+    page: number;
+    pageSize: number;
+    items: Record<string, unknown>[];
+    total: number;
+    totalPages: number;
+    summary?: {
+        totalAssignments: number;
+        totalGames: number;
+        totalVideoLessons: number;
+        totalTugGames: number;
+        totalMemorySets: number;
+        totalSubmissions: number;
+    } | undefined;
+}, {
+    page: number;
+    pageSize: number;
+    items: Record<string, unknown>[];
+    total: number;
+    totalPages: number;
+    summary?: {
+        totalAssignments: number;
+        totalGames: number;
+        totalVideoLessons: number;
+        totalTugGames: number;
+        totalMemorySets: number;
+        totalSubmissions: number;
+    } | undefined;
+}>;
+/**
  * @summary List all registered teachers with stats
  */
 export declare const ListAllTeachersResponseItem: zodV3.ZodObject<{
@@ -3035,7 +3131,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3078,7 +3174,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3124,7 +3220,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3174,7 +3270,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3244,7 +3340,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3316,7 +3412,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3456,7 +3552,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3499,7 +3595,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3545,7 +3641,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3595,7 +3691,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3665,7 +3761,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3737,7 +3833,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3883,7 +3979,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3926,7 +4022,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -3972,7 +4068,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4022,7 +4118,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4078,7 +4174,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4138,7 +4234,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4260,7 +4356,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4303,7 +4399,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4349,7 +4445,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4399,7 +4495,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4469,7 +4565,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4541,7 +4637,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4698,7 +4794,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4741,7 +4837,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4787,7 +4883,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4837,7 +4933,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4907,7 +5003,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -4979,7 +5075,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5119,7 +5215,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5162,7 +5258,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5208,7 +5304,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5258,7 +5354,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5328,7 +5424,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5400,7 +5496,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5612,7 +5708,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5655,7 +5751,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5701,7 +5797,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5751,7 +5847,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5821,7 +5917,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -5893,7 +5989,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             prompt?: string | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
             topic?: string | null | undefined;
             objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
             objectPosition?: string | null | undefined;
@@ -6351,13 +6447,13 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
         skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }>>>;
@@ -6420,8 +6516,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -6482,8 +6578,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -6895,13 +6991,13 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
             skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
         }, "strip", zodV3.ZodTypeAny, {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         }, {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         }>>>;
@@ -6964,8 +7060,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7026,8 +7122,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7142,8 +7238,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7238,8 +7334,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7563,13 +7659,13 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
             skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
         }, "strip", zodV3.ZodTypeAny, {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         }, {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         }>>>;
@@ -7632,8 +7728,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7694,8 +7790,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7810,8 +7906,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -7906,8 +8002,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -8231,13 +8327,13 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
             skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
         }, "strip", zodV3.ZodTypeAny, {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         }, {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         }>>>;
@@ -8300,8 +8396,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -8362,8 +8458,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -8478,8 +8574,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -8574,8 +8670,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         modelUsed?: string | null | undefined;
         errorMessage?: string | null | undefined;
         buildProgress?: {
-            current?: number | undefined;
             total?: number | undefined;
+            current?: number | undefined;
             warnings?: string[] | undefined;
             skipped?: number[] | undefined;
         } | null | undefined;
@@ -8907,13 +9003,13 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
         skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }>>>;
@@ -8976,8 +9072,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -9038,8 +9134,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -9244,13 +9340,13 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
         skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }>>>;
@@ -9313,8 +9409,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -9375,8 +9471,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -9617,13 +9713,13 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
         skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }>>>;
@@ -9686,8 +9782,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -9748,8 +9844,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -10188,13 +10284,13 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         warnings: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
         skipped: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     }, "strip", zodV3.ZodTypeAny, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }, {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     }>>>;
@@ -10257,8 +10353,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -10319,8 +10415,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
     modelUsed?: string | null | undefined;
     errorMessage?: string | null | undefined;
     buildProgress?: {
-        current?: number | undefined;
         total?: number | undefined;
+        current?: number | undefined;
         warnings?: string[] | undefined;
         skipped?: number[] | undefined;
     } | null | undefined;
@@ -13353,9 +13449,9 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13371,9 +13467,9 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13408,9 +13504,9 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13426,9 +13522,9 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13503,8 +13599,8 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     kind?: "weekly" | "appointment" | "break" | undefined;
+    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13544,9 +13640,9 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13562,9 +13658,9 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13847,9 +13943,9 @@ export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13865,9 +13961,9 @@ export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13902,9 +13998,9 @@ export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.Zod
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13920,9 +14016,9 @@ export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.Zod
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -13995,8 +14091,8 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     kind?: "weekly" | "appointment" | "break" | undefined;
+    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14048,9 +14144,9 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -14066,9 +14162,9 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     id: number;
     title: string;
     createdAt: Date;
+    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
-    kind: "weekly" | "appointment" | "break";
     startTime: string;
     notes?: string | null | undefined;
     location?: string | null | undefined;
@@ -15822,6 +15918,14 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         } | null;
     }>;
 }, "strip", zodV3.ZodTypeAny, {
+    summary: {
+        masteredAyahCount: number;
+        completedWardCount: number;
+        needsReviewCount: number;
+        pendingSubmissionCount: number;
+        averageMemorizationScore: number | null;
+        averageRecitationScore: number | null;
+    };
     profile: {
         currentSurahNumber: number | null;
         currentAyah: number | null;
@@ -15840,14 +15944,6 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         assignedDate: string;
         dueDate: string | null;
     } | null;
-    summary: {
-        masteredAyahCount: number;
-        completedWardCount: number;
-        needsReviewCount: number;
-        pendingSubmissionCount: number;
-        averageMemorizationScore: number | null;
-        averageRecitationScore: number | null;
-    };
     streak: {
         current: number;
         longest: number;
@@ -15874,6 +15970,14 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         } | null;
     };
 }, {
+    summary: {
+        masteredAyahCount: number;
+        completedWardCount: number;
+        needsReviewCount: number;
+        pendingSubmissionCount: number;
+        averageMemorizationScore: number | null;
+        averageRecitationScore: number | null;
+    };
     profile: {
         currentSurahNumber: number | null;
         currentAyah: number | null;
@@ -15892,14 +15996,6 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         assignedDate: string;
         dueDate: string | null;
     } | null;
-    summary: {
-        masteredAyahCount: number;
-        completedWardCount: number;
-        needsReviewCount: number;
-        pendingSubmissionCount: number;
-        averageMemorizationScore: number | null;
-        averageRecitationScore: number | null;
-    };
     streak: {
         current: number;
         longest: number;
@@ -17843,9 +17939,9 @@ export declare const ListTeacherQuranMemorizationStudentsResponseItem: zodV3.Zod
     lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
 }, "strip", zodV3.ZodTypeAny, {
     name: string;
+    total: number;
     studentClass: string | null;
     gradeLevel: string | null;
-    total: number;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17855,9 +17951,9 @@ export declare const ListTeacherQuranMemorizationStudentsResponseItem: zodV3.Zod
     linked: boolean;
 }, {
     name: string;
+    total: number;
     studentClass: string | null;
     gradeLevel: string | null;
-    total: number;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17880,9 +17976,9 @@ export declare const ListTeacherQuranMemorizationStudentsResponse: zodV3.ZodArra
     lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
 }, "strip", zodV3.ZodTypeAny, {
     name: string;
+    total: number;
     studentClass: string | null;
     gradeLevel: string | null;
-    total: number;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17892,9 +17988,9 @@ export declare const ListTeacherQuranMemorizationStudentsResponse: zodV3.ZodArra
     linked: boolean;
 }, {
     name: string;
+    total: number;
     studentClass: string | null;
     gradeLevel: string | null;
-    total: number;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17976,13 +18072,6 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         lastAssessedAt: Date | null;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
-    student: {
-        name: string;
-        studentClass: string | null;
-        gradeLevel: string | null;
-        studentId: number;
-        linked: boolean;
-    };
     items: {
         status: "needs_review" | "learning" | "memorized";
         id: number;
@@ -17994,14 +18083,14 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         nextReviewDate: string;
         lastAssessedAt: Date | null;
     }[];
+    student: {
+        name: string;
+        studentClass: string | null;
+        gradeLevel: string | null;
+        studentId: number;
+        linked: boolean;
+    };
 }, {
-    student: {
-        name: string;
-        studentClass: string | null;
-        gradeLevel: string | null;
-        studentId: number;
-        linked: boolean;
-    };
     items: {
         status: "needs_review" | "learning" | "memorized";
         id: number;
@@ -18013,6 +18102,13 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         nextReviewDate: string;
         lastAssessedAt: Date | null;
     }[];
+    student: {
+        name: string;
+        studentClass: string | null;
+        gradeLevel: string | null;
+        studentId: number;
+        linked: boolean;
+    };
 }>;
 /**
  * @summary Get immutable guided memorization assessment history

@@ -365,15 +365,15 @@ export declare const presentationsTable: import("drizzle-orm/pg-core").PgTableWi
 }>;
 export declare const insertPresentationSchema: z.ZodObject<{
     mode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    pattern: z.ZodOptional<z.ZodString>;
-    title: z.ZodString;
-    subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     teacherId: z.ZodInt;
+    subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isShared: z.ZodOptional<z.ZodBoolean>;
-    gradeLevel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    pattern: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    title: z.ZodString;
     status: z.ZodOptional<z.ZodString>;
     language: z.ZodOptional<z.ZodString>;
+    gradeLevel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     theme: z.ZodOptional<z.ZodString>;
     template: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     coverEmoji: z.ZodOptional<z.ZodNullable<z.ZodString>>;

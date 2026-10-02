@@ -2415,6 +2415,33 @@ export interface ExamSessionResponse {
   expiresAt: string;
 }
 
+export type AdminDirectoryPageItemsItem = { [key: string]: unknown };
+
+export type AdminDirectoryPageSummary = {
+  totalAssignments: number;
+  totalGames: number;
+  totalVideoLessons: number;
+  totalTugGames: number;
+  totalMemorySets: number;
+  totalSubmissions: number;
+};
+
+export interface AdminDirectoryPage {
+  items: AdminDirectoryPageItemsItem[];
+  /** @minimum 1 */
+  page: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  pageSize: number;
+  /** @minimum 0 */
+  total: number;
+  /** @minimum 1 */
+  totalPages: number;
+  summary?: AdminDirectoryPageSummary;
+}
+
 export interface AdminTeacherSummary {
   id: number;
   name: string;
@@ -3217,6 +3244,47 @@ export type AdminHideQuestionBankItemBody = {
 export type AdminHideVideoLessonBody = {
   reason?: string | null;
 };
+
+export type ListAdminDirectoryParams = {
+/**
+ * @minimum 1
+ * @maximum 1000000
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+/**
+ * @maxLength 120
+ */
+q?: string;
+section?: ListAdminDirectorySection;
+/**
+ * Lightweight teacher recipient lookup without content counts
+ */
+lookup?: ListAdminDirectoryLookup;
+};
+
+export type ListAdminDirectorySection = typeof ListAdminDirectorySection[keyof typeof ListAdminDirectorySection];
+
+
+export const ListAdminDirectorySection = {
+  assignments: 'assignments',
+  games: 'games',
+  video: 'video',
+  tug: 'tug',
+  memory: 'memory',
+} as const;
+
+export type ListAdminDirectoryLookup = typeof ListAdminDirectoryLookup[keyof typeof ListAdminDirectoryLookup];
+
+
+export const ListAdminDirectoryLookup = {
+  true: 'true',
+  false: 'false',
+} as const;
 
 export type ListAssignmentsParams = {
 teacherId?: number;

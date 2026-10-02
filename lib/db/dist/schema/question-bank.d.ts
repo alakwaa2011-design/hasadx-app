@@ -381,26 +381,26 @@ export declare const questionBankTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export declare const insertQuestionBankSchema: z.ZodObject<{
-    subject: z.ZodString;
     teacherId: z.ZodInt;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    isShared: z.ZodOptional<z.ZodBoolean>;
-    hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
-    hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
-    hiddenById: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    hideReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    subject: z.ZodString;
     questionType: z.ZodOptional<z.ZodString>;
+    text: z.ZodString;
     optionA: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionB: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionC: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     optionD: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     correctAnswer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     points: z.ZodOptional<z.ZodNumber>;
+    tags: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    text: z.ZodString;
+    isShared: z.ZodOptional<z.ZodBoolean>;
+    hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
+    hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    hiddenById: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    hideReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     allowMultipleAnswers: z.ZodOptional<z.ZodBoolean>;
     repeatQuestion: z.ZodOptional<z.ZodBoolean>;
-    tags: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

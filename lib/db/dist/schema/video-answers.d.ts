@@ -92,10 +92,10 @@ export declare const videoAnswersTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export declare const insertVideoAnswerSchema: z.ZodObject<{
-    isCorrect: z.ZodBoolean;
-    selectedAnswer: z.ZodString;
     videoSubmissionId: z.ZodInt;
     videoQuestionId: z.ZodInt;
+    selectedAnswer: z.ZodString;
+    isCorrect: z.ZodBoolean;
 }, {
     out: {};
     in: {};

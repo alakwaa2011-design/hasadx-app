@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, jsonb, boolean, index } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 
 export const tugTemplatesTable = pgTable("tug_templates", {
@@ -10,4 +10,4 @@ export const tugTemplatesTable = pgTable("tug_templates", {
   isShared: boolean("is_shared").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [index("tug_templates_teacher_idx").on(t.teacherId)]);

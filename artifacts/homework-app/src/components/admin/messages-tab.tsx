@@ -4,6 +4,8 @@ import { Send, Loader2, MessageSquare, Users, ArrowRight, Plus, Search, X, Image
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useSearch } from "wouter";
+import { useAdminDirectory } from "@/hooks/use-admin-directory";
+import { DirectoryPager, DirectoryStatus } from "@/components/admin/directory-controls";
 import { uploadDmImage, dmImageSrc } from "@/components/direct-message-drawer";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -34,7 +36,7 @@ interface TeacherListItem {
   email: string | null;
 }
 
-export function MessagesTab() {
+export function MessagesTab({ accountId = null }: { accountId?: number | null }) {
   const { lang, dir, t } = useI18n();
   const m = t.adminMessages;
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
@@ -45,7 +47,6 @@ export function MessagesTab() {
   const [uploadError, setUploadError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showNewMsg, setShowNewMsg] = useState(false);
-  const [search, setSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -62,17 +63,10 @@ export function MessagesTab() {
     refetchInterval: 15000,
   });
 
-  const { data: allTeachers = [], isLoading: teachersLoading } = useQuery<TeacherListItem[]>({
-    queryKey: ["admin-teachers-list"],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/admin/teachers`, { credentials: "include" });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.teachers ?? data).map((t: any) => ({ id: t.id, name: t.name, email: t.email }));
-    },
-    enabled: showNewMsg,
-    staleTime: 60_000,
-  });
+  const picker = useAdminDirectory<TeacherListItem>({ kind: "teachers", accountId, enabled: showNewMsg, pageSize: 20, lookup: true });
+  const filteredTeachers = picker.items;
+  const search = picker.search;
+  const setSearch = picker.setSearch;
 
   const { data: messages = [], isLoading: msgsLoading } = useQuery<DmMessage[]>({
     queryKey: ["dm-admin-conv", selectedTeacherId],
@@ -183,11 +177,6 @@ export function MessagesTab() {
 
   const totalUnread = threads.reduce((s, t) => s + t.unread_count, 0);
 
-  const filteredTeachers = allTeachers.filter(t =>
-    t.name.toLowerCase().includes(search.toLowerCase()) ||
-    (t.email ?? "").toLowerCase().includes(search.toLowerCase())
-  );
-
   useEffect(() => {
     if (!Number.isInteger(requestedTeacherId) || requestedTeacherId <= 0) return;
     const thread = threads.find((item) => item.teacher_id === requestedTeacherId);
@@ -249,15 +238,9 @@ export function MessagesTab() {
 
               {/* قائمة المعلمين */}
               <div className="flex-1 overflow-y-auto">
-                {teachersLoading ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" aria-label={m.loadingTeachers} />
-                  </div>
-                ) : filteredTeachers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                    <p className="text-sm text-muted-foreground">
-                      {m.noResults}
-                    </p>
+                {picker.isLoading || picker.isError || filteredTeachers.length === 0 ? (
+                  <div className="p-3">
+                    <DirectoryStatus isLoading={picker.isLoading} isError={picker.isError} count={filteredTeachers.length} onRetry={picker.refetch} emptyLabel={m.noResults} />
                   </div>
                 ) : (
                   filteredTeachers.map(t => (
@@ -276,6 +259,9 @@ export function MessagesTab() {
                     </button>
                   ))
                 )}
+              </div>
+              <div className="px-3 pb-2">
+                <DirectoryPager page={picker.page} totalPages={picker.totalPages} total={picker.total} pageSize={picker.pageSize} isFetching={picker.isFetching} onPage={picker.setPage} />
               </div>
             </motion.div>
           ) : (

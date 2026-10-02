@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminDirectoryPage';
+export * from './adminDirectoryPageItemsItem';
+export * from './adminDirectoryPageSummary';
 export * from './adminHideAssignmentBody';
 export * from './adminHideQuestionBankItemBody';
 export * from './adminHideVideoLessonBody';
@@ -82,6 +85,9 @@ export * from './googleLoginBodyRole';
 export * from './healthStatus';
 export * from './linkPresentationActivity200';
 export * from './linkPresentationActivityBody';
+export * from './listAdminDirectoryLookup';
+export * from './listAdminDirectoryParams';
+export * from './listAdminDirectorySection';
 export * from './listAiVideoProjects200';
 export * from './listAssignmentsInclude';
 export * from './listAssignmentsParams';

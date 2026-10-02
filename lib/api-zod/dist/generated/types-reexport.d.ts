@@ -1,3 +1,6 @@
+export type * from "./types/adminDirectoryPage";
+export type * from "./types/adminDirectoryPageItemsItem";
+export type * from "./types/adminDirectoryPageSummary";
 export type * from "./types/adminTeacherSummary";
 export type * from "./types/aiVideoBrief";
 export type * from "./types/aiVideoBriefAspectRatio";
@@ -66,6 +69,8 @@ export type * from "./types/googleLoginBody";
 export type * from "./types/googleLoginBodyRole";
 export type * from "./types/healthStatus";
 export type * from "./types/linkPresentationActivity200";
+export type * from "./types/listAdminDirectoryLookup";
+export type * from "./types/listAdminDirectorySection";
 export type * from "./types/listAiVideoProjects200";
 export type * from "./types/listAssignmentsInclude";
 export type * from "./types/listAssignmentsParams";

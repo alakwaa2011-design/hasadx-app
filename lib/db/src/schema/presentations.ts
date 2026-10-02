@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
@@ -40,7 +40,7 @@ export const presentationsTable = pgTable("presentations", {
   lastPresentedAt: timestamp("last_presented_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => [index("presentations_teacher_idx").on(t.teacherId)]);
 
 export const insertPresentationSchema = createInsertSchema(presentationsTable).omit({
   id: true,

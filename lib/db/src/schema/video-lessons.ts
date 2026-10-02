@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
@@ -25,7 +25,7 @@ export const videoLessonsTable = pgTable("video_lessons", {
   hideReason: text("hide_reason"),
   skipSegments: text("skip_segments"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [index("video_lessons_teacher_idx").on(t.teacherId)]);
 
 export const insertVideoLessonSchema = createInsertSchema(videoLessonsTable).omit({ id: true, createdAt: true });
 export type InsertVideoLesson = z.infer<typeof insertVideoLessonSchema>;

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 import { adventureGamesTable } from "./adventure-games";
@@ -12,7 +12,7 @@ export const contentCollectionsTable = pgTable("content_collections", {
   isPublic: boolean("is_public").notNull().default(false),
   featuredOn: text("featured_on"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("content_collections_teacher_idx").on(t.teacherId)]);
 
 export const collectionItemsTable = pgTable("collection_items", {
   id: serial("id").primaryKey(),

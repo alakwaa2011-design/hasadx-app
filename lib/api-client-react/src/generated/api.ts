@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminDirectoryPage,
   AdminHideAssignmentBody,
   AdminHideQuestionBankItemBody,
   AdminHideVideoLessonBody,
@@ -50,6 +51,7 @@ import type {
   HealthStatus,
   LinkPresentationActivity200,
   LinkPresentationActivityBody,
+  ListAdminDirectoryParams,
   ListAiVideoProjects200,
   ListAssignmentsParams,
   ListTeacherQuranMemorizationItemsParams,
@@ -2047,6 +2049,95 @@ export const useAdminUnhideVideoLesson = <TError = ErrorType<void>,
       > => {
       return useMutation(getAdminUnhideVideoLessonMutationOptions(options));
     }
+
+export const getListAdminDirectoryUrl = (kind: 'teachers' | 'students' | 'activities',
+    params?: ListAdminDirectoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/directory/${kind}?${stringifiedParams}` : `/api/admin/directory/${kind}`
+}
+
+/**
+ * @summary Search a paginated admin directory across all matching records
+ */
+export const listAdminDirectory = async (kind: 'teachers' | 'students' | 'activities',
+    params?: ListAdminDirectoryParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminDirectoryPage> => {
+
+  return customFetch<AdminDirectoryPage>(getListAdminDirectoryUrl(kind,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminDirectoryQueryKey = (kind: 'teachers' | 'students' | 'activities',
+    params?: ListAdminDirectoryParams,) => {
+    return [
+    `/api/admin/directory/${kind}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminDirectoryQueryOptions = <TData = Awaited<ReturnType<typeof listAdminDirectory>>, TError = ErrorType<void>>(kind: 'teachers' | 'students' | 'activities',
+    params?: ListAdminDirectoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminDirectory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminDirectoryQueryKey(kind,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminDirectory>>> = ({ signal }) => listAdminDirectory(kind,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: kind !== null && kind !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminDirectory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminDirectoryQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminDirectory>>>
+export type ListAdminDirectoryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Search a paginated admin directory across all matching records
+ */
+
+export function useListAdminDirectory<TData = Awaited<ReturnType<typeof listAdminDirectory>>, TError = ErrorType<void>>(
+ kind: 'teachers' | 'students' | 'activities',
+    params?: ListAdminDirectoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminDirectory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminDirectoryQueryOptions(kind,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListAllTeachersUrl = () => {
 

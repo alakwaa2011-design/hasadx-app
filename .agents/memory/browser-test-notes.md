@@ -4,6 +4,7 @@ description: Index of browser test fixture, runtime, and assertion lessons.
 ---
 
 - [Isolated fixture database](browser-e2e-db-isolation.md)
+- [Service-worker route interception](browser-route-interception.md)
 - [Verified teacher sessions](teacher-e2e-session-setup.md)
 - [Playwright browser cache](playwright-cache-fallback.md)
 - [WebKit on NixOS](playwright-webkit-nixos.md)
