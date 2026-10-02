@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Clock, Play, Users, Wifi, School, QrCode, Copy } from "lucide-react";
 import { XoIcon } from "@/components/game-icons";
@@ -9,6 +10,7 @@ import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
 import { createSavedGamePlayLink, getSavedGameActivity, normalizeSavedGameQuestions, savedGamePlayUrl, saveGameActivity } from "@/lib/saved-game-activities";
 import { copyGameShortUrl } from "@/lib/game-share-url";
+import { useXoPreparedRoom } from "@/lib/use-xo-prepared-room";
 import { toast } from "@/components/ui/sonner";
 import type { XoClassSetup } from "@/lib/xo-class-share";
 import { cn } from "@/lib/utils";
@@ -68,6 +70,8 @@ export default function XoCreate() {
   const [duration, setDuration] = useState(20);
   const [creating, setCreating] = useState(false);
   const [linkCreating, setLinkCreating] = useState(false);
+  const [copyingRoom, setCopyingRoom] = useState(false);
+  const { data: teacher } = useGetCurrentTeacher();
   const [savedActivityId, setSavedActivityId] = useState<number | string | null>(null);
   const [permanentToken, setPermanentToken] = useState<string | null>(null);
   const [savedDraftKey, setSavedDraftKey] = useState<string | null>(null);
@@ -226,6 +230,48 @@ export default function XoCreate() {
     }
   };
 
+  const roomDraftKey = JSON.stringify({
+    title: normalizeXoTitle(title || getDefaultXoTitle(ar ? "ar" : "en"), "en"),
+    questions: questions.map(q => ({ ...q, type: q.type || "mcq", imageUrl: q.imageUrl || null })),
+    duration, teamX, teamO, playMode,
+  });
+  const { room: preparedRoom, prepare: prepareRoom } = useXoPreparedRoom(
+    teacher?.id, roomDraftKey, async () => {
+      const token = await ensurePermanentLink();
+      if (savedActivityIdRef.current == null) throw new Error("xo-room-create");
+      return { token, savedActivityId: savedActivityIdRef.current };
+    },
+  );
+  const roomReady = playMode === "online" && preparedRoom?.draftKey === roomDraftKey;
+  const busy = creating || linkCreating || copyingRoom;
+  const roomError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : "";
+    const messages: Record<string, string> = {
+      "xo-room-login": ar ? "سجّل دخول المعلم لتجهيز الغرفة" : "Sign in as a teacher to prepare a room",
+      "xo-room-expired": ar ? "انتهت الغرفة السابقة. انسخ رابطًا جديدًا وشاركه مع الطلاب." : "The previous room has ended. Copy and share a new link.",
+      "xo-room-connection": ar ? "تعذّر الاتصال بالغرفة. حاول مجددًا؛ لم يتغيّر رابط الطلاب." : "Could not connect. Try again; the student link has not changed.",
+      "xo-room-create": ar ? "تعذّر تجهيز الغرفة" : "Could not prepare the room",
+      "xo-room-cancelled": ar ? "أُلغي تجهيز الغرفة" : "Room preparation was cancelled",
+    };
+    return messages[message] || message || messages["xo-room-create"];
+  };
+  const rememberSetup = (room: { savedActivityId: number | string }) => {
+    loadedSavedGameRef.current = true;
+    navigate(`/game/xo/create?savedGameId=${encodeURIComponent(room.savedActivityId)}`, { replace: true });
+  };
+  const copyRoomLink = async () => {
+    setCopyingRoom(true);
+    try {
+      await copyGameShortUrl(prepareRoom().then(room => {
+        rememberSetup(room);
+        return `/game/xo/join/${room.pin}`;
+      }));
+      toast.success(ar ? "تم نسخ رابط انضمام الطلاب. يمكنك دخول الغرفة لاحقًا." : "Student join link copied. You can enter the room later.");
+    } catch (error) {
+      toast.error(roomError(error));
+    } finally { setCopyingRoom(false); }
+  };
+
   const copyPermanentLink = async () => {
     setLinkCreating(true);
     try {
@@ -252,8 +298,8 @@ export default function XoCreate() {
       // The settings copy action may already have persisted this exact draft.
       // Reuse its activity and token rather than issuing another upsert/link
       // request when the teacher starts immediately afterwards.
-      const token = await ensurePermanentLink();
       if (playMode === "classroom") {
+        const token = await ensurePermanentLink();
         const setup: XoClassSetup = {
           questions,
           duration,
@@ -266,23 +312,12 @@ export default function XoCreate() {
         navigate(`/game/xo/class?token=${encodeURIComponent(token)}`);
         return;
       }
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/play/${encodeURIComponent(token)}/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const result = await response.json();
-      if (!response.ok || !result.pin || !result.playRoute) {
-        throw new Error(result.message || (ar ? "تعذر إنشاء غرفة الدخول" : "Could not create the join room"));
-      }
-      if (result.creatorToken) sessionStorage.setItem(`xo-creator-${result.pin}`, String(result.creatorToken));
-      if (result.controlToken) sessionStorage.setItem(`xo-control-${result.pin}`, String(result.controlToken));
+      const room = await prepareRoom();
       setCreating(false);
-      navigate(`${result.playRoute}?creator=1&token=${encodeURIComponent(token)}`);
+      navigate(`${room.playRoute}?creator=1&token=${encodeURIComponent(room.token)}`);
     } catch (error) {
       setCreating(false);
-      toast.error(error instanceof Error && error.message
-        ? error.message
-        : (ar ? "تعذر حفظ اللعبة أو إنشاء رابطها" : "Could not save the game or create its link"));
+      toast.error(roomError(error));
     }
   };
 
@@ -334,7 +369,7 @@ export default function XoCreate() {
       <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8" dir={dir}>
         <div className="mx-auto max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="mb-3">
-            <GameFlowBackButton onBack={handleFlowBack} label={ar ? "رجوع" : "Back"} />
+            <GameFlowBackButton onBack={busy || roomReady ? leaveSetupSafely : handleFlowBack} label={ar ? "رجوع" : "Back"} />
           </div>
           <div className="rounded-3xl border bg-card shadow-sm overflow-hidden">
             <header className="border-b bg-muted/20 px-6 py-5 flex items-center gap-4">
@@ -352,7 +387,7 @@ export default function XoCreate() {
               </div>
             </header>
 
-            <div className="p-6 space-y-8">
+            <fieldset disabled={busy || roomReady} className="p-6 space-y-8">
               <section>
                 <h2 className="mb-1 text-sm font-black uppercase tracking-wider text-muted-foreground">{ar ? "نمط اللعب" : "Play mode"}</h2>
                 <p className="mb-4 text-sm text-muted-foreground">{ar ? "اختر طريقة مشاركة اللعبة مع الطلاب" : "Choose how students will play"}</p>
@@ -458,10 +493,20 @@ export default function XoCreate() {
                   </select>
                 </div>
               </section>
-            </div>
+            </fieldset>
 
             <footer className="border-t bg-muted/20 px-6 py-5">
-              <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />
+              <fieldset disabled={busy || roomReady}>
+                <GameLibraryPublishChoice isShared={isShared} onChange={setIsShared} className="mb-4" />
+              </fieldset>
+              {playMode === "online" && (
+                <p role="status" data-testid="xo-prepared-room" className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-foreground">
+                  {roomReady
+                    ? (ar ? <>الغرفة جاهزة — الرمز <b dir="ltr">{preparedRoom!.pin}</b>. أرسل الرابط للطلاب، ثم ادخل الغرفة نفسها عندما تكون جاهزًا. تم تثبيت إعداداتها.</>
+                      : <>Room ready — PIN <b>{preparedRoom!.pin}</b>. Share the link, then enter the same room when ready. Its settings are now fixed.</>)
+                    : (ar ? "انسخ رابط انضمام الطلاب دون دخول اللعبة؛ تُجهَّز غرفة واحدة يمكنك دخولها لاحقًا." : "Copy the student join link without entering the game. One room is prepared for you to enter later.")}
+                </p>
+              )}
               <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 onClick={() => {
@@ -469,13 +514,14 @@ export default function XoCreate() {
                   setSetupStep("questions");
                 }}
                 data-testid="button-change-questions"
+                disabled={busy || roomReady}
                 className="w-full sm:w-auto rounded-xl border-2 border-transparent bg-muted px-6 py-3.5 font-bold text-muted-foreground transition hover:bg-muted/80 hover:text-foreground"
               >
                 {ar ? "تغيير الأسئلة" : "Change questions"}
               </button>
               <button
                 onClick={create}
-                disabled={creating || linkCreating}
+                disabled={busy}
                 data-testid="button-start-game"
                 className="group flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3.5 px-6 font-black text-primary-foreground shadow-md shadow-primary/20 transition hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-70"
               >
@@ -487,26 +533,26 @@ export default function XoCreate() {
                 ) : (
                   <>
                     <Play className="h-5 w-5 fill-current transition-transform group-hover:scale-110" />
-                    {playMode === "classroom" ? (ar ? "ابدأ وضع الصف" : "Start classroom mode") : (ar ? "إنشاء غرفة الدخول" : "Create join room")}
+                    {playMode === "classroom" ? (ar ? "ابدأ وضع الصف" : "Start classroom mode") : (ar ? "دخول غرفة المعلم" : "Enter teacher room")}
                   </>
                 )}
               </button>
               <button
                 type="button"
-                onClick={() => void copyPermanentLink()}
-                disabled={creating || linkCreating}
-                data-testid="button-copy-permanent-link"
+                onClick={() => void (playMode === "online" ? copyRoomLink() : copyPermanentLink())}
+                disabled={busy}
+                data-testid={playMode === "online" ? "button-copy-room-link" : "button-copy-permanent-link"}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 py-3.5 px-5 font-black text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
-                {linkCreating ? (
+                {linkCreating || copyingRoom ? (
                   <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
                 ) : (
                   <Copy className="h-5 w-5" />
                 )}
-                {linkCreating
+                {linkCreating || copyingRoom
                   ? (ar ? "جارٍ إنشاء الرابط..." : "Creating link...")
                   : playMode === "online"
-                    ? (ar ? "رابط إنشاء مباراة جديدة" : "New-match link")
+                    ? (ar ? "نسخ رابط انضمام الطلاب" : "Copy student join link")
                     : (ar ? "نسخ الرابط الدائم" : "Copy permanent link")}
               </button>
               </div>

@@ -14,3 +14,9 @@ In remote mode, hide the permanent new-match link from setup. The teacher must b
 **Why:** The user explicitly clarified that removing the permanent-link feature must not force the teacher to enter the room just to copy its link.
 
 **How to apply:** Make room-link copying available from setup/preparation, separate from the teacher's action to enter the game. The copied link must join that room, not launch independent matches.
+
+Treat a distributed room link as belonging to a fixed preparation. Do not silently replace its room after a connection failure or a settings edit.
+
+**Why:** Students can now join before the teacher enters. Replacing the room while reusing the setup screen would leave those students waiting in a different match. The current tradeoff is to freeze prepared settings.
+
+**How to apply:** Reuse the prepared room for repeat copies, reloads, and teacher entry. Future editable preparation must update the existing waiting room safely or explicitly require sharing a replacement link.
