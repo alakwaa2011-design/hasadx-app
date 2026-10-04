@@ -14,3 +14,9 @@ Automatic worksheet question selection must supplement, not replace, the teacher
 **Why:** The user explicitly requested the default to be automatic, choosing suitable questions from the grade/age and subject/topic, while «تظل الخيارات الأخرى جميعها موجودة».
 
 **How to apply:** Future worksheet simplification must preserve every supported manual question format and count override. Automatic selection should reflect the teaching context, not disguise a fixed distribution as an intelligent choice.
+
+Automatic selection must not sample every supported question type. Respect the teacher's selected page count in the rendered worksheet; use focused types for one page and light variety for two pages. Teachers may optionally constrain the types within automatic mode, while the system chooses a fitting distribution. Tic-Tac-Toe requires an explicit teacher choice and must never become enabled merely through automatic selection.
+
+**Why:** The user reported that automatic generation selected from all types and clarified that page count, restrained variety, optional type constraints, and explicit Tic-Tac-Toe activation are required.
+
+**How to apply:** Treat page count as a real layout constraint, not only a prompt hint. Do not interpret access to all supported formats as an instruction to use them all, and do not let cached choices silently activate a choice board.
