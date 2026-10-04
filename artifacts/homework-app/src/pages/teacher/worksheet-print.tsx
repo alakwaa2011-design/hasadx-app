@@ -5,6 +5,7 @@ import { useSmartBack } from "@/lib/nav-history";
 import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf, pdfExportErrorMessage } from "@/lib/print-export";
 import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksheet-word-visual";
+import { WorksheetWordExportMenu } from "./worksheet-word-export-menu";
 import { useWorksheetPreview } from "@/lib/use-worksheet-preview";
 import { worksheetLogoUrl } from "@/lib/worksheet-logo";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -1505,33 +1506,11 @@ export default function WorksheetPrint() {
               </button>
             </>
           )}
-          <DropdownMenu dir={uiLang === "ar" ? "rtl" : "ltr"}>
-            <DropdownMenuTrigger asChild>
-              <button
-                disabled={exporting || saving}
-                aria-busy={wordExport !== null}
-                className="px-3 py-1.5 rounded-lg border text-sm font-bold flex items-center gap-1.5 disabled:opacity-60"
-                style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-                title={uiLang === "ar" ? "اختر نسخة Word" : "Choose a Word version"}
-                data-testid="btn-word-export"
-              >
-                {wordExport ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileType className="w-3.5 h-3.5" />}
-                <span aria-live="polite">
-                  {wordExport ? `${uiLang === "ar" ? "جار التجهيز" : "Preparing"} ${wordProgress}` : (uiLang === "ar" ? "وورد" : "Word")}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuItem onSelect={() => void handleWord("visual")} disabled={exporting || saving} className="flex-col items-start gap-1 py-3" data-testid="word-export-visual">
-                <span className="font-bold">{uiLang === "ar" ? "Word مطابق للتصميم" : "Word — visual design"}</span>
-                <span className="text-xs text-muted-foreground">{uiLang === "ar" ? "نفس المظهر كصور صفحات؛ النص غير قابل للتحرير." : "Same appearance as page images; text is not editable."}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleWord("editable")} disabled={exporting || saving} className="flex-col items-start gap-1 py-3" data-testid="word-export-editable">
-                <span className="font-bold">{uiLang === "ar" ? "Word قابل للتحرير" : "Word — editable"}</span>
-                <span className="text-xs text-muted-foreground">{uiLang === "ar" ? "نصوص وجداول بتنسيق محسّن؛ قد يختلف توزيع الصفحات." : "Formatted text and tables; pagination may differ."}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <WorksheetWordExportMenu ar={uiLang === "ar"}
+            onExport={mode => void handleWord(mode)}
+            disabled={exporting || saving} busy={wordExport !== null} progress={wordProgress}
+            testId="btn-word-export"
+            className="px-3 py-1.5 rounded-lg border border-primary/30 text-primary text-sm font-bold flex items-center gap-1.5 disabled:opacity-60" />
           <button
             onClick={() => void runSavedPdf()}
             disabled={exporting || saving}

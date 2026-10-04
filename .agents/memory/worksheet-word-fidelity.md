@@ -15,6 +15,12 @@ Native editable Word conversion must resolve styles while the source or clone is
 
 **How to apply:** Test the real download path, including stylesheet-only title centering, colors, fonts, and each theme's student-field row (not only the classic stylesheet's row). Do not describe editable Word as pixel-identical to the browser; native tables and paragraphs reflow differently across Word clients.
 
+Keep both visual-image Word and editable Word accessible wherever worksheet Word export is offered, including the builder's editing/preview workspace.
+
+**Why:** The user reported losing the image-based export after the workspace changed, even though it still existed on the saved worksheet screen. They want both the exact-design option and better fidelity for editable exports.
+
+**How to apply:** Workspace or toolbar refactors must preserve the two export choices and explain that page images preserve appearance but cannot be edited as text. Never substitute one format for the other silently.
+
 Use transparent official brand artwork on worksheet backgrounds, but do not replace or recolor a school's custom uploaded logo.
 
 **Why:** The official dark-background lockup produced an opaque rectangle against themed paper. Transparency can preserve the approved artwork without changing the school's branding.

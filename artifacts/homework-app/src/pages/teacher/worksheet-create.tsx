@@ -32,6 +32,8 @@ import { WorksheetFormatPanel } from "@/pages/teacher/worksheet-format-panel";
 import { WorksheetModeSwitch } from "@/pages/teacher/worksheet-workspace-controls";
 import { WorksheetPrintView, type WorksheetData, type LayoutSnapshot } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf, pdfExportErrorMessage } from "@/lib/print-export";
+import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksheet-word-visual";
+import { WorksheetWordExportMenu, type WorksheetWordMode } from "./worksheet-word-export-menu";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 import type { WorksheetSettings } from "@workspace/api-zod";
@@ -1441,7 +1443,7 @@ export default function WorksheetCreate() {
   };
 
   const [editQuestionId, setEditQuestionId] = useState<string | null>(null);
-  const [exportRequest, setExportRequest] = useState<"pdf" | "word" | null>(null);
+  const [exportRequest, setExportRequest] = useState<"pdf" | "word" | "word-visual" | null>(null);
   const livePaperFlushRef = useRef<(() => LayoutSnapshot) | null>(null);
   const openWorksheet = (questionId?: string) => {
     livePaperFlushRef.current?.();
@@ -1450,7 +1452,7 @@ export default function WorksheetCreate() {
     setWorkspaceInitialMode("edit");
     setPreviewing(true);
   };
-  const requestPreview = (exp: "pdf" | "word" | null) => {
+  const requestPreview = (exp: "pdf" | "word" | "word-visual" | null) => {
     if (!exp) { openWorksheet(); return; }
     if (!canSave) {
       toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
@@ -2300,14 +2302,13 @@ export default function WorksheetCreate() {
               >
                 <Printer className="w-4 h-4" />PDF
               </button>
-              <button
-                data-testid="button-ws-word"
-                onClick={() => requestPreview("word")}
+              <WorksheetWordExportMenu
+                ar={ar}
+                testId="button-ws-word"
+                onExport={mode => requestPreview(mode === "visual" ? "word-visual" : "word")}
                 disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
                 className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
-              >
-                <FileType className="w-4 h-4" />Word
-              </button>
+              />
               <button
                 data-testid="button-ws-canvas"
                 onClick={() => {
@@ -3103,7 +3104,7 @@ function WorksheetWorkspaceOverlay({
   gradeSuggestions?: string[];
   onClearProfile?: () => void;
   initialEditQuestionId?: string | null;
-  autoExport?: "pdf" | "word" | null;
+  autoExport?: "pdf" | "word" | "word-visual" | null;
   onAutoExportHandled?: () => void;
   ar: boolean;
   data: WorksheetData;
@@ -3129,9 +3130,12 @@ function WorksheetWorkspaceOverlay({
     setMode(next);
   };
 
-  const handleWord = async () => {
+  const [wordExport, setWordExport] = useState<WorksheetWordMode | null>(null);
+  const [wordProgress, setWordProgress] = useState("");
+  const handleWord = async (wordMode: WorksheetWordMode = "editable") => {
     if (exportInFlightRef.current || saving) return;
-    flush();
+    const snap = flushRef.current?.();
+    if (snap) applySnapshot(snap);
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(ar ? "تعذّر إعداد الملف" : "Could not prepare file");
@@ -3139,13 +3143,42 @@ function WorksheetWorkspaceOverlay({
     }
     exportInFlightRef.current = true;
     setExportBusy(true);
+    setWordExport(wordMode);
+    setWordProgress("");
     try {
-      await downloadAsWord({ element: root, title: data.title, lang: data.language });
-    } catch {
-      toast.error(ar ? "تعذّر تصدير ملف Word. يرجى المحاولة مرة أخرى." : "Could not export the Word file. Please try again.");
+      if (wordMode === "visual") {
+        let worksheetId = data.id;
+        if (!worksheetId && onSave) {
+          // The raster renderer requires an owned saved worksheet. Persist the
+          // exact flushed draft, not yesterday's preview or a stale React value.
+          worksheetId = await onSave({
+            questions: (snap?.questions ?? data.questions) as Question[],
+            settings: settingsRef.current,
+          }) ?? 0;
+          if (!worksheetId) return; // Save already reports its validation/error.
+        }
+        if (!worksheetId) throw new Error("worksheet-save-required");
+        await downloadVisualWorksheetWord({
+          element: root, title: data.title, lang: data.language, worksheetId,
+          onProgress: (done, total) => setWordProgress(`${done}/${total}`),
+        });
+      } else {
+        await downloadAsWord({ element: root, title: `${data.title} - ${ar ? "قابل للتعديل" : "Editable"}`, lang: data.language });
+      }
+      toast.success(ar ? "تم تجهيز ملف Word للتنزيل" : "Word file ready for download");
+    } catch (error) {
+      toast.error(error instanceof VisualWordExportError && error.code === "busy"
+        ? (ar ? "خدمة التصدير مشغولة؛ أعد المحاولة بعد قليل." : "The export service is busy. Try again shortly.")
+        : error instanceof VisualWordExportError && error.code === "image"
+        ? (ar ? "تعذّر تحميل إحدى الصور. لم يُصدّر ملف ناقص؛ أعد المحاولة بعد تحميل الصور." : "A design image could not load. No incomplete file was exported; try again after images load.")
+        : error instanceof Error && error.message === "worksheet-save-required"
+        ? (ar ? "احفظ الورقة أولًا لتصديرها كصور داخل Word." : "Save the worksheet before exporting page images to Word.")
+        : (ar ? "تعذّر تصدير ملف Word. يرجى المحاولة مرة أخرى." : "Could not export the Word file. Please try again."));
     } finally {
       exportInFlightRef.current = false;
       setExportBusy(false);
+      setWordExport(null);
+      setWordProgress("");
     }
   };
 
@@ -3192,7 +3225,12 @@ function WorksheetWorkspaceOverlay({
     let cancelled = false;
     let frame = 0;
     const run = async () => {
-      try { await document.fonts?.ready; } catch { /* ignore */ }
+      try {
+        await Promise.race([
+          document.fonts?.ready,
+          new Promise(resolve => setTimeout(resolve, 2000)),
+        ]);
+      } catch { /* Exporters handle required worksheet resources themselves. */ }
       let stable = 0;
       let lastCount = -1;
       const started = performance.now();
@@ -3206,7 +3244,7 @@ function WorksheetWorkspaceOverlay({
         if (stable >= 3) break;
       }
       if (cancelled) return;
-      if (kind === "word") handlersRef.current.handleWord();
+      if (kind === "word" || kind === "word-visual") void handlersRef.current.handleWord(kind === "word-visual" ? "visual" : "editable");
       else { void runPdfRef.current(); }
     };
     void run();
@@ -3251,14 +3289,15 @@ function WorksheetWorkspaceOverlay({
                 {saving ? (ar ? "جار الحفظ" : "Saving") : (ar ? "حفظ" : "Save")}
               </button>
             )}
-            <button
-              onClick={handleWord}
+            <WorksheetWordExportMenu
+              ar={ar}
+              onExport={mode => void handleWord(mode)}
               disabled={exportBusy || saving}
-              data-testid="button-preview-word"
+              busy={!!wordExport}
+              progress={wordProgress}
+              testId="button-preview-word"
               className="px-3 py-2 rounded-xl text-sm font-bold border border-primary/30 text-primary hover:bg-primary/5 transition-colors flex items-center gap-2"
-            >
-              <FileType className="w-4 h-4" /> {ar ? "وورد (Word)" : "Word"}
-            </button>
+            />
             <button
               onClick={() => void runPdf()}
               disabled={exportBusy || saving}

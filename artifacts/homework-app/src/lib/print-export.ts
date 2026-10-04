@@ -10,7 +10,8 @@ import {
   MathRun,
   MathSuperScript,
   Packer,
-  PageBreak,
+  SectionType,
+  PageBorderOffsetFrom,
   Paragraph,
   ShadingType,
   Table,
@@ -24,6 +25,7 @@ import {
   type ITableCellOptions,
 } from "docx";
 import { contentDirection, type ContentDirection } from "./content-direction";
+import { inlineWordSvgImages } from "./word-svg-images";
 
 // Lightweight export helpers for the teacher's printable surfaces.
 
@@ -537,7 +539,11 @@ function paragraphFor(
       after: options.box
         ? cssLengthToTwips(boxStyle.paddingBottom)
         : element.classList.contains("ws-section-instr") ? 100 : 100,
-      line: 300,
+      line: (() => {
+        const fontSize = Number.parseFloat(boxStyle.fontSize);
+        const lineHeight = Number.parseFloat(boxStyle.lineHeight);
+        return fontSize > 0 && lineHeight > 0 ? Math.round(240 * lineHeight / fontSize) : 300;
+      })(),
     },
     indent: options.box ? {
       left: cssLengthToTwips(boxStyle.paddingLeft),
@@ -1025,8 +1031,19 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
     "ws-line", "ws-short-line", "ws-fill-rule", "ws-work-step-line", "ws-compare-line",
   ];
   const visit = (element: Element, target: WordChild[] = output) => {
+    if (element.classList.contains("no-print")) return;
+    if (element.classList.contains("ws-divider")) {
+      const line = element.querySelector(".ws-divider-thick") || element;
+      const color = backgroundColorFor(line) || colorFromCss(getComputedStyle(line).color) || "225739";
+      target.push(new Paragraph({
+        children: [],
+        border: { bottom: { color, style: BorderStyle.SINGLE, size: Math.max(4, Math.round(pointsFromCss(getComputedStyle(line).height, 1) * 8)) } },
+        spacing: { before: 80, after: 120, line: 20 },
+      }));
+      return;
+    }
     if (isHidden(element) || element.classList.contains("no-print") || element.classList.contains("ws-watermark")
-      || element.classList.contains("ws-corner") || element.classList.contains("ws-divider")) return;
+      || element.classList.contains("ws-corner")) return;
     if (element.matches(".ws-q")) {
       const children: WordChild[] = [];
       Array.from(element.childNodes).forEach(node => {
@@ -1047,7 +1064,8 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
       return;
     }
     if (element.matches(".ws-headrow, .ws-headgrid, .ws-tab-toprow")) {
-      target.push(headerTable(element, rtl));
+      const header = headerTable(element, rtl);
+      target.push(questionContainerTable(element, [header], rtl) || header);
       return;
     }
     if (element.matches(".ws-cont-header")) {
@@ -1072,6 +1090,42 @@ function pageChildren(page: Element, rtl: boolean): WordChild[] {
     }
     if (element.matches(".ws-compare-organizer")) {
       target.push(compareTable(element, rtl));
+      return;
+    }
+    if (element instanceof HTMLTableElement) {
+      const columns = Math.max(1, ...Array.from(element.rows).map(row =>
+        Array.from(row.cells).reduce((count, cell) => count + cell.colSpan, 0)));
+      target.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        visuallyRightToLeft: rtl,
+        rows: Array.from(element.rows).map(row => new TableRow({
+          cantSplit: true,
+          children: Array.from(row.cells).map(cell => {
+            const content: WordChild[] = [];
+            Array.from(cell.childNodes).forEach(node => {
+              if (node instanceof Element) visit(node, content);
+              else if (node.textContent?.trim()) content.push(paragraphFor(cell, rtl, node.textContent.trim()));
+            });
+            const style = getComputedStyle(cell);
+            const fill = backgroundColorFor(cell);
+            return new TableCell({
+              width: { size: 100 * cell.colSpan / columns, type: WidthType.PERCENTAGE },
+              columnSpan: cell.colSpan,
+              rowSpan: cell.rowSpan,
+              borders: bordersFromStyle(style) || {
+                top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
+              },
+              shading: fill ? { fill, type: ShadingType.CLEAR } : undefined,
+              margins: {
+                top: cssLengthToTwips(style.paddingTop), bottom: cssLengthToTwips(style.paddingBottom),
+                left: cssLengthToTwips(style.paddingLeft), right: cssLengthToTwips(style.paddingRight),
+              },
+              children: content.length ? content : [paragraphFor(cell, rtl)],
+            });
+          }),
+        })),
+      }));
       return;
     }
     if (element.matches(".ws-field-rule, .ws-final-answer > span, .ws-tic-writing > span, .ws-word-bank-blank")) {
@@ -1126,22 +1180,31 @@ export function buildWordDocument({
     && pageBackgrounds.every(background => background === pageBackgrounds[0])
     ? pageBackgrounds[0]
     : undefined;
-  const children: WordChild[] = [];
-  sourcePages.forEach((page, index) => {
-    if (index > 0) {
-      children.push(new Paragraph({ children: [new PageBreak()] }));
-    }
-    children.push(...pageChildren(page, rtl));
-  });
-  const section: ISectionOptions = {
-    properties: {
-      page: {
-        size: { width: 11906, height: 16838 },
-        margin: { top: 680, right: 567, bottom: 680, left: 567 },
+  const sections: ISectionOptions[] = sourcePages.map(page => {
+    const style = getComputedStyle(page);
+    const content = page.querySelector(".ws-content");
+    const contentStyle = content ? getComputedStyle(content) : null;
+    const padding = (side: "Top" | "Bottom" | "Left" | "Right", fallback: number) =>
+      cssLengthToTwips(style[`padding${side}`]) +
+      (contentStyle ? cssLengthToTwips(contentStyle[`padding${side}`]) : 0) || fallback;
+    const frame = bordersFromStyle(style);
+    return {
+      properties: {
+        type: SectionType.NEXT_PAGE,
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: padding("Top", 680), right: padding("Right", 567),
+            bottom: padding("Bottom", 680), left: padding("Left", 567) },
+          borders: frame ? {
+            pageBorders: { offsetFrom: PageBorderOffsetFrom.PAGE },
+            pageBorderTop: frame.top, pageBorderBottom: frame.bottom,
+            pageBorderLeft: frame.left, pageBorderRight: frame.right,
+          } : undefined,
+        },
       },
-    },
-    children,
-  };
+      children: pageChildren(page, rtl),
+    };
+  });
   return new Document({
     creator: "Hasad",
     title,
@@ -1162,7 +1225,7 @@ export function buildWordDocument({
         },
       },
     },
-    sections: [section],
+    sections,
   });
 }
 
@@ -1172,6 +1235,23 @@ export function buildWordDocument({
  */
 export async function downloadAsWord(options: WordExportOptions): Promise<void> {
   const { title } = options;
+  // Let the last toolbar edit commit before cloning, without an unbounded
+  // font wait on unrelated previews elsewhere on the page.
+  if (document.fonts?.ready) {
+    await Promise.race([document.fonts.ready.catch(() => {}), new Promise(resolve => setTimeout(resolve, 2000))]);
+  }
+  await new Promise<void>(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    // RAF is suspended in background tabs. Do not strand the export there.
+    const timer = setTimeout(finish, 100);
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(finish);
+  });
   const clonedElement = options.element.cloneNode(true) as HTMLElement;
   clonedElement.dataset.wordExportStaging = "true";
   clonedElement.setAttribute("aria-hidden", "true");
@@ -1232,6 +1312,7 @@ export async function downloadAsWord(options: WordExportOptions): Promise<void> 
         throw new Error(`Unable to embed required worksheet image "${alt}" in the Word export: ${reason}.`);
       }
     }));
+    await inlineWordSvgImages(options.element, clonedElement, asDocxImage);
     const blob = await Packer.toBlob(buildWordDocument({ ...options, element: clonedElement }));
     downloadUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
