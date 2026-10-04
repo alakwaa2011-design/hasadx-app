@@ -89,7 +89,7 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-portrait",
-      testIgnore: /(admin-student-preview|escape-setup|worksheet-pdf|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence|quran-optional-sync|quran-mobile-rotation|quran-iphone-continuous-audio)\.spec\.ts/,
+      testIgnore: /(admin-student-preview|escape-setup|worksheet-pdf|worksheet-activity|lesson-plan-word|rewards-single-grant|teacher-schedule-persistence|quran-optional-sync|quran-mobile-rotation|quran-iphone-continuous-audio)\.spec\.ts/,
       use: {
         ...devices["Pixel 5"],
         viewport: { width: 390, height: 844 },
@@ -246,12 +246,45 @@ export default defineConfig({
     },
     {
       name: "desktop-worksheet-pdf",
-      testMatch: /(worksheet-pdf|lesson-plan-word)\.spec\.ts/,
+      testMatch: /worksheet-pdf\.spec\.ts/,
       use: {
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
         isMobile: false,
         hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "desktop-lesson-plan-word",
+      testMatch: /lesson-plan-word\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    // Activity fixtures close their own database pool. Dedicated projects keep
+    // them out of the worker reused by the older worksheet/Word suites.
+    {
+      name: "desktop-worksheet-activity",
+      testMatch: /worksheet-activity\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 900 },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ...chromiumLaunchOptions,
+      },
+    },
+    {
+      name: "mobile-worksheet-activity",
+      testMatch: /worksheet-activity\.spec\.ts/,
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 },
         ...chromiumLaunchOptions,
       },
     },

@@ -38,3 +38,9 @@ A successful shell request to an isolated localhost server does not prove that t
 **Why:** The fixture API and Vite returned successful shell health checks, but the testing browser could not connect to the unrouted fixture port and never rendered the application.
 
 **How to apply:** Verify browser reachability before creating authenticated fixtures. Use a browser-accessible routed test surface; report connection failures as infrastructure blockers rather than product failures or passing UI checks.
+
+When the remote testing browser cannot reach isolated fixture ports, run the existing isolated Playwright configuration locally with Replit's managed Chromium instead of changing shared preview routing.
+
+**Why:** Local Chromium can reach the isolated API/Vite pair directly, while the remote browser's localhost belongs to a different network boundary. This preserves real authenticated persistence checks without exposing fixtures or switching the shared API database.
+
+**How to apply:** Keep the configuration's test-database guard, OTP session setup, separate Vite cache and fixture-owned cleanup. Use the managed Chromium executable already configured for local runs; capture both desktop and narrow-screen evidence.
