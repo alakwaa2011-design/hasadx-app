@@ -539,6 +539,7 @@ export default function WorksheetCreate() {
   const [aiDifferentiation, setAiDifferentiation] = useState(_wsPrefs.aiDifferentiation ?? WS_DEFAULT_PREFS.aiDifferentiation);
   const [aiAssessment, setAiAssessment] = useState(_wsPrefs.aiAssessment ?? WS_DEFAULT_PREFS.aiAssessment);
   const [showQualityReview, setShowQualityReview] = useState(false);
+  const [designPanelRequest, setDesignPanelRequest] = useState(0);
   const [allQuestionsExpanded, setAllQuestionsExpanded] = useState(true);
   const [choiceBoardOpen, setChoiceBoardOpen] = useState(false);
   const [lastCellRegeneration, setLastCellRegeneration] = useState<{
@@ -643,6 +644,11 @@ export default function WorksheetCreate() {
     settings,
     smartGrading,
   });
+  const patchWorksheetSettings = useCallback((updater: (current: Settings) => Settings) => {
+    const next = updater(latestWorksheetRef.current.settings);
+    latestWorksheetRef.current = { ...latestWorksheetRef.current, settings: next };
+    setSettings(next);
+  }, []);
   useEffect(() => {
     latestWorksheetRef.current = {
       title,
@@ -1055,7 +1061,8 @@ export default function WorksheetCreate() {
       const nextQuestions = [...generated, ...current.questions];
        const nextTitle = current.title.trim() || generationTopic.slice(0, 80) || sourceText.trim().split(/\r?\n/)[0].slice(0, 80);
       const lastTheme = getLastTheme();
-      const chosenTheme = selectTheme(
+      const chosenTheme = current.settings.design?.themeSelection === "manual"
+        ? current.settings.template : selectTheme(
         current.subject.trim() || null,
         current.gradeLevel.trim() || null,
         resolvedLanguage,
@@ -1078,7 +1085,7 @@ export default function WorksheetCreate() {
       setQuestions(nextQuestions);
       setContentLang(resolvedLanguage);
       if (!current.title.trim()) setTitle(nextTitle);
-      setLastTheme(chosenTheme);
+      if (chosenTheme) setLastTheme(chosenTheme);
       setSettings(nextSettings);
       latestWorksheetRef.current = {
         ...current,
@@ -1391,7 +1398,8 @@ export default function WorksheetCreate() {
          || sourceText.trim().split(/\r?\n/)[0].slice(0, 80);
       const nextTitle = current.title.trim() || fallbackTitle;
       const lastThemeF = getLastTheme();
-      const chosenThemeF = selectTheme(
+      const chosenThemeF = current.settings.design?.themeSelection === "manual"
+        ? current.settings.template : selectTheme(
         current.subject.trim() || null,
         current.gradeLevel.trim() || null,
         resolvedLanguage,
@@ -1414,7 +1422,7 @@ export default function WorksheetCreate() {
       setQuestions(nextQuestions);
       setContentLang(resolvedLanguage);
       if (!current.title.trim()) setTitle(nextTitle);
-      setLastTheme(chosenThemeF);
+      if (chosenThemeF) setLastTheme(chosenThemeF);
       setSettings(nextSettings);
       latestWorksheetRef.current = {
         ...current,
@@ -1699,14 +1707,23 @@ export default function WorksheetCreate() {
             </div>
             <h3 className="font-bold text-sm text-foreground">{ar ? "الورقة" : "Worksheet"}</h3>
             <span data-testid="text-ws-title-summary" className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{[title.trim(), subject.trim(), gradeLevel.trim()].filter(Boolean).join(" · ") || (ar ? "افتح بيانات الورقة لإضافة العنوان والمادة والصف" : "Open Details to add the title, subject and grade")}</span>
+            <button type="button" data-testid="button-open-worksheet-design"
+              disabled={generating || saving}
+              onClick={() => setDesignPanelRequest(n => n + 1)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 disabled:opacity-50">
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              {ar ? "استوديو التصميم" : "Design studio"}
+            </button>
           </div>
           <div className="p-3" dir={dir}>
             <WorksheetFormatPanel
+              key={designPanelRequest}
+              initialTab={designPanelRequest ? "design" : undefined}
               ar={ar}
               showProfileNote
               gradeSuggestions={gradeLevels.map(g => g.gradeLevel)}
               settings={settings}
-              onSettingsChange={setSettings}
+              onSettingsChange={patchWorksheetSettings}
               meta={{ title, subject, gradeLevel }}
               onMetaChange={patch => {
                 if (patch.title !== undefined) setTitle(patch.title);

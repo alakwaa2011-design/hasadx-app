@@ -1,39 +1,16 @@
 ---
-name: Worksheet design theme system
-description: Architecture of the 7-template worksheet design system — how themes are defined, applied, and auto-selected.
+name: Worksheet visual choice
+description: Why teacher-controlled visual identity and educational artwork must remain separate from automatic design variation.
 ---
 
-## Rule
-Each AI-generated worksheet picks a distinct visual theme; themes never repeat consecutively unless no alternative matches the subject.
+Automatic worksheets should vary their visual identity, but a deliberate teacher design choice takes precedence, including an explicitly chosen classic sheet without a template.
 
-**Why:** Teachers wanted every worksheet to look handcrafted, not templated. Seven genuinely different designs (header layouts, page frames, typography, question styles) make this possible without manual effort.
+**Why:** Teachers wanted handcrafted visual variety, and then requested tools to control their own colors, shapes and professional or child-friendly designs. Automatic generation must not undo that deliberate work.
 
-## Architecture
+**How to apply:** Preserve an explicit visual choice during generation and source extraction. Subject/grade-based variation is for automatic selection, not a reason to replace a teacher's choice.
 
-### Files
-- `artifacts/homework-app/src/pages/teacher/worksheet-themes.tsx` — all theme definitions, header renderers, `selectTheme()`, `getLastTheme()`/`setLastTheme()`
-- `worksheet-print.tsx` — imports themes, applies `ws-theme-{id}` class, injects `<ThemeStyles>` after base `<PrintStyles>`, switches header via `<ThemedHeader>`
-- `worksheet-create.tsx` — calls `selectTheme()` after AI generation and file extraction, stores result in `settings.template`
+Decorative artwork does not replace an educational illustration, and colorful page design does not authorize filling the student's coloring or writing task.
 
-### Theme IDs
-`geometric` | `arabic_ink` | `modern_band` | `exam_paper` | `kids_play` | `science_lab` | `editorial`
+**Why:** A worksheet's visual identity and the actual task presented to the student serve different purposes. Attractive decoration can improve engagement, but cannot make a missing learning diagram complete.
 
-### CSS application
-Each theme CSS uses `.ws-theme-{id}.ws-page { ... }` and `.ws-theme-{id} .ws-* { ... }` overrides.
-`ws-band-top` and `ws-play-banner` use `margin: -18mm -18mm 5mm` to break out of ws-content's 18mm padding and span full page width.
-
-### Header layout types
-`classic` (default 3-col) | `tabular` (geometric/exam) | `arabesque` (arabic_ink) | `band` (modern_band) | `playful` (kids_play) | `clipboard` (science_lab) | `masthead` (editorial)
-
-### Selection priority
-1. Kindergarten/Grade 1-2 → always `kids_play`
-2. Subject keyword match → mapped theme (see subjectMap in selectTheme)
-3. High school grade → `exam_paper` / `editorial` / `modern_band`
-4. General → cycles through `[geometric, modern_band, editorial, exam_paper, science_lab]` using questionCount as seed
-
-### Consecutive repeat prevention
-`localStorage("ws_last_theme")` stores the last used theme; `selectTheme()` always picks an alternative when the natural match equals the last theme.
-
-**How to apply:** When adding new subjects or grade patterns, add them to the `subjectMap` array in `selectTheme()` in worksheet-themes.tsx.
-
-**Print pagination (A4) hard rule:** any .ws-page taller than 297mm by even a fraction of a px splits into page+sliver in print/PDF ("repeated pages"). Three causes fixed: (1) themed page borders add to the 297mm content — subtract via `--ws-frame` var; (2) the hidden measurement div must carry the `ws-theme-*` class or questions are measured with default (smaller) styles; (3) keep SAFETY margins in the packer and a ~10px print-only slack on .ws-content min-height. Verify prints with headless chromium (playwright is in node_modules; login via ctx.request.post then page.pdf) — counting `/Type /Page` in the PDF catches slivers instantly.
+**How to apply:** Keep ornamental artwork away from writing space. A coloring task still needs a real, unfilled instructional visual; model answers stay on the teacher's answer key.

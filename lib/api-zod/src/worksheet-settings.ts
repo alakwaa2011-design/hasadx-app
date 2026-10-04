@@ -11,7 +11,25 @@ export const worksheetThemeIdSchema = z.enum([
   "kids_play",
   "science_lab",
   "editorial",
+  "studio_pro",
+  "pastel_garden",
+  "space_journey",
+  "storybook",
+  "math_grid",
 ]);
+
+/** Safe, structured print design; never stores model-generated CSS or markup. */
+export const worksheetDesignSchema = z.object({
+  themeSelection: z.enum(["automatic", "manual"]).optional(),
+  printMode: z.enum(["color", "ink_saver", "mono"]).optional(),
+  secondaryColor: hexColorSchema.optional(),
+  pageFrame: z.enum(["none", "line", "double", "rounded"]).optional(),
+  questionFrame: z.enum(["default", "none", "outline", "soft"]).optional(),
+  numbering: z.enum(["badge", "plain", "circle", "square"]).optional(),
+  answerPattern: z.enum(["lines", "dotted", "grid", "blank"]).optional(),
+  decoration: z.enum(["none", "botanical", "space", "confetti"]).optional(),
+  density: z.enum(["compact", "comfortable"]).optional(),
+});
 
 export const worksheetCanvasElementSchema = z.object({
   id: z.string().min(1).max(100),
@@ -102,6 +120,7 @@ export const worksheetSettingsSchema = z.object({
     "logoUrl must be a supported image data URL",
   ).optional(),
   template: worksheetThemeIdSchema.optional(),
+  design: worksheetDesignSchema.optional(),
   layout: z.object({
     elements: z.array(worksheetCanvasElementSchema).max(100),
   }).optional(),

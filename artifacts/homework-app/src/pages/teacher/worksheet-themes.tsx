@@ -20,6 +20,7 @@ import { worksheetLogoUrl } from "@/lib/worksheet-logo";
 
 import type React from "react";
 import type { WorksheetThemeId } from "@workspace/api-zod";
+import { createExtraThemes, EXTRA_BACKGROUNDS } from "./worksheet-extra-themes";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ export interface HeaderProps {
 
 // ─── The 7 themes ────────────────────────────────────────────────
 
-export const THEMES: Record<ThemeId, ThemeSpec> = {
+const BASE_THEMES: Record<Exclude<ThemeId, "studio_pro" | "pastel_garden" | "space_journey" | "storybook" | "math_grid">, ThemeSpec> = {
 
   // ── 1. Geometric (Math / Physics) ──────────────────────────────
   geometric: {
@@ -906,6 +907,8 @@ export function setLastTheme(id: ThemeId) {
  * Never returns the same ID as `lastThemeId` unless there is no other
  * viable option (i.e. only one theme matches the subject).
  */
+export const THEMES: Record<ThemeId, ThemeSpec> = { ...BASE_THEMES, ...createExtraThemes(BASE_THEMES) };
+
 export function selectTheme(
   subject: string | null,
   gradeLevel: string | null,
@@ -917,13 +920,19 @@ export function selectTheme(
   const g = (gradeLevel ?? "").trim().toLowerCase();
 
   // ── Kindergarten / Grade 1-2 ──
-  if (/روض|kg|kind|التمهيد|kinder|grade 1\b|1st grade|first grade|الأول الابتدائي|الصف الأول/.test(g)) {
-    return "kids_play";
+  const secondary = /ثانو|متوسط|إعدادي|secondary|middle|high school/.test(g);
+  if (!secondary && /روض|kg|kind|التمهيد|kinder|grade 1\b|1st grade|first grade|الأول الابتدائي|الصف الأول/.test(g)) {
+    const kids: ThemeId[] = ["kids_play", "pastel_garden", "storybook", "space_journey"].filter(t => t !== lastThemeId) as ThemeId[];
+    return kids[questionCount % kids.length];
+  }
+  if (!secondary && /grade [2-5]\b|[2-5](nd|rd|th) grade|الثاني الابتدائي|الثالث الابتدائي|الرابع الابتدائي|الخامس الابتدائي/.test(g) && !/رياض|math|حساب/.test(s)) {
+    const mid: ThemeId[] = ["pastel_garden", "space_journey", "storybook"].filter(t => t !== lastThemeId) as ThemeId[];
+    return mid[questionCount % mid.length];
   }
 
   // ── Subject-based primary match ──
   const subjectMap: [RegExp, ThemeId][] = [
-    [/رياض|math|حساب|جبر|هندس|algebra|geometry|trigon|calculus|statistics/, "geometric"],
+    [/رياض|math|حساب|جبر|هندس|algebra|geometry|trigon|calculus|statistics/, "math_grid"],
     [/فيزياء|physics/, "science_lab"],
     [/علوم|science|biology|chemistry|أحياء|كيمياء|بيولوجيا|biolog|chem|lab/, "science_lab"],
     [/اللغة العربية|عرب|arabic lang|لغة عرب|نحو|إملاء|صرف|بلاغ/, "arabic_ink"],
@@ -947,6 +956,11 @@ export function selectTheme(
           modern_band: "exam_paper",
           exam_paper: "modern_band",
           kids_play: "modern_band",
+          studio_pro: "modern_band",
+          pastel_garden: "storybook",
+          space_journey: "science_lab",
+          storybook: "pastel_garden",
+          math_grid: "geometric",
         };
         return alts[themeId];
       }
@@ -962,7 +976,7 @@ export function selectTheme(
   }
 
   // ── General — rotate through the non-specialised themes ──
-  const general: ThemeId[] = ["geometric", "modern_band", "editorial", "exam_paper", "science_lab"];
+  const general: ThemeId[] = ["studio_pro", "geometric", "modern_band", "editorial", "exam_paper", "science_lab"];
   const available = general.filter(t => t !== lastThemeId);
   // Use questionCount as a deterministic but varied seed
   return available[questionCount % available.length];
@@ -978,6 +992,7 @@ export const THEME_BACKGROUNDS: Record<ThemeId, string> = {
   kids_play:    "#FFFBF0",
   science_lab:  "white",
   editorial:    "#FDF8F5",
+  ...EXTRA_BACKGROUNDS,
 };
 
 // ─── Header layout renderers ─────────────────────────────────────

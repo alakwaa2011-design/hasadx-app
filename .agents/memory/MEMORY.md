@@ -15,7 +15,7 @@
 - [Rebase semantic-merge corruption](rebase-semantic-merge-corruption.md) — task-merge rebases can splice code outside conflict markers; verify both sides' changes survive, rebuild from clean git shows if not.
 - [manualChunks React split](manualchunks-react-split.md) — splitting react into its own vendor chunk broke prod with "Cannot set properties of undefined (Children)"; never manualChunk react.
 - [Workspace query context singletons](workspace-query-context-singletons.md) — React dedupe alone cannot merge peer-variant query contexts; reject root crash screens in production smoke checks.
-- [Worksheet design theme system](worksheet-theme-system.md) — 7 themes in worksheet-themes.tsx; ThemeId in Settings.template; auto-selected on AI generation via selectTheme(); localStorage tracks last theme to prevent repeats.
+- [Worksheet visual choice](worksheet-theme-system.md) — deliberate teacher design choices take precedence over automatic variation; decorative artwork is not a task's required illustration.
 - [Outline 120s proxy budget](outline-120s-proxy-budget.md) — proxy aborts at 120s; multi-call LLM routes need elapsed-time retry guards + per-call SDK timeouts; sonnet needs 16k max_tokens for full outlines.
 - [gpt-5 reasoning token budget](gpt5-reasoning-token-budget.md) — gpt-5 spends max_completion_tokens on hidden reasoning; without reasoning_effort:"minimal" + big budget, replies come back EMPTY (finish=length).
 - [Worksheet smart grading link](worksheet-grading-link.md) — hidden source='worksheet' assignments power photo grading; owner-session only, no access code, version on edit-after-results.

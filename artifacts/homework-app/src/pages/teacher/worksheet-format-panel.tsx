@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Building2, Settings as SettingsIcon, FileText, Plus, X, ImageIcon } from "lucide-react";
 import type { WorksheetSettings } from "@workspace/api-zod";
 import { toast } from "@/components/ui/sonner";
-import { THEMES, type ThemeId } from "./worksheet-themes";
+import { WorksheetDesignStudio } from "./worksheet-design-studio";
 
 type Settings = WorksheetSettings;
 type FontFamily = Settings["fontFamily"];
@@ -37,6 +37,8 @@ interface Props {
   readOnly?: boolean;
   /** Optional grade suggestions for the grade field. */
   gradeSuggestions?: string[];
+  /** Which tab opens first (default: data). */
+  initialTab?: "data" | "header" | "design";
 }
 
 const inputCls = "w-full h-9 px-3 rounded-lg border bg-background text-sm outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
@@ -70,9 +72,9 @@ function Check({ label, value, onChange, testId }: { label: string; value: boole
  * Used by the creator, the creator preview overlay and the saved print route.
  */
 export function WorksheetFormatPanel({
-  ar, settings, onSettingsChange, meta, onMetaChange, onClearProfile, showProfileNote, readOnly, gradeSuggestions,
+  ar, settings, onSettingsChange, meta, onMetaChange, onClearProfile, showProfileNote, readOnly, gradeSuggestions, initialTab,
 }: Props) {
-  const [tab, setTab] = useState<"info" | "header" | "design" | null>(null);
+  const [tab, setTab] = useState<"info" | "header" | "design" | null>(initialTab ? (initialTab === "data" ? "info" : initialTab) : null);
   const set = (patch: Partial<Settings>) => onSettingsChange(s => ({ ...s, ...patch }));
   const fields = settings.customFields ?? [];
   const hasProfile = !!(settings.schoolName || settings.section || settings.teacherName || settings.logoUrl || fields.length);
@@ -217,37 +219,7 @@ export function WorksheetFormatPanel({
 
       {tab === "design" && (
         <div className="space-y-5">
-          <div>
-            <div className="text-[11px] font-bold mb-2 text-muted-foreground">{ar ? "القالب المرئي" : "Visual template"}</div>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-              <button
-                type="button" aria-pressed={!settings.template} data-testid="theme-classic"
-                onClick={() => set({ template: undefined })}
-                className={`p-1.5 rounded-lg border-2 ${!settings.template ? "border-primary bg-primary/5" : "border-transparent hover:bg-muted"}`}
-              >
-                <div className="h-8 rounded flex items-center justify-center border border-dashed border-primary/40 bg-background text-[9px] font-bold text-primary">{ar ? "كلاسيك" : "Classic"}</div>
-              </button>
-              {(Object.values(THEMES) as (typeof THEMES)[ThemeId][]).map(t => {
-                const active = settings.template === t.id;
-                const [c1] = t.swatchColors;
-                return (
-                  <button
-                    key={t.id} type="button" aria-pressed={active} data-testid={`theme-${t.id}`}
-                    title={ar ? `${t.nameAr}: ${t.description}` : t.nameEn}
-                    onClick={() => set({ template: active ? undefined : t.id })}
-                    className="p-1.5 rounded-lg border-2 transition-colors"
-                    style={{ borderColor: active ? c1 : "transparent", background: active ? `${c1}10` : undefined }}
-                  >
-                    <div className="h-8 rounded overflow-hidden shadow-sm" style={{ background: c1 }}>
-                      <div className="h-[40%]" style={{ background: c1 }} />
-                      <div className="h-[60%] bg-white"><div className="mx-1 mt-0.5 h-px" style={{ background: `${c1}44` }} /></div>
-                    </div>
-                    <span className="block mt-1 text-[9px] font-bold truncate">{ar ? t.nameAr : t.nameEn}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <WorksheetDesignStudio settings={settings} ar={ar} disabled={readOnly} onPatch={set} />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Lbl label={ar ? "الأعمدة" : "Columns"}>

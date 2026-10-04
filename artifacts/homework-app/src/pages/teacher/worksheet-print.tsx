@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo, type CSSProperties, type KeyboardEvent } from "react";
+import { worksheetDesignCss } from "./worksheet-design-styles";
 import { useParams, useLocation } from "wouter";
 import { useI18n } from "@/lib/i18n";
 import { useSmartBack } from "@/lib/nav-history";
@@ -285,6 +286,7 @@ export function WorksheetPrintView({
   const showWatermark = data.settings.showWatermark !== false;
   // Teacher's manual color always wins; theme provides a default; fallback to brand green
   const themeColor = data.settings.themeColor ?? theme?.defaultColor ?? BRAND_PRIMARY;
+  const secondaryColor = data.settings.design?.secondaryColor ?? theme?.swatchColors[1] ?? BRAND_GOLD;
   const logoUrl = worksheetLogoUrl(data.settings.logoUrl);
 
   // ── Local layout-editing state ─────────────────────────────────────────
@@ -561,6 +563,7 @@ export function WorksheetPrintView({
       data.settings.goodLuck ?? "", JSON.stringify(customFields),
       data.settings.learningObjective ?? "", data.settings.activityDuration ?? "",
       themeId ?? "",
+      JSON.stringify(data.settings.design ?? {}),
       [...localBreaks].sort().join(","),
       JSON.stringify(localQuestionStyles),
       fontSignature, fontEpoch,
@@ -856,7 +859,7 @@ export function WorksheetPrintView({
       data={data}
       labels={labels}
       TC={themeColor}
-      GOLD={BRAND_GOLD}
+      GOLD={secondaryColor}
       ar={ar}
       hasIdentity={hasIdentity}
       customFields={customFields}
@@ -866,7 +869,7 @@ export function WorksheetPrintView({
 
   const qColWidth = cols === 2 ? "calc((174mm - 8mm) / 2)" : "174mm";
   // The page class includes the theme modifier when a theme is active
-  const pageClass = `ws-page${themeId ? ` ws-theme-${themeId}` : ""}`;
+  const pageClass = `ws-page ws-designed${themeId ? ` ws-theme-${themeId}` : ""}`;
   // Use theme background for the screen wrapper tint
   const hostBg = "bg-neutral-200";
   const selectedQuestion = selectedField ? localQs.find(q => q.id === selectedField.questionId) : undefined;
@@ -903,7 +906,7 @@ export function WorksheetPrintView({
         <ThemeStyles
           theme={theme}
           TC={themeColor}
-          GOLD={BRAND_GOLD}
+          GOLD={secondaryColor}
           BG={themeBg}
           fontFamily={fontFamily}
           headingFont={headingFont}
@@ -912,6 +915,8 @@ export function WorksheetPrintView({
         />
       )}
 
+      <style data-worksheet-design>{worksheetDesignCss(data.settings, themeColor)}</style>
+
       {/* ── Hidden measurement div ───────────────────────────────── */}
       <div
         ref={measureRef}
@@ -919,7 +924,7 @@ export function WorksheetPrintView({
         // فئة القالب ضرورية هنا: بدونها تُقاس الأسئلة بالتنسيق الافتراضي
         // بينما تُعرض ببطاقات القالب الأكبر، فتمتلئ الصفحة أكثر من طاقتها
         // وتنقسم عند الطباعة إلى صفحات مكررة.
-        className={`no-print print-host${themeId ? ` ws-theme-${themeId}` : ""}`}
+        className={`no-print print-host ws-designed${themeId ? ` ws-theme-${themeId}` : ""}`}
         style={{ position: "fixed", left: 0, top: 0, width: "210mm", height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}
         dir={dir}
       >
@@ -1088,7 +1093,7 @@ export function WorksheetPrintView({
           const isFirst = pi === 0;
           const isLast = pi === pages.length - 1;
           return (
-            <article data-worksheet-page key={pageNum} className={pageClass} lang={data.language} style={{ background: themeBg }}>
+            <article data-worksheet-page key={pageNum} className={pageClass} lang={data.language} style={{ backgroundColor: themeBg }}>
               {showWatermark && <WatermarkLayer ar={ar} />}
               {/* Classic corner ornaments only for no-theme or themes that keep them */}
               {!themeId && <CornerOrnaments />}
@@ -1164,7 +1169,7 @@ export function WorksheetPrintView({
               key={`answer-page-${answerPageIndex + 1}`}
               className={pageClass}
               lang={data.language}
-              style={{ background: themeBg }}
+              style={{ backgroundColor: themeBg }}
             >
               {showWatermark && <WatermarkLayer ar={ar} />}
               {!themeId && <CornerOrnaments />}
