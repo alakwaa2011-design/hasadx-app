@@ -32,3 +32,9 @@ The user wants easier worksheet preparation: subject and grade should be enough 
 **Why:** The user explicitly described the current worksheets as too test-like and requested a simpler, activity-led experience similar to Chalkie.
 
 **How to apply:** Evaluate worksheet improvements on both teacher preparation effort and the student's actual activity, not merely visual decoration or a larger inventory of question types.
+
+Explicitly chosen advanced settings constrain automatic generation. If no advanced settings are chosen, AI should infer an engaging, grade- and subject-appropriate activity.
+
+**Why:** The user clarified that simplifying setup must not cause automatic generation to ignore their deliberate settings.
+
+**How to apply:** Distinguish an unset field from a deliberate choice, including “none” or “mixed.” Do not let cached manual defaults constrain automatic generation or present those defaults as inferred output.

@@ -1,10 +1,56 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminDirectoryPage, AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GameShareLink, GameShareLinkInput, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GetQuranOfflineContent200, GetQuranOfflineContentParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAdminDirectoryParams, ListAiVideoProjects200, ListAssignmentsParams, ListTeacherQuranMemorizationItemsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranRecitationPartialResponse, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, QuranWordTajweed, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherQuranMemorizationHistoryEvent, TeacherQuranMemorizationItems, TeacherQuranMemorizationStudent, TeacherQuranMemorizationSummary, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, TranscribeQuranRecitationPartialBody, TutorialLinks, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody, WorksheetPageRenderInput } from './api.schemas';
+import type { AdminDirectoryPage, AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GameShareLink, GameShareLinkInput, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GetQuranOfflineContent200, GetQuranOfflineContentParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAdminDirectoryParams, ListAiVideoProjects200, ListAssignmentsParams, ListTeacherQuranMemorizationItemsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranRecitationPartialResponse, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, QuranWordTajweed, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherQuranMemorizationHistoryEvent, TeacherQuranMemorizationItems, TeacherQuranMemorizationStudent, TeacherQuranMemorizationSummary, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, TranscribeQuranRecitationPartialBody, TutorialLinks, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody, WorksheetActivityInput, WorksheetActivityResult, WorksheetActivitySourceInput, WorksheetPageRenderInput } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+export declare const getGenerateWorksheetActivityUrl: () => string;
+/**
+ * @summary Generate a printable worksheet honoring explicit teacher constraints
+ */
+export declare const generateWorksheetActivity: (worksheetActivityInput: WorksheetActivityInput, options?: Parameters<typeof customFetch>[1]) => Promise<WorksheetActivityResult>;
+export declare const getGenerateWorksheetActivityMutationKey: () => readonly ["generateWorksheetActivity"];
+export declare const getGenerateWorksheetActivityMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError, GenerateWorksheetActivityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError, GenerateWorksheetActivityMutationVariables, TContext>;
+export type GenerateWorksheetActivityMutationResult = NonNullable<Awaited<ReturnType<typeof generateWorksheetActivity>>>;
+export type GenerateWorksheetActivityMutationBody = BodyType<WorksheetActivityInput>;
+export type GenerateWorksheetActivityMutationError = ErrorType<void>;
+export type GenerateWorksheetActivityMutationVariables = {
+    data: BodyType<WorksheetActivityInput>;
+};
+/**
+* @summary Generate a printable worksheet honoring explicit teacher constraints
+*/
+export declare const useGenerateWorksheetActivity: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError, GenerateWorksheetActivityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError, GenerateWorksheetActivityMutationVariables, TContext>;
+export declare const getExtractWorksheetActivityUrl: () => string;
+/**
+ * @summary Build printable activities grounded in educational source material
+ */
+export declare const extractWorksheetActivity: (worksheetActivitySourceInput: WorksheetActivitySourceInput, options?: Parameters<typeof customFetch>[1]) => Promise<WorksheetActivityResult>;
+export declare const getExtractWorksheetActivityMutationKey: () => readonly ["extractWorksheetActivity"];
+export declare const getExtractWorksheetActivityMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError, ExtractWorksheetActivityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError, ExtractWorksheetActivityMutationVariables, TContext>;
+export type ExtractWorksheetActivityMutationResult = NonNullable<Awaited<ReturnType<typeof extractWorksheetActivity>>>;
+export type ExtractWorksheetActivityMutationBody = BodyType<WorksheetActivitySourceInput>;
+export type ExtractWorksheetActivityMutationError = ErrorType<void>;
+export type ExtractWorksheetActivityMutationVariables = {
+    data: BodyType<WorksheetActivitySourceInput>;
+};
+/**
+* @summary Build printable activities grounded in educational source material
+*/
+export declare const useExtractWorksheetActivity: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError, ExtractWorksheetActivityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError, ExtractWorksheetActivityMutationVariables, TContext>;
 export declare const getCreateGameShareLinkUrl: () => string;
 /**
  * Does not create a game or change the destination's authorization. Guest hosts may create aliases.

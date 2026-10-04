@@ -32,3 +32,9 @@ Keep the isolated browser-test Vite server's dependency cache separate from the 
 **Why:** Concurrent servers using the same optimized-dependency cache can invalidate each other's module URLs and return `504 Outdated Optimize Dep`. The app's chunk-error screen then says a new update is available even though the failure is a cache collision, not a platform notice.
 
 **How to apply:** Use a distinct test-only Vite cache directory. When an isolated browser run shows the update screen, inspect module network failures before attributing it to Replit or altering application behavior.
+
+A successful shell request to an isolated localhost server does not prove that the testing browser can reach that server.
+
+**Why:** The fixture API and Vite returned successful shell health checks, but the testing browser could not connect to the unrouted fixture port and never rendered the application.
+
+**How to apply:** Verify browser reachability before creating authenticated fixtures. Use a browser-accessible routed test surface; report connection failures as infrastructure blockers rather than product failures or passing UI checks.

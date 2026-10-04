@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { worksheetActivityStyleSchema, worksheetGenerationConstraintsSchema } from "./worksheet-activity";
 
 const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -58,6 +59,11 @@ const worksheetQuestionStyleSchema = z.object({
 });
 
 export const worksheetSettingsSchema = z.object({
+  activityStyle: worksheetActivityStyleSchema.optional(),
+  executionMode: z.enum(["individual", "group"]).optional(),
+  groupSize: z.number().int().min(2).max(6).optional(),
+  targetPages: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  generationConstraints: worksheetGenerationConstraintsSchema.optional(),
   instructions: z.string().max(2000).optional(),
   learningObjective: z.string().trim().max(500).optional(),
   cognitiveSkill: z.enum(["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"]).optional(),

@@ -148,6 +148,9 @@ import type {
   UpdateSubmissionBody,
   UploadAiVideoSourceImage201,
   UploadAiVideoSourceImageBody,
+  WorksheetActivityInput,
+  WorksheetActivityResult,
+  WorksheetActivitySourceInput,
   WorksheetPageRenderInput
 } from './api.schemas';
 
@@ -177,6 +180,218 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGenerateWorksheetActivityUrl = () => {
+
+
+
+
+  return `/api/worksheets/ai/generate`
+}
+
+/**
+ * @summary Generate a printable worksheet honoring explicit teacher constraints
+ */
+export const generateWorksheetActivity = async (worksheetActivityInput: WorksheetActivityInput, options?: Parameters<typeof customFetch>[1]): Promise<WorksheetActivityResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<WorksheetActivityResult>(getGenerateWorksheetActivityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(worksheetActivityInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateWorksheetActivityMutationKey = () => ['generateWorksheetActivity'] as const;
+
+export const getGenerateWorksheetActivityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError,GenerateWorksheetActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError,GenerateWorksheetActivityMutationVariables, TContext> => {
+
+const mutationKey = getGenerateWorksheetActivityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateWorksheetActivity>>, GenerateWorksheetActivityMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateWorksheetActivity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateWorksheetActivityMutationResult = NonNullable<Awaited<ReturnType<typeof generateWorksheetActivity>>>
+    export type GenerateWorksheetActivityMutationBody = BodyType<WorksheetActivityInput>
+    export type GenerateWorksheetActivityMutationError = ErrorType<void>
+    export type GenerateWorksheetActivityMutationVariables = {data: BodyType<WorksheetActivityInput>}
+
+    /**
+ * @summary Generate a printable worksheet honoring explicit teacher constraints
+ */
+export const useGenerateWorksheetActivity = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateWorksheetActivity>>, TError,GenerateWorksheetActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateWorksheetActivity>>,
+        TError,
+        GenerateWorksheetActivityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateWorksheetActivityMutationOptions(options));
+    }
+
+export const getExtractWorksheetActivityUrl = () => {
+
+
+
+
+  return `/api/worksheets/ai/extract`
+}
+
+/**
+ * @summary Build printable activities grounded in educational source material
+ */
+export const extractWorksheetActivity = async (worksheetActivitySourceInput: WorksheetActivitySourceInput, options?: Parameters<typeof customFetch>[1]): Promise<WorksheetActivityResult> => {
+    const formData = new FormData();
+if(worksheetActivitySourceInput.files !== undefined) {
+ worksheetActivitySourceInput.files.forEach(value => formData.append(`files`, value));
+ }
+if(worksheetActivitySourceInput.sourceText !== undefined) {
+ formData.append(`sourceText`, worksheetActivitySourceInput.sourceText);
+ }
+if(worksheetActivitySourceInput.topicHint !== undefined) {
+ formData.append(`topicHint`, worksheetActivitySourceInput.topicHint);
+ }
+if(worksheetActivitySourceInput.subject !== undefined) {
+ formData.append(`subject`, worksheetActivitySourceInput.subject);
+ }
+if(worksheetActivitySourceInput.gradeLevel !== undefined) {
+ formData.append(`gradeLevel`, worksheetActivitySourceInput.gradeLevel);
+ }
+if(worksheetActivitySourceInput.questionSelection !== undefined) {
+ formData.append(`questionSelection`, worksheetActivitySourceInput.questionSelection);
+ }
+if(worksheetActivitySourceInput.language !== undefined) {
+ formData.append(`language`, worksheetActivitySourceInput.language);
+ }
+if(worksheetActivitySourceInput.pages !== undefined) {
+ formData.append(`pages`, worksheetActivitySourceInput.pages.toString())
+ }
+if(worksheetActivitySourceInput.activityStyle !== undefined) {
+ formData.append(`activityStyle`, worksheetActivitySourceInput.activityStyle);
+ }
+if(worksheetActivitySourceInput.executionMode !== undefined) {
+ formData.append(`executionMode`, worksheetActivitySourceInput.executionMode);
+ }
+if(worksheetActivitySourceInput.groupSize !== undefined) {
+ formData.append(`groupSize`, worksheetActivitySourceInput.groupSize.toString())
+ }
+if(worksheetActivitySourceInput.generationConstraints !== undefined) {
+ formData.append(`generationConstraints`, worksheetActivitySourceInput.generationConstraints);
+ }
+if(worksheetActivitySourceInput.counts !== undefined) {
+ formData.append(`counts`, worksheetActivitySourceInput.counts);
+ }
+if(worksheetActivitySourceInput.difficulty !== undefined) {
+ formData.append(`difficulty`, worksheetActivitySourceInput.difficulty);
+ }
+if(worksheetActivitySourceInput.learningObjective !== undefined) {
+ formData.append(`learningObjective`, worksheetActivitySourceInput.learningObjective);
+ }
+if(worksheetActivitySourceInput.cognitiveSkill !== undefined) {
+ formData.append(`cognitiveSkill`, worksheetActivitySourceInput.cognitiveSkill);
+ }
+if(worksheetActivitySourceInput.activityDuration !== undefined) {
+ formData.append(`activityDuration`, worksheetActivitySourceInput.activityDuration.toString())
+ }
+if(worksheetActivitySourceInput.differentiation !== undefined) {
+ formData.append(`differentiation`, worksheetActivitySourceInput.differentiation);
+ }
+if(worksheetActivitySourceInput.assessmentMode !== undefined) {
+ formData.append(`assessmentMode`, worksheetActivitySourceInput.assessmentMode);
+ }
+
+  return customFetch<WorksheetActivityResult>(getExtractWorksheetActivityUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getExtractWorksheetActivityMutationKey = () => ['extractWorksheetActivity'] as const;
+
+export const getExtractWorksheetActivityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError,ExtractWorksheetActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError,ExtractWorksheetActivityMutationVariables, TContext> => {
+
+const mutationKey = getExtractWorksheetActivityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof extractWorksheetActivity>>, ExtractWorksheetActivityMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  extractWorksheetActivity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExtractWorksheetActivityMutationResult = NonNullable<Awaited<ReturnType<typeof extractWorksheetActivity>>>
+    export type ExtractWorksheetActivityMutationBody = BodyType<WorksheetActivitySourceInput>
+    export type ExtractWorksheetActivityMutationError = ErrorType<void>
+    export type ExtractWorksheetActivityMutationVariables = {data: BodyType<WorksheetActivitySourceInput>}
+
+    /**
+ * @summary Build printable activities grounded in educational source material
+ */
+export const useExtractWorksheetActivity = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof extractWorksheetActivity>>, TError,ExtractWorksheetActivityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof extractWorksheetActivity>>,
+        TError,
+        ExtractWorksheetActivityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExtractWorksheetActivityMutationOptions(options));
+    }
 
 export const getCreateGameShareLinkUrl = () => {
 

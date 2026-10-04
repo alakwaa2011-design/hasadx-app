@@ -20,6 +20,48 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /worksheets/ai/generate:
+    post:
+      operationId: generateWorksheetActivity
+      summary: Generate a printable worksheet honoring explicit teacher constraints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorksheetActivityInput"
+      responses:
+        "200":
+          description: Validated printable worksheet items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorksheetActivityResult"
+        "400":
+          description: Invalid or conflicting teacher constraints
+        "500":
+          description: Generation failed; held credits are refunded
+  /worksheets/ai/extract:
+    post:
+      operationId: extractWorksheetActivity
+      summary: Build printable activities grounded in educational source material
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/WorksheetActivitySourceInput"
+      responses:
+        "200":
+          description: Validated source-grounded worksheet items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorksheetActivityResult"
+        "400":
+          description: Invalid source or teacher constraints
+        "500":
+          description: Generation failed; held credits are refunded
   /game-share-links:
     post:
       operationId: createGameShareLink
@@ -2891,6 +2933,131 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    WorksheetActivityConstraints:
+      type: object
+      description: Only explicitly selected settings are present; omitted settings are inferred by AI.
+      properties:
+        difficulty: { type: string, enum: [easy, medium, hard, mixed] }
+        learningObjective: { type: string, minLength: 1, maxLength: 500 }
+        cognitiveSkill: { type: string, enum: [remember, understand, apply, analyze, evaluate, create, mixed] }
+        activityDuration: { type: integer, minimum: 5, maximum: 90 }
+        differentiation: { type: string, enum: [none, support, enrichment, scaffolded] }
+        assessmentMode: { type: string, enum: [diagnostic, formative, summative] }
+        itemCount: { type: integer, minimum: 1, maximum: 12 }
+        allowedTypes:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: string
+            enum: [mcq, true_false, short_answer, fill_blank, matching, worked_problem, extended_response, error_correction, word_bank, compare]
+    WorksheetActivityInput:
+      type: object
+      properties:
+        questionSelection: { type: string, enum: [auto, manual] }
+        language: { type: string, enum: [ar, en], default: ar }
+        topic: { type: string, maxLength: 500 }
+        sourceText: { type: string, maxLength: 12000 }
+        subject: { type: ["string", "null"], maxLength: 100 }
+        gradeLevel: { type: ["string", "null"], maxLength: 50 }
+        pages: { type: integer, enum: [1, 2, 3], default: 1 }
+        activityStyle:
+          type: string
+          enum: [auto, concept_map, drawing, coloring, sorting, sequencing, group_task, practice]
+        executionMode: { type: string, enum: [individual, group] }
+        groupSize: { type: integer, minimum: 2, maximum: 6 }
+        generationConstraints:
+          $ref: "#/components/schemas/WorksheetActivityConstraints"
+        difficulty: { type: string, enum: [easy, medium, hard, mixed] }
+        learningObjective: { type: string, maxLength: 500 }
+        cognitiveSkill: { type: string, enum: [remember, understand, apply, analyze, evaluate, create, mixed] }
+        activityDuration: { type: integer, minimum: 5, maximum: 90 }
+        differentiation: { type: string, enum: [none, support, enrichment, scaffolded] }
+        assessmentMode: { type: string, enum: [diagnostic, formative, summative] }
+        counts:
+          type: object
+          additionalProperties: { type: integer, minimum: 0, maximum: 40 }
+    WorksheetActivitySourceInput:
+      type: object
+      properties:
+        files:
+          type: array
+          items: { type: string, format: binary }
+        sourceText: { type: string, maxLength: 12000 }
+        topicHint: { type: string, maxLength: 300 }
+        subject: { type: string, maxLength: 100 }
+        gradeLevel: { type: string, maxLength: 50 }
+        questionSelection: { type: string, enum: [auto, manual] }
+        language: { type: string, enum: [ar, en] }
+        pages: { type: integer, enum: [1, 2, 3] }
+        activityStyle:
+          type: string
+          enum: [auto, concept_map, drawing, coloring, sorting, sequencing, group_task, practice]
+        executionMode: { type: string, enum: [individual, group] }
+        groupSize: { type: integer, minimum: 2, maximum: 6 }
+        generationConstraints:
+          type: string
+          description: JSON-encoded WorksheetActivityConstraints
+        counts: { type: string, description: JSON-encoded per-type counts }
+        difficulty: { type: string, enum: [easy, medium, hard, mixed] }
+        learningObjective: { type: string, maxLength: 500 }
+        cognitiveSkill: { type: string, enum: [remember, understand, apply, analyze, evaluate, create, mixed] }
+        activityDuration: { type: integer, minimum: 5, maximum: 90 }
+        differentiation: { type: string, enum: [none, support, enrichment, scaffolded] }
+        assessmentMode: { type: string, enum: [diagnostic, formative, summative] }
+    WorksheetPrintableActivity:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [concept_map, drawing, coloring, sorting, sequencing, group_task] }
+        center: { type: string, maxLength: 180 }
+        branches:
+          type: array
+          minItems: 2
+          maxItems: 6
+          items: { type: string, maxLength: 180 }
+        items:
+          type: array
+          minItems: 2
+          maxItems: 8
+          items: { type: string, maxLength: 180 }
+        categories:
+          type: array
+          minItems: 2
+          maxItems: 4
+          items: { type: string, maxLength: 180 }
+        steps:
+          type: array
+          minItems: 2
+          maxItems: 5
+          items: { type: string, maxLength: 180 }
+        roles:
+          type: array
+          minItems: 2
+          maxItems: 6
+          items: { type: string, maxLength: 180 }
+        spaceHeight: { type: integer, minimum: 60, maximum: 180, default: 100 }
+    WorksheetActivityResult:
+      type: object
+      required: [questions, language]
+      properties:
+        language: { type: string, enum: [ar, en] }
+        questions:
+          type: array
+          minItems: 1
+          maxItems: 60
+          items:
+            type: object
+            required: [id, type]
+            additionalProperties: true
+            properties:
+              id: { type: string }
+              type:
+                type: string
+                enum: [mcq, true_false, short_answer, fill_blank, matching, worked_problem, extended_response, error_correction, word_bank, compare, tic_tac_toe]
+              prompt: { type: string }
+              activity:
+                $ref: "#/components/schemas/WorksheetPrintableActivity"
     GameShareLinkInput:
       type: object
       required: [path]

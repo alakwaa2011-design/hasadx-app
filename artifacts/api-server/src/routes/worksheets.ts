@@ -7,6 +7,14 @@ import { featureAccess } from "@workspace/billing";
 import { z } from "zod";
 import { automaticWorksheetCounts, automaticWorksheetGuidance, worksheetVisualGuidance, worksheetVisualSchema } from "../lib/worksheet-auto-selection";
 import { RenderWorksheetPageBody, worksheetSettingsSchema } from "@workspace/api-zod";
+import {
+  worksheetActivitySchema, worksheetActivityStyleSchema, worksheetGenerationConstraintsSchema,
+  type WorksheetActivityStyle, type WorksheetGenerationConstraints,
+} from "@workspace/api-zod";
+import {
+  constrainedWorksheetCounts, parseWorksheetConstraints, worksheetActivityGuidance,
+  validateWorksheetActivityOutput, validateWorksheetActivityRequest,
+} from "../lib/worksheet-activities";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -72,7 +80,8 @@ async function runTierCompletion(opts: {
   const model = modelForTier(opts.tier);
   const invoke = () => openai.chat.completions.create({
     model,
-    max_completion_tokens: opts.maxTokens,
+    max_completion_tokens: model === "gpt-5" ? Math.max(opts.maxTokens, 12000) : opts.maxTokens,
+    ...(model === "gpt-5" ? { reasoning_effort: "minimal" as const } : {}),
     messages: [
       ...(opts.system ? [{ role: "system" as const, content: opts.system }] : []),
       { role: "user" as const, content: opts.prompt },
@@ -212,7 +221,7 @@ const ticTacToeSchema = z.object({
 const questionSchema = z.discriminatedUnion("type", [
   mcqSchema.extend({ visual: worksheetVisualSchema.optional() }),
   trueFalseSchema.extend({ visual: worksheetVisualSchema.optional() }),
-  shortAnswerSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  shortAnswerSchema.extend({ visual: worksheetVisualSchema.optional(), activity: worksheetActivitySchema.optional() }),
   fillBlankSchema.extend({ visual: worksheetVisualSchema.optional() }),
   matchingSchema.extend({ visual: worksheetVisualSchema.optional() }),
   workedProblemSchema.extend({ visual: worksheetVisualSchema.optional() }),
@@ -279,6 +288,9 @@ export function buildTicTacToeDiversityRetryPrompt(
 
 const questionsArraySchema = z.array(questionSchema).min(1).max(60).superRefine((arr, ctx) => {
   arr.forEach((q, i) => {
+    if (q.type === "short_answer" && q.activity?.kind === "coloring" && (!q.visual?.shapes.length || q.visual.shapes.some(s => s.shaded))) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, "visual"], message: "Coloring needs a complete unshaded printable diagram" });
+    }
     if (q.type === "mcq" && q.correctIndex >= q.options.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1123,6 +1135,10 @@ const countsSchema = z.object({
   tic_tac_toe: z.number().int().min(0).max(1).default(0),
 });
 const aiGenerateBody = z.object({
+  activityStyle: worksheetActivityStyleSchema.optional(),
+  executionMode: z.enum(["individual", "group"]).optional(),
+  groupSize: z.number().int().min(2).max(6).optional(),
+  generationConstraints: worksheetGenerationConstraintsSchema.optional(),
   questionSelection: z.enum(["auto", "manual"]).optional(),
   language: z.enum(["ar", "en"]).default("ar"),
   topic: z.string().trim().max(500).optional().default(""),
@@ -1234,7 +1250,14 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     };
     language = body.language;
     if (body.questionSelection === "auto") {
-      body.counts = automaticWorksheetCounts(body.pages, body.counts.tic_tac_toe);
+      body.counts = constrainedWorksheetCounts(body.pages, body.counts.tic_tac_toe, body.generationConstraints);
+      try {
+        validateWorksheetActivityRequest(body);
+      } catch {
+        await refundCredits(req, "قيود نشاط متعارضة");
+        res.status(400).json({ message: language === "ar" ? "النشاط المختار يحتاج نوع «إجابة قصيرة» لمساحة العمل. أضفه للأنواع المسموحة أو اختر نشاطًا آخر." : "The selected activity needs Short Answer among allowed types for its workspace. Include it or choose another activity." });
+        return;
+      }
     }
 
     const total = Object.values(body.counts).reduce((sum, count) => sum + count, 0);
@@ -1272,10 +1295,25 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
         body.counts,
         normalizeDiversity ? { normalizeTicTacToeDiversity: true, language: body.language } : undefined,
       );
-      return questionsArraySchema.safeParse(body.questionSelection === "auto" ? questions.slice(0, maxTotal) : questions);
+      const checked = questionsArraySchema.safeParse(body.questionSelection === "auto" ? questions.slice(0, maxTotal) : questions);
+      if (!checked.success && body.questionSelection === "auto" && body.activityStyle && questions.length === 0) {
+        const shapeIssues = raw.flatMap((q: any) => {
+          const result = worksheetVisualSchema.safeParse(q?.visual);
+          return q?.visual && !result.success ? result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`) : [];
+        });
+        req.log.warn({ rawTypes: raw.map((q: any) => q?.type), shapeIssues }, "No printable activity survived strict validation");
+        return { success: false as const, error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: ["activity"], message: `No valid printable items. Use type=short_answer and complete activity structure with numeric spaceHeight 60–180. Visual errors: ${shapeIssues.join("; ") || "Check required fields, unshaded coloring shapes and allowed types."}` }]) };
+      }
+      if (checked.success && body.questionSelection === "auto") {
+        const issue = validateWorksheetActivityOutput(checked.data, body);
+        if (issue) return { success: false as const, error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: ["activity"], message: issue }]) };
+      }
+      return checked;
     };
     let validated = await generateQuestions(prompt, "generate:completion");
-    if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
+    if (!validated.success && validated.error.issues.some(issue => issue.path[0] === "activity")) {
+      validated = await generateQuestions(`${prompt}\nPrevious output failed: ${validated.error.issues.map(i => i.message).join("; ")}. Correct the full output and honor selected format and all explicit teacher constraints. Return JSON only.`, "generate:activity-retry");
+    } else if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
       req.log.warn({ issues: validated.error.issues }, "AI worksheet board diversity failed; retrying once");
       validated = await generateQuestions(
         buildTicTacToeDiversityRetryPrompt(prompt, body.language),
@@ -1292,7 +1330,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
           ? (language === "ar"
               ? "تعذّر إنشاء لوحة متنوعة بعد المحاولة الثانية. حاول مرة أخرى."
               : "Could not create a diverse board after the second attempt. Please try again.")
-          : (language === "ar" ? "تنسيق غير صالح من المولّد" : "Generator returned an invalid format"),
+          : (language === "ar" ? "لم يلتزم المولّد بالنشاط أو إعداداتك. لم تُحتسب نقاط؛ جرّب تعديل الخيارات وإعادة التوليد." : "The generator did not honor the activity or your settings. No credits were charged; adjust options and try again."),
       });
       return;
     }
@@ -1443,6 +1481,10 @@ router.post(
         }
       }
       const parsedInput = aiExtractFields.parse({
+        activityStyle: req.body.activityStyle,
+        executionMode: req.body.executionMode,
+        groupSize: req.body.groupSize ? Number(req.body.groupSize) : undefined,
+        generationConstraints: parseWorksheetConstraints(req.body.generationConstraints),
         questionSelection: req.body.questionSelection ?? "manual",
         language: req.body.language,
         subject: req.body.subject || undefined,
@@ -1480,8 +1522,17 @@ router.post(
 
       const maxTotal = parsedBody.pages * 30;
       const effectiveCounts = parsedBody.questionSelection === "auto"
-        ? automaticWorksheetCounts(parsedBody.pages, parsedBody.counts.tic_tac_toe)
+        ? constrainedWorksheetCounts(parsedBody.pages, parsedBody.counts.tic_tac_toe, parsedBody.generationConstraints)
         : parsedBody.counts;
+      if (parsedBody.questionSelection === "auto") {
+        try {
+          validateWorksheetActivityRequest({ ...parsedBody, counts: effectiveCounts });
+        } catch {
+          await refundCredits(req, "قيود نشاط متعارضة");
+          res.status(400).json({ message: language === "ar" ? "النشاط المختار يحتاج «إجابة قصيرة» ضمن الأنواع المسموحة." : "This activity needs Short Answer among allowed types." });
+          return;
+        }
+      }
       const total = Object.values(effectiveCounts).reduce((sum, count) => sum + count, 0);
       if (total === 0) {
         await refundCredits(req, "لا أنواع أسئلة محددة");
@@ -1507,6 +1558,10 @@ router.post(
       const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
 
       const prompt = buildExtractionPrompt({
+        activityStyle: parsedBody.activityStyle,
+        executionMode: parsedBody.executionMode,
+        groupSize: parsedBody.groupSize,
+        generationConstraints: parsedBody.generationConstraints,
         questionSelection: parsedBody.questionSelection,
         language: parsedBody.language,
         subject: parsedBody.subject || null,
@@ -1547,13 +1602,23 @@ router.post(
           effectiveCounts,
           normalizeDiversity ? { normalizeTicTacToeDiversity: true, language: parsedBody.language } : undefined,
         );
-        return questionsArraySchema.safeParse(parsedBody.questionSelection === "auto" ? questions.slice(0, maxTotal) : questions);
+        const checked = questionsArraySchema.safeParse(parsedBody.questionSelection === "auto" ? questions.slice(0, maxTotal) : questions);
+        if (!checked.success && parsedBody.questionSelection === "auto" && parsedBody.activityStyle && questions.length === 0) {
+          return { success: false as const, error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: ["activity"], message: "No valid printable items. Use type=short_answer, complete activity structure, numeric spaceHeight 60–180, and valid unshaded coloring shapes within the specified diagram bounds." }]) };
+        }
+        if (checked.success && parsedBody.questionSelection === "auto") {
+          const issue = validateWorksheetActivityOutput(checked.data, { ...parsedBody, counts: effectiveCounts });
+          if (issue) return { success: false as const, error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: ["activity"], message: issue }]) };
+        }
+        return checked;
       };
       let validated = await generateQuestions(
         prompt,
         prepared.images.length > 0 ? "extract:vision" : "extract:completion",
       );
-      if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
+      if (!validated.success && validated.error.issues.some(issue => issue.path[0] === "activity")) {
+        validated = await generateQuestions(`${prompt}\nPrevious output failed: ${validated.error.issues.map(i => i.message).join("; ")}. Correct the full JSON output, preserving source grounding and all teacher constraints.`, "extract:activity-retry");
+      } else if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
         req.log.warn({ issues: validated.error.issues }, "AI extracted board diversity failed; retrying once");
         validated = await generateQuestions(
           buildTicTacToeDiversityRetryPrompt(prompt, parsedBody.language),
@@ -1594,6 +1659,10 @@ router.post(
 );
 
 const aiExtractFields = z.object({
+  activityStyle: worksheetActivityStyleSchema.optional(),
+  executionMode: z.enum(["individual", "group"]).optional(),
+  groupSize: z.number().int().min(2).max(6).optional(),
+  generationConstraints: worksheetGenerationConstraintsSchema.optional(),
   questionSelection: z.enum(["auto", "manual"]).default("manual"),
   language: z.enum(["ar", "en"]).default("ar"),
   subject: z.string().max(100).optional(),
@@ -1633,6 +1702,7 @@ export function sanitizeGeneratedQuestions(
 ): z.infer<typeof questionSchema>[] {
   const out: z.infer<typeof questionSchema>[] = [];
   const visuals = new Map<string, z.infer<typeof worksheetVisualSchema>>();
+  const activities = new Map<string, z.infer<typeof worksheetActivitySchema>>();
   let idx = 0;
   const cap = {
     mcq: counts.mcq,
@@ -1667,6 +1737,12 @@ export function sanitizeGeneratedQuestions(
     const prompt = promptRaw.trim().slice(0, 1000);
     if (!prompt && type !== "matching") continue;
     const id = `q_${++idx}_${Date.now().toString(36)}`;
+    if (q.activity !== undefined) {
+      const activity = worksheetActivitySchema.safeParse(q.activity);
+      if (!activity.success || type !== "short_answer") continue;
+      if (activity.data.kind === "coloring" && (!q.visual?.shapes?.length || q.visual.shapes.some((s: { shaded?: boolean }) => s.shaded))) continue;
+      activities.set(id, activity.data);
+    }
     if (q.visual !== undefined) {
       const visual = worksheetVisualSchema.safeParse(q.visual);
       if (visual.success) visuals.set(id, visual.data);
@@ -1817,7 +1893,11 @@ export function sanitizeGeneratedQuestions(
     }
   }
 
-  return out.map(question => visuals.has(question.id) ? { ...question, visual: visuals.get(question.id) } : question);
+  return out.map(question => ({
+    ...question,
+    ...(visuals.has(question.id) ? { visual: visuals.get(question.id) } : {}),
+    ...(question.type === "short_answer" && activities.has(question.id) ? { activity: activities.get(question.id) } : {}),
+  }));
 }
 
 function pedagogicalGuidanceLines(opts: {
@@ -1937,11 +2017,12 @@ export function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): stri
     grade,
     sourceBlock,
     pagesLine,
-    ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`,
-    ...pedagogicalGuidanceLines({ language, learningObjective, cognitiveSkill, activityDuration, differentiation, assessmentMode }),
+    body.questionSelection !== "auto" ? (ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`) : "",
+    ...(body.questionSelection !== "auto" ? pedagogicalGuidanceLines({ language, learningObjective, cognitiveSkill, activityDuration, differentiation, assessmentMode }) : []),
     body.questionSelection === "auto" ? automaticWorksheetGuidance(language, pages)
       : ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
     worksheetVisualGuidance,
+    body.questionSelection === "auto" ? worksheetActivityGuidance(body) : "",
     body.questionSelection === "auto" && counts.tic_tac_toe === 1
       ? (ar ? "طلب المعلم صراحة لوحة تيك تاك توك واحدة؛ أضفها مع الأسئلة المناسبة." : "The teacher explicitly requested one Tic-Tac-Toe board; include it alongside suitable questions.") : "",
     "",
@@ -1953,6 +2034,10 @@ export function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): stri
    the source text inline (PDF/DOCX/text) or instructs the model to read
    the attached image (handled by runVisionCompletion). */
 function buildExtractionPrompt(opts: {
+  activityStyle?: WorksheetActivityStyle;
+  executionMode?: "individual" | "group";
+  groupSize?: number;
+  generationConstraints?: WorksheetGenerationConstraints;
   questionSelection?: "auto" | "manual";
   language: "ar" | "en";
   subject: string | null;
@@ -2041,11 +2126,12 @@ function buildExtractionPrompt(opts: {
     subj,
     grade,
     pagesLine,
-    ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`,
-    ...pedagogicalGuidanceLines(opts),
+    opts.questionSelection !== "auto" ? (ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`) : "",
+    ...(opts.questionSelection !== "auto" ? pedagogicalGuidanceLines(opts) : []),
     opts.questionSelection === "auto" ? automaticWorksheetGuidance(opts.language, opts.pages)
       : ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
     worksheetVisualGuidance,
+    opts.questionSelection === "auto" ? worksheetActivityGuidance(opts) : "",
     opts.questionSelection === "auto" && opts.counts.tic_tac_toe === 1
       ? (ar ? "طلب المعلم صراحة لوحة تيك تاك توك واحدة؛ أضفها مع الأسئلة المناسبة." : "The teacher explicitly requested one Tic-Tac-Toe board; include it alongside suitable questions.") : "",
     hint,

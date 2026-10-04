@@ -7,6 +7,439 @@
  */
 import * as zodV3 from 'zod';
 /**
+ * @summary Generate a printable worksheet honoring explicit teacher constraints
+ */
+export declare const generateWorksheetActivityBodyLanguageDefault = "ar";
+export declare const generateWorksheetActivityBodyTopicMax = 500;
+export declare const generateWorksheetActivityBodySourceTextMax = 12000;
+export declare const generateWorksheetActivityBodySubjectMax = 100;
+export declare const generateWorksheetActivityBodyGradeLevelMax = 50;
+export declare const generateWorksheetActivityBodyPagesDefault = 1;
+export declare const generateWorksheetActivityBodyGroupSizeMin = 2;
+export declare const generateWorksheetActivityBodyGroupSizeMax = 6;
+export declare const generateWorksheetActivityBodyGenerationConstraintsLearningObjectiveMax = 500;
+export declare const generateWorksheetActivityBodyGenerationConstraintsActivityDurationMin = 5;
+export declare const generateWorksheetActivityBodyGenerationConstraintsActivityDurationMax = 90;
+export declare const generateWorksheetActivityBodyGenerationConstraintsItemCountMax = 12;
+export declare const generateWorksheetActivityBodyGenerationConstraintsAllowedTypesMax = 10;
+export declare const generateWorksheetActivityBodyLearningObjectiveMax = 500;
+export declare const generateWorksheetActivityBodyActivityDurationMin = 5;
+export declare const generateWorksheetActivityBodyActivityDurationMax = 90;
+export declare const generateWorksheetActivityBodyCountsMinOne = 0;
+export declare const generateWorksheetActivityBodyCountsMaxOne = 40;
+export declare const GenerateWorksheetActivityBody: zodV3.ZodObject<{
+    questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+    language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+    topic: zodV3.ZodOptional<zodV3.ZodString>;
+    sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+    subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+    activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+    executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+    groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+    generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+        allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+    }, "strip", zodV3.ZodTypeAny, {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    }, {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    }>>;
+    difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+    learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+    cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+    activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+    differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+    assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+    counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+}, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
+    pages: 1 | 2 | 3;
+    questionSelection?: "auto" | "manual" | undefined;
+    topic?: string | undefined;
+    sourceText?: string | undefined;
+    subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+    activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+    executionMode?: "individual" | "group" | undefined;
+    groupSize?: number | undefined;
+    difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    generationConstraints?: {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    } | undefined;
+    counts?: Record<string, number> | undefined;
+}, {
+    questionSelection?: "auto" | "manual" | undefined;
+    language?: "ar" | "en" | undefined;
+    topic?: string | undefined;
+    sourceText?: string | undefined;
+    subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+    pages?: 1 | 2 | 3 | undefined;
+    activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+    executionMode?: "individual" | "group" | undefined;
+    groupSize?: number | undefined;
+    difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    generationConstraints?: {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    } | undefined;
+    counts?: Record<string, number> | undefined;
+}>;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityCenterMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityBranchesItemMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityBranchesMin = 2;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityBranchesMax = 6;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityItemsItemMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityItemsMin = 2;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityItemsMax = 8;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityCategoriesItemMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityCategoriesMin = 2;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityCategoriesMax = 4;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityStepsItemMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityStepsMin = 2;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityStepsMax = 5;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityRolesItemMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityRolesMin = 2;
+export declare const generateWorksheetActivityResponseQuestionsItemActivityRolesMax = 6;
+export declare const generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightDefault = 100;
+export declare const generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightMin = 60;
+export declare const generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightMax = 180;
+export declare const generateWorksheetActivityResponseQuestionsMax = 60;
+export declare const GenerateWorksheetActivityResponse: zodV3.ZodObject<{
+    language: zodV3.ZodEnum<["ar", "en"]>;
+    questions: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        type: zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare", "tic_tac_toe"]>;
+        prompt: zodV3.ZodOptional<zodV3.ZodString>;
+        activity: zodV3.ZodOptional<zodV3.ZodObject<{
+            kind: zodV3.ZodEnum<["concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task"]>;
+            center: zodV3.ZodOptional<zodV3.ZodString>;
+            branches: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            items: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            categories: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            steps: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            roles: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            spaceHeight: zodV3.ZodDefault<zodV3.ZodNumber>;
+        }, "strip", zodV3.ZodTypeAny, {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            spaceHeight: number;
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+        }, {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+            spaceHeight?: number | undefined;
+        }>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            spaceHeight: number;
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+        } | undefined;
+    }, {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+            spaceHeight?: number | undefined;
+        } | undefined;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
+    questions: {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            spaceHeight: number;
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+        } | undefined;
+    }[];
+}, {
+    language: "ar" | "en";
+    questions: {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+            spaceHeight?: number | undefined;
+        } | undefined;
+    }[];
+}>;
+/**
+ * @summary Build printable activities grounded in educational source material
+ */
+export declare const extractWorksheetActivityBodySourceTextMax = 12000;
+export declare const extractWorksheetActivityBodyTopicHintMax = 300;
+export declare const extractWorksheetActivityBodySubjectMax = 100;
+export declare const extractWorksheetActivityBodyGradeLevelMax = 50;
+export declare const extractWorksheetActivityBodyGroupSizeMin = 2;
+export declare const extractWorksheetActivityBodyGroupSizeMax = 6;
+export declare const extractWorksheetActivityBodyLearningObjectiveMax = 500;
+export declare const extractWorksheetActivityBodyActivityDurationMin = 5;
+export declare const extractWorksheetActivityBodyActivityDurationMax = 90;
+export declare const ExtractWorksheetActivityBody: zodV3.ZodObject<{
+    files: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodAny, "many">>;
+    sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+    topicHint: zodV3.ZodOptional<zodV3.ZodString>;
+    subject: zodV3.ZodOptional<zodV3.ZodString>;
+    gradeLevel: zodV3.ZodOptional<zodV3.ZodString>;
+    questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+    language: zodV3.ZodOptional<zodV3.ZodEnum<["ar", "en"]>>;
+    pages: zodV3.ZodOptional<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+    activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+    executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+    groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+    generationConstraints: zodV3.ZodOptional<zodV3.ZodString>;
+    counts: zodV3.ZodOptional<zodV3.ZodString>;
+    difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+    learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+    cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+    activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+    differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+    assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+}, "strip", zodV3.ZodTypeAny, {
+    questionSelection?: "auto" | "manual" | undefined;
+    language?: "ar" | "en" | undefined;
+    sourceText?: string | undefined;
+    subject?: string | undefined;
+    gradeLevel?: string | undefined;
+    pages?: 1 | 2 | 3 | undefined;
+    activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+    executionMode?: "individual" | "group" | undefined;
+    groupSize?: number | undefined;
+    difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    generationConstraints?: string | undefined;
+    counts?: string | undefined;
+    files?: any[] | undefined;
+    topicHint?: string | undefined;
+}, {
+    questionSelection?: "auto" | "manual" | undefined;
+    language?: "ar" | "en" | undefined;
+    sourceText?: string | undefined;
+    subject?: string | undefined;
+    gradeLevel?: string | undefined;
+    pages?: 1 | 2 | 3 | undefined;
+    activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+    executionMode?: "individual" | "group" | undefined;
+    groupSize?: number | undefined;
+    difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    generationConstraints?: string | undefined;
+    counts?: string | undefined;
+    files?: any[] | undefined;
+    topicHint?: string | undefined;
+}>;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityCenterMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityBranchesItemMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityBranchesMin = 2;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityBranchesMax = 6;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityItemsItemMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityItemsMin = 2;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityItemsMax = 8;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityCategoriesItemMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityCategoriesMin = 2;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityCategoriesMax = 4;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityStepsItemMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityStepsMin = 2;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityStepsMax = 5;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityRolesItemMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityRolesMin = 2;
+export declare const extractWorksheetActivityResponseQuestionsItemActivityRolesMax = 6;
+export declare const extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightDefault = 100;
+export declare const extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightMin = 60;
+export declare const extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightMax = 180;
+export declare const extractWorksheetActivityResponseQuestionsMax = 60;
+export declare const ExtractWorksheetActivityResponse: zodV3.ZodObject<{
+    language: zodV3.ZodEnum<["ar", "en"]>;
+    questions: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        type: zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare", "tic_tac_toe"]>;
+        prompt: zodV3.ZodOptional<zodV3.ZodString>;
+        activity: zodV3.ZodOptional<zodV3.ZodObject<{
+            kind: zodV3.ZodEnum<["concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task"]>;
+            center: zodV3.ZodOptional<zodV3.ZodString>;
+            branches: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            items: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            categories: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            steps: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            roles: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+            spaceHeight: zodV3.ZodDefault<zodV3.ZodNumber>;
+        }, "strip", zodV3.ZodTypeAny, {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            spaceHeight: number;
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+        }, {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+            spaceHeight?: number | undefined;
+        }>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            spaceHeight: number;
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+        } | undefined;
+    }, {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+            spaceHeight?: number | undefined;
+        } | undefined;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
+    questions: {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            spaceHeight: number;
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+        } | undefined;
+    }[];
+}, {
+    language: "ar" | "en";
+    questions: {
+        type: "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare" | "tic_tac_toe";
+        id: string;
+        prompt?: string | undefined;
+        activity?: {
+            kind: "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task";
+            center?: string | undefined;
+            branches?: string[] | undefined;
+            items?: string[] | undefined;
+            categories?: string[] | undefined;
+            steps?: string[] | undefined;
+            roles?: string[] | undefined;
+            spaceHeight?: number | undefined;
+        } | undefined;
+    }[];
+}>;
+/**
  * Does not create a game or change the destination's authorization. Guest hosts may create aliases.
  * @summary Get a permanent short alias for an existing public game destination
  */
@@ -24,12 +457,12 @@ export declare const CreateGameShareLinkResponse: zodV3.ZodObject<{
     path: zodV3.ZodString;
     shortPath: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    path: string;
     code: string;
+    path: string;
     shortPath: string;
 }, {
-    path: string;
     code: string;
+    path: string;
     shortPath: string;
 }>;
 /**
@@ -600,25 +1033,25 @@ export declare const GetBriefPreferencesResponse: zodV3.ZodObject<{
     notes: zodV3.ZodOptional<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
     language?: "ar" | "en" | undefined;
+    questions?: boolean | undefined;
     presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
     slideCount?: number | undefined;
-    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
-    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    durationMinutes?: 60 | 30 | 15 | 45 | undefined;
+    languageLevel?: "medium" | "simple" | "advanced" | undefined;
     density?: "minimal" | "balanced" | "detailed" | undefined;
     activities?: boolean | undefined;
-    questions?: boolean | undefined;
     poll?: boolean | undefined;
     quiz?: boolean | undefined;
     notes?: string | undefined;
 }, {
     language?: "ar" | "en" | undefined;
+    questions?: boolean | undefined;
     presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
     slideCount?: number | undefined;
-    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
-    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    durationMinutes?: 60 | 30 | 15 | 45 | undefined;
+    languageLevel?: "medium" | "simple" | "advanced" | undefined;
     density?: "minimal" | "balanced" | "detailed" | undefined;
     activities?: boolean | undefined;
-    questions?: boolean | undefined;
     poll?: boolean | undefined;
     quiz?: boolean | undefined;
     notes?: string | undefined;
@@ -643,25 +1076,25 @@ export declare const UpdateBriefPreferencesBody: zodV3.ZodObject<{
     notes: zodV3.ZodOptional<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
     language?: "ar" | "en" | undefined;
+    questions?: boolean | undefined;
     presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
     slideCount?: number | undefined;
-    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
-    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    durationMinutes?: 60 | 30 | 15 | 45 | undefined;
+    languageLevel?: "medium" | "simple" | "advanced" | undefined;
     density?: "minimal" | "balanced" | "detailed" | undefined;
     activities?: boolean | undefined;
-    questions?: boolean | undefined;
     poll?: boolean | undefined;
     quiz?: boolean | undefined;
     notes?: string | undefined;
 }, {
     language?: "ar" | "en" | undefined;
+    questions?: boolean | undefined;
     presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
     slideCount?: number | undefined;
-    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
-    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    durationMinutes?: 60 | 30 | 15 | 45 | undefined;
+    languageLevel?: "medium" | "simple" | "advanced" | undefined;
     density?: "minimal" | "balanced" | "detailed" | undefined;
     activities?: boolean | undefined;
-    questions?: boolean | undefined;
     poll?: boolean | undefined;
     quiz?: boolean | undefined;
     notes?: string | undefined;
@@ -683,25 +1116,25 @@ export declare const UpdateBriefPreferencesResponse: zodV3.ZodObject<{
     notes: zodV3.ZodOptional<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
     language?: "ar" | "en" | undefined;
+    questions?: boolean | undefined;
     presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
     slideCount?: number | undefined;
-    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
-    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    durationMinutes?: 60 | 30 | 15 | 45 | undefined;
+    languageLevel?: "medium" | "simple" | "advanced" | undefined;
     density?: "minimal" | "balanced" | "detailed" | undefined;
     activities?: boolean | undefined;
-    questions?: boolean | undefined;
     poll?: boolean | undefined;
     quiz?: boolean | undefined;
     notes?: string | undefined;
 }, {
     language?: "ar" | "en" | undefined;
+    questions?: boolean | undefined;
     presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
     slideCount?: number | undefined;
-    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
-    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    durationMinutes?: 60 | 30 | 15 | 45 | undefined;
+    languageLevel?: "medium" | "simple" | "advanced" | undefined;
     density?: "minimal" | "balanced" | "detailed" | undefined;
     activities?: boolean | undefined;
-    questions?: boolean | undefined;
     poll?: boolean | undefined;
     quiz?: boolean | undefined;
     notes?: string | undefined;
@@ -977,9 +1410,9 @@ export declare const ListAdminDirectoryResponse: zodV3.ZodObject<{
         totalSubmissions: number;
     }>>;
 }, "strip", zodV3.ZodTypeAny, {
+    items: Record<string, unknown>[];
     page: number;
     pageSize: number;
-    items: Record<string, unknown>[];
     total: number;
     totalPages: number;
     summary?: {
@@ -991,9 +1424,9 @@ export declare const ListAdminDirectoryResponse: zodV3.ZodObject<{
         totalSubmissions: number;
     } | undefined;
 }, {
+    items: Record<string, unknown>[];
     page: number;
     pageSize: number;
-    items: Record<string, unknown>[];
     total: number;
     totalPages: number;
     summary?: {
@@ -1121,7 +1554,7 @@ export declare const ListAssignmentsResponseItem: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
@@ -1150,7 +1583,7 @@ export declare const ListAssignmentsResponseItem: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
@@ -1209,7 +1642,7 @@ export declare const ListAssignmentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
@@ -1238,7 +1671,7 @@ export declare const ListAssignmentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
@@ -1417,6 +1850,7 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         text: string;
         questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
         points: number;
+        difficulty?: number | null | undefined;
         optionA?: string | undefined;
         optionB?: string | undefined;
         optionC?: string | undefined;
@@ -1424,10 +1858,10 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         correctAnswer?: string | undefined;
         imageUrl?: string | null | undefined;
         readAloud?: boolean | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }, {
         text: string;
+        difficulty?: number | null | undefined;
         questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | undefined;
         optionB?: string | undefined;
@@ -1437,15 +1871,14 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         points?: number | undefined;
         imageUrl?: string | null | undefined;
         readAloud?: boolean | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
-    title: string;
     questions: {
         text: string;
         questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
         points: number;
+        difficulty?: number | null | undefined;
         optionA?: string | undefined;
         optionB?: string | undefined;
         optionC?: string | undefined;
@@ -1453,14 +1886,14 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         correctAnswer?: string | undefined;
         imageUrl?: string | null | undefined;
         readAloud?: boolean | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }[];
+    title: string;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
     examMode: boolean;
-    resultsReleaseMode: "immediate" | "after_deadline" | "manual";
+    resultsReleaseMode: "manual" | "immediate" | "after_deadline";
     isShared: boolean;
     contentKind: "homework" | "competition";
     isAdaptive: boolean;
@@ -1504,9 +1937,9 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
     listeningSpeed?: string | null | undefined;
     listeningSettings?: Record<string, unknown> | null | undefined;
 }, {
-    title: string;
     questions: {
         text: string;
+        difficulty?: number | null | undefined;
         questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | undefined;
         optionB?: string | undefined;
@@ -1516,9 +1949,9 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         points?: number | undefined;
         imageUrl?: string | null | undefined;
         readAloud?: boolean | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }[];
+    title: string;
     subject?: string | undefined;
     description?: string | undefined;
     submissionMode?: "electronic" | "paper" | "both" | undefined;
@@ -1530,7 +1963,7 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     contentKind?: "homework" | "competition" | undefined;
@@ -1617,7 +2050,7 @@ export declare const CreateAssignmentResponse: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
@@ -1646,7 +2079,7 @@ export declare const CreateAssignmentResponse: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
@@ -1726,18 +2159,19 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
         readAloud: boolean;
         allowMultipleAnswers: boolean;
         repeatQuestion: boolean;
+        difficulty?: number | null | undefined;
         optionA?: string | null | undefined;
         optionB?: string | null | undefined;
         optionC?: string | null | undefined;
         optionD?: string | null | undefined;
         correctAnswer?: string | null | undefined;
         imageUrl?: string | null | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }, {
         id: number;
         text: string;
         points: number;
+        difficulty?: number | null | undefined;
         questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | null | undefined;
         optionB?: string | null | undefined;
@@ -1746,14 +2180,12 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
         correctAnswer?: string | null | undefined;
         imageUrl?: string | null | undefined;
         readAloud?: boolean | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
         allowMultipleAnswers?: boolean | undefined;
         repeatQuestion?: boolean | undefined;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    title: string;
     questions: {
         id: number;
         text: string;
@@ -1762,15 +2194,16 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
         readAloud: boolean;
         allowMultipleAnswers: boolean;
         repeatQuestion: boolean;
+        difficulty?: number | null | undefined;
         optionA?: string | null | undefined;
         optionB?: string | null | undefined;
         optionC?: string | null | undefined;
         optionD?: string | null | undefined;
         correctAnswer?: string | null | undefined;
         imageUrl?: string | null | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }[];
+    title: string;
     createdAt: Date;
     teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
@@ -1790,7 +2223,7 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     activityType?: string | null | undefined;
     listeningAudioText?: string | null | undefined;
@@ -1801,11 +2234,11 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
     closedAt?: Date | null | undefined;
 }, {
     id: number;
-    title: string;
     questions: {
         id: number;
         text: string;
         points: number;
+        difficulty?: number | null | undefined;
         questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | null | undefined;
         optionB?: string | null | undefined;
@@ -1814,11 +2247,11 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
         correctAnswer?: string | null | undefined;
         imageUrl?: string | null | undefined;
         readAloud?: boolean | undefined;
-        difficulty?: number | null | undefined;
         skill?: string | null | undefined;
         allowMultipleAnswers?: boolean | undefined;
         repeatQuestion?: boolean | undefined;
     }[];
+    title: string;
     createdAt: Date;
     teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
@@ -1838,7 +2271,7 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
     deadline?: Date | null | undefined;
     examMode?: boolean | undefined;
     examDurationMinutes?: number | null | undefined;
-    resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
+    resultsReleaseMode?: "manual" | "immediate" | "after_deadline" | undefined;
     aiGradingInstructions?: string | null | undefined;
     activityType?: string | null | undefined;
     listeningAudioText?: string | null | undefined;
@@ -2856,14 +3289,14 @@ export declare const GetPresentationUsageResponse: zodV3.ZodObject<{
         files: zodV3.ZodNumber;
         sizeMb: zodV3.ZodNumber;
     }, "strip", zodV3.ZodTypeAny, {
+        files: number;
         images: number;
         slides: number;
-        files: number;
         sizeMb: number;
     }, {
+        files: number;
         images: number;
         slides: number;
-        files: number;
         sizeMb: number;
     }>;
 }, "strip", zodV3.ZodTypeAny, {
@@ -2875,9 +3308,9 @@ export declare const GetPresentationUsageResponse: zodV3.ZodObject<{
         maxSizeMbRegular: number;
     };
     usage: {
+        files: number;
         images: number;
         slides: number;
-        files: number;
         sizeMb: number;
     };
 }, {
@@ -2889,9 +3322,9 @@ export declare const GetPresentationUsageResponse: zodV3.ZodObject<{
         maxSizeMbRegular: number;
     };
     usage: {
+        files: number;
         images: number;
         slides: number;
-        files: number;
         sizeMb: number;
     };
 }>;
@@ -2915,10 +3348,10 @@ export declare const ListPresentationsResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     slideCount: number;
     createdAt: Date;
     teacherId: number;
@@ -2931,10 +3364,10 @@ export declare const ListPresentationsResponseItem: zodV3.ZodObject<{
     publishedAt?: Date | null | undefined;
     ownerIsAdmin?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     slideCount: number;
     createdAt: Date;
     teacherId: number;
@@ -2964,10 +3397,10 @@ export declare const ListPresentationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     slideCount: number;
     createdAt: Date;
     teacherId: number;
@@ -2980,10 +3413,10 @@ export declare const ListPresentationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     publishedAt?: Date | null | undefined;
     ownerIsAdmin?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     slideCount: number;
     createdAt: Date;
     teacherId: number;
@@ -3017,18 +3450,18 @@ export declare const CreatePresentationBody: zodV3.ZodObject<{
     title: string;
     language?: "ar" | "en" | undefined;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     theme?: string | undefined;
     pattern?: string | undefined;
     coverEmoji?: string | null | undefined;
-    gradeLevel?: string | null | undefined;
 }, {
     title: string;
     language?: "ar" | "en" | undefined;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     theme?: string | undefined;
     pattern?: string | undefined;
     coverEmoji?: string | null | undefined;
-    gradeLevel?: string | null | undefined;
 }>;
 export declare const CreatePresentationResponse: zodV3.ZodObject<{
     id: zodV3.ZodNumber;
@@ -3100,19 +3533,21 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3121,19 +3556,17 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3143,19 +3576,21 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3164,19 +3599,17 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3189,19 +3622,21 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3210,19 +3645,17 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3239,19 +3672,21 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3260,19 +3695,17 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3297,10 +3730,10 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -3309,19 +3742,21 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3330,19 +3765,17 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3359,20 +3792,20 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -3381,19 +3814,21 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3402,19 +3837,17 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3431,11 +3864,11 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
@@ -3521,19 +3954,21 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3542,19 +3977,17 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3564,19 +3997,21 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3585,19 +4020,17 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3610,19 +4043,21 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3631,19 +4066,17 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3660,19 +4093,21 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3681,19 +4116,17 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3718,10 +4151,10 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -3730,19 +4163,21 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3751,19 +4186,17 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3780,20 +4213,20 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -3802,19 +4235,21 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3823,19 +4258,17 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3852,11 +4285,11 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
@@ -3948,19 +4381,21 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -3969,19 +4404,17 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -3991,19 +4424,21 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4012,19 +4447,17 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4037,19 +4470,21 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4058,19 +4493,17 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4087,19 +4520,21 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4108,19 +4543,17 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4135,27 +4568,30 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
         backgroundImage?: string | null | undefined;
     }>, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
-    title?: string | undefined;
     language?: "ar" | "en" | undefined;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+    title?: string | undefined;
     description?: string | null | undefined;
     slides?: {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4164,19 +4600,17 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4193,29 +4627,31 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
     theme?: string | undefined;
     pattern?: string | undefined;
     coverEmoji?: string | null | undefined;
-    gradeLevel?: string | null | undefined;
 }, {
-    title?: string | undefined;
     language?: "ar" | "en" | undefined;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+    title?: string | undefined;
     description?: string | null | undefined;
     slides?: {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4224,19 +4660,17 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4253,7 +4687,6 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
     theme?: string | undefined;
     pattern?: string | undefined;
     coverEmoji?: string | null | undefined;
-    gradeLevel?: string | null | undefined;
 }>;
 export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     id: zodV3.ZodNumber;
@@ -4325,19 +4758,21 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4346,19 +4781,17 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4368,19 +4801,21 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4389,19 +4824,17 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4414,19 +4847,21 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4435,19 +4870,17 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4464,19 +4897,21 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4485,19 +4920,17 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4522,10 +4955,10 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -4534,19 +4967,21 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4555,19 +4990,17 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4584,20 +5017,20 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -4606,19 +5039,21 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4627,19 +5062,17 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4656,11 +5089,11 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
@@ -4763,19 +5196,21 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4784,19 +5219,17 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4806,19 +5239,21 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4827,19 +5262,17 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4852,19 +5285,21 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4873,19 +5308,17 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4902,19 +5335,21 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4923,19 +5358,17 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -4960,10 +5393,10 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -4972,19 +5405,21 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -4993,19 +5428,17 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5022,20 +5455,20 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -5044,19 +5477,21 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5065,19 +5500,17 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5094,11 +5527,11 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
@@ -5184,19 +5617,21 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5205,19 +5640,17 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5227,19 +5660,21 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5248,19 +5683,17 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5273,19 +5706,21 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5294,19 +5729,17 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5323,19 +5756,21 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5344,19 +5779,17 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5381,10 +5814,10 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -5393,19 +5826,21 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5414,19 +5849,17 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5443,20 +5876,20 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -5465,19 +5898,21 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5486,19 +5921,17 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5515,11 +5948,11 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
@@ -5677,19 +6110,21 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5698,19 +6133,17 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5720,19 +6153,21 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5741,19 +6176,17 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5766,19 +6199,21 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5787,19 +6222,17 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5816,19 +6249,21 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5837,19 +6272,17 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5874,10 +6307,10 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -5886,19 +6319,21 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5907,19 +6342,17 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -5936,20 +6369,20 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
+    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
     title: string;
-    language: "ar" | "en";
     createdAt: Date;
     teacherId: number;
     isShared: boolean;
@@ -5958,19 +6391,21 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
+            topic?: string | null | undefined;
             options?: string[] | null | undefined;
-            title?: string | null | undefined;
-            url?: string | null | undefined;
+            prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
+            title?: string | null | undefined;
+            url?: string | null | undefined;
             text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
@@ -5979,19 +6414,17 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            align?: "center" | "start" | "end" | "justify" | null | undefined;
             color?: string | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
             borderWidth?: number | null | undefined;
-            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
-            prompt?: string | null | undefined;
+            activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
             gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
-            topic?: string | null | undefined;
-            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
             imageBorderRadius?: number | null | undefined;
@@ -6008,11 +6441,11 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     theme: string;
     pattern: string;
     subject?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
     description?: string | null | undefined;
     ownerName?: string | null | undefined;
     coverEmoji?: string | null | undefined;
     publishedAt?: Date | null | undefined;
-    gradeLevel?: string | null | undefined;
     lastPresentedAt?: Date | null | undefined;
     linkedActivityId?: string | null | undefined;
     linkedActivityKind?: string | null | undefined;
@@ -6037,16 +6470,16 @@ export declare const ListPresentationAssetsResponseItem: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "image" | "file";
     url: string;
     createdAt: Date;
-    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }, {
     id: number;
+    kind: "image" | "file";
     url: string;
     createdAt: Date;
-    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }>;
@@ -6059,16 +6492,16 @@ export declare const ListPresentationAssetsResponse: zodV3.ZodArray<zodV3.ZodObj
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "image" | "file";
     url: string;
     createdAt: Date;
-    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }, {
     id: number;
+    kind: "image" | "file";
     url: string;
     createdAt: Date;
-    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }>, "many">;
@@ -6088,12 +6521,12 @@ export declare const RegisterPresentationAssetBody: zodV3.ZodObject<{
     url: zodV3.ZodString;
     byteSize: zodV3.ZodOptional<zodV3.ZodNumber>;
 }, "strip", zodV3.ZodTypeAny, {
-    url: string;
     kind: "image" | "file";
+    url: string;
     byteSize?: number | undefined;
 }, {
-    url: string;
     kind: "image" | "file";
+    url: string;
     byteSize?: number | undefined;
 }>;
 export declare const RegisterPresentationAssetResponse: zodV3.ZodObject<{
@@ -6105,16 +6538,16 @@ export declare const RegisterPresentationAssetResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "image" | "file";
     url: string;
     createdAt: Date;
-    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }, {
     id: number;
+    kind: "image" | "file";
     url: string;
     createdAt: Date;
-    kind: "image" | "file";
     presentationId: number;
     byteSize: number;
 }>;
@@ -6173,53 +6606,53 @@ export declare const GeneratePresentationOutlineBody: zodV3.ZodObject<{
         poll: zodV3.ZodBoolean;
         quiz: zodV3.ZodBoolean;
     }, "strip", zodV3.ZodTypeAny, {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     }, {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     }>;
     notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     language: "ar" | "en";
-    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-    slideCount: number;
-    durationMinutes: 30 | 15 | 45 | 60;
-    languageLevel: "simple" | "medium" | "advanced";
-    density: "minimal" | "balanced" | "detailed";
+    topic: string;
     subject: string;
     gradeLevel: string;
-    topic: string;
+    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+    slideCount: number;
+    durationMinutes: 60 | 30 | 15 | 45;
+    languageLevel: "medium" | "simple" | "advanced";
+    density: "minimal" | "balanced" | "detailed";
     toggles: {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     };
-    notes?: string | null | undefined;
     sourceText?: string | null | undefined;
+    notes?: string | null | undefined;
 }, {
     language: "ar" | "en";
-    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-    slideCount: number;
-    durationMinutes: 30 | 15 | 45 | 60;
-    languageLevel: "simple" | "medium" | "advanced";
-    density: "minimal" | "balanced" | "detailed";
+    topic: string;
     subject: string;
     gradeLevel: string;
-    topic: string;
+    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+    slideCount: number;
+    durationMinutes: 60 | 30 | 15 | 45;
+    languageLevel: "medium" | "simple" | "advanced";
+    density: "minimal" | "balanced" | "detailed";
     toggles: {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     };
-    notes?: string | null | undefined;
     sourceText?: string | null | undefined;
+    notes?: string | null | undefined;
 }>;
 export declare const generatePresentationOutlineResponseOneBriefSubjectMax = 100;
 export declare const generatePresentationOutlineResponseOneBriefGradeLevelMax = 50;
@@ -6268,53 +6701,53 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     outline: zodV3.ZodObject<{
         language: zodV3.ZodEnum<["ar", "en"]>;
@@ -6326,11 +6759,11 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
             slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
             estimatedMinutes: zodV3.ZodNumber;
         }, "strip", zodV3.ZodTypeAny, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }>, "many">;
@@ -6357,12 +6790,12 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6371,12 +6804,12 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6389,12 +6822,12 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6406,7 +6839,7 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -6414,12 +6847,12 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6431,7 +6864,7 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -6467,33 +6900,33 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6505,7 +6938,7 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -6529,33 +6962,33 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6567,7 +7000,7 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -6640,53 +7073,53 @@ export declare const EnqueuePresentationOutlineBody: zodV3.ZodObject<{
         poll: zodV3.ZodBoolean;
         quiz: zodV3.ZodBoolean;
     }, "strip", zodV3.ZodTypeAny, {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     }, {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     }>;
     notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     language: "ar" | "en";
-    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-    slideCount: number;
-    durationMinutes: 30 | 15 | 45 | 60;
-    languageLevel: "simple" | "medium" | "advanced";
-    density: "minimal" | "balanced" | "detailed";
+    topic: string;
     subject: string;
     gradeLevel: string;
-    topic: string;
+    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+    slideCount: number;
+    durationMinutes: 60 | 30 | 15 | 45;
+    languageLevel: "medium" | "simple" | "advanced";
+    density: "minimal" | "balanced" | "detailed";
     toggles: {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     };
-    notes?: string | null | undefined;
     sourceText?: string | null | undefined;
+    notes?: string | null | undefined;
 }, {
     language: "ar" | "en";
-    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-    slideCount: number;
-    durationMinutes: 30 | 15 | 45 | 60;
-    languageLevel: "simple" | "medium" | "advanced";
-    density: "minimal" | "balanced" | "detailed";
+    topic: string;
     subject: string;
     gradeLevel: string;
-    topic: string;
+    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+    slideCount: number;
+    durationMinutes: 60 | 30 | 15 | 45;
+    languageLevel: "medium" | "simple" | "advanced";
+    density: "minimal" | "balanced" | "detailed";
     toggles: {
-        activities: boolean;
         questions: boolean;
+        activities: boolean;
         poll: boolean;
         quiz: boolean;
     };
-    notes?: string | null | undefined;
     sourceText?: string | null | undefined;
+    notes?: string | null | undefined;
 }>;
 export declare const enqueuePresentationOutlineResponseRequestSubjectMax = 100;
 export declare const enqueuePresentationOutlineResponseRequestGradeLevelMax = 50;
@@ -6742,53 +7175,53 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     status: zodV3.ZodEnum<["queued", "running", "succeeded", "failed"]>;
     result: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodIntersection<zodV3.ZodObject<{
@@ -6812,53 +7245,53 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
                 poll: zodV3.ZodBoolean;
                 quiz: zodV3.ZodBoolean;
             }, "strip", zodV3.ZodTypeAny, {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             }, {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             }>;
             notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         }, {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         }>;
         outline: zodV3.ZodObject<{
             language: zodV3.ZodEnum<["ar", "en"]>;
@@ -6870,11 +7303,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
                 slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
                 estimatedMinutes: zodV3.ZodNumber;
             }, "strip", zodV3.ZodTypeAny, {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }, {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }>, "many">;
@@ -6901,12 +7334,12 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
                 }>;
                 source: zodV3.ZodOptional<zodV3.ZodString>;
             }, "strip", zodV3.ZodTypeAny, {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6915,12 +7348,12 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
                 subtitle?: string | undefined;
                 source?: string | undefined;
             }, {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6933,12 +7366,12 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6950,7 +7383,7 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -6958,12 +7391,12 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -6975,7 +7408,7 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7011,33 +7444,33 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7049,7 +7482,7 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7073,33 +7506,33 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7111,7 +7544,7 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7162,22 +7595,22 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     attempts: number;
     errorMessage?: string | null | undefined;
@@ -7189,33 +7622,33 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7227,7 +7660,7 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7258,22 +7691,22 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     attempts: number;
     errorMessage?: string | null | undefined;
@@ -7285,33 +7718,33 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7323,7 +7756,7 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7410,53 +7843,53 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     status: zodV3.ZodEnum<["queued", "running", "succeeded", "failed"]>;
     result: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodIntersection<zodV3.ZodObject<{
@@ -7480,53 +7913,53 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
                 poll: zodV3.ZodBoolean;
                 quiz: zodV3.ZodBoolean;
             }, "strip", zodV3.ZodTypeAny, {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             }, {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             }>;
             notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         }, {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         }>;
         outline: zodV3.ZodObject<{
             language: zodV3.ZodEnum<["ar", "en"]>;
@@ -7538,11 +7971,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
                 slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
                 estimatedMinutes: zodV3.ZodNumber;
             }, "strip", zodV3.ZodTypeAny, {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }, {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }>, "many">;
@@ -7569,12 +8002,12 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
                 }>;
                 source: zodV3.ZodOptional<zodV3.ZodString>;
             }, "strip", zodV3.ZodTypeAny, {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7583,12 +8016,12 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
                 subtitle?: string | undefined;
                 source?: string | undefined;
             }, {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7601,12 +8034,12 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7618,7 +8051,7 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7626,12 +8059,12 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7643,7 +8076,7 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7679,33 +8112,33 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7717,7 +8150,7 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7741,33 +8174,33 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7779,7 +8212,7 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7830,22 +8263,22 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     attempts: number;
     errorMessage?: string | null | undefined;
@@ -7857,33 +8290,33 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7895,7 +8328,7 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -7926,22 +8359,22 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     attempts: number;
     errorMessage?: string | null | undefined;
@@ -7953,33 +8386,33 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -7991,7 +8424,7 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8078,53 +8511,53 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     status: zodV3.ZodEnum<["queued", "running", "succeeded", "failed"]>;
     result: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodIntersection<zodV3.ZodObject<{
@@ -8148,53 +8581,53 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
                 poll: zodV3.ZodBoolean;
                 quiz: zodV3.ZodBoolean;
             }, "strip", zodV3.ZodTypeAny, {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             }, {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             }>;
             notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         }, {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         }>;
         outline: zodV3.ZodObject<{
             language: zodV3.ZodEnum<["ar", "en"]>;
@@ -8206,11 +8639,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
                 slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
                 estimatedMinutes: zodV3.ZodNumber;
             }, "strip", zodV3.ZodTypeAny, {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }, {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }>, "many">;
@@ -8237,12 +8670,12 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
                 }>;
                 source: zodV3.ZodOptional<zodV3.ZodString>;
             }, "strip", zodV3.ZodTypeAny, {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8251,12 +8684,12 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
                 subtitle?: string | undefined;
                 source?: string | undefined;
             }, {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8269,12 +8702,12 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8286,7 +8719,7 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8294,12 +8727,12 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8311,7 +8744,7 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8347,33 +8780,33 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8385,7 +8818,7 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8409,33 +8842,33 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8447,7 +8880,7 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8498,22 +8931,22 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     attempts: number;
     errorMessage?: string | null | undefined;
@@ -8525,33 +8958,33 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8563,7 +8996,7 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8594,22 +9027,22 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     attempts: number;
     errorMessage?: string | null | undefined;
@@ -8621,33 +9054,33 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         updatedAt: Date;
         brief: {
             language: "ar" | "en";
-            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-            slideCount: number;
-            durationMinutes: 30 | 15 | 45 | 60;
-            languageLevel: "simple" | "medium" | "advanced";
-            density: "minimal" | "balanced" | "detailed";
+            topic: string;
             subject: string;
             gradeLevel: string;
-            topic: string;
+            presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+            slideCount: number;
+            durationMinutes: 60 | 30 | 15 | 45;
+            languageLevel: "medium" | "simple" | "advanced";
+            density: "minimal" | "balanced" | "detailed";
             toggles: {
-                activities: boolean;
                 questions: boolean;
+                activities: boolean;
                 poll: boolean;
                 quiz: boolean;
             };
-            notes?: string | null | undefined;
             sourceText?: string | null | undefined;
+            notes?: string | null | undefined;
         };
         outline: {
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
+                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
-                kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
-                interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+                interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
                 visualDirection: {
                     icon?: string | undefined;
                     shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8659,7 +9092,7 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             totalEstimatedMinutes: number;
             objectives: string[];
             teachingFlow: {
-                stage: "opener" | "concept" | "practice" | "closure";
+                stage: "practice" | "opener" | "concept" | "closure";
                 slideIndices: number[];
                 estimatedMinutes: number;
             }[];
@@ -8824,53 +9257,53 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     outline: zodV3.ZodObject<{
         language: zodV3.ZodEnum<["ar", "en"]>;
@@ -8882,11 +9315,11 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
             slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
             estimatedMinutes: zodV3.ZodNumber;
         }, "strip", zodV3.ZodTypeAny, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }>, "many">;
@@ -8913,12 +9346,12 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8927,12 +9360,12 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8945,12 +9378,12 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8962,7 +9395,7 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -8970,12 +9403,12 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -8987,7 +9420,7 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9023,33 +9456,33 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9061,7 +9494,7 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9085,33 +9518,33 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9123,7 +9556,7 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9161,53 +9594,53 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     outline: zodV3.ZodObject<{
         language: zodV3.ZodEnum<["ar", "en"]>;
@@ -9219,11 +9652,11 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
             slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
             estimatedMinutes: zodV3.ZodNumber;
         }, "strip", zodV3.ZodTypeAny, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }>, "many">;
@@ -9250,12 +9683,12 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9264,12 +9697,12 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9282,12 +9715,12 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9299,7 +9732,7 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9307,12 +9740,12 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9324,7 +9757,7 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9360,33 +9793,33 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9398,7 +9831,7 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9422,33 +9855,33 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9460,7 +9893,7 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9534,53 +9967,53 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     outline: zodV3.ZodObject<{
         language: zodV3.ZodEnum<["ar", "en"]>;
@@ -9592,11 +10025,11 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
             slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
             estimatedMinutes: zodV3.ZodNumber;
         }, "strip", zodV3.ZodTypeAny, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }>, "many">;
@@ -9623,12 +10056,12 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9637,12 +10070,12 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9655,12 +10088,12 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9672,7 +10105,7 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9680,12 +10113,12 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9697,7 +10130,7 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9733,33 +10166,33 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9771,7 +10204,7 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9795,33 +10228,33 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9833,7 +10266,7 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9890,11 +10323,11 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
             slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
             estimatedMinutes: zodV3.ZodNumber;
         }, "strip", zodV3.ZodTypeAny, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }>, "many">;
@@ -9921,12 +10354,12 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9935,12 +10368,12 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9953,12 +10386,12 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9970,7 +10403,7 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -9978,12 +10411,12 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -9995,7 +10428,7 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10007,12 +10440,12 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10024,7 +10457,7 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10035,12 +10468,12 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10052,7 +10485,7 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10105,53 +10538,53 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
             poll: zodV3.ZodBoolean;
             quiz: zodV3.ZodBoolean;
         }, "strip", zodV3.ZodTypeAny, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }, {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         }>;
         notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }, {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     }>;
     outline: zodV3.ZodObject<{
         language: zodV3.ZodEnum<["ar", "en"]>;
@@ -10163,11 +10596,11 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
             slideIndices: zodV3.ZodArray<zodV3.ZodNumber, "many">;
             estimatedMinutes: zodV3.ZodNumber;
         }, "strip", zodV3.ZodTypeAny, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }, {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }>, "many">;
@@ -10194,12 +10627,12 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10208,12 +10641,12 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10226,12 +10659,12 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10243,7 +10676,7 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10251,12 +10684,12 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10268,7 +10701,7 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10304,33 +10737,33 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10342,7 +10775,7 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10366,33 +10799,33 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
     updatedAt: Date;
     brief: {
         language: "ar" | "en";
-        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
-        slideCount: number;
-        durationMinutes: 30 | 15 | 45 | 60;
-        languageLevel: "simple" | "medium" | "advanced";
-        density: "minimal" | "balanced" | "detailed";
+        topic: string;
         subject: string;
         gradeLevel: string;
-        topic: string;
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 60 | 30 | 15 | 45;
+        languageLevel: "medium" | "simple" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
         toggles: {
-            activities: boolean;
             questions: boolean;
+            activities: boolean;
             poll: boolean;
             quiz: boolean;
         };
-        notes?: string | null | undefined;
         sourceText?: string | null | undefined;
+        notes?: string | null | undefined;
     };
     outline: {
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
+            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
-            kind: "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
-            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            interactionHint: "activity" | "poll" | "quiz" | "discussion" | null;
             visualDirection: {
                 icon?: string | undefined;
                 shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
@@ -10404,7 +10837,7 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         totalEstimatedMinutes: number;
         objectives: string[];
         teachingFlow: {
-            stage: "opener" | "concept" | "practice" | "closure";
+            stage: "practice" | "opener" | "concept" | "closure";
             slideIndices: number[];
             estimatedMinutes: number;
         }[];
@@ -10503,32 +10936,32 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
             captions: zodV3.ZodBoolean;
             idempotencyKey: zodV3.ZodString;
         }, "strip", zodV3.ZodTypeAny, {
-            title: string;
             language: "ar" | "en";
-            durationSeconds: 30 | 60 | 90;
             topic: string;
+            title: string;
+            durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
             voice: string;
             music: boolean;
             captions: boolean;
-            prompt?: string | undefined;
             sourceText?: string | undefined;
+            prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         }, {
-            title: string;
             language: "ar" | "en";
-            durationSeconds: 30 | 60 | 90;
             topic: string;
+            title: string;
+            durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
             voice: string;
             music: boolean;
             captions: boolean;
-            prompt?: string | undefined;
             sourceText?: string | undefined;
+            prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         }>;
         storyboard: zodV3.ZodUnion<[zodV3.ZodObject<{
@@ -10706,18 +11139,18 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
         teacherId: number;
         updatedAt: Date;
         brief: {
-            title: string;
             language: "ar" | "en";
-            durationSeconds: 30 | 60 | 90;
             topic: string;
+            title: string;
+            durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
             voice: string;
             music: boolean;
             captions: boolean;
-            prompt?: string | undefined;
             sourceText?: string | undefined;
+            prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         };
         storyboard: {
@@ -10767,18 +11200,18 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
         teacherId: number;
         updatedAt: Date;
         brief: {
-            title: string;
             language: "ar" | "en";
-            durationSeconds: 30 | 60 | 90;
             topic: string;
+            title: string;
+            durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
             voice: string;
             music: boolean;
             captions: boolean;
-            prompt?: string | undefined;
             sourceText?: string | undefined;
+            prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         };
         storyboard: {
@@ -10830,18 +11263,18 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
         teacherId: number;
         updatedAt: Date;
         brief: {
-            title: string;
             language: "ar" | "en";
-            durationSeconds: 30 | 60 | 90;
             topic: string;
+            title: string;
+            durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
             voice: string;
             music: boolean;
             captions: boolean;
-            prompt?: string | undefined;
             sourceText?: string | undefined;
+            prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         };
         storyboard: {
@@ -10893,18 +11326,18 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
         teacherId: number;
         updatedAt: Date;
         brief: {
-            title: string;
             language: "ar" | "en";
-            durationSeconds: 30 | 60 | 90;
             topic: string;
+            title: string;
+            durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
             visualStyle: "minimal" | "educational" | "cinematic" | "playful";
             voice: string;
             music: boolean;
             captions: boolean;
-            prompt?: string | undefined;
             sourceText?: string | undefined;
+            prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         };
         storyboard: {
@@ -11027,32 +11460,32 @@ export declare const CreateAiVideoStoryboardBody: zodV3.ZodObject<{
     captions: zodV3.ZodBoolean;
     idempotencyKey: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    title: string;
     language: "ar" | "en";
-    durationSeconds: 30 | 60 | 90;
     topic: string;
+    title: string;
+    durationSeconds: 90 | 60 | 30;
     idempotencyKey: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
     visualStyle: "minimal" | "educational" | "cinematic" | "playful";
     voice: string;
     music: boolean;
     captions: boolean;
-    prompt?: string | undefined;
     sourceText?: string | undefined;
+    prompt?: string | undefined;
     sourceImages?: string[] | undefined;
 }, {
-    title: string;
     language: "ar" | "en";
-    durationSeconds: 30 | 60 | 90;
     topic: string;
+    title: string;
+    durationSeconds: 90 | 60 | 30;
     idempotencyKey: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
     visualStyle: "minimal" | "educational" | "cinematic" | "playful";
     voice: string;
     music: boolean;
     captions: boolean;
-    prompt?: string | undefined;
     sourceText?: string | undefined;
+    prompt?: string | undefined;
     sourceImages?: string[] | undefined;
 }>;
 export declare const createAiVideoStoryboardResponseBriefTitleMax = 160;
@@ -11122,32 +11555,32 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }>;
     storyboard: zodV3.ZodUnion<[zodV3.ZodObject<{
@@ -11325,18 +11758,18 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -11386,18 +11819,18 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -11517,32 +11950,32 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }>;
     storyboard: zodV3.ZodUnion<[zodV3.ZodObject<{
@@ -11720,18 +12153,18 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -11781,18 +12214,18 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -12182,32 +12615,32 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }>;
     storyboard: zodV3.ZodUnion<[zodV3.ZodObject<{
@@ -12385,18 +12818,18 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -12446,18 +12879,18 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -12610,32 +13043,32 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }>;
     storyboard: zodV3.ZodUnion<[zodV3.ZodObject<{
@@ -12813,18 +13246,18 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -12874,18 +13307,18 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -13097,32 +13530,32 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }>;
     storyboard: zodV3.ZodUnion<[zodV3.ZodObject<{
@@ -13300,18 +13733,18 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -13361,18 +13794,18 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
     teacherId: number;
     updatedAt: Date;
     brief: {
-        title: string;
         language: "ar" | "en";
-        durationSeconds: 30 | 60 | 90;
         topic: string;
+        title: string;
+        durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
         visualStyle: "minimal" | "educational" | "cinematic" | "playful";
         voice: string;
         music: boolean;
         captions: boolean;
-        prompt?: string | undefined;
         sourceText?: string | undefined;
+        prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     };
     storyboard: {
@@ -13447,15 +13880,15 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13465,15 +13898,15 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13502,15 +13935,15 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13520,15 +13953,15 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13581,12 +14014,12 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
-    title: string;
     kind: "weekly" | "appointment" | "break";
+    title: string;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13597,10 +14030,10 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
 }, {
     title: string;
     startTime: string;
+    subject?: string | null | undefined;
+    kind?: "weekly" | "appointment" | "break" | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    kind?: "weekly" | "appointment" | "break" | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13638,15 +14071,15 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13656,15 +14089,15 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13726,9 +14159,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        subject?: string | null | undefined;
         notes?: string | null | undefined;
         location?: string | null | undefined;
-        subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
         className?: string | null | undefined;
@@ -13736,9 +14169,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        subject?: string | null | undefined;
         notes?: string | null | undefined;
         location?: string | null | undefined;
-        subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
         className?: string | null | undefined;
@@ -13759,9 +14192,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            subject?: string | null | undefined;
             notes?: string | null | undefined;
             location?: string | null | undefined;
-            subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
             className?: string | null | undefined;
@@ -13769,9 +14202,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            subject?: string | null | undefined;
             notes?: string | null | undefined;
             location?: string | null | undefined;
-            subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
             className?: string | null | undefined;
@@ -13804,9 +14237,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            subject?: string | null | undefined;
             notes?: string | null | undefined;
             location?: string | null | undefined;
-            subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
             className?: string | null | undefined;
@@ -13825,9 +14258,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            subject?: string | null | undefined;
             notes?: string | null | undefined;
             location?: string | null | undefined;
-            subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
             className?: string | null | undefined;
@@ -13847,9 +14280,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        subject?: string | null | undefined;
         notes?: string | null | undefined;
         location?: string | null | undefined;
-        subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
         className?: string | null | undefined;
@@ -13860,9 +14293,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            subject?: string | null | undefined;
             notes?: string | null | undefined;
             location?: string | null | undefined;
-            subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
             className?: string | null | undefined;
@@ -13882,9 +14315,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
         title: string;
         startTime: string;
         lessonNumber: number;
+        subject?: string | null | undefined;
         notes?: string | null | undefined;
         location?: string | null | undefined;
-        subject?: string | null | undefined;
         color?: string | null | undefined;
         endTime?: string | null | undefined;
         className?: string | null | undefined;
@@ -13895,9 +14328,9 @@ export declare const BulkCreateTeacherScheduleBody: zodV3.ZodObject<{
             title: string;
             startTime: string;
             lessonNumber: number;
+            subject?: string | null | undefined;
             notes?: string | null | undefined;
             location?: string | null | undefined;
-            subject?: string | null | undefined;
             color?: string | null | undefined;
             endTime?: string | null | undefined;
             className?: string | null | undefined;
@@ -13941,15 +14374,15 @@ export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13959,15 +14392,15 @@ export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -13996,15 +14429,15 @@ export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.Zod
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14014,15 +14447,15 @@ export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.Zod
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14073,12 +14506,12 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
-    title: string;
     kind: "weekly" | "appointment" | "break";
+    title: string;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14089,10 +14522,10 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
 }, {
     title: string;
     startTime: string;
+    subject?: string | null | undefined;
+    kind?: "weekly" | "appointment" | "break" | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    kind?: "weekly" | "appointment" | "break" | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14105,12 +14538,12 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     title: zodV3.ZodString;
     startTime: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    title: string;
     kind: "weekly" | "appointment" | "break";
+    title: string;
     startTime: string;
 }, {
-    title: string;
     kind: "weekly" | "appointment" | "break";
+    title: string;
     startTime: string;
 }>>;
 export declare const updateTeacherScheduleEntryResponseColorRegExp: RegExp;
@@ -14142,15 +14575,15 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14160,15 +14593,15 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
+    kind: "weekly" | "appointment" | "break";
     title: string;
     createdAt: Date;
-    kind: "weekly" | "appointment" | "break";
     teacherId: number;
     updatedAt: Date;
     startTime: string;
+    subject?: string | null | undefined;
     notes?: string | null | undefined;
     location?: string | null | undefined;
-    subject?: string | null | undefined;
     color?: string | null | undefined;
     endTime?: string | null | undefined;
     className?: string | null | undefined;
@@ -14994,15 +15427,15 @@ export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
@@ -15010,10 +15443,10 @@ export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }, {
     id: number;
@@ -15021,10 +15454,10 @@ export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }>;
 export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
@@ -15038,15 +15471,15 @@ export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
@@ -15054,10 +15487,10 @@ export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }, {
     id: number;
@@ -15065,10 +15498,10 @@ export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }>, "many">;
 /**
@@ -15101,15 +15534,15 @@ export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
@@ -15117,10 +15550,10 @@ export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }, {
     id: number;
@@ -15128,10 +15561,10 @@ export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }>;
 /**
@@ -15155,15 +15588,15 @@ export declare const GetQuranCircleResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
@@ -15171,10 +15604,10 @@ export declare const GetQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }, {
     id: number;
@@ -15182,10 +15615,10 @@ export declare const GetQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }>;
 /**
@@ -15225,15 +15658,15 @@ export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
@@ -15241,10 +15674,10 @@ export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }, {
     id: number;
@@ -15252,10 +15685,10 @@ export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }[];
 }>;
 /**
@@ -15267,15 +15700,15 @@ export declare const ListQuranStudentsResponseItem: zodV3.ZodObject<{
     gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
     studentClass: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
+    gradeLevel: string | null;
     id: number;
     name: string;
     studentClass: string | null;
-    gradeLevel: string | null;
 }, {
+    gradeLevel: string | null;
     id: number;
     name: string;
     studentClass: string | null;
-    gradeLevel: string | null;
 }>;
 export declare const ListQuranStudentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     id: zodV3.ZodNumber;
@@ -15283,15 +15716,15 @@ export declare const ListQuranStudentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
     studentClass: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
+    gradeLevel: string | null;
     id: number;
     name: string;
     studentClass: string | null;
-    gradeLevel: string | null;
 }, {
+    gradeLevel: string | null;
     id: number;
     name: string;
     studentClass: string | null;
-    gradeLevel: string | null;
 }>, "many">;
 /**
  * @summary Get a Quran student profile and progress summary
@@ -15323,15 +15756,15 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }, {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     }>;
     profile: zodV3.ZodObject<{
         currentSurahNumber: zodV3.ZodNullable<zodV3.ZodNumber>;
@@ -15425,10 +15858,10 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     student: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     };
     profile: {
         currentSurahNumber: number | null;
@@ -15464,10 +15897,10 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
     }[];
 }, {
     student: {
+        gradeLevel: string | null;
         id: number;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
     };
     profile: {
         currentSurahNumber: number | null;
@@ -15862,8 +16295,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
         recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
     }, "strip", zodV3.ZodTypeAny, {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -15872,8 +16305,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: number | null;
         recitationScore: number | null;
     }, {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -15950,8 +16383,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     };
     activeDates: string[];
     recentActivities: {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -16002,8 +16435,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     };
     activeDates: string[];
     recentActivities: {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -17938,10 +18371,10 @@ export declare const ListTeacherQuranMemorizationStudentsResponseItem: zodV3.Zod
     due: zodV3.ZodNumber;
     lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
 }, "strip", zodV3.ZodTypeAny, {
+    gradeLevel: string | null;
     name: string;
     total: number;
     studentClass: string | null;
-    gradeLevel: string | null;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17950,10 +18383,10 @@ export declare const ListTeacherQuranMemorizationStudentsResponseItem: zodV3.Zod
     due: number;
     linked: boolean;
 }, {
+    gradeLevel: string | null;
     name: string;
     total: number;
     studentClass: string | null;
-    gradeLevel: string | null;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17975,10 +18408,10 @@ export declare const ListTeacherQuranMemorizationStudentsResponse: zodV3.ZodArra
     due: zodV3.ZodNumber;
     lastAssessedAt: zodV3.ZodNullable<zodV3.ZodDate>;
 }, "strip", zodV3.ZodTypeAny, {
+    gradeLevel: string | null;
     name: string;
     total: number;
     studentClass: string | null;
-    gradeLevel: string | null;
     studentId: number;
     learning: number;
     memorized: number;
@@ -17987,10 +18420,10 @@ export declare const ListTeacherQuranMemorizationStudentsResponse: zodV3.ZodArra
     due: number;
     linked: boolean;
 }, {
+    gradeLevel: string | null;
     name: string;
     total: number;
     studentClass: string | null;
-    gradeLevel: string | null;
     studentId: number;
     learning: number;
     memorized: number;
@@ -18028,15 +18461,15 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
         linked: zodV3.ZodBoolean;
     }, "strip", zodV3.ZodTypeAny, {
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
         studentId: number;
         linked: boolean;
     }, {
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
         studentId: number;
         linked: boolean;
     }>;
@@ -18084,9 +18517,9 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         lastAssessedAt: Date | null;
     }[];
     student: {
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
         studentId: number;
         linked: boolean;
     };
@@ -18103,9 +18536,9 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
         lastAssessedAt: Date | null;
     }[];
     student: {
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
-        gradeLevel: string | null;
         studentId: number;
         linked: boolean;
     };

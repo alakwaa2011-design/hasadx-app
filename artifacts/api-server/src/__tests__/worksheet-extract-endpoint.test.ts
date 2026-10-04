@@ -176,6 +176,76 @@ beforeEach(() => {
 /* ── Happy-path: text source ────────────────────────────────────────── */
 
 describe("automatic worksheet generation", () => {
+  const printableDrawing = { type: "short_answer", prompt: "ارسم شكلاً مغلقاً", answer: "شكل مغلق مناسب", activity: { kind: "drawing", spaceHeight: 120 } };
+
+  it("honors explicit activity and constraints and carries printable data to the client", async () => {
+    openaiReturns(JSON.stringify({ questions: [printableDrawing] }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      questionSelection: "auto", activityStyle: "drawing", subject: "رياضيات", gradeLevel: "الثاني",
+      generationConstraints: { difficulty: "easy", itemCount: 1, allowedTypes: ["short_answer"], activityDuration: 5 },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.questions[0].activity).toEqual(printableDrawing.activity);
+    expect(mockState.openaiCreate.mock.calls[0][0].messages[1].content).toContain('"activityDuration":5');
+    expect(mockState.captureCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries once then refunds rather than returning a wrong activity", async () => {
+    openaiReturns(JSON.stringify({ questions: [printableDrawing] }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      questionSelection: "auto", activityStyle: "concept_map", subject: "علوم", gradeLevel: "الرابع",
+    });
+    expect(res.status).toBe(500);
+    expect(mockState.openaiCreate).toHaveBeenCalledTimes(2);
+    expect(mockState.captureCredits).not.toHaveBeenCalled();
+    expect(mockState.refundCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("corrects an activity whose invalid artwork was removed instead of skipping the retry", async () => {
+    mockState.openaiCreate
+      .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ questions: [{ ...printableDrawing, visual: { shapes: [{ kind: "circle", x: 290, y: 20, width: 60, height: 60 }] } }] }) } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ questions: [printableDrawing] }) } }] });
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      questionSelection: "auto", activityStyle: "drawing", subject: "رياضيات", gradeLevel: "الثاني",
+    });
+    expect(res.status).toBe(200);
+    expect(mockState.openaiCreate).toHaveBeenCalledTimes(2);
+    expect(mockState.captureCredits).toHaveBeenCalledTimes(1);
+    expect(mockState.refundCredits).not.toHaveBeenCalled();
+  });
+
+  it("rejects contradictory types before paying for an AI call", async () => {
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      questionSelection: "auto", activityStyle: "drawing", subject: "علوم", gradeLevel: "الرابع",
+      generationConstraints: { allowedTypes: ["mcq"] },
+    });
+    expect(res.status).toBe(400);
+    expect(mockState.openaiCreate).not.toHaveBeenCalled();
+    expect(mockState.captureCredits).not.toHaveBeenCalled();
+    expect(mockState.refundCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the same explicit activity constraints for uploaded reference content", async () => {
+    openaiReturns(JSON.stringify({ questions: [printableDrawing] }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/extract").send({
+      ...VALID_FORM, questionSelection: "auto", activityStyle: "drawing",
+      generationConstraints: JSON.stringify({ itemCount: 1, allowedTypes: ["short_answer"] }),
+      counts: JSON.stringify({ tic_tac_toe: 0 }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.questions[0].activity).toEqual(printableDrawing.activity);
+    expect(mockState.captureCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 400 and refunds for malformed source constraints JSON", async () => {
+    const res = await request(makeApp()).post("/api/worksheets/ai/extract").send({
+      ...VALID_FORM, generationConstraints: "{broken", questionSelection: "auto",
+    });
+    expect(res.status).toBe(400);
+    expect(mockState.openaiCreate).not.toHaveBeenCalled();
+    expect(mockState.refundCredits).toHaveBeenCalledTimes(1);
+  });
+
   const visual = { caption: "الأشكال", shapes: [{ kind: "circle", x: 20, y: 20, width: 30, height: 30, shaded: false }] };
   const autoQuestions = [
     { type: "short_answer", prompt: "كم دائرة ترى؟", answer: "١", visual },

@@ -33,6 +33,7 @@
 - [روابط مشاركة الألعاب](game-share-link-contract.md) — كل الألعاب الحالية والمستقبلية تستخدم رابط حصاد قصيرًا وثابتًا للمشاركة والنسخ وQR دون تغيير الصلاحيات أو كسر الروابط القديمة.
 - [Wameeth gift rounds](wameeth-gift-rounds.md) — gameMode="solo" means individual live competition too; suppress gifts only for actual one-player sessions.
 - [Browser test environment notes](browser-test-notes.md) — pointers for isolated fixtures, browser resets, viewport assertions, print capture, and Quran audio routing.
+- [Browser fixture exposure](browser-e2e-db-isolation.md) — successful shell localhost health checks do not prove the testing browser can reach isolated fixture servers.
 - [Autosave idempotency](autosave-idempotency.md) — generated-content retries use a stable client key and must atomically include every create-side effect.
 - [Shared library Wameeth access](shared-library-wameeth-access.md) — cross-teacher direct play is limited to visibly published activities and only Wameeth class/independent modes.
 - [Independent game control isolation](independent-game-control-isolation.md) — treat control taps as immediate actions and fence question events while an exit dialog is active.

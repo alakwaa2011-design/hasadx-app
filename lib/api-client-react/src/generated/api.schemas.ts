@@ -5,6 +5,446 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export type WorksheetActivityConstraintsDifficulty = typeof WorksheetActivityConstraintsDifficulty[keyof typeof WorksheetActivityConstraintsDifficulty];
+
+
+export const WorksheetActivityConstraintsDifficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+  mixed: 'mixed',
+} as const;
+
+export type WorksheetActivityConstraintsCognitiveSkill = typeof WorksheetActivityConstraintsCognitiveSkill[keyof typeof WorksheetActivityConstraintsCognitiveSkill];
+
+
+export const WorksheetActivityConstraintsCognitiveSkill = {
+  remember: 'remember',
+  understand: 'understand',
+  apply: 'apply',
+  analyze: 'analyze',
+  evaluate: 'evaluate',
+  create: 'create',
+  mixed: 'mixed',
+} as const;
+
+export type WorksheetActivityConstraintsDifferentiation = typeof WorksheetActivityConstraintsDifferentiation[keyof typeof WorksheetActivityConstraintsDifferentiation];
+
+
+export const WorksheetActivityConstraintsDifferentiation = {
+  none: 'none',
+  support: 'support',
+  enrichment: 'enrichment',
+  scaffolded: 'scaffolded',
+} as const;
+
+export type WorksheetActivityConstraintsAssessmentMode = typeof WorksheetActivityConstraintsAssessmentMode[keyof typeof WorksheetActivityConstraintsAssessmentMode];
+
+
+export const WorksheetActivityConstraintsAssessmentMode = {
+  diagnostic: 'diagnostic',
+  formative: 'formative',
+  summative: 'summative',
+} as const;
+
+export type WorksheetActivityConstraintsAllowedTypesItem = typeof WorksheetActivityConstraintsAllowedTypesItem[keyof typeof WorksheetActivityConstraintsAllowedTypesItem];
+
+
+export const WorksheetActivityConstraintsAllowedTypesItem = {
+  mcq: 'mcq',
+  true_false: 'true_false',
+  short_answer: 'short_answer',
+  fill_blank: 'fill_blank',
+  matching: 'matching',
+  worked_problem: 'worked_problem',
+  extended_response: 'extended_response',
+  error_correction: 'error_correction',
+  word_bank: 'word_bank',
+  compare: 'compare',
+} as const;
+
+/**
+ * Only explicitly selected settings are present; omitted settings are inferred by AI.
+ */
+export interface WorksheetActivityConstraints {
+  difficulty?: WorksheetActivityConstraintsDifficulty;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  learningObjective?: string;
+  cognitiveSkill?: WorksheetActivityConstraintsCognitiveSkill;
+  /**
+     * @minimum 5
+     * @maximum 90
+     */
+  activityDuration?: number;
+  differentiation?: WorksheetActivityConstraintsDifferentiation;
+  assessmentMode?: WorksheetActivityConstraintsAssessmentMode;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  itemCount?: number;
+  /**
+     * @minItems 1
+     * @maxItems 10
+     */
+  allowedTypes?: WorksheetActivityConstraintsAllowedTypesItem[];
+}
+
+export type WorksheetActivityInputQuestionSelection = typeof WorksheetActivityInputQuestionSelection[keyof typeof WorksheetActivityInputQuestionSelection];
+
+
+export const WorksheetActivityInputQuestionSelection = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
+export type WorksheetActivityInputLanguage = typeof WorksheetActivityInputLanguage[keyof typeof WorksheetActivityInputLanguage];
+
+
+export const WorksheetActivityInputLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export type WorksheetActivityInputPages = typeof WorksheetActivityInputPages[keyof typeof WorksheetActivityInputPages];
+
+
+export const WorksheetActivityInputPages = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type WorksheetActivityInputActivityStyle = typeof WorksheetActivityInputActivityStyle[keyof typeof WorksheetActivityInputActivityStyle];
+
+
+export const WorksheetActivityInputActivityStyle = {
+  auto: 'auto',
+  concept_map: 'concept_map',
+  drawing: 'drawing',
+  coloring: 'coloring',
+  sorting: 'sorting',
+  sequencing: 'sequencing',
+  group_task: 'group_task',
+  practice: 'practice',
+} as const;
+
+export type WorksheetActivityInputExecutionMode = typeof WorksheetActivityInputExecutionMode[keyof typeof WorksheetActivityInputExecutionMode];
+
+
+export const WorksheetActivityInputExecutionMode = {
+  individual: 'individual',
+  group: 'group',
+} as const;
+
+export type WorksheetActivityInputDifficulty = typeof WorksheetActivityInputDifficulty[keyof typeof WorksheetActivityInputDifficulty];
+
+
+export const WorksheetActivityInputDifficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+  mixed: 'mixed',
+} as const;
+
+export type WorksheetActivityInputCognitiveSkill = typeof WorksheetActivityInputCognitiveSkill[keyof typeof WorksheetActivityInputCognitiveSkill];
+
+
+export const WorksheetActivityInputCognitiveSkill = {
+  remember: 'remember',
+  understand: 'understand',
+  apply: 'apply',
+  analyze: 'analyze',
+  evaluate: 'evaluate',
+  create: 'create',
+  mixed: 'mixed',
+} as const;
+
+export type WorksheetActivityInputDifferentiation = typeof WorksheetActivityInputDifferentiation[keyof typeof WorksheetActivityInputDifferentiation];
+
+
+export const WorksheetActivityInputDifferentiation = {
+  none: 'none',
+  support: 'support',
+  enrichment: 'enrichment',
+  scaffolded: 'scaffolded',
+} as const;
+
+export type WorksheetActivityInputAssessmentMode = typeof WorksheetActivityInputAssessmentMode[keyof typeof WorksheetActivityInputAssessmentMode];
+
+
+export const WorksheetActivityInputAssessmentMode = {
+  diagnostic: 'diagnostic',
+  formative: 'formative',
+  summative: 'summative',
+} as const;
+
+export type WorksheetActivityInputCounts = {[key: string]: number};
+
+export interface WorksheetActivityInput {
+  questionSelection?: WorksheetActivityInputQuestionSelection;
+  language?: WorksheetActivityInputLanguage;
+  /** @maxLength 500 */
+  topic?: string;
+  /** @maxLength 12000 */
+  sourceText?: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  subject?: string | null;
+  /**
+     * @maxLength 50
+     * @nullable
+     */
+  gradeLevel?: string | null;
+  pages?: WorksheetActivityInputPages;
+  activityStyle?: WorksheetActivityInputActivityStyle;
+  executionMode?: WorksheetActivityInputExecutionMode;
+  /**
+     * @minimum 2
+     * @maximum 6
+     */
+  groupSize?: number;
+  generationConstraints?: WorksheetActivityConstraints;
+  difficulty?: WorksheetActivityInputDifficulty;
+  /** @maxLength 500 */
+  learningObjective?: string;
+  cognitiveSkill?: WorksheetActivityInputCognitiveSkill;
+  /**
+     * @minimum 5
+     * @maximum 90
+     */
+  activityDuration?: number;
+  differentiation?: WorksheetActivityInputDifferentiation;
+  assessmentMode?: WorksheetActivityInputAssessmentMode;
+  counts?: WorksheetActivityInputCounts;
+}
+
+export type WorksheetActivitySourceInputQuestionSelection = typeof WorksheetActivitySourceInputQuestionSelection[keyof typeof WorksheetActivitySourceInputQuestionSelection];
+
+
+export const WorksheetActivitySourceInputQuestionSelection = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
+export type WorksheetActivitySourceInputLanguage = typeof WorksheetActivitySourceInputLanguage[keyof typeof WorksheetActivitySourceInputLanguage];
+
+
+export const WorksheetActivitySourceInputLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export type WorksheetActivitySourceInputPages = typeof WorksheetActivitySourceInputPages[keyof typeof WorksheetActivitySourceInputPages];
+
+
+export const WorksheetActivitySourceInputPages = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type WorksheetActivitySourceInputActivityStyle = typeof WorksheetActivitySourceInputActivityStyle[keyof typeof WorksheetActivitySourceInputActivityStyle];
+
+
+export const WorksheetActivitySourceInputActivityStyle = {
+  auto: 'auto',
+  concept_map: 'concept_map',
+  drawing: 'drawing',
+  coloring: 'coloring',
+  sorting: 'sorting',
+  sequencing: 'sequencing',
+  group_task: 'group_task',
+  practice: 'practice',
+} as const;
+
+export type WorksheetActivitySourceInputExecutionMode = typeof WorksheetActivitySourceInputExecutionMode[keyof typeof WorksheetActivitySourceInputExecutionMode];
+
+
+export const WorksheetActivitySourceInputExecutionMode = {
+  individual: 'individual',
+  group: 'group',
+} as const;
+
+export type WorksheetActivitySourceInputDifficulty = typeof WorksheetActivitySourceInputDifficulty[keyof typeof WorksheetActivitySourceInputDifficulty];
+
+
+export const WorksheetActivitySourceInputDifficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+  mixed: 'mixed',
+} as const;
+
+export type WorksheetActivitySourceInputCognitiveSkill = typeof WorksheetActivitySourceInputCognitiveSkill[keyof typeof WorksheetActivitySourceInputCognitiveSkill];
+
+
+export const WorksheetActivitySourceInputCognitiveSkill = {
+  remember: 'remember',
+  understand: 'understand',
+  apply: 'apply',
+  analyze: 'analyze',
+  evaluate: 'evaluate',
+  create: 'create',
+  mixed: 'mixed',
+} as const;
+
+export type WorksheetActivitySourceInputDifferentiation = typeof WorksheetActivitySourceInputDifferentiation[keyof typeof WorksheetActivitySourceInputDifferentiation];
+
+
+export const WorksheetActivitySourceInputDifferentiation = {
+  none: 'none',
+  support: 'support',
+  enrichment: 'enrichment',
+  scaffolded: 'scaffolded',
+} as const;
+
+export type WorksheetActivitySourceInputAssessmentMode = typeof WorksheetActivitySourceInputAssessmentMode[keyof typeof WorksheetActivitySourceInputAssessmentMode];
+
+
+export const WorksheetActivitySourceInputAssessmentMode = {
+  diagnostic: 'diagnostic',
+  formative: 'formative',
+  summative: 'summative',
+} as const;
+
+export interface WorksheetActivitySourceInput {
+  files?: Blob[];
+  /** @maxLength 12000 */
+  sourceText?: string;
+  /** @maxLength 300 */
+  topicHint?: string;
+  /** @maxLength 100 */
+  subject?: string;
+  /** @maxLength 50 */
+  gradeLevel?: string;
+  questionSelection?: WorksheetActivitySourceInputQuestionSelection;
+  language?: WorksheetActivitySourceInputLanguage;
+  pages?: WorksheetActivitySourceInputPages;
+  activityStyle?: WorksheetActivitySourceInputActivityStyle;
+  executionMode?: WorksheetActivitySourceInputExecutionMode;
+  /**
+     * @minimum 2
+     * @maximum 6
+     */
+  groupSize?: number;
+  /** JSON-encoded WorksheetActivityConstraints */
+  generationConstraints?: string;
+  /** JSON-encoded per-type counts */
+  counts?: string;
+  difficulty?: WorksheetActivitySourceInputDifficulty;
+  /** @maxLength 500 */
+  learningObjective?: string;
+  cognitiveSkill?: WorksheetActivitySourceInputCognitiveSkill;
+  /**
+     * @minimum 5
+     * @maximum 90
+     */
+  activityDuration?: number;
+  differentiation?: WorksheetActivitySourceInputDifferentiation;
+  assessmentMode?: WorksheetActivitySourceInputAssessmentMode;
+}
+
+export type WorksheetPrintableActivityKind = typeof WorksheetPrintableActivityKind[keyof typeof WorksheetPrintableActivityKind];
+
+
+export const WorksheetPrintableActivityKind = {
+  concept_map: 'concept_map',
+  drawing: 'drawing',
+  coloring: 'coloring',
+  sorting: 'sorting',
+  sequencing: 'sequencing',
+  group_task: 'group_task',
+} as const;
+
+export interface WorksheetPrintableActivity {
+  kind: WorksheetPrintableActivityKind;
+  /** @maxLength 180 */
+  center?: string;
+  /**
+     * @minItems 2
+     * @maxItems 6
+     * @items.maxLength 180
+     */
+  branches?: string[];
+  /**
+     * @minItems 2
+     * @maxItems 8
+     * @items.maxLength 180
+     */
+  items?: string[];
+  /**
+     * @minItems 2
+     * @maxItems 4
+     * @items.maxLength 180
+     */
+  categories?: string[];
+  /**
+     * @minItems 2
+     * @maxItems 5
+     * @items.maxLength 180
+     */
+  steps?: string[];
+  /**
+     * @minItems 2
+     * @maxItems 6
+     * @items.maxLength 180
+     */
+  roles?: string[];
+  /**
+     * @minimum 60
+     * @maximum 180
+     */
+  spaceHeight?: number;
+}
+
+export type WorksheetActivityResultLanguage = typeof WorksheetActivityResultLanguage[keyof typeof WorksheetActivityResultLanguage];
+
+
+export const WorksheetActivityResultLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export type WorksheetActivityResultQuestionsItemType = typeof WorksheetActivityResultQuestionsItemType[keyof typeof WorksheetActivityResultQuestionsItemType];
+
+
+export const WorksheetActivityResultQuestionsItemType = {
+  mcq: 'mcq',
+  true_false: 'true_false',
+  short_answer: 'short_answer',
+  fill_blank: 'fill_blank',
+  matching: 'matching',
+  worked_problem: 'worked_problem',
+  extended_response: 'extended_response',
+  error_correction: 'error_correction',
+  word_bank: 'word_bank',
+  compare: 'compare',
+  tic_tac_toe: 'tic_tac_toe',
+} as const;
+
+export type WorksheetActivityResultQuestionsItem = {
+  id: string;
+  type: WorksheetActivityResultQuestionsItemType;
+  prompt?: string;
+  activity?: WorksheetPrintableActivity;
+  [key: string]: unknown;
+ };
+
+export interface WorksheetActivityResult {
+  language: WorksheetActivityResultLanguage;
+  /**
+     * @minItems 1
+     * @maxItems 60
+     */
+  questions: WorksheetActivityResultQuestionsItem[];
+}
+
 export interface GameShareLinkInput {
   /** @maxLength 8192 */
   path: string;

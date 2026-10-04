@@ -37,7 +37,12 @@ import { downloadVisualWorksheetWord, VisualWordExportError } from "@/lib/worksh
 import { WorksheetWordExportMenu, type WorksheetWordMode } from "./worksheet-word-export-menu";
 import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
 import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
-import type { WorksheetSettings } from "@workspace/api-zod";
+import type { WorksheetSettings, WorksheetActivity, WorksheetActivityStyle, WorksheetGenerationConstraints } from "@workspace/api-zod";
+import {
+  STYLE_META, WorksheetQuickSetup, autoRequestFields, appendAutoFormFields, countWorksheetPages, fitBlockMessage,
+  pruneConstraints, type ExecutionMode,
+} from "./worksheet-quick-setup";
+import { WorksheetActivityEditor, ACTIVITY_LABELS } from "./worksheet-activity";
 import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -224,7 +229,7 @@ type QType = "mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" |
 
 interface QMcq { id: string; type: "mcq"; prompt: string; options: string[]; correctIndex: number; points?: number }
 interface QTF { id: string; type: "true_false"; prompt: string; correct: boolean; points?: number }
-interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number }
+interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number; activity?: WorksheetActivity }
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
 interface QWorkedProblem { id: string; type: "worked_problem"; prompt: string; steps?: number; answer: string; points?: number }
@@ -521,8 +526,12 @@ export default function WorksheetCreate() {
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
   const [aiPages, setAiPages] = useState<1 | 2 | 3>(_wsPrefs.aiPages ?? 1);
   const [aiCounts, setAiCounts] = useState<AiCounts>(
-    _wsPrefs.aiCounts ?? WS_DEFAULT_PREFS.aiCounts,
+    { ...(_wsPrefs.aiCounts ?? WS_DEFAULT_PREFS.aiCounts), tic_tac_toe: 0 },
   );
+  const [activityStyle, setActivityStyle] = useState<WorksheetActivityStyle>("auto");
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>("individual");
+  const [groupSize, setGroupSize] = useState<number | undefined>(undefined);
+  const [genConstraints, setGenConstraints] = useState<WorksheetGenerationConstraints>({});
   const [aiQuestionSelection, setAiQuestionSelection] = useState<"auto" | "manual">("auto");
   const [aiLearningObjective, setAiLearningObjective] = useState(_wsPrefs.aiLearningObjective ?? WS_DEFAULT_PREFS.aiLearningObjective);
   const [aiCognitiveSkill, setAiCognitiveSkill] = useState(_wsPrefs.aiCognitiveSkill ?? WS_DEFAULT_PREFS.aiCognitiveSkill);
@@ -548,10 +557,11 @@ export default function WorksheetCreate() {
   useEffect(() => {
     if (!wsDidMountRef.current) { wsDidMountRef.current = true; return; }
     if (wsSkipNextSaveRef.current) { wsSkipNextSaveRef.current = false; return; }
-    saveWsPrefs({ contentLang, aiDifficulty, aiPages, aiCounts, aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment });
+    saveWsPrefs({ contentLang, aiDifficulty, aiPages, aiCounts: { ...aiCounts, tic_tac_toe: 0 }, aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment });
   }, [contentLang, aiDifficulty, aiPages, aiCounts, aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment]);
 
   useEffect(() => {
+    if (aiQuestionSelection === "auto") return;
     setSettings(current => ({
       ...current,
       learningObjective: aiLearningObjective.trim() || undefined,
@@ -561,7 +571,7 @@ export default function WorksheetCreate() {
       assessmentMode: aiAssessment,
       includeAnswerKey: aiAssessment === "summative" ? true : current.includeAnswerKey,
     }));
-  }, [aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment]);
+  }, [aiQuestionSelection, aiLearningObjective, aiCognitiveSkill, aiActivityDuration, aiDifferentiation, aiAssessment]);
 
   const profileDidMountRef = useRef(false);
   useEffect(() => {
@@ -584,6 +594,11 @@ export default function WorksheetCreate() {
     setAiPages(WS_DEFAULT_PREFS.aiPages);
     setAiCounts({ ...WS_DEFAULT_PREFS.aiCounts });
     setAiQuestionSelection("auto");
+    setActivityStyle("auto");
+    setExecutionMode("individual");
+    setGroupSize(undefined);
+    setGenConstraints({});
+    setSettings(cur => ({ ...cur, activityStyle: undefined, executionMode: undefined, groupSize: undefined, targetPages: undefined, generationConstraints: undefined }));
     setAiLearningObjective(WS_DEFAULT_PREFS.aiLearningObjective);
     setAiCognitiveSkill(WS_DEFAULT_PREFS.aiCognitiveSkill);
     setAiActivityDuration(WS_DEFAULT_PREFS.aiActivityDuration);
@@ -675,6 +690,11 @@ export default function WorksheetCreate() {
         setAiActivityDuration(row.settings?.activityDuration ?? WS_DEFAULT_PREFS.aiActivityDuration);
         setAiDifferentiation(row.settings?.differentiation ?? WS_DEFAULT_PREFS.aiDifferentiation);
         setAiAssessment(row.settings?.assessmentMode ?? WS_DEFAULT_PREFS.aiAssessment);
+        setActivityStyle(row.settings?.activityStyle ?? "auto");
+        setExecutionMode(row.settings?.executionMode ?? "individual");
+        setGroupSize(row.settings?.groupSize);
+        setGenConstraints(row.settings?.generationConstraints ?? {});
+        if (row.settings?.targetPages) setAiPages(row.settings.targetPages);
         setSmartGrading(!!row.linkedAssignmentId);
         setEditingId(row.id);
         toast.success(lang === "ar" ? "تم تحميل الورقة للتعديل" : "Worksheet loaded for editing");
@@ -719,11 +739,23 @@ export default function WorksheetCreate() {
   const aiMaxTotal = aiPages * 30;
   const canSave = title.trim().length >= 2 && totalQs >= 1;
   const qualityIssues = useMemo(
-    () => inspectWorksheetQuality(title, questions, aiLearningObjective),
-    [title, questions, aiLearningObjective],
+    () => inspectWorksheetQuality(title, questions, aiLearningObjective || genConstraints.learningObjective || ""),
+    [title, questions, aiLearningObjective, genConstraints.learningObjective],
   );
   const errorCount = qualityIssues.filter(issue => issue.level === "error").length;
   const totalPoints = questions.reduce((sum, question) => sum + (question.points ?? 0), 0);
+  const targetPages = settings.targetPages;
+  const [livePageCount, setLivePageCount] = useState(0);
+  useEffect(() => {
+    if (!targetPages) { setLivePageCount(0); return; }
+    const read = () => setLivePageCount(countWorksheetPages());
+    read();
+    const timer = window.setInterval(read, 700);
+    return () => window.clearInterval(timer);
+  }, [targetPages, questions, settings.fontSizePt, settings.columns]);
+  const fitMessage = fitBlockMessage(targetPages, livePageCount, ar);
+  const fitBlocked = !!fitMessage;
+  const compactFit = () => setSettings(cur => ({ ...cur, fontSizePt: Math.max(10, (cur.fontSizePt ?? 12) - 1) }));
   const activeGenerationCredit = activeAiTab === "source" ? extractCredit : worksheetCredit;
 
   const updateQuestion = (id: string, patch: Partial<Question>) => {
@@ -942,6 +974,26 @@ export default function WorksheetCreate() {
     void persistWorksheetPayload(payload, true, true);
   };
 
+  const autoInput = {
+    activityStyle, executionMode, groupSize, constraints: genConstraints,
+    pages: aiPages, boardEnabled: aiCounts.tic_tac_toe === 1,
+  };
+  const autoFields = autoRequestFields(autoInput);
+  const setupSettings = (auto: boolean): Partial<Settings> => ({
+    ...(auto ? {
+      learningObjective: genConstraints.learningObjective,
+      cognitiveSkill: genConstraints.cognitiveSkill,
+      activityDuration: genConstraints.activityDuration,
+      differentiation: genConstraints.differentiation,
+      assessmentMode: genConstraints.assessmentMode,
+      ...(genConstraints.assessmentMode === "summative" ? { includeAnswerKey: true } : {}),
+    } : { targetPages: undefined }),
+    activityStyle,
+    executionMode,
+    groupSize: executionMode === "group" ? groupSize : undefined,
+    generationConstraints: pruneConstraints(genConstraints),
+    ...(auto ? { targetPages: aiPages } : {}),
+  });
   const generateWithAI = async () => {
     if (saveBlockedRef.current || saveInFlightRef.current || contentOperationInFlightRef.current) {
       toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
@@ -973,15 +1025,17 @@ export default function WorksheetCreate() {
           sourceText: sourceText.trim() || undefined,
           subject: subject.trim() || undefined,
           gradeLevel: gradeLevel.trim() || undefined,
-          difficulty: aiDifficulty,
-          pages: aiPages,
-          questionSelection: aiQuestionSelection,
-          counts: aiQuestionSelection === "manual" ? aiCounts : { tic_tac_toe: aiCounts.tic_tac_toe },
-          learningObjective: aiLearningObjective.trim() || undefined,
-          cognitiveSkill: aiCognitiveSkill,
-          activityDuration: aiActivityDuration,
-          differentiation: aiDifferentiation,
-          assessmentMode: aiAssessment,
+          ...(aiQuestionSelection === "auto" ? autoFields : {
+            difficulty: aiDifficulty,
+            pages: aiPages,
+            questionSelection: aiQuestionSelection,
+            counts: aiCounts,
+            learningObjective: aiLearningObjective.trim() || undefined,
+            cognitiveSkill: aiCognitiveSkill,
+            activityDuration: aiActivityDuration,
+            differentiation: aiDifferentiation,
+            assessmentMode: aiAssessment,
+          }),
         }),
       });
       if (!res.ok) {
@@ -1011,11 +1065,14 @@ export default function WorksheetCreate() {
       const nextSettings = {
         ...current.settings,
         template: chosenTheme,
-        learningObjective: aiLearningObjective.trim() || undefined,
-        cognitiveSkill: aiCognitiveSkill,
-        activityDuration: aiActivityDuration,
-        differentiation: aiDifferentiation,
-        assessmentMode: aiAssessment,
+        ...(aiQuestionSelection === "manual" ? {
+          learningObjective: aiLearningObjective.trim() || undefined,
+          cognitiveSkill: aiCognitiveSkill,
+          activityDuration: aiActivityDuration,
+          differentiation: aiDifferentiation,
+          assessmentMode: aiAssessment,
+        } : {}),
+        ...setupSettings(aiQuestionSelection === "auto"),
       };
 
       setQuestions(nextQuestions);
@@ -1295,17 +1352,20 @@ export default function WorksheetCreate() {
       fd.append("language", contentLang);
       if (subject.trim()) fd.append("subject", subject.trim());
       if (gradeLevel.trim()) fd.append("gradeLevel", gradeLevel.trim());
-      fd.append("difficulty", aiDifficulty);
-      fd.append("pages", String(aiPages));
       if (aiTopic.trim()) fd.append("topicHint", aiTopic.trim());
-      if (aiLearningObjective.trim()) fd.append("learningObjective", aiLearningObjective.trim());
-      fd.append("cognitiveSkill", aiCognitiveSkill);
-      fd.append("activityDuration", String(aiActivityDuration));
-      fd.append("differentiation", aiDifferentiation);
-      fd.append("assessmentMode", aiAssessment);
-      fd.append("questionSelection", aiQuestionSelection);
-      if (aiQuestionSelection === "manual") fd.append("counts", JSON.stringify(aiCounts));
-      else fd.append("counts", JSON.stringify({ tic_tac_toe: aiCounts.tic_tac_toe }));
+      if (aiQuestionSelection === "auto") {
+        appendAutoFormFields(fd, autoInput);
+      } else {
+        fd.append("difficulty", aiDifficulty);
+        fd.append("pages", String(aiPages));
+        if (aiLearningObjective.trim()) fd.append("learningObjective", aiLearningObjective.trim());
+        fd.append("cognitiveSkill", aiCognitiveSkill);
+        fd.append("activityDuration", String(aiActivityDuration));
+        fd.append("differentiation", aiDifferentiation);
+        fd.append("assessmentMode", aiAssessment);
+        fd.append("questionSelection", aiQuestionSelection);
+        fd.append("counts", JSON.stringify(aiCounts));
+      }
 
       const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST",
@@ -1341,11 +1401,14 @@ export default function WorksheetCreate() {
       const nextSettings = {
         ...current.settings,
         template: chosenThemeF,
-        learningObjective: aiLearningObjective.trim() || undefined,
-        cognitiveSkill: aiCognitiveSkill,
-        activityDuration: aiActivityDuration,
-        differentiation: aiDifferentiation,
-        assessmentMode: aiAssessment,
+        ...(aiQuestionSelection === "manual" ? {
+          learningObjective: aiLearningObjective.trim() || undefined,
+          cognitiveSkill: aiCognitiveSkill,
+          activityDuration: aiActivityDuration,
+          differentiation: aiDifferentiation,
+          assessmentMode: aiAssessment,
+        } : {}),
+        ...setupSettings(aiQuestionSelection === "auto"),
       };
 
       setQuestions(nextQuestions);
@@ -1461,6 +1524,7 @@ export default function WorksheetCreate() {
   };
   const requestPreview = (exp: "pdf" | "word" | "word-visual" | null) => {
     if (!exp) { openWorksheet(); return; }
+    if (fitBlocked) { toast.error(fitMessage ?? ""); return; }
     if (!canSave) {
       toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
       return;
@@ -1515,6 +1579,11 @@ export default function WorksheetCreate() {
     setAiActivityDuration(row.settings?.activityDuration ?? WS_DEFAULT_PREFS.aiActivityDuration);
     setAiDifferentiation(row.settings?.differentiation ?? WS_DEFAULT_PREFS.aiDifferentiation);
     setAiAssessment(row.settings?.assessmentMode ?? WS_DEFAULT_PREFS.aiAssessment);
+    setActivityStyle(row.settings?.activityStyle ?? "auto");
+    setExecutionMode(row.settings?.executionMode ?? "individual");
+    setGroupSize(row.settings?.groupSize);
+    setGenConstraints(row.settings?.generationConstraints ?? {});
+    if (row.settings?.targetPages) setAiPages(row.settings.targetPages);
     setEditingId(asNew ? null : row.id);
     setSavedOpen(false);
     toast.success(ar ? (asNew ? "تم إنشاء نسخة" : "تم تحميل الورقة") : (asNew ? "Copy created" : "Worksheet loaded"));
@@ -1658,7 +1727,7 @@ export default function WorksheetCreate() {
           <div className="absolute top-0 left-0 p-8 opacity-5 pointer-events-none transform -scale-x-100">
             <Wand2 className="w-64 h-64" />
           </div>
-          <div className="relative z-10 p-5 sm:p-6 border-b border-primary/10 space-y-4">
+          <fieldset disabled={generating || extracting} className="relative z-10 min-w-0 p-5 sm:p-6 border-b border-primary/10 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/15 text-primary shadow-inner">
                 <Wand2 className="w-5 h-5" />
@@ -1755,9 +1824,9 @@ export default function WorksheetCreate() {
                 )}
               </TabsContent>
             </Tabs>
-          </div>
+          </fieldset>
 
-          <div className="px-5 py-4 sm:px-6 bg-background/60">
+          <fieldset disabled={generating || extracting} className="min-w-0 px-5 py-4 sm:px-6 bg-background/60">
             <div className="mb-3 flex justify-end">
               <button
                 type="button"
@@ -1831,6 +1900,19 @@ export default function WorksheetCreate() {
             </AnimatePresence>
 
             <div className="space-y-4">
+                {aiQuestionSelection === "auto" && (
+                  <WorksheetQuickSetup
+                    ar={ar}
+                    subject={subject} onSubject={setSubject}
+                    gradeLevel={gradeLevel} onGrade={setGradeLevel}
+                    gradeSuggestions={gradeLevels.map(g => g.gradeLevel)}
+                    activityStyle={activityStyle} onStyle={setActivityStyle}
+                    executionMode={executionMode} onMode={setExecutionMode}
+                    groupSize={groupSize} onGroupSize={setGroupSize}
+                    pages={aiPages} onPages={setAiPages}
+                    constraints={genConstraints} onConstraints={setGenConstraints}
+                  />
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                    <Field label={ar ? "لغة المحتوى" : "Language"}>
                       <SegmentedControl
@@ -1839,6 +1921,7 @@ export default function WorksheetCreate() {
                          options={[{label: ar?"العربية":"Arabic", value:"ar"}, {label: ar?"English":"English", value:"en"}]}
                       />
                    </Field>
+                   {aiQuestionSelection === "manual" && (<>
                    <Field label={ar ? "مستوى الصعوبة" : "Difficulty"}>
                       <SegmentedControl
                          value={aiDifficulty}
@@ -1862,6 +1945,7 @@ export default function WorksheetCreate() {
                          ]}
                       />
                    </Field>
+                   </>)}
                 </div>
 
                 {/* Counts row - compact */}
@@ -1909,6 +1993,7 @@ export default function WorksheetCreate() {
                   </Collapsible>
                 </div>
                 )}
+                {aiQuestionSelection === "manual" && (
                 <Collapsible>
                   <CollapsibleTrigger data-testid="button-generator-advanced" className="group flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-start text-sm font-bold text-foreground hover:bg-muted">
                     <span className="flex items-center gap-2"><SettingsIcon className="w-4 h-4 text-muted-foreground" />{ar ? "إعدادات متقدمة" : "Advanced settings"}</span>
@@ -1962,6 +2047,7 @@ export default function WorksheetCreate() {
 
                   </CollapsibleContent>
                 </Collapsible>
+                )}
             </div>
 
             {(() => {
@@ -1991,7 +2077,7 @@ export default function WorksheetCreate() {
                   </div>
                   <p className="opacity-90 leading-relaxed">
                     {aiQuestionSelection === "auto"
-                      ? (ar ? `سيختار النظام الأسئلة المناسبة تلقائيًا بمستوى ${difText}، لمدة ${aiActivityDuration} دقيقة، وفي نحو ${aiPages} صفحة، دون توزيع ثابت للأنواع.` : `The system will automatically choose suitable questions at ${difText} difficulty, for ${aiActivityDuration} minutes, in about ${aiPages} pages, without a fixed type distribution.`)
+                      ? (ar ? `سيُنشأ نشاط بصيغة «${STYLE_META[activityStyle].ar}» ${executionMode === "group" ? "للعمل الجماعي" : "للعمل الفردي"} في ${aiPages} ${aiPages === 1 ? "صفحة" : "صفحات"} كحد أقصى، والحقول غير المحددة تُترك لتقدير النموذج.` : `An activity in the "${STYLE_META[activityStyle].en}" format for ${executionMode === "group" ? "group" : "individual"} work, within ${aiPages} page(s); unset fields are left to the model.`)
                       : ar
                       ? `سيتم بناء ${regularAiCount > 0 ? `${regularAiCount} سؤالًا` : "لوحة اختيار فقط"}${regularAiCount > 0 ? boardText : ""}، بمستوى ${difText}، لمدة ${aiActivityDuration} دقيقة، وفي نحو ${aiPages} صفحة.`
                       : `Will build ${regularAiCount > 0 ? `${regularAiCount} questions` : "a choice board only"}${regularAiCount > 0 ? boardText : ""}, at ${difText} difficulty, for ${aiActivityDuration} minutes, in about ${aiPages} page(s).`}
@@ -2019,6 +2105,8 @@ export default function WorksheetCreate() {
                    : <><Sparkles className="w-5 h-5"/> {
                      activeAiTab === "source"
                        ? (ar ? "استخراج وبناء الورقة" : "Extract & Build Worksheet")
+                       : aiQuestionSelection === "auto"
+                         ? (ar ? "أنشئ النشاط" : "Create activity")
                        : aiCounts.tic_tac_toe === 1 && regularAiCount === 0
                          ? (ar ? "توليد لوحة الاختيار" : "Generate Choice Board")
                          : aiCounts.tic_tac_toe === 1
@@ -2042,7 +2130,7 @@ export default function WorksheetCreate() {
                 <RotateCcw className="w-5 h-5" />
               </button>
             </div>
-          </div>
+          </fieldset>
         </Card>
 
         {/* 4. Questions List */}
@@ -2147,8 +2235,8 @@ export default function WorksheetCreate() {
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">
                         {ar
-                          ? `الزمن المستهدف ${aiActivityDuration} دقيقة · ${totalPoints > 0 ? `${totalPoints} درجة` : "نشاط دون درجات"} · ${aiPages} صفحة مستهدفة`
-                          : `${aiActivityDuration} target minutes · ${totalPoints > 0 ? `${totalPoints} points` : "ungraded activity"} · ${aiPages} target page(s)`}
+                          ? `${settings.activityDuration ? `الزمن المستهدف ${settings.activityDuration} دقيقة` : "مدة مناسبة للنشاط"} · ${totalPoints > 0 ? `${totalPoints} درجة` : "نشاط دون درجات"} · ${settings.targetPages ?? aiPages} صفحة مستهدفة`
+                          : `${settings.activityDuration ? `${settings.activityDuration} target minutes` : "Activity-appropriate duration"} · ${totalPoints > 0 ? `${totalPoints} points` : "ungraded activity"} · ${settings.targetPages ?? aiPages} target page(s)`}
                       </p>
                     </div>
                     <button type="button" onClick={() => openWorksheet()} className="shrink-0 rounded-lg border bg-background px-3 py-2 text-xs font-bold text-primary hover:bg-primary/5">
@@ -2215,8 +2303,8 @@ export default function WorksheetCreate() {
                   generatingCellImageIndex={generatingCellImage?.questionId === q.id ? generatingCellImage.cellIndex : null}
                   imageCreditPrice={ticTacToeImageCredit}
                   forceExpanded={allQuestionsExpanded}
-                  difficulty={aiDifficulty}
-                  assessmentMode={aiAssessment}
+                  difficulty={aiQuestionSelection === "auto" ? genConstraints.difficulty ?? "auto" : aiDifficulty}
+                  assessmentMode={aiQuestionSelection === "auto" ? genConstraints.assessmentMode ?? "formative" : aiAssessment}
                   rubric={settings.questionStyles?.find(style => style.questionId === q.id)?.rubric ?? ""}
                   onRubricChange={rubric => updateQuestionRubric(q.id, rubric)}
                   canUndoRegeneration={lastCellRegeneration?.questionId === q.id}
@@ -2305,6 +2393,35 @@ export default function WorksheetCreate() {
               </div>
             )}
           </div>
+          {targetPages && (
+            <div
+              role="status"
+              data-testid="status-page-fit"
+              className={cn("flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold",
+                fitBlocked ? "border-destructive/40 bg-destructive/5 text-destructive" : "border-primary/20 bg-primary/5 text-primary")}
+            >
+              <span className="flex-1">
+                {fitBlocked
+                  ? fitMessage
+                  : (ar ? `الورقة ${livePageCount} من ${targetPages} صفحات مستهدفة.` : `${livePageCount} of ${targetPages} target pages.`)}
+              </span>
+              {fitBlocked && (
+                <>
+                  <button type="button" data-testid="button-fit-compact" onClick={compactFit} className="h-8 rounded-lg border bg-background px-2.5 text-foreground">
+                    {ar ? "تصغير الخط درجة" : "Shrink text one step"}
+                  </button>
+                  {targetPages < 3 && (
+                    <button type="button" data-testid="button-fit-raise" onClick={() => { const n = (targetPages + 1) as 2 | 3; setAiPages(n); setSettings(cur => ({ ...cur, targetPages: n })); }} className="h-8 rounded-lg border bg-background px-2.5 text-foreground">
+                      {ar ? `رفع المستهدف إلى ${targetPages + 1}` : `Raise target to ${targetPages + 1}`}
+                    </button>
+                  )}
+                  <button type="button" data-testid="button-fit-release" onClick={() => setSettings(cur => ({ ...cur, targetPages: undefined }))} className="h-8 rounded-lg border bg-background px-2.5 text-foreground">
+                    {ar ? "إلغاء الحد" : "Remove limit"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2" data-testid="bar-worksheet-actions">
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -2318,7 +2435,7 @@ export default function WorksheetCreate() {
               <button
                 data-testid="button-ws-pdf"
                 onClick={() => requestPreview("pdf")}
-                disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                disabled={fitBlocked || !canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
                 className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
               >
                 <Printer className="w-4 h-4" />PDF
@@ -2327,7 +2444,7 @@ export default function WorksheetCreate() {
                 ar={ar}
                 testId="button-ws-word"
                 onExport={mode => requestPreview(mode === "visual" ? "word-visual" : "word")}
-                disabled={!canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
+                disabled={fitBlocked || !canSave || autoSaveStatus === "saving" || autoSaveStatus === "error"}
                 className="h-10 px-3.5 rounded-xl font-bold border border-border bg-background hover:bg-muted text-sm flex items-center gap-2 disabled:opacity-50"
               />
               <button
@@ -2627,7 +2744,7 @@ function QuestionEditor({
   generatingCellImageIndex: number | null;
   imageCreditPrice: ToolCreditPrice | null;
   forceExpanded: boolean;
-  difficulty: "easy" | "medium" | "hard" | "mixed";
+  difficulty: "auto" | "easy" | "medium" | "hard" | "mixed";
   assessmentMode: "diagnostic" | "formative" | "summative";
   rubric: string;
   onRubricChange: (rubric: string) => void;
@@ -2638,7 +2755,9 @@ function QuestionEditor({
   const [isExpanded, setIsExpanded] = useState(true);
   useEffect(() => setIsExpanded(forceExpanded), [forceExpanded]);
 
-  const difficultyLabel = difficulty === "easy"
+  const difficultyLabel = difficulty === "auto"
+    ? (ar ? "مستوى مناسب للصف" : "Grade-appropriate level")
+    : difficulty === "easy"
     ? (ar ? "سهل" : "Easy")
     : difficulty === "hard"
       ? (ar ? "صعب" : "Hard")
@@ -2821,6 +2940,13 @@ function QuestionEditor({
               className="w-full h-10 px-3 rounded-lg border bg-background text-sm focus:border-primary outline-none transition-all"
             />
           </Field>
+        </div>
+      )}
+
+      {question.type === "short_answer" && question.activity && (
+        <div className="mt-2 rounded-xl border p-3">
+          <div className="mb-2 text-sm font-bold">{ACTIVITY_LABELS[question.activity.kind]?.[ar ? 0 : 1]}</div>
+          <WorksheetActivityEditor activity={question.activity} ar={ar} onChange={activity => onUpdate({ activity } as any)} />
         </div>
       )}
 
@@ -3162,6 +3288,8 @@ function WorksheetWorkspaceOverlay({
       toast.error(ar ? "تعذّر إعداد الملف" : "Could not prepare file");
       return;
     }
+    const wordFit = fitBlockMessage(settingsRef.current.targetPages, countWorksheetPages(), ar);
+    if (wordFit) { toast.error(wordFit); return; }
     exportInFlightRef.current = true;
     setExportBusy(true);
     setWordExport(wordMode);
@@ -3215,6 +3343,8 @@ function WorksheetWorkspaceOverlay({
   const [pdfFailed, setPdfFailed] = useState<string | null>(null);
   const runPdf = async () => {
     if (exportInFlightRef.current || saving) return;
+    const pdfFit = fitBlockMessage(settingsRef.current.targetPages, countWorksheetPages(), ar);
+    if (pdfFit) { setPdfFailed(pdfFit); toast.error(pdfFit); return; }
     exportInFlightRef.current = true;
     setExportBusy(true);
     setPdfFailed(null);

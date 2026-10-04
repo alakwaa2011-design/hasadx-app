@@ -16,6 +16,224 @@ const zod = {
 
 
 /**
+ * @summary Generate a printable worksheet honoring explicit teacher constraints
+ */
+export const generateWorksheetActivityBodyLanguageDefault = `ar`;
+export const generateWorksheetActivityBodyTopicMax = 500;
+
+export const generateWorksheetActivityBodySourceTextMax = 12000;
+
+export const generateWorksheetActivityBodySubjectMax = 100;
+
+export const generateWorksheetActivityBodyGradeLevelMax = 50;
+
+export const generateWorksheetActivityBodyPagesDefault = 1;
+export const generateWorksheetActivityBodyGroupSizeMin = 2;
+export const generateWorksheetActivityBodyGroupSizeMax = 6;
+
+export const generateWorksheetActivityBodyGenerationConstraintsLearningObjectiveMax = 500;
+
+export const generateWorksheetActivityBodyGenerationConstraintsActivityDurationMin = 5;
+export const generateWorksheetActivityBodyGenerationConstraintsActivityDurationMax = 90;
+
+export const generateWorksheetActivityBodyGenerationConstraintsItemCountMax = 12;
+
+export const generateWorksheetActivityBodyGenerationConstraintsAllowedTypesMax = 10;
+
+export const generateWorksheetActivityBodyLearningObjectiveMax = 500;
+
+export const generateWorksheetActivityBodyActivityDurationMin = 5;
+export const generateWorksheetActivityBodyActivityDurationMax = 90;
+
+export const generateWorksheetActivityBodyCountsMinOne = 0;
+export const generateWorksheetActivityBodyCountsMaxOne = 40;
+
+
+
+export const GenerateWorksheetActivityBody = zod.object({
+  "questionSelection": zod.enum(['auto', 'manual']).optional(),
+  "language": zod.enum(['ar', 'en']).default(generateWorksheetActivityBodyLanguageDefault),
+  "topic": zod.string().max(generateWorksheetActivityBodyTopicMax).optional(),
+  "sourceText": zod.string().max(generateWorksheetActivityBodySourceTextMax).optional(),
+  "subject": zod.string().max(generateWorksheetActivityBodySubjectMax).nullish(),
+  "gradeLevel": zod.string().max(generateWorksheetActivityBodyGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(generateWorksheetActivityBodyPagesDefault),
+  "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
+  "executionMode": zod.enum(['individual', 'group']).optional(),
+  "groupSize": zod.int().min(generateWorksheetActivityBodyGroupSizeMin).max(generateWorksheetActivityBodyGroupSizeMax).optional(),
+  "generationConstraints": zod.object({
+  "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
+  "learningObjective": zod.string().min(1).max(generateWorksheetActivityBodyGenerationConstraintsLearningObjectiveMax).optional(),
+  "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
+  "activityDuration": zod.int().min(generateWorksheetActivityBodyGenerationConstraintsActivityDurationMin).max(generateWorksheetActivityBodyGenerationConstraintsActivityDurationMax).optional(),
+  "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
+  "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
+  "itemCount": zod.int().min(1).max(generateWorksheetActivityBodyGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(generateWorksheetActivityBodyGenerationConstraintsAllowedTypesMax).optional()
+}).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
+  "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
+  "learningObjective": zod.string().max(generateWorksheetActivityBodyLearningObjectiveMax).optional(),
+  "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
+  "activityDuration": zod.int().min(generateWorksheetActivityBodyActivityDurationMin).max(generateWorksheetActivityBodyActivityDurationMax).optional(),
+  "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
+  "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
+  "counts": zod.record(zod.string(), zod.int().min(generateWorksheetActivityBodyCountsMinOne).max(generateWorksheetActivityBodyCountsMaxOne)).optional()
+})
+
+export const generateWorksheetActivityResponseQuestionsItemActivityCenterMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityBranchesItemMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityBranchesMin = 2;
+export const generateWorksheetActivityResponseQuestionsItemActivityBranchesMax = 6;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityItemsItemMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityItemsMin = 2;
+export const generateWorksheetActivityResponseQuestionsItemActivityItemsMax = 8;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityCategoriesItemMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityCategoriesMin = 2;
+export const generateWorksheetActivityResponseQuestionsItemActivityCategoriesMax = 4;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityStepsItemMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityStepsMin = 2;
+export const generateWorksheetActivityResponseQuestionsItemActivityStepsMax = 5;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityRolesItemMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsItemActivityRolesMin = 2;
+export const generateWorksheetActivityResponseQuestionsItemActivityRolesMax = 6;
+
+export const generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightDefault = 100;
+export const generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightMin = 60;
+export const generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightMax = 180;
+
+export const generateWorksheetActivityResponseQuestionsMax = 60;
+
+
+
+export const GenerateWorksheetActivityResponse = zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare', 'tic_tac_toe']),
+  "prompt": zod.string().optional(),
+  "activity": zod.object({
+  "kind": zod.enum(['concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task']),
+  "center": zod.string().max(generateWorksheetActivityResponseQuestionsItemActivityCenterMax).optional(),
+  "branches": zod.array(zod.string().max(generateWorksheetActivityResponseQuestionsItemActivityBranchesItemMax)).min(generateWorksheetActivityResponseQuestionsItemActivityBranchesMin).max(generateWorksheetActivityResponseQuestionsItemActivityBranchesMax).optional(),
+  "items": zod.array(zod.string().max(generateWorksheetActivityResponseQuestionsItemActivityItemsItemMax)).min(generateWorksheetActivityResponseQuestionsItemActivityItemsMin).max(generateWorksheetActivityResponseQuestionsItemActivityItemsMax).optional(),
+  "categories": zod.array(zod.string().max(generateWorksheetActivityResponseQuestionsItemActivityCategoriesItemMax)).min(generateWorksheetActivityResponseQuestionsItemActivityCategoriesMin).max(generateWorksheetActivityResponseQuestionsItemActivityCategoriesMax).optional(),
+  "steps": zod.array(zod.string().max(generateWorksheetActivityResponseQuestionsItemActivityStepsItemMax)).min(generateWorksheetActivityResponseQuestionsItemActivityStepsMin).max(generateWorksheetActivityResponseQuestionsItemActivityStepsMax).optional(),
+  "roles": zod.array(zod.string().max(generateWorksheetActivityResponseQuestionsItemActivityRolesItemMax)).min(generateWorksheetActivityResponseQuestionsItemActivityRolesMin).max(generateWorksheetActivityResponseQuestionsItemActivityRolesMax).optional(),
+  "spaceHeight": zod.int().min(generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightMin).max(generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightMax).default(generateWorksheetActivityResponseQuestionsItemActivitySpaceHeightDefault)
+}).optional()
+})).min(1).max(generateWorksheetActivityResponseQuestionsMax)
+})
+
+
+/**
+ * @summary Build printable activities grounded in educational source material
+ */
+export const extractWorksheetActivityBodySourceTextMax = 12000;
+
+export const extractWorksheetActivityBodyTopicHintMax = 300;
+
+export const extractWorksheetActivityBodySubjectMax = 100;
+
+export const extractWorksheetActivityBodyGradeLevelMax = 50;
+
+export const extractWorksheetActivityBodyGroupSizeMin = 2;
+export const extractWorksheetActivityBodyGroupSizeMax = 6;
+
+export const extractWorksheetActivityBodyLearningObjectiveMax = 500;
+
+export const extractWorksheetActivityBodyActivityDurationMin = 5;
+export const extractWorksheetActivityBodyActivityDurationMax = 90;
+
+
+
+export const ExtractWorksheetActivityBody = zod.object({
+  "files": zod.array(zod.any()).optional(),
+  "sourceText": zod.string().max(extractWorksheetActivityBodySourceTextMax).optional(),
+  "topicHint": zod.string().max(extractWorksheetActivityBodyTopicHintMax).optional(),
+  "subject": zod.string().max(extractWorksheetActivityBodySubjectMax).optional(),
+  "gradeLevel": zod.string().max(extractWorksheetActivityBodyGradeLevelMax).optional(),
+  "questionSelection": zod.enum(['auto', 'manual']).optional(),
+  "language": zod.enum(['ar', 'en']).optional(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).optional(),
+  "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
+  "executionMode": zod.enum(['individual', 'group']).optional(),
+  "groupSize": zod.int().min(extractWorksheetActivityBodyGroupSizeMin).max(extractWorksheetActivityBodyGroupSizeMax).optional(),
+  "generationConstraints": zod.string().optional().describe('JSON-encoded WorksheetActivityConstraints'),
+  "counts": zod.string().optional().describe('JSON-encoded per-type counts'),
+  "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
+  "learningObjective": zod.string().max(extractWorksheetActivityBodyLearningObjectiveMax).optional(),
+  "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
+  "activityDuration": zod.int().min(extractWorksheetActivityBodyActivityDurationMin).max(extractWorksheetActivityBodyActivityDurationMax).optional(),
+  "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
+  "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional()
+})
+
+export const extractWorksheetActivityResponseQuestionsItemActivityCenterMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityBranchesItemMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityBranchesMin = 2;
+export const extractWorksheetActivityResponseQuestionsItemActivityBranchesMax = 6;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityItemsItemMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityItemsMin = 2;
+export const extractWorksheetActivityResponseQuestionsItemActivityItemsMax = 8;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityCategoriesItemMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityCategoriesMin = 2;
+export const extractWorksheetActivityResponseQuestionsItemActivityCategoriesMax = 4;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityStepsItemMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityStepsMin = 2;
+export const extractWorksheetActivityResponseQuestionsItemActivityStepsMax = 5;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityRolesItemMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsItemActivityRolesMin = 2;
+export const extractWorksheetActivityResponseQuestionsItemActivityRolesMax = 6;
+
+export const extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightDefault = 100;
+export const extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightMin = 60;
+export const extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightMax = 180;
+
+export const extractWorksheetActivityResponseQuestionsMax = 60;
+
+
+
+export const ExtractWorksheetActivityResponse = zod.object({
+  "language": zod.enum(['ar', 'en']),
+  "questions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare', 'tic_tac_toe']),
+  "prompt": zod.string().optional(),
+  "activity": zod.object({
+  "kind": zod.enum(['concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task']),
+  "center": zod.string().max(extractWorksheetActivityResponseQuestionsItemActivityCenterMax).optional(),
+  "branches": zod.array(zod.string().max(extractWorksheetActivityResponseQuestionsItemActivityBranchesItemMax)).min(extractWorksheetActivityResponseQuestionsItemActivityBranchesMin).max(extractWorksheetActivityResponseQuestionsItemActivityBranchesMax).optional(),
+  "items": zod.array(zod.string().max(extractWorksheetActivityResponseQuestionsItemActivityItemsItemMax)).min(extractWorksheetActivityResponseQuestionsItemActivityItemsMin).max(extractWorksheetActivityResponseQuestionsItemActivityItemsMax).optional(),
+  "categories": zod.array(zod.string().max(extractWorksheetActivityResponseQuestionsItemActivityCategoriesItemMax)).min(extractWorksheetActivityResponseQuestionsItemActivityCategoriesMin).max(extractWorksheetActivityResponseQuestionsItemActivityCategoriesMax).optional(),
+  "steps": zod.array(zod.string().max(extractWorksheetActivityResponseQuestionsItemActivityStepsItemMax)).min(extractWorksheetActivityResponseQuestionsItemActivityStepsMin).max(extractWorksheetActivityResponseQuestionsItemActivityStepsMax).optional(),
+  "roles": zod.array(zod.string().max(extractWorksheetActivityResponseQuestionsItemActivityRolesItemMax)).min(extractWorksheetActivityResponseQuestionsItemActivityRolesMin).max(extractWorksheetActivityResponseQuestionsItemActivityRolesMax).optional(),
+  "spaceHeight": zod.int().min(extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightMin).max(extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightMax).default(extractWorksheetActivityResponseQuestionsItemActivitySpaceHeightDefault)
+}).optional()
+})).min(1).max(extractWorksheetActivityResponseQuestionsMax)
+})
+
+
+/**
  * Does not create a game or change the destination's authorization. Guest hosts may create aliases.
  * @summary Get a permanent short alias for an existing public game destination
  */

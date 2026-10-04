@@ -117,6 +117,11 @@ async function settle() {
 let container: HTMLDivElement;
 let root: Root;
 
+async function renderManualBoardWorksheet() {
+  await act(async () => { root.render(<WorksheetCreate />); });
+  await act(async () => buttonContaining(container, "يدوي —").click());
+}
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem("hasad:worksheet:prefs", JSON.stringify({
@@ -166,7 +171,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await act(async () => root.render(<WorksheetCreate />));
+    await renderManualBoardWorksheet();
     setTextValue(
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
@@ -236,7 +241,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await act(async () => root.render(<WorksheetCreate />));
+    await renderManualBoardWorksheet();
     setTextValue(
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
@@ -300,7 +305,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await act(async () => root.render(<WorksheetCreate />));
+    await renderManualBoardWorksheet();
     setTextValue(
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
@@ -347,7 +352,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await act(async () => root.render(<WorksheetCreate />));
+    await renderManualBoardWorksheet();
     setTextValue(
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",
@@ -445,7 +450,7 @@ describe("توليد لوحة تيك تاك توك من منشئ ورقة الع
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await act(async () => root.render(<WorksheetCreate />));
+    await renderManualBoardWorksheet();
     setTextValue(
       container.querySelector('input[placeholder*="عن ماذا"]') as HTMLInputElement,
       "دورة الماء",

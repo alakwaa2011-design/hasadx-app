@@ -22,6 +22,9 @@ import { resolveImageUrl } from "@/lib/image-url";
 import { WorksheetFormatPanel } from "./worksheet-format-panel";
 import { WorksheetModeSwitch } from "./worksheet-workspace-controls";
 import { MathText } from "@/components/math-text";
+import { WorksheetActivityView, activityHeightMm } from "./worksheet-activity";
+import { countWorksheetPages, fitBlockMessage } from "./worksheet-quick-setup";
+import type { WorksheetActivity } from "@workspace/api-zod";
 import { WorksheetQuestionVisual, type WorksheetVisual } from "./worksheet-question-visual";
 import { contentDirection } from "@/lib/content-direction";
 import QRCode from "react-qr-code";
@@ -33,7 +36,7 @@ const BRAND_GOLD = "#D9A521";
 
 interface QMcq { id: string; type: "mcq"; prompt: string; options: string[]; correctIndex: number; points?: number }
 interface QTF { id: string; type: "true_false"; prompt: string; correct: boolean; points?: number }
-interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number }
+interface QShort { id: string; type: "short_answer"; prompt: string; lines?: number; answer?: string; points?: number; activity?: WorksheetActivity }
 interface QFill { id: string; type: "fill_blank"; prompt: string; answer: string; points?: number }
 interface QMatch { id: string; type: "matching"; prompt?: string; pairs: Array<{ left: string; right: string }>; points?: number }
 interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: Array<{ text: string; category: string; imageUrl?: string }>; points?: number }
@@ -137,7 +140,7 @@ function paginateByEstimate(
     switch (q.type) {
       case "mcq": return base + q.options.filter(Boolean).length * lineH * 1.3;
       case "true_false": return base + lineH * 1.1;
-      case "short_answer": return base + (q.lines ?? 2) * 9;
+      case "short_answer": return base + (q.activity ? activityHeightMm(q.activity) : (q.lines ?? 2) * 9);
       case "fill_blank": return base + 3;
       case "matching": return base + q.pairs.length * lineH * 1.3;
       case "tic_tac_toe": return Math.max(185, base + 165);
@@ -1302,6 +1305,8 @@ export default function WorksheetPrint() {
     setPdfError(null);
     try {
       flushLatest();
+      const fitIssue = fitBlockMessage(dataRef.current?.settings.targetPages, countWorksheetPages(), uiLang === "ar");
+      if (fitIssue) { toast.error(fitIssue); return; }
       await printToPdf(dataRef.current?.title ?? "");
     } catch (error) {
       setPdfError(pdfExportErrorMessage(error, uiLang === "ar"));
@@ -1420,6 +1425,8 @@ export default function WorksheetPrint() {
   const handleWord = async (mode: "visual" | "editable") => {
     if (exportInFlightRef.current || savingRef.current) return;
     flushLatest();
+    const fitIssue = fitBlockMessage(dataRef.current?.settings.targetPages, countWorksheetPages(), uiLang === "ar");
+    if (fitIssue) { toast.error(fitIssue); return; }
     const root = document.getElementById("ws-printable-root");
     if (!root) {
       toast.error(uiLang === "ar" ? "تعذّر إعداد الملف" : "Could not prepare file");
@@ -2495,7 +2502,8 @@ function QuestionView({
           <span className="ws-tf-choice"><span className="ws-tf-box" aria-hidden="true" />{labels.false}</span>
         </div>
       )}
-      {q.type === "short_answer" && (
+      {q.type === "short_answer" && q.activity && <WorksheetActivityView activity={q.activity} seed={q.id} />}
+      {q.type === "short_answer" && !q.activity && (
         <div className="ws-lines">
           {Array.from({ length: q.lines ?? 2 }).map((_, i) => <span key={i} className="ws-line" />)}
         </div>

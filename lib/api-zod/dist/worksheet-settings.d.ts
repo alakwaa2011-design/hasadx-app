@@ -20,15 +20,15 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     borderRadius: z.ZodOptional<z.ZodNumber>;
     opacity: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    kind: "text" | "rect" | "circle" | "line";
     id: string;
-    x: number;
-    y: number;
+    kind: "text" | "rect" | "circle" | "line";
     width: number;
     height: number;
+    x: number;
+    y: number;
     text?: string | undefined;
     fontSize?: number | undefined;
-    align?: "left" | "right" | "center" | undefined;
+    align?: "center" | "left" | "right" | undefined;
     fontColor?: string | undefined;
     bold?: boolean | undefined;
     italic?: boolean | undefined;
@@ -39,15 +39,15 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     borderRadius?: number | undefined;
     opacity?: number | undefined;
 }, {
-    kind: "text" | "rect" | "circle" | "line";
     id: string;
-    x: number;
-    y: number;
+    kind: "text" | "rect" | "circle" | "line";
     width: number;
     height: number;
+    x: number;
+    y: number;
     text?: string | undefined;
     fontSize?: number | undefined;
-    align?: "left" | "right" | "center" | undefined;
+    align?: "center" | "left" | "right" | undefined;
     fontColor?: string | undefined;
     bold?: boolean | undefined;
     italic?: boolean | undefined;
@@ -59,6 +59,38 @@ export declare const worksheetCanvasElementSchema: z.ZodObject<{
     opacity?: number | undefined;
 }>;
 export declare const worksheetSettingsSchema: z.ZodObject<{
+    activityStyle: z.ZodOptional<z.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+    executionMode: z.ZodOptional<z.ZodEnum<["individual", "group"]>>;
+    groupSize: z.ZodOptional<z.ZodNumber>;
+    targetPages: z.ZodOptional<z.ZodUnion<[z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>]>>;
+    generationConstraints: z.ZodOptional<z.ZodObject<{
+        difficulty: z.ZodOptional<z.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: z.ZodOptional<z.ZodString>;
+        cognitiveSkill: z.ZodOptional<z.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: z.ZodOptional<z.ZodNumber>;
+        differentiation: z.ZodOptional<z.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: z.ZodOptional<z.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        allowedTypes: z.ZodOptional<z.ZodArray<z.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        itemCount: z.ZodOptional<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    }, {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    }>>;
     instructions: z.ZodOptional<z.ZodString>;
     learningObjective: z.ZodOptional<z.ZodString>;
     cognitiveSkill: z.ZodOptional<z.ZodEnum<["mixed", "remember", "understand", "apply", "analyze", "evaluate", "create"]>>;
@@ -113,15 +145,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             borderRadius: z.ZodOptional<z.ZodNumber>;
             opacity: z.ZodOptional<z.ZodNumber>;
         }, "strip", z.ZodTypeAny, {
-            kind: "text" | "rect" | "circle" | "line";
             id: string;
-            x: number;
-            y: number;
+            kind: "text" | "rect" | "circle" | "line";
             width: number;
             height: number;
+            x: number;
+            y: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "left" | "right" | "center" | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -132,15 +164,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             borderRadius?: number | undefined;
             opacity?: number | undefined;
         }, {
-            kind: "text" | "rect" | "circle" | "line";
             id: string;
-            x: number;
-            y: number;
+            kind: "text" | "rect" | "circle" | "line";
             width: number;
             height: number;
+            x: number;
+            y: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "left" | "right" | "center" | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -153,15 +185,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
         elements: {
-            kind: "text" | "rect" | "circle" | "line";
             id: string;
-            x: number;
-            y: number;
+            kind: "text" | "rect" | "circle" | "line";
             width: number;
             height: number;
+            x: number;
+            y: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "left" | "right" | "center" | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -174,15 +206,15 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     }, {
         elements: {
-            kind: "text" | "rect" | "circle" | "line";
             id: string;
-            x: number;
-            y: number;
+            kind: "text" | "rect" | "circle" | "line";
             width: number;
             height: number;
+            x: number;
+            y: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "left" | "right" | "center" | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -204,12 +236,12 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             align: z.ZodOptional<z.ZodEnum<["start", "center", "end"]>>;
         }, "strip", z.ZodTypeAny, {
             key: string;
-            align?: "start" | "center" | "end" | undefined;
+            align?: "center" | "start" | "end" | undefined;
             bold?: boolean | undefined;
             fontSizePt?: number | undefined;
         }, {
             key: string;
-            align?: "start" | "center" | "end" | undefined;
+            align?: "center" | "start" | "end" | undefined;
             bold?: boolean | undefined;
             fontSizePt?: number | undefined;
         }>, "many">>;
@@ -229,13 +261,13 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         questionId: string;
         fields?: {
             key: string;
-            align?: "start" | "center" | "end" | undefined;
+            align?: "center" | "start" | "end" | undefined;
             bold?: boolean | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "choices" | "mark" | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
@@ -249,13 +281,13 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         questionId: string;
         fields?: {
             key: string;
-            align?: "start" | "center" | "end" | undefined;
+            align?: "center" | "start" | "end" | undefined;
             bold?: boolean | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "choices" | "mark" | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
@@ -275,19 +307,37 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
     columns: 1 | 2;
     fontSizePt: number;
     showWatermark: boolean;
-    instructions?: string | undefined;
+    activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+    executionMode?: "individual" | "group" | undefined;
+    groupSize?: number | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    generationConstraints?: {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    } | undefined;
+    section?: string | undefined;
     teacherName?: string | undefined;
     layout?: {
         elements: {
-            kind: "text" | "rect" | "circle" | "line";
             id: string;
-            x: number;
-            y: number;
+            kind: "text" | "rect" | "circle" | "line";
             width: number;
             height: number;
+            x: number;
+            y: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "left" | "right" | "center" | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -299,16 +349,12 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
             opacity?: number | undefined;
         }[];
     } | undefined;
-    learningObjective?: string | undefined;
-    cognitiveSkill?: "create" | "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | undefined;
-    activityDuration?: number | undefined;
-    differentiation?: "support" | "none" | "enrichment" | "scaffolded" | undefined;
-    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    targetPages?: 1 | 2 | 3 | undefined;
+    instructions?: string | undefined;
     headerNote?: string | undefined;
     footerNote?: string | undefined;
     goodLuck?: string | undefined;
     schoolName?: string | undefined;
-    section?: string | undefined;
     customFields?: {
         value: string;
         label: string;
@@ -321,13 +367,13 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         questionId: string;
         fields?: {
             key: string;
-            align?: "start" | "center" | "end" | undefined;
+            align?: "center" | "start" | "end" | undefined;
             bold?: boolean | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "choices" | "mark" | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
@@ -339,19 +385,37 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         rubric?: string | undefined;
     }[] | undefined;
 }, {
-    instructions?: string | undefined;
+    activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+    executionMode?: "individual" | "group" | undefined;
+    groupSize?: number | undefined;
+    learningObjective?: string | undefined;
+    cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+    activityDuration?: number | undefined;
+    differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    generationConstraints?: {
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        itemCount?: number | undefined;
+        allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+    } | undefined;
+    section?: string | undefined;
     teacherName?: string | undefined;
     layout?: {
         elements: {
-            kind: "text" | "rect" | "circle" | "line";
             id: string;
-            x: number;
-            y: number;
+            kind: "text" | "rect" | "circle" | "line";
             width: number;
             height: number;
+            x: number;
+            y: number;
             text?: string | undefined;
             fontSize?: number | undefined;
-            align?: "left" | "right" | "center" | undefined;
+            align?: "center" | "left" | "right" | undefined;
             fontColor?: string | undefined;
             bold?: boolean | undefined;
             italic?: boolean | undefined;
@@ -364,11 +428,8 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         }[];
     } | undefined;
     fontFamily?: "default" | "cairo" | "tajawal" | "amiri" | "noto-naskh" | "inter" | "georgia" | undefined;
-    learningObjective?: string | undefined;
-    cognitiveSkill?: "create" | "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | undefined;
-    activityDuration?: number | undefined;
-    differentiation?: "support" | "none" | "enrichment" | "scaffolded" | undefined;
-    assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+    targetPages?: 1 | 2 | 3 | undefined;
+    instructions?: string | undefined;
     includeName?: boolean | undefined;
     includeDate?: boolean | undefined;
     includeClass?: boolean | undefined;
@@ -378,7 +439,6 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
     footerNote?: string | undefined;
     goodLuck?: string | undefined;
     schoolName?: string | undefined;
-    section?: string | undefined;
     customFields?: {
         value: string;
         label: string;
@@ -393,13 +453,13 @@ export declare const worksheetSettingsSchema: z.ZodObject<{
         questionId: string;
         fields?: {
             key: string;
-            align?: "start" | "center" | "end" | undefined;
+            align?: "center" | "start" | "end" | undefined;
             bold?: boolean | undefined;
             fontSizePt?: number | undefined;
         }[] | undefined;
         spacing?: "compact" | "normal" | "relaxed" | undefined;
         choiceColumns?: 1 | 2 | undefined;
-        trueFalseLayout?: "choices" | "mark" | undefined;
+        trueFalseLayout?: "mark" | "choices" | undefined;
         matchingLeftWidth?: number | undefined;
         ticTacToeStrategy?: "any_three" | "corners" | "full_board" | undefined;
         ticTacToeResponseLines?: number | undefined;
