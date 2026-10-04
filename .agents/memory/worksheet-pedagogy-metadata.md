@@ -26,3 +26,9 @@ The school administration requested adding «ورقة أنشطة المجموع�
 **Why:** The user stated this school requirement directly.
 
 **How to apply:** Keep group-activity worksheets in the educational requirements when discussing worksheet teaching modes; do not treat them merely as another question format.
+
+The user wants easier worksheet preparation: subject and grade should be enough to begin, followed by a teacher choice of activity. Automatic generation should support enjoyable, grade-appropriate activities such as maps, drawing and coloring rather than defaulting to an exam-style sheet of questions.
+
+**Why:** The user explicitly described the current worksheets as too test-like and requested a simpler, activity-led experience similar to Chalkie.
+
+**How to apply:** Evaluate worksheet improvements on both teacher preparation effort and the student's actual activity, not merely visual decoration or a larger inventory of question types.
