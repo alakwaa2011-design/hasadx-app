@@ -20,3 +20,9 @@ Automatic selection must not sample every supported question type. Respect the t
 **Why:** The user reported that automatic generation selected from all types and clarified that page count, restrained variety, optional type constraints, and explicit Tic-Tac-Toe activation are required.
 
 **How to apply:** Treat page count as a real layout constraint, not only a prompt hint. Do not interpret access to all supported formats as an instruction to use them all, and do not let cached choices silently activate a choice board.
+
+The school administration requested adding «ورقة أنشطة المجموعات», which the user compared to Chalkie.
+
+**Why:** The user stated this school requirement directly.
+
+**How to apply:** Keep group-activity worksheets in the educational requirements when discussing worksheet teaching modes; do not treat them merely as another question format.
