@@ -22,6 +22,7 @@ import { resolveImageUrl } from "@/lib/image-url";
 import { WorksheetFormatPanel } from "./worksheet-format-panel";
 import { WorksheetModeSwitch } from "./worksheet-workspace-controls";
 import { MathText } from "@/components/math-text";
+import { WorksheetQuestionVisual, type WorksheetVisual } from "./worksheet-question-visual";
 import { contentDirection } from "@/lib/content-direction";
 import QRCode from "react-qr-code";
 import { Loader2, Download, ArrowLeft, FileType, Layout, Save, Scissors, PenLine, CheckCheck, Camera as CameraIcon, Minus, Plus, RotateCcw, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
@@ -57,9 +58,9 @@ interface QCompare {
   leftLabel: string; rightLabel: string;
   similarities?: string; differences?: string;
 }
-export type Question =
+export type Question = (
   | QMcq | QTF | QShort | QFill | QMatch | QTicTacToe
-  | QWorkedProblem | QExtendedResponse | QErrorCorrection | QWordBank | QCompare;
+  | QWorkedProblem | QExtendedResponse | QErrorCorrection | QWordBank | QCompare) & { visual?: WorksheetVisual };
 type QuestionType = Question["type"];
 
 interface AnswerItem {
@@ -2461,6 +2462,7 @@ function QuestionView({
           </div>
         </div>
       </div>
+      <WorksheetQuestionVisual visual={q.visual} />
       {q.type === "mcq" && (
         <ol
           className="ws-mcq"

@@ -5,6 +5,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm";
 import { checkCredits, captureCredits, captureCreditsOrThrow, refundCredits } from "../lib/check-credits";
 import { featureAccess } from "@workspace/billing";
 import { z } from "zod";
+import { automaticWorksheetCounts, automaticWorksheetGuidance, worksheetVisualGuidance, worksheetVisualSchema } from "../lib/worksheet-auto-selection";
 import { RenderWorksheetPageBody, worksheetSettingsSchema } from "@workspace/api-zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
@@ -209,17 +210,17 @@ const ticTacToeSchema = z.object({
 });
 
 const questionSchema = z.discriminatedUnion("type", [
-  mcqSchema,
-  trueFalseSchema,
-  shortAnswerSchema,
-  fillBlankSchema,
-  matchingSchema,
-  workedProblemSchema,
-  extendedResponseSchema,
-  errorCorrectionSchema,
-  wordBankSchema,
-  compareSchema,
-  ticTacToeSchema,
+  mcqSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  trueFalseSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  shortAnswerSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  fillBlankSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  matchingSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  workedProblemSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  extendedResponseSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  errorCorrectionSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  wordBankSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  compareSchema.extend({ visual: worksheetVisualSchema.optional() }),
+  ticTacToeSchema.extend({ visual: worksheetVisualSchema.optional() }),
 ]);
 
 const TIC_TAC_TOE_LINES = [
@@ -1122,6 +1123,7 @@ const countsSchema = z.object({
   tic_tac_toe: z.number().int().min(0).max(1).default(0),
 });
 const aiGenerateBody = z.object({
+  questionSelection: z.enum(["auto", "manual"]).optional(),
   language: z.enum(["ar", "en"]).default("ar"),
   topic: z.string().trim().max(500).optional().default(""),
   sourceText: z.string().trim().max(MAX_SOURCE_TEXT_LENGTH).optional(),
@@ -1134,9 +1136,9 @@ const aiGenerateBody = z.object({
   differentiation: z.enum(["none", "support", "enrichment", "scaffolded"]).default("none"),
   assessmentMode: z.enum(["diagnostic", "formative", "summative"]).default("formative"),
   pages: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
-  counts: countsSchema,
+  counts: countsSchema.default({}),
 }).superRefine((value, ctx) => {
-  if (!value.topic && !value.sourceText) {
+  if (!value.topic && !value.sourceText && !(value.questionSelection === "auto" && value.subject?.trim() && value.gradeLevel?.trim())) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["sourceText"],
@@ -1221,6 +1223,9 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     const parsedBody = aiGenerateBody.parse(req.body);
     const body = {
       ...parsedBody,
+      topic: parsedBody.topic || (parsedBody.questionSelection === "auto" && parsedBody.subject && parsedBody.gradeLevel
+        ? `${parsedBody.subject} — ${parsedBody.gradeLevel}` : ""),
+      questionSelection: parsedBody.questionSelection ?? (req.body.counts ? "manual" : "auto"),
       language: resolveAiContentLanguage({
         preferredLanguage: parsedBody.language,
         primaryText: parsedBody.sourceText || parsedBody.topic,
@@ -1228,6 +1233,9 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       }),
     };
     language = body.language;
+    if (body.questionSelection === "auto") {
+      body.counts = automaticWorksheetCounts(body.pages, body.counts.tic_tac_toe);
+    }
 
     const total = Object.values(body.counts).reduce((sum, count) => sum + count, 0);
     if (total === 0) {
@@ -1236,7 +1244,7 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       return;
     }
     const maxTotal = body.pages * 30;
-    if (total > maxTotal) {
+    if (body.questionSelection !== "auto" && total > maxTotal) {
       await refundCredits(req, "عدد الأسئلة يتجاوز الحد المسموح");
       res.status(400).json({ message: language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions` });
       return;
@@ -1259,11 +1267,12 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       });
       const json = parseJsonLoose(text);
       const raw = Array.isArray(json?.questions) ? json.questions : [];
-      return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(
+      const questions = sanitizeGeneratedQuestions(
         raw,
         body.counts,
         normalizeDiversity ? { normalizeTicTacToeDiversity: true, language: body.language } : undefined,
-      ));
+      );
+      return questionsArraySchema.safeParse(body.questionSelection === "auto" ? questions.slice(0, maxTotal) : questions);
     };
     let validated = await generateQuestions(prompt, "generate:completion");
     if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
@@ -1434,6 +1443,7 @@ router.post(
         }
       }
       const parsedInput = aiExtractFields.parse({
+        questionSelection: req.body.questionSelection ?? "manual",
         language: req.body.language,
         subject: req.body.subject || undefined,
         gradeLevel: req.body.gradeLevel || undefined,
@@ -1469,14 +1479,16 @@ router.post(
       }
 
       const maxTotal = parsedBody.pages * 30;
-      const effectiveCounts = parsedBody.counts;
+      const effectiveCounts = parsedBody.questionSelection === "auto"
+        ? automaticWorksheetCounts(parsedBody.pages, parsedBody.counts.tic_tac_toe)
+        : parsedBody.counts;
       const total = Object.values(effectiveCounts).reduce((sum, count) => sum + count, 0);
       if (total === 0) {
         await refundCredits(req, "لا أنواع أسئلة محددة");
         res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
         return;
       }
-      if (total > maxTotal) {
+      if (parsedBody.questionSelection !== "auto" && total > maxTotal) {
         await refundCredits(req, "عدد الأسئلة يتجاوز الحد");
         res.status(400).json({ message: language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions` });
         return;
@@ -1495,6 +1507,7 @@ router.post(
       const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
 
       const prompt = buildExtractionPrompt({
+        questionSelection: parsedBody.questionSelection,
         language: parsedBody.language,
         subject: parsedBody.subject || null,
         gradeLevel: parsedBody.gradeLevel || null,
@@ -1529,11 +1542,12 @@ router.post(
             });
         const json = parseJsonLoose(text);
         const raw = Array.isArray(json?.questions) ? json.questions : [];
-        return questionsArraySchema.safeParse(sanitizeGeneratedQuestions(
+        const questions = sanitizeGeneratedQuestions(
           raw,
           effectiveCounts,
           normalizeDiversity ? { normalizeTicTacToeDiversity: true, language: parsedBody.language } : undefined,
-        ));
+        );
+        return questionsArraySchema.safeParse(parsedBody.questionSelection === "auto" ? questions.slice(0, maxTotal) : questions);
       };
       let validated = await generateQuestions(
         prompt,
@@ -1580,6 +1594,7 @@ router.post(
 );
 
 const aiExtractFields = z.object({
+  questionSelection: z.enum(["auto", "manual"]).default("manual"),
   language: z.enum(["ar", "en"]).default("ar"),
   subject: z.string().max(100).optional(),
   gradeLevel: z.string().max(50).optional(),
@@ -1617,6 +1632,7 @@ export function sanitizeGeneratedQuestions(
   options?: { normalizeTicTacToeDiversity?: boolean; language?: "ar" | "en" },
 ): z.infer<typeof questionSchema>[] {
   const out: z.infer<typeof questionSchema>[] = [];
+  const visuals = new Map<string, z.infer<typeof worksheetVisualSchema>>();
   let idx = 0;
   const cap = {
     mcq: counts.mcq,
@@ -1651,6 +1667,11 @@ export function sanitizeGeneratedQuestions(
     const prompt = promptRaw.trim().slice(0, 1000);
     if (!prompt && type !== "matching") continue;
     const id = `q_${++idx}_${Date.now().toString(36)}`;
+    if (q.visual !== undefined) {
+      const visual = worksheetVisualSchema.safeParse(q.visual);
+      if (visual.success) visuals.set(id, visual.data);
+      else continue; // Never keep a question whose required diagram is invalid.
+    }
     const points = Number.isInteger(q.points) && q.points >= 0 && q.points <= 100
       ? q.points as number
       : undefined;
@@ -1796,7 +1817,7 @@ export function sanitizeGeneratedQuestions(
     }
   }
 
-  return out;
+  return out.map(question => visuals.has(question.id) ? { ...question, visual: visuals.get(question.id) } : question);
 }
 
 function pedagogicalGuidanceLines(opts: {
@@ -1832,7 +1853,7 @@ function pedagogicalGuidanceLines(opts: {
   ].filter(Boolean);
 }
 
-function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
+export function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
   const {
     language, topic, sourceText, subject, gradeLevel, difficulty, learningObjective,
     cognitiveSkill, activityDuration, differentiation, assessmentMode, counts, pages,
@@ -1877,7 +1898,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
         "صيغة الرد: { \"questions\": [...] }.",
         "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "⚠️ mcq (إلزامي): كل سؤال اختيار متعدد يجب أن يحتوي على حقل options وهو مصفوفة من 4 نصوص مختلفة، وحقل correctIndex بين 0 و 3. لا تكتب سؤال mcq بدون options أبداً.",
-        mcqExample,
+        body.questionSelection === "auto" ? mcqExample.replace("مثال إلزامي", "مثال تنسيق اختياري").replace("Mandatory MCQ example", "Optional MCQ format example") : mcqExample,
         "true_false: correct قيمة منطقية (true أو false).",
         "short_answer: prompt هو السؤال، lines رقم بين 1 و 5، answer هو الإجابة.",
         "fill_blank: prompt يحتوي على '____' مكان الفراغ، answer هو الكلمة الصحيحة.",
@@ -1895,7 +1916,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
         "Reply shape: { \"questions\": [...] }.",
         "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "⚠️ mcq (MANDATORY): every MCQ must have an 'options' array of EXACTLY 4 distinct strings and a 'correctIndex' (0–3). Never omit options.",
-        mcqExample,
+        body.questionSelection === "auto" ? mcqExample.replace("مثال إلزامي", "مثال تنسيق اختياري").replace("Mandatory MCQ example", "Optional MCQ format example") : mcqExample,
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains '____' where the blank goes; answer is the missing word.",
@@ -1918,7 +1939,11 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
     pagesLine,
     ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`,
     ...pedagogicalGuidanceLines({ language, learningObjective, cognitiveSkill, activityDuration, differentiation, assessmentMode }),
-    ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
+    body.questionSelection === "auto" ? automaticWorksheetGuidance(language, pages)
+      : ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
+    worksheetVisualGuidance,
+    body.questionSelection === "auto" && counts.tic_tac_toe === 1
+      ? (ar ? "طلب المعلم صراحة لوحة تيك تاك توك واحدة؛ أضفها مع الأسئلة المناسبة." : "The teacher explicitly requested one Tic-Tac-Toe board; include it alongside suitable questions.") : "",
     "",
     rules.join("\n"),
   ].filter(Boolean).join("\n");
@@ -1928,6 +1953,7 @@ function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): string {
    the source text inline (PDF/DOCX/text) or instructs the model to read
    the attached image (handled by runVisionCompletion). */
 function buildExtractionPrompt(opts: {
+  questionSelection?: "auto" | "manual";
   language: "ar" | "en";
   subject: string | null;
   gradeLevel: string | null;
@@ -2017,7 +2043,11 @@ function buildExtractionPrompt(opts: {
     pagesLine,
     ar ? `الصعوبة: ${diffLabel}` : `Difficulty: ${diffLabel}`,
     ...pedagogicalGuidanceLines(opts),
-    ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
+    opts.questionSelection === "auto" ? automaticWorksheetGuidance(opts.language, opts.pages)
+      : ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
+    worksheetVisualGuidance,
+    opts.questionSelection === "auto" && opts.counts.tic_tac_toe === 1
+      ? (ar ? "طلب المعلم صراحة لوحة تيك تاك توك واحدة؛ أضفها مع الأسئلة المناسبة." : "The teacher explicitly requested one Tic-Tac-Toe board; include it alongside suitable questions.") : "",
     hint,
     sourceBlock,
     rules.join("\n"),

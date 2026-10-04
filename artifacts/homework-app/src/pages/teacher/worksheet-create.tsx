@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { WorksheetVisual } from "./worksheet-question-visual";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
@@ -233,7 +234,7 @@ interface QWordBank { id: string; type: "word_bank"; prompt: string; items: stri
 interface QCompare { id: string; type: "compare"; prompt: string; leftLabel: string; rightLabel: string; similarities?: string; differences?: string; points?: number }
 interface QTicTacToeCell { text: string; category: string; imageUrl?: string; imageSuggested?: boolean }
 interface QTicTacToe { id: string; type: "tic_tac_toe"; prompt: string; cells: QTicTacToeCell[]; points?: number }
-type Question = QMcq | QTF | QShort | QFill | QMatch | QWorkedProblem | QExtendedResponse | QErrorCorrection | QWordBank | QCompare | QTicTacToe;
+type Question = (QMcq | QTF | QShort | QFill | QMatch | QWorkedProblem | QExtendedResponse | QErrorCorrection | QWordBank | QCompare | QTicTacToe) & { visual?: WorksheetVisual };
 const TIC_TAC_TOE_LINES = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
   [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -522,6 +523,7 @@ export default function WorksheetCreate() {
   const [aiCounts, setAiCounts] = useState<AiCounts>(
     _wsPrefs.aiCounts ?? WS_DEFAULT_PREFS.aiCounts,
   );
+  const [aiQuestionSelection, setAiQuestionSelection] = useState<"auto" | "manual">("auto");
   const [aiLearningObjective, setAiLearningObjective] = useState(_wsPrefs.aiLearningObjective ?? WS_DEFAULT_PREFS.aiLearningObjective);
   const [aiCognitiveSkill, setAiCognitiveSkill] = useState(_wsPrefs.aiCognitiveSkill ?? WS_DEFAULT_PREFS.aiCognitiveSkill);
   const [aiActivityDuration, setAiActivityDuration] = useState(_wsPrefs.aiActivityDuration ?? WS_DEFAULT_PREFS.aiActivityDuration);
@@ -581,6 +583,7 @@ export default function WorksheetCreate() {
     setAiDifficulty(WS_DEFAULT_PREFS.aiDifficulty);
     setAiPages(WS_DEFAULT_PREFS.aiPages);
     setAiCounts({ ...WS_DEFAULT_PREFS.aiCounts });
+    setAiQuestionSelection("auto");
     setAiLearningObjective(WS_DEFAULT_PREFS.aiLearningObjective);
     setAiCognitiveSkill(WS_DEFAULT_PREFS.aiCognitiveSkill);
     setAiActivityDuration(WS_DEFAULT_PREFS.aiActivityDuration);
@@ -711,7 +714,7 @@ export default function WorksheetCreate() {
   }, []);
 
   const totalQs = questions.length;
-  const aiTotal = Object.values(aiCounts).reduce((sum, count) => sum + count, 0);
+  const aiTotal = aiQuestionSelection === "auto" ? aiPages * 10 + aiCounts.tic_tac_toe : Object.values(aiCounts).reduce((sum, count) => sum + count, 0);
   const regularAiCount = aiTotal - aiCounts.tic_tac_toe;
   const aiMaxTotal = aiPages * 30;
   const canSave = title.trim().length >= 2 && totalQs >= 1;
@@ -944,7 +947,8 @@ export default function WorksheetCreate() {
       toast.error(ar ? "أعد محاولة حفظ التوليد الحالي أولاً" : "Retry saving the current generation first");
       return;
     }
-    if (!aiTopic.trim() && !sourceText.trim()) {
+    const generationTopic = aiTopic.trim() || (aiQuestionSelection === "auto" && subject.trim() && gradeLevel.trim() ? `${subject.trim()} — ${gradeLevel.trim()}` : "");
+    if (!generationTopic && !sourceText.trim()) {
       toast.error(ar ? "اكتب موضوع الورقة أو الصق النص التعليمي" : "Add a topic or paste educational source text");
       return;
     }
@@ -965,13 +969,14 @@ export default function WorksheetCreate() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language: contentLang,
-          topic: aiTopic.trim(),
+          topic: generationTopic,
           sourceText: sourceText.trim() || undefined,
           subject: subject.trim() || undefined,
           gradeLevel: gradeLevel.trim() || undefined,
           difficulty: aiDifficulty,
           pages: aiPages,
-          counts: aiCounts,
+          questionSelection: aiQuestionSelection,
+          counts: aiQuestionSelection === "manual" ? aiCounts : { tic_tac_toe: aiCounts.tic_tac_toe },
           learningObjective: aiLearningObjective.trim() || undefined,
           cognitiveSkill: aiCognitiveSkill,
           activityDuration: aiActivityDuration,
@@ -994,7 +999,7 @@ export default function WorksheetCreate() {
       const current = latestWorksheetRef.current;
       const resolvedLanguage = data.language === "en" ? "en" : "ar";
       const nextQuestions = [...generated, ...current.questions];
-       const nextTitle = current.title.trim() || aiTopic.trim().slice(0, 80) || sourceText.trim().split(/\r?\n/)[0].slice(0, 80);
+       const nextTitle = current.title.trim() || generationTopic.slice(0, 80) || sourceText.trim().split(/\r?\n/)[0].slice(0, 80);
       const lastTheme = getLastTheme();
       const chosenTheme = selectTheme(
         current.subject.trim() || null,
@@ -1298,7 +1303,9 @@ export default function WorksheetCreate() {
       fd.append("activityDuration", String(aiActivityDuration));
       fd.append("differentiation", aiDifferentiation);
       fd.append("assessmentMode", aiAssessment);
-      fd.append("counts", JSON.stringify(aiCounts));
+      fd.append("questionSelection", aiQuestionSelection);
+      if (aiQuestionSelection === "manual") fd.append("counts", JSON.stringify(aiCounts));
+      else fd.append("counts", JSON.stringify({ tic_tac_toe: aiCounts.tic_tac_toe }));
 
       const res = await creditAwareFetch(`${API_BASE}/api/worksheets/ai/extract`, {
         method: "POST",
@@ -1354,7 +1361,7 @@ export default function WorksheetCreate() {
         settings: nextSettings,
       };
       const requestedTotal = Object.values(aiCounts).reduce((s: number, n) => s + (Number(n) || 0), 0);
-      if (requestedTotal > 0 && generated.length < requestedTotal) {
+      if (aiQuestionSelection === "manual" && requestedTotal > 0 && generated.length < requestedTotal) {
         toast.warning(
           ar
             ? `استُخرج ${generated.length} من أصل ${requestedTotal} سؤالاً — محتوى الملفات لم يكفِ للعدد المطلوب.`
@@ -1858,6 +1865,17 @@ export default function WorksheetCreate() {
                 </div>
 
                 {/* Counts row - compact */}
+                <Field label={ar ? "اختيار أنواع الأسئلة" : "Question type selection"}>
+                  <div data-testid="worksheet-question-selection">
+                    <SegmentedControl<"auto" | "manual"> value={aiQuestionSelection} onChange={setAiQuestionSelection}
+                      options={[{ label: ar ? "تلقائي — يختار النظام الأنسب" : "Automatic — choose suitable types", value: "auto" },
+                        { label: ar ? "يدوي — أحدد الأنواع والأعداد" : "Manual — choose types and counts", value: "manual" }]} />
+                  </div>
+                </Field>
+                {aiQuestionSelection === "auto" && <p className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm leading-relaxed text-primary" data-testid="worksheet-auto-selection-hint">
+                  {ar ? "يختار حصاد الأنواع والأعداد المناسبة للمادة والفئة الدراسية والموضوع، ويضيف رسومات وأشكالًا تعليمية عند الحاجة. يمكنك مراجعة الأسئلة وتعديلها بعد التوليد، أو الانتقال للاختيار اليدوي." : "Hasaad chooses suitable types and counts for the subject, grade and topic, adding educational diagrams when useful. Review and edit the results, or switch to manual selection."}
+                </p>}
+                {aiQuestionSelection === "manual" && (
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 bg-muted/40 rounded-xl border border-border/50">
                   <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                     <ListChecks className="w-4 h-4"/> {ar ? "توزيع الأسئلة:" : "Distribution:"}
@@ -1890,6 +1908,7 @@ export default function WorksheetCreate() {
                     </CollapsibleContent>
                   </Collapsible>
                 </div>
+                )}
                 <Collapsible>
                   <CollapsibleTrigger data-testid="button-generator-advanced" className="group flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-start text-sm font-bold text-foreground hover:bg-muted">
                     <span className="flex items-center gap-2"><SettingsIcon className="w-4 h-4 text-muted-foreground" />{ar ? "إعدادات متقدمة" : "Advanced settings"}</span>
@@ -1947,7 +1966,7 @@ export default function WorksheetCreate() {
 
             {(() => {
               if (aiTotal === 0) return null;
-              if (activeAiTab === "topic" && !aiTopic.trim()) return null;
+              if (activeAiTab === "topic" && !aiTopic.trim() && !(aiQuestionSelection === "auto" && subject.trim() && gradeLevel.trim())) return null;
               if (activeAiTab === "source" && !sourceText.trim() && pickedFiles.length === 0) return null;
               const difText = aiDifficulty === "easy" ? (ar ? "بسيط" : "easy") : aiDifficulty === "hard" ? (ar ? "متقدم" : "hard") : aiDifficulty === "mixed" ? (ar ? "متنوع" : "mixed") : (ar ? "متوسط" : "medium");
               const boardText = aiCounts.tic_tac_toe === 1
@@ -1971,7 +1990,9 @@ export default function WorksheetCreate() {
                     )}
                   </div>
                   <p className="opacity-90 leading-relaxed">
-                    {ar
+                    {aiQuestionSelection === "auto"
+                      ? (ar ? `سيختار النظام الأسئلة المناسبة تلقائيًا بمستوى ${difText}، لمدة ${aiActivityDuration} دقيقة، وفي نحو ${aiPages} صفحة، دون توزيع ثابت للأنواع.` : `The system will automatically choose suitable questions at ${difText} difficulty, for ${aiActivityDuration} minutes, in about ${aiPages} pages, without a fixed type distribution.`)
+                      : ar
                       ? `سيتم بناء ${regularAiCount > 0 ? `${regularAiCount} سؤالًا` : "لوحة اختيار فقط"}${regularAiCount > 0 ? boardText : ""}، بمستوى ${difText}، لمدة ${aiActivityDuration} دقيقة، وفي نحو ${aiPages} صفحة.`
                       : `Will build ${regularAiCount > 0 ? `${regularAiCount} questions` : "a choice board only"}${regularAiCount > 0 ? boardText : ""}, at ${difText} difficulty, for ${aiActivityDuration} minutes, in about ${aiPages} page(s).`}
                   </p>

@@ -237,8 +237,9 @@ function dataUrlImage(element: Element): ImageRun | null {
   const bounds = image.getBoundingClientRect();
   let width = bounds.width || image.width || image.naturalWidth || 96;
   let height = bounds.height || image.height || image.naturalHeight || 48;
-  const maxWidth = 44 * 96 / 25.4;
-  const maxHeight = 22 * 96 / 25.4;
+   const isQuestionDiagram = Boolean(element.closest('[data-testid="worksheet-question-visual"]'));
+   const maxWidth = isQuestionDiagram ? 640 : 44 * 96 / 25.4;
+   const maxHeight = isQuestionDiagram ? 600 : 22 * 96 / 25.4;
   const scale = Math.min(1, maxWidth / width, maxHeight / height);
   width = Math.max(1, Math.round(width * scale));
   height = Math.max(1, Math.round(height * scale));

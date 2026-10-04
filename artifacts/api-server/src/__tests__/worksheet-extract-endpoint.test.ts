@@ -175,6 +175,70 @@ beforeEach(() => {
 
 /* ── Happy-path: text source ────────────────────────────────────────── */
 
+describe("automatic worksheet generation", () => {
+  const visual = { caption: "الأشكال", shapes: [{ kind: "circle", x: 20, y: 20, width: 30, height: 30, shaded: false }] };
+  const autoQuestions = [
+    { type: "short_answer", prompt: "كم دائرة ترى؟", answer: "١", visual },
+    { type: "worked_problem", prompt: "أوجد ٢ + ٣", answer: "٥", steps: 2 },
+  ];
+
+  it("generates from subject and grade alone, without asking for any types or fixed counts", async () => {
+    openaiReturns(JSON.stringify({ questions: autoQuestions }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      questionSelection: "auto", subject: "الرياضيات", gradeLevel: "الصف الأول", pages: 1,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.questions.map((q: any) => q.type)).toEqual(["short_answer", "worked_problem"]);
+    expect(res.body.questions[0].visual).toEqual(visual);
+    const prompt = mockState.openaiCreate.mock.calls[0][0].messages[1].content as string;
+    expect(prompt).toContain("الرياضيات");
+    expect(prompt).toContain("الصف الأول");
+    expect(prompt).toContain("اختيار أنواع الأسئلة تلقائي");
+    expect(prompt).not.toContain("المطلوب: 30 اختيار من متعدد");
+    expect(mockState.captureCredits).toHaveBeenCalledTimes(1);
+    expect(mockState.refundCredits).not.toHaveBeenCalled();
+  });
+
+  it("defaults to automatic when a topic is provided without counts", async () => {
+    openaiReturns(JSON.stringify({ questions: autoQuestions }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({ topic: "الأشكال الهندسية" });
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(2);
+    expect(mockState.openaiCreate.mock.calls[0][0].messages[1].content).toContain("اختيار أنواع الأسئلة تلقائي");
+  });
+
+  it("preserves legacy explicit type counts, even when the new selection field is absent", async () => {
+    openaiReturns(JSON.stringify({ questions: autoQuestions }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      topic: "الجمع", counts: { mcq: 0, true_false: 0, short_answer: 0, fill_blank: 0, matching: 0, worked_problem: 1 },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.questions.map((q: any) => q.type)).toEqual(["worked_problem"]);
+    expect(mockState.openaiCreate.mock.calls[0][0].messages[1].content).toContain("المطلوب: 1 مسألة محلولة");
+  });
+
+  it("uses automatic selection for reference-file generation and retains its diagrams", async () => {
+    openaiReturns(JSON.stringify({ questions: autoQuestions }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/extract").send({
+      ...VALID_FORM, questionSelection: "auto", subject: "الرياضيات", gradeLevel: "الصف الأول",
+      counts: JSON.stringify({ tic_tac_toe: 0 }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(2);
+    expect(res.body.questions[0].visual).toEqual(visual);
+    expect(mockState.openaiCreate.mock.calls[0][0].messages[1].content).toContain("اختيار أنواع الأسئلة تلقائي");
+  });
+
+  it("caps automatic output at the per-page limit without imposing per-type quotas", async () => {
+    openaiReturns(JSON.stringify({ questions: Array.from({ length: 35 }, () => autoQuestions[0]) }));
+    const res = await request(makeApp()).post("/api/worksheets/ai/generate").send({
+      questionSelection: "auto", topic: "العد", pages: 1,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.questions).toHaveLength(30);
+  });
+});
+
 describe("POST /api/worksheets/ai/extract — text source", () => {
   it("returns 200 with validated questions when the AI responds correctly", async () => {
     openaiReturns(JSON.stringify({ questions: AI_MCQ_QUESTIONS }));

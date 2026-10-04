@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { automaticWorksheetCounts, automaticWorksheetGuidance, worksheetVisualSchema } from "../lib/worksheet-auto-selection";
 import {
   buildTicTacToeDiversityRetryPrompt,
   findTicTacToeDiversityViolations,
@@ -19,6 +20,36 @@ import {
 } from "../routes/worksheets";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
+
+describe("automatic worksheet type selection and printable diagrams", () => {
+  it("accepts subject-appropriate types without imposing the old default MCQ distribution", () => {
+    const counts = automaticWorksheetCounts(1);
+    const result = sanitizeGeneratedQuestions([
+      { type: "worked_problem", prompt: "حل ٤ + ٥ مع بيان الخطوات", answer: "٤ + ٥ = ٩" },
+      { type: "extended_response", prompt: "فسر أهمية التعاون", answer: "إجابة تربوية مناسبة", lines: 4 },
+      { type: "compare", prompt: "قارن بين الشكلين", leftLabel: "دائرة", rightLabel: "مثلث" },
+    ], counts);
+    expect(result.map(q => q.type)).toEqual(["worked_problem", "extended_response", "compare"]);
+    expect(counts.tic_tac_toe).toBe(0);
+    expect(automaticWorksheetCounts(2, 1).tic_tac_toe).toBe(1);
+    expect(automaticWorksheetGuidance("ar", 1)).toContain("لا تستخدم توزيعاً ثابتاً");
+    expect(automaticWorksheetGuidance("en", 2)).toContain("subject, grade, age");
+  });
+
+  it("preserves valid diagram data through generation and saved-question validation", () => {
+    const visual = { caption: "عدّ الدوائر", shapes: [{ kind: "circle", x: 20, y: 20, width: 30, height: 30, shaded: false }] };
+    const result = sanitizeGeneratedQuestions([{ type: "short_answer", prompt: "كم دائرة ترى؟", answer: "واحدة", visual }], automaticWorksheetCounts(1));
+    expect(result[0].visual).toEqual(visual);
+    expect(worksheetQuestionsSchema.parse(result)[0].visual).toEqual(visual);
+  });
+
+  it("rejects malformed or out-of-bounds drawings instead of leaving a question with a missing figure", () => {
+    const visual = { shapes: [{ kind: "rectangle", x: 280, y: 20, width: 100, height: 20 }] };
+    expect(worksheetVisualSchema.safeParse(visual).success).toBe(false);
+    expect(sanitizeGeneratedQuestions([{ type: "short_answer", prompt: "انظر إلى الشكل", answer: "٢", visual }], automaticWorksheetCounts(1))).toHaveLength(0);
+    expect(worksheetVisualSchema.safeParse({ shapes: [{ kind: "html", x: 20, y: 20, width: 30, height: 30 }] }).success).toBe(false);
+  });
+});
 
 const FOUR_OPTS = ["Alpha", "Beta", "Gamma", "Delta"] as const;
 
