@@ -82,6 +82,21 @@ describe("Hasad Guide system prompt", () => {
     expect(prompt).toContain("الأسئلة الناقصة فقط");
   });
 
+  it("teaches the verified cancellation steps without inventing refunds or revoking prepaid access", () => {
+    const prompt = buildSystemPrompt();
+    expect(prompt).toContain("### إلغاء الاشتراك وإيقاف التجديد التلقائي");
+    expect(prompt).toContain("افتح صفحة الباقات `/teacher/pricing`");
+    expect(prompt).toContain("«إدارة الاشتراك»");
+    expect(prompt).toContain("«إلغاء الاشتراك»");
+    expect(prompt).toContain("«تأكيد الإلغاء»");
+    expect(prompt).toContain("انتظر رسالة نجاح الإلغاء");
+    expect(prompt).toContain("إذا ظهر خطأ، فلا تعتبر الاشتراك ملغى");
+    expect(prompt).toContain("حتى نهاية الفترة المدفوعة الحالية");
+    expect(prompt).toContain("إلغاء التجديد ليس طلب استرداد مبلغ");
+    expect(prompt).toContain("لا يلغي استحقاق تلك الفترة");
+    expect(prompt).not.toContain("**سياسة الاسترجاع** والاشتراكات.");
+  });
+
   it("uses the current points policy instead of the retired daily-message limit", () => {
     const prompt = buildSystemPrompt();
 
