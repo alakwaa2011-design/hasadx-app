@@ -20,6 +20,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
+import { AttachedSlideFrame } from "@/components/presentations/attached-slide-frame";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
@@ -494,6 +495,26 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     );
   }
 
+  const navigationControls = (
+    <div className="flex flex-wrap items-center justify-center gap-2 border-t border-amber-400/40 bg-slate-900 p-2">
+      <button onClick={exit} className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20" title={isAr ? "إنهاء (Esc)" : "Exit (Esc)"} aria-label={isAr ? "إنهاء العرض" : "Exit presentation"}>
+        <X className="w-5 h-5" />
+      </button>
+      <button onClick={goPrev} disabled={idx === 0} aria-label={isAr ? "الشريحة السابقة" : "Previous slide"} className="flex min-h-11 items-center justify-center gap-1 rounded-lg bg-white px-3 font-bold text-slate-950 hover:bg-slate-200 disabled:opacity-40">
+        {isAr ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+        {isAr ? "السابق" : "Previous"}
+      </button>
+      <span dir="ltr" className="text-sm font-bold tabular-nums text-white">{idx + 1} / {total}</span>
+      <button onClick={goNext} disabled={idx >= total - 1} aria-label={isAr ? "الشريحة التالية" : "Next slide"} className="flex min-h-11 items-center justify-center gap-1 rounded-lg px-3 font-black hover:brightness-110 disabled:opacity-40" style={{ background: "#D9A521", color: "#1c1003" }}>
+        {isAr ? "التالي" : "Next"}
+        {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+      </button>
+      <button onClick={toggleFullscreen} className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20" title={isAr ? "ملء الشاشة (F)" : "Fullscreen (F)"} aria-label={isAr ? "ملء الشاشة" : "Fullscreen"}>
+        {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+      </button>
+    </div>
+  );
+
   return (
     <div
       dir={dir}
@@ -519,31 +540,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
               : (isAr ? "32px" : "-32px"),
         }}
       >
-        {current && (
-          <SlideStage lang={deckLang}
-            slide={current}
-            theme={data.theme}
-            pattern={data.pattern}
-            revealAnswers={revealAnswers}
-            presentActivityState={presentActivityState}
-            presentActivityHandlers={{
-              onSelectAnswer: handlePresentAnswerSelect,
-              onNextQuestion: handlePresentNextQuestion,
-              onFinishActivity: handlePresentFinishActivity,
-            }}
-          />
-        )}
-
-        {/* Activity launch button — overlaid at the top corner of the slide
-            so it feels attached to the activity card, not a distant toolbar. */}
-        {(activeGameEl || activeActivityEl) && (
+        <AttachedSlideFrame footer={navigationControls} header={(activeGameEl || activeActivityEl) && (
           <div
-            className="absolute flex max-w-[calc(100%-24px)] flex-wrap gap-2 pointer-events-none"
-            style={{
-              top: 14,
-              [isAr ? "right" : "left"]: 12,
-              zIndex: 25,
-            }}
+            className="flex flex-wrap items-center gap-2 border-b border-amber-400/40 bg-slate-900 p-2"
           >
             {activeGameEl && (
               <button
@@ -551,13 +550,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                 onClick={() => launchActivityRunner(activeGameEl, data.theme)}
                 className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95"
                 style={{
-                  background: "rgba(34,87,57,0.92)",
+                  background: "#D9A521",
+                  color: "#1c1003",
                   border: "1.5px solid rgba(217,165,33,0.55)",
                   boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
                   backdropFilter: "blur(10px)",
                 }}
               >
-                <Play className="w-4 h-4 fill-white" />
+                <Play className="w-4 h-4 fill-current" />
                 {isAr ? "إطلاق اللعبة الآن" : "Launch game"}
               </button>
             )}
@@ -582,7 +582,29 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
               </button>
             )}
           </div>
-        )}
+        )}>
+          {current && (
+            <SlideStage lang={deckLang}
+              slide={current}
+              theme={data.theme}
+              pattern={data.pattern}
+              revealAnswers={revealAnswers}
+              presentActivityState={presentActivityState}
+              presentActivityHandlers={{
+                onSelectAnswer: handlePresentAnswerSelect,
+                onNextQuestion: handlePresentNextQuestion,
+                onFinishActivity: handlePresentFinishActivity,
+              }}
+            />
+          )}
+          {/* Edge navigation belongs to the slide, never to its control bars. */}
+          {!currentHasRevealableAnswer && (
+            <>
+              <button type="button" aria-label={isAr ? "السابق" : "Previous"} onClick={presentActivityState.completed ? goNext : goPrev} className={`absolute inset-y-0 z-20 w-1/6 ${isAr ? "right-0 cursor-e-resize" : "left-0 cursor-w-resize"}`} />
+              <button type="button" aria-label={isAr ? "التالي" : "Next"} onClick={goNext} className={`absolute inset-y-0 z-20 w-1/6 ${isAr ? "left-0 cursor-w-resize" : "right-0 cursor-e-resize"}`} />
+            </>
+          )}
+        </AttachedSlideFrame>
       </div>
 
       <style>{`
@@ -739,29 +761,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         />
       </div>
 
-      {/* Tap zones — mapped to reading order so the side closer to
-          the start-of-line goes "previous" and the trailing side
-          goes "next". For Arabic (RTL) that means tapping the right
-          edge moves backward and tapping the left edge advances —
-          matching the reading flow and the on-screen chevrons in
-          the bottom control bar (which already flip for RTL). The
-          zones sit outside the top progress bar and bottom controls
-          so those stay clickable. */}
-      <button
-        type="button"
-        aria-label={isAr ? "السابق" : "Previous"}
-        onClick={presentActivityState.completed ? goNext : goPrev}
-        className={`absolute top-32 bottom-24 w-1/3 ${isAr ? "right-0 cursor-e-resize" : "left-0 cursor-w-resize"}`}
-        style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
-      />
-      <button
-        type="button"
-        aria-label={isAr ? "التالي" : "Next"}
-        onClick={goNext}
-        className={`absolute top-32 bottom-24 w-1/3 ${isAr ? "left-0 cursor-w-resize" : "right-0 cursor-e-resize"}`}
-        style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
-      />
-
       {/* Game mode picker modal */}
       {showGameModeModal && (
         <div
@@ -884,56 +883,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         </div>
       )}
 
-      {/* Bottom control bar */}
-      <div
-        className="absolute bottom-0 inset-x-0 z-30 flex justify-center px-2 pb-[max(12px,env(safe-area-inset-bottom))] pt-3"
-      >
-        <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/20 bg-slate-950/90 p-2 shadow-lg backdrop-blur-md">
-          <button
-            onClick={exit}
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white"
-            title={isAr ? "إنهاء (Esc)" : "Exit (Esc)"}
-            aria-label={isAr ? "إنهاء العرض" : "Exit presentation"}
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={goPrev}
-              disabled={idx === 0}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white"
-              title={isAr ? "السابق" : "Previous"}
-              aria-label={isAr ? "الشريحة السابقة" : "Previous slide"}
-            >
-              {isAr ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-            </button>
-            <div className="text-white text-sm font-mono tabular-nums px-3 py-1.5 rounded bg-white/10 min-w-[5ch] text-center">
-              {idx + 1} / {total}
-            </div>
-            <button
-              onClick={goNext}
-              disabled={idx >= total - 1}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white"
-              title={isAr ? "التالي" : "Next"}
-              aria-label={isAr ? "الشريحة التالية" : "Next slide"}
-            >
-              {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleFullscreen}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white"
-              title={isAr ? "ملء الشاشة (F)" : "Fullscreen (F)"}
-              aria-label={isAr ? "ملء الشاشة" : "Fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

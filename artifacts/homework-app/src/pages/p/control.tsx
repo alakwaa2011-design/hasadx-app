@@ -438,37 +438,11 @@ export default function PresentationControl() {
           <div className="text-sm text-white/60">شريحة {idx + 1} / {total}</div>
         </div>
 
-        {/* TOP activities launcher — placed above the slide stage so
-            first-time teachers see "إطلاق اللعبة" immediately without
-            scrolling. Uses a warm gradient + pulsing Play icon to draw
-            the eye. Only renders when the current slide actually has
-            launchable activities and no inline quiz is already running. */}
+        {/* One attached frame: activity actions, slide, and navigation.
+            No separate toolbar or gap outside the slide's border. */}
+        <section data-presentation-frame="" className="overflow-hidden rounded-2xl border-2 border-amber-400/50 bg-slate-900 shadow-xl">
         {activities.length > 0 && !ended && !inlineActivity && (
-          <div
-            className="rounded-2xl p-4 space-y-3"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(217,165,33,0.18) 0%, rgba(34,87,57,0.32) 100%)",
-              border: "1px solid rgba(217,165,33,0.45)",
-              boxShadow: "0 8px 28px -8px rgba(217,165,33,0.35)",
-            }}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-full"
-                  style={{ background: "#D9A521", color: "#1c1003" }}
-                >
-                  <Play className="w-4 h-4" />
-                </span>
-                <div className="text-sm font-black text-white">
-                  نشاط جاهز للإطلاق على هذه الشريحة
-                </div>
-              </div>
-              <span className="text-[11px] text-amber-200/90 font-bold">
-                {activities.length} نشاط
-              </span>
-            </div>
+          <div data-slide-actions="" className="space-y-2 border-b border-amber-400/40 bg-slate-900 p-2">
             {activities.map((a: any) => {
               const open = live?.activeElementId === a.id;
               const isGame = a.kind === "hasad-game";
@@ -536,8 +510,9 @@ export default function PresentationControl() {
             screen. The underlying slide stays mounted so the teacher
             can flip back to it instantly after the activity ends. */}
         <div
-          className={`relative rounded-xl bg-black overflow-hidden border border-white/10 ${
-            inlineActivity && !ended ? "min-h-[68vh]" : "aspect-video"
+          data-presentation-surface=""
+          className={`relative bg-black overflow-hidden ${
+            inlineActivity && !ended ? "min-h-[68vh]" : "aspect-video max-h-[calc(100dvh-220px)]"
           }`}
         >
           {slide && info.deck && (
@@ -677,14 +652,16 @@ export default function PresentationControl() {
           })()}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button onClick={() => go(-1)} disabled={idx === 0 || ended} className="flex-1">
-            <ChevronRight className="w-4 h-4 ms-1" /> السابقة
+        <div data-slide-navigation="" className="flex items-center gap-2 border-t border-amber-400/40 bg-slate-900 p-2">
+          <Button onClick={() => go(-1)} disabled={idx === 0 || ended} aria-label="الشريحة السابقة" className="min-h-11 flex-1 bg-white text-slate-950 font-bold hover:bg-slate-200 disabled:opacity-40">
+            <ChevronRight className="w-5 h-5 ms-1" /> السابقة
           </Button>
-          <Button onClick={() => go(1)} disabled={idx >= total - 1 || ended} className="flex-1" style={{ background: "#225739" }}>
-            التالية <ChevronLeft className="w-4 h-4 me-1" />
+          <span dir="ltr" className="px-1 text-sm font-bold tabular-nums text-white" aria-label={`شريحة ${idx + 1} من ${total}`}>{idx + 1} / {total}</span>
+          <Button onClick={() => go(1)} disabled={idx >= total - 1 || ended} aria-label="الشريحة التالية" className="min-h-11 flex-1 font-black hover:brightness-110 disabled:opacity-40" style={{ background: "#D9A521", color: "#1c1003" }}>
+            التالية <ChevronLeft className="w-5 h-5 me-1" />
           </Button>
         </div>
+        </section>
 
         {/* Compact running-activity status (text activities only — the
             hasad-game inline quiz is shown as an overlay on the slide). */}
