@@ -17,6 +17,7 @@ export const presentationSessionsTable = pgTable("presentation_sessions", {
   currentSlideIndex: integer("current_slide_index").notNull().default(0),
   activeElementId: text("active_element_id"),
   activeWordCloudRunId: uuid("active_word_cloud_run_id"),
+  activeWallRunId: uuid("active_wall_run_id"),
   revealDistribution: boolean("reveal_distribution").notNull().default(false),
   revealAnswer: boolean("reveal_answer").notNull().default(false),
   targetClassId: integer("target_class_id").references(() => teacherClassesTable.id, { onDelete: "set null" }),

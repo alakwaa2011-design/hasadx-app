@@ -156,3 +156,4 @@
 - [Guided Quran printed-page parity](guided-quran-printed-page-parity.md) — حفظني must teach on the printed QCF page, not a second plain-text rendering; conceal unavailable page fallbacks.
 - [X O remote team participation](xo-remote-team-participation.md) — one shared room, rotating connected representatives; room join links differ from permanent new-match links.
 - [Live presentation verification](live-presentation-verification.md) — static inspection is not proof of live participation; check first-slide opening and real recipient screens.
+- [Live socket browser diagnostics](browser-socket-diagnostics.md) — correlate transport warnings with participation; reload polling errors and anonymous auth probes are not UI failures.

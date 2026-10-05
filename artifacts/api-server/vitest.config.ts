@@ -8,6 +8,7 @@ export default defineConfig({
     // @workspace/db is imported; the default setup intentionally auto-mocks it.
     exclude: [
       "src/__tests__/presentation-word-cloud.integration.test.ts",
+      "src/__tests__/presentation-wall.integration.test.ts",
       "src/__tests__/ai-video-render-recovery.integration.test.ts",
       "src/__tests__/ai-video-request-journal.integration.test.ts",
       "src/__tests__/teacher-schedule-vision-regression.integration.test.ts",

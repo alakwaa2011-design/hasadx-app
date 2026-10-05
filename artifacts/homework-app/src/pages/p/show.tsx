@@ -260,6 +260,8 @@ export default function PresentationShow() {
   const [live, setLive] = useState<any>(null);
   const liveRef = useRef<any>(null);
   const wordCloudRunRef = useRef<string | null>(null);
+  const wallRunRef = useRef<string | null>(null);
+  const wallRevisionRef = useRef(-1);
   const [wordCloudWords, setWordCloudWords] = useState<CloudWord[]>([]);
   const [wallCards, setWallCards] = useState<WallCard[]>([]);
   /* Track slide key for AnimatePresence — each unique slide id triggers
@@ -303,6 +305,9 @@ export default function PresentationShow() {
 
     const onSync = (st: any) => {
       wordCloudRunRef.current = st.wordCloudRunId ?? null;
+      wallRunRef.current = st.wallRunId ?? null;
+      wallRevisionRef.current = st.wall?.revision ?? -1;
+      setWallCards(st.wall?.cards ?? []);
       liveRef.current = st;
       setLive(st);
       setWordCloudWords(st.wordCloud?.words ?? []);
@@ -325,6 +330,8 @@ export default function PresentationShow() {
 
     const onSlide = ({ index, slide }: { index: number; slide: any }) => {
       wordCloudRunRef.current = null;
+      wallRunRef.current = null;
+      wallRevisionRef.current = -1;
       slideKeyRef.current = slide?.id ?? index;
       setLive((p: any) => {
         const next = {
@@ -345,8 +352,10 @@ export default function PresentationShow() {
       setActivityOpenedAt(null);
     };
 
-    const onOpened = ({ elementId, element, openedAt, status, wordCloudRunId }: any) => {
+    const onOpened = ({ elementId, element, openedAt, status, wordCloudRunId, wallRunId }: any) => {
       wordCloudRunRef.current = wordCloudRunId ?? null;
+      wallRunRef.current = wallRunId ?? null;
+      wallRevisionRef.current = -1;
       setLive((p: any) => {
         const next = { ...(p ?? {}), status: status ?? "running", activeElementId: elementId, activeElement: element, wordCloudRunId: wordCloudRunId ?? null };
         liveRef.current = next;
@@ -362,6 +371,8 @@ export default function PresentationShow() {
 
     const onClosed = () => {
       wordCloudRunRef.current = null;
+      wallRunRef.current = null;
+      wallRevisionRef.current = -1;
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: null, activeElement: null }));
       setWordCloudWords([]);
       setWallCards([]);
@@ -375,7 +386,11 @@ export default function PresentationShow() {
       if (elementId && liveRef.current?.activeElementId && String(liveRef.current.activeElementId) !== String(elementId)) return;
       setWordCloudWords(prev => words.reduce((n, w) => n + w.count, 0) < prev.reduce((n, w) => n + w.count, 0) ? prev : words);
     };
-    const onWall = ({ cards }: { cards: WallCard[] }) => setWallCards(cards);
+    const onWall = ({ cards, runId, revision }: { cards: WallCard[]; runId: string; revision: number }) => {
+      if (runId !== wallRunRef.current || revision < wallRevisionRef.current) return;
+      wallRevisionRef.current = revision;
+      setWallCards(cards);
+    };
     const onReconnect = () => s.emit("show:join", { sessionId: sid });
 
     /* Stage Mode — toggled by the teacher control panel. */

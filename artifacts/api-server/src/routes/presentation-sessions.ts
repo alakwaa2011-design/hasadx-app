@@ -8,6 +8,7 @@ import { mintPresentationJoinToken, verifyPresentationJoinToken } from "../lib/p
 import { loadPresentationReportData, buildPresentationActivityIndex, answerUnits, correctUnits, scoredUnits } from "../lib/presentation-report-data";
 import { presentationCsvDisposition } from "../lib/presentation-csv";
 import { getWordCloudSnapshot } from "../lib/presentation-word-cloud";
+import { getWallSnapshot, hasWallSubmission } from "../lib/presentation-wall";
 
 /**
  * Presentations 2B — Live MVP REST surface.
@@ -194,7 +195,7 @@ router.post("/presentations/sessions/:id/end", requireTeacher, async (req: any, 
 
     await db
       .update(presentationSessionsTable)
-      .set({ status: "ended", endedAt: new Date(), activeElementId: null, activeWordCloudRunId: null })
+      .set({ status: "ended", endedAt: new Date(), activeElementId: null, activeWordCloudRunId: null, activeWallRunId: null })
       .where(eq(presentationSessionsTable.id, sid));
 
     /* Notify any connected sockets so client UIs can react. */
@@ -1565,6 +1566,11 @@ router.get("/p/sessions/:id/state", async (req: any, res) => {
     const participantsCount = participantsRows.length;
 
     const wordCloud = sess.activeWordCloudRunId ? await getWordCloudSnapshot(sid) : null;
+    const wall = sess.activeWallRunId ? await getWallSnapshot(sid, isOwner) : null;
+    const joinIdentity = token ? verifyPresentationJoinToken(token, sid) : null;
+    const requestedStudentKey = typeof req.query.studentKey === "string" ? req.query.studentKey : "";
+    const wallStudentKey = requestedStudentKey && verifyPresentationJoinToken(token, sid, requestedStudentKey)
+      ? requestedStudentKey : joinIdentity?.k;
     res.json({
       sessionId: sess.id,
       presentationId: sess.presentationId,
@@ -1580,6 +1586,10 @@ router.get("/p/sessions/:id/state", async (req: any, res) => {
       activeElement: safeActive,
       wordCloudRunId: wordCloud?.runId ?? null,
       wordCloud,
+      wallRunId: wall?.runId ?? null,
+      wall,
+      wallSubmitted: wall && wallStudentKey ? await hasWallSubmission(wall.runId, wallStudentKey) : false,
+      activeElementOpenedAt: wall?.openedAt ?? wordCloud?.openedAt ?? null,
       revealDistribution: sess.revealDistribution,
       revealAnswer: sess.revealAnswer,
       /* PIN is owner-only in this response. Token-bearing callers

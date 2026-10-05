@@ -9,6 +9,7 @@ import { db, pool, teachersTable, presentationsTable, presentationSessionsTable 
   presentationWordCloudRunsTable as runs, presentationWordCloudSubmissionsTable as submissions,
    presentationResponsesTable, presentationSessionEventsTable } from "@workspace/db";
 import { getWordCloudSnapshot, migratePresentationWordCloud, openWordCloud, submitWordCloud } from "../lib/presentation-word-cloud";
+import { migratePresentationWall } from "../lib/presentation-wall";
 import { mintPresentationJoinToken } from "../lib/presentation-join-token";
 
 // Hydration isn't under test. All session, owner and participant checks, socket
@@ -95,6 +96,7 @@ describe.skipIf(!ready)("durable live word clouds (real PostgreSQL and Socket.IO
       ON presentation_session_events(session_id, kind, event_key)`);
     await migratePresentationWordCloud();
     await migratePresentationWordCloud(); // additive runtime migration is idempotent
+    await migratePresentationWall();
     for (let i = 0; i < 2; i++) {
       const [t] = await db.insert(teachersTable).values({ name: "Cloud integration", passwordHash: "test-only" }).returning();
       teacherIds.push(t.id);

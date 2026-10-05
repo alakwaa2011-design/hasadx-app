@@ -11,7 +11,7 @@ export async function openWordCloud(sessionId: number, teacherId: number, elemen
         session.currentSlideIndex !== expectedSlide) return null;
     const [run] = await tx.insert(runs).values({ id: randomUUID(), sessionId, elementId }).returning();
     await tx.update(sessions).set({
-      status: "running", activeElementId: elementId, activeWordCloudRunId: run.id,
+      status: "running", activeElementId: elementId, activeWordCloudRunId: run.id, activeWallRunId: null,
       revealDistribution: false, revealAnswer: false,
     }).where(eq(sessions.id, sessionId));
     await tx.insert(events).values({

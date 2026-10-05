@@ -24,6 +24,7 @@ import { setupSecretGameSocket } from "./game/secret-game-handlers";
 import { seedSecretGameIfNeeded } from "./seedSecretGame";
 import { setupPresentationSocket } from "./game/presentation-handlers";
 import { migratePresentationWordCloud } from "./lib/presentation-word-cloud";
+import { migratePresentationWall } from "./lib/presentation-wall";
 import { db, teachersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
@@ -1796,6 +1797,7 @@ async function runSchemaMigrations() {
         ON presentation_inline_quiz_runs(session_id, element_id, finished_at)
     `);
     await migratePresentationWordCloud();
+    await migratePresentationWall();
     logger.info("Presentation migrations applied");
   } catch (err) {
     logger.error(err, "Presentation migrations failed");

@@ -103,6 +103,8 @@ export default function PresentationControl() {
   /* word_cloud / open_wall live state */
   const [wordCloudWords, setWordCloudWords] = useState<{ text: string; count: number }[]>([]);
   const wordCloudRunRef = useRef<string | null>(null);
+  const wallRunRef = useRef<string | null>(null);
+  const wallRevisionRef = useRef(-1);
   const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
   /* Stage Mode — professional cinematic display mode for the projector. */
   const [stageMode, setStageMode] = useState(false);
@@ -142,8 +144,11 @@ export default function PresentationControl() {
     const s = getSocket();
     s.emit("teacher:join-presentation", { sessionId: sid });
 
-    const onSync = (st: LiveState & { stageMode?: boolean; sessionMode?: "teacher" | "self_paced"; wordCloudRunId?: string; wordCloud?: { words: { text: string; count: number }[] } }) => {
+    const onSync = (st: LiveState & { stageMode?: boolean; sessionMode?: "teacher" | "self_paced"; wordCloudRunId?: string; wordCloud?: { words: { text: string; count: number }[] }; wallRunId?: string; wall?: { revision: number; cards: typeof wallCards } }) => {
       wordCloudRunRef.current = st.wordCloudRunId ?? null;
+      wallRunRef.current = st.wallRunId ?? null;
+      wallRevisionRef.current = st.wall?.revision ?? -1;
+      setWallCards(st.wall?.cards ?? []);
       setWordCloudWords(st.wordCloud?.words ?? []);
       setLive(st);
       if (typeof st.stageMode === "boolean") setStageMode(st.stageMode);
@@ -151,12 +156,16 @@ export default function PresentationControl() {
     };
     const onSlide = ({ index }: { index: number }) => {
       wordCloudRunRef.current = null;
+      wallRunRef.current = null;
+      wallRevisionRef.current = -1;
       setLive((p) => (p ? { ...p, currentSlideIndex: index, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
       setWordCloudWords([]); setWallCards([]);
     };
-    const onOpened = ({ elementId, element, wordCloudRunId }: { elementId: string; element: any; wordCloudRunId?: string }) => {
+    const onOpened = ({ elementId, element, wordCloudRunId, wallRunId }: { elementId: string; element: any; wordCloudRunId?: string; wallRunId?: string }) => {
       wordCloudRunRef.current = wordCloudRunId ?? null;
+      wallRunRef.current = wallRunId ?? null;
+      wallRevisionRef.current = -1;
       setLive((p) => (p ? { ...p, status: "running", activeElementId: elementId, activeElement: element, revealDistribution: false, revealAnswer: false } : p));
       setSummary(null);
       setWordCloudWords([]); setWallCards([]);
@@ -164,6 +173,8 @@ export default function PresentationControl() {
     };
     const onClosed = () => {
       wordCloudRunRef.current = null;
+      wallRunRef.current = null;
+      wallRevisionRef.current = -1;
       setLive((p) => (p ? { ...p, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
       setWordCloudWords([]); setWallCards([]);
@@ -172,7 +183,14 @@ export default function PresentationControl() {
       if (runId !== wordCloudRunRef.current) return;
       setWordCloudWords(prev => words.reduce((n, w) => n + w.count, 0) < prev.reduce((n, w) => n + w.count, 0) ? prev : words);
     };
-    const onWallUpdate = ({ cards }: { elementId: string; cards: { id: string; text: string; visible: boolean; studentKey: string }[] }) => setWallCards(cards ?? []);
+    const onWallUpdate = ({ cards, runId, revision }: { runId: string; revision: number; cards: typeof wallCards }) => {
+      if (runId !== wallRunRef.current || revision < wallRevisionRef.current) return;
+      wallRevisionRef.current = revision;
+      setWallCards(cards ?? []);
+    };
+    const onWallRejected = ({ runId }: { runId?: string }) => {
+      if (runId === wallRunRef.current) toast.error("تعذر حفظ تغيير إظهار البطاقة. حاول مجددًا.");
+    };
     const onInlineState = (p: any) => { setInlineActivity(p); setSummary(null); };
     const onInlineSummary = (p: any) => {
       setSummary(p); setInlineActivity(null);
@@ -224,6 +242,7 @@ export default function PresentationControl() {
     s.on("connect", onReconnect);
     s.on("word_cloud:update", onWordCloudUpdate);
     s.on("wall:update", onWallUpdate);
+    s.on("wall:rejected", onWallRejected);
     s.on("stage:changed", onStageChanged);
     s.on("student:progress", onStudentProgress);
     s.on("self_paced:ended", onSelfPacedEnded);
@@ -243,6 +262,7 @@ export default function PresentationControl() {
       s.off("connect", onReconnect);
       s.off("word_cloud:update", onWordCloudUpdate);
       s.off("wall:update", onWallUpdate);
+      s.off("wall:rejected", onWallRejected);
       s.off("stage:changed", onStageChanged);
       s.off("student:progress", onStudentProgress);
       s.off("self_paced:ended", onSelfPacedEnded);
@@ -732,7 +752,7 @@ export default function PresentationControl() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, elementId: live?.activeElementId, cardId: card.id, visible: !card.visible })}
+                    onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, elementId: live?.activeElementId, runId: wallRunRef.current, cardId: card.id, visible: !card.visible })}
                     className="shrink-0 rounded-md p-1.5 transition-colors"
                     style={{ background: card.visible ? "rgba(34,87,57,0.4)" : "rgba(255,255,255,0.06)" }}
                     title={card.visible ? "إخفاء البطاقة" : "إظهار البطاقة"}

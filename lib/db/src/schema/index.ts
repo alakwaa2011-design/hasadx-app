@@ -1,3 +1,4 @@
+export * from "./presentation-walls";
 export * from "./presentation-word-clouds";
 export * from "./teachers";
 export * from "./categories";

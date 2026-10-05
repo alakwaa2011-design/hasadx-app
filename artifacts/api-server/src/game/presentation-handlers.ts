@@ -6,6 +6,7 @@ import { hydrateActivityQuestions } from "../routes/presentations";
 import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
 import { recordPresentationJoin, recordPresentationOpen, recordPresentationAnswer, recordPresentationEvent } from "../lib/presentation-report-data";
 import { getWordCloudSnapshot, hasWordCloudSubmission, openWordCloud, submitWordCloud } from "../lib/presentation-word-cloud";
+import { getWallSnapshot, hasWallSubmission, openWall, submitWall, toggleWallCard } from "../lib/presentation-wall";
 
 /**
  * Presentations 2B — Live MVP socket layer.
@@ -62,14 +63,6 @@ interface LiveSession {
   selfPacedWordClouds?: Map<string, { words: Map<string, number>; submitted: Set<string> }>;
   /** Self-paced open_wall submissions: elementId -> { cards, nextId, submitted }. */
   selfPacedOpenWalls?: Map<string, { cards: WallCard[]; nextId: number; submitted: Set<string> }>;
-  /** open_wall activity: list of submitted response cards. */
-  openWallActivity?: {
-    elementId: string;
-    cards: WallCard[];
-    /** studentKeys that already submitted */
-    submitted: Set<string>;
-    nextId: number;
-  };
   /** Stage Mode — professional cinematic display mode for the projector. */
   stageMode?: boolean;
   /** Unix ms timestamp when the current activity element was opened.
@@ -108,6 +101,16 @@ interface LiveSession {
 const sessions = new Map<number, LiveSession>();
 
 function room(id: number): string { return `presentation:${id}`; }
+
+async function broadcastWall(io: Server, sid: number) {
+  const wall = await getWallSnapshot(sid, true);
+  if (!wall) return;
+  const teachers = Array.from(sessions.get(sid)?.teacherSockets ?? []);
+  for (const socketId of teachers) io.to(socketId).emit("wall:update", wall);
+  io.to(room(sid)).except(teachers).emit("wall:update", {
+    ...wall, cards: wall.cards.filter(card => card.visible),
+  });
+}
 
 function studentCount(s: LiveSession): number {
   let n = 0;
@@ -421,6 +424,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
   const safeActive = isTeacher ? active : sanitizeElementForStudents(active);
   const liveSess = sessions.get(sid);
   const wordCloud = sess.activeWordCloudRunId ? await getWordCloudSnapshot(sid) : null;
+  const wall = sess.activeWallRunId ? await getWallSnapshot(sid, isTeacher) : null;
   const participant = liveSess?.participants.get(socket.id);
   const wordCloudSubmitted = wordCloud && participant && !participant.isShow
     ? await hasWordCloudSubmission(wordCloud.runId, participant.studentKey) : false;
@@ -435,11 +439,15 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     wordCloudRunId: wordCloud?.runId ?? null,
     wordCloud,
     wordCloudSubmitted,
+    wallRunId: wall?.runId ?? null,
+    wall,
+    wallSubmitted: wall && participant && !participant.isShow
+      ? await hasWallSubmission(wall.runId, participant.studentKey) : false,
     revealDistribution: sess.revealDistribution,
     revealAnswer: sess.revealAnswer,
     pin: sess.pin,
     stageMode: liveSess?.stageMode ?? false,
-    activeElementOpenedAt: wordCloud?.openedAt ?? liveSess?.activeElementOpenedAt ?? null,
+    activeElementOpenedAt: wall?.openedAt ?? wordCloud?.openedAt ?? liveSess?.activeElementOpenedAt ?? null,
     sessionMode: (sess as any).sessionMode ?? liveSess?.sessionMode ?? "teacher",
   });
   /* Late-joiner support: if the teacher already revealed the answer,
@@ -453,15 +461,8 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     });
   }
   /* Late-joiner support for word_cloud / open_wall activities. */
-  const live0 = sessions.get(sid);
   if (wordCloud) socket.emit("word_cloud:update", wordCloud);
-  if (live0?.openWallActivity && sess.activeElementId === live0.openWallActivity.elementId) {
-    const isTeach = isTeacher;
-    const cards = isTeach
-      ? live0.openWallActivity.cards
-      : live0.openWallActivity.cards.filter((c) => c.visible);
-    socket.emit("wall:update", { elementId: sess.activeElementId, cards });
-  }
+  if (wall) socket.emit("wall:update", wall);
 
   /* Late-joiner support for active Hasaad-game launchers. */
   if (active && (active as any).kind === "hasad-game" && sess.activeElementId) {
@@ -700,12 +701,11 @@ export function setupPresentationSocket(io: Server) {
         if (!sess || sess.status === "ended" || !isTeacherForSession(socket, sess.teacherId)) return;
         const idx = Math.max(0, Number(index) | 0);
         await db.update(presentationSessionsTable)
-          .set({ currentSlideIndex: idx, activeElementId: null, activeWordCloudRunId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
+          .set({ currentSlideIndex: idx, activeElementId: null, activeWordCloudRunId: null, activeWallRunId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
           .where(eq(presentationSessionsTable.id, sid));
         const liveSess = sessions.get(sid);
         if (liveSess) {
           liveSess.inlineActivity = undefined;
-          liveSess.openWallActivity = undefined;
         }
         const deck = await loadDeckRow(sess.presentationId);
         const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
@@ -730,10 +730,13 @@ export function setupPresentationSocket(io: Server) {
         const run = elKind === "word_cloud"
           ? await openWordCloud(sid, sess.teacherId, String(elementId), sess.currentSlideIndex, element)
           : null;
+        const wallRun = elKind === "open_wall"
+          ? await openWall(sid, sess.teacherId, String(elementId), sess.currentSlideIndex, element) : null;
         if (elKind === "word_cloud" && !run) return;
-        if (elKind !== "word_cloud") {
+        if (elKind === "open_wall" && !wallRun) return;
+        if (elKind !== "word_cloud" && elKind !== "open_wall") {
           const opened = await db.update(presentationSessionsTable)
-            .set({ status: "running", activeElementId: String(elementId), activeWordCloudRunId: null, revealDistribution: false, revealAnswer: false })
+            .set({ status: "running", activeElementId: String(elementId), activeWordCloudRunId: null, activeWallRunId: null, revealDistribution: false, revealAnswer: false })
             .where(and(eq(presentationSessionsTable.id, sid), ne(presentationSessionsTable.status, "ended")))
             .returning({ id: presentationSessionsTable.id });
           if (!opened.length) return;
@@ -750,33 +753,23 @@ export function setupPresentationSocket(io: Server) {
         /* Record the open timestamp once so all audience-split payloads
            share the same value — the StageTimer on show.tsx uses it to
            synchronise the countdown for late-joining projectors. */
-        const openedAt = run?.openedAt.getTime() ?? Date.now();
-        if (!run) await recordPresentationOpen(sid, element, sess.currentSlideIndex, openedAt);
+        const openedAt = wallRun?.openedAt.getTime() ?? run?.openedAt.getTime() ?? Date.now();
+        if (!run && !wallRun) await recordPresentationOpen(sid, element, sess.currentSlideIndex, openedAt);
         if (live) live.activeElementOpenedAt = openedAt;
-
-        /* Initialise before announcing the activity: a fast student's first
-           submission must not be wiped by a later map initialization. */
-        if (live && elKind === "open_wall") {
-          live.openWallActivity = {
-            elementId: String(elementId),
-            cards: [],
-            submitted: new Set(),
-            nextId: 1,
-          };
-        }
 
         await emitToRoomSplit(io, sid, "activity:opened", (forTeacher) => ({
           elementId: String(elementId),
           element: forTeacher ? element : sanitizeElementForStudents(element),
           wordCloudRunId: run?.id ?? null,
+          wallRunId: wallRun?.id ?? null,
           openedAt,
           status: "running",
         }));
         if (run) {
           const cloud = await getWordCloudSnapshot(sid);
           if (cloud) io.to(room(sid)).emit("word_cloud:update", cloud);
-        } else if (live?.openWallActivity && elKind === "open_wall") {
-          io.to(room(sid)).emit("wall:update", { elementId: String(elementId), cards: live.openWallActivity.cards });
+        } else if (wallRun) {
+          await broadcastWall(io, sid);
         }
 
         if (useInline && live) {
@@ -812,12 +805,11 @@ export function setupPresentationSocket(io: Server) {
         const sess = await loadSessionRow(sid);
         if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
         await db.update(presentationSessionsTable)
-          .set({ activeElementId: null, activeWordCloudRunId: null, revealDistribution: false, revealAnswer: false })
+          .set({ activeElementId: null, activeWordCloudRunId: null, activeWallRunId: null, revealDistribution: false, revealAnswer: false })
           .where(eq(presentationSessionsTable.id, sid));
         const live = sessions.get(sid);
         if (live) {
           live.inlineActivity = undefined;
-          live.openWallActivity = undefined;
         }
         io.to(room(sid)).emit("activity:closed");
       } catch (err) { logger.error({ err }, "activity:close failed"); }
@@ -880,15 +872,13 @@ export function setupPresentationSocket(io: Server) {
       }
     });
 
-    /* Open wall — student submits a free-text response card.
-       Server stores cards in memory. Teachers toggle visibility.
-       One submission per student per element. */
-    socket.on("wall:submit", async ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+    /* Collective walls persist one contribution per student per round. */
+    socket.on("wall:submit", async ({ sessionId, elementId, text, runId }: { sessionId: number; elementId: string; text: string; runId?: string }) => {
       try {
         const sid = Number(sessionId);
         const live = sessions.get(sid);
         const me = live?.participants.get(socket.id);
-        if (!live || !me || me.isShow) return;
+        if (!live || !me || me.isShow) return socket.emit("answer:rejected", { reason: "not-joined" });
 
         /* Self-Paced Mode: no global open_wall activity open — validate
            element on student's slide and persist to DB directly. */
@@ -924,58 +914,37 @@ export function setupPresentationSocket(io: Server) {
           return;
         }
 
-        if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
-        if (live.openWallActivity.submitted.has(me.studentKey)) {
-          return socket.emit("answer:already");
-        }
-        const cleaned = String(text ?? "").trim().slice(0, 500);
-        if (!cleaned) return;
-        const wallSess = await loadSessionRow(sid);
-        if (!wallSess) return;
-        const wallDeck = await loadDeckRow(wallSess.presentationId);
-        const wallElement = await resolveActiveElement(wallDeck?.slides, wallSess.currentSlideIndex, String(elementId));
-        const recordedWall = await recordPresentationAnswer(sid, me, wallElement, wallSess.currentSlideIndex, { answerText: cleaned });
-        if (recordedWall !== "saved") return socket.emit(recordedWall === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
-        const card: WallCard = {
-          id: String(live.openWallActivity.nextId++),
-          studentKey: me.studentKey,
-          name: me.name,
-          text: cleaned,
-          visible: true,
-        };
-        live.openWallActivity.cards.push(card);
-        live.openWallActivity.submitted.add(me.studentKey);
-        socket.emit("answer:accepted");
-        /* Teacher sees all cards; projector/students see visible only. */
-        const allCards = live.openWallActivity.cards;
-        const visibleCards = allCards.filter((c) => c.visible);
-        for (const sockId of live.teacherSockets) {
-          io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
-        }
-        io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
+        const result = await submitWall({
+          sessionId: sid, elementId: String(elementId), runId: String(runId ?? ""),
+          studentKey: me.studentKey, studentName: me.name, classStudentId: me.classStudentId, text,
+        });
+        if (result !== "accepted") return socket.emit(result === "already" ? "answer:already" : "answer:rejected", { reason: result, runId });
+        socket.emit("answer:accepted", { runId });
+        await broadcastWall(io, sid);
       } catch (err) {
         logger.error({ err }, "wall:submit failed");
-        socket.emit("answer:rejected", { reason: "save-failed" });
+        socket.emit("answer:rejected", { reason: "save-failed", runId });
       }
     });
 
     /* Teacher toggles visibility of a wall card. */
-    socket.on("wall:toggle-card", ({ sessionId, elementId, cardId, visible }: { sessionId: number; elementId: string; cardId: string; visible: boolean }) => {
+    onTeacherAction("wall:toggle-card", async ({ sessionId, elementId, cardId, visible, runId }: { sessionId: number; elementId: string; cardId: string; visible: boolean; runId?: string }) => {
       try {
         const sid = Number(sessionId);
         const live = sessions.get(sid);
         if (!live || !live.teacherSockets.has(socket.id)) return;
-        if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
-        const card = live.openWallActivity.cards.find((c) => c.id === String(cardId));
-        if (!card) return;
-        card.visible = !!visible;
-        const allCards = live.openWallActivity.cards;
-        const visibleCards = allCards.filter((c) => c.visible);
-        for (const sockId of live.teacherSockets) {
-          io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
-        }
-        io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
-      } catch (err) { logger.error({ err }, "wall:toggle-card failed"); }
+        const sess = await loadSessionRow(sid);
+        if (!sess || !isTeacherForSession(socket, sess.teacherId) || typeof visible !== "boolean") return;
+        const saved = await toggleWallCard({
+          sessionId: sid, teacherId: sess.teacherId, elementId: String(elementId),
+          runId: String(runId ?? ""), cardId: String(cardId), visible,
+        });
+        if (!saved) return socket.emit("wall:rejected", { reason: "not-active", runId });
+        await broadcastWall(io, sid);
+      } catch (err) {
+        logger.error({ err }, "wall:toggle-card failed");
+        socket.emit("wall:rejected", { reason: "save-failed", runId });
+      }
     });
 
     /* Phase 6 — teacher advances the inline quiz to the next question.
@@ -1159,7 +1128,7 @@ export function setupPresentationSocket(io: Server) {
         const sess = await loadSessionRow(sid);
         if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
         await db.update(presentationSessionsTable)
-          .set({ status: "ended", endedAt: new Date(), activeElementId: null, activeWordCloudRunId: null })
+          .set({ status: "ended", endedAt: new Date(), activeElementId: null, activeWordCloudRunId: null, activeWallRunId: null })
           .where(eq(presentationSessionsTable.id, sid));
         io.to(room(sid)).emit("session:ended");
       } catch (err) { logger.error({ err }, "session:end failed"); }
