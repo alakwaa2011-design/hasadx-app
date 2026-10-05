@@ -3,74 +3,9 @@ import { useParams } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
-import { Loader2, Cloud, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-
-/* ── Word cloud overlay ────────────────────────────────────────────── */
-interface CloudWord { text: string; count: number }
-const CLOUD_COLORS = [
-  "#D9A521", "#60b8a0", "#7ec8e3", "#f4845f", "#b5a1dc",
-  "#6bcb77", "#f9c74f", "#f8961e", "#90e0ef", "#c77dff",
-];
-function WordCloudOverlay({ words, isAr, t }: { words: CloudWord[]; isAr: boolean; t: ReturnType<typeof useI18n>["t"] }) {
-  if (words.length === 0) {
-    return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70">
-        <Cloud className="w-16 h-16 opacity-30 text-white" />
-        <div className="text-white/50 text-lg font-bold">
-          {t.presentation.waitingWords}
-        </div>
-      </div>
-    );
-  }
-  const maxCount = Math.max(...words.map((w) => w.count), 1);
-  const sorted = [...words].sort((a, b) => b.count - a.count);
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/75 p-10">
-      <div
-        dir={isAr ? "rtl" : "ltr"}
-        className="w-full h-full flex flex-wrap items-center justify-center gap-x-6 gap-y-3 content-center"
-      >
-        <AnimatePresence>
-          {sorted.map((w, i) => {
-            const ratio = w.count / maxCount;
-            const size = Math.round(28 + ratio * 72);
-            const color = CLOUD_COLORS[i % CLOUD_COLORS.length];
-            const rot = ((i * 37) % 21) - 10;
-            return (
-              <motion.span
-                key={w.text}
-                initial={{ opacity: 0, scale: 0.4 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.4 }}
-                transition={{ type: "spring", stiffness: 280, damping: 22 }}
-                style={{
-                  fontSize: size,
-                  color,
-                  fontWeight: ratio > 0.6 ? 900 : ratio > 0.3 ? 700 : 500,
-                  transform: `rotate(${rot}deg)`,
-                  textShadow: `0 2px 12px ${color}44`,
-                  fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif",
-                  lineHeight: 1.1,
-                  userSelect: "none",
-                  display: "inline-block",
-                }}
-              >
-                {w.text}
-              </motion.span>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-      <div
-        className="absolute bottom-5 right-5 text-white/40 text-sm font-bold tabular-nums"
-        dir="ltr"
-      >
-        {new Intl.NumberFormat(isAr ? "ar" : "en").format(words.length)} {t.presentation.words}
-      </div>
-    </div>
-  );
-}
+import { LiveWordCloud, type CloudWord } from "@/components/presentations/live-word-cloud";
 
 /* ── Open wall overlay ─────────────────────────────────────────────── */
 interface WallCard { id: string; name: string; text: string; visible: boolean }
@@ -406,9 +341,9 @@ export default function PresentationShow() {
       setActivityOpenedAt(null);
     };
 
-    const onOpened = ({ elementId, element, openedAt }: any) => {
+    const onOpened = ({ elementId, element, openedAt, status }: any) => {
       setLive((p: any) => {
-        const next = { ...(p ?? {}), activeElementId: elementId, activeElement: element };
+        const next = { ...(p ?? {}), status: status ?? "running", activeElementId: elementId, activeElement: element };
         liveRef.current = next;
         return next;
       });
@@ -726,7 +661,7 @@ export default function PresentationShow() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <WordCloudOverlay words={wordCloudWords} isAr={isAr} t={t} />
+            <LiveWordCloud words={wordCloudWords} isAr={isAr} />
           </motion.div>
         )}
       </AnimatePresence>

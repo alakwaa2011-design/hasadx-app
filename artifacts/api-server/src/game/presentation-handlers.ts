@@ -715,9 +715,9 @@ export function setupPresentationSocket(io: Server) {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
-        if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
+        if (!sess || sess.status === "ended" || !isTeacherForSession(socket, sess.teacherId)) return;
         await db.update(presentationSessionsTable)
-          .set({ activeElementId: String(elementId), revealDistribution: false, revealAnswer: false })
+          .set({ status: "running", activeElementId: String(elementId), revealDistribution: false, revealAnswer: false })
           .where(eq(presentationSessionsTable.id, sid));
         const deck = await loadDeckRow(sess.presentationId);
         const element = await resolveActiveElement(deck?.slides, sess.currentSlideIndex, String(elementId));
@@ -736,14 +736,8 @@ export function setupPresentationSocket(io: Server) {
         const openedAt = Date.now();
         if (live) live.activeElementOpenedAt = openedAt;
 
-        await emitToRoomSplit(io, sid, "activity:opened", (forTeacher) => ({
-          elementId: String(elementId),
-          element: forTeacher ? element : sanitizeElementForStudents(element),
-          openedAt,
-        }));
-
-        /* Word-cloud / open-wall: initialise in-memory tracking so
-           students can immediately start submitting. */
+        /* Initialise before announcing the activity: a fast student's first
+           submission must not be wiped by a later map initialization. */
         const elKind = (element as any)?.activityKind;
         if (live && elKind === "word_cloud") {
           live.wordCloudActivity = {
@@ -751,7 +745,6 @@ export function setupPresentationSocket(io: Server) {
             words: new Map(),
             submitted: new Set(),
           };
-          io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: [] });
         } else if (live && elKind === "open_wall") {
           live.openWallActivity = {
             elementId: String(elementId),
@@ -759,7 +752,21 @@ export function setupPresentationSocket(io: Server) {
             submitted: new Set(),
             nextId: 1,
           };
-          io.to(room(sid)).emit("wall:update", { elementId: String(elementId), cards: [] });
+        }
+
+        await emitToRoomSplit(io, sid, "activity:opened", (forTeacher) => ({
+          elementId: String(elementId),
+          element: forTeacher ? element : sanitizeElementForStudents(element),
+          openedAt,
+          status: "running",
+        }));
+        if (live?.wordCloudActivity && elKind === "word_cloud") {
+          io.to(room(sid)).emit("word_cloud:update", {
+            elementId: String(elementId),
+            words: Array.from(live.wordCloudActivity.words, ([text, count]) => ({ text, count })),
+          });
+        } else if (live?.openWallActivity && elKind === "open_wall") {
+          io.to(room(sid)).emit("wall:update", { elementId: String(elementId), cards: live.openWallActivity.cards });
         }
 
         if (useInline && live) {

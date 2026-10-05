@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useI18n } from "@/lib/i18n";
+import { LiveWordCloud } from "@/components/presentations/live-word-cloud";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -151,7 +152,7 @@ export default function PresentationControl() {
       setWordCloudWords([]); setWallCards([]);
     };
     const onOpened = ({ elementId, element }: { elementId: string; element: any }) => {
-      setLive((p) => (p ? { ...p, activeElementId: elementId, activeElement: element, revealDistribution: false, revealAnswer: false } : p));
+      setLive((p) => (p ? { ...p, status: "running", activeElementId: elementId, activeElement: element, revealDistribution: false, revealAnswer: false } : p));
       setSummary(null);
       setWordCloudWords([]); setWallCards([]);
       setInlineActivity((prev) => (prev && prev.elementId !== elementId ? null : prev));
@@ -457,7 +458,7 @@ export default function PresentationControl() {
                   </div>
                   {isGame ? (
                     open ? (
-                      <Button size="sm" variant="destructive" onClick={closeActivity}>
+                      <Button size="sm" variant="destructive" onClick={closeActivity} title={lang === "ar" ? "إغلاق النشاط" : "Close activity"} aria-label={lang === "ar" ? "إغلاق النشاط" : "Close activity"}>
                         <Square className="w-4 h-4" />
                       </Button>
                     ) : (
@@ -475,7 +476,7 @@ export default function PresentationControl() {
                       <span className="text-xs text-white/60 tabular-nums">
                         {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
                       </span>
-                      <Button size="sm" variant="destructive" onClick={closeActivity}>
+                      <Button size="sm" variant="destructive" onClick={closeActivity} title={lang === "ar" ? "إغلاق النشاط" : "Close activity"} aria-label={lang === "ar" ? "إغلاق النشاط" : "Close activity"}>
                         <Square className="w-4 h-4" />
                       </Button>
                     </>
@@ -489,7 +490,7 @@ export default function PresentationControl() {
                         <CheckCircle2 className="w-4 h-4" />
                         <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={closeActivity}>
+                      <Button size="sm" variant="destructive" onClick={closeActivity} title={lang === "ar" ? "إغلاق النشاط" : "Close activity"} aria-label={lang === "ar" ? "إغلاق النشاط" : "Close activity"}>
                         <Square className="w-4 h-4" />
                       </Button>
                     </>
@@ -516,6 +517,9 @@ export default function PresentationControl() {
         >
           {slide && info.deck && (
             <SlideStage lang={info.deck.language} slide={slide} theme={info.deck.theme} pattern={info.deck.pattern} />
+          )}
+          {!ended && live?.activeElement?.activityKind === "word_cloud" && (
+            <LiveWordCloud words={wordCloudWords} isAr={info.deck?.language === "ar"} />
           )}
 
           {/* Phase 6 — Inline live-quiz overlay. Replaces the old panel

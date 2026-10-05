@@ -188,7 +188,7 @@ export default function PresentationPlay() {
       setTextInput(""); setTextSubmitted(false);
     };
     const onOpened = ({ elementId, element }: any) => {
-      setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element, revealAnswer: false, revealDistribution: false }));
+      setLive((p: any) => ({ ...(p ?? {}), status: "running", activeElementId: elementId, activeElement: element, revealAnswer: false, revealDistribution: false }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       if (element?.kind !== "hasad-game") setGameLaunch(null);
       setMySummary(null);
