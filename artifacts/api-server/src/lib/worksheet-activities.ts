@@ -29,6 +29,10 @@ export function worksheetActivityGuidance(opts: {
   const ar = opts.language === "ar";
   const c = opts.generationConstraints ?? {};
   const selected = opts.activityStyle ?? "auto";
+  const groupSize = opts.groupSize ?? 4;
+  const exampleRoles = (ar
+    ? ["قارئ", "كاتب", "متحدث", "منسق", "مراجع", "مراقب الوقت"]
+    : ["reader", "writer", "speaker", "coordinator", "reviewer", "timekeeper"]).slice(0, groupSize);
   return [
     ar
       ? "افهم مقصد المعلم أولاً، ثم صمّم أفضل نشاط تعلّم حقيقي مناسب للمادة والصف والعمر والمحتوى. اجتهد في الخيارات غير المحددة، لا تجتهد بمخالفة اختيار صريح. لا تستخدم توزيعاً ثابتاً ولا تجمع كل الأنواع. المتعة تأتي من التفكير والاكتشاف والعمل، لا من زخرفة اختبار."
@@ -50,7 +54,20 @@ export function worksheetActivityGuidance(opts: {
     "Activity data is a structured printable extension on type='short_answer'; answer is the TEACHER rubric/model response, never a student-visible prefilled answer. Use activity:{kind:'concept_map',center:'topic',branches:['branch prompt','branch prompt'],spaceHeight:120} for 2–6 blank branch boxes; drawing:{kind:'drawing',spaceHeight:140} for a large drawing frame; coloring:{kind:'coloring',spaceHeight:60} MUST accompany an accurate visual with unshaded outlines to color; sorting:{kind:'sorting',items:['unsorted item','unsorted item'],categories:['category','category'],spaceHeight:100}; sequencing:{kind:'sequencing',items:['shuffled event','shuffled event'],spaceHeight:100}; group_task:{kind:'group_task',roles:['reader','writer','speaker','coordinator'],steps:['discuss','agree on evidence'],spaceHeight:120}. Every example is the activity property, not a new question type. Supply all required fields, 2–8 items, 2–4 categories, 2–5 steps, 2–6 roles. Branches are prompts/hints, not filled answers. Shuffle source items, don't reveal their target order/categories. No HTML/SVG/URLs supplied by the model. Drawing instructions may ask the learner to create a picture; coloring instructions MUST have the actual visual. If supported geometry cannot depict the requested art, choose another COMPLETE suitable activity in auto; never pretend an absent picture exists.",
     "Complete valid coloring item example (adapt its educational content, preserve the structure): {\"type\":\"short_answer\",\"prompt\":\"Color the circle blue and the rectangle red.\",\"answer\":\"Circle blue; rectangle red.\",\"activity\":{\"kind\":\"coloring\",\"spaceHeight\":60},\"visual\":{\"shapes\":[{\"kind\":\"circle\",\"x\":20,\"y\":20,\"width\":60,\"height\":60,\"shaded\":false},{\"kind\":\"rectangle\",\"x\":110,\"y\":20,\"width\":80,\"height\":50,\"shaded\":false}]}}. Each shape must use numeric x,y,width,height: x>=5,y>=5,width and height between5 and100,x+width<=295,y+height<=145. Do NOT set type to coloring/drawing/activity. These names belong only to activity.kind.",
     selected !== "auto" && selected !== "practice"
-      ? `Include at least one activity.kind="${selected}" exactly. Do not replace the selected activity with ordinary questions.`
+      ? `FINAL REQUIRED OUTPUT CONTRACT: Include at least one question shaped {"type":"short_answer","prompt":"student task","answer":"teacher-only rubric describing the completed task","activity":{"kind":"${selected}","spaceHeight":120,...required fields}}. activity is a TOP-LEVEL property of that question, not inside answer/prompt/visual. Even when advanced constraints are empty, "${selected}" is an explicit choice, NOT permission to replace it with ordinary quiz questions. For coloring, also include the top-level unshaded visual from the example above.`
+      : "",
+    "STUDENT WORKSPACE SAFETY: center is only the topic; branches are unanswered questions or response headings, NEVER facts/model responses filling those branches (e.g. use 'How many sides?' not 'A triangle has three sides'). Categories are only column headings; never label items with their correct category. Sequencing items are unnumbered source events, not a solved numbered list. Group steps instruct collaboration, not the completed shared result. Keep the full solution/evaluation rubric ONLY in answer; it must not be copied into any activity field, visual label or caption.",
+    opts.executionMode === "group" || selected === "group_task"
+      ? `FINAL GROUP CONTRACT: one short_answer question MUST have top-level activity.kind="group_task" with exactly ${groupSize} roles. The generic four-role example above is NOT binding. Complete structure example (adapt instructions and rubric to the lesson): ${JSON.stringify({
+        type: "short_answer",
+        prompt: ar ? "ناقشوا خصائص الأشكال واكتبوا قرار المجموعة مع سبب." : "Discuss shape properties and record the group's decision with a reason.",
+        answer: ar ? "يقيّم المعلم دقة القرار والدليل ومشاركة أفراد المجموعة." : "Teacher evaluates the decision, supporting evidence and participation.",
+        activity: {
+          kind: "group_task", roles: exampleRoles,
+          steps: ar ? ["ناقشوا الأدلة معًا", "اتفقوا على قرار وسبب واكتبوه"] : ["Discuss the evidence together", "Agree on a decision and a reason, then record them"],
+          spaceHeight: 120,
+        },
+      })}. Preserve the ${groupSize}-role count; do not change it to four or return only individual questions.`
       : "",
     c.itemCount ? `Return exactly ${c.itemCount} items in questions, with space within ${opts.pages} pages.` : "",
     c.allowedTypes ? `Use ONLY these question types: ${c.allowedTypes.join(", ")}${", plus tic_tac_toe only if separately explicitly requested"}.` : "",

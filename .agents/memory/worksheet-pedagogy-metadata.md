@@ -38,3 +38,9 @@ Explicitly chosen advanced settings constrain automatic generation. If no advanc
 **Why:** The user clarified that simplifying setup must not cause automatic generation to ignore their deliberate settings.
 
 **How to apply:** Distinguish an unset field from a deliberate choice, including “none” or “mixed.” Do not let cached manual defaults constrain automatic generation or present those defaults as inferred output.
+
+For activity-led generation, generic quiz-format examples can override an explicit activity when advanced constraints are empty; generic role examples can likewise override the chosen group size.
+
+**Why:** Real provider checks produced ordinary questions instead of the selected activity, and repeated a four-role example for a three-person group. Mocked responses had not exposed either behavior.
+
+**How to apply:** Make the final prompt contract specify the selected activity structure and exact group role count after generic question-format instructions. Check real saved outputs and student-visible branches, not only schema validity: filled branch headings can reveal a solution even when response lines remain blank.

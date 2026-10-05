@@ -85,7 +85,35 @@ describe("activity-led worksheet generation", () => {
     expect(prompt).not.toContain("الصعوبة: متوسط");
     expect(prompt).not.toContain("مدة النشاط المتاحة: 15");
     expect(prompt).toContain('"difficulty":"easy"');
-    expect(prompt).toContain('activity.kind="drawing"');
+    expect(prompt).toContain('"kind":"drawing"');
     expect(prompt).toContain("لا تجمع كل الأنواع");
+  });
+
+  it.each(["concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task"] as const)(
+    "ends unconstrained auto prompts with the explicit %s activity and student safety contract",
+    activityStyle => {
+      const prompt = buildWorksheetPrompt({
+        language: "ar", topic: "الأشكال", subject: "الرياضيات", gradeLevel: "الأول", pages: 1,
+        questionSelection: "auto", activityStyle, executionMode: "individual",
+        difficulty: "medium", cognitiveSkill: "mixed", activityDuration: 15,
+        differentiation: "none", assessmentMode: "formative", counts, generationConstraints: {},
+      });
+      expect(prompt.lastIndexOf("FINAL REQUIRED OUTPUT CONTRACT")).toBeGreaterThan(prompt.indexOf("كل سؤال"));
+      expect(prompt).toContain(`"kind":"${activityStyle}"`);
+      expect(prompt).toContain('{"type":"short_answer"');
+      expect(prompt).toContain("Even when advanced constraints are empty");
+      expect(prompt).toContain("Keep the full solution/evaluation rubric ONLY in answer");
+    },
+  );
+
+  it.each([2, 3, 5, 6])("makes the chosen %i-person group override the generic four-role example", groupSize => {
+    const guidance = worksheetActivityGuidance({
+      language: "ar", pages: 1, activityStyle: "group_task",
+      executionMode: "group", groupSize, generationConstraints: {},
+    });
+    expect(guidance).toContain(`exactly ${groupSize} roles`);
+    expect(guidance).toContain("The generic four-role example above is NOT binding");
+    const example = guidance.split("Complete structure example (adapt instructions and rubric to the lesson): ")[1].split(". Preserve")[0];
+    expect(JSON.parse(example).activity.roles).toHaveLength(groupSize);
   });
 });

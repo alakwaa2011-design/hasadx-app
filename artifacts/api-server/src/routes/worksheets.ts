@@ -2022,11 +2022,13 @@ export function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): stri
     body.questionSelection === "auto" ? automaticWorksheetGuidance(language, pages)
       : ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
     worksheetVisualGuidance,
-    body.questionSelection === "auto" ? worksheetActivityGuidance(body) : "",
     body.questionSelection === "auto" && counts.tic_tac_toe === 1
       ? (ar ? "طلب المعلم صراحة لوحة تيك تاك توك واحدة؛ أضفها مع الأسئلة المناسبة." : "The teacher explicitly requested one Tic-Tac-Toe board; include it alongside suitable questions.") : "",
     "",
     rules.join("\n"),
+    // The chosen activity and blank-workspace rules take precedence over the
+    // generic question format examples above, including empty auto settings.
+    body.questionSelection === "auto" ? worksheetActivityGuidance(body) : "",
   ].filter(Boolean).join("\n");
 }
 
@@ -2131,12 +2133,14 @@ function buildExtractionPrompt(opts: {
     opts.questionSelection === "auto" ? automaticWorksheetGuidance(opts.language, opts.pages)
       : ar ? `المطلوب: ${requested.join("، ")}.` : `Requested: ${requested.join(", ")}.`,
     worksheetVisualGuidance,
-    opts.questionSelection === "auto" ? worksheetActivityGuidance(opts) : "",
     opts.questionSelection === "auto" && opts.counts.tic_tac_toe === 1
       ? (ar ? "طلب المعلم صراحة لوحة تيك تاك توك واحدة؛ أضفها مع الأسئلة المناسبة." : "The teacher explicitly requested one Tic-Tac-Toe board; include it alongside suitable questions.") : "",
     hint,
     sourceBlock,
     rules.join("\n"),
+    // Keep the activity contract AFTER the generic per-type rules. Otherwise
+    // unconstrained automatic requests can end as ordinary quiz questions.
+    opts.questionSelection === "auto" ? worksheetActivityGuidance(opts) : "",
   ].filter(Boolean).join("\n");
 }
 
