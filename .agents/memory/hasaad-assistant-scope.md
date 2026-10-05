@@ -14,6 +14,12 @@ Free accounts get one successful direct execution across the entire assistant, a
 
 **How to apply:** Keep normal conversation charging untouched and bill each execution only once through the existing hold/capture/refund system. Apply this first to private worksheet creation; future presentations and games must reuse the same account-wide entitlement rather than receive separate trials. Preserve accepted save retries without regenerating. Keep the existing administrative availability settings separate from subscription eligibility. Measure successful saving and paid conversion using trusted server evidence, not clicks or a return URL.
 
+في مساعد حصاد، السعر معلومة وليس إجراءً مطلوبًا من المستخدم: لا تُجبره على الضغط على «احسب السعر» قبل «تأكيد وبدء الإنشاء». يجب تحميل التكلفة تلقائيًا، ثم بدء التنفيذ من زر التأكيد مباشرة.
+
+**Why:** The user explicitly rejected a separate manual pricing prerequisite.
+
+**How to apply:** Keep server price validation and single charging, and fence asynchronous quote responses against changed settings. Do not show an unknown price as zero. A real credit exemption must be described as an account setting, never as a free first execution.
+
 Treat equivalent flat/nested AI count fields as the same structured choice; never discard them into defaults. Format examples for zero-count question types must not imply permission to generate those types.
 
 **Why:** Real-provider checks exposed both a flattened count response and a “mandatory MCQ example” that caused the model to substitute an MCQ for a confirmed short-answer question.

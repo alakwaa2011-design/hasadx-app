@@ -138,6 +138,10 @@ export function AssistantCreate({
   const [busy, setBusy] = useState<null | "prepare" | "quote" | "confirm" | "cancel">(null);
   const [disabled, setDisabled] = useState(false);
   const restoredRef = useRef(false);
+  const currentFormRef = useRef(form);
+  const currentOperationRef = useRef(op?.id);
+  currentFormRef.current = form;
+  currentOperationRef.current = op?.id;
 
   const prepare = usePrepareAssistantWorksheet();
   const quote = useQuoteAssistantWorksheet();
@@ -245,12 +249,27 @@ export function AssistantCreate({
 
   const requestBody = () => ({ title: form!.title.trim() || op!.title || "ورقة عمل", template: form!.template || "geometric", parameters: form!.params });
 
+  // Quote automatically; the price is information, not a separate user action.
+  useEffect(() => {
+    if (!op || !form || busy || disabled || missing.length || errorCode) return;
+    if (!["draft", "quoted"].includes(op.status) && !(op.status === "saving" && op.errorCode === "SAVE_RETRY")) return;
+    if (!stale && op.quote && new Date(op.quote.expiresAt).getTime() > Date.now()) return;
+    const timer = window.setTimeout(() => getQuote(), stale ? 250 : 0);
+    return () => window.clearTimeout(timer);
+    // getQuote uses the current render; dependencies below include its inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [op?.id, op?.status, form, stale, busy, disabled, missing.length, errorCode]);
+
   function getQuote(then?: (q: AssistantOperation) => void) {
     if (!op || !form || busy) return;
     const s = scope;
+    const requestedId = op.id, requestedForm = form;
     setBusy("quote"); setErrorCode(null);
     quote.mutate({ id: op.id, data: requestBody() }, {
-      onSuccess: (r) => { if (!alive(s)) return; applyOp(r, true); then?.(r); },
+      onSuccess: (r) => {
+        if (!alive(s) || currentOperationRef.current !== requestedId || currentFormRef.current !== requestedForm) return;
+        applyOp(r, true); then?.(r);
+      },
       onError: (e) => { if (alive(s)) fail(e); },
       onSettled: () => { if (alive(s)) setBusy(null); },
     });
@@ -269,15 +288,17 @@ export function AssistantCreate({
 
   function confirmNow() {
     if (!op || !form || busy || missing.length) return;
-    const shown = op.quote?.credits;
+    const shown = stale ? undefined : op.quote?.credits;
     // Always refresh the quote before confirming; fail closed on any change.
     const s = scope;
+    const requestedId = op.id, requestedForm = form;
     setBusy("quote"); setErrorCode(null);
     quote.mutate({ id: op.id, data: requestBody() }, {
       onSuccess: (r) => {
         if (!alive(s)) return;
+        if (currentOperationRef.current !== requestedId || currentFormRef.current !== requestedForm) { setBusy(null); return; }
         applyOp(r, true);
-        if (!r.quote || (typeof shown === "number" && r.quote.credits !== shown) || stale && shown === undefined) {
+        if (!r.quote || (typeof shown === "number" && r.quote.credits !== shown)) {
           setErrorCode("PRICE_CHANGED");
           setBusy(null);
           return;
@@ -484,13 +505,16 @@ export function AssistantCreate({
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {quoteValid && op?.quote ? (
-                  <div className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary" data-testid="text-assistant-price">{tr(`السعر: ${op.quote.credits} نقطة`, `Price: ${op.quote.credits} credits`)}</div>
+                  <div className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary" data-testid="text-assistant-price"
+                    title={op.quote.credits === 0 ? tr("بحسب إعدادات النقاط الحالية لهذا الحساب، وليس إعفاءً لتجربة Free.", "Based on this account's current credit settings, not a Free-trial waiver.") : undefined}>
+                    {op.quote.credits === 0 ? tr("بدون خصم نقاط لهذا الحساب", "No credit deduction for this account") : tr(`السعر: ${op.quote.credits} نقطة`, `Price: ${op.quote.credits} credits`)}
+                  </div>
                 ) : (
-                  <button type="button" onClick={() => getQuote()} disabled={disabled || !!busy || missing.length > 0} className="rounded-lg border border-primary/40 px-3 py-2 text-xs font-bold text-primary disabled:opacity-40" data-testid="button-assistant-quote">
-                    {busy === "quote" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : stale && op?.quote ? tr("تحديث السعر", "Refresh price") : tr("احسب السعر", "Get price")}
-                  </button>
+                  <div className="rounded-lg bg-muted px-2.5 py-1.5 text-xs text-muted-foreground" aria-live="polite" data-testid="text-assistant-price">
+                    {missing.length ? tr("أكمل الإعدادات لحساب التكلفة", "Complete settings to calculate the cost") : errorCode ? tr("سيُتحقق من التكلفة عند التأكيد", "The cost will be checked on confirmation") : tr("جارٍ تحديث التكلفة تلقائيًا…", "Updating the cost automatically…")}
+                  </div>
                 )}
-                <button type="button" onClick={confirmNow} disabled={disabled || !!busy || missing.length > 0 || !quoteValid} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-40" data-testid="button-assistant-confirm">
+                <button type="button" onClick={confirmNow} disabled={disabled || !!busy || missing.length > 0} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-40" data-testid="button-assistant-confirm">
                   {busy === "confirm" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : tr("تأكيد وبدء الإنشاء", "Confirm and start")}
                 </button>
                 {op && CANCELLABLE.includes(op.status) && <button type="button" onClick={() => doCancel(op)} disabled={!!busy} className="text-[11px] font-bold text-muted-foreground hover:text-destructive">{tr("إلغاء المسودة", "Cancel draft")}</button>}
