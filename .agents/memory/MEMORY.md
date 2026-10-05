@@ -64,6 +64,7 @@
 - [Annual subscription entitlements](annual-subscription-entitlements.md) — annual payments create immutable invoice entitlements; monthly releases and refunds stay bound to the paid term.
 - [Lemon Squeezy checkout layout limits](lemon-checkout-layout-limits.md) — official API can hide media/logo/description, but not the summary column, Tax ID, compact layout, or overlay dimensions.
 - [Lemon Squeezy paid invoice shape](lemon-paid-invoice-shape.md) — live initial invoices may omit variant/order IDs and use billing_reason="initial"; paid webhooks can fail without an authoritative lookup.
+- [Lemon Squeezy PayPal audits](lemon-paypal-audits.md) — identify the processor on subscriptions, not invoices/orders; PayPal subscription management requires the customer portal.
 - [Lemon renewal plan history](lemon-renewal-plan-history.md) — resolve variant-less renewals from signed, provider-dated plan events; never infer an old invoice from today's subscription variant.
 - [OpenAPI codegen compatibility](openapi-codegen-compatibility.md) — codegen postprocesses Orval’s Zod 4 shorthand for Zod 3; always run generated-library typechecks.
 - [Date-only OpenAPI fields](openapi-date-only-fields.md) — local calendar dates should stay strings with a YYYY-MM-DD contract, not generated JavaScript Date values.
