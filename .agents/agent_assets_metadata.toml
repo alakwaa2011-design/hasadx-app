@@ -2609,3 +2609,17 @@ mtime_ms = 1790768792505
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/71b4dfe4-9ce3-40a7-b729-a8e086a87594/80af5be8-4814-485a-973d-4787d5ee0cbc"
 storage_version_token = "1790768956575899"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "InVzGVoiVJHT77D8zhA41"
+uri = "file://attached_assets/teachers-day-film/teachers-day-1080p.mp4"
+type = "video"
+title = "يوم المعلم — أثركم يبقى"
+description = "فيديو رأسي 1080p مدته ٥٠ ثانية، بالصور الثلاث والصوت الأصلي كاملًا، مع حركة سينمائية وانتقالات وعبارات شكر عربية."
+logical_id = "0af584da-4d37-412f-a006-ecca4c0d84c6"
+content_hash = "sha256:5161847e5358193ad1aa65e5c10e58dc5dd5c3ddbe084e770ec6f7d3bb3d55d6"
+size = 14302050
+mtime_ms = 1791184501722
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/0af584da-4d37-412f-a006-ecca4c0d84c6/d4866013-c60e-473e-accc-d0cddfdd2cac"
+storage_version_token = "1791184568885084"
+content_type = "video/mp4"
