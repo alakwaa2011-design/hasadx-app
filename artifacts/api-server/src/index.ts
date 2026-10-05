@@ -1756,6 +1756,22 @@ async function runSchemaMigrations() {
     `);
     // presentation_inline_quiz_runs: per-student quiz-run history (Phase 6)
     await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS presentation_session_events (
+        id SERIAL PRIMARY KEY,
+        session_id INTEGER NOT NULL REFERENCES presentation_sessions(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL, event_key TEXT NOT NULL, payload JSONB NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS presentation_session_events_unique
+      ON presentation_session_events(session_id, kind, event_key)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS presentation_session_events_session_idx
+      ON presentation_session_events(session_id)
+    `);
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS presentation_inline_quiz_runs (
         id               SERIAL PRIMARY KEY,
         session_id       INTEGER NOT NULL

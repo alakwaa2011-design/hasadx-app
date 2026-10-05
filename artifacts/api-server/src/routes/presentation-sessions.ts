@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
 import { rateLimit } from "express-rate-limit";
-import { db, presentationsTable, presentationSessionsTable, presentationResponsesTable, presentationInlineQuizRunsTable, teacherClassesTable, studentsTable, assignmentsTable } from "@workspace/db";
+import { db, presentationSessionEventsTable, presentationsTable, presentationSessionsTable, presentationResponsesTable, presentationInlineQuizRunsTable, teacherClassesTable, studentsTable, assignmentsTable } from "@workspace/db";
 import { and, eq, ne, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { hydrateActivityQuestions } from "./presentations";
 import { mintPresentationJoinToken, verifyPresentationJoinToken } from "../lib/presentation-join-token";
+import { loadPresentationReportData, buildPresentationActivityIndex, answerUnits, correctUnits, scoredUnits } from "../lib/presentation-report-data";
+import { presentationCsvDisposition } from "../lib/presentation-csv";
 
 /**
  * Presentations 2B — Live MVP REST surface.
@@ -142,20 +144,22 @@ router.post("/presentations/:id/sessions", requireTeacher, async (req: any, res)
     const sessionMode: "teacher" | "self_paced" =
       rawSessionMode === "self_paced" ? "self_paced" : "teacher";
 
-    const [created] = await db
-      .insert(presentationSessionsTable)
-      .values({
-        presentationId: id,
-        teacherId,
-        pin,
-        status: "lobby",
-        currentSlideIndex: 0,
-        targetClassId,
-        mode,
-        sessionMode,
-        startedAt: new Date(),
-      })
-      .returning();
+    const snapshotRoster = targetClassId && resolvedClassName ? await db.select({ id: studentsTable.id, name: studentsTable.name })
+      .from(studentsTable).where(and(eq(studentsTable.teacherId, teacherId), eq(studentsTable.studentClass, resolvedClassName))) : [];
+    const snapshotPayload = {
+      title: deck.title, language: deck.language, slides: await hydrateActivityQuestions(Array.isArray(deck.slides) ? deck.slides : []),
+      className: mode === "class" ? resolvedClassName : null, roster: snapshotRoster,
+    };
+    const created = await db.transaction(async tx => {
+      const [session] = await tx.insert(presentationSessionsTable).values({
+        presentationId: id, teacherId, pin, status: "lobby", currentSlideIndex: 0,
+        targetClassId, mode, sessionMode, startedAt: new Date(),
+      }).returning();
+      await tx.insert(presentationSessionEventsTable).values({
+        sessionId: session.id, kind: "snapshot", eventKey: "session", payload: snapshotPayload,
+      });
+      return session;
+    });
 
     res.json({
       sessionId: created.id,
@@ -263,8 +267,10 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     const deck = await loadDeck(sess.presentationId);
     if (!deck) return res.status(404).json({ message: "Deck not found" });
 
-    const rawSlides = Array.isArray(deck.slides) ? (deck.slides as any[]) : [];
-    const hydrated = (await hydrateActivityQuestions(rawSlides)) as any[];
+    const reportData = await loadPresentationReportData([sid]);
+    const snapshot = reportData.snapshots[0]?.payload;
+    const rawSlides = Array.isArray(snapshot?.slides) ? snapshot.slides : Array.isArray(deck.slides) ? (deck.slides as any[]) : [];
+    const hydrated = snapshot ? rawSlides : (await hydrateActivityQuestions(rawSlides)) as any[];
 
     /* Build a map of every activity element on the deck, keyed by
        elementId. We iterate the hydrated slides so option labels and
@@ -282,10 +288,10 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     /* Pull every persisted response for this session. The unique
        constraint on (sessionId, elementId, studentKey) means at most
        one row per student per activity. */
-    const rows = await db
-      .select()
-      .from(presentationResponsesTable)
-      .where(eq(presentationResponsesTable.sessionId, sid));
+    const rows = reportData.rows;
+    const savedIndex = buildPresentationActivityIndex(hydrated, rows, reportData.opens);
+    activityIndex.clear();
+    for (const [id, meta] of savedIndex) activityIndex.set(id, meta);
 
     /* Group responses by elementId → list of rows. Activities the
        teacher never opened (or that no one answered) are still
@@ -307,6 +313,7 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     /* Distinct participants = distinct studentKeys across all rows.
        studentName is taken from the most recent row for that key. */
     const participantNames = new Map<string, string>();
+    for (const e of reportData.joins) participantNames.set(e.payload.studentKey, e.payload.name);
     for (const r of rows) participantNames.set(r.studentKey, r.studentName);
 
     /* Resolve target class roster (when bound). Used to:
@@ -318,7 +325,15 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     const rosterNames = new Set<string>();
     const rosterIds = new Set<number>();
     const rosterList: Array<{ id: number; name: string }> = [];
-    if (sess.mode === "class" && sess.targetClassId) {
+    if (snapshot?.className && Array.isArray(snapshot.roster)) {
+      className = snapshot.className;
+      classSize = snapshot.roster.length;
+      for (const r of snapshot.roster) {
+        rosterIds.add(r.id);
+        rosterNames.add(String(r.name ?? "").trim().toLowerCase());
+        rosterList.push({ id: r.id, name: r.name });
+      }
+    } else if (sess.mode === "class" && sess.targetClassId) {
       const [cls] = await db
         .select({ name: teacherClassesTable.name })
         .from(teacherClassesTable)
@@ -346,6 +361,7 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     const sessionStartMs = sess.startedAt?.getTime() ?? null;
     const respByStudent = new Map<string, Array<{ elementId: string; t: number }>>();
     for (const r of rows) {
+      if (r.aggregateOnly) continue;
       const arr = respByStudent.get(r.studentKey) ?? [];
       arr.push({ elementId: r.elementId, t: r.createdAt.getTime() });
       respByStudent.set(r.studentKey, arr);
@@ -372,6 +388,7 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
       arr.length === 0 ? null : Math.round(arr.reduce((s, x) => s + x, 0) / arr.length);
 
     const totalParticipantSet = new Set<string>();
+    for (const key of participantNames.keys()) totalParticipantSet.add(key);
     for (const r of rows) totalParticipantSet.add(r.studentKey);
     const totalParticipants = totalParticipantSet.size;
 
@@ -383,15 +400,17 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
         let answered = 0;
         const answeredKeys = new Set<string>();
         for (const r of responses) {
-          answered++;
+          answered += answerUnits(r);
           answeredKeys.add(r.studentKey);
           const k = r.answerIndex == null ? "?" : String(r.answerIndex);
-          counts[k] = (counts[k] ?? 0) + 1;
-          if (r.isCorrect === true) correct++;
+          counts[k] = (counts[k] ?? 0) + answerUnits(r);
+          correct += correctUnits(r);
         }
         const correctIndex = typeof element.correctIndex === "number" ? element.correctIndex : null;
-        const correctPct = answered > 0 && correctIndex != null ? Math.round((correct / answered) * 100) : null;
-        const avgResponseSec = avgOf(gapsByActivity.get(elementId) ?? []);
+        const scored = responses.reduce((n, r) => n + scoredUnits(r), 0);
+        const correctPct = scored > 0 ? Math.round((correct / scored) * 100) : null;
+        const realTimes = responses.flatMap(r => r.responseSec != null ? [r.responseSec] : []);
+        const avgResponseSec = realTimes.length ? avgOf(realTimes) : avgOf(gapsByActivity.get(elementId) ?? []);
         /* "Skipped" = present-in-session students who didn't answer this Q. */
         const skipped = Math.max(0, totalParticipants - answeredKeys.size);
         return {
@@ -401,6 +420,7 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
           prompt: element.prompt ?? "",
           options: Array.isArray(element.options) ? element.options : [],
           correctIndex,
+          questionCount: element.questionCount ?? 1,
           counts,
           answered,
           correct,
@@ -416,6 +436,10 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
               answerIndex: r.answerIndex,
               answerText: r.answerText,
               isCorrect: r.isCorrect,
+              aggregateOnly: r.aggregateOnly ?? false,
+              answeredCount: answerUnits(r),
+              correctCount: correctUnits(r),
+              responseSec: r.responseSec ?? null,
               createdAt: r.createdAt.toISOString(),
             })),
         };
@@ -428,41 +452,44 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
        retroactively change the numbers). Students keyed by
        `studentKey` so the same human joining twice (different name
        spelling) still produces one row. */
-    const scorableActivities = activities.filter((a) => a.correctIndex != null);
+    const scorableActivities = activities.filter((a) => a.correctIndex != null || a.correctPct != null);
     const scorableResponseElementIds = new Set<string>();
     for (const r of rows) {
-      if (r.isCorrect != null) scorableResponseElementIds.add(r.elementId);
+      if (scoredUnits(r) > 0) scorableResponseElementIds.add(r.elementId);
     }
-    type StudentAgg = { studentKey: string; name: string; answered: number; correct: number; classStudentId: number | null };
+    type StudentAgg = { studentKey: string; name: string; answered: number; correct: number; scoredAnswered: number; classStudentId: number | null };
     const studentMap = new Map<string, StudentAgg>();
+    for (const e of reportData.joins) studentMap.set(e.payload.studentKey, {
+      studentKey: e.payload.studentKey, name: e.payload.name, answered: 0, correct: 0, scoredAnswered: 0, classStudentId: e.payload.classStudentId ?? null,
+    });
     for (const r of rows) {
       const cur = studentMap.get(r.studentKey) ?? {
         studentKey: r.studentKey,
         name: r.studentName,
         answered: 0,
         correct: 0,
+        scoredAnswered: 0,
         classStudentId: null,
       };
       cur.name = r.studentName;
       /* Latch the most recent non-null classStudentId so any single
          tagged response promotes this student key to "class". */
       if (r.classStudentId != null) cur.classStudentId = r.classStudentId;
-      if (r.isCorrect != null) {
-        cur.answered++;
-        if (r.isCorrect === true) cur.correct++;
-      }
+      cur.answered += answerUnits(r);
+      cur.correct += correctUnits(r);
+      cur.scoredAnswered += scoredUnits(r);
       studentMap.set(r.studentKey, cur);
     }
-    const totalScorableForStudent = scorableResponseElementIds.size;
+    const totalScorableForStudent = scorableActivities.reduce((n, a) => n + a.questionCount, 0);
     const students = Array.from(studentMap.values()).map((s) => {
       /* Classify by stable id first; fall back to name match for
          legacy rows that pre-date the class_student_id column. */
       let isClass = false;
       if (className != null) {
         if (s.classStudentId != null && rosterIds.has(s.classStudentId)) isClass = true;
-        else if (s.classStudentId == null && rosterNames.has((s.name ?? "").trim().toLowerCase())) isClass = true;
+        else if (s.classStudentId == null && !reportData.joins.some(e => e.payload.studentKey === s.studentKey) && rosterNames.has((s.name ?? "").trim().toLowerCase())) isClass = true;
       }
-      const total = totalScorableForStudent;
+      const total = s.scoredAnswered;
       const pct = total > 0 ? Math.round((s.correct / total) * 100) : null;
       return {
         studentKey: s.studentKey,
@@ -501,21 +528,22 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     let totalScorableAnswers = 0;
     let totalCorrect = 0;
     for (const r of rows) {
-      if (r.isCorrect != null) {
-        totalScorableAnswers++;
-        if (r.isCorrect === true) totalCorrect++;
-      }
+      totalScorableAnswers += scoredUnits(r);
+      totalCorrect += correctUnits(r);
     }
     const avgScorePct = totalScorableAnswers > 0 ? Math.round((totalCorrect / totalScorableAnswers) * 100) : null;
+    const respondingKeys = new Set(rows.map(r => r.studentKey));
+    const respondingClassIds = new Set(students.filter(s => s.kind === "class" && respondingKeys.has(s.studentKey)).map(s => s.classStudentId ?? s.studentKey));
     const participationPct = classSize && classSize > 0
-      ? Math.min(100, Math.round((participantNames.size / classSize) * 100))
-      : null;
+      ? Math.round((respondingClassIds.size / classSize) * 100)
+      : participantNames.size ? Math.round((respondingKeys.size / participantNames.size) * 100) : null;
     const startedAtMs = sess.startedAt?.getTime() ?? null;
     const endedAtMs = sess.endedAt?.getTime() ?? null;
     const durationMin = startedAtMs && endedAtMs ? Math.max(1, Math.round((endedAtMs - startedAtMs) / 60000)) : null;
 
     // Phase 1 insights (computed in-memory from the rows we already pulled).
-    const avgAnswerSec = avgOf(allGaps);
+    const actualTimes = rows.flatMap(r => r.responseSec != null ? [r.responseSec] : []);
+    const avgAnswerSec = actualTimes.length ? avgOf(actualTimes) : avgOf(allGaps);
 
     // Most-engaged slide: most distinct students; ties broken by earlier slideIndex.
     const slideStudents = new Map<number, Set<string>>();
@@ -540,8 +568,9 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
     const respondedClassIds = new Set<number>();
     const respondedNamesLower = new Set<string>();
     for (const s of studentMap.values()) {
+      if (!respondingKeys.has(s.studentKey)) continue;
       if (s.classStudentId != null) respondedClassIds.add(s.classStudentId);
-      respondedNamesLower.add((s.name ?? "").trim().toLowerCase());
+      if (!reportData.joins.some(e => e.payload.studentKey === s.studentKey)) respondedNamesLower.add((s.name ?? "").trim().toLowerCase());
     }
     const nonResponders = className == null ? [] : rosterList
       .filter((r) =>
@@ -553,10 +582,11 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
       .slice(0, 50);
 
     // Lowest-3 by participation (answered count). Skip if deck has no scorable items.
-    const totalScorableActivities = activities.filter((a) => a.correctIndex != null).length;
+    const totalScorableActivities = activities.length;
+    const answeredActivityCount = (key: string) => new Set(rows.filter(r => r.studentKey === key).map(r => r.elementId)).size;
     const lowestParticipants = className == null || totalScorableActivities === 0 ? [] : students
       .filter((s) => s.kind === "class")
-      .filter((s) => s.answered < totalScorableActivities)
+      .filter((s) => answeredActivityCount(s.studentKey) < totalScorableActivities)
       .slice()
       .sort((a, b) =>
         a.answered - b.answered
@@ -569,7 +599,7 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
         name: s.name,
         pct: s.pct,
         correct: s.correct,
-        answered: s.answered,
+        answered: answeredActivityCount(s.studentKey),
         totalActivities: totalScorableActivities,
       }));
 
@@ -580,10 +610,10 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
       let cCor = 0;
       const classStudentKeys = new Set(students.filter((s) => s.kind === "class").map((s) => s.studentKey));
       for (const r of rows) {
-        if (r.isCorrect == null) continue;
+        if (!scoredUnits(r)) continue;
         if (!classStudentKeys.has(r.studentKey)) continue;
-        cAns++;
-        if (r.isCorrect === true) cCor++;
+        cAns += scoredUnits(r);
+        cCor += correctUnits(r);
       }
       classAvgPct = cAns > 0 ? Math.round((cCor / cAns) * 100) : null;
     } else {
@@ -612,7 +642,7 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
         targetClassId: sess.targetClassId,
         targetClassName: className,
       },
-      deck: { id: deck.id, title: deck.title, language: deck.language },
+      deck: { id: deck.id, title: snapshot?.title ?? deck.title, language: snapshot?.language ?? deck.language },
       participantsCount: participantNames.size,
       classSize,
       summary: {
@@ -620,9 +650,9 @@ router.get("/presentations/sessions/:id/results", requireTeacher, async (req: an
         classSize,
         participationPct,
         avgScorePct,
-        scorableActivities: scorableActivities.length,
+        scorableActivities: totalScorableForStudent,
         totalActivities: activities.length,
-        totalAnswers: rows.length,
+        totalAnswers: rows.reduce((n, r) => n + answerUnits(r), 0),
         durationMin,
       },
       hardestActivities,
@@ -688,10 +718,10 @@ router.get("/presentations/:id/sessions/compare", requireTeacher, async (req: an
     /* Pull every response for every session in one round-trip. */
     const sessionIds = sessions.map((s) => s.id);
     const sessionIdsSql = sql.join(sessionIds.map((x) => sql`${x}`), sql`, `);
-    const allRows = await db
-      .select()
-      .from(presentationResponsesTable)
-      .where(sql`${presentationResponsesTable.sessionId} IN (${sessionIdsSql})`);
+    const reportData = await loadPresentationReportData(sessionIds);
+    const allRows = reportData.rows;
+    const savedMeta = buildPresentationActivityIndex(hydrated, allRows, reportData.opens);
+    for (const [id, meta] of savedMeta) elementMeta.set(id, { slideIndex: meta.slideIndex, prompt: meta.element.prompt ?? "", correctIndex: meta.element.correctIndex ?? null });
 
     const rowsBySession = new Map<number, typeof allRows>();
     for (const r of allRows) {
@@ -736,30 +766,35 @@ router.get("/presentations/:id/sessions/compare", requireTeacher, async (req: an
     const hardestCounter = new Map<string, number>();
     const out = sessions.map((s) => {
       const rows = rowsBySession.get(s.id) ?? [];
-      const cls = s.targetClassId != null ? classMeta.get(s.targetClassId) : undefined;
+      const snapshot = reportData.snapshots.find(e => e.sessionId === s.id)?.payload;
+      const cls = snapshot?.className ? { name: snapshot.className as string, size: snapshot.roster.length as number }
+        : s.targetClassId != null ? classMeta.get(s.targetClassId) : undefined;
       const startMs = s.startedAt?.getTime() ?? null;
       const endMs = s.endedAt?.getTime() ?? null;
       const durationMin = startMs && endMs ? Math.max(1, Math.round((endMs - startMs) / 60000)) : null;
 
       const partSet = new Set<string>();
+      for (const e of reportData.joins) if (e.sessionId === s.id) partSet.add(e.payload.studentKey);
       let scorable = 0;
       let correct = 0;
       const perElem = new Map<string, { ans: number; cor: number }>();
       for (const r of rows) {
         partSet.add(r.studentKey);
-        if (r.isCorrect != null) {
-          scorable++;
-          if (r.isCorrect === true) correct++;
+        if (scoredUnits(r) > 0) {
+          scorable += scoredUnits(r);
+          correct += correctUnits(r);
           const e = perElem.get(r.elementId) ?? { ans: 0, cor: 0 };
-          e.ans++;
-          if (r.isCorrect === true) e.cor++;
+          e.ans += scoredUnits(r);
+          e.cor += correctUnits(r);
           perElem.set(r.elementId, e);
         }
       }
       const avgScorePct = scorable > 0 ? Math.round((correct / scorable) * 100) : null;
+      const responding = new Set(rows.map(r => r.studentKey));
+      const respondingClass = new Set(rows.filter(r => r.classStudentId != null).map(r => r.classStudentId));
       const participationPct = cls && cls.size > 0
-        ? Math.min(100, Math.round((partSet.size / cls.size) * 100))
-        : null;
+        ? Math.min(100, Math.round((respondingClass.size / cls.size) * 100))
+        : partSet.size ? Math.round((responding.size / partSet.size) * 100) : null;
 
       // Per-student gaps -> overall avg answer time.
       const byStu = new Map<string, number[]>();
@@ -780,6 +815,8 @@ router.get("/presentations/:id/sessions/compare", requireTeacher, async (req: an
           prev = t;
         }
       }
+      const actualTimes = rows.flatMap(r => r.responseSec != null ? [r.responseSec] : []);
+      if (actualTimes.length) gaps.splice(0, gaps.length, ...actualTimes);
       const avgAnswerSec = gaps.length > 0
         ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length)
         : null;
@@ -880,21 +917,22 @@ router.get("/presentations/:id/sessions/history", requireTeacher, async (req: an
        questions as one participant. */
     const sessionIds = sessions.map((s) => s.id);
     const sessionIdsSql = sql.join(sessionIds.map((x) => sql`${x}`), sql`, `);
-    const aggRows = await db
-      .select({
-        sessionId: presentationResponsesTable.sessionId,
-        participants: sql<number>`COUNT(DISTINCT ${presentationResponsesTable.studentKey})`.mapWith(Number),
-        totalAnswers: sql<number>`COUNT(*)`.mapWith(Number),
-        scorableAnswers: sql<number>`SUM(CASE WHEN ${presentationResponsesTable.isCorrect} IS NOT NULL THEN 1 ELSE 0 END)`.mapWith(Number),
-        correct: sql<number>`SUM(CASE WHEN ${presentationResponsesTable.isCorrect} = true THEN 1 ELSE 0 END)`.mapWith(Number),
-      })
-      .from(presentationResponsesTable)
-      .where(sql`${presentationResponsesTable.sessionId} IN (${sessionIdsSql})`)
-      .groupBy(presentationResponsesTable.sessionId);
-    const aggBySession = new Map<number, { participants: number; totalAnswers: number; scorableAnswers: number; correct: number }>();
+    const reportData = await loadPresentationReportData(sessionIds);
+    const aggRows = sessionIds.map(sessionId => {
+      const rows = reportData.rows.filter(r => r.sessionId === sessionId);
+      const keys = new Set(rows.map(r => r.studentKey));
+      for (const e of reportData.joins) if (e.sessionId === sessionId) keys.add(e.payload.studentKey);
+      return { sessionId, participants: keys.size, responding: new Set(rows.map(r => r.studentKey)).size,
+        respondingClass: new Set(rows.filter(r => r.classStudentId != null).map(r => r.classStudentId)).size,
+        totalAnswers: rows.reduce((n, r) => n + answerUnits(r), 0),
+        scorableAnswers: rows.reduce((n, r) => n + scoredUnits(r), 0), correct: rows.reduce((n, r) => n + correctUnits(r), 0) };
+    });
+    const aggBySession = new Map<number, { participants: number; responding: number; respondingClass: number; totalAnswers: number; scorableAnswers: number; correct: number }>();
     for (const r of aggRows) {
       aggBySession.set(r.sessionId, {
         participants: r.participants ?? 0,
+        responding: r.responding,
+        respondingClass: r.respondingClass,
         totalAnswers: r.totalAnswers ?? 0,
         scorableAnswers: r.scorableAnswers ?? 0,
         correct: r.correct ?? 0,
@@ -934,8 +972,10 @@ router.get("/presentations/:id/sessions/history", requireTeacher, async (req: an
     }
 
     const out = sessions.map((s) => {
-      const agg = aggBySession.get(s.id) ?? { participants: 0, totalAnswers: 0, scorableAnswers: 0, correct: 0 };
-      const cls = s.targetClassId != null ? classMeta.get(s.targetClassId) : undefined;
+      const agg = aggBySession.get(s.id) ?? { participants: 0, responding: 0, respondingClass: 0, totalAnswers: 0, scorableAnswers: 0, correct: 0 };
+      const snapshot = reportData.snapshots.find(e => e.sessionId === s.id)?.payload;
+      const cls = snapshot?.className ? { name: snapshot.className as string, size: snapshot.roster.length as number }
+        : s.targetClassId != null ? classMeta.get(s.targetClassId) : undefined;
       const startedMs = s.startedAt?.getTime() ?? null;
       const endedMs = s.endedAt?.getTime() ?? null;
       const durationMin = startedMs && endedMs ? Math.max(1, Math.round((endedMs - startedMs) / 60000)) : null;
@@ -955,8 +995,8 @@ router.get("/presentations/:id/sessions/history", requireTeacher, async (req: an
         totalAnswers: agg.totalAnswers,
         avgScorePct: agg.scorableAnswers > 0 ? Math.round((agg.correct / agg.scorableAnswers) * 100) : null,
         participationPct: cls && cls.size > 0
-          ? Math.min(100, Math.round((agg.participants / cls.size) * 100))
-          : null,
+          ? Math.min(100, Math.round((agg.respondingClass / cls.size) * 100))
+          : agg.participants ? Math.round((agg.responding / agg.participants) * 100) : null,
       };
     });
 
@@ -1004,10 +1044,11 @@ router.get("/presentations/sessions/:id/results.csv", requireTeacher, async (req
       }
     });
 
-    const rows = await db
-      .select()
-      .from(presentationResponsesTable)
-      .where(eq(presentationResponsesTable.sessionId, sid));
+    const reportData = await loadPresentationReportData([sid]);
+    const rows = reportData.rows;
+    const savedIndex = buildPresentationActivityIndex(hydrated, rows, reportData.opens);
+    activityIndex.clear();
+    for (const [id, meta] of savedIndex) activityIndex.set(id, meta);
 
     /* Stable order: by slide index, then by response time. Responses
        for activities no longer present on the deck are appended last. */
@@ -1028,11 +1069,11 @@ router.get("/presentations/sessions/:id/results.csv", requireTeacher, async (req
       return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
 
-    const header = ["slide", "activity", "student", "studentKey", "answer", "isCorrect", "timestamp"];
+    const header = ["slide", "activity", "student", "studentKey", "answer", "isCorrect", "timestamp", "answeredCount", "correctCount", "aggregateOnly"];
     const lines: string[] = [header.join(",")];
     for (const r of rows) {
       const meta = activityIndex.get(r.elementId);
-      const el = meta?.element;
+      const el = r.meta ? { ...meta?.element, ...r.meta } : meta?.element;
       const slideLabel = meta && meta.slideIndex >= 0 ? String(meta.slideIndex + 1) : "";
       const prompt = el?.prompt ?? "(نشاط محذوف)";
       const options: string[] = Array.isArray(el?.options) ? el.options : [];
@@ -1049,6 +1090,9 @@ router.get("/presentations/sessions/:id/results.csv", requireTeacher, async (req
         escape(answer),
         escape(isCorrect),
         escape(r.createdAt.toISOString()),
+        escape(answerUnits(r)),
+        escape(correctUnits(r)),
+        escape(r.aggregateOnly ?? false),
       ].join(","));
     }
 
@@ -1058,19 +1102,8 @@ router.get("/presentations/sessions/:id/results.csv", requireTeacher, async (req
     /* Filename: slugify deck title to ASCII-safe chars, fall back to
        a generic name; also send a UTF-8 filename* for browsers that
        support RFC 5987 so Arabic deck titles aren't lost. */
-    const titleRaw = (deck.title ?? "presentation").trim() || "presentation";
-    const asciiSlug = titleRaw
-      .replace(/[\\/:*?"<>|\r\n]/g, "")
-      .replace(/\s+/g, "_")
-      .slice(0, 60) || "presentation";
-    const fnameAscii = `${asciiSlug}-session-${sid}.csv`;
-    const fnameUtf8 = encodeURIComponent(`${titleRaw} - جلسة ${sid}.csv`);
-
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${fnameAscii}"; filename*=UTF-8''${fnameUtf8}`,
-    );
+    res.setHeader("Content-Disposition", presentationCsvDisposition(deck.title, sid, "session"));
     res.send(csv);
   } catch (err) {
     req.log?.error({ err }, "Export session results CSV failed");
@@ -1111,10 +1144,8 @@ router.get("/presentations/sessions/:id/students.csv", requireTeacher, async (re
       }
     }
 
-    const rows = await db
-      .select()
-      .from(presentationResponsesTable)
-      .where(eq(presentationResponsesTable.sessionId, sid));
+    const reportData = await loadPresentationReportData([sid]);
+    const rows = reportData.rows;
 
     const rosterNames = new Set<string>();
     const rosterIds = new Set<number>();
@@ -1141,16 +1172,26 @@ router.get("/presentations/sessions/:id/students.csv", requireTeacher, async (re
       }
     }
 
-    type Agg = { name: string; answered: number; correct: number; lastAt: Date; classStudentId: number | null };
+    const savedClass = reportData.snapshots[0]?.payload;
+    if (savedClass?.className && Array.isArray(savedClass.roster)) {
+      className = savedClass.className;
+      rosterIds.clear(); rosterNames.clear();
+      for (const r of savedClass.roster) {
+        rosterIds.add(r.id); rosterNames.add(String(r.name ?? "").trim().toLowerCase());
+      }
+    }
+    type Agg = { name: string; answered: number; correct: number; scoredAnswered: number; lastAt: Date; classStudentId: number | null };
     const byKey = new Map<string, Agg>();
+    for (const e of reportData.joins) byKey.set(e.payload.studentKey, {
+      name: e.payload.name, answered: 0, correct: 0, scoredAnswered: 0, lastAt: e.createdAt, classStudentId: e.payload.classStudentId ?? null,
+    });
     for (const r of rows) {
-      const a = byKey.get(r.studentKey) ?? { name: r.studentName, answered: 0, correct: 0, lastAt: r.createdAt, classStudentId: null };
+      const a = byKey.get(r.studentKey) ?? { name: r.studentName, answered: 0, correct: 0, scoredAnswered: 0, lastAt: r.createdAt, classStudentId: null };
       a.name = r.studentName;
       if (r.classStudentId != null) a.classStudentId = r.classStudentId;
-      if (scorableIds.has(r.elementId)) {
-        a.answered++;
-        if (r.isCorrect === true) a.correct++;
-      }
+      a.answered += answerUnits(r);
+      a.correct += correctUnits(r);
+      a.scoredAnswered += scoredUnits(r);
       if (r.createdAt > a.lastAt) a.lastAt = r.createdAt;
       byKey.set(r.studentKey, a);
     }
@@ -1168,10 +1209,10 @@ router.get("/presentations/sessions/:id/students.csv", requireTeacher, async (re
       let isClass = false;
       if (className != null) {
         if (a.classStudentId != null && rosterIds.has(a.classStudentId)) isClass = true;
-        else if (a.classStudentId == null && rosterNames.has((a.name ?? "").trim().toLowerCase())) isClass = true;
+        else if (a.classStudentId == null && !reportData.joins.some(e => e.payload.studentKey === key) && rosterNames.has((a.name ?? "").trim().toLowerCase())) isClass = true;
       }
       const kind = className == null ? "guest" : isClass ? "class" : "guest";
-      const pct = total > 0 ? Math.round((a.correct / total) * 100) : "";
+      const pct = a.scoredAnswered > 0 ? Math.round((a.correct / a.scoredAnswered) * 100) : "";
       return { key, ...a, kind, pct };
     });
     out.sort((a, b) => (typeof b.pct === "number" ? b.pct : -1) - (typeof a.pct === "number" ? a.pct : -1));
@@ -1182,23 +1223,15 @@ router.get("/presentations/sessions/:id/students.csv", requireTeacher, async (re
         escape(r.kind),
         escape(r.answered),
         escape(r.correct),
-        escape(total),
+        escape(r.scoredAnswered),
         escape(r.pct),
         escape(r.lastAt.toISOString()),
       ].join(","));
     }
 
     const csv = "\ufeff" + lines.join("\r\n") + "\r\n";
-    const titleRaw = (deck.title ?? "presentation").trim() || "presentation";
-    const asciiSlug = titleRaw.replace(/[\\/:*?"<>|\r\n]/g, "").replace(/\s+/g, "_").slice(0, 60) || "presentation";
-    const fnameAscii = `${asciiSlug}-students-${sid}.csv`;
-    const fnameUtf8 = encodeURIComponent(`${titleRaw} - طلاب جلسة ${sid}.csv`);
-
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${fnameAscii}"; filename*=UTF-8''${fnameUtf8}`,
-    );
+    res.setHeader("Content-Disposition", presentationCsvDisposition(deck.title, sid, "students"));
     res.send(csv);
   } catch (err) {
     req.log?.error({ err }, "Export session students CSV failed");

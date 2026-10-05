@@ -1,9 +1,10 @@
 import { Server, Socket } from "socket.io";
-import { db, presentationSessionsTable, presentationResponsesTable, presentationInlineQuizRunsTable, presentationsTable, teacherClassesTable, studentsTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { db, presentationSessionEventsTable, presentationSessionsTable, presentationResponsesTable, presentationInlineQuizRunsTable, presentationsTable, teacherClassesTable, studentsTable } from "@workspace/db";
+import { and, eq, ne } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { hydrateActivityQuestions } from "../routes/presentations";
 import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
+import { recordPresentationJoin, recordPresentationOpen, recordPresentationAnswer, recordPresentationEvent } from "../lib/presentation-report-data";
 
 /**
  * Presentations 2B — Live MVP socket layer.
@@ -546,8 +547,17 @@ function isTeacherForSession(socket: Socket, teacherId: number): boolean {
 
 export function setupPresentationSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
+    // Socket.IO does not await async listeners. Preserve the teacher's action
+    // order so "next slide → open activity → end" cannot race its DB writes.
+    let teacherActions = Promise.resolve();
+    const onTeacherAction = (eventName: string, handler: (payload: any) => unknown) => {
+      socket.on(eventName, payload => {
+        teacherActions = teacherActions.then(async () => { await handler(payload); })
+          .catch(err => { logger.error({ err, eventName }, "presentation teacher action failed"); });
+      });
+    };
     /* Teacher control join — owner-only. */
-    socket.on("teacher:join-presentation", async ({ sessionId }: { sessionId: number }) => {
+    onTeacherAction("teacher:join-presentation", async ({ sessionId }: { sessionId: number }) => {
       try {
         const sess = await loadSessionRow(Number(sessionId));
         if (!sess) return socket.emit("error", { message: "Session not found" });
@@ -671,6 +681,7 @@ export function setupPresentationSocket(io: Server) {
           live = { id: sid, teacherId: sess.teacherId, presentationId: sess.presentationId, participants: new Map(), teacherSockets: new Set() };
           sessions.set(sid, live);
         }
+        await recordPresentationJoin(sid, cleanKey, cleanName, classStudentId);
         live.participants.set(socket.id, { name: cleanName, studentKey: cleanKey, isShow: false, classStudentId });
         /* Hydrate sessionMode from DB so student:slide-change works even
            when students connect before the teacher control socket joins. */
@@ -685,11 +696,11 @@ export function setupPresentationSocket(io: Server) {
 
     /* Teacher controls — every event verifies ownership against the
        session row's teacher_id, then persists to DB and broadcasts. */
-    socket.on("slide:change", async ({ sessionId, index }: { sessionId: number; index: number }) => {
+    onTeacherAction("slide:change", async ({ sessionId, index }: { sessionId: number; index: number }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
-        if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
+        if (!sess || sess.status === "ended" || !isTeacherForSession(socket, sess.teacherId)) return;
         const idx = Math.max(0, Number(index) | 0);
         await db.update(presentationSessionsTable)
           .set({ currentSlideIndex: idx, activeElementId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
@@ -711,16 +722,19 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) { logger.error({ err }, "slide:change failed"); }
     });
 
-    socket.on("activity:open", async ({ sessionId, elementId }: { sessionId: number; elementId: string }) => {
+    onTeacherAction("activity:open", async ({ sessionId, elementId }: { sessionId: number; elementId: string }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
         if (!sess || sess.status === "ended" || !isTeacherForSession(socket, sess.teacherId)) return;
-        await db.update(presentationSessionsTable)
-          .set({ status: "running", activeElementId: String(elementId), revealDistribution: false, revealAnswer: false })
-          .where(eq(presentationSessionsTable.id, sid));
         const deck = await loadDeckRow(sess.presentationId);
         const element = await resolveActiveElement(deck?.slides, sess.currentSlideIndex, String(elementId));
+        if (!element) return;
+        const opened = await db.update(presentationSessionsTable)
+          .set({ status: "running", activeElementId: String(elementId), revealDistribution: false, revealAnswer: false })
+          .where(and(eq(presentationSessionsTable.id, sid), ne(presentationSessionsTable.status, "ended")))
+          .returning({ id: presentationSessionsTable.id });
+        if (!opened.length) return;
         const live = sessions.get(sid);
         /* Phase 6 — clear any prior inline-activity state before we
            decide which path to take for the newly opened element. */
@@ -734,6 +748,7 @@ export function setupPresentationSocket(io: Server) {
            share the same value — the StageTimer on show.tsx uses it to
            synchronise the countdown for late-joining projectors. */
         const openedAt = Date.now();
+        if (element) await recordPresentationOpen(sid, element, sess.currentSlideIndex, openedAt);
         if (live) live.activeElementOpenedAt = openedAt;
 
         /* Initialise before announcing the activity: a fast student's first
@@ -796,7 +811,7 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) { logger.error({ err }, "activity:open failed"); }
     });
 
-    socket.on("activity:close", async ({ sessionId }: { sessionId: number }) => {
+    onTeacherAction("activity:close", async ({ sessionId }: { sessionId: number }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
@@ -835,19 +850,8 @@ export function setupPresentationSocket(io: Server) {
           if (!spEl) return;
           const word = String(text ?? "").trim().slice(0, 60);
           if (!word) return;
-          try {
-            await db.insert(presentationResponsesTable).values({
-              sessionId: sid,
-              slideIndex: studentSlideIdx,
-              elementId: String(elementId),
-              studentKey: me.studentKey,
-              studentName: me.name,
-              classStudentId: me.classStudentId,
-              answerIndex: null,
-              answerText: word,
-              isCorrect: null,
-            });
-          } catch { return socket.emit("answer:already"); }
+          const recorded = await recordPresentationAnswer(sid, me, spEl, studentSlideIdx, { answerText: word, mirrorLegacy: true });
+          if (recorded !== "saved") return socket.emit(recorded === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
           socket.emit("answer:accepted");
           /* Also maintain an in-memory per-element word map so the
              student sees an updated cloud immediately. */
@@ -900,6 +904,10 @@ export function setupPresentationSocket(io: Server) {
         const word = String(text ?? "").trim().slice(0, 60);
         if (!word) return socket.emit("answer:rejected", { reason: "empty" });
         const key = word.toLowerCase();
+        const wordDeck = await loadDeckRow(sess.presentationId);
+        const wordElement = await resolveActiveElement(wordDeck?.slides, sess.currentSlideIndex, activeElementId);
+        const recordedWord = await recordPresentationAnswer(sid, me, wordElement, sess.currentSlideIndex, { answerText: word });
+        if (recordedWord !== "saved") return socket.emit(recordedWord === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
         const cur = live.wordCloudActivity.words.get(key) ?? 0;
         live.wordCloudActivity.words.set(key, cur + 1);
         live.wordCloudActivity.submitted.add(me.studentKey);
@@ -910,7 +918,10 @@ export function setupPresentationSocket(io: Server) {
            by storing the display word alongside the count. */
         const wordArr = Array.from(live.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
         io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: wordArr });
-      } catch (err) { logger.error({ err }, "word_cloud:submit failed"); }
+      } catch (err) {
+        logger.error({ err }, "word_cloud:submit failed");
+        socket.emit("answer:rejected", { reason: "save-failed" });
+      }
     });
 
     /* Open wall — student submits a free-text response card.
@@ -934,19 +945,8 @@ export function setupPresentationSocket(io: Server) {
           if (!wpEl) return;
           const cleaned = String(text ?? "").trim().slice(0, 500);
           if (!cleaned) return;
-          try {
-            await db.insert(presentationResponsesTable).values({
-              sessionId: sid,
-              slideIndex: studentSlideIdx,
-              elementId: String(elementId),
-              studentKey: me.studentKey,
-              studentName: me.name,
-              classStudentId: me.classStudentId,
-              answerIndex: null,
-              answerText: cleaned,
-              isCorrect: null,
-            });
-          } catch { return socket.emit("answer:already"); }
+          const recorded = await recordPresentationAnswer(sid, me, wpEl, studentSlideIdx, { answerText: cleaned, mirrorLegacy: true });
+          if (recorded !== "saved") return socket.emit(recorded === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
           socket.emit("answer:accepted");
           /* Maintain per-element in-memory wall so the student sees their card. */
           if (!live.selfPacedOpenWalls) live.selfPacedOpenWalls = new Map();
@@ -974,6 +974,12 @@ export function setupPresentationSocket(io: Server) {
         }
         const cleaned = String(text ?? "").trim().slice(0, 500);
         if (!cleaned) return;
+        const wallSess = await loadSessionRow(sid);
+        if (!wallSess) return;
+        const wallDeck = await loadDeckRow(wallSess.presentationId);
+        const wallElement = await resolveActiveElement(wallDeck?.slides, wallSess.currentSlideIndex, String(elementId));
+        const recordedWall = await recordPresentationAnswer(sid, me, wallElement, wallSess.currentSlideIndex, { answerText: cleaned });
+        if (recordedWall !== "saved") return socket.emit(recordedWall === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
         const card: WallCard = {
           id: String(live.openWallActivity.nextId++),
           studentKey: me.studentKey,
@@ -991,7 +997,10 @@ export function setupPresentationSocket(io: Server) {
           io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
         }
         io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
-      } catch (err) { logger.error({ err }, "wall:submit failed"); }
+      } catch (err) {
+        logger.error({ err }, "wall:submit failed");
+        socket.emit("answer:rejected", { reason: "save-failed" });
+      }
     });
 
     /* Teacher toggles visibility of a wall card. */
@@ -1019,7 +1028,7 @@ export function setupPresentationSocket(io: Server) {
        a final summary and clears inline activity (the teacher can
        still close the activity to end fully, or move to the next
        slide). */
-    socket.on("activity:next-question", async ({ sessionId }: { sessionId: number }) => {
+    onTeacherAction("activity:next-question", async ({ sessionId }: { sessionId: number }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
@@ -1073,7 +1082,14 @@ export function setupPresentationSocket(io: Server) {
                   finishedAt,
                 };
               });
-              await db.insert(presentationInlineQuizRunsTable).values(insertRows);
+              const completedElementId = live.inlineActivity.elementId;
+              await db.transaction(async tx => {
+                await tx.insert(presentationInlineQuizRunsTable).values(insertRows);
+                await tx.insert(presentationSessionEventsTable).values({
+                  sessionId: sid, kind: "quiz-complete", eventKey: `${completedElementId}:${finishedAt.toISOString()}`,
+                  payload: { elementId: completedElementId, finishedAt: finishedAt.toISOString() },
+                }).onConflictDoNothing();
+              });
             } catch (err) {
               logger.error({ err, sid, elementId: live.inlineActivity.elementId }, "persist inline quiz run failed");
             }
@@ -1123,6 +1139,9 @@ export function setupPresentationSocket(io: Server) {
           return;
         }
         live.inlineActivity.currentQuestionIndex = next;
+        await recordPresentationEvent(sid, "question-open", `${live.inlineActivity.elementId}:${next}:${Date.now()}`, {
+          elementId: live.inlineActivity.elementId, questionIndex: next, openedAt: Date.now(),
+        });
         live.inlineActivity.phase = "asking";
         await broadcastInlineActivityState(io, sid, element);
       } catch (err) { logger.error({ err }, "activity:next-question failed"); }
@@ -1131,7 +1150,7 @@ export function setupPresentationSocket(io: Server) {
     /* Phase 6 — teacher reveals the correct answer for the current
        inline question. Flips phase=revealed and re-broadcasts state
        so student devices light up the correct option. */
-    socket.on("activity:reveal-question", async ({ sessionId }: { sessionId: number }) => {
+    onTeacherAction("activity:reveal-question", async ({ sessionId }: { sessionId: number }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
@@ -1147,7 +1166,7 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) { logger.error({ err }, "activity:reveal-question failed"); }
     });
 
-    socket.on("results:reveal-distribution", async ({ sessionId, on }: { sessionId: number; on: boolean }) => {
+    onTeacherAction("results:reveal-distribution", async ({ sessionId, on }: { sessionId: number; on: boolean }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
@@ -1160,7 +1179,7 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) { logger.error({ err }, "reveal-distribution failed"); }
     });
 
-    socket.on("results:reveal-answer", async ({ sessionId, on }: { sessionId: number; on: boolean }) => {
+    onTeacherAction("results:reveal-answer", async ({ sessionId, on }: { sessionId: number; on: boolean }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
@@ -1178,7 +1197,7 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) { logger.error({ err }, "reveal-answer failed"); }
     });
 
-    socket.on("session:end", async ({ sessionId }: { sessionId: number }) => {
+    onTeacherAction("session:end", async ({ sessionId }: { sessionId: number }) => {
       try {
         const sid = Number(sessionId);
         const sess = await loadSessionRow(sid);
@@ -1313,21 +1332,10 @@ export function setupPresentationSocket(io: Server) {
           if (typeof selfEl.correctIndex === "number" && typeof answerIndex === "number") {
             isCorrect = answerIndex === selfEl.correctIndex;
           }
-          try {
-            await db.insert(presentationResponsesTable).values({
-              sessionId: sid,
-              slideIndex: studentSlideIdx,
-              elementId: String(elementId),
-              studentKey: me.studentKey,
-              studentName: me.name,
-              classStudentId: me.classStudentId,
-              answerIndex: typeof answerIndex === "number" ? answerIndex : null,
-              answerText: typeof answerText === "string" ? answerText.slice(0, 500) : null,
-              isCorrect,
-            });
-          } catch {
-            return socket.emit("answer:already");
-          }
+          const recorded = await recordPresentationAnswer(sid, me, selfEl, studentSlideIdx, {
+            answerIndex, answerText: typeof answerText === "string" ? answerText.slice(0, 500) : undefined, mirrorLegacy: true,
+          });
+          if (recorded !== "saved") return socket.emit(recorded === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
           socket.emit("answer:accepted");
 
           /* Track per-student completion count and notify teacher. */
@@ -1379,6 +1387,12 @@ export function setupPresentationSocket(io: Server) {
           if (qMap.has(me.studentKey)) {
             return socket.emit("answer:already");
           }
+          const inlineQuestion = (el as any)?.questions?.[qIdx];
+          if (!inlineQuestion || !Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= inlineQuestion.options?.length) {
+            return socket.emit("answer:rejected", { reason: "invalid-answer" });
+          }
+          const recordedQuiz = await recordPresentationAnswer(sid, me, el, sess.currentSlideIndex, { answerIndex, questionIndex: qIdx });
+          if (recordedQuiz !== "saved") return socket.emit(recordedQuiz === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
           qMap.set(me.studentKey, answerIndex);
           socket.emit("answer:accepted");
           await broadcastInlineActivityState(io, sid, el);
@@ -1390,27 +1404,16 @@ export function setupPresentationSocket(io: Server) {
           isCorrect = answerIndex === el.correctIndex;
         }
 
-        try {
-          await db.insert(presentationResponsesTable).values({
-            sessionId: sid,
-            slideIndex: sess.currentSlideIndex,
-            elementId: String(elementId),
-            studentKey: me.studentKey,
-            studentName: me.name,
-            classStudentId: me.classStudentId,
-            answerIndex: typeof answerIndex === "number" ? answerIndex : null,
-            answerText: typeof answerText === "string" ? answerText.slice(0, 500) : null,
-            isCorrect,
-          });
-        } catch {
-          /* duplicate — already answered. Treat as success silently. */
-          return socket.emit("answer:already");
-        }
+        const recorded = await recordPresentationAnswer(sid, me, el, sess.currentSlideIndex, {
+          answerIndex, answerText: typeof answerText === "string" ? answerText.slice(0, 500) : undefined, mirrorLegacy: true,
+        });
+        if (recorded !== "saved") return socket.emit(recorded === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
 
         socket.emit("answer:accepted");
         await broadcastDistribution(io, sid, String(elementId));
       } catch (err) {
         logger.error({ err }, "student:answer failed");
+        socket.emit("answer:rejected", { reason: "save-failed" });
       }
     });
 

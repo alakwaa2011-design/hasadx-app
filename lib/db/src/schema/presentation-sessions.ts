@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, varchar, boolean, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, varchar, boolean, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { presentationsTable } from "./presentations";
 import { teachersTable } from "./teachers";
@@ -62,3 +62,17 @@ export const presentationResponsesTable = pgTable("presentation_responses", {
 }));
 
 export type PresentationResponse = typeof presentationResponsesTable.$inferSelect;
+
+/** Owner-only durable evidence. Joining is distinct from answering; each
+ * activity round and each inline question has its own idempotency key. */
+export const presentationSessionEventsTable = pgTable("presentation_session_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => presentationSessionsTable.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  eventKey: text("event_key").notNull(),
+  payload: jsonb("payload").notNull().$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  uniqueEvent: uniqueIndex("presentation_session_events_unique").on(t.sessionId, t.kind, t.eventKey),
+  sessionIdx: index("presentation_session_events_session_idx").on(t.sessionId),
+}));

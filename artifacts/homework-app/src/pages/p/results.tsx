@@ -41,6 +41,10 @@ interface ResponseRow {
   answerText: string | null;
   isCorrect: boolean | null;
   createdAt: string;
+  aggregateOnly?: boolean;
+  answeredCount?: number;
+  correctCount?: number;
+  responseSec?: number | null;
 }
 
 export interface ActivityResult {
@@ -501,7 +505,7 @@ function InsightsSection({
           <TrendingDown className="w-4 h-4" />,
           r.lowestParticipation,
           insights.lowestParticipants.length === 0 ? (
-            <div className="text-white/55 text-[12px]">{r.everyoneFullyParticipated}</div>
+            <div className="text-white/55 text-[12px]">{insights.participationPct === 100 && insights.nonResponders.length === 0 ? r.everyoneFullyParticipated : r.noData}</div>
           ) : (
             <div className="space-y-1">
               {insights.lowestParticipants.map((s) => (
@@ -758,7 +762,7 @@ function ActivityCard({ activity, index }: { activity: ActivityResult; index: nu
             </thead>
             <tbody>
               {responses.map((r) => {
-                const ans = r.answerText
+                const ans = r.aggregateOnly ? `${r.answeredCount ?? 0} ${tr.answer} · ${r.correctCount ?? 0} ${tr.correct}` : r.answerText
                   ?? (r.answerIndex != null && options[r.answerIndex] != null ? options[r.answerIndex] : (r.answerIndex != null ? `#${r.answerIndex + 1}` : "—"));
                 return (
                   <tr key={r.studentKey + r.createdAt} className="border-t border-white/5">
@@ -849,14 +853,14 @@ export function StudentDetailModal({
   let prevAnsweredAt: Date | null = sessionStartedAt ? new Date(sessionStartedAt) : null;
 
   const rows: StudentActivityRow[] = sorted.map((a) => {
-    const r = a.responses.find((x) => x.studentKey === studentKey) ?? null;
+    const r = [...a.responses].reverse().find((x) => x.studentKey === studentKey) ?? null;
     const correctText =
       a.correctIndex != null && a.options[a.correctIndex] != null
         ? a.options[a.correctIndex]
         : null;
     let studentAnswer: string | null = null;
     if (r) {
-      studentAnswer =
+      studentAnswer = r.aggregateOnly ? `${r.answeredCount ?? 0} ${t.presentation.results.answer} · ${r.correctCount ?? 0} ${t.presentation.results.correct}` :
         r.answerText ??
         (r.answerIndex != null && a.options[r.answerIndex] != null
           ? a.options[r.answerIndex]
@@ -865,8 +869,8 @@ export function StudentDetailModal({
           : null);
     }
     const answeredAt = r ? new Date(r.createdAt) : null;
-    let responseSec: number | null = null;
-    if (answeredAt && prevAnsweredAt) {
+    let responseSec: number | null = r?.responseSec ?? null;
+    if (responseSec == null && answeredAt && prevAnsweredAt && !r?.aggregateOnly) {
       const diff = Math.round((answeredAt.getTime() - prevAnsweredAt.getTime()) / 1000);
       if (diff >= 0 && diff < 60 * 60) responseSec = diff;
     }
@@ -885,10 +889,10 @@ export function StudentDetailModal({
     };
   });
 
-  const answered = rows.filter((r) => r.studentAnswer != null).length;
-  const correct = rows.filter((r) => r.isCorrect === true).length;
+  const answered = student?.answered ?? rows.filter((r) => r.studentAnswer != null).length;
+  const correct = student?.correct ?? rows.filter((r) => r.isCorrect === true).length;
   const total = rows.length;
-  const pct = answered > 0 ? Math.round((correct / answered) * 100) : null;
+  const pct = student?.pct ?? null;
   const studentName = student?.name ?? r.student;
 
   const handlePrint = () => {
