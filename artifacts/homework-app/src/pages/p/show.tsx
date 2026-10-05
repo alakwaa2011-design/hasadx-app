@@ -259,6 +259,7 @@ export default function PresentationShow() {
   const [state, setState] = useState<any>(null);
   const [live, setLive] = useState<any>(null);
   const liveRef = useRef<any>(null);
+  const wordCloudRunRef = useRef<string | null>(null);
   const [wordCloudWords, setWordCloudWords] = useState<CloudWord[]>([]);
   const [wallCards, setWallCards] = useState<WallCard[]>([]);
   /* Track slide key for AnimatePresence — each unique slide id triggers
@@ -301,8 +302,10 @@ export default function PresentationShow() {
     s.emit("show:join", { sessionId: sid });
 
     const onSync = (st: any) => {
+      wordCloudRunRef.current = st.wordCloudRunId ?? null;
       liveRef.current = st;
       setLive(st);
+      setWordCloudWords(st.wordCloud?.words ?? []);
       /* Restore stage mode from state:sync so the projector auto-applies
          the correct visual mode when reconnecting. */
       if (typeof st.stageMode === "boolean") {
@@ -321,6 +324,7 @@ export default function PresentationShow() {
     };
 
     const onSlide = ({ index, slide }: { index: number; slide: any }) => {
+      wordCloudRunRef.current = null;
       slideKeyRef.current = slide?.id ?? index;
       setLive((p: any) => {
         const next = {
@@ -341,17 +345,14 @@ export default function PresentationShow() {
       setActivityOpenedAt(null);
     };
 
-    const onOpened = ({ elementId, element, openedAt, status }: any) => {
+    const onOpened = ({ elementId, element, openedAt, status, wordCloudRunId }: any) => {
+      wordCloudRunRef.current = wordCloudRunId ?? null;
       setLive((p: any) => {
-        const next = { ...(p ?? {}), status: status ?? "running", activeElementId: elementId, activeElement: element };
+        const next = { ...(p ?? {}), status: status ?? "running", activeElementId: elementId, activeElement: element, wordCloudRunId: wordCloudRunId ?? null };
         liveRef.current = next;
         return next;
       });
-      if (element?.activityKind === "word_cloud") {
-        setWordCloudWords((prev) => prev);
-      } else {
-        setWordCloudWords([]);
-      }
+      setWordCloudWords([]);
       setWallCards([]);
       clearReveal();
       /* Use the server-provided timestamp (or fall back to now) so the
@@ -360,6 +361,7 @@ export default function PresentationShow() {
     };
 
     const onClosed = () => {
+      wordCloudRunRef.current = null;
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: null, activeElement: null }));
       setWordCloudWords([]);
       setWallCards([]);
@@ -368,9 +370,10 @@ export default function PresentationShow() {
     };
 
     const onEnded = () => setLive((p: any) => ({ ...(p ?? {}), status: "ended" }));
-    const onWordCloud = ({ elementId, words }: { elementId?: string; words: CloudWord[] }) => {
+    const onWordCloud = ({ elementId, words, runId }: { elementId?: string; runId?: string; words: CloudWord[] }) => {
+      if (runId !== wordCloudRunRef.current) return;
       if (elementId && liveRef.current?.activeElementId && String(liveRef.current.activeElementId) !== String(elementId)) return;
-      setWordCloudWords(words);
+      setWordCloudWords(prev => words.reduce((n, w) => n + w.count, 0) < prev.reduce((n, w) => n + w.count, 0) ? prev : words);
     };
     const onWall = ({ cards }: { cards: WallCard[] }) => setWallCards(cards);
     const onReconnect = () => s.emit("show:join", { sessionId: sid });

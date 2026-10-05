@@ -102,6 +102,7 @@ export default function PresentationControl() {
   const [historyOpen, setHistoryOpen] = useState(false);
   /* word_cloud / open_wall live state */
   const [wordCloudWords, setWordCloudWords] = useState<{ text: string; count: number }[]>([]);
+  const wordCloudRunRef = useRef<string | null>(null);
   const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
   /* Stage Mode — professional cinematic display mode for the projector. */
   const [stageMode, setStageMode] = useState(false);
@@ -141,28 +142,36 @@ export default function PresentationControl() {
     const s = getSocket();
     s.emit("teacher:join-presentation", { sessionId: sid });
 
-    const onSync = (st: LiveState & { stageMode?: boolean; sessionMode?: "teacher" | "self_paced" }) => {
+    const onSync = (st: LiveState & { stageMode?: boolean; sessionMode?: "teacher" | "self_paced"; wordCloudRunId?: string; wordCloud?: { words: { text: string; count: number }[] } }) => {
+      wordCloudRunRef.current = st.wordCloudRunId ?? null;
+      setWordCloudWords(st.wordCloud?.words ?? []);
       setLive(st);
       if (typeof st.stageMode === "boolean") setStageMode(st.stageMode);
       if (st.sessionMode) setSessionMode(st.sessionMode);
     };
     const onSlide = ({ index }: { index: number }) => {
+      wordCloudRunRef.current = null;
       setLive((p) => (p ? { ...p, currentSlideIndex: index, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
       setWordCloudWords([]); setWallCards([]);
     };
-    const onOpened = ({ elementId, element }: { elementId: string; element: any }) => {
+    const onOpened = ({ elementId, element, wordCloudRunId }: { elementId: string; element: any; wordCloudRunId?: string }) => {
+      wordCloudRunRef.current = wordCloudRunId ?? null;
       setLive((p) => (p ? { ...p, status: "running", activeElementId: elementId, activeElement: element, revealDistribution: false, revealAnswer: false } : p));
       setSummary(null);
       setWordCloudWords([]); setWallCards([]);
       setInlineActivity((prev) => (prev && prev.elementId !== elementId ? null : prev));
     };
     const onClosed = () => {
+      wordCloudRunRef.current = null;
       setLive((p) => (p ? { ...p, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
       setWordCloudWords([]); setWallCards([]);
     };
-    const onWordCloudUpdate = ({ words }: { elementId: string; words: { text: string; count: number }[] }) => setWordCloudWords(words ?? []);
+    const onWordCloudUpdate = ({ words, runId }: { elementId: string; runId?: string; words: { text: string; count: number }[] }) => {
+      if (runId !== wordCloudRunRef.current) return;
+      setWordCloudWords(prev => words.reduce((n, w) => n + w.count, 0) < prev.reduce((n, w) => n + w.count, 0) ? prev : words);
+    };
     const onWallUpdate = ({ cards }: { elementId: string; cards: { id: string; text: string; visible: boolean; studentKey: string }[] }) => setWallCards(cards ?? []);
     const onInlineState = (p: any) => { setInlineActivity(p); setSummary(null); };
     const onInlineSummary = (p: any) => {

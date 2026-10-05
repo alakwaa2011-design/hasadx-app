@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, varchar, boolean, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, varchar, boolean, timestamp, jsonb, index, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { presentationsTable } from "./presentations";
 import { teachersTable } from "./teachers";
@@ -16,6 +16,7 @@ export const presentationSessionsTable = pgTable("presentation_sessions", {
   status: text("status").notNull().default("lobby"),
   currentSlideIndex: integer("current_slide_index").notNull().default(0),
   activeElementId: text("active_element_id"),
+  activeWordCloudRunId: uuid("active_word_cloud_run_id"),
   revealDistribution: boolean("reveal_distribution").notNull().default(false),
   revealAnswer: boolean("reveal_answer").notNull().default(false),
   targetClassId: integer("target_class_id").references(() => teacherClassesTable.id, { onDelete: "set null" }),

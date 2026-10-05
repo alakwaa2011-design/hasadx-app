@@ -5,6 +5,7 @@ import { logger } from "../lib/logger";
 import { hydrateActivityQuestions } from "../routes/presentations";
 import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
 import { recordPresentationJoin, recordPresentationOpen, recordPresentationAnswer, recordPresentationEvent } from "../lib/presentation-report-data";
+import { getWordCloudSnapshot, hasWordCloudSubmission, openWordCloud, submitWordCloud } from "../lib/presentation-word-cloud";
 
 /**
  * Presentations 2B — Live MVP socket layer.
@@ -61,14 +62,6 @@ interface LiveSession {
   selfPacedWordClouds?: Map<string, { words: Map<string, number>; submitted: Set<string> }>;
   /** Self-paced open_wall submissions: elementId -> { cards, nextId, submitted }. */
   selfPacedOpenWalls?: Map<string, { cards: WallCard[]; nextId: number; submitted: Set<string> }>;
-  /** word_cloud activity: tracks word frequency in memory. */
-  wordCloudActivity?: {
-    elementId: string;
-    /** word (lowercased) -> count */
-    words: Map<string, number>;
-    /** studentKeys that already submitted a word */
-    submitted: Set<string>;
-  };
   /** open_wall activity: list of submitted response cards. */
   openWallActivity?: {
     elementId: string;
@@ -427,6 +420,10 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
      payload. */
   const safeActive = isTeacher ? active : sanitizeElementForStudents(active);
   const liveSess = sessions.get(sid);
+  const wordCloud = sess.activeWordCloudRunId ? await getWordCloudSnapshot(sid) : null;
+  const participant = liveSess?.participants.get(socket.id);
+  const wordCloudSubmitted = wordCloud && participant && !participant.isShow
+    ? await hasWordCloudSubmission(wordCloud.runId, participant.studentKey) : false;
   socket.emit("state:sync", {
     sessionId: sess.id,
     status: sess.status,
@@ -435,11 +432,14 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     slide,
     activeElementId: sess.activeElementId,
     activeElement: safeActive,
+    wordCloudRunId: wordCloud?.runId ?? null,
+    wordCloud,
+    wordCloudSubmitted,
     revealDistribution: sess.revealDistribution,
     revealAnswer: sess.revealAnswer,
     pin: sess.pin,
     stageMode: liveSess?.stageMode ?? false,
-    activeElementOpenedAt: liveSess?.activeElementOpenedAt ?? null,
+    activeElementOpenedAt: wordCloud?.openedAt ?? liveSess?.activeElementOpenedAt ?? null,
     sessionMode: (sess as any).sessionMode ?? liveSess?.sessionMode ?? "teacher",
   });
   /* Late-joiner support: if the teacher already revealed the answer,
@@ -454,10 +454,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
   }
   /* Late-joiner support for word_cloud / open_wall activities. */
   const live0 = sessions.get(sid);
-  if (live0?.wordCloudActivity && sess.activeElementId === live0.wordCloudActivity.elementId) {
-    const wordArr = Array.from(live0.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
-    socket.emit("word_cloud:update", { elementId: sess.activeElementId, words: wordArr });
-  }
+  if (wordCloud) socket.emit("word_cloud:update", wordCloud);
   if (live0?.openWallActivity && sess.activeElementId === live0.openWallActivity.elementId) {
     const isTeach = isTeacher;
     const cards = isTeach
@@ -703,12 +700,11 @@ export function setupPresentationSocket(io: Server) {
         if (!sess || sess.status === "ended" || !isTeacherForSession(socket, sess.teacherId)) return;
         const idx = Math.max(0, Number(index) | 0);
         await db.update(presentationSessionsTable)
-          .set({ currentSlideIndex: idx, activeElementId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
+          .set({ currentSlideIndex: idx, activeElementId: null, activeWordCloudRunId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
           .where(eq(presentationSessionsTable.id, sid));
         const liveSess = sessions.get(sid);
         if (liveSess) {
           liveSess.inlineActivity = undefined;
-          liveSess.wordCloudActivity = undefined;
           liveSess.openWallActivity = undefined;
         }
         const deck = await loadDeckRow(sess.presentationId);
@@ -730,11 +726,18 @@ export function setupPresentationSocket(io: Server) {
         const deck = await loadDeckRow(sess.presentationId);
         const element = await resolveActiveElement(deck?.slides, sess.currentSlideIndex, String(elementId));
         if (!element) return;
-        const opened = await db.update(presentationSessionsTable)
-          .set({ status: "running", activeElementId: String(elementId), revealDistribution: false, revealAnswer: false })
-          .where(and(eq(presentationSessionsTable.id, sid), ne(presentationSessionsTable.status, "ended")))
-          .returning({ id: presentationSessionsTable.id });
-        if (!opened.length) return;
+        const elKind = (element as any)?.activityKind;
+        const run = elKind === "word_cloud"
+          ? await openWordCloud(sid, sess.teacherId, String(elementId), sess.currentSlideIndex, element)
+          : null;
+        if (elKind === "word_cloud" && !run) return;
+        if (elKind !== "word_cloud") {
+          const opened = await db.update(presentationSessionsTable)
+            .set({ status: "running", activeElementId: String(elementId), activeWordCloudRunId: null, revealDistribution: false, revealAnswer: false })
+            .where(and(eq(presentationSessionsTable.id, sid), ne(presentationSessionsTable.status, "ended")))
+            .returning({ id: presentationSessionsTable.id });
+          if (!opened.length) return;
+        }
         const live = sessions.get(sid);
         /* Phase 6 — clear any prior inline-activity state before we
            decide which path to take for the newly opened element. */
@@ -747,20 +750,13 @@ export function setupPresentationSocket(io: Server) {
         /* Record the open timestamp once so all audience-split payloads
            share the same value — the StageTimer on show.tsx uses it to
            synchronise the countdown for late-joining projectors. */
-        const openedAt = Date.now();
-        if (element) await recordPresentationOpen(sid, element, sess.currentSlideIndex, openedAt);
+        const openedAt = run?.openedAt.getTime() ?? Date.now();
+        if (!run) await recordPresentationOpen(sid, element, sess.currentSlideIndex, openedAt);
         if (live) live.activeElementOpenedAt = openedAt;
 
         /* Initialise before announcing the activity: a fast student's first
            submission must not be wiped by a later map initialization. */
-        const elKind = (element as any)?.activityKind;
-        if (live && elKind === "word_cloud") {
-          live.wordCloudActivity = {
-            elementId: String(elementId),
-            words: new Map(),
-            submitted: new Set(),
-          };
-        } else if (live && elKind === "open_wall") {
+        if (live && elKind === "open_wall") {
           live.openWallActivity = {
             elementId: String(elementId),
             cards: [],
@@ -772,14 +768,13 @@ export function setupPresentationSocket(io: Server) {
         await emitToRoomSplit(io, sid, "activity:opened", (forTeacher) => ({
           elementId: String(elementId),
           element: forTeacher ? element : sanitizeElementForStudents(element),
+          wordCloudRunId: run?.id ?? null,
           openedAt,
           status: "running",
         }));
-        if (live?.wordCloudActivity && elKind === "word_cloud") {
-          io.to(room(sid)).emit("word_cloud:update", {
-            elementId: String(elementId),
-            words: Array.from(live.wordCloudActivity.words, ([text, count]) => ({ text, count })),
-          });
+        if (run) {
+          const cloud = await getWordCloudSnapshot(sid);
+          if (cloud) io.to(room(sid)).emit("word_cloud:update", cloud);
         } else if (live?.openWallActivity && elKind === "open_wall") {
           io.to(room(sid)).emit("wall:update", { elementId: String(elementId), cards: live.openWallActivity.cards });
         }
@@ -817,22 +812,19 @@ export function setupPresentationSocket(io: Server) {
         const sess = await loadSessionRow(sid);
         if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
         await db.update(presentationSessionsTable)
-          .set({ activeElementId: null, revealDistribution: false, revealAnswer: false })
+          .set({ activeElementId: null, activeWordCloudRunId: null, revealDistribution: false, revealAnswer: false })
           .where(eq(presentationSessionsTable.id, sid));
         const live = sessions.get(sid);
         if (live) {
           live.inlineActivity = undefined;
-          live.wordCloudActivity = undefined;
           live.openWallActivity = undefined;
         }
         io.to(room(sid)).emit("activity:closed");
       } catch (err) { logger.error({ err }, "activity:close failed"); }
     });
 
-    /* Word cloud — student submits a word/short phrase. Server tracks
-       frequency in memory and broadcasts the updated cloud to all
-       projector/show clients. One submission per student per element. */
-    socket.on("word_cloud:submit", async ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+    /* Commit before acknowledging; round identity fences delayed packets. */
+    socket.on("word_cloud:submit", async ({ sessionId, elementId, text, runId }: { sessionId: number; elementId: string; text: string; runId?: string }) => {
       try {
         const sid = Number(sessionId);
         const live = sessions.get(sid);
@@ -872,55 +864,19 @@ export function setupPresentationSocket(io: Server) {
           return;
         }
 
-        const sess = await loadSessionRow(sid);
-        if (!sess || sess.status === "ended") return socket.emit("answer:rejected", { reason: "ended" });
-
-        const submittedElementId = String(elementId || "");
-        const activeElementId = String(sess.activeElementId || "");
-        if (!submittedElementId || submittedElementId !== activeElementId) {
-          return socket.emit("answer:rejected", { reason: "not-active" });
+        const result = await submitWordCloud({
+          sessionId: sid, elementId: String(elementId ?? ""), runId: String(runId ?? ""),
+          studentKey: me.studentKey, studentName: me.name, classStudentId: me.classStudentId, text,
+        });
+        if (result !== "accepted" && result !== "already") {
+          return socket.emit("answer:rejected", { reason: result, runId });
         }
-
-        /* Must be the active word-cloud element. If the activity was opened
-           before this server process initialized in-memory tracking, rebuild
-           the tracking state from the persisted active element instead of
-           dropping student submissions silently. */
-        if (!live.wordCloudActivity || live.wordCloudActivity.elementId !== submittedElementId) {
-          const deck = await loadDeckRow(sess.presentationId);
-          const activeEl = await resolveActiveElement(deck?.slides, sess.currentSlideIndex, activeElementId);
-          if (!activeEl || (activeEl as any).activityKind !== "word_cloud") {
-            return socket.emit("answer:rejected", { reason: "not-word-cloud" });
-          }
-          live.wordCloudActivity = {
-            elementId: submittedElementId,
-            words: new Map(),
-            submitted: new Set(),
-          };
-          io.to(room(sid)).emit("word_cloud:update", { elementId: submittedElementId, words: [] });
-        }
-        if (live.wordCloudActivity.submitted.has(me.studentKey)) {
-          return socket.emit("answer:already");
-        }
-        const word = String(text ?? "").trim().slice(0, 60);
-        if (!word) return socket.emit("answer:rejected", { reason: "empty" });
-        const key = word.toLowerCase();
-        const wordDeck = await loadDeckRow(sess.presentationId);
-        const wordElement = await resolveActiveElement(wordDeck?.slides, sess.currentSlideIndex, activeElementId);
-        const recordedWord = await recordPresentationAnswer(sid, me, wordElement, sess.currentSlideIndex, { answerText: word });
-        if (recordedWord !== "saved") return socket.emit(recordedWord === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
-        const cur = live.wordCloudActivity.words.get(key) ?? 0;
-        live.wordCloudActivity.words.set(key, cur + 1);
-        live.wordCloudActivity.submitted.add(me.studentKey);
-        socket.emit("answer:accepted");
-        /* Build serializable payload — use the original casing of the
-           first submission for display (the map stores lowercased keys
-           for frequency but we want readable output). We keep it simple
-           by storing the display word alongside the count. */
-        const wordArr = Array.from(live.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
-        io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: wordArr });
+        socket.emit(result === "accepted" ? "answer:accepted" : "answer:already", { runId });
+        const cloud = await getWordCloudSnapshot(sid);
+        if (cloud) io.to(room(sid)).emit("word_cloud:update", cloud);
       } catch (err) {
         logger.error({ err }, "word_cloud:submit failed");
-        socket.emit("answer:rejected", { reason: "save-failed" });
+        socket.emit("answer:rejected", { reason: "storage-failed", runId });
       }
     });
 
@@ -1203,7 +1159,7 @@ export function setupPresentationSocket(io: Server) {
         const sess = await loadSessionRow(sid);
         if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
         await db.update(presentationSessionsTable)
-          .set({ status: "ended", endedAt: new Date(), activeElementId: null })
+          .set({ status: "ended", endedAt: new Date(), activeElementId: null, activeWordCloudRunId: null })
           .where(eq(presentationSessionsTable.id, sid));
         io.to(room(sid)).emit("session:ended");
       } catch (err) { logger.error({ err }, "session:end failed"); }

@@ -9,9 +9,13 @@ this rename question in the non-interactive agent shell.
 
 **Why:** drizzle-kit's interactive resolver assumes a real TTY; in the agent shell there is none,
 so the process blocks forever waiting for input that will never arrive.
+When stdin is closed, it may instead exit successfully at the prompt without
+applying the schema. A zero exit code alone does not establish schema readiness.
 
 **How to apply:** Never accept an ambiguous rename guess. For a verified, purely additive change,
 apply only the explicit `CREATE ... IF NOT EXISTS` or `ALTER ... ADD ...` statements through the
 development database tool, then query `information_schema` or `pg_catalog` to confirm the result.
 Keep the Drizzle schema as the deployment source of truth. After a schema change, run
 `pnpm run typecheck:libs` before dependent artifact checks so generated declarations are current.
+For isolated database tests, apply the feature's idempotent runtime migration
+before creating fixtures; do not rely solely on the global push command's exit status.

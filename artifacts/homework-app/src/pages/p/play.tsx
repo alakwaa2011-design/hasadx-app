@@ -69,6 +69,8 @@ export default function PresentationPlay() {
   /* Tracks whether we've already initialized self-paced navigation so we
      don't re-trigger a slide request on every state:sync event. */
   const selfPacedInitRef = useRef(false);
+  const wordCloudRunRef = useRef<string | null>(null);
+  const hasSocketSyncRef = useRef(false);
 
   useEffect(() => {
     const s = loadStored();
@@ -103,6 +105,9 @@ export default function PresentationPlay() {
           return;
         }
         if (j.deck) setDeckMeta({ language: j.deck.language, theme: j.deck.theme, pattern: j.deck.pattern });
+        // A delayed first-paint fetch must not replace a newer live round.
+        if (hasSocketSyncRef.current) return;
+        wordCloudRunRef.current = j.wordCloudRunId ?? null;
         /* First-paint: hydrate `live` from REST so the student sees the
            teacher's current slide (and any open activity) immediately
            without waiting for the socket `state:sync` round-trip. The
@@ -114,6 +119,7 @@ export default function PresentationPlay() {
           slide: j.deck?.currentSlide ?? prev?.slide ?? null,
           activeElementId: j.activeElementId ?? null,
           activeElement: j.activeElement ?? null,
+          wordCloudRunId: j.wordCloudRunId ?? null,
           revealDistribution: !!j.revealDistribution,
           revealAnswer: !!j.revealAnswer,
           sessionMode: j.sessionMode ?? "teacher",
@@ -149,6 +155,8 @@ export default function PresentationPlay() {
     const join = () => s.emit("student:join", { sessionId: sid, studentKey: stored.studentKey, name: stored.name, joinToken: stored.joinToken });
     join();
     const onSync = (st: any) => {
+      hasSocketSyncRef.current = true;
+      wordCloudRunRef.current = st.wordCloudRunId ?? null;
       /* MERGE rather than replace. If the server payload happens to
          omit `slide` (e.g. transient null from a deck reload) we don't
          want to wipe the slide we already hydrated from REST — that's
@@ -161,9 +169,11 @@ export default function PresentationPlay() {
           slide: st?.slide ?? prev?.slide ?? null,
           activeElement: st?.activeElement ?? prev?.activeElement ?? null,
         };
-        if (st?.activeElementId !== prev?.activeElementId) {
+        if (st?.activeElementId !== prev?.activeElementId || st?.wordCloudRunId !== prev?.wordCloudRunId) {
           setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
+          setTextInput(""); setTextSubmitted(false);
         }
+        if (st?.wordCloudSubmitted) setTextSubmitted(true);
         return next;
       });
       /* Self-Paced Mode: on first state:sync that carries the mode, request
@@ -181,20 +191,23 @@ export default function PresentationPlay() {
       console.warn("[presentation socket error]", e);
     };
     const onSlide = ({ index, slide }: { index: number; slide: any }) => {
+      wordCloudRunRef.current = null;
       setLive((p: any) => ({ ...(p ?? {}), currentSlideIndex: index, slide, activeElementId: null, activeElement: null, revealAnswer: false, revealDistribution: false }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null); setTotalAnswered(0);
       setGameLaunch(null);
       setInlineActivity(null); setMySummary(null);
       setTextInput(""); setTextSubmitted(false);
     };
-    const onOpened = ({ elementId, element }: any) => {
-      setLive((p: any) => ({ ...(p ?? {}), status: "running", activeElementId: elementId, activeElement: element, revealAnswer: false, revealDistribution: false }));
+    const onOpened = ({ elementId, element, wordCloudRunId }: any) => {
+      wordCloudRunRef.current = wordCloudRunId ?? null;
+      setLive((p: any) => ({ ...(p ?? {}), status: "running", activeElementId: elementId, activeElement: element, wordCloudRunId: wordCloudRunId ?? null, revealAnswer: false, revealDistribution: false }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       if (element?.kind !== "hasad-game") setGameLaunch(null);
       setMySummary(null);
       setTextInput(""); setTextSubmitted(false);
     };
     const onClosed = () => {
+      wordCloudRunRef.current = null;
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: null, activeElement: null }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       setGameLaunch(null);
@@ -229,7 +242,8 @@ export default function PresentationPlay() {
     };
     const onDist = (d: any) => { setDist({ counts: d.counts, total: d.total }); setTotalAnswered(d.total); };
     const onTotal = (d: any) => setTotalAnswered(d.total);
-    const onAccepted = () => {
+    const onAccepted = (payload?: { runId?: string }) => {
+      if (payload?.runId && payload.runId !== wordCloudRunRef.current) return;
       setSubmitted(true);
       /* Mark text-based activities (word_cloud, open_wall) as submitted here —
          the onClick no longer optimistically sets this so we never show "sent"
@@ -240,8 +254,12 @@ export default function PresentationPlay() {
         setActivitiesCompleted((n) => n + 1);
       }
     };
-    const onAlready = () => setSubmitted(true);
-    const onRejected = () => {
+    const onAlready = (payload?: { runId?: string }) => {
+      if (payload?.runId && payload.runId !== wordCloudRunRef.current) return;
+      setSubmitted(true); setTextSubmitted(true);
+    };
+    const onRejected = (payload?: { runId?: string }) => {
+      if (payload?.runId && payload.runId !== wordCloudRunRef.current) return;
       setSubmitted(false);
       setTextSubmitted(false);
     };
@@ -962,6 +980,7 @@ export default function PresentationPlay() {
                         } else {
                           const event = el.activityKind === "word_cloud" ? "word_cloud:submit" : "wall:submit";
                           getSocket().emit(event, {
+                            runId: live?.wordCloudRunId,
                             sessionId: sid,
                             elementId: textElementId,
                             text: cleaned,

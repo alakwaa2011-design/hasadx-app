@@ -50,6 +50,7 @@ export default defineConfig({
       "src/__tests__/quran-today.integration.test.ts",
       "src/__tests__/tutorial-links.integration.test.ts",
       "src/__tests__/game-share-links.integration.test.ts",
+      "src/__tests__/presentation-word-cloud.integration.test.ts",
     ],
     globalSetup: ["src/__tests__/setup-integration.ts"],
     setupFiles: ["src/__tests__/setup-integration.ts"],

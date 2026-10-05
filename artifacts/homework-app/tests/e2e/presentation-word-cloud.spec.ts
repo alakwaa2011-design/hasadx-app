@@ -99,7 +99,7 @@ async function expectCloud(page: Page, words: Array<{ text: string; count: numbe
   }
 }
 
-test("first-slide word cloud shows two students' submissions on both stages and restores the projector", async ({ page, context, browser, baseURL }) => {
+test("first-slide word cloud restores both stages and student submission state, then opens a separate empty round", async ({ page, context, browser, baseURL }) => {
   if (!teacher || !sessionId || !deckId || !baseURL) throw new Error("Isolated word-cloud fixtures missing");
   const browserErrors: string[] = [];
   const capture = (p: Page) => {
@@ -147,7 +147,43 @@ test("first-slide word cloud shows two students' submissions on both stages and 
     await expectCloud(projector, [{ text: "مدرسة", count: 2 }]);
     await page.screenshot({ path: "screenshots/word-cloud/teacher-shared-count-two.png", fullPage: true });
 
+    await studentA.reload();
+    await expect(studentA.getByText("تم إرسال ردك!", { exact: true })).toBeVisible();
+    await expect(studentA.locator("textarea")).toHaveCount(0);
+    await expectCloud(projector, [{ text: "مدرسة", count: 2 }]);
+    await page.reload();
+    await expectCloud(page, [{ text: "مدرسة", count: 2 }]);
+
+    const firstRound = (await pool.query(
+      "SELECT active_word_cloud_run_id FROM presentation_sessions WHERE id = $1", [sessionId],
+    )).rows[0].active_word_cloud_run_id;
+    await page.getByTitle("إغلاق النشاط").click();
+    await expect(page.getByTestId("live-word-cloud")).toHaveCount(0);
+    await page.getByRole("button", { name: /فتح النشاط|open activity/i }).click();
+    await expect(page.getByTestId("live-word-cloud")).toBeVisible();
+    await expect(page.getByTestId("cloud-word")).toHaveCount(0);
+    await expect(projector.getByTestId("cloud-word")).toHaveCount(0);
+    await expect(studentA.locator("textarea")).toBeVisible();
+    await expect(studentB.locator("textarea")).toBeVisible();
+    await submitWord(studentA, "أمل");
+    await submitWord(studentB, "نجاح");
+    const secondRound = [{ text: "أمل", count: 1 }, { text: "نجاح", count: 1 }];
+    await expectCloud(projector, secondRound);
+    await expectCloud(page, secondRound);
+    const reopened = (await pool.query(
+      "SELECT active_word_cloud_run_id FROM presentation_sessions WHERE id = $1", [sessionId],
+    )).rows[0].active_word_cloud_run_id;
+    expect(reopened).not.toBe(firstRound);
+    expect((await pool.query(
+      "SELECT count(*)::int AS n FROM presentation_word_cloud_submissions WHERE run_id = $1", [firstRound],
+    )).rows[0].n).toBe(2);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const wordBox = await page.getByTestId("cloud-word").first().boundingBox();
+    expect(wordBox && wordBox.width).toBeGreaterThan(15);
+    await page.screenshot({ path: "screenshots/word-cloud/teacher-mobile-cloud.png", fullPage: true });
+    await projector.screenshot({ path: "screenshots/word-cloud/projector-cloud.png" });
     console.log("Captured browser initialization/socket console errors:", browserErrors);
+    expect(browserErrors).toEqual([]);
   } finally {
     await studentContextA.close();
     await studentContextB.close();

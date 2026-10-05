@@ -86,6 +86,7 @@ PUBLIC_APP_URL = "https://hasaadx.com"
 
 [userenv.development]
 API_PROXY_TARGET = "http://127.0.0.1:8080"
+NODE_OPTIONS = "--max-old-space-size=8192"
 
 [[ports]]
 localPort = 8080

@@ -7,6 +7,7 @@ import { hydrateActivityQuestions } from "./presentations";
 import { mintPresentationJoinToken, verifyPresentationJoinToken } from "../lib/presentation-join-token";
 import { loadPresentationReportData, buildPresentationActivityIndex, answerUnits, correctUnits, scoredUnits } from "../lib/presentation-report-data";
 import { presentationCsvDisposition } from "../lib/presentation-csv";
+import { getWordCloudSnapshot } from "../lib/presentation-word-cloud";
 
 /**
  * Presentations 2B — Live MVP REST surface.
@@ -193,7 +194,7 @@ router.post("/presentations/sessions/:id/end", requireTeacher, async (req: any, 
 
     await db
       .update(presentationSessionsTable)
-      .set({ status: "ended", endedAt: new Date(), activeElementId: null })
+      .set({ status: "ended", endedAt: new Date(), activeElementId: null, activeWordCloudRunId: null })
       .where(eq(presentationSessionsTable.id, sid));
 
     /* Notify any connected sockets so client UIs can react. */
@@ -1563,6 +1564,7 @@ router.get("/p/sessions/:id/state", async (req: any, res) => {
       .where(eq(presentationResponsesTable.sessionId, sid));
     const participantsCount = participantsRows.length;
 
+    const wordCloud = sess.activeWordCloudRunId ? await getWordCloudSnapshot(sid) : null;
     res.json({
       sessionId: sess.id,
       presentationId: sess.presentationId,
@@ -1576,6 +1578,8 @@ router.get("/p/sessions/:id/state", async (req: any, res) => {
       slideCount: slides.length,
       activeElementId: sess.activeElementId,
       activeElement: safeActive,
+      wordCloudRunId: wordCloud?.runId ?? null,
+      wordCloud,
       revealDistribution: sess.revealDistribution,
       revealAnswer: sess.revealAnswer,
       /* PIN is owner-only in this response. Token-bearing callers

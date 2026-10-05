@@ -123,6 +123,23 @@ export declare const presentationSessionsTable: import("drizzle-orm/pg-core").Pg
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        activeWordCloudRunId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "active_word_cloud_run_id";
+            tableName: "presentation_sessions";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         revealDistribution: import("drizzle-orm/pg-core").PgColumn<{
             name: "reveal_distribution";
             tableName: "presentation_sessions";
