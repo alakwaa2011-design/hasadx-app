@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<title>حصاد X — لوحة التحفيز (ريل)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#1F583A; --green-deep:#0E3322; --green-ink:#082417;
+  --gold:#D4A017; --gold-light:#E8B830; --cream:#F8F4E8; --ink:#0D0D0D;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--green-ink);font-family:'Cairo',sans-serif;color:var(--cream)}
+#stage{position:relative;width:1080px;height:1920px;overflow:hidden;
+  background:radial-gradient(900px 700px at 80% 8%,rgba(212,160,23,.28),transparent 60%),
+             radial-gradient(900px 800px at 10% 95%,rgba(46,125,50,.45),transparent 60%),
+             linear-gradient(180deg,var(--green-deep),var(--green-ink))}
+
+/* ---------- headline ---------- */
+#headline{position:absolute;top:120px;inset-inline:60px;height:300px;display:flex;align-items:center;justify-content:center;text-align:center}
+.h{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transform:translateY(40px) scale(.96);transition:opacity .5s ease,transform .6s cubic-bezier(.2,.9,.2,1)}
+.h.on{opacity:1;transform:none;transition-delay:.22s}
+.h.out{opacity:0;transform:translateY(-30px) scale(.98);transition:opacity .2s ease,transform .25s ease}
+.h b{font-weight:900;font-size:104px;line-height:1.15;color:var(--cream);letter-spacing:-1px}
+.h b em{font-style:normal;color:var(--gold-light)}
+.h span{font-weight:700;font-size:44px;color:rgba(248,244,232,.72)}
+
+/* ---------- board ---------- */
+#board{position:absolute;top:440px;left:60px;right:60px;border-radius:56px;
+  background:linear-gradient(180deg,#F8F4E8,#EEF3E6);color:#0b2c1b;
+  box-shadow:0 60px 140px rgba(0,0,0,.55),0 0 0 6px rgba(255,255,255,.08);
+  padding:34px;transform:translateY(900px) scale(.92);opacity:0;
+  transition:transform 1s cubic-bezier(.2,.9,.2,1),opacity .6s ease}
+#board.on{transform:none;opacity:1}
+.bar-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.bar-top .t{font-weight:900;font-size:40px;display:flex;align-items:center;gap:14px}
+.bar-top .t i{width:18px;height:18px;border-radius:50%;background:#2E7D32;box-shadow:0 0 0 8px rgba(46,125,50,.18);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 14px rgba(46,125,50,0)}}
+.pick-btn{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#fcd34d,#f59e0b);color:#451a03;font-weight:900;font-size:28px;padding:14px 26px;border-radius:22px;box-shadow:0 10px 24px rgba(245,158,11,.35);transition:transform .15s}
+.pick-btn.press{transform:scale(.92)}
+
+.goal{background:#fff;border-radius:30px;padding:22px 28px;box-shadow:0 8px 24px rgba(8,36,23,.07);margin-bottom:22px}
+.goal .row{display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:30px;margin-bottom:14px}
+.goal .row small{font-size:26px;color:#6b7a70;font-weight:700}
+.track{height:30px;border-radius:99px;background:#e6ede3;overflow:hidden}
+.fill{height:100%;width:34%;border-radius:99px;background:linear-gradient(90deg,#2E7D32,#D4A017);transition:width .9s cubic-bezier(.2,.9,.2,1);position:relative}
+.fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(120%);animation:shine 2.4s infinite}
+@keyframes shine{to{transform:translateX(-120%)}}
+
+.teams{position:relative;height:132px;margin-bottom:20px}
+.team{position:absolute;top:0;width:calc(33.333% - 12px);height:132px;background:#fff;border-radius:28px;padding:14px 18px;box-shadow:0 8px 24px rgba(8,36,23,.07);display:flex;flex-direction:column;gap:6px;transition:inset-inline-start .8s cubic-bezier(.2,.9,.2,1),transform .35s}
+.team .rk{font-weight:900;font-size:26px}
+.team .nm{font-weight:900;font-size:30px;color:#12361f}
+.team .sc{font-weight:700;font-size:26px}
+.team.bump{transform:scale(1.07)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{position:relative;background:#fff;border-radius:34px;padding:16px 10px 14px;text-align:center;box-shadow:0 8px 24px rgba(8,36,23,.07);border:4px solid transparent;transition:transform .2s,border-color .2s,box-shadow .3s}
+.card .av{width:112px;height:112px;border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:64px;border:6px solid #fff;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+.card .nm{font-weight:900;font-size:32px;color:#0b2c1b}
+.card .pt{margin-top:8px;display:inline-flex;align-items:center;gap:8px;background:#f1f5ee;border-radius:99px;padding:6px 20px;font-weight:900;font-size:28px;color:#475a4d}
+.card .pt .s{color:#94a398;transition:color .2s}
+.card.hl{border-color:var(--gold-light);box-shadow:0 0 0 10px rgba(232,184,48,.28),0 20px 50px rgba(212,160,23,.4);transform:scale(1.06);z-index:3}
+.card.hl .pt .s{color:var(--gold)}
+.card.tap{transform:scale(.93)}
+.card.won{border-color:#2E7D32}
+.plus{direction:ltr;unicode-bidi:isolate;position:absolute;top:10px;inset-inline-start:50%;font-weight:900;font-size:60px;color:var(--gold);text-shadow:0 4px 0 #fff;pointer-events:none;opacity:0}
+.plus.go{animation:rise 1.1s ease-out forwards}
+@keyframes rise{0%{opacity:0;transform:translateY(20px) scale(.6)}20%{opacity:1;transform:translateY(-10px) scale(1.2)}100%{opacity:0;transform:translateY(-140px) scale(1)}}
+.spark{position:absolute;width:16px;height:16px;border-radius:50%;pointer-events:none;z-index:5}
+
+/* ---------- cursor ---------- */
+#cursor{position:absolute;top:0;left:0;width:84px;height:84px;z-index:50;pointer-events:none;opacity:0;transition:transform .7s cubic-bezier(.3,.8,.2,1),opacity .3s}
+#cursor svg{filter:drop-shadow(0 8px 12px rgba(0,0,0,.45))}
+#cursor .ring{position:absolute;left:-10px;top:-10px;width:60px;height:60px;border-radius:50%;border:6px solid var(--gold-light);opacity:0}
+#cursor .ring.go{animation:ring .55s ease-out}
+@keyframes ring{0%{opacity:.95;transform:scale(.3)}100%{opacity:0;transform:scale(2.2)}}
+
+/* ---------- toast (AI suggestion) ---------- */
+#toast{position:absolute;inset-inline:90px;bottom:250px;z-index:30;background:#fff;color:#0b2c1b;border-radius:36px;padding:28px 30px;display:flex;gap:22px;align-items:center;box-shadow:0 30px 80px rgba(0,0,0,.5);transform:translateY(500px);opacity:0;transition:transform .8s cubic-bezier(.2,.9,.2,1),opacity .4s}
+#toast.on{transform:none;opacity:1}
+#toast .ic{width:96px;height:96px;border-radius:28px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:56px;flex-shrink:0}
+#toast p{font-weight:900;font-size:36px;line-height:1.3}
+#toast p em{font-style:normal;color:#b45309}
+#toast small{display:block;font-weight:700;font-size:26px;color:#5c6b61;margin-top:4px}
+#toast .ok{margin-inline-start:auto;background:#fbbf24;color:#082417;font-weight:900;font-size:32px;padding:18px 34px;border-radius:24px;transition:transform .15s,background .3s}
+#toast .ok.press{transform:scale(.9)}
+#toast .ok.done{background:#2E7D32;color:#fff}
+
+/* ---------- picked modal ---------- */
+#modalbg{position:absolute;inset:0;z-index:40;background:rgba(8,36,23,.62);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .4s;display:flex;align-items:center;justify-content:center}
+#modalbg.on{opacity:1}
+#modal{width:800px;border-radius:70px;border:10px solid #fcd34d;background:linear-gradient(180deg,#fffbeb,#fff,#ecfdf5);text-align:center;padding:60px 40px;color:#082417;transform:scale(.6) rotate(-4deg);transition:transform .7s cubic-bezier(.2,1.2,.3,1);box-shadow:0 40px 120px rgba(15,118,86,.5)}
+#modalbg.on #modal{transform:none}
+#modal .av{width:280px;height:280px;border-radius:50%;margin:0 auto 26px;display:flex;align-items:center;justify-content:center;font-size:170px;border:10px solid #fff;box-shadow:0 0 0 10px #fcd34d,0 24px 60px rgba(0,0,0,.25)}
+#modal .k{font-weight:900;font-size:36px;color:#b45309}
+#modal h2{font-weight:900;font-size:92px;margin:6px 0 10px}
+#modal p{font-weight:700;font-size:38px;color:#475a4d}
+
+/* ---------- confetti ---------- */
+.conf{position:absolute;top:-40px;width:18px;height:30px;z-index:60;border-radius:4px;opacity:0}
+@keyframes fall{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:1;transform:translateY(2100px) rotate(900deg)}}
+
+/* ---------- bottom caption ---------- */
+#cap{position:absolute;bottom:90px;inset-inline:70px;text-align:center;font-weight:700;font-size:40px;color:rgba(248,244,232,.85);transition:opacity .4s}
+
+/* ---------- CTA ---------- */
+#cta{position:absolute;inset:0;z-index:70;background:radial-gradient(900px 700px at 50% 30%,rgba(212,160,23,.32),transparent 62%),linear-gradient(180deg,var(--green),var(--green-ink));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;text-align:center;opacity:0;pointer-events:none;transition:opacity .7s}
+#cta.on{opacity:1}
+#cta .logo{width:300px;height:300px;border-radius:72px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);transform:scale(.6);transition:transform .9s cubic-bezier(.2,1.3,.3,1)}
+#cta.on .logo{transform:none}
+#cta .logo svg{width:100%;height:100%;display:block}
+#cta h1{font-weight:900;font-size:110px;line-height:1.2;padding:0 60px}
+#cta h1 em{font-style:normal;color:var(--gold-light)}
+#cta .sub{font-weight:700;font-size:48px;color:rgba(248,244,232,.8)}
+#cta .btn{margin-top:20px;background:linear-gradient(90deg,var(--gold-light),var(--gold));color:var(--ink);font-weight:900;font-size:56px;padding:34px 80px;border-radius:999px;box-shadow:0 20px 60px rgba(212,160,23,.45);animation:throb 1.4s ease-in-out infinite}
+@keyframes throb{50%{transform:scale(1.05)}}
+#sync{position:absolute;inset:0;z-index:999;background:#ff00ff;display:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="sync"></div>
+
+  <div id="headline">
+    <div class="h" id="h0"><b>صفّك <em>هادئ</em>؟ 😴</b><span>والطلاب محتاجين طاقة؟</span></div>
+    <div class="h" id="h1"><b>لوحة <em>التحفيز</em></b><span>من حصاد X — على شاشة الصف</span></div>
+    <div class="h" id="h2"><b>كافئ بـ<em>نقرة</em> ⭐</b><span>النقاط تصل للطالب وفريقه فورًا</span></div>
+    <div class="h" id="h3"><b>الفرق <em>تتنافس</em> 🏆</b><span>الترتيب يتحدّث أمام الجميع</span></div>
+    <div class="h" id="h4"><b>اختيار <em>عادل</em> 🎲</b><span>طالب عشوائي… بدون حرج</span></div>
+    <div class="h" id="h5"><b>اقتراحات <em>ذكية</em> 💡</b><span>الذكاء الاصطناعي يرشّح من يستحق التحفيز</span></div>
+    <div class="h" id="h6"><b>الهدف <em>تحقق</em>! 🎉</b><span>الجميع يحتفل معًا</span></div>
+  </div>
+
+  <div id="board">
+    <div class="bar-top">
+      <div class="t"><i></i> لوحة التحفيز · الصف الخامس أ</div>
+      <div class="pick-btn" id="pickBtn">🎲 اختيار عشوائي</div>
+    </div>
+    <div class="goal">
+      <div class="row"><span>🎯 هدف الإنجاز: رحلة نهاية الأسبوع</span><small id="goalTxt">٣٤ / ١٠٠</small></div>
+      <div class="track"><div class="fill" id="fill"></div></div>
+    </div>
+    <div class="teams" id="teams"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div id="cursor"><div class="ring" id="ring"></div>
+    <svg width="84" height="84" viewBox="0 0 24 24"><path d="M5 3l14 8-6.2 1.6L9.6 19z" fill="#fff" stroke="#0D0D0D" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div id="toast">
+    <div class="ic">💡</div>
+    <div><p><em>مريم</em> تستحق التحفيز</p><small>أنهت ٥ واجبات متتالية قبل الموعد</small></div>
+    <div class="ok" id="ok">اعتماد ✓</div>
+  </div>
+
+  <div id="modalbg"><div id="modal">
+    <div class="k">✨ تم اختيار الطالب ✨</div>
+    <div class="av" id="mav" style="background:#dbeafe">🧑‍🎓</div>
+    <h2 id="mname">يوسف</h2>
+    <p>مبروك! أنت المختار في هذه الجولة</p>
+  </div></div>
+
+  <div id="cap">اضغط على أي طالب لمنحه نقطة 👆</div>
+
+  <div id="cta">
+    <div class="logo" id="logo"></div>
+    <h1>حوّل صفّك إلى <em>تجربة</em><br>ممتعة ومحفّزة</h1>
+    <div class="sub">جرّب لوحة التحفيز مجانًا</div>
+    <div class="btn">hasaadx.com</div>
+  </div>
+</div>
+
+<script>
+const AR = n => Number(n).toLocaleString('ar-EG');
+const students = [
+  {n:'سارة',e:'👧',c:'#fce7f3',t:0,p:12},
+  {n:'أحمد',e:'👦',c:'#dbeafe',t:1,p:9},
+  {n:'مريم',e:'👩‍🎓',c:'#ede9fe',t:2,p:15},
+  {n:'يوسف',e:'🧑‍🎓',c:'#dcfce7',t:1,p:7},
+  {n:'لينا',e:'👧🏽',c:'#ffedd5',t:0,p:10},
+  {n:'خالد',e:'👦🏽',c:'#e0f2fe',t:2,p:8},
+  {n:'نورة',e:'👩🏻‍🎓',c:'#fef3c7',t:0,p:11},
+  {n:'عمر',e:'🧒',c:'#fae8ff',t:1,p:6},
+  {n:'ريم',e:'👧🏻',c:'#d1fae5',t:2,p:13},
+];
+const teams = [
+  {n:'الصقور',c:'#D4A017',s:32},
+  {n:'النمور',c:'#2E7D32',s:22},
+  {n:'النجوم',c:'#7c3aed',s:36},
+];
+const $ = id => document.getElementById(id);
+const grid = $('grid'), teamsEl = $('teams');
+
+// ----- build UI
+students.forEach((s,i)=>{
+  const d = document.createElement('div'); d.className='card'; d.id='c'+i;
+  d.innerHTML = `<div class="av" style="background:${s.c}">${s.e}</div><div class="nm">${s.n}</div><div class="pt"><span class="s">★</span><span id="p${i}">${AR(s.p)}</span></div><div class="plus" id="plus${i}">+١</div>`;
+  grid.appendChild(d);
+});
+function renderTeams(){
+  const order = teams.map((t,i)=>i).sort((a,b)=>teams[b].s-teams[a].s);
+  teams.forEach((t,i)=>{
+    let el = $('t'+i);
+    if(!el){ el=document.createElement('div'); el.className='team'; el.id='t'+i; teamsEl.appendChild(el); }
+    const rank = order.indexOf(i);
+    el.style.insetInlineStart = `calc(${rank} * (33.333% + 6px))`;
+    el.innerHTML = `<div class="rk" style="color:${t.c}">${['🥇','🥈','🥉'][rank]} المركز ${AR(rank+1)}</div><div class="nm">${t.n}</div><div class="sc" style="color:${t.c}">${AR(t.s)} نقطة</div>`;
+  });
+}
+renderTeams();
+
+// ----- helpers
+let goal = 34;
+function setGoal(v){ goal=v; $('fill').style.width=v+'%'; $('goalTxt').textContent = AR(v)+' / '+AR(100); }
+function showH(i){
+  document.querySelectorAll('.h.on').forEach(e=>{e.classList.remove('on');e.classList.add('out')});
+  const el = $('h'+i); el.classList.remove('out'); void el.offsetWidth; el.classList.add('on');
+}
+function setCap(t){ $('cap').style.opacity=0; setTimeout(()=>{$('cap').textContent=t;$('cap').style.opacity=1},300); }
+function centerOf(el){ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; }
+function moveCursor(el,dx=0,dy=0){ const c=centerOf(el); const cur=$('cursor'); cur.style.opacity=1; cur.style.transform=`translate(${c.x-14+dx}px,${c.y-10+dy}px)`; }
+function clickFx(){ const r=$('ring'); r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); }
+function sparks(el){
+  const c=centerOf(el); const cols=['#E8B830','#D4A017','#2E7D32','#fff'];
+  for(let k=0;k<14;k++){
+    const s=document.createElement('div'); s.className='spark'; s.style.background=cols[k%4];
+    s.style.left=c.x+'px'; s.style.top=c.y+'px'; $('stage').appendChild(s);
+    const a=Math.random()*Math.PI*2, d=110+Math.random()*130;
+    s.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(0)`,opacity:0}],{duration:800+Math.random()*300,easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish=()=>s.remove();
+  }
+}
+function award(i,pts=1){
+  const el=$('c'+i), s=students[i];
+  moveCursor(el,0,-20);
+  setTimeout(()=>{
+    clickFx(); el.classList.add('tap'); setTimeout(()=>el.classList.remove('tap'),180);
+    s.p+=pts; $('p'+i).textContent=AR(s.p); el.classList.add('won');
+    const pl=$('plus'+i); pl.classList.remove('go'); void pl.offsetWidth; pl.classList.add('go');
+    sparks(el);
+    teams[s.t].s+=pts; renderTeams();
+    const tEl=$('t'+s.t); tEl.classList.add('bump'); setTimeout(()=>tEl.classList.remove('bump'),350);
+    setGoal(Math.min(100,goal+pts*8));
+  },720);
+}
+function confetti(){
+  const cols=['#E8B830','#D4A017','#2E7D32','#F8F4E8','#fbbf24','#34d399'];
+  for(let k=0;k<90;k++){
+    const c=document.createElement('div'); c.className='conf';
+    c.style.left=Math.random()*1080+'px'; c.style.background=cols[k%cols.length];
+    c.style.animation=`fall ${2+Math.random()*1.6}s ${Math.random()*.6}s cubic-bezier(.3,.1,.4,1) forwards`;
+    $('stage').appendChild(c); setTimeout(()=>c.remove(),4500);
+  }
+}
+
+// ----- timeline
+const T = [];
+const at = (ms,fn)=>T.push([ms,fn]);
+
+at(0,   ()=>{ showH(0); $('cap').style.opacity=0; });
+at(1900,()=>{ showH(1); $('board').classList.add('on'); });
+at(3700,()=>{ showH(2); setCap('اضغط على أي طالب لمنحه نقطة 👆'); });
+at(4300,()=>award(0));            // سارة
+at(5700,()=>award(8));            // ريم
+at(7100,()=>award(2));            // مريم
+at(8600,()=>{ showH(3); setCap('كل نقطة تُحتسب لفريق الطالب تلقائيًا'); });
+at(8900,()=>award(6));            // نورة (الصقور)
+at(10100,()=>award(4));           // لينا (الصقور) → الصقور تتقدم
+at(11500,()=>{ showH(4); $('cursor').style.opacity=0; setCap('اضغط «اختيار عشوائي» ودع الحظ يقرر'); });
+at(11900,()=>{ moveCursor($('pickBtn')); });
+at(12600,()=>{ clickFx(); $('pickBtn').classList.add('press'); setTimeout(()=>$('pickBtn').classList.remove('press'),180); spin(); });
+let spinI=0;
+function spin(){
+  const order=[1,4,7,2,5,0,8,3,6,1,4,7,2,5,3];
+  let k=0;
+  const step=()=>{
+    document.querySelectorAll('.card.hl').forEach(e=>e.classList.remove('hl'));
+    const idx=order[k]; $('c'+idx).classList.add('hl'); k++;
+    if(k<order.length) setTimeout(step, 70+k*18);
+    else { // land on يوسف (3)
+      document.querySelectorAll('.card.hl').forEach(e=>e.classList.remove('hl'));
+      $('c3').classList.add('hl'); sparks($('c3'));
+      setTimeout(()=>{ $('mav').textContent=students[3].e; $('mav').style.background=students[3].c; $('mname').textContent=students[3].n; $('modalbg').classList.add('on'); },650);
+      setTimeout(()=>{ $('modalbg').classList.remove('on'); document.querySelectorAll('.card.hl').forEach(e=>e.classList.remove('hl')); },2500);
+    }
+  };
+  step();
+}
+at(16400,()=>{ showH(5); $('cursor').style.opacity=0; setCap('تظهر أثناء الحصة — وأنت تقرر'); $('toast').classList.add('on'); });
+at(17700,()=>{ const ok=$('ok'); const c=centerOf(ok); const cur=$('cursor'); cur.style.opacity=1; cur.style.transform=`translate(${c.x-14}px,${c.y-10}px)`; });
+at(18500,()=>{ clickFx(); $('ok').classList.add('press'); setTimeout(()=>{$('ok').classList.remove('press');$('ok').classList.add('done');$('ok').textContent='تم ✓';},170);
+  setTimeout(()=>{ $('toast').classList.remove('on'); $('cursor').style.opacity=0; award2(); },700); });
+function award2(){ // مريم يتم تحفيزها عبر الاقتراح → يكتمل الهدف
+  const s=students[2]; s.p+=2; $('p2').textContent=AR(s.p); teams[2].s+=2; renderTeams(); setGoal(100); sparks($('c2'));
+}
+at(19700,()=>{ showH(6); setCap(''); confetti(); });
+at(22200,()=>{ $('cta').classList.add('on'); $('cap').style.opacity=0; });
+const TOTAL = 26000;
+
+window.__ready = false;
+window.startReel = ()=>{ $('sync').style.display='block'; setTimeout(()=>{ $('sync').style.display='none'; T.forEach(([ms,fn])=>setTimeout(fn,ms)); },300); window.__total = TOTAL; };
+document.fonts.ready.then(()=>{ window.__ready = true; });
+</script>
+<script>
+fetch('../../hasaadx-symbol-gold.svg').then(r=>r.text()).then(t=>{document.getElementById('logo').innerHTML=t}).catch(()=>{});
+</script>
+</body>
+</html>
