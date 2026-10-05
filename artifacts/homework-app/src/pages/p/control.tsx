@@ -11,6 +11,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useI18n } from "@/lib/i18n";
 import { LiveWordCloud } from "@/components/presentations/live-word-cloud";
+import { ActivityControlRow } from "@/components/presentations/activity-control-row";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -430,9 +431,9 @@ export default function PresentationControl() {
   const ended = (live?.status ?? info.session.status) === "ended";
 
   return (
-    <div dir={dir} className="min-h-screen bg-slate-950 text-white p-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+    <div dir={dir} className="min-h-screen bg-slate-950 text-white p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
+      <div className="min-w-0 space-y-3">
+        <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-bold truncate">{info.deck?.title ?? ""}</h1>
           <div className="text-sm text-white/60">شريحة {idx + 1} / {total}</div>
         </div>
@@ -474,21 +475,16 @@ export default function PresentationControl() {
               const label = a.prompt || a.topic || (isGame ? "لعبة حصاد" : "نشاط");
               const qCount = isGame && Array.isArray(a.questions) ? a.questions.length : 0;
               return (
-                <div key={a.id} className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/10 p-2.5">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-white truncate">
-                      {isGame ? "🎮 " : ""}{label}
-                    </div>
-                    {qCount > 0 && (
-                      <div className="text-[11px] text-amber-200/80 mt-0.5">
-                        {qCount} سؤال جاهز
-                      </div>
-                    )}
-                  </div>
+                <ActivityControlRow
+                  key={a.id}
+                  label={label}
+                  active={open}
+                  detail={qCount > 0 ? `${qCount} سؤال جاهز` : undefined}
+                >
                   {isGame ? (
                     open ? (
                       <Button size="sm" variant="destructive" onClick={closeActivity} title={lang === "ar" ? "إغلاق النشاط" : "Close activity"} aria-label={lang === "ar" ? "إغلاق النشاط" : "Close activity"}>
-                        <Square className="w-4 h-4" />
+                        <Square className="w-4 h-4" /> إغلاق النشاط
                       </Button>
                     ) : (
                       <Button
@@ -506,21 +502,21 @@ export default function PresentationControl() {
                         {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
                       </span>
                       <Button size="sm" variant="destructive" onClick={closeActivity} title={lang === "ar" ? "إغلاق النشاط" : "Close activity"} aria-label={lang === "ar" ? "إغلاق النشاط" : "Close activity"}>
-                        <Square className="w-4 h-4" />
+                        <Square className="w-4 h-4" /> إغلاق النشاط
                       </Button>
                     </>
                   ) : open ? (
                     <>
-                      <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
+                      <Button size="sm" variant="outline" onClick={toggleDist} aria-pressed={!!live?.revealDistribution} className="border-amber-400/40 bg-slate-950/60 text-amber-200">
                         {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        <span className="ms-1">توزيع</span>
+                        <span className="ms-1">{live?.revealDistribution ? "إخفاء التوزيع" : "عرض التوزيع"}</span>
                       </Button>
-                      <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
+                      <Button size="sm" variant="outline" onClick={toggleAns} aria-pressed={!!live?.revealAnswer} className="border-emerald-400/40 bg-slate-950/60 text-emerald-200">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
+                        <span className="ms-1">{live?.revealAnswer ? "إخفاء الإجابة" : "كشف الإجابة"}</span>
                       </Button>
                       <Button size="sm" variant="destructive" onClick={closeActivity} title={lang === "ar" ? "إغلاق النشاط" : "Close activity"} aria-label={lang === "ar" ? "إغلاق النشاط" : "Close activity"}>
-                        <Square className="w-4 h-4" />
+                        <Square className="w-4 h-4" /> إغلاق النشاط
                       </Button>
                     </>
                   ) : (
@@ -528,7 +524,7 @@ export default function PresentationControl() {
                       <Play className="w-4 h-4 me-1" /> فتح النشاط
                     </Button>
                   )}
-                </div>
+                </ActivityControlRow>
               );
             })}
           </div>
@@ -662,7 +658,7 @@ export default function PresentationControl() {
                   <span>{revealed ? "تم كشف الإجابة" : "بانتظار الإجابات…"}</span>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="sticky bottom-0 z-10 mt-auto flex shrink-0 flex-wrap items-center gap-3 rounded-xl bg-slate-950/95 p-3 shadow-lg">
                   {!revealed ? (
                     <Button onClick={revealQuestion} className="flex-1 font-black h-12 text-base" style={{ background: "#225739", color: "white" }}>
                       <Eye className="w-5 h-5 me-2" /> كشف الإجابة
@@ -673,7 +669,7 @@ export default function PresentationControl() {
                     </Button>
                   )}
                   <Button variant="destructive" onClick={closeActivity} title="إغلاق النشاط" className="h-12 px-4">
-                    <Square className="w-5 h-5" />
+                    <Square className="w-5 h-5" /> إغلاق
                   </Button>
                 </div>
               </div>
@@ -701,33 +697,32 @@ export default function PresentationControl() {
                 const label = a.prompt || a.topic || "نشاط";
                 const isTextActivity = a.activityKind === "word_cloud" || a.activityKind === "open_wall";
                 return (
-                  <div key={a.id} className="flex items-center gap-2">
-                    <div className="flex-1 text-sm truncate text-white/90">{label}</div>
+                  <ActivityControlRow key={a.id} label={label} active>
                     {isTextActivity ? (
                       <>
                         <span className="text-xs text-white/50 tabular-nums">
                           {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
                         </span>
                         <Button size="sm" variant="destructive" onClick={closeActivity}>
-                          <Square className="w-4 h-4" />
+                          <Square className="w-4 h-4" /> إغلاق النشاط
                         </Button>
                       </>
                     ) : (
                       <>
-                        <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
+                        <Button size="sm" variant="outline" onClick={toggleDist} aria-pressed={!!live?.revealDistribution} className="border-amber-400/40 bg-slate-950/60 text-amber-200">
                           {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          <span className="ms-1">توزيع</span>
+                          <span className="ms-1">{live?.revealDistribution ? "إخفاء التوزيع" : "عرض التوزيع"}</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
+                        <Button size="sm" variant="outline" onClick={toggleAns} aria-pressed={!!live?.revealAnswer} className="border-emerald-400/40 bg-slate-950/60 text-emerald-200">
                           <CheckCircle2 className="w-4 h-4" />
-                          <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
+                          <span className="ms-1">{live?.revealAnswer ? "إخفاء الإجابة" : "كشف الإجابة"}</span>
                         </Button>
                         <Button size="sm" variant="destructive" onClick={closeActivity}>
-                          <Square className="w-4 h-4" />
+                          <Square className="w-4 h-4" /> إغلاق النشاط
                         </Button>
                       </>
                     )}
-                  </div>
+                  </ActivityControlRow>
                 );
               })}
             {dist && (

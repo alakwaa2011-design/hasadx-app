@@ -25,8 +25,7 @@
 - [Extract format normalization](extract-equivalent-format-normalization.md) — Sonnet emits `question` not `prompt`; sanitize must normalize equivalent keys, never invent/default answers.
 - [Canonical domain redirect](canonical-domain-redirect.md) — prod pages now served by node serve.mjs (compiled from serve.ts — recompile after edits); 301 hasadx.com→hasaadx.com lives there + api-server middleware.
 - [DM read receipts & images](dm-read-receipts-images.md) — one-way receipts by design (teacher never sees admin's readAt); DM images need raster-only allowlist + nosniff/CSP on object serving.
-- [Drizzle sql array params](drizzle-sql-array-params.md) — JS array in sql`` spreads to a tuple, breaking ANY(::int[]); use sql.join IN-lists instead.
-- [Drizzle correlated subqueries](drizzle-correlated-subquery-qualification.md) — qualify outer-table columns explicitly; direct column interpolation can render an unqualified `"id"`.
+- [PostgreSQL query constraints](postgresql-query-constraints.md) — pointers for array parameters, correlated subqueries, parameter inference, RETURNING scope, and prepared statements.
 - [Meta Pixel purchase proof](meta-pixel-purchase-proof.md) — emit Purchase only after a unique server-confirmed payment status, not a subscription return URL or balance change.
 - [Meta Pixel bootstrap](meta-pixel-bootstrap.md) — queue only before load; delegate through callMethod after fbevents.js is ready.
 - [Direct play links architecture](direct-play-links.md) — opaque public links support assignments, saved games, and display modes; session-backed games create fresh rooms per open.
@@ -82,8 +81,6 @@
 - [Private teacher-generated media](teacher-generated-media-privacy.md) — generated teacher media stays private; authorize ownership before issuing short-lived signed URLs.
 - [Educational video quality](educational-video-quality-contract.md) — true generated motion, no silent still-image fallback; phase-one acceptance requires the user's manual review.
 - [AI video character normalization](ai-video-character-normalization.md) — storyboard models may return teacher/student as a keyed object; normalize equivalent structure before strict validation.
-- [PostgreSQL parameter inference](postgres-parameter-inference.md) — each SQL interpolation has its own type; nullable predicates require real PostgreSQL coverage, not database mocks.
-- [PostgreSQL UPDATE RETURNING scope](postgres-update-returning-scope.md) — RETURNING may use the updated row, not aliases introduced through UPDATE FROM; mocks do not validate this SQL.
 - [Automatic classroom reward evidence](automatic-classroom-reward-evidence.md) — grants require durable server evidence plus verified roster identity; source scores remain independent.
 - [Development database connection split](development-database-connection-split.md) — shell PG variables may target a different database than Replit's managed development database tools.
 - [Production replica statistics](production-replica-statistics.md) — zero pg_stat_user_tables counters do not prove empty tables; verify row counts before concluding a database mismatch.
@@ -118,7 +115,6 @@
 - [Quran Center progress safety](quran-center-progress-safety.md) — Quran progress is teacher-owned, monotonic, and advanced once only by a completed recitation.
 - [Personal Quran reader state](quran-personal-reader-state.md) — bookmarks and last-read are private browsing aids, separate from wards, practice, and measured progress.
 - [Public game start throttling](public-game-start-throttling.md) — public-link room creation is limited atomically in PostgreSQL per durable link token, never in process memory or by caller IP.
-- [PostgreSQL prepared statements](postgres-prepared-multi-command.md) — parameterized client queries must contain one SQL command; split multi-step cleanup into separate queries inside one transaction.
 - [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.
 - [Quran audio implementation notes](quran-audio-implementation-notes.md) — pause, seamless playback, audible checks, mobile redirects, and chapter-only reciters.
 - [Quran partial hiding](quran-partial-hiding.md) — a one-ayah guided session hides alternating words; progressive range logic must not reveal the only target ayah.
@@ -157,3 +153,4 @@
 - [X O remote team participation](xo-remote-team-participation.md) — one shared room, rotating connected representatives; room join links differ from permanent new-match links.
 - [Live presentation verification](live-presentation-verification.md) — static inspection is not proof of live participation; check first-slide opening and real recipient screens.
 - [Live socket browser diagnostics](browser-socket-diagnostics.md) — correlate transport warnings with participation; reload polling errors and anonymous auth probes are not UI failures.
+- [Presentation control discoverability](presentation-control-discoverability.md) — keep activity actions near their titles and essential presentation controls visible during class.

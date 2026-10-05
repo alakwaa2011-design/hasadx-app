@@ -2,7 +2,7 @@
  * Present mode — full-screen runtime that shows a presentation deck to
  * a class. Reachable from the editor's "Start" button. Supports:
  *   • keyboard nav (←/→, space, Esc, F for fullscreen)
- *   • on-screen controls (autohide after 2.5s of mouse idle)
+ *   • persistent, compact on-screen controls
  *   • per-presentation language direction (RTL for Arabic)
  *   • smooth fade transitions, honoring `prefers-reduced-motion`
  *   • `?slide=N` query param to start from a specific slide
@@ -174,7 +174,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     completed: false,
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
   const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
   const [activePin, setActivePin] = useState<string | null>(null);
   const activePinShare = useGameShareUrl(activePin ? `/game/join/${encodeURIComponent(activePin)}` : "");
@@ -184,7 +183,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [activeGamePin, setActiveGamePin] = useState<string | null>(null);
   const [showGameFinishedBanner, setShowGameFinishedBanner] = useState(false);
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setIdx(initialIdx); }, [initialIdx]);
 
@@ -344,23 +342,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isAr, goNext, goPrev, exit, toggleFullscreen, total]);
 
-  /* Autohide controls after idle, restore on any pointer move. */
-  useEffect(() => {
-    const onMove = () => {
-      setShowControls(true);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(() => setShowControls(false), 2500);
-    };
-    onMove();
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("touchstart", onMove);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("touchstart", onMove);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
-  }, []);
-
   const progress = total > 1 ? ((idx + 1) / total) * 100 : 100;
 
   /* Detect if the current slide has a hasad-game element with questions
@@ -518,7 +499,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       dir={dir}
       lang={deckLang}
       className="fixed inset-0 bg-black select-none overflow-hidden"
-      style={{ cursor: showControls ? "default" : "none", touchAction: "manipulation" }}
+      style={{ touchAction: "manipulation" }}
     >
       {/* Direction-aware transition: slide enters from the side that
           matches the navigation direction, in reading order (RTL flips
@@ -557,20 +538,18 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             so it feels attached to the activity card, not a distant toolbar. */}
         {(activeGameEl || activeActivityEl) && (
           <div
-            className="absolute pointer-events-none"
+            className="absolute flex max-w-[calc(100%-24px)] flex-wrap gap-2 pointer-events-none"
             style={{
               top: 14,
-              [isAr ? "left" : "right"]: 12,
+              [isAr ? "right" : "left"]: 12,
               zIndex: 25,
-              opacity: showControls ? 1 : 0,
-              transition: "opacity 0.3s",
             }}
           >
             {activeGameEl && (
               <button
                 type="button"
                 onClick={() => launchActivityRunner(activeGameEl, data.theme)}
-                className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95"
+                className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95"
                 style={{
                   background: "rgba(34,87,57,0.92)",
                   border: "1.5px solid rgba(217,165,33,0.55)",
@@ -587,7 +566,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                 type="button"
                 onClick={activeActivityEl.gameType ? launchSelectedHasadGame : launchHasadActivity}
                 disabled={isLaunchingActivity}
-                className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{
                   background: "rgba(217,165,33,0.95)",
                   color: "#1f2937",
@@ -599,7 +578,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                 {isLaunchingActivity
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <Rocket className="w-4 h-4" />}
-                {isAr ? "إطلاق اللعبة الآن" : "Launch activity"}
+                {isAr ? (activeActivityEl.gameType ? "إطلاق اللعبة الآن" : "فتح النشاط") : "Launch activity"}
               </button>
             )}
           </div>
@@ -752,8 +731,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
 
       {/* Top progress bar */}
       <div
-        className="absolute top-0 inset-x-0 h-1 bg-white/10 transition-opacity"
-        style={{ opacity: showControls ? 1 : 0 }}
+        className="absolute top-0 inset-x-0 z-30 h-1 bg-white/10"
       >
         <div
           className="h-full transition-all"
@@ -773,14 +751,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         type="button"
         aria-label={isAr ? "السابق" : "Previous"}
         onClick={presentActivityState.completed ? goNext : goPrev}
-        className={`absolute top-12 bottom-20 w-1/3 ${isAr ? "right-0 cursor-e-resize" : "left-0 cursor-w-resize"}`}
+        className={`absolute top-32 bottom-24 w-1/3 ${isAr ? "right-0 cursor-e-resize" : "left-0 cursor-w-resize"}`}
         style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
       />
       <button
         type="button"
         aria-label={isAr ? "التالي" : "Next"}
         onClick={goNext}
-        className={`absolute top-12 bottom-20 w-1/3 ${isAr ? "left-0 cursor-w-resize" : "right-0 cursor-e-resize"}`}
+        className={`absolute top-32 bottom-24 w-1/3 ${isAr ? "left-0 cursor-w-resize" : "right-0 cursor-e-resize"}`}
         style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
       />
 
@@ -908,14 +886,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
 
       {/* Bottom control bar */}
       <div
-        className="absolute bottom-0 inset-x-0 px-4 pb-4 pt-8 bg-gradient-to-t from-black/70 to-transparent transition-opacity"
-        style={{ opacity: showControls ? 1 : 0, pointerEvents: showControls ? "auto" : "none" }}
+        className="absolute bottom-0 inset-x-0 z-30 flex justify-center px-2 pb-[max(12px,env(safe-area-inset-bottom))] pt-3"
       >
-        <div className="flex items-center justify-between gap-3 max-w-6xl mx-auto">
+        <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/20 bg-slate-950/90 p-2 shadow-lg backdrop-blur-md">
           <button
             onClick={exit}
-            className="rounded-full bg-white/10 hover:bg-white/20 text-white p-2"
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white"
             title={isAr ? "إنهاء (Esc)" : "Exit (Esc)"}
+            aria-label={isAr ? "إنهاء العرض" : "Exit presentation"}
           >
             <X className="w-5 h-5" />
           </button>
@@ -924,8 +902,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             <button
               onClick={goPrev}
               disabled={idx === 0}
-              className="rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white p-2"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white"
               title={isAr ? "السابق" : "Previous"}
+              aria-label={isAr ? "الشريحة السابقة" : "Previous slide"}
             >
               {isAr ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
             </button>
@@ -935,8 +914,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             <button
               onClick={goNext}
               disabled={idx >= total - 1}
-              className="rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white p-2"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white"
               title={isAr ? "التالي" : "Next"}
+              aria-label={isAr ? "الشريحة التالية" : "Next slide"}
             >
               {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
             </button>
@@ -945,8 +925,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={toggleFullscreen}
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white p-2"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white"
               title={isAr ? "ملء الشاشة (F)" : "Fullscreen (F)"}
+              aria-label={isAr ? "ملء الشاشة" : "Fullscreen"}
             >
               {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
             </button>
