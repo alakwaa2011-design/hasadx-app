@@ -1641,6 +1641,15 @@ export default function WorksheetCreate() {
               <p className="text-sm text-muted-foreground">{ar ? "أنشئ ورقة عمل احترافية للطباعة، يدويًا أو بالذكاء الاصطناعي." : "Design a print-ready worksheet, manually or with AI."}</p>
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("hasaad-assistant:open", { detail: { mode: "create" } }))}
+            className="px-4 py-2.5 rounded-xl font-bold border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors flex items-center justify-center gap-2 whitespace-nowrap text-primary"
+            data-testid="button-open-assistant-create"
+          >
+            {ar ? "اطلب من مساعد حصاد" : "Ask Hasaad Assistant"}
+          </button>
           <button
             onClick={loadSaved}
             className="px-4 py-2.5 rounded-xl font-bold border border-border bg-background hover:bg-muted transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap text-primary"
@@ -1648,6 +1657,7 @@ export default function WorksheetCreate() {
             <FolderOpen className="w-4 h-4" />
             {ar ? "أوراقي المحفوظة" : "My Worksheets"}
           </button>
+          </div>
         </div>
 
 

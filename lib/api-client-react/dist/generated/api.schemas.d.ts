@@ -5,6 +5,52 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface AssistantAvailability {
+    enabled: boolean;
+    pilotOnly?: boolean;
+    /**
+       * @maxItems 1000
+       * @items.minimum 1
+       */
+    teacherIds?: number[];
+}
+export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
+export declare const AssistantPreparationLanguage: {
+    readonly ar: "ar";
+    readonly en: "en";
+};
+export type WorksheetActivityInputQuestionSelection = typeof WorksheetActivityInputQuestionSelection[keyof typeof WorksheetActivityInputQuestionSelection];
+export declare const WorksheetActivityInputQuestionSelection: {
+    readonly auto: "auto";
+    readonly manual: "manual";
+};
+export type WorksheetActivityInputLanguage = typeof WorksheetActivityInputLanguage[keyof typeof WorksheetActivityInputLanguage];
+export declare const WorksheetActivityInputLanguage: {
+    readonly ar: "ar";
+    readonly en: "en";
+};
+export type WorksheetActivityInputPages = typeof WorksheetActivityInputPages[keyof typeof WorksheetActivityInputPages];
+export declare const WorksheetActivityInputPages: {
+    readonly NUMBER_1: 1;
+    readonly NUMBER_2: 2;
+    readonly NUMBER_3: 3;
+};
+export type WorksheetActivityInputActivityStyle = typeof WorksheetActivityInputActivityStyle[keyof typeof WorksheetActivityInputActivityStyle];
+export declare const WorksheetActivityInputActivityStyle: {
+    readonly auto: "auto";
+    readonly concept_map: "concept_map";
+    readonly drawing: "drawing";
+    readonly coloring: "coloring";
+    readonly sorting: "sorting";
+    readonly sequencing: "sequencing";
+    readonly group_task: "group_task";
+    readonly practice: "practice";
+};
+export type WorksheetActivityInputExecutionMode = typeof WorksheetActivityInputExecutionMode[keyof typeof WorksheetActivityInputExecutionMode];
+export declare const WorksheetActivityInputExecutionMode: {
+    readonly individual: "individual";
+    readonly group: "group";
+};
 export type WorksheetActivityConstraintsDifficulty = typeof WorksheetActivityConstraintsDifficulty[keyof typeof WorksheetActivityConstraintsDifficulty];
 export declare const WorksheetActivityConstraintsDifficulty: {
     readonly easy: "easy";
@@ -77,38 +123,6 @@ export interface WorksheetActivityConstraints {
        */
     allowedTypes?: WorksheetActivityConstraintsAllowedTypesItem[];
 }
-export type WorksheetActivityInputQuestionSelection = typeof WorksheetActivityInputQuestionSelection[keyof typeof WorksheetActivityInputQuestionSelection];
-export declare const WorksheetActivityInputQuestionSelection: {
-    readonly auto: "auto";
-    readonly manual: "manual";
-};
-export type WorksheetActivityInputLanguage = typeof WorksheetActivityInputLanguage[keyof typeof WorksheetActivityInputLanguage];
-export declare const WorksheetActivityInputLanguage: {
-    readonly ar: "ar";
-    readonly en: "en";
-};
-export type WorksheetActivityInputPages = typeof WorksheetActivityInputPages[keyof typeof WorksheetActivityInputPages];
-export declare const WorksheetActivityInputPages: {
-    readonly NUMBER_1: 1;
-    readonly NUMBER_2: 2;
-    readonly NUMBER_3: 3;
-};
-export type WorksheetActivityInputActivityStyle = typeof WorksheetActivityInputActivityStyle[keyof typeof WorksheetActivityInputActivityStyle];
-export declare const WorksheetActivityInputActivityStyle: {
-    readonly auto: "auto";
-    readonly concept_map: "concept_map";
-    readonly drawing: "drawing";
-    readonly coloring: "coloring";
-    readonly sorting: "sorting";
-    readonly sequencing: "sequencing";
-    readonly group_task: "group_task";
-    readonly practice: "practice";
-};
-export type WorksheetActivityInputExecutionMode = typeof WorksheetActivityInputExecutionMode[keyof typeof WorksheetActivityInputExecutionMode];
-export declare const WorksheetActivityInputExecutionMode: {
-    readonly individual: "individual";
-    readonly group: "group";
-};
 export type WorksheetActivityInputDifficulty = typeof WorksheetActivityInputDifficulty[keyof typeof WorksheetActivityInputDifficulty];
 export declare const WorksheetActivityInputDifficulty: {
     readonly easy: "easy";
@@ -180,6 +194,80 @@ export interface WorksheetActivityInput {
     differentiation?: WorksheetActivityInputDifferentiation;
     assessmentMode?: WorksheetActivityInputAssessmentMode;
     counts?: WorksheetActivityInputCounts;
+}
+export interface AssistantWorksheetRequest {
+    /**
+       * @minLength 2
+       * @maxLength 200
+       */
+    title: string;
+    /** @maxLength 80 */
+    template: string;
+    parameters: WorksheetActivityInput;
+}
+export interface AssistantPreparation {
+    /**
+       * @minLength 2
+       * @maxLength 12000
+       */
+    message: string;
+    language: AssistantPreparationLanguage;
+    operationId?: string;
+    settings?: AssistantWorksheetRequest;
+}
+export interface AssistantConfirmation {
+    quoteId: string;
+}
+export interface AssistantQuote {
+    id: string;
+    /** @minimum 0 */
+    credits: number;
+    expiresAt: string;
+}
+export type AssistantOperationStatus = typeof AssistantOperationStatus[keyof typeof AssistantOperationStatus];
+export declare const AssistantOperationStatus: {
+    readonly draft: "draft";
+    readonly quoted: "quoted";
+    readonly queued: "queued";
+    readonly running: "running";
+    readonly saving: "saving";
+    readonly completed: "completed";
+    readonly failed: "failed";
+    readonly cancelled: "cancelled";
+};
+export type AssistantMessageRole = typeof AssistantMessageRole[keyof typeof AssistantMessageRole];
+export declare const AssistantMessageRole: {
+    readonly user: "user";
+    readonly assistant: "assistant";
+};
+export interface AssistantMessage {
+    role: AssistantMessageRole;
+    text: string;
+}
+export interface AssistantOperation {
+    id: string;
+    teacherId?: number;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: WorksheetActivityInput;
+    template: string;
+    status: AssistantOperationStatus;
+    missingFields: string[];
+    credits: number;
+    /** @nullable */
+    worksheetId: number | null;
+    /** @nullable */
+    errorCode: string | null;
+    quote: AssistantQuote | null;
+    updatedAt: string;
+    messages: AssistantMessage[];
+}
+export interface AssistantHistory {
+    enabled: boolean;
+    pilotOnly?: boolean;
+    teacherIds?: number[];
+    operations: AssistantOperation[];
 }
 export type WorksheetActivitySourceInputQuestionSelection = typeof WorksheetActivitySourceInputQuestionSelection[keyof typeof WorksheetActivitySourceInputQuestionSelection];
 export declare const WorksheetActivitySourceInputQuestionSelection: {

@@ -59,13 +59,15 @@ async function runTierCompletion(opts: {
   system?: string;
   usage?: { req: Request; toolKey: string; callKey: string };
 }): Promise<string> {
+  const requestOptions = (opts.usage?.req as (Request & { __assistantJob?: boolean }) | undefined)?.__assistantJob
+    ? { timeout: 100_000, maxRetries: 0 } : undefined;
   if (isClaudeTier(opts.tier)) {
     const invoke = () => anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: opts.maxTokens,
       ...(opts.system ? { system: opts.system } : {}),
       messages: [{ role: "user", content: opts.prompt }],
-    });
+    }, requestOptions);
     const response = opts.usage
       ? await trackAiUsageCall(opts.usage.req, {
         toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
@@ -86,7 +88,7 @@ async function runTierCompletion(opts: {
       ...(opts.system ? [{ role: "system" as const, content: opts.system }] : []),
       { role: "user" as const, content: opts.prompt },
     ],
-  });
+  }, requestOptions);
   const completion = opts.usage
     ? await trackAiUsageCall(opts.usage.req, {
       toolKey: opts.usage.toolKey, callKey: opts.usage.callKey,
@@ -725,10 +727,9 @@ router.post(
 );
 
 /* ── Create. */
-router.post("/worksheets", requireTeacher, async (req, res) => {
-  try {
-    const teacherId = req.session.teacherId as number;
-    const body = upsertBody.parse(req.body);
+/** Shared idempotent persistence for the builder and the creation assistant. */
+export async function createWorksheetDraft(teacherId: number, input: unknown) {
+    const body = upsertBody.parse(input);
     const { row, runAfterCommit } = await db.transaction(async (tx) => {
       const [inserted] = await tx
         .insert(worksheetsTable)
@@ -787,6 +788,12 @@ router.post("/worksheets", requireTeacher, async (req, res) => {
       return { row, runAfterCommit: xp.runAfterCommit };
     });
     void runAfterCommit();
+    return row;
+}
+
+router.post("/worksheets", requireTeacher, async (req, res) => {
+  try {
+    const row = await createWorksheetDraft(req.session.teacherId as number, req.body);
     res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {
@@ -1134,7 +1141,7 @@ const countsSchema = z.object({
   compare: z.number().int().min(0).max(40).default(0),
   tic_tac_toe: z.number().int().min(0).max(1).default(0),
 });
-const aiGenerateBody = z.object({
+export const aiGenerateBody = z.object({
   activityStyle: worksheetActivityStyleSchema.optional(),
   executionMode: z.enum(["individual", "group"]).optional(),
   groupSize: z.number().int().min(2).max(6).optional(),
@@ -1232,16 +1239,16 @@ function buildTicTacToeCellPrompt(body: z.infer<typeof regenerateTicTacToeCellBo
   ].filter(Boolean).join("\n");
 }
 
-router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet"), async (req, res) => {
+/** Shared generation service. Billing and durable persistence belong to the caller. */
+export async function generateWorksheetQuestions(req: Request, teacherId: number, input: unknown) {
   let language: "ar" | "en" = "ar";
   try {
-    const teacherId = req.session.teacherId as number;
-    const parsedBody = aiGenerateBody.parse(req.body);
+    const parsedBody = aiGenerateBody.parse(input);
     const body = {
       ...parsedBody,
       topic: parsedBody.topic || (parsedBody.questionSelection === "auto" && parsedBody.subject && parsedBody.gradeLevel
         ? `${parsedBody.subject} — ${parsedBody.gradeLevel}` : ""),
-      questionSelection: parsedBody.questionSelection ?? (req.body.counts ? "manual" : "auto"),
+      questionSelection: parsedBody.questionSelection ?? ((input as { counts?: unknown }).counts ? "manual" : "auto"),
       language: resolveAiContentLanguage({
         preferredLanguage: parsedBody.language,
         primaryText: parsedBody.sourceText || parsedBody.topic,
@@ -1254,31 +1261,28 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
       try {
         validateWorksheetActivityRequest(body);
       } catch {
-        await refundCredits(req, "قيود نشاط متعارضة");
-        res.status(400).json({ message: language === "ar" ? "النشاط المختار يحتاج نوع «إجابة قصيرة» لمساحة العمل. أضفه للأنواع المسموحة أو اختر نشاطًا آخر." : "The selected activity needs Short Answer among allowed types for its workspace. Include it or choose another activity." });
-        return;
+        throw Object.assign(new Error(language === "ar" ? "النشاط المختار يحتاج نوع «إجابة قصيرة» لمساحة العمل." : "The selected activity needs Short Answer among allowed types."), { status: 400 });
       }
     }
 
     const total = Object.values(body.counts).reduce((sum, count) => sum + count, 0);
     if (total === 0) {
-      await refundCredits(req, "لا أنواع أسئلة محددة");
-      res.status(400).json({ message: language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type" });
-      return;
+      throw Object.assign(new Error(language === "ar" ? "اختر نوع سؤال واحد على الأقل" : "Pick at least one question type"), { status: 400 });
     }
     const maxTotal = body.pages * 30;
     if (body.questionSelection !== "auto" && total > maxTotal) {
-      await refundCredits(req, "عدد الأسئلة يتجاوز الحد المسموح");
-      res.status(400).json({ message: language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions` });
-      return;
+      throw Object.assign(new Error(language === "ar" ? `العدد الإجمالي يتجاوز ${maxTotal}` : `Total exceeds ${maxTotal} questions`), { status: 400 });
     }
 
-    const tier = await resolveTier(teacherId, (req.body as { tier?: string })?.tier);
+    const tier = await resolveTier(teacherId, (input as { tier?: string })?.tier);
 
     const prompt = buildWorksheetPrompt(body);
-    const system = body.language === "ar"
+    let system = body.language === "ar"
       ? "أنت مولّد أسئلة تعليمية. أعد JSON نقياً فقط بصيغة {\"questions\":[...]}. لا تضف أي شرح أو ترميز خارج الـ JSON."
       : "You are an educational question generator. Output pure JSON only in the shape {\"questions\":[...]}. No prose, no markdown fences.";
+    if (body.questionSelection === "manual" && (req as Request & { __assistantJob?: boolean }).__assistantJob) {
+      system += `\nCONFIRMED MANUAL CONTRACT: Produce exactly ${total} question objects, honoring EACH count: ${JSON.stringify(body.counts)}. Types with zero count are FORBIDDEN, even if a format example below mentions them. Format examples are NOT requested questions. Do not substitute an MCQ for a short_answer.`;
+    }
     const maxTokens = 4000 + body.pages * 4000;
     const generateQuestions = async (attemptPrompt: string, callKey: string, normalizeDiversity = false) => {
       const text = await runTierCompletion({
@@ -1308,10 +1312,17 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
         const issue = validateWorksheetActivityOutput(checked.data, body);
         if (issue) return { success: false as const, error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: ["activity"], message: issue }]) };
       }
+      if (checked.success && body.questionSelection === "manual" && (req as Request & { __assistantJob?: boolean }).__assistantJob) {
+        const mismatches = Object.entries(body.counts).flatMap(([type, expected]) => {
+          const actual = checked.data.filter(question => question.type === type).length;
+          return actual === expected ? [] : [`${type}: expected exactly ${expected}, received ${actual}`];
+        });
+        if (mismatches.length) return { success: false as const, error: new z.ZodError([{ code: z.ZodIssueCode.custom, path: ["manualCounts"], message: `Honor ALL confirmed manual counts, including zero: ${mismatches.join("; ")}` }]) };
+      }
       return checked;
     };
     let validated = await generateQuestions(prompt, "generate:completion");
-    if (!validated.success && validated.error.issues.some(issue => issue.path[0] === "activity")) {
+    if (!validated.success && validated.error.issues.some(issue => issue.path[0] === "activity" || issue.path[0] === "manualCounts")) {
       validated = await generateQuestions(`${prompt}\nPrevious output failed: ${validated.error.issues.map(i => i.message).join("; ")}. Correct the full output and honor selected format and all explicit teacher constraints. Return JSON only.`, "generate:activity-retry");
     } else if (!validated.success && hasTicTacToeDiversityIssues(validated.error)) {
       req.log.warn({ issues: validated.error.issues }, "AI worksheet board diversity failed; retrying once");
@@ -1323,27 +1334,33 @@ router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet")
     }
     if (!validated.success) {
       req.log.warn({ issues: validated.error.issues }, "AI worksheet questions failed strict validation");
-      await refundCredits(req, "تنسيق غير صالح من مولّد الأوراق");
       const diversityFailed = hasTicTacToeDiversityIssues(validated.error);
-      res.status(500).json({
-        message: diversityFailed
+      throw new Error(diversityFailed
           ? (language === "ar"
               ? "تعذّر إنشاء لوحة متنوعة بعد المحاولة الثانية. حاول مرة أخرى."
               : "Could not create a diverse board after the second attempt. Please try again.")
-          : (language === "ar" ? "لم يلتزم المولّد بالنشاط أو إعداداتك. لم تُحتسب نقاط؛ جرّب تعديل الخيارات وإعادة التوليد." : "The generator did not honor the activity or your settings. No credits were charged; adjust options and try again."),
-      });
-      return;
+          : (language === "ar" ? "لم يلتزم المولّد بالنشاط أو إعداداتك." : "The generator did not honor the activity or your settings."));
     }
-    await captureCredits(req);
-    res.json({ questions: validated.data, language });
+    return { questions: validated.data, language };
+  } catch (err: any) {
+    if (err?.issues) err.status = 400;
+    throw err;
+  }
+}
+
+router.post("/worksheets/ai/generate", requireTeacher, checkCredits("worksheet"), async (req, res) => {
+  try {
+    const result = await generateWorksheetQuestions(req, req.session.teacherId as number, req.body);
+    await captureCredits(req, result);
+    res.json(result);
   } catch (err: any) {
     await refundCredits(req, "فشل توليد الورقة العمل");
-    if (err?.issues) {
-      res.status(400).json({ message: language === "ar" ? "إدخال غير صالح" : "Invalid input", issues: err.issues });
+    if (err.status === 400) {
+      res.status(400).json({ message: err.message, issues: err.issues });
       return;
     }
     req.log.error({ err }, "Worksheet AI generation failed");
-    res.status(500).json({ message: language === "ar" ? "تعذّر التوليد" : "Generation failed" });
+    res.status(500).json({ message: req.body.language === "en" ? "Generation failed" : "تعذّر التوليد" });
   }
 });
 
@@ -1978,7 +1995,7 @@ export function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): stri
         "صيغة الرد: { \"questions\": [...] }.",
         "لكل سؤال، حقل type لا بد أن يكون أحد: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "⚠️ mcq (إلزامي): كل سؤال اختيار متعدد يجب أن يحتوي على حقل options وهو مصفوفة من 4 نصوص مختلفة، وحقل correctIndex بين 0 و 3. لا تكتب سؤال mcq بدون options أبداً.",
-        body.questionSelection === "auto" ? mcqExample.replace("مثال إلزامي", "مثال تنسيق اختياري").replace("Mandatory MCQ example", "Optional MCQ format example") : mcqExample,
+        body.questionSelection === "auto" ? mcqExample.replace("مثال إلزامي", "مثال تنسيق اختياري").replace("Mandatory MCQ example", "Optional MCQ format example") : counts.mcq > 0 ? mcqExample : "",
         "true_false: correct قيمة منطقية (true أو false).",
         "short_answer: prompt هو السؤال، lines رقم بين 1 و 5، answer هو الإجابة.",
         "fill_blank: prompt يحتوي على '____' مكان الفراغ، answer هو الكلمة الصحيحة.",
@@ -1996,7 +2013,7 @@ export function buildWorksheetPrompt(body: z.infer<typeof aiGenerateBody>): stri
         "Reply shape: { \"questions\": [...] }.",
         "Each question's type must be one of: mcq | true_false | short_answer | fill_blank | matching | worked_problem | extended_response | error_correction | word_bank | compare | tic_tac_toe.",
         "⚠️ mcq (MANDATORY): every MCQ must have an 'options' array of EXACTLY 4 distinct strings and a 'correctIndex' (0–3). Never omit options.",
-        body.questionSelection === "auto" ? mcqExample.replace("مثال إلزامي", "مثال تنسيق اختياري").replace("Mandatory MCQ example", "Optional MCQ format example") : mcqExample,
+        body.questionSelection === "auto" ? mcqExample.replace("مثال إلزامي", "مثال تنسيق اختياري").replace("Mandatory MCQ example", "Optional MCQ format example") : counts.mcq > 0 ? mcqExample : "",
         "true_false: correct is a boolean.",
         "short_answer: prompt is the question; lines is 1–5; answer is the model answer.",
         "fill_blank: prompt contains '____' where the blank goes; answer is the missing word.",

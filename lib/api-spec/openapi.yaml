@@ -20,6 +20,112 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /assistant/operations:
+    get:
+      operationId: listAssistantOperations
+      responses:
+        "200":
+          description: Teacher-owned creation history and availability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantHistory" }
+  /assistant/prepare:
+    post:
+      operationId: prepareAssistantWorksheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssistantPreparation" }
+      responses:
+        "200":
+          description: Free preparation; no generation or credit hold
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantOperation" }
+  /assistant/operations/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getAssistantOperation
+      responses:
+        "200":
+          description: Owned operation and recoverable result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantOperation" }
+    delete:
+      operationId: hideAssistantOperation
+      responses:
+        "204": { description: Hide terminal history without deleting worksheet or accounting }
+  /assistant/operations/{id}/quote:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: quoteAssistantWorksheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssistantWorksheetRequest" }
+      responses:
+        "200":
+          description: Persisted immutable settings and expiring server price quote
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantOperation" }
+  /assistant/operations/{id}/confirm:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: confirmAssistantWorksheet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssistantConfirmation" }
+      responses:
+        "200":
+          description: Idempotently accepted durable creation job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantOperation" }
+        "402": { description: Insufficient credits }
+        "409": { description: "Settings, quote or availability changed; review again" }
+  /assistant/operations/{id}/cancel:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: cancelAssistantWorksheet
+      responses:
+        "200":
+          description: Cancel before generation starts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantOperation" }
+  /assistant/admin/operations:
+    get:
+      operationId: listAdminAssistantOperations
+      responses:
+        "200":
+          description: Admin operation status and accounting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantHistory" }
+  /assistant/admin/settings:
+    patch:
+      operationId: updateAssistantAvailability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssistantAvailability" }
+      responses:
+        "200":
+          description: Creation kill switch does not affect Guide or direct builder
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantAvailability" }
   /worksheets/ai/generate:
     post:
       operationId: generateWorksheetActivity
@@ -2933,6 +3039,85 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    AssistantAvailability:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        pilotOnly: { type: boolean }
+        teacherIds:
+          type: array
+          maxItems: 1000
+          items: { type: integer, minimum: 1 }
+    AssistantPreparation:
+      type: object
+      required: [message, language]
+      properties:
+        message: { type: string, minLength: 2, maxLength: 12000 }
+        language: { type: string, enum: [ar, en] }
+        operationId: { type: string, format: uuid }
+        settings: { $ref: "#/components/schemas/AssistantWorksheetRequest" }
+    AssistantWorksheetRequest:
+      type: object
+      required: [title, parameters, template]
+      properties:
+        title: { type: string, minLength: 2, maxLength: 200 }
+        template: { type: string, maxLength: 80 }
+        parameters: { $ref: "#/components/schemas/WorksheetActivityInput" }
+    AssistantConfirmation:
+      type: object
+      required: [quoteId]
+      properties:
+        quoteId: { type: string, format: uuid }
+    AssistantQuote:
+      type: object
+      required: [id, credits, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        credits: { type: integer, minimum: 0 }
+        expiresAt: { type: string, format: date-time }
+    AssistantOperation:
+      type: object
+      required: [id, title, requestText, reply, parameters, template, status, missingFields, credits, worksheetId, errorCode, quote, updatedAt, messages]
+      properties:
+        id: { type: string, format: uuid }
+        teacherId: { type: integer }
+        title: { type: string }
+        requestText: { type: string }
+        reply: { type: string }
+        parameters: { $ref: "#/components/schemas/WorksheetActivityInput" }
+        template: { type: string }
+        status: { type: string, enum: [draft, quoted, queued, running, saving, completed, failed, cancelled] }
+        missingFields: { type: array, items: { type: string } }
+        credits: { type: integer }
+        worksheetId: { type: ["integer", "null"] }
+        errorCode: { type: ["string", "null"] }
+        quote:
+          oneOf:
+            - { $ref: "#/components/schemas/AssistantQuote" }
+            - { type: "null" }
+        updatedAt: { type: string, format: date-time }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/AssistantMessage" }
+    AssistantMessage:
+      type: object
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        text: { type: string }
+    AssistantHistory:
+      type: object
+      required: [enabled, operations]
+      properties:
+        enabled: { type: boolean }
+        pilotOnly: { type: boolean }
+        teacherIds:
+          type: array
+          items: { type: integer }
+        operations:
+          type: array
+          items: { $ref: "#/components/schemas/AssistantOperation" }
     WorksheetActivityConstraints:
       type: object
       description: Only explicitly selected settings are present; omitted settings are inferred by AI.

@@ -113,3 +113,4 @@ export * from "./quran-submissions";
 export * from "./quran-independent-practice";
 export * from "./quran-reader-state";
 export * from "./quran-guided-memorization";
+export * from "./assistant-operations";

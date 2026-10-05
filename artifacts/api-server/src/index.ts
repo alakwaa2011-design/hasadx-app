@@ -26,6 +26,8 @@ import { setupPresentationSocket } from "./game/presentation-handlers";
 import { migratePresentationWordCloud } from "./lib/presentation-word-cloud";
 import { migratePresentationWall } from "./lib/presentation-wall";
 import { db, teachersTable } from "@workspace/db";
+import { migrateAssistantSchema } from "./lib/assistant-schema";
+import { startAssistantWorker } from "./lib/assistant-worksheet";
 import { sql } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
 import { seedMillionBankIfEmpty } from "./seedMillionBank";
@@ -2678,8 +2680,10 @@ httpServer.listen(port, () => {
   }
   ensureSessionTable()
     .then(() => runSchemaMigrations())
+    .then(() => migrateAssistantSchema())
     .then(() => db.execute(XP_MIGRATION_SQL))
     .then(async () => {
+      startAssistantWorker();
       seedAdmins().then(() => backfillAdminSharedApproval());
       seedPlansIfMissing();
       seedMillionBankIfEmpty();

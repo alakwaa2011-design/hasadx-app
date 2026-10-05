@@ -6,6 +6,2603 @@
  * OpenAPI spec version: 0.1.0
  */
 import * as zodV3 from 'zod';
+export declare const listAssistantOperationsResponseOperationsItemParametersLanguageDefault = "ar";
+export declare const listAssistantOperationsResponseOperationsItemParametersTopicMax = 500;
+export declare const listAssistantOperationsResponseOperationsItemParametersSourceTextMax = 12000;
+export declare const listAssistantOperationsResponseOperationsItemParametersSubjectMax = 100;
+export declare const listAssistantOperationsResponseOperationsItemParametersGradeLevelMax = 50;
+export declare const listAssistantOperationsResponseOperationsItemParametersPagesDefault = 1;
+export declare const listAssistantOperationsResponseOperationsItemParametersGroupSizeMin = 2;
+export declare const listAssistantOperationsResponseOperationsItemParametersGroupSizeMax = 6;
+export declare const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsItemCountMax = 12;
+export declare const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const listAssistantOperationsResponseOperationsItemParametersLearningObjectiveMax = 500;
+export declare const listAssistantOperationsResponseOperationsItemParametersActivityDurationMin = 5;
+export declare const listAssistantOperationsResponseOperationsItemParametersActivityDurationMax = 90;
+export declare const listAssistantOperationsResponseOperationsItemParametersCountsMinOne = 0;
+export declare const listAssistantOperationsResponseOperationsItemParametersCountsMaxOne = 40;
+export declare const listAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0;
+export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
+    enabled: zodV3.ZodBoolean;
+    pilotOnly: zodV3.ZodOptional<zodV3.ZodBoolean>;
+    teacherIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
+    operations: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+        title: zodV3.ZodString;
+        requestText: zodV3.ZodString;
+        reply: zodV3.ZodString;
+        parameters: zodV3.ZodObject<{
+            questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+            language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+            topic: zodV3.ZodOptional<zodV3.ZodString>;
+            sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+            subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+            activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+            executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+            groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+            generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+                difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+                learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+                cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+                activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+                differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+                assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+                itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+                allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+            }, "strip", zodV3.ZodTypeAny, {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            }, {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            }>>;
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+        }, "strip", zodV3.ZodTypeAny, {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        }, {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        }>;
+        template: zodV3.ZodString;
+        status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+        missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+        credits: zodV3.ZodNumber;
+        worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+        errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+        quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+            id: zodV3.ZodString;
+            credits: zodV3.ZodNumber;
+            expiresAt: zodV3.ZodDate;
+        }, "strip", zodV3.ZodTypeAny, {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        }, {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        }>, zodV3.ZodNull]>;
+        updatedAt: zodV3.ZodDate;
+        messages: zodV3.ZodArray<zodV3.ZodObject<{
+            role: zodV3.ZodEnum<["user", "assistant"]>;
+            text: zodV3.ZodString;
+        }, "strip", zodV3.ZodTypeAny, {
+            role: "user" | "assistant";
+            text: string;
+        }, {
+            role: "user" | "assistant";
+            text: string;
+        }>, "many">;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }, {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    enabled: boolean;
+    operations: {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }[];
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}, {
+    enabled: boolean;
+    operations: {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }[];
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}>;
+export declare const prepareAssistantWorksheetBodyMessageMin = 2;
+export declare const prepareAssistantWorksheetBodyMessageMax = 12000;
+export declare const prepareAssistantWorksheetBodySettingsTitleMin = 2;
+export declare const prepareAssistantWorksheetBodySettingsTitleMax = 200;
+export declare const prepareAssistantWorksheetBodySettingsTemplateMax = 80;
+export declare const prepareAssistantWorksheetBodySettingsParametersLanguageDefault = "ar";
+export declare const prepareAssistantWorksheetBodySettingsParametersTopicMax = 500;
+export declare const prepareAssistantWorksheetBodySettingsParametersSourceTextMax = 12000;
+export declare const prepareAssistantWorksheetBodySettingsParametersSubjectMax = 100;
+export declare const prepareAssistantWorksheetBodySettingsParametersGradeLevelMax = 50;
+export declare const prepareAssistantWorksheetBodySettingsParametersPagesDefault = 1;
+export declare const prepareAssistantWorksheetBodySettingsParametersGroupSizeMin = 2;
+export declare const prepareAssistantWorksheetBodySettingsParametersGroupSizeMax = 6;
+export declare const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsItemCountMax = 12;
+export declare const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const prepareAssistantWorksheetBodySettingsParametersLearningObjectiveMax = 500;
+export declare const prepareAssistantWorksheetBodySettingsParametersActivityDurationMin = 5;
+export declare const prepareAssistantWorksheetBodySettingsParametersActivityDurationMax = 90;
+export declare const prepareAssistantWorksheetBodySettingsParametersCountsMinOne = 0;
+export declare const prepareAssistantWorksheetBodySettingsParametersCountsMaxOne = 40;
+export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
+    message: zodV3.ZodString;
+    language: zodV3.ZodEnum<["ar", "en"]>;
+    operationId: zodV3.ZodOptional<zodV3.ZodString>;
+    settings: zodV3.ZodOptional<zodV3.ZodObject<{
+        title: zodV3.ZodString;
+        template: zodV3.ZodString;
+        parameters: zodV3.ZodObject<{
+            questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+            language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+            topic: zodV3.ZodOptional<zodV3.ZodString>;
+            sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+            subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+            activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+            executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+            groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+            generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+                difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+                learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+                cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+                activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+                differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+                assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+                itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+                allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+            }, "strip", zodV3.ZodTypeAny, {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            }, {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            }>>;
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+        }, "strip", zodV3.ZodTypeAny, {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        }, {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        }>;
+    }, "strip", zodV3.ZodTypeAny, {
+        title: string;
+        parameters: {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+    }, {
+        title: string;
+        parameters: {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+    }>>;
+}, "strip", zodV3.ZodTypeAny, {
+    message: string;
+    language: "ar" | "en";
+    operationId?: string | undefined;
+    settings?: {
+        title: string;
+        parameters: {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+    } | undefined;
+}, {
+    message: string;
+    language: "ar" | "en";
+    operationId?: string | undefined;
+    settings?: {
+        title: string;
+        parameters: {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+    } | undefined;
+}>;
+export declare const prepareAssistantWorksheetResponseParametersLanguageDefault = "ar";
+export declare const prepareAssistantWorksheetResponseParametersTopicMax = 500;
+export declare const prepareAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export declare const prepareAssistantWorksheetResponseParametersSubjectMax = 100;
+export declare const prepareAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export declare const prepareAssistantWorksheetResponseParametersPagesDefault = 1;
+export declare const prepareAssistantWorksheetResponseParametersGroupSizeMin = 2;
+export declare const prepareAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export declare const prepareAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const prepareAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const prepareAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const prepareAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export declare const prepareAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const prepareAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export declare const prepareAssistantWorksheetResponseParametersActivityDurationMin = 5;
+export declare const prepareAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export declare const prepareAssistantWorksheetResponseParametersCountsMinOne = 0;
+export declare const prepareAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export declare const prepareAssistantWorksheetResponseQuoteOneCreditsMin = 0;
+export declare const PrepareAssistantWorksheetResponse: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+    teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+    title: zodV3.ZodString;
+    requestText: zodV3.ZodString;
+    reply: zodV3.ZodString;
+    parameters: zodV3.ZodObject<{
+        questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+        language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+        topic: zodV3.ZodOptional<zodV3.ZodString>;
+        sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+        activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+        executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+        groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+        generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+            allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        }, "strip", zodV3.ZodTypeAny, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }>>;
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }, {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }>;
+    template: zodV3.ZodString;
+    status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+    missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+    credits: zodV3.ZodNumber;
+    worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+    quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        credits: zodV3.ZodNumber;
+        expiresAt: zodV3.ZodDate;
+    }, "strip", zodV3.ZodTypeAny, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }>, zodV3.ZodNull]>;
+    updatedAt: zodV3.ZodDate;
+    messages: zodV3.ZodArray<zodV3.ZodObject<{
+        role: zodV3.ZodEnum<["user", "assistant"]>;
+        text: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        role: "user" | "assistant";
+        text: string;
+    }, {
+        role: "user" | "assistant";
+        text: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}>;
+export declare const GetAssistantOperationParams: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    id: string;
+}, {
+    id: string;
+}>;
+export declare const getAssistantOperationResponseParametersLanguageDefault = "ar";
+export declare const getAssistantOperationResponseParametersTopicMax = 500;
+export declare const getAssistantOperationResponseParametersSourceTextMax = 12000;
+export declare const getAssistantOperationResponseParametersSubjectMax = 100;
+export declare const getAssistantOperationResponseParametersGradeLevelMax = 50;
+export declare const getAssistantOperationResponseParametersPagesDefault = 1;
+export declare const getAssistantOperationResponseParametersGroupSizeMin = 2;
+export declare const getAssistantOperationResponseParametersGroupSizeMax = 6;
+export declare const getAssistantOperationResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const getAssistantOperationResponseParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const getAssistantOperationResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const getAssistantOperationResponseParametersGenerationConstraintsItemCountMax = 12;
+export declare const getAssistantOperationResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const getAssistantOperationResponseParametersLearningObjectiveMax = 500;
+export declare const getAssistantOperationResponseParametersActivityDurationMin = 5;
+export declare const getAssistantOperationResponseParametersActivityDurationMax = 90;
+export declare const getAssistantOperationResponseParametersCountsMinOne = 0;
+export declare const getAssistantOperationResponseParametersCountsMaxOne = 40;
+export declare const getAssistantOperationResponseQuoteOneCreditsMin = 0;
+export declare const GetAssistantOperationResponse: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+    teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+    title: zodV3.ZodString;
+    requestText: zodV3.ZodString;
+    reply: zodV3.ZodString;
+    parameters: zodV3.ZodObject<{
+        questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+        language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+        topic: zodV3.ZodOptional<zodV3.ZodString>;
+        sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+        activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+        executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+        groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+        generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+            allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        }, "strip", zodV3.ZodTypeAny, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }>>;
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }, {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }>;
+    template: zodV3.ZodString;
+    status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+    missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+    credits: zodV3.ZodNumber;
+    worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+    quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        credits: zodV3.ZodNumber;
+        expiresAt: zodV3.ZodDate;
+    }, "strip", zodV3.ZodTypeAny, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }>, zodV3.ZodNull]>;
+    updatedAt: zodV3.ZodDate;
+    messages: zodV3.ZodArray<zodV3.ZodObject<{
+        role: zodV3.ZodEnum<["user", "assistant"]>;
+        text: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        role: "user" | "assistant";
+        text: string;
+    }, {
+        role: "user" | "assistant";
+        text: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}>;
+export declare const HideAssistantOperationParams: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    id: string;
+}, {
+    id: string;
+}>;
+export declare const HideAssistantOperationResponse: zodV3.ZodVoid;
+export declare const QuoteAssistantWorksheetParams: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    id: string;
+}, {
+    id: string;
+}>;
+export declare const quoteAssistantWorksheetBodyTitleMin = 2;
+export declare const quoteAssistantWorksheetBodyTitleMax = 200;
+export declare const quoteAssistantWorksheetBodyTemplateMax = 80;
+export declare const quoteAssistantWorksheetBodyParametersLanguageDefault = "ar";
+export declare const quoteAssistantWorksheetBodyParametersTopicMax = 500;
+export declare const quoteAssistantWorksheetBodyParametersSourceTextMax = 12000;
+export declare const quoteAssistantWorksheetBodyParametersSubjectMax = 100;
+export declare const quoteAssistantWorksheetBodyParametersGradeLevelMax = 50;
+export declare const quoteAssistantWorksheetBodyParametersPagesDefault = 1;
+export declare const quoteAssistantWorksheetBodyParametersGroupSizeMin = 2;
+export declare const quoteAssistantWorksheetBodyParametersGroupSizeMax = 6;
+export declare const quoteAssistantWorksheetBodyParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const quoteAssistantWorksheetBodyParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const quoteAssistantWorksheetBodyParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const quoteAssistantWorksheetBodyParametersGenerationConstraintsItemCountMax = 12;
+export declare const quoteAssistantWorksheetBodyParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const quoteAssistantWorksheetBodyParametersLearningObjectiveMax = 500;
+export declare const quoteAssistantWorksheetBodyParametersActivityDurationMin = 5;
+export declare const quoteAssistantWorksheetBodyParametersActivityDurationMax = 90;
+export declare const quoteAssistantWorksheetBodyParametersCountsMinOne = 0;
+export declare const quoteAssistantWorksheetBodyParametersCountsMaxOne = 40;
+export declare const QuoteAssistantWorksheetBody: zodV3.ZodObject<{
+    title: zodV3.ZodString;
+    template: zodV3.ZodString;
+    parameters: zodV3.ZodObject<{
+        questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+        language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+        topic: zodV3.ZodOptional<zodV3.ZodString>;
+        sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+        activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+        executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+        groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+        generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+            allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        }, "strip", zodV3.ZodTypeAny, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }>>;
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }, {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }>;
+}, "strip", zodV3.ZodTypeAny, {
+    title: string;
+    parameters: {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+}, {
+    title: string;
+    parameters: {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+}>;
+export declare const quoteAssistantWorksheetResponseParametersLanguageDefault = "ar";
+export declare const quoteAssistantWorksheetResponseParametersTopicMax = 500;
+export declare const quoteAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export declare const quoteAssistantWorksheetResponseParametersSubjectMax = 100;
+export declare const quoteAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export declare const quoteAssistantWorksheetResponseParametersPagesDefault = 1;
+export declare const quoteAssistantWorksheetResponseParametersGroupSizeMin = 2;
+export declare const quoteAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export declare const quoteAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const quoteAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const quoteAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const quoteAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export declare const quoteAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const quoteAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export declare const quoteAssistantWorksheetResponseParametersActivityDurationMin = 5;
+export declare const quoteAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export declare const quoteAssistantWorksheetResponseParametersCountsMinOne = 0;
+export declare const quoteAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export declare const quoteAssistantWorksheetResponseQuoteOneCreditsMin = 0;
+export declare const QuoteAssistantWorksheetResponse: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+    teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+    title: zodV3.ZodString;
+    requestText: zodV3.ZodString;
+    reply: zodV3.ZodString;
+    parameters: zodV3.ZodObject<{
+        questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+        language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+        topic: zodV3.ZodOptional<zodV3.ZodString>;
+        sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+        activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+        executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+        groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+        generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+            allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        }, "strip", zodV3.ZodTypeAny, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }>>;
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }, {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }>;
+    template: zodV3.ZodString;
+    status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+    missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+    credits: zodV3.ZodNumber;
+    worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+    quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        credits: zodV3.ZodNumber;
+        expiresAt: zodV3.ZodDate;
+    }, "strip", zodV3.ZodTypeAny, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }>, zodV3.ZodNull]>;
+    updatedAt: zodV3.ZodDate;
+    messages: zodV3.ZodArray<zodV3.ZodObject<{
+        role: zodV3.ZodEnum<["user", "assistant"]>;
+        text: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        role: "user" | "assistant";
+        text: string;
+    }, {
+        role: "user" | "assistant";
+        text: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}>;
+export declare const ConfirmAssistantWorksheetParams: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    id: string;
+}, {
+    id: string;
+}>;
+export declare const ConfirmAssistantWorksheetBody: zodV3.ZodObject<{
+    quoteId: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    quoteId: string;
+}, {
+    quoteId: string;
+}>;
+export declare const confirmAssistantWorksheetResponseParametersLanguageDefault = "ar";
+export declare const confirmAssistantWorksheetResponseParametersTopicMax = 500;
+export declare const confirmAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export declare const confirmAssistantWorksheetResponseParametersSubjectMax = 100;
+export declare const confirmAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export declare const confirmAssistantWorksheetResponseParametersPagesDefault = 1;
+export declare const confirmAssistantWorksheetResponseParametersGroupSizeMin = 2;
+export declare const confirmAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export declare const confirmAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const confirmAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const confirmAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const confirmAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export declare const confirmAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const confirmAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export declare const confirmAssistantWorksheetResponseParametersActivityDurationMin = 5;
+export declare const confirmAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export declare const confirmAssistantWorksheetResponseParametersCountsMinOne = 0;
+export declare const confirmAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export declare const confirmAssistantWorksheetResponseQuoteOneCreditsMin = 0;
+export declare const ConfirmAssistantWorksheetResponse: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+    teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+    title: zodV3.ZodString;
+    requestText: zodV3.ZodString;
+    reply: zodV3.ZodString;
+    parameters: zodV3.ZodObject<{
+        questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+        language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+        topic: zodV3.ZodOptional<zodV3.ZodString>;
+        sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+        activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+        executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+        groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+        generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+            allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        }, "strip", zodV3.ZodTypeAny, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }>>;
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }, {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }>;
+    template: zodV3.ZodString;
+    status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+    missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+    credits: zodV3.ZodNumber;
+    worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+    quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        credits: zodV3.ZodNumber;
+        expiresAt: zodV3.ZodDate;
+    }, "strip", zodV3.ZodTypeAny, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }>, zodV3.ZodNull]>;
+    updatedAt: zodV3.ZodDate;
+    messages: zodV3.ZodArray<zodV3.ZodObject<{
+        role: zodV3.ZodEnum<["user", "assistant"]>;
+        text: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        role: "user" | "assistant";
+        text: string;
+    }, {
+        role: "user" | "assistant";
+        text: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}>;
+export declare const CancelAssistantWorksheetParams: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    id: string;
+}, {
+    id: string;
+}>;
+export declare const cancelAssistantWorksheetResponseParametersLanguageDefault = "ar";
+export declare const cancelAssistantWorksheetResponseParametersTopicMax = 500;
+export declare const cancelAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export declare const cancelAssistantWorksheetResponseParametersSubjectMax = 100;
+export declare const cancelAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export declare const cancelAssistantWorksheetResponseParametersPagesDefault = 1;
+export declare const cancelAssistantWorksheetResponseParametersGroupSizeMin = 2;
+export declare const cancelAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export declare const cancelAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const cancelAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const cancelAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const cancelAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export declare const cancelAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const cancelAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export declare const cancelAssistantWorksheetResponseParametersActivityDurationMin = 5;
+export declare const cancelAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export declare const cancelAssistantWorksheetResponseParametersCountsMinOne = 0;
+export declare const cancelAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export declare const cancelAssistantWorksheetResponseQuoteOneCreditsMin = 0;
+export declare const CancelAssistantWorksheetResponse: zodV3.ZodObject<{
+    id: zodV3.ZodString;
+    teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+    title: zodV3.ZodString;
+    requestText: zodV3.ZodString;
+    reply: zodV3.ZodString;
+    parameters: zodV3.ZodObject<{
+        questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+        language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+        topic: zodV3.ZodOptional<zodV3.ZodString>;
+        sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+        subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+        pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+        activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+        executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+        groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+        generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+            allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+        }, "strip", zodV3.ZodTypeAny, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }, {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        }>>;
+        difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+        learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+        cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+        activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+        differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+        assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+        counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }, {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    }>;
+    template: zodV3.ZodString;
+    status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+    missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+    credits: zodV3.ZodNumber;
+    worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+    errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+    quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        credits: zodV3.ZodNumber;
+        expiresAt: zodV3.ZodDate;
+    }, "strip", zodV3.ZodTypeAny, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }, {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    }>, zodV3.ZodNull]>;
+    updatedAt: zodV3.ZodDate;
+    messages: zodV3.ZodArray<zodV3.ZodObject<{
+        role: zodV3.ZodEnum<["user", "assistant"]>;
+        text: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        role: "user" | "assistant";
+        text: string;
+    }, {
+        role: "user" | "assistant";
+        text: string;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        language: "ar" | "en";
+        pages: 1 | 2 | 3;
+        questionSelection?: "auto" | "manual" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}, {
+    status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+    id: string;
+    title: string;
+    requestText: string;
+    reply: string;
+    parameters: {
+        questionSelection?: "auto" | "manual" | undefined;
+        language?: "ar" | "en" | undefined;
+        topic?: string | undefined;
+        sourceText?: string | undefined;
+        subject?: string | null | undefined;
+        gradeLevel?: string | null | undefined;
+        pages?: 1 | 2 | 3 | undefined;
+        activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+        executionMode?: "individual" | "group" | undefined;
+        groupSize?: number | undefined;
+        difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+        learningObjective?: string | undefined;
+        cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+        activityDuration?: number | undefined;
+        differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+        assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+        generationConstraints?: {
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            itemCount?: number | undefined;
+            allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+        } | undefined;
+        counts?: Record<string, number> | undefined;
+    };
+    template: string;
+    missingFields: string[];
+    credits: number;
+    worksheetId: number | null;
+    errorCode: string | null;
+    quote: {
+        id: string;
+        credits: number;
+        expiresAt: Date;
+    } | null;
+    updatedAt: Date;
+    messages: {
+        role: "user" | "assistant";
+        text: string;
+    }[];
+    teacherId?: number | undefined;
+}>;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersLanguageDefault = "ar";
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersTopicMax = 500;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersSourceTextMax = 12000;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersSubjectMax = 100;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGradeLevelMax = 50;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersPagesDefault = 1;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGroupSizeMin = 2;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGroupSizeMax = 6;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsLearningObjectiveMax = 500;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMin = 5;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMax = 90;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsItemCountMax = 12;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsAllowedTypesMax = 10;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersLearningObjectiveMax = 500;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersActivityDurationMin = 5;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersActivityDurationMax = 90;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersCountsMinOne = 0;
+export declare const listAdminAssistantOperationsResponseOperationsItemParametersCountsMaxOne = 40;
+export declare const listAdminAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0;
+export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
+    enabled: zodV3.ZodBoolean;
+    pilotOnly: zodV3.ZodOptional<zodV3.ZodBoolean>;
+    teacherIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
+    operations: zodV3.ZodArray<zodV3.ZodObject<{
+        id: zodV3.ZodString;
+        teacherId: zodV3.ZodOptional<zodV3.ZodNumber>;
+        title: zodV3.ZodString;
+        requestText: zodV3.ZodString;
+        reply: zodV3.ZodString;
+        parameters: zodV3.ZodObject<{
+            questionSelection: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "manual"]>>;
+            language: zodV3.ZodDefault<zodV3.ZodEnum<["ar", "en"]>>;
+            topic: zodV3.ZodOptional<zodV3.ZodString>;
+            sourceText: zodV3.ZodOptional<zodV3.ZodString>;
+            subject: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            gradeLevel: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+            pages: zodV3.ZodDefault<zodV3.ZodUnion<[zodV3.ZodLiteral<1>, zodV3.ZodLiteral<2>, zodV3.ZodLiteral<3>]>>;
+            activityStyle: zodV3.ZodOptional<zodV3.ZodEnum<["auto", "concept_map", "drawing", "coloring", "sorting", "sequencing", "group_task", "practice"]>>;
+            executionMode: zodV3.ZodOptional<zodV3.ZodEnum<["individual", "group"]>>;
+            groupSize: zodV3.ZodOptional<zodV3.ZodNumber>;
+            generationConstraints: zodV3.ZodOptional<zodV3.ZodObject<{
+                difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+                learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+                cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+                activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+                differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+                assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+                itemCount: zodV3.ZodOptional<zodV3.ZodNumber>;
+                allowedTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false", "short_answer", "fill_blank", "matching", "worked_problem", "extended_response", "error_correction", "word_bank", "compare"]>, "many">>;
+            }, "strip", zodV3.ZodTypeAny, {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            }, {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            }>>;
+            difficulty: zodV3.ZodOptional<zodV3.ZodEnum<["easy", "medium", "hard", "mixed"]>>;
+            learningObjective: zodV3.ZodOptional<zodV3.ZodString>;
+            cognitiveSkill: zodV3.ZodOptional<zodV3.ZodEnum<["remember", "understand", "apply", "analyze", "evaluate", "create", "mixed"]>>;
+            activityDuration: zodV3.ZodOptional<zodV3.ZodNumber>;
+            differentiation: zodV3.ZodOptional<zodV3.ZodEnum<["none", "support", "enrichment", "scaffolded"]>>;
+            assessmentMode: zodV3.ZodOptional<zodV3.ZodEnum<["diagnostic", "formative", "summative"]>>;
+            counts: zodV3.ZodOptional<zodV3.ZodRecord<zodV3.ZodString, zodV3.ZodNumber>>;
+        }, "strip", zodV3.ZodTypeAny, {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        }, {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        }>;
+        template: zodV3.ZodString;
+        status: zodV3.ZodEnum<["draft", "quoted", "queued", "running", "saving", "completed", "failed", "cancelled"]>;
+        missingFields: zodV3.ZodArray<zodV3.ZodString, "many">;
+        credits: zodV3.ZodNumber;
+        worksheetId: zodV3.ZodNullable<zodV3.ZodNumber>;
+        errorCode: zodV3.ZodNullable<zodV3.ZodString>;
+        quote: zodV3.ZodUnion<[zodV3.ZodObject<{
+            id: zodV3.ZodString;
+            credits: zodV3.ZodNumber;
+            expiresAt: zodV3.ZodDate;
+        }, "strip", zodV3.ZodTypeAny, {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        }, {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        }>, zodV3.ZodNull]>;
+        updatedAt: zodV3.ZodDate;
+        messages: zodV3.ZodArray<zodV3.ZodObject<{
+            role: zodV3.ZodEnum<["user", "assistant"]>;
+            text: zodV3.ZodString;
+        }, "strip", zodV3.ZodTypeAny, {
+            role: "user" | "assistant";
+            text: string;
+        }, {
+            role: "user" | "assistant";
+            text: string;
+        }>, "many">;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }, {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    enabled: boolean;
+    operations: {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            language: "ar" | "en";
+            pages: 1 | 2 | 3;
+            questionSelection?: "auto" | "manual" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }[];
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}, {
+    enabled: boolean;
+    operations: {
+        status: "draft" | "quoted" | "queued" | "running" | "saving" | "completed" | "failed" | "cancelled";
+        id: string;
+        title: string;
+        requestText: string;
+        reply: string;
+        parameters: {
+            questionSelection?: "auto" | "manual" | undefined;
+            language?: "ar" | "en" | undefined;
+            topic?: string | undefined;
+            sourceText?: string | undefined;
+            subject?: string | null | undefined;
+            gradeLevel?: string | null | undefined;
+            pages?: 1 | 2 | 3 | undefined;
+            activityStyle?: "auto" | "concept_map" | "drawing" | "coloring" | "sorting" | "sequencing" | "group_task" | "practice" | undefined;
+            executionMode?: "individual" | "group" | undefined;
+            groupSize?: number | undefined;
+            difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+            learningObjective?: string | undefined;
+            cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+            activityDuration?: number | undefined;
+            differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+            assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+            generationConstraints?: {
+                difficulty?: "easy" | "medium" | "hard" | "mixed" | undefined;
+                learningObjective?: string | undefined;
+                cognitiveSkill?: "mixed" | "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create" | undefined;
+                activityDuration?: number | undefined;
+                differentiation?: "none" | "support" | "enrichment" | "scaffolded" | undefined;
+                assessmentMode?: "diagnostic" | "formative" | "summative" | undefined;
+                itemCount?: number | undefined;
+                allowedTypes?: ("mcq" | "true_false" | "short_answer" | "fill_blank" | "matching" | "worked_problem" | "extended_response" | "error_correction" | "word_bank" | "compare")[] | undefined;
+            } | undefined;
+            counts?: Record<string, number> | undefined;
+        };
+        template: string;
+        missingFields: string[];
+        credits: number;
+        worksheetId: number | null;
+        errorCode: string | null;
+        quote: {
+            id: string;
+            credits: number;
+            expiresAt: Date;
+        } | null;
+        updatedAt: Date;
+        messages: {
+            role: "user" | "assistant";
+            text: string;
+        }[];
+        teacherId?: number | undefined;
+    }[];
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}>;
+export declare const updateAssistantAvailabilityBodyTeacherIdsMax = 1000;
+export declare const UpdateAssistantAvailabilityBody: zodV3.ZodObject<{
+    enabled: zodV3.ZodBoolean;
+    pilotOnly: zodV3.ZodOptional<zodV3.ZodBoolean>;
+    teacherIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
+}, "strip", zodV3.ZodTypeAny, {
+    enabled: boolean;
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}, {
+    enabled: boolean;
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}>;
+export declare const updateAssistantAvailabilityResponseTeacherIdsMax = 1000;
+export declare const UpdateAssistantAvailabilityResponse: zodV3.ZodObject<{
+    enabled: zodV3.ZodBoolean;
+    pilotOnly: zodV3.ZodOptional<zodV3.ZodBoolean>;
+    teacherIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
+}, "strip", zodV3.ZodTypeAny, {
+    enabled: boolean;
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}, {
+    enabled: boolean;
+    pilotOnly?: boolean | undefined;
+    teacherIds?: number[] | undefined;
+}>;
 /**
  * @summary Generate a printable worksheet honoring explicit teacher constraints
  */
@@ -636,9 +3233,9 @@ export declare const RegisterTeacherBody: zodV3.ZodObject<{
     acquisitionCampaign: zodV3.ZodOptional<zodV3.ZodString>;
     acquisitionReferrer: zodV3.ZodOptional<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
+    role: "teacher" | "organizer";
     name: string;
     password: string;
-    role: "teacher" | "organizer";
     email?: string | undefined;
     phone?: string | undefined;
     primarySubject?: string | undefined;
@@ -650,9 +3247,9 @@ export declare const RegisterTeacherBody: zodV3.ZodObject<{
 }, {
     name: string;
     password: string;
+    role?: "teacher" | "organizer" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     acquisitionSource?: string | undefined;
@@ -674,9 +3271,9 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
     }, "strip", zodV3.ZodTypeAny, {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -684,9 +3281,9 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
     }, {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -696,9 +3293,9 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
     teacher: {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -708,9 +3305,9 @@ export declare const RegisterTeacherResponse: zodV3.ZodObject<{
     teacher: {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -750,9 +3347,9 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
     }, "strip", zodV3.ZodTypeAny, {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -760,9 +3357,9 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
     }, {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -772,9 +3369,9 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
     teacher: {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -784,9 +3381,9 @@ export declare const LoginTeacherResponse: zodV3.ZodObject<{
     teacher: {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -809,9 +3406,9 @@ export declare const GetCurrentTeacherResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
     name: string;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
@@ -819,9 +3416,9 @@ export declare const GetCurrentTeacherResponse: zodV3.ZodObject<{
 }, {
     id: number;
     name: string;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
@@ -865,9 +3462,9 @@ export declare const UpdateTeacherProfileResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
     name: string;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
@@ -875,9 +3472,9 @@ export declare const UpdateTeacherProfileResponse: zodV3.ZodObject<{
 }, {
     id: number;
     name: string;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
@@ -906,9 +3503,9 @@ export declare const UpdateTeacherRoleResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
     name: string;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
@@ -916,9 +3513,9 @@ export declare const UpdateTeacherRoleResponse: zodV3.ZodObject<{
 }, {
     id: number;
     name: string;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     email?: string | undefined;
     phone?: string | undefined;
-    role?: "teacher" | "organizer" | "admin" | undefined;
     primarySubject?: string | undefined;
     subjects?: string[] | undefined;
     isAdmin?: boolean | undefined;
@@ -970,9 +3567,9 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
     }, "strip", zodV3.ZodTypeAny, {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -980,9 +3577,9 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
     }, {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -992,9 +3589,9 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
     teacher: {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -1004,9 +3601,9 @@ export declare const LoginTeacherWithGoogleResponse: zodV3.ZodObject<{
     teacher: {
         id: number;
         name: string;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         email?: string | undefined;
         phone?: string | undefined;
-        role?: "teacher" | "organizer" | "admin" | undefined;
         primarySubject?: string | undefined;
         subjects?: string[] | undefined;
         isAdmin?: boolean | undefined;
@@ -1158,11 +3755,11 @@ export declare const ListTeacherSessionsResponseItem: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     sid: string;
     isCurrent: boolean;
+    expiresAt?: Date | null | undefined;
     userAgent?: string | null | undefined;
     ip?: string | null | undefined;
     createdAt?: Date | null | undefined;
     lastSeenAt?: Date | null | undefined;
-    expiresAt?: Date | null | undefined;
     browser?: string | null | undefined;
     os?: string | null | undefined;
     deviceType?: "mobile" | "tablet" | "desktop" | null | undefined;
@@ -1171,11 +3768,11 @@ export declare const ListTeacherSessionsResponseItem: zodV3.ZodObject<{
 }, {
     sid: string;
     isCurrent: boolean;
+    expiresAt?: Date | null | undefined;
     userAgent?: string | null | undefined;
     ip?: string | null | undefined;
     createdAt?: Date | null | undefined;
     lastSeenAt?: Date | null | undefined;
-    expiresAt?: Date | null | undefined;
     browser?: string | null | undefined;
     os?: string | null | undefined;
     deviceType?: "mobile" | "tablet" | "desktop" | null | undefined;
@@ -1198,11 +3795,11 @@ export declare const ListTeacherSessionsResponse: zodV3.ZodArray<zodV3.ZodObject
 }, "strip", zodV3.ZodTypeAny, {
     sid: string;
     isCurrent: boolean;
+    expiresAt?: Date | null | undefined;
     userAgent?: string | null | undefined;
     ip?: string | null | undefined;
     createdAt?: Date | null | undefined;
     lastSeenAt?: Date | null | undefined;
-    expiresAt?: Date | null | undefined;
     browser?: string | null | undefined;
     os?: string | null | undefined;
     deviceType?: "mobile" | "tablet" | "desktop" | null | undefined;
@@ -1211,11 +3808,11 @@ export declare const ListTeacherSessionsResponse: zodV3.ZodArray<zodV3.ZodObject
 }, {
     sid: string;
     isCurrent: boolean;
+    expiresAt?: Date | null | undefined;
     userAgent?: string | null | undefined;
     ip?: string | null | undefined;
     createdAt?: Date | null | undefined;
     lastSeenAt?: Date | null | undefined;
-    expiresAt?: Date | null | undefined;
     browser?: string | null | undefined;
     os?: string | null | undefined;
     deviceType?: "mobile" | "tablet" | "desktop" | null | undefined;
@@ -1535,10 +4132,10 @@ export declare const ListAssignmentsResponseItem: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    teacherId: number;
     title: string;
     createdAt: Date;
     submissionCount: number;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -1564,10 +4161,10 @@ export declare const ListAssignmentsResponseItem: zodV3.ZodObject<{
     ownerName?: string | null | undefined;
 }, {
     id: number;
+    teacherId: number;
     title: string;
     createdAt: Date;
     submissionCount: number;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -1623,10 +4220,10 @@ export declare const ListAssignmentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    teacherId: number;
     title: string;
     createdAt: Date;
     submissionCount: number;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -1652,10 +4249,10 @@ export declare const ListAssignmentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     ownerName?: string | null | undefined;
 }, {
     id: number;
+    teacherId: number;
     title: string;
     createdAt: Date;
     submissionCount: number;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -1874,6 +4471,7 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         skill?: string | null | undefined;
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
+    title: string;
     questions: {
         text: string;
         questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
@@ -1888,7 +4486,6 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         readAloud?: boolean | undefined;
         skill?: string | null | undefined;
     }[];
-    title: string;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -1937,6 +4534,7 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
     listeningSpeed?: string | null | undefined;
     listeningSettings?: Record<string, unknown> | null | undefined;
 }, {
+    title: string;
     questions: {
         text: string;
         difficulty?: number | null | undefined;
@@ -1951,7 +4549,6 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         readAloud?: boolean | undefined;
         skill?: string | null | undefined;
     }[];
-    title: string;
     subject?: string | undefined;
     description?: string | undefined;
     submissionMode?: "electronic" | "paper" | "both" | undefined;
@@ -2031,10 +4628,10 @@ export declare const CreateAssignmentResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    teacherId: number;
     title: string;
     createdAt: Date;
     submissionCount: number;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -2060,10 +4657,10 @@ export declare const CreateAssignmentResponse: zodV3.ZodObject<{
     ownerName?: string | null | undefined;
 }, {
     id: number;
+    teacherId: number;
     title: string;
     createdAt: Date;
     submissionCount: number;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
@@ -2186,6 +4783,9 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
     questions: {
         id: number;
         text: string;
@@ -2203,16 +4803,13 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
         imageUrl?: string | null | undefined;
         skill?: string | null | undefined;
     }[];
-    title: string;
     createdAt: Date;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
     teacherName: string;
     totalPoints: number;
     hasModelImage: boolean;
-    updatedAt: Date;
     version: number;
     extraAttempts: number;
     subject?: string | undefined;
@@ -2234,6 +4831,9 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
     closedAt?: Date | null | undefined;
 }, {
     id: number;
+    teacherId: number;
+    title: string;
+    updatedAt: Date;
     questions: {
         id: number;
         text: string;
@@ -2251,16 +4851,13 @@ export declare const GetAssignmentResponse: zodV3.ZodObject<{
         allowMultipleAnswers?: boolean | undefined;
         repeatQuestion?: boolean | undefined;
     }[];
-    title: string;
     createdAt: Date;
-    teacherId: number;
     submissionMode: "electronic" | "paper" | "both";
     accessMode: "public" | "private";
     showResults: boolean;
     teacherName: string;
     totalPoints: number;
     hasModelImage: boolean;
-    updatedAt: Date;
     version: number;
     extraAttempts: number;
     subject?: string | undefined;
@@ -2371,15 +4968,15 @@ export declare const UpdateAssignmentLifecycleResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    deadline: Date | null;
     updatedAt: Date;
+    deadline: Date | null;
     version: number;
     closedAt: Date | null;
     extraAttempts: number;
 }, {
     id: number;
-    deadline: Date | null;
     updatedAt: Date;
+    deadline: Date | null;
     version: number;
     closedAt: Date | null;
     extraAttempts: number;
@@ -3348,15 +5945,15 @@ export declare const ListPresentationsResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
+    teacherId: number;
     title: string;
+    language: "ar" | "en";
+    updatedAt: Date;
     slideCount: number;
     createdAt: Date;
-    teacherId: number;
     isShared: boolean;
-    updatedAt: Date;
     theme: string;
     pattern: string;
     ownerName?: string | null | undefined;
@@ -3364,15 +5961,15 @@ export declare const ListPresentationsResponseItem: zodV3.ZodObject<{
     publishedAt?: Date | null | undefined;
     ownerIsAdmin?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
+    teacherId: number;
     title: string;
+    language: "ar" | "en";
+    updatedAt: Date;
     slideCount: number;
     createdAt: Date;
-    teacherId: number;
     isShared: boolean;
-    updatedAt: Date;
     theme: string;
     pattern: string;
     ownerName?: string | null | undefined;
@@ -3397,15 +5994,15 @@ export declare const ListPresentationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
     createdAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
+    teacherId: number;
     title: string;
+    language: "ar" | "en";
+    updatedAt: Date;
     slideCount: number;
     createdAt: Date;
-    teacherId: number;
     isShared: boolean;
-    updatedAt: Date;
     theme: string;
     pattern: string;
     ownerName?: string | null | undefined;
@@ -3413,15 +6010,15 @@ export declare const ListPresentationsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     publishedAt?: Date | null | undefined;
     ownerIsAdmin?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
+    teacherId: number;
     title: string;
+    language: "ar" | "en";
+    updatedAt: Date;
     slideCount: number;
     createdAt: Date;
-    teacherId: number;
     isShared: boolean;
-    updatedAt: Date;
     theme: string;
     pattern: string;
     ownerName?: string | null | undefined;
@@ -3533,22 +6130,22 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3576,22 +6173,22 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3622,22 +6219,22 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3672,22 +6269,22 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3730,34 +6327,34 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3802,34 +6399,34 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3954,22 +6551,22 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -3997,22 +6594,22 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4043,22 +6640,22 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4093,22 +6690,22 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4151,34 +6748,34 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4223,34 +6820,34 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4381,22 +6978,22 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4424,22 +7021,22 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4470,22 +7067,22 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4520,22 +7117,22 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4568,31 +7165,31 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
         backgroundImage?: string | null | undefined;
     }>, "many">>;
 }, "strip", zodV3.ZodTypeAny, {
+    title?: string | undefined;
     language?: "ar" | "en" | undefined;
     subject?: string | null | undefined;
     gradeLevel?: string | null | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
     slides?: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4628,31 +7225,31 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
     pattern?: string | undefined;
     coverEmoji?: string | null | undefined;
 }, {
+    title?: string | undefined;
     language?: "ar" | "en" | undefined;
     subject?: string | null | undefined;
     gradeLevel?: string | null | undefined;
-    title?: string | undefined;
     description?: string | null | undefined;
     slides?: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4758,22 +7355,22 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4801,22 +7398,22 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4847,22 +7444,22 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4897,22 +7494,22 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -4955,34 +7552,34 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5027,34 +7624,34 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5196,22 +7793,22 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5239,22 +7836,22 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5285,22 +7882,22 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5335,22 +7932,22 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5393,34 +7990,34 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5465,34 +8062,34 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5617,22 +8214,22 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5660,22 +8257,22 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5706,22 +8303,22 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5756,22 +8353,22 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5814,34 +8411,34 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -5886,34 +8483,34 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6110,22 +8707,22 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
         }, "strip", zodV3.ZodTypeAny, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6153,22 +8750,22 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6199,22 +8796,22 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6249,22 +8846,22 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6307,34 +8904,34 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     ownerName: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     isOwner: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodBoolean>>;
 }, "strip", zodV3.ZodTypeAny, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6379,34 +8976,34 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
     linkedActivityKind?: string | null | undefined;
     isOwner?: boolean | null | undefined;
 }, {
-    language: "ar" | "en";
     status: "draft" | "published";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
-    isShared: boolean;
+    title: string;
+    language: "ar" | "en";
     updatedAt: Date;
+    createdAt: Date;
+    isShared: boolean;
     slides: {
         id: string;
         elements: {
             id: string;
-            kind: "activity" | "text" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
+            kind: "text" | "activity" | "image" | "icon" | "shape" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
             h: number;
-            topic?: string | null | undefined;
             options?: string[] | null | undefined;
+            title?: string | null | undefined;
+            topic?: string | null | undefined;
+            text?: string | null | undefined;
             prompt?: string | null | undefined;
             questions?: {
                 options: string[];
                 prompt: string;
                 correctIndex: number;
             }[] | null | undefined;
-            title?: string | null | undefined;
             url?: string | null | undefined;
-            text?: string | null | undefined;
             questionId?: number | null | undefined;
             shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
             rotation?: number | null | undefined;
@@ -6790,8 +9387,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -6804,8 +9401,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -6822,8 +9419,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -6847,8 +9444,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -6893,11 +9490,11 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -6921,8 +9518,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -6955,11 +9552,11 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -6983,8 +9580,8 @@ export declare const GeneratePresentationOutlineResponse: zodV3.ZodIntersection<
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -7334,8 +9931,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
                 }>;
                 source: zodV3.ZodOptional<zodV3.ZodString>;
             }, "strip", zodV3.ZodTypeAny, {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7348,8 +9945,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
                 subtitle?: string | undefined;
                 source?: string | undefined;
             }, {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7366,8 +9963,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7391,8 +9988,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7437,11 +10034,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -7465,8 +10062,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7499,11 +10096,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             skipped?: number[] | undefined;
         } | null | undefined;
     }, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -7527,8 +10124,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7587,11 +10184,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "failed" | "queued" | "running" | "succeeded";
+    status: "queued" | "running" | "failed" | "succeeded";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
@@ -7615,11 +10212,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -7643,8 +10240,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -7683,11 +10280,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
         };
     }) | null | undefined;
 }, {
-    status: "failed" | "queued" | "running" | "succeeded";
+    status: "queued" | "running" | "failed" | "succeeded";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
@@ -7711,11 +10308,11 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -7739,8 +10336,8 @@ export declare const EnqueuePresentationOutlineResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8002,8 +10599,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
                 }>;
                 source: zodV3.ZodOptional<zodV3.ZodString>;
             }, "strip", zodV3.ZodTypeAny, {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8016,8 +10613,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
                 subtitle?: string | undefined;
                 source?: string | undefined;
             }, {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8034,8 +10631,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8059,8 +10656,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8105,11 +10702,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8133,8 +10730,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8167,11 +10764,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             skipped?: number[] | undefined;
         } | null | undefined;
     }, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8195,8 +10792,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8255,11 +10852,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "failed" | "queued" | "running" | "succeeded";
+    status: "queued" | "running" | "failed" | "succeeded";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
@@ -8283,11 +10880,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8311,8 +10908,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8351,11 +10948,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
         };
     }) | null | undefined;
 }, {
-    status: "failed" | "queued" | "running" | "succeeded";
+    status: "queued" | "running" | "failed" | "succeeded";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
@@ -8379,11 +10976,11 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8407,8 +11004,8 @@ export declare const GetPresentationOutlineJobResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8670,8 +11267,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
                 }>;
                 source: zodV3.ZodOptional<zodV3.ZodString>;
             }, "strip", zodV3.ZodTypeAny, {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8684,8 +11281,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
                 subtitle?: string | undefined;
                 source?: string | undefined;
             }, {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8702,8 +11299,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8727,8 +11324,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8773,11 +11370,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8801,8 +11398,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8835,11 +11432,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             skipped?: number[] | undefined;
         } | null | undefined;
     }, {
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8863,8 +11460,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -8923,11 +11520,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "failed" | "queued" | "running" | "succeeded";
+    status: "queued" | "running" | "failed" | "succeeded";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
@@ -8951,11 +11548,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -8979,8 +11576,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -9019,11 +11616,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
         };
     }) | null | undefined;
 }, {
-    status: "failed" | "queued" | "running" | "succeeded";
+    status: "queued" | "running" | "failed" | "succeeded";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     idempotencyKey: string;
     request: {
         language: "ar" | "en";
@@ -9047,11 +11644,11 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
     attempts: number;
     errorMessage?: string | null | undefined;
     result?: ({
-        status: "draft" | "outline_ready" | "building" | "built" | "failed";
+        status: "draft" | "failed" | "outline_ready" | "building" | "built";
         id: number;
-        createdAt: Date;
         teacherId: number;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
             language: "ar" | "en";
             topic: string;
@@ -9075,8 +11672,8 @@ export declare const GetPresentationOutlineJobByKeyResponse: zodV3.ZodObject<{
             language: "ar" | "en";
             density: "minimal" | "balanced" | "detailed";
             slides: {
-                kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
                 title: string;
+                kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
                 index: number;
                 purpose: string;
                 talkingPoints: string[];
@@ -9156,14 +11753,14 @@ export declare const BuildPresentationFromDraftResponse: zodV3.ZodObject<{
     presentationId: number;
     warnings: string[];
     alreadyBuilt: boolean;
-    skipped?: number[] | undefined;
     cancelled?: boolean | undefined;
+    skipped?: number[] | undefined;
 }, {
     presentationId: number;
     warnings: string[];
     alreadyBuilt: boolean;
-    skipped?: number[] | undefined;
     cancelled?: boolean | undefined;
+    skipped?: number[] | undefined;
 }>;
 /**
  * Server-Sent Events feed: emits `progress` events on each
@@ -9346,8 +11943,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9360,8 +11957,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9378,8 +11975,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9403,8 +12000,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9449,11 +12046,11 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -9477,8 +12074,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9511,11 +12108,11 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -9539,8 +12136,8 @@ export declare const ListPresentationDraftsResponseItem: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9683,8 +12280,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9697,8 +12294,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9715,8 +12312,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9740,8 +12337,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9786,11 +12383,11 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -9814,8 +12411,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -9848,11 +12445,11 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -9876,8 +12473,8 @@ export declare const ListPresentationDraftsResponse: zodV3.ZodArray<zodV3.ZodObj
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10056,8 +12653,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10070,8 +12667,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10088,8 +12685,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10113,8 +12710,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10159,11 +12756,11 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -10187,8 +12784,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10221,11 +12818,11 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -10249,8 +12846,8 @@ export declare const GetPresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10354,8 +12951,8 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10368,8 +12965,8 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10386,8 +12983,8 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10411,8 +13008,8 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10440,8 +13037,8 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10468,8 +13065,8 @@ export declare const UpdatePresentationDraftBody: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10627,8 +13224,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
             }>;
             source: zodV3.ZodOptional<zodV3.ZodString>;
         }, "strip", zodV3.ZodTypeAny, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10641,8 +13238,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
             subtitle?: string | undefined;
             source?: string | undefined;
         }, {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10659,8 +13256,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10684,8 +13281,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10730,11 +13327,11 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -10758,8 +13355,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10792,11 +13389,11 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         skipped?: number[] | undefined;
     } | null | undefined;
 }, {
-    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    status: "draft" | "failed" | "outline_ready" | "building" | "built";
     id: number;
-    createdAt: Date;
     teacherId: number;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
         language: "ar" | "en";
         topic: string;
@@ -10820,8 +13417,8 @@ export declare const UpdatePresentationDraftResponse: zodV3.ZodObject<{
         language: "ar" | "en";
         density: "minimal" | "balanced" | "detailed";
         slides: {
-            kind: "steps" | "title" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "quote" | "callout";
             title: string;
+            kind: "title" | "quote" | "steps" | "interactive" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "timeline" | "formula" | "stat" | "callout";
             index: number;
             purpose: string;
             talkingPoints: string[];
@@ -10936,9 +13533,9 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
             captions: zodV3.ZodBoolean;
             idempotencyKey: zodV3.ZodString;
         }, "strip", zodV3.ZodTypeAny, {
+            title: string;
             language: "ar" | "en";
             topic: string;
-            title: string;
             durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
@@ -10950,9 +13547,9 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
             prompt?: string | undefined;
             sourceImages?: string[] | undefined;
         }, {
+            title: string;
             language: "ar" | "en";
             topic: string;
-            title: string;
             durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11134,14 +13731,14 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
     }, "strip", zodV3.ZodTypeAny, {
         status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
-        title: string;
-        createdAt: Date;
         teacherId: number;
+        title: string;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
+            title: string;
             language: "ar" | "en";
             topic: string;
-            title: string;
             durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11195,14 +13792,14 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
     }, {
         status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
-        title: string;
-        createdAt: Date;
         teacherId: number;
+        title: string;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
+            title: string;
             language: "ar" | "en";
             topic: string;
-            title: string;
             durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11258,14 +13855,14 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
     projects: {
         status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
-        title: string;
-        createdAt: Date;
         teacherId: number;
+        title: string;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
+            title: string;
             language: "ar" | "en";
             topic: string;
-            title: string;
             durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11321,14 +13918,14 @@ export declare const ListAiVideoProjectsResponse: zodV3.ZodObject<{
     projects: {
         status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
         id: number;
-        title: string;
-        createdAt: Date;
         teacherId: number;
+        title: string;
         updatedAt: Date;
+        createdAt: Date;
         brief: {
+            title: string;
             language: "ar" | "en";
             topic: string;
-            title: string;
             durationSeconds: 90 | 60 | 30;
             idempotencyKey: string;
             aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11460,9 +14057,9 @@ export declare const CreateAiVideoStoryboardBody: zodV3.ZodObject<{
     captions: zodV3.ZodBoolean;
     idempotencyKey: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
+    title: string;
     language: "ar" | "en";
     topic: string;
-    title: string;
     durationSeconds: 90 | 60 | 30;
     idempotencyKey: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11474,9 +14071,9 @@ export declare const CreateAiVideoStoryboardBody: zodV3.ZodObject<{
     prompt?: string | undefined;
     sourceImages?: string[] | undefined;
 }, {
+    title: string;
     language: "ar" | "en";
     topic: string;
-    title: string;
     durationSeconds: 90 | 60 | 30;
     idempotencyKey: string;
     aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11555,9 +14152,9 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11569,9 +14166,9 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
         prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11753,14 +14350,14 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11814,14 +14411,14 @@ export declare const CreateAiVideoStoryboardResponse: zodV3.ZodObject<{
 }, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11950,9 +14547,9 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -11964,9 +14561,9 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
         prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -12148,14 +14745,14 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -12209,14 +14806,14 @@ export declare const GetAiVideoProjectResponse: zodV3.ZodObject<{
 }, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -12615,9 +15212,9 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -12629,9 +15226,9 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
         prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -12813,14 +15410,14 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -12874,14 +15471,14 @@ export declare const UpdateAiVideoProjectResponse: zodV3.ZodObject<{
 }, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13043,9 +15640,9 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13057,9 +15654,9 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
         prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13241,14 +15838,14 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13302,14 +15899,14 @@ export declare const RenderAiVideoProjectResponse: zodV3.ZodObject<{
 }, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13530,9 +16127,9 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
         captions: zodV3.ZodBoolean;
         idempotencyKey: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13544,9 +16141,9 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
         prompt?: string | undefined;
         sourceImages?: string[] | undefined;
     }, {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13728,14 +16325,14 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13789,14 +16386,14 @@ export declare const RetryAiVideoProjectRenderResponse: zodV3.ZodObject<{
 }, {
     status: "draft" | "failed" | "storyboard_ready" | "rendering" | "ready";
     id: number;
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    createdAt: Date;
     brief: {
+        title: string;
         language: "ar" | "en";
         topic: string;
-        title: string;
         durationSeconds: 90 | 60 | 30;
         idempotencyKey: string;
         aspectRatio: "16:9" | "9:16" | "1:1";
@@ -13880,11 +16477,11 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -13898,11 +16495,11 @@ export declare const ListTeacherScheduleResponseItem: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -13935,11 +16532,11 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -13953,11 +16550,11 @@ export declare const ListTeacherScheduleResponse: zodV3.ZodArray<zodV3.ZodObject
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14014,8 +16611,8 @@ export declare const CreateTeacherScheduleEntryBody: zodV3.ZodObject<{
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
-    kind: "weekly" | "appointment" | "break";
     title: string;
+    kind: "weekly" | "appointment" | "break";
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14071,11 +16668,11 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14089,11 +16686,11 @@ export declare const CreateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14374,11 +16971,11 @@ export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14392,11 +16989,11 @@ export declare const BulkCreateTeacherScheduleResponseItem: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14429,11 +17026,11 @@ export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.Zod
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14447,11 +17044,11 @@ export declare const BulkCreateTeacherScheduleResponse: zodV3.ZodArray<zodV3.Zod
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14506,8 +17103,8 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     startTime: zodV3.ZodString;
     endTime: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
 }, "strip", zodV3.ZodTypeAny, {
-    kind: "weekly" | "appointment" | "break";
     title: string;
+    kind: "weekly" | "appointment" | "break";
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14538,12 +17135,12 @@ export declare const UpdateTeacherScheduleEntryBody: zodV3.ZodIntersection<zodV3
     title: zodV3.ZodString;
     startTime: zodV3.ZodString;
 }, "strip", zodV3.ZodTypeAny, {
-    kind: "weekly" | "appointment" | "break";
     title: string;
+    kind: "weekly" | "appointment" | "break";
     startTime: string;
 }, {
-    kind: "weekly" | "appointment" | "break";
     title: string;
+    kind: "weekly" | "appointment" | "break";
     startTime: string;
 }>>;
 export declare const updateTeacherScheduleEntryResponseColorRegExp: RegExp;
@@ -14575,11 +17172,11 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -14593,11 +17190,11 @@ export declare const UpdateTeacherScheduleEntryResponse: zodV3.ZodObject<{
     appointmentDate?: string | null | undefined;
 }, {
     id: number;
-    kind: "weekly" | "appointment" | "break";
-    title: string;
-    createdAt: Date;
     teacherId: number;
+    title: string;
     updatedAt: Date;
+    kind: "weekly" | "appointment" | "break";
+    createdAt: Date;
     startTime: string;
     subject?: string | null | undefined;
     notes?: string | null | undefined;
@@ -15427,13 +18024,13 @@ export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }>, "many">;
@@ -15443,8 +18040,8 @@ export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15454,8 +18051,8 @@ export declare const ListQuranCirclesResponseItem: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15471,13 +18068,13 @@ export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }>, "many">;
@@ -15487,8 +18084,8 @@ export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15498,8 +18095,8 @@ export declare const ListQuranCirclesResponse: zodV3.ZodArray<zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15534,13 +18131,13 @@ export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }>, "many">;
@@ -15550,8 +18147,8 @@ export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15561,8 +18158,8 @@ export declare const CreateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15588,13 +18185,13 @@ export declare const GetQuranCircleResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }>, "many">;
@@ -15604,8 +18201,8 @@ export declare const GetQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15615,8 +18212,8 @@ export declare const GetQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15658,13 +18255,13 @@ export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }>, "many">;
@@ -15674,8 +18271,8 @@ export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15685,8 +18282,8 @@ export declare const UpdateQuranCircleResponse: zodV3.ZodObject<{
     notes: string | null;
     teacherClassId: number | null;
     members: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }[];
@@ -15700,13 +18297,13 @@ export declare const ListQuranStudentsResponseItem: zodV3.ZodObject<{
     gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
     studentClass: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    gradeLevel: string | null;
     id: number;
+    gradeLevel: string | null;
     name: string;
     studentClass: string | null;
 }, {
-    gradeLevel: string | null;
     id: number;
+    gradeLevel: string | null;
     name: string;
     studentClass: string | null;
 }>;
@@ -15716,13 +18313,13 @@ export declare const ListQuranStudentsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
     studentClass: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    gradeLevel: string | null;
     id: number;
+    gradeLevel: string | null;
     name: string;
     studentClass: string | null;
 }, {
-    gradeLevel: string | null;
     id: number;
+    gradeLevel: string | null;
     name: string;
     studentClass: string | null;
 }>, "many">;
@@ -15756,13 +18353,13 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         gradeLevel: zodV3.ZodNullable<zodV3.ZodString>;
         studentClass: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }, {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     }>;
@@ -15799,7 +18396,7 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
         assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -15812,7 +18409,7 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         dueDate: string | null;
         assignmentRequestId: string | null;
     }, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -15858,8 +18455,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     student: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     };
@@ -15871,7 +18468,7 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     wards: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -15897,8 +18494,8 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
     }[];
 }, {
     student: {
-        gradeLevel: string | null;
         id: number;
+        gradeLevel: string | null;
         name: string;
         studentClass: string | null;
     };
@@ -15910,7 +18507,7 @@ export declare const GetQuranStudentSummaryResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     wards: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16015,7 +18612,7 @@ export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16028,7 +18625,7 @@ export declare const ListQuranStudentWardsResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16055,7 +18652,7 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16068,7 +18665,7 @@ export declare const ListQuranStudentWardsResponse: zodV3.ZodArray<zodV3.ZodObje
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16101,7 +18698,7 @@ export declare const ListMyQuranWardsResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16114,7 +18711,7 @@ export declare const ListMyQuranWardsResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16141,7 +18738,7 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16154,7 +18751,7 @@ export declare const ListMyQuranWardsResponse: zodV3.ZodArray<zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16231,7 +18828,7 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         dueDate: zodV3.ZodNullable<zodV3.ZodString>;
         status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -16241,7 +18838,7 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         assignedDate: string;
         dueDate: string | null;
     }, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -16295,8 +18892,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
         recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: string;
         type: "submission" | "recitation";
+        status: string;
         date: string;
         surahName: string;
         startAyah: number;
@@ -16305,8 +18902,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: number | null;
         recitationScore: number | null;
     }, {
-        status: string;
         type: "submission" | "recitation";
+        status: string;
         date: string;
         surahName: string;
         startAyah: number;
@@ -16367,7 +18964,7 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     nextWard: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -16383,8 +18980,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     };
     activeDates: string[];
     recentActivities: {
-        status: string;
         type: "submission" | "recitation";
+        status: string;
         date: string;
         surahName: string;
         startAyah: number;
@@ -16419,7 +19016,7 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         lastRecitedDate: string | null;
     };
     nextWard: {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         mode: "review" | "memorization" | "recitation" | "assessment";
         surahNumber: number;
@@ -16435,8 +19032,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     };
     activeDates: string[];
     recentActivities: {
-        status: string;
         type: "submission" | "recitation";
+        status: string;
         date: string;
         surahName: string;
         startAyah: number;
@@ -16543,7 +19140,7 @@ export declare const GetMyQuranWardResponse: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16556,7 +19153,7 @@ export declare const GetMyQuranWardResponse: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16676,7 +19273,7 @@ export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16689,7 +19286,7 @@ export declare const AssignQuranStudentTaskResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16716,7 +19313,7 @@ export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObj
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16729,7 +19326,7 @@ export declare const AssignQuranStudentTaskResponse: zodV3.ZodArray<zodV3.ZodObj
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16767,7 +19364,7 @@ export declare const CreateQuranWardBody: zodV3.ZodObject<{
     startAyah: number;
     endAyah: number;
     assignedDate: string;
-    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    status?: "completed" | "assigned" | "in_progress" | "needs_review" | undefined;
     notes?: string | null | undefined;
     dueDate?: string | null | undefined;
 }, {
@@ -16778,7 +19375,7 @@ export declare const CreateQuranWardBody: zodV3.ZodObject<{
     startAyah: number;
     endAyah: number;
     assignedDate: string;
-    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    status?: "completed" | "assigned" | "in_progress" | "needs_review" | undefined;
     notes?: string | null | undefined;
     dueDate?: string | null | undefined;
 }>;
@@ -16799,7 +19396,7 @@ export declare const CreateQuranWardResponse: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16812,7 +19409,7 @@ export declare const CreateQuranWardResponse: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16932,7 +19529,7 @@ export declare const AssignQuranCircleTaskResponseItem: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16945,7 +19542,7 @@ export declare const AssignQuranCircleTaskResponseItem: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16972,7 +19569,7 @@ export declare const AssignQuranCircleTaskResponse: zodV3.ZodArray<zodV3.ZodObje
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -16985,7 +19582,7 @@ export declare const AssignQuranCircleTaskResponse: zodV3.ZodArray<zodV3.ZodObje
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17022,7 +19619,7 @@ export declare const UpdateQuranWardBody: zodV3.ZodObject<{
     notes: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     status: zodV3.ZodOptional<zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>>;
 }, "strip", zodV3.ZodTypeAny, {
-    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    status?: "completed" | "assigned" | "in_progress" | "needs_review" | undefined;
     notes?: string | null | undefined;
     mode?: "review" | "memorization" | "recitation" | "assessment" | undefined;
     surahNumber?: number | undefined;
@@ -17032,7 +19629,7 @@ export declare const UpdateQuranWardBody: zodV3.ZodObject<{
     assignedDate?: string | undefined;
     dueDate?: string | null | undefined;
 }, {
-    status?: "assigned" | "in_progress" | "completed" | "needs_review" | undefined;
+    status?: "completed" | "assigned" | "in_progress" | "needs_review" | undefined;
     notes?: string | null | undefined;
     mode?: "review" | "memorization" | "recitation" | "assessment" | undefined;
     surahNumber?: number | undefined;
@@ -17059,7 +19656,7 @@ export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17072,7 +19669,7 @@ export declare const UpdateQuranWardResponse: zodV3.ZodObject<{
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17258,7 +19855,7 @@ export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17271,7 +19868,7 @@ export declare const GetQuranReviewQueueResponseItem: zodV3.ZodIntersection<zodV
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17304,7 +19901,7 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
     status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
     assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17317,7 +19914,7 @@ export declare const GetQuranReviewQueueResponse: zodV3.ZodArray<zodV3.ZodInters
     dueDate: string | null;
     assignmentRequestId: string | null;
 }, {
-    status: "assigned" | "in_progress" | "completed" | "needs_review";
+    status: "completed" | "assigned" | "in_progress" | "needs_review";
     id: number;
     notes: string | null;
     mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17391,8 +19988,8 @@ export declare const ListMyQuranSubmissionsResponseItem: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17404,8 +20001,8 @@ export declare const ListMyQuranSubmissionsResponseItem: zodV3.ZodObject<{
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17431,8 +20028,8 @@ export declare const ListMyQuranSubmissionsResponse: zodV3.ZodArray<zodV3.ZodObj
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17444,8 +20041,8 @@ export declare const ListMyQuranSubmissionsResponse: zodV3.ZodArray<zodV3.ZodObj
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17495,8 +20092,8 @@ export declare const FinalizeQuranSubmissionResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17508,8 +20105,8 @@ export declare const FinalizeQuranSubmissionResponse: zodV3.ZodObject<{
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17550,8 +20147,8 @@ export declare const GetMyQuranSubmissionResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17563,8 +20160,8 @@ export declare const GetMyQuranSubmissionResponse: zodV3.ZodObject<{
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17598,8 +20195,8 @@ export declare const ListQuranSubmissionReviewQueueResponseItem: zodV3.ZodInters
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17611,8 +20208,8 @@ export declare const ListQuranSubmissionReviewQueueResponseItem: zodV3.ZodInters
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17656,8 +20253,8 @@ export declare const ListQuranSubmissionReviewQueueResponse: zodV3.ZodArray<zodV
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17669,8 +20266,8 @@ export declare const ListQuranSubmissionReviewQueueResponse: zodV3.ZodArray<zodV
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17774,8 +20371,8 @@ export declare const ReviewQuranSubmissionResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17787,8 +20384,8 @@ export declare const ReviewQuranSubmissionResponse: zodV3.ZodObject<{
 }, {
     status: "submitted" | "reviewed" | "needs_resubmission";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     feedback: string | null;
     contentType: string;
     studentId: number;
@@ -17825,7 +20422,7 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         status: zodV3.ZodEnum<["assigned", "in_progress", "completed", "needs_review"]>;
         assignmentRequestId: zodV3.ZodNullable<zodV3.ZodString>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17838,7 +20435,7 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
         dueDate: string | null;
         assignmentRequestId: string | null;
     }, {
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17890,7 +20487,7 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
     }>, "many">;
 }, "strip", zodV3.ZodTypeAny, {
     dueWards: ({
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17918,7 +20515,7 @@ export declare const GetQuranTodayDashboardResponse: zodV3.ZodObject<{
     }[];
 }, {
     dueWards: ({
-        status: "assigned" | "in_progress" | "completed" | "needs_review";
+        status: "completed" | "assigned" | "in_progress" | "needs_review";
         id: number;
         notes: string | null;
         mode: "review" | "memorization" | "recitation" | "assessment";
@@ -17977,15 +20574,15 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         createdAt: zodV3.ZodDate;
         updatedAt: zodV3.ZodDate;
     }, "strip", zodV3.ZodTypeAny, {
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
         category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
     }, {
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
@@ -18000,8 +20597,8 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         revision: number;
     } | null;
     bookmarks: {
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
@@ -18016,8 +20613,8 @@ export declare const GetQuranReaderStateResponse: zodV3.ZodObject<{
         revision: number;
     } | null;
     bookmarks: {
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         pageNumber: number;
         surahNumber: number;
         ayahNumber: number;
@@ -18093,15 +20690,15 @@ export declare const AddQuranBookmarkResponse: zodV3.ZodObject<{
     createdAt: zodV3.ZodDate;
     updatedAt: zodV3.ZodDate;
 }, "strip", zodV3.ZodTypeAny, {
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
     category: "review" | "stopped_here" | "similar" | "repeated_mistake" | "ask_teacher";
 }, {
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     pageNumber: number;
     surahNumber: number;
     ayahNumber: number;
@@ -18135,8 +20732,8 @@ export declare const GetMyQuranMemorizationResponseItem: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18145,8 +20742,8 @@ export declare const GetMyQuranMemorizationResponseItem: zodV3.ZodObject<{
 }, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18166,8 +20763,8 @@ export declare const GetMyQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodObj
 }, "strip", zodV3.ZodTypeAny, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18176,8 +20773,8 @@ export declare const GetMyQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodObj
 }, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18218,8 +20815,8 @@ export declare const AssessMyQuranMemorizationResponse: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18228,8 +20825,8 @@ export declare const AssessMyQuranMemorizationResponse: zodV3.ZodObject<{
 }, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18253,8 +20850,8 @@ export declare const GetDueQuranMemorizationResponseItem: zodV3.ZodObject<{
 }, "strip", zodV3.ZodTypeAny, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18263,8 +20860,8 @@ export declare const GetDueQuranMemorizationResponseItem: zodV3.ZodObject<{
 }, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18284,8 +20881,8 @@ export declare const GetDueQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodOb
 }, "strip", zodV3.ZodTypeAny, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18294,8 +20891,8 @@ export declare const GetDueQuranMemorizationResponse: zodV3.ZodArray<zodV3.ZodOb
 }, {
     status: "needs_review" | "learning" | "memorized";
     id: number;
-    createdAt: Date;
     updatedAt: Date;
+    createdAt: Date;
     surahNumber: number;
     ayahNumber: number;
     intervalDays: number;
@@ -18486,8 +21083,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
     }, "strip", zodV3.ZodTypeAny, {
         status: "needs_review" | "learning" | "memorized";
         id: number;
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         surahNumber: number;
         ayahNumber: number;
         intervalDays: number;
@@ -18496,8 +21093,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
     }, {
         status: "needs_review" | "learning" | "memorized";
         id: number;
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         surahNumber: number;
         ayahNumber: number;
         intervalDays: number;
@@ -18508,8 +21105,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
     items: {
         status: "needs_review" | "learning" | "memorized";
         id: number;
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         surahNumber: number;
         ayahNumber: number;
         intervalDays: number;
@@ -18527,8 +21124,8 @@ export declare const ListTeacherQuranMemorizationItemsResponse: zodV3.ZodObject<
     items: {
         status: "needs_review" | "learning" | "memorized";
         id: number;
-        createdAt: Date;
         updatedAt: Date;
+        createdAt: Date;
         surahNumber: number;
         ayahNumber: number;
         intervalDays: number;

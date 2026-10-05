@@ -1,10 +1,163 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminDirectoryPage, AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GameShareLink, GameShareLinkInput, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GetQuranOfflineContent200, GetQuranOfflineContentParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAdminDirectoryParams, ListAiVideoProjects200, ListAssignmentsParams, ListTeacherQuranMemorizationItemsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranRecitationPartialResponse, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, QuranWordTajweed, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherQuranMemorizationHistoryEvent, TeacherQuranMemorizationItems, TeacherQuranMemorizationStudent, TeacherQuranMemorizationSummary, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, TranscribeQuranRecitationPartialBody, TutorialLinks, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody, WorksheetActivityInput, WorksheetActivityResult, WorksheetActivitySourceInput, WorksheetPageRenderInput } from './api.schemas';
+import type { AdminDirectoryPage, AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AssistantAvailability, AssistantConfirmation, AssistantHistory, AssistantOperation, AssistantPreparation, AssistantWorksheetRequest, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GameShareLink, GameShareLinkInput, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GetQuranOfflineContent200, GetQuranOfflineContentParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAdminDirectoryParams, ListAiVideoProjects200, ListAssignmentsParams, ListTeacherQuranMemorizationItemsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranRecitationPartialResponse, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, QuranWordTajweed, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherQuranMemorizationHistoryEvent, TeacherQuranMemorizationItems, TeacherQuranMemorizationStudent, TeacherQuranMemorizationSummary, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, TranscribeQuranRecitationPartialBody, TutorialLinks, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody, WorksheetActivityInput, WorksheetActivityResult, WorksheetActivitySourceInput, WorksheetPageRenderInput } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+export declare const getListAssistantOperationsUrl: () => string;
+export declare const listAssistantOperations: (options?: Parameters<typeof customFetch>[1]) => Promise<AssistantHistory>;
+export declare const getListAssistantOperationsQueryKey: () => readonly ["/api/assistant/operations"];
+export declare const getListAssistantOperationsQueryOptions: <TData = Awaited<ReturnType<typeof listAssistantOperations>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listAssistantOperations>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listAssistantOperations>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListAssistantOperationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAssistantOperations>>>;
+export type ListAssistantOperationsQueryError = ErrorType<unknown>;
+export declare function useListAssistantOperations<TData = Awaited<ReturnType<typeof listAssistantOperations>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listAssistantOperations>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getPrepareAssistantWorksheetUrl: () => string;
+export declare const prepareAssistantWorksheet: (assistantPreparation: AssistantPreparation, options?: Parameters<typeof customFetch>[1]) => Promise<AssistantOperation>;
+export declare const getPrepareAssistantWorksheetMutationKey: () => readonly ["prepareAssistantWorksheet"];
+export declare const getPrepareAssistantWorksheetMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError, PrepareAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError, PrepareAssistantWorksheetMutationVariables, TContext>;
+export type PrepareAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof prepareAssistantWorksheet>>>;
+export type PrepareAssistantWorksheetMutationBody = BodyType<AssistantPreparation>;
+export type PrepareAssistantWorksheetMutationError = ErrorType<unknown>;
+export type PrepareAssistantWorksheetMutationVariables = {
+    data: BodyType<AssistantPreparation>;
+};
+export declare const usePrepareAssistantWorksheet: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError, PrepareAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError, PrepareAssistantWorksheetMutationVariables, TContext>;
+export declare const getGetAssistantOperationUrl: (id: string) => string;
+export declare const getAssistantOperation: (id: string, options?: Parameters<typeof customFetch>[1]) => Promise<AssistantOperation>;
+export declare const getGetAssistantOperationQueryKey: (id: string) => readonly [`/api/assistant/operations/${string}`];
+export declare const getGetAssistantOperationQueryOptions: <TData = Awaited<ReturnType<typeof getAssistantOperation>>, TError = ErrorType<unknown>>(id: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getAssistantOperation>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getAssistantOperation>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetAssistantOperationQueryResult = NonNullable<Awaited<ReturnType<typeof getAssistantOperation>>>;
+export type GetAssistantOperationQueryError = ErrorType<unknown>;
+export declare function useGetAssistantOperation<TData = Awaited<ReturnType<typeof getAssistantOperation>>, TError = ErrorType<unknown>>(id: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getAssistantOperation>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getHideAssistantOperationUrl: (id: string) => string;
+export declare const hideAssistantOperation: (id: string, options?: Parameters<typeof customFetch>[1]) => Promise<void>;
+export declare const getHideAssistantOperationMutationKey: () => readonly ["hideAssistantOperation"];
+export declare const getHideAssistantOperationMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof hideAssistantOperation>>, TError, HideAssistantOperationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof hideAssistantOperation>>, TError, HideAssistantOperationMutationVariables, TContext>;
+export type HideAssistantOperationMutationResult = NonNullable<Awaited<ReturnType<typeof hideAssistantOperation>>>;
+export type HideAssistantOperationMutationError = ErrorType<unknown>;
+export type HideAssistantOperationMutationVariables = {
+    id: string;
+};
+export declare const useHideAssistantOperation: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof hideAssistantOperation>>, TError, HideAssistantOperationMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof hideAssistantOperation>>, TError, HideAssistantOperationMutationVariables, TContext>;
+export declare const getQuoteAssistantWorksheetUrl: (id: string) => string;
+export declare const quoteAssistantWorksheet: (id: string, assistantWorksheetRequest: AssistantWorksheetRequest, options?: Parameters<typeof customFetch>[1]) => Promise<AssistantOperation>;
+export declare const getQuoteAssistantWorksheetMutationKey: () => readonly ["quoteAssistantWorksheet"];
+export declare const getQuoteAssistantWorksheetMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError, QuoteAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError, QuoteAssistantWorksheetMutationVariables, TContext>;
+export type QuoteAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof quoteAssistantWorksheet>>>;
+export type QuoteAssistantWorksheetMutationBody = BodyType<AssistantWorksheetRequest>;
+export type QuoteAssistantWorksheetMutationError = ErrorType<unknown>;
+export type QuoteAssistantWorksheetMutationVariables = {
+    id: string;
+    data: BodyType<AssistantWorksheetRequest>;
+};
+export declare const useQuoteAssistantWorksheet: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError, QuoteAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError, QuoteAssistantWorksheetMutationVariables, TContext>;
+export declare const getConfirmAssistantWorksheetUrl: (id: string) => string;
+export declare const confirmAssistantWorksheet: (id: string, assistantConfirmation: AssistantConfirmation, options?: Parameters<typeof customFetch>[1]) => Promise<AssistantOperation>;
+export declare const getConfirmAssistantWorksheetMutationKey: () => readonly ["confirmAssistantWorksheet"];
+export declare const getConfirmAssistantWorksheetMutationOptions: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError, ConfirmAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError, ConfirmAssistantWorksheetMutationVariables, TContext>;
+export type ConfirmAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAssistantWorksheet>>>;
+export type ConfirmAssistantWorksheetMutationBody = BodyType<AssistantConfirmation>;
+export type ConfirmAssistantWorksheetMutationError = ErrorType<void>;
+export type ConfirmAssistantWorksheetMutationVariables = {
+    id: string;
+    data: BodyType<AssistantConfirmation>;
+};
+export declare const useConfirmAssistantWorksheet: <TError = ErrorType<void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError, ConfirmAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError, ConfirmAssistantWorksheetMutationVariables, TContext>;
+export declare const getCancelAssistantWorksheetUrl: (id: string) => string;
+export declare const cancelAssistantWorksheet: (id: string, options?: Parameters<typeof customFetch>[1]) => Promise<AssistantOperation>;
+export declare const getCancelAssistantWorksheetMutationKey: () => readonly ["cancelAssistantWorksheet"];
+export declare const getCancelAssistantWorksheetMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError, CancelAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError, CancelAssistantWorksheetMutationVariables, TContext>;
+export type CancelAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAssistantWorksheet>>>;
+export type CancelAssistantWorksheetMutationError = ErrorType<unknown>;
+export type CancelAssistantWorksheetMutationVariables = {
+    id: string;
+};
+export declare const useCancelAssistantWorksheet: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError, CancelAssistantWorksheetMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError, CancelAssistantWorksheetMutationVariables, TContext>;
+export declare const getListAdminAssistantOperationsUrl: () => string;
+export declare const listAdminAssistantOperations: (options?: Parameters<typeof customFetch>[1]) => Promise<AssistantHistory>;
+export declare const getListAdminAssistantOperationsQueryKey: () => readonly ["/api/assistant/admin/operations"];
+export declare const getListAdminAssistantOperationsQueryOptions: <TData = Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListAdminAssistantOperationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAssistantOperations>>>;
+export type ListAdminAssistantOperationsQueryError = ErrorType<unknown>;
+export declare function useListAdminAssistantOperations<TData = Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getUpdateAssistantAvailabilityUrl: () => string;
+export declare const updateAssistantAvailability: (assistantAvailability: AssistantAvailability, options?: Parameters<typeof customFetch>[1]) => Promise<AssistantAvailability>;
+export declare const getUpdateAssistantAvailabilityMutationKey: () => readonly ["updateAssistantAvailability"];
+export declare const getUpdateAssistantAvailabilityMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError, UpdateAssistantAvailabilityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError, UpdateAssistantAvailabilityMutationVariables, TContext>;
+export type UpdateAssistantAvailabilityMutationResult = NonNullable<Awaited<ReturnType<typeof updateAssistantAvailability>>>;
+export type UpdateAssistantAvailabilityMutationBody = BodyType<AssistantAvailability>;
+export type UpdateAssistantAvailabilityMutationError = ErrorType<unknown>;
+export type UpdateAssistantAvailabilityMutationVariables = {
+    data: BodyType<AssistantAvailability>;
+};
+export declare const useUpdateAssistantAvailability: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError, UpdateAssistantAvailabilityMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError, UpdateAssistantAvailabilityMutationVariables, TContext>;
 export declare const getGenerateWorksheetActivityUrl: () => string;
 /**
  * @summary Generate a printable worksheet honoring explicit teacher constraints

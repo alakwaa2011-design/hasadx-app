@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import {
   Bot,
@@ -19,6 +19,8 @@ import {
   isInsufficientCreditsResponse,
 } from "@/lib/credit-aware-fetch";
 import { getSocket } from "@/lib/socket";
+import * as Dialog from "@radix-ui/react-dialog";
+import { AssistantCreate } from "@/components/assistant/assistant-create";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const STORAGE_MINIMIZED = "hasad-guide-launcher-minimized";
@@ -60,11 +62,14 @@ function hasDailyCap(u: UsageInfo | null): u is UsageInfo & { limit: number; rem
 function copy(lang: string) {
   const isAr = lang === "ar";
   return {
-    brand: isAr ? "مرشد حصاد" : "Hasaad Guide",
-    tagline: isAr ? "مساعد العمل الذكي" : "Your workspace AI companion",
-    openLauncher: isAr ? "فتح مرشد حصاد" : "Open Hasaad Guide",
+    brand: isAr ? "مساعد حصاد" : "Hasaad Assistant",
+    tagline: isAr ? "اسأل أو أنشئ محتوى" : "Ask or create",
+    modeAsk: isAr ? "اسأل عن حصاد" : "Ask about Hasaad",
+    modeCreate: isAr ? "إنشاء محتوى" : "Create content",
+    switchToCreate: isAr ? "تحويل إلى إنشاء المحتوى" : "Switch to Create content",
+    openLauncher: isAr ? "فتح مساعد حصاد" : "Open Hasaad Assistant",
     hideLauncher: isAr ? "إخفاء شريط المساعد" : "Hide assistant bar",
-    restore: isAr ? "إظهار المرشد" : "Show Hasaad Guide",
+    restore: isAr ? "إظهار المساعد" : "Show Hasaad Assistant",
     history: isAr ? "السجل" : "History",
     newChat: isAr ? "محادثة جديدة" : "New chat",
     close: isAr ? "إغلاق" : "Close",
@@ -94,13 +99,17 @@ function copy(lang: string) {
   };
 }
 
-export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string }) {
+export function AiAssistant({ enabled, lang, teacherId = null }: { enabled: boolean; lang: string; teacherId?: number | null }) {
   const isAr = lang === "ar";
   const t = copy(lang);
   const search = useSearch();
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"guide" | "create">("guide");
+  const [createSeed, setCreateSeed] = useState("");
+  const clearSeed = useCallback(() => setCreateSeed(""), []);
+  const lastTeacherRef = useRef<number | null>(teacherId);
   const [launcherMinimized, setLauncherMinimized] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -153,9 +162,30 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     const id = Number(new URLSearchParams(search).get("guideConversation"));
     if (!Number.isSafeInteger(id) || id <= 0 || openedDeepLinkRef.current === id) return;
     openedDeepLinkRef.current = id;
+    setMode("guide");
     setOpen(true);
     loadConversation(id);
   }, [enabled, search]);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const m = (e as CustomEvent<{ mode?: string }>).detail?.mode;
+      setMode(m === "create" ? "create" : "guide");
+      setLauncherMinimized(false);
+      setOpen(true);
+    };
+    window.addEventListener("hasaad-assistant:open", onOpen);
+    return () => window.removeEventListener("hasaad-assistant:open", onOpen);
+  }, []);
+
+  // Account switch: drop guide state so nothing leaks between teachers.
+  useEffect(() => {
+    if (lastTeacherRef.current === teacherId) return;
+    lastTeacherRef.current = teacherId;
+    setOpen(false); setMode("guide"); setConversationId(null); setMessages([]); setConversations([]);
+    setSupportStatus("ai"); setInput(""); setError(null); setCreateSeed("");
+    openedDeepLinkRef.current = null;
+  }, [teacherId]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -255,6 +285,20 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
     setError(null);
   }
 
+  function switchToCreate() {
+    // Carry only the typed request, never the support transcript.
+    setCreateSeed(input.trim());
+    setInput("");
+    setMode("create");
+  }
+
+  function askGuideAbout(text: string) {
+    // New Guide thread containing only the operation id/error.
+    newChat();
+    setInput(text);
+    setMode("guide");
+  }
+
   async function send() {
     const text = input.trim();
     if (!text || sending) return;
@@ -341,7 +385,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
           `<Layout>`. Do not also mount inside layouts. */}
       {/* Compact pill launcher — green / white only, low visual weight */}
       {!launcherMinimized && (
-        <div className="fixed bottom-4 end-3 z-40 pointer-events-none [&>*]:pointer-events-auto">
+        <div className="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] sm:bottom-4 end-3 z-40 pointer-events-none [&>*]:pointer-events-auto">
           {/* على الهاتف: دائرة صغيرة فقط — على الشاشة الكبيرة: الزر الكامل */}
 
           {/* دائرة الهاتف */}
@@ -400,7 +444,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
         <button
           type="button"
           onClick={restoreLauncher}
-          className="fixed bottom-3 end-3 z-40 inline-flex items-center gap-1.5 rounded-full border border-[#1f5a3e]/20 bg-background/90 backdrop-blur-sm px-2.5 py-1 text-[10px] sm:text-[11px] font-medium text-muted-foreground shadow-sm hover:border-[#1f5a3e]/35 hover:text-foreground transition-colors"
+          className="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] sm:bottom-3 end-3 z-40 inline-flex items-center gap-1.5 rounded-full border border-[#1f5a3e]/20 bg-background/90 backdrop-blur-sm px-2.5 py-1 text-[10px] sm:text-[11px] font-medium text-muted-foreground shadow-sm hover:border-[#1f5a3e]/35 hover:text-foreground transition-colors"
           aria-label={t.restore}
           title={t.restore}
         >
@@ -409,16 +453,15 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
         </button>
       )}
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={() => setOpen(false)}
-          dir={isAr ? "rtl" : "ltr"}
-        >
-          <div
-            className="w-full sm:max-w-lg h-[86vh] sm:h-[70vh] bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+      <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+          <Dialog.Content
+            dir={isAr ? "rtl" : "ltr"}
+            aria-describedby={undefined}
+            className="fixed z-50 inset-x-0 bottom-0 sm:inset-auto sm:start-1/2 sm:top-1/2 sm:-translate-y-1/2 sm:-translate-x-1/2 rtl:sm:translate-x-1/2 w-full sm:max-w-lg h-[86dvh] sm:h-[72dvh] bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden focus:outline-none"
           >
+            <Dialog.Title className="sr-only">{t.brand} / Hasaad Assistant</Dialog.Title>
             <div
               className="flex items-center justify-between gap-2 px-3 py-2 border-b border-white/10 text-white shrink-0"
               style={{ background: GUIDE_GREEN }}
@@ -431,7 +474,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                   <div className="font-semibold text-xs leading-tight truncate text-white/95">
                     {t.brand}
                   </div>
-                  {hasDailyCap(usage) && (
+                  {mode === "guide" && hasDailyCap(usage) && (
                     <div className="text-[10px] text-white/60 truncate">
                       {t.usageLine(usage.remaining, usage.limit)}
                     </div>
@@ -439,14 +482,14 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                 </div>
               </div>
               <div className="flex items-center gap-0.5 shrink-0">
-                <button
+                {mode === "guide" && <button
                   type="button"
                   onClick={() => setShowHistory((s) => !s)}
                   className="px-2 py-1 text-[11px] rounded-md hover:bg-white/10 transition-colors text-white/90"
                 >
                   {t.history}
-                </button>
-                <button
+                </button>}
+                {mode === "guide" && <button
                   type="button"
                   onClick={newChat}
                   className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-white/90"
@@ -454,7 +497,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                   aria-label={t.newChat}
                 >
                   <Plus className="w-4 h-4" />
-                </button>
+                </button>}
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -466,7 +509,19 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
               </div>
             </div>
 
-            {showHistory ? (
+            <div role="tablist" className="flex gap-1 border-b border-border bg-muted/40 px-3 py-1.5 shrink-0">
+              {(["guide", "create"] as const).map((m) => (
+                <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+                  className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-colors ${mode === m ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  data-testid={`tab-assistant-${m}`}>
+                  {m === "guide" ? t.modeAsk : t.modeCreate}
+                </button>
+              ))}
+            </div>
+
+            {mode === "create" ? (
+              <AssistantCreate lang={lang} teacherId={teacherId} seed={createSeed} onSeedUsed={clearSeed} onAskGuide={askGuideAbout} onNavigate={() => setOpen(false)} />
+            ) : showHistory ? (
               <div className="flex-1 overflow-y-auto p-3 space-y-1">
                 {conversations.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-12">{t.noHistory}</div>
@@ -558,7 +613,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
               </div>
             )}
 
-            {!showHistory && (
+            {mode === "guide" && !showHistory && (
               <div className="border-t border-border p-3 shrink-0 bg-background/95 backdrop-blur-sm">
                 {conversationId && supportStatus === "ai" && messages.length > 0 && (
                   <div className="mb-2 flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2">
@@ -589,6 +644,11 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                       </span>
                     )}
                   </div>
+                )}
+                {supportStatus === "ai" && input.trim().length > 1 && /(ورقة عمل|اصنع|أنشئ|انشئ|اعمل|create|generate|make a|worksheet)/i.test(input) && (
+                  <button type="button" onClick={switchToCreate} className="mb-2 w-full rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-bold text-primary" data-testid="button-guide-switch-create">
+                    {t.switchToCreate}
+                  </button>
                 )}
                 <div className="flex items-end gap-2">
                   <textarea
@@ -626,9 +686,9 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                 )}
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }
@@ -685,5 +745,5 @@ export function GlobalAiAssistant() {
     HIDDEN_SUFFIXES.some((s) => pathOnly.endsWith(s));
 
   if (hidden) return null;
-  return <AiAssistant enabled={!!user} lang={lang} />;
+  return <AiAssistant key={(user as any)?.id ?? "anonymous"} enabled={!!user} lang={lang} teacherId={(user as any)?.id ?? null} />;
 }

@@ -5,6 +5,71 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface AssistantAvailability {
+  enabled: boolean;
+  pilotOnly?: boolean;
+  /**
+     * @maxItems 1000
+     * @items.minimum 1
+     */
+  teacherIds?: number[];
+}
+
+export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
+
+
+export const AssistantPreparationLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export type WorksheetActivityInputQuestionSelection = typeof WorksheetActivityInputQuestionSelection[keyof typeof WorksheetActivityInputQuestionSelection];
+
+
+export const WorksheetActivityInputQuestionSelection = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
+export type WorksheetActivityInputLanguage = typeof WorksheetActivityInputLanguage[keyof typeof WorksheetActivityInputLanguage];
+
+
+export const WorksheetActivityInputLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export type WorksheetActivityInputPages = typeof WorksheetActivityInputPages[keyof typeof WorksheetActivityInputPages];
+
+
+export const WorksheetActivityInputPages = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+export type WorksheetActivityInputActivityStyle = typeof WorksheetActivityInputActivityStyle[keyof typeof WorksheetActivityInputActivityStyle];
+
+
+export const WorksheetActivityInputActivityStyle = {
+  auto: 'auto',
+  concept_map: 'concept_map',
+  drawing: 'drawing',
+  coloring: 'coloring',
+  sorting: 'sorting',
+  sequencing: 'sequencing',
+  group_task: 'group_task',
+  practice: 'practice',
+} as const;
+
+export type WorksheetActivityInputExecutionMode = typeof WorksheetActivityInputExecutionMode[keyof typeof WorksheetActivityInputExecutionMode];
+
+
+export const WorksheetActivityInputExecutionMode = {
+  individual: 'individual',
+  group: 'group',
+} as const;
+
 export type WorksheetActivityConstraintsDifficulty = typeof WorksheetActivityConstraintsDifficulty[keyof typeof WorksheetActivityConstraintsDifficulty];
 
 
@@ -93,53 +158,6 @@ export interface WorksheetActivityConstraints {
   allowedTypes?: WorksheetActivityConstraintsAllowedTypesItem[];
 }
 
-export type WorksheetActivityInputQuestionSelection = typeof WorksheetActivityInputQuestionSelection[keyof typeof WorksheetActivityInputQuestionSelection];
-
-
-export const WorksheetActivityInputQuestionSelection = {
-  auto: 'auto',
-  manual: 'manual',
-} as const;
-
-export type WorksheetActivityInputLanguage = typeof WorksheetActivityInputLanguage[keyof typeof WorksheetActivityInputLanguage];
-
-
-export const WorksheetActivityInputLanguage = {
-  ar: 'ar',
-  en: 'en',
-} as const;
-
-export type WorksheetActivityInputPages = typeof WorksheetActivityInputPages[keyof typeof WorksheetActivityInputPages];
-
-
-export const WorksheetActivityInputPages = {
-  NUMBER_1: 1,
-  NUMBER_2: 2,
-  NUMBER_3: 3,
-} as const;
-
-export type WorksheetActivityInputActivityStyle = typeof WorksheetActivityInputActivityStyle[keyof typeof WorksheetActivityInputActivityStyle];
-
-
-export const WorksheetActivityInputActivityStyle = {
-  auto: 'auto',
-  concept_map: 'concept_map',
-  drawing: 'drawing',
-  coloring: 'coloring',
-  sorting: 'sorting',
-  sequencing: 'sequencing',
-  group_task: 'group_task',
-  practice: 'practice',
-} as const;
-
-export type WorksheetActivityInputExecutionMode = typeof WorksheetActivityInputExecutionMode[keyof typeof WorksheetActivityInputExecutionMode];
-
-
-export const WorksheetActivityInputExecutionMode = {
-  individual: 'individual',
-  group: 'group',
-} as const;
-
 export type WorksheetActivityInputDifficulty = typeof WorksheetActivityInputDifficulty[keyof typeof WorksheetActivityInputDifficulty];
 
 
@@ -222,6 +240,93 @@ export interface WorksheetActivityInput {
   differentiation?: WorksheetActivityInputDifferentiation;
   assessmentMode?: WorksheetActivityInputAssessmentMode;
   counts?: WorksheetActivityInputCounts;
+}
+
+export interface AssistantWorksheetRequest {
+  /**
+     * @minLength 2
+     * @maxLength 200
+     */
+  title: string;
+  /** @maxLength 80 */
+  template: string;
+  parameters: WorksheetActivityInput;
+}
+
+export interface AssistantPreparation {
+  /**
+     * @minLength 2
+     * @maxLength 12000
+     */
+  message: string;
+  language: AssistantPreparationLanguage;
+  operationId?: string;
+  settings?: AssistantWorksheetRequest;
+}
+
+export interface AssistantConfirmation {
+  quoteId: string;
+}
+
+export interface AssistantQuote {
+  id: string;
+  /** @minimum 0 */
+  credits: number;
+  expiresAt: string;
+}
+
+export type AssistantOperationStatus = typeof AssistantOperationStatus[keyof typeof AssistantOperationStatus];
+
+
+export const AssistantOperationStatus = {
+  draft: 'draft',
+  quoted: 'quoted',
+  queued: 'queued',
+  running: 'running',
+  saving: 'saving',
+  completed: 'completed',
+  failed: 'failed',
+  cancelled: 'cancelled',
+} as const;
+
+export type AssistantMessageRole = typeof AssistantMessageRole[keyof typeof AssistantMessageRole];
+
+
+export const AssistantMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface AssistantMessage {
+  role: AssistantMessageRole;
+  text: string;
+}
+
+export interface AssistantOperation {
+  id: string;
+  teacherId?: number;
+  title: string;
+  requestText: string;
+  reply: string;
+  parameters: WorksheetActivityInput;
+  template: string;
+  status: AssistantOperationStatus;
+  missingFields: string[];
+  credits: number;
+  /** @nullable */
+  worksheetId: number | null;
+  /** @nullable */
+  errorCode: string | null;
+  quote: AssistantQuote | null;
+  updatedAt: string;
+  messages: AssistantMessage[];
+}
+
+export interface AssistantHistory {
+  enabled: boolean;
+  pilotOnly?: boolean;
+  teacherIds?: number[];
+  operations: AssistantOperation[];
 }
 
 export type WorksheetActivitySourceInputQuestionSelection = typeof WorksheetActivitySourceInputQuestionSelection[keyof typeof WorksheetActivitySourceInputQuestionSelection];

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAdminDirectory } from "@/hooks/use-admin-directory";
 import { DirectoryPager, DirectorySearch, DirectoryStatus } from "@/components/admin/directory-controls";
 import { Layout } from "@/components/layout";
+import { AssistantAdminPanel } from "@/components/assistant/assistant-admin-panel";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -4820,6 +4821,7 @@ function AdminAiChatTab({ lang }: { lang: string }) {
 
   return (
     <div className="space-y-6">
+      <AssistantAdminPanel lang={lang} />
 
       {/* ── Custom Instructions Editor ── */}
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">

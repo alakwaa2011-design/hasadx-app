@@ -31,6 +31,12 @@ import type {
   AiVideoRenderQuote,
   Assignment,
   AssignmentWithQuestions,
+  AssistantAvailability,
+  AssistantConfirmation,
+  AssistantHistory,
+  AssistantOperation,
+  AssistantPreparation,
+  AssistantWorksheetRequest,
   AuthResponse,
   BriefPreferences,
   BuildPresentationRequest,
@@ -180,6 +186,653 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListAssistantOperationsUrl = () => {
+
+
+
+
+  return `/api/assistant/operations`
+}
+
+export const listAssistantOperations = async ( options?: Parameters<typeof customFetch>[1]): Promise<AssistantHistory> => {
+
+  return customFetch<AssistantHistory>(getListAssistantOperationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAssistantOperationsQueryKey = () => {
+    return [
+    `/api/assistant/operations`
+    ] as const;
+    }
+
+
+export const getListAssistantOperationsQueryOptions = <TData = Awaited<ReturnType<typeof listAssistantOperations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssistantOperations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAssistantOperationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAssistantOperations>>> = ({ signal }) => listAssistantOperations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAssistantOperations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAssistantOperationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAssistantOperations>>>
+export type ListAssistantOperationsQueryError = ErrorType<unknown>
+
+
+
+export function useListAssistantOperations<TData = Awaited<ReturnType<typeof listAssistantOperations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssistantOperations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAssistantOperationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPrepareAssistantWorksheetUrl = () => {
+
+
+
+
+  return `/api/assistant/prepare`
+}
+
+export const prepareAssistantWorksheet = async (assistantPreparation: AssistantPreparation, options?: Parameters<typeof customFetch>[1]): Promise<AssistantOperation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AssistantOperation>(getPrepareAssistantWorksheetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantPreparation)
+  }
+);}
+
+
+
+
+
+export const getPrepareAssistantWorksheetMutationKey = () => ['prepareAssistantWorksheet'] as const;
+
+export const getPrepareAssistantWorksheetMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError,PrepareAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError,PrepareAssistantWorksheetMutationVariables, TContext> => {
+
+const mutationKey = getPrepareAssistantWorksheetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, PrepareAssistantWorksheetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  prepareAssistantWorksheet(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PrepareAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof prepareAssistantWorksheet>>>
+    export type PrepareAssistantWorksheetMutationBody = BodyType<AssistantPreparation>
+    export type PrepareAssistantWorksheetMutationError = ErrorType<unknown>
+    export type PrepareAssistantWorksheetMutationVariables = {data: BodyType<AssistantPreparation>}
+
+    export const usePrepareAssistantWorksheet = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepareAssistantWorksheet>>, TError,PrepareAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof prepareAssistantWorksheet>>,
+        TError,
+        PrepareAssistantWorksheetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPrepareAssistantWorksheetMutationOptions(options));
+    }
+
+export const getGetAssistantOperationUrl = (id: string,) => {
+
+
+
+
+  return `/api/assistant/operations/${id}`
+}
+
+export const getAssistantOperation = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AssistantOperation> => {
+
+  return customFetch<AssistantOperation>(getGetAssistantOperationUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAssistantOperationQueryKey = (id: string,) => {
+    return [
+    `/api/assistant/operations/${id}`
+    ] as const;
+    }
+
+
+export const getGetAssistantOperationQueryOptions = <TData = Awaited<ReturnType<typeof getAssistantOperation>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssistantOperation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAssistantOperationQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssistantOperation>>> = ({ signal }) => getAssistantOperation(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAssistantOperation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAssistantOperationQueryResult = NonNullable<Awaited<ReturnType<typeof getAssistantOperation>>>
+export type GetAssistantOperationQueryError = ErrorType<unknown>
+
+
+
+export function useGetAssistantOperation<TData = Awaited<ReturnType<typeof getAssistantOperation>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssistantOperation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAssistantOperationQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getHideAssistantOperationUrl = (id: string,) => {
+
+
+
+
+  return `/api/assistant/operations/${id}`
+}
+
+export const hideAssistantOperation = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getHideAssistantOperationUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getHideAssistantOperationMutationKey = () => ['hideAssistantOperation'] as const;
+
+export const getHideAssistantOperationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideAssistantOperation>>, TError,HideAssistantOperationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof hideAssistantOperation>>, TError,HideAssistantOperationMutationVariables, TContext> => {
+
+const mutationKey = getHideAssistantOperationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof hideAssistantOperation>>, HideAssistantOperationMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  hideAssistantOperation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HideAssistantOperationMutationResult = NonNullable<Awaited<ReturnType<typeof hideAssistantOperation>>>
+
+    export type HideAssistantOperationMutationError = ErrorType<unknown>
+    export type HideAssistantOperationMutationVariables = {id: string}
+
+    export const useHideAssistantOperation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hideAssistantOperation>>, TError,HideAssistantOperationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof hideAssistantOperation>>,
+        TError,
+        HideAssistantOperationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHideAssistantOperationMutationOptions(options));
+    }
+
+export const getQuoteAssistantWorksheetUrl = (id: string,) => {
+
+
+
+
+  return `/api/assistant/operations/${id}/quote`
+}
+
+export const quoteAssistantWorksheet = async (id: string,
+    assistantWorksheetRequest: AssistantWorksheetRequest, options?: Parameters<typeof customFetch>[1]): Promise<AssistantOperation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AssistantOperation>(getQuoteAssistantWorksheetUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantWorksheetRequest)
+  }
+);}
+
+
+
+
+
+export const getQuoteAssistantWorksheetMutationKey = () => ['quoteAssistantWorksheet'] as const;
+
+export const getQuoteAssistantWorksheetMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError,QuoteAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError,QuoteAssistantWorksheetMutationVariables, TContext> => {
+
+const mutationKey = getQuoteAssistantWorksheetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, QuoteAssistantWorksheetMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  quoteAssistantWorksheet(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type QuoteAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof quoteAssistantWorksheet>>>
+    export type QuoteAssistantWorksheetMutationBody = BodyType<AssistantWorksheetRequest>
+    export type QuoteAssistantWorksheetMutationError = ErrorType<unknown>
+    export type QuoteAssistantWorksheetMutationVariables = {id: string;data: BodyType<AssistantWorksheetRequest>}
+
+    export const useQuoteAssistantWorksheet = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof quoteAssistantWorksheet>>, TError,QuoteAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof quoteAssistantWorksheet>>,
+        TError,
+        QuoteAssistantWorksheetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getQuoteAssistantWorksheetMutationOptions(options));
+    }
+
+export const getConfirmAssistantWorksheetUrl = (id: string,) => {
+
+
+
+
+  return `/api/assistant/operations/${id}/confirm`
+}
+
+export const confirmAssistantWorksheet = async (id: string,
+    assistantConfirmation: AssistantConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<AssistantOperation> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AssistantOperation>(getConfirmAssistantWorksheetUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantConfirmation)
+  }
+);}
+
+
+
+
+
+export const getConfirmAssistantWorksheetMutationKey = () => ['confirmAssistantWorksheet'] as const;
+
+export const getConfirmAssistantWorksheetMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError,ConfirmAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError,ConfirmAssistantWorksheetMutationVariables, TContext> => {
+
+const mutationKey = getConfirmAssistantWorksheetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, ConfirmAssistantWorksheetMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  confirmAssistantWorksheet(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAssistantWorksheet>>>
+    export type ConfirmAssistantWorksheetMutationBody = BodyType<AssistantConfirmation>
+    export type ConfirmAssistantWorksheetMutationError = ErrorType<void>
+    export type ConfirmAssistantWorksheetMutationVariables = {id: string;data: BodyType<AssistantConfirmation>}
+
+    export const useConfirmAssistantWorksheet = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAssistantWorksheet>>, TError,ConfirmAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAssistantWorksheet>>,
+        TError,
+        ConfirmAssistantWorksheetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmAssistantWorksheetMutationOptions(options));
+    }
+
+export const getCancelAssistantWorksheetUrl = (id: string,) => {
+
+
+
+
+  return `/api/assistant/operations/${id}/cancel`
+}
+
+export const cancelAssistantWorksheet = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AssistantOperation> => {
+
+  return customFetch<AssistantOperation>(getCancelAssistantWorksheetUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelAssistantWorksheetMutationKey = () => ['cancelAssistantWorksheet'] as const;
+
+export const getCancelAssistantWorksheetMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError,CancelAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError,CancelAssistantWorksheetMutationVariables, TContext> => {
+
+const mutationKey = getCancelAssistantWorksheetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, CancelAssistantWorksheetMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelAssistantWorksheet(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelAssistantWorksheetMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAssistantWorksheet>>>
+
+    export type CancelAssistantWorksheetMutationError = ErrorType<unknown>
+    export type CancelAssistantWorksheetMutationVariables = {id: string}
+
+    export const useCancelAssistantWorksheet = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAssistantWorksheet>>, TError,CancelAssistantWorksheetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelAssistantWorksheet>>,
+        TError,
+        CancelAssistantWorksheetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelAssistantWorksheetMutationOptions(options));
+    }
+
+export const getListAdminAssistantOperationsUrl = () => {
+
+
+
+
+  return `/api/assistant/admin/operations`
+}
+
+export const listAdminAssistantOperations = async ( options?: Parameters<typeof customFetch>[1]): Promise<AssistantHistory> => {
+
+  return customFetch<AssistantHistory>(getListAdminAssistantOperationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAssistantOperationsQueryKey = () => {
+    return [
+    `/api/assistant/admin/operations`
+    ] as const;
+    }
+
+
+export const getListAdminAssistantOperationsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAssistantOperationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAssistantOperations>>> = ({ signal }) => listAdminAssistantOperations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminAssistantOperationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAssistantOperations>>>
+export type ListAdminAssistantOperationsQueryError = ErrorType<unknown>
+
+
+
+export function useListAdminAssistantOperations<TData = Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAssistantOperations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminAssistantOperationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAssistantAvailabilityUrl = () => {
+
+
+
+
+  return `/api/assistant/admin/settings`
+}
+
+export const updateAssistantAvailability = async (assistantAvailability: AssistantAvailability, options?: Parameters<typeof customFetch>[1]): Promise<AssistantAvailability> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AssistantAvailability>(getUpdateAssistantAvailabilityUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantAvailability)
+  }
+);}
+
+
+
+
+
+export const getUpdateAssistantAvailabilityMutationKey = () => ['updateAssistantAvailability'] as const;
+
+export const getUpdateAssistantAvailabilityMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError,UpdateAssistantAvailabilityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError,UpdateAssistantAvailabilityMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAssistantAvailabilityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAssistantAvailability>>, UpdateAssistantAvailabilityMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAssistantAvailability(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAssistantAvailabilityMutationResult = NonNullable<Awaited<ReturnType<typeof updateAssistantAvailability>>>
+    export type UpdateAssistantAvailabilityMutationBody = BodyType<AssistantAvailability>
+    export type UpdateAssistantAvailabilityMutationError = ErrorType<unknown>
+    export type UpdateAssistantAvailabilityMutationVariables = {data: BodyType<AssistantAvailability>}
+
+    export const useUpdateAssistantAvailability = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAssistantAvailability>>, TError,UpdateAssistantAvailabilityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAssistantAvailability>>,
+        TError,
+        UpdateAssistantAvailabilityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAssistantAvailabilityMutationOptions(options));
+    }
 
 export const getGenerateWorksheetActivityUrl = () => {
 
