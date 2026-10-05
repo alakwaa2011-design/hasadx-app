@@ -163,9 +163,9 @@ export default function PresentationJoin() {
 
   return (
     <div dir={dir} className="min-h-screen flex items-center justify-center p-4" style={{ background: "linear-gradient(135deg,#225739,#143523)" }}>
-      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl p-6">
-        <h1 className="text-2xl font-black text-center mb-1" style={{ color: "#225739" }}>{title}</h1>
-        <p className="text-center text-sm text-slate-500 mb-6">{helper}</p>
+      <div className="w-full max-w-sm rounded-3xl bg-card text-card-foreground shadow-2xl p-6">
+        <h1 className="text-2xl font-black text-center mb-1 text-emerald-700 dark:text-emerald-300">{title}</h1>
+        <p className="text-center text-sm text-muted-foreground mb-6">{helper}</p>
 
         {step === "pin" && (
           <>
@@ -175,7 +175,7 @@ export default function PresentationJoin() {
               maxLength={6}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="text-center text-4xl font-black tracking-[0.4em] tabular-nums h-16"
+              className="text-center text-4xl font-black tracking-[0.4em] tabular-nums h-16 bg-background text-foreground"
               placeholder="000000"
             />
             <Button onClick={() => submitPin()} disabled={busy} className="w-full mt-4 h-12 text-lg" style={{ background: "#D9A521", color: "#1c1003" }}>
@@ -186,25 +186,26 @@ export default function PresentationJoin() {
 
         {step === "name" && isClass && (
           <>
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 divide-y">
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-border divide-y divide-border">
               {(info?.classRoster ?? []).length === 0 ? (
-                <div className="p-4 text-center text-slate-500 text-sm">{emptyRosterLabel}</div>
+                <div className="p-4 text-center text-muted-foreground text-sm">{emptyRosterLabel}</div>
               ) : (
                 info!.classRoster!.map((s) => (
                   <button
                     key={s.id}
                     onClick={() => setPickedStudentId(s.id)}
-                    className={`w-full text-start px-4 py-3 text-base hover:bg-emerald-50 ${pickedStudentId === s.id ? "bg-emerald-100 font-bold" : ""}`}
+                    aria-pressed={pickedStudentId === s.id}
+                    className={`w-full text-start px-4 py-3 text-base text-card-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-emerald-50 dark:hover:bg-emerald-950 ${pickedStudentId === s.id ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-white font-bold" : ""}`}
                   >
                     {s.name}
                   </button>
                 ))
               )}
             </div>
-            <Button onClick={submitName} disabled={busy || !pickedStudentId} className="w-full mt-4 h-12 text-lg" style={{ background: "#225739" }}>
+            <Button onClick={submitName} disabled={busy || !pickedStudentId} className="w-full mt-4 h-12 text-lg" style={{ background: "#225739", color: "#fff" }}>
               {busy ? "..." : enterLabel}
             </Button>
-            <button onClick={() => { setStep("pin"); setInfo(null); setPickedStudentId(null); }} className="w-full mt-2 text-sm text-slate-500 underline">
+            <button onClick={() => { setStep("pin"); setInfo(null); setPickedStudentId(null); }} className="w-full mt-2 text-sm text-muted-foreground underline">
               {changePinLabel}
             </button>
           </>
@@ -217,13 +218,13 @@ export default function PresentationJoin() {
               maxLength={40}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-center text-xl h-12"
+              className="text-center text-xl h-12 bg-background text-foreground"
               placeholder={namePlaceholder}
             />
-            <Button onClick={submitName} disabled={busy} className="w-full mt-4 h-12 text-lg" style={{ background: "#225739" }}>
+            <Button onClick={submitName} disabled={busy} className="w-full mt-4 h-12 text-lg" style={{ background: "#225739", color: "#fff" }}>
               {busy ? "..." : enterLabel}
             </Button>
-            <button onClick={() => { setStep("pin"); setInfo(null); }} className="w-full mt-2 text-sm text-slate-500 underline">
+            <button onClick={() => { setStep("pin"); setInfo(null); }} className="w-full mt-2 text-sm text-muted-foreground underline">
               {changePinLabel}
             </button>
           </>
