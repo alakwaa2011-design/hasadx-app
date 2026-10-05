@@ -7,6 +7,7 @@
  * - Primary invoice guard: subscription_credit_grants.subscription_invoice_id UNIQUE.
  */
 import { Router, type IRouter } from "express";
+import { recordAssistantPaidUpgrade } from "../lib/assistant-execution-access";
 import {
   db,
   creditPackagesTable,
@@ -850,6 +851,9 @@ async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceRe
         paid_through = GREATEST(COALESCE(paid_through, ${periodEnd}), ${periodEnd}), updated_at = NOW()
       WHERE external_subscription_id = ${subscriptionId}
     `);
+    if (billingReason === "initial" || billingReason === "subscription_created") {
+      await recordAssistantPaidUpgrade(tx, teacherId, invoiceId, String(plan.code), invoiceCreated);
+    }
   });
 }
 

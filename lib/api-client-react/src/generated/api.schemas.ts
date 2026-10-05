@@ -322,11 +322,62 @@ export interface AssistantOperation {
   messages: AssistantMessage[];
 }
 
+export type AssistantExecutionAccessStatus = typeof AssistantExecutionAccessStatus[keyof typeof AssistantExecutionAccessStatus];
+
+
+export const AssistantExecutionAccessStatus = {
+  subscription: 'subscription',
+  trial_available: 'trial_available',
+  trial_reserved: 'trial_reserved',
+  upgrade_required: 'upgrade_required',
+} as const;
+
+export interface AssistantExecutionAccess {
+  status: AssistantExecutionAccessStatus;
+  canExecute: boolean;
+  planCode: string;
+  /** @nullable */
+  reservedOperationId: string | null;
+  /** @nullable */
+  consumedOperationId?: string | null;
+}
+
 export interface AssistantHistory {
   enabled: boolean;
+  executionAccess?: AssistantExecutionAccess;
   pilotOnly?: boolean;
   teacherIds?: number[];
   operations: AssistantOperation[];
+}
+
+export type AssistantExecutionEventInputEvent = typeof AssistantExecutionEventInputEvent[keyof typeof AssistantExecutionEventInputEvent];
+
+
+export const AssistantExecutionEventInputEvent = {
+  upgrade_viewed: 'upgrade_viewed',
+  upgrade_clicked: 'upgrade_clicked',
+} as const;
+
+export interface AssistantExecutionEventInput {
+  event: AssistantExecutionEventInputEvent;
+  operationId: string;
+}
+
+export interface AssistantExecutionEventReceipt {
+  ok: boolean;
+}
+
+export type AssistantExecutionMetricsStagesItem = {
+  event_name: string;
+  events: number;
+  users: number;
+};
+
+export interface AssistantExecutionMetrics {
+  days: number;
+  trialUsers: number;
+  convertedUsers: number;
+  stages: AssistantExecutionMetricsStagesItem[];
 }
 
 export type WorksheetActivitySourceInputQuestionSelection = typeof WorksheetActivitySourceInputQuestionSelection[keyof typeof WorksheetActivitySourceInputQuestionSelection];

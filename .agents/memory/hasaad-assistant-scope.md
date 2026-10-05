@@ -8,6 +8,12 @@ The approved Hasaad Assistant has one floating entry with “Ask about Hasaad”
 
 **How to apply:** Keep creation context separate from Guide/support transcripts. Preparation does not consume Guide-message credits; execution requires an explicit current worksheet-price approval. Manual teacher design and question-count choices must survive followups, and the generated result must meet those confirmed counts before it is saved and billed.
 
+Free accounts get one successful direct execution across the entire assistant, and that first execution is NOT free: charge the tool's normal credit cost. After success, further direct execution requires a valid Basic or Pro subscription even when Free has purchased points or sufficient balance. Do not reset the used trial after a subscription downgrade, output deletion, month change, or device change. Failure or cancellation before successful saving must not consume it.
+
+**Why:** The user explicitly approved subscription-based access and corrected the proposed tool-cost waiver: the trial grants access once, not free generation. Credit purchases do not change the subscription.
+
+**How to apply:** Keep normal conversation charging untouched and bill each execution only once through the existing hold/capture/refund system. Apply this first to private worksheet creation; future presentations and games must reuse the same account-wide entitlement rather than receive separate trials. Preserve accepted save retries without regenerating. Keep the existing administrative availability settings separate from subscription eligibility. Measure successful saving and paid conversion using trusted server evidence, not clicks or a return URL.
+
 Treat equivalent flat/nested AI count fields as the same structured choice; never discard them into defaults. Format examples for zero-count question types must not imply permission to generate those types.
 
 **Why:** Real-provider checks exposed both a flattened count response and a “mandatory MCQ example” that caused the model to substitute an MCQ for a confirmed short-answer question.

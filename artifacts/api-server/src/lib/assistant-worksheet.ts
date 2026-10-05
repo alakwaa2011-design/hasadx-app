@@ -9,6 +9,7 @@ import { resolveAiContentLanguage } from "./ai-content-language";
 import { generateWorksheetQuestions, createWorksheetDraft, aiGenerateBody } from "../routes/worksheets";
 import { CreditService } from "./credit-service";
 import { logger } from "./logger";
+import { completeAssistantExecution, releaseAssistantTrial, recordAssistantEvent } from "./assistant-execution-access";
 
 export const editableStatuses = ["draft", "quoted"];
 export const activeStatuses = ["queued", "running", "saving"];
@@ -138,7 +139,13 @@ export async function runAssistantJob(): Promise<boolean> {
   if (row.held) {
     const [hold] = await db.select({ status: creditHoldsTable.status }).from(creditHoldsTable).where(eq(creditHoldsTable.requestId, row.creditRequestId));
     if (!hold || !["pending", "completed"].includes(hold.status)) {
-      await db.update(operations).set({ status: row.output ? "saving" : "failed", errorCode: row.output ? "SAVE_RETRY" : "INTERRUPTED", leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
+      await db.transaction(async tx => {
+        await tx.update(operations).set({ status: row.output ? "saving" : "failed", errorCode: row.output ? "SAVE_RETRY" : "INTERRUPTED", leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
+        if (!row.output) {
+          await releaseAssistantTrial(tx, row.teacherId, row.id);
+          await recordAssistantEvent(row.teacherId, "execution_failed", row.id, { reason: "refunded_hold" }, `execution_failed:${row.id}`, tx);
+        }
+      });
       return true;
     }
   }
@@ -172,14 +179,22 @@ export async function runAssistantJob(): Promise<boolean> {
         if (!result.captured) throw new Error("Accounting not completed");
       }
     }
-    await db.update(operations).set({ status: "completed", errorCode: null, leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
+    await db.transaction(async tx => {
+      await tx.select({ id: operations.id }).from(operations).where(eq(operations.id, row.id)).for("update");
+      await completeAssistantExecution(tx, row.teacherId, row.id);
+      await tx.update(operations).set({ status: "completed", errorCode: null, leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
+    });
   } catch (error) {
     logger.error({ operationId: row.id, hasOutput: !!output, errorName: error instanceof Error ? error.name : "unknown" }, "Assistant worksheet job failed");
     if (output) {
       await db.update(operations).set({ status: "saving", errorCode: "SAVE_RETRY", leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
     } else {
       await refundOperation(row, "Assistant worksheet generation failed");
-      await db.update(operations).set({ status: "failed", errorCode: "FAILED", leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
+      await db.transaction(async tx => {
+        await tx.update(operations).set({ status: "failed", errorCode: "FAILED", leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, row.id));
+        await releaseAssistantTrial(tx, row.teacherId, row.id);
+        await recordAssistantEvent(row.teacherId, "execution_failed", row.id, {}, `execution_failed:${row.id}`, tx);
+      });
     }
   }
   return true;
@@ -192,9 +207,18 @@ export async function recoverAssistantJobs() {
     lt(operations.updatedAt, new Date(Date.now() - 10 * 60_000)),
   ));
   for (const row of stale) {
-    const [interrupted] = await db.update(operations).set({ status: "failed", errorCode: "INTERRUPTED", leaseUntil: null, updatedAt: new Date() })
-      .where(and(eq(operations.id, row.id), eq(operations.updatedAt, row.updatedAt))).returning();
-    if (interrupted) await refundOperation(row, "Interrupted assistant operation");
+    const interrupted = await db.transaction(async tx => {
+      const [updated] = await tx.update(operations).set({ status: "failed", errorCode: "INTERRUPTED", leaseUntil: null, updatedAt: new Date() })
+        .where(and(eq(operations.id, row.id), eq(operations.updatedAt, row.updatedAt))).returning();
+      if (updated) {
+        await releaseAssistantTrial(tx, row.teacherId, row.id);
+        await recordAssistantEvent(row.teacherId, "execution_failed", row.id, { reason: "interrupted" }, `execution_failed:${row.id}`, tx);
+      }
+      return updated;
+    });
+    if (interrupted) {
+      await refundOperation(row, "Interrupted assistant operation");
+    }
   }
   // Valid generated output is retained. Keep its reservation alive while saving,
   // including a manual save retry. This is distinct from a hung model call.

@@ -15,6 +15,28 @@ const zod = {
 };
 
 
+export const GetAssistantExecutionMetricsResponse = zod.object({
+  "days": zod.int(),
+  "trialUsers": zod.int(),
+  "convertedUsers": zod.int(),
+  "stages": zod.array(zod.object({
+  "event_name": zod.string(),
+  "events": zod.int(),
+  "users": zod.int()
+}))
+})
+
+
+export const TrackAssistantExecutionEventBody = zod.object({
+  "event": zod.enum(['upgrade_viewed', 'upgrade_clicked']),
+  "operationId": zod.uuid()
+})
+
+export const TrackAssistantExecutionEventResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
 export const listAssistantOperationsResponseOperationsItemParametersLanguageDefault = `ar`;
 export const listAssistantOperationsResponseOperationsItemParametersTopicMax = 500;
 
@@ -51,6 +73,13 @@ export const listAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0
 
 export const ListAssistantOperationsResponse = zod.object({
   "enabled": zod.boolean(),
+  "executionAccess": zod.object({
+  "status": zod.enum(['subscription', 'trial_available', 'trial_reserved', 'upgrade_required']),
+  "canExecute": zod.boolean(),
+  "planCode": zod.string(),
+  "reservedOperationId": zod.uuid().nullable(),
+  "consumedOperationId": zod.uuid().nullish()
+}).optional(),
   "pilotOnly": zod.boolean().optional(),
   "teacherIds": zod.array(zod.int()).optional(),
   "operations": zod.array(zod.object({
@@ -761,6 +790,13 @@ export const listAdminAssistantOperationsResponseOperationsItemQuoteOneCreditsMi
 
 export const ListAdminAssistantOperationsResponse = zod.object({
   "enabled": zod.boolean(),
+  "executionAccess": zod.object({
+  "status": zod.enum(['subscription', 'trial_available', 'trial_reserved', 'upgrade_required']),
+  "canExecute": zod.boolean(),
+  "planCode": zod.string(),
+  "reservedOperationId": zod.uuid().nullable(),
+  "consumedOperationId": zod.uuid().nullish()
+}).optional(),
   "pilotOnly": zod.boolean().optional(),
   "teacherIds": zod.array(zod.int()).optional(),
   "operations": zod.array(zod.object({

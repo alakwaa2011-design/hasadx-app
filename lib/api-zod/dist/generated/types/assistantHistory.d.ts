@@ -5,9 +5,11 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { AssistantExecutionAccess } from './assistantExecutionAccess';
 import type { AssistantOperation } from './assistantOperation';
 export interface AssistantHistory {
     enabled: boolean;
+    executionAccess?: AssistantExecutionAccess;
     pilotOnly?: boolean;
     teacherIds?: number[];
     operations: AssistantOperation[];

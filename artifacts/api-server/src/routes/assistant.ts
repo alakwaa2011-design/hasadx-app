@@ -8,6 +8,7 @@ import { PrepareAssistantWorksheetBody, ConfirmAssistantWorksheetBody, UpdateAss
 import { estimateCreditsForToolRequest, holdCreditsForToolRequest, InsufficientCreditsError } from "../lib/check-credits";
 import { CreditService } from "../lib/credit-service";
 import { canonicalJson, editableStatuses, activeStatuses, missingWorksheetFields, prepareWorksheetRequest, publicAssistantOperation, validateWorksheetRequest } from "../lib/assistant-worksheet";
+import { getAssistantExecutionAccess, authorizeAssistantExecution, executionAccessError, recordAssistantEvent, releaseAssistantTrial, getAssistantExecutionMetrics } from "../lib/assistant-execution-access";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -46,7 +47,18 @@ async function ownedOperation(tx: Tx, id: string, teacherId: number) {
 
 router.get("/operations", async (req, res) => {
   const rows = await db.select().from(operations).where(and(eq(operations.teacherId, req.session.teacherId!), eq(operations.archived, false))).orderBy(desc(operations.updatedAt)).limit(100);
-  res.json({ enabled: await isEnabled(req.session.teacherId!), operations: rows.map(row => publicAssistantOperation(row)) });
+  res.json({ enabled: await isEnabled(req.session.teacherId!), executionAccess: await getAssistantExecutionAccess(req.session.teacherId!), operations: rows.map(row => publicAssistantOperation(row)) });
+});
+router.get("/admin/execution-metrics", requireAdmin, async (_req, res) => {
+  res.json(await getAssistantExecutionMetrics());
+});
+router.post("/execution-events", mutationLimit, async (req, res) => {
+  const parsed = z.object({ event: z.enum(["upgrade_viewed", "upgrade_clicked"]), operationId: z.string().uuid() }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ code: "INVALID_INPUT" }); return; }
+  const [operation] = await db.select({ id: operations.id }).from(operations).where(and(eq(operations.id, parsed.data.operationId), eq(operations.teacherId, req.session.teacherId!)));
+  if (!operation) { res.status(404).json({ code: "NOT_FOUND" }); return; }
+  await recordAssistantEvent(req.session.teacherId!, parsed.data.event, operation.id, {}, `${parsed.data.event}:${operation.id}`);
+  res.json({ ok: true });
 });
 router.get("/admin/operations", requireAdmin, async (_req, res) => {
   const rows = await db.select().from(operations).orderBy(desc(operations.updatedAt)).limit(100);
@@ -71,6 +83,12 @@ router.post("/prepare", prepareLimit, async (req, res) => {
     if (!await isEnabled(req.session.teacherId!)) throw failure("DISABLED");
     const body = PrepareAssistantWorksheetBody.parse({ ...req.body, message: typeof req.body.message === "string" ? req.body.message.trim() : req.body.message });
     const teacherId = req.session.teacherId!;
+    if (!body.operationId) await recordAssistantEvent(teacherId, "execution_requested", null, { tool: "worksheet" });
+    const access = await getAssistantExecutionAccess(teacherId);
+    if (!access.canExecute) {
+      await recordAssistantEvent(teacherId, "execution_blocked", null, { reason: access.status });
+      throw executionAccessError(access.status);
+    }
     const [previous] = body.operationId ? await db.select().from(operations).where(and(eq(operations.id, body.operationId), eq(operations.teacherId, teacherId), eq(operations.archived, false))) : [];
     if (body.operationId && !previous) throw failure("NOT_FOUND", 404);
     if (previous && !editableStatuses.includes(previous.status)) throw failure("LOCKED");
@@ -101,6 +119,10 @@ router.post("/operations/:id/quote", mutationLimit, async (req, res) => {
     const row = await db.transaction(async tx => {
       const current = await ownedOperation(tx, id, req.session.teacherId!);
       const saveRetry = current.status === "saving" && !!current.output;
+      if (!saveRetry) {
+        const access = await getAssistantExecutionAccess(current.teacherId, tx);
+        if (!access.canExecute && access.reservedOperationId !== current.id) throw executionAccessError(access.status);
+      }
       if (!editableStatuses.includes(current.status) && !saveRetry) throw failure("LOCKED");
       if (current.errorCode === "UNSUPPORTED") throw failure("UNSUPPORTED", 400);
       // Generated output is immutable: a save retry cannot reinterpret existing questions.
@@ -116,9 +138,13 @@ router.post("/operations/:id/quote", mutationLimit, async (req, res) => {
       return updated;
     });
     res.json(publicAssistantOperation(row));
-  } catch (err) { apiError(res, err); }
+  } catch (err: any) {
+    if (err.code === "EXECUTION_SUBSCRIPTION_REQUIRED") await recordAssistantEvent(req.session.teacherId!, "execution_blocked", String(req.params.id));
+    apiError(res, err);
+  }
 });
 router.post("/operations/:id/confirm", mutationLimit, async (req, res) => {
+  let newlyHeldRequest: string | null = null;
   try {
     const id = operationId(req.params.id);
     const body = ConfirmAssistantWorksheetBody.parse(req.body);
@@ -135,11 +161,13 @@ router.post("/operations/:id/confirm", mutationLimit, async (req, res) => {
       if (expectedPrice !== current.quote.credits) throw failure("PRICE_CHANGED");
       // Serialize starts for a teacher even across separate operation IDs / server instances.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"assistant:start:" + current.teacherId}))`);
+      const executionMode = current.output ? "resume" : await authorizeAssistantExecution(tx, current.teacherId, current.id);
       const active = await tx.select({ id: operations.id }).from(operations).where(and(eq(operations.teacherId, current.teacherId), inArray(operations.status, activeStatuses), sql`${operations.id} <> ${current.id}`));
       if (active.length >= 2) throw failure("CAPACITY");
       let creditRequestId = current.creditRequestId;
       if (oldHold && !["pending", "completed"].includes(oldHold.status)) creditRequestId = `assistant:${current.teacherId}:${randomUUID()}`;
       const hold = acceptedAccounting ? { creditsHeld: current.credits } : await holdCreditsForToolRequest(current.teacherId, "worksheet", creditRequestId);
+      if (!acceptedAccounting && hold.creditsHeld > 0 && !("existingStatus" in hold && hold.existingStatus)) newlyHeldRequest = creditRequestId;
       if (hold.creditsHeld !== current.quote.credits) {
         if (hold.creditsHeld > 0) await CreditService.refund(creditRequestId, "Assistant price changed before execution");
         throw failure("PRICE_CHANGED");
@@ -149,10 +177,27 @@ router.post("/operations/:id/confirm", mutationLimit, async (req, res) => {
         status: current.output ? "saving" : "queued", leaseUntil: null, errorCode: null,
         creditRequestId, credits: hold.creditsHeld, held: hold.creditsHeld > 0, updatedAt: new Date(),
       }).where(eq(operations.id, id)).returning();
+      await recordAssistantEvent(current.teacherId, "execution_started", id, { tool: "worksheet", mode: executionMode, credits: hold.creditsHeld }, `execution_started:${id}`, tx);
+      if (executionMode === "trial") await recordAssistantEvent(current.teacherId, "trial_started", id, { credits: hold.creditsHeld }, `trial_started:${id}`, tx);
       return updated;
     });
+    newlyHeldRequest = null;
     res.json(publicAssistantOperation(row));
-  } catch (err) { apiError(res, err); }
+  } catch (err: any) {
+    // The existing billing hold uses its own transaction. If our transaction
+    // rolls back, fence compensation against a concurrent confirmation/replay.
+    if (newlyHeldRequest) {
+      const requestId = newlyHeldRequest;
+      await db.transaction(async tx => {
+        const current = await ownedOperation(tx, operationId(req.params.id), req.session.teacherId!);
+        if (current.creditRequestId !== requestId || !["queued", "running", "saving", "completed"].includes(current.status)) {
+          await CreditService.refund(requestId, "Assistant confirmation rolled back");
+        }
+      });
+    }
+    if (err.code === "EXECUTION_SUBSCRIPTION_REQUIRED") await recordAssistantEvent(req.session.teacherId!, "execution_blocked", String(req.params.id));
+    apiError(res, err);
+  }
 });
 router.post("/operations/:id/cancel", mutationLimit, async (req, res) => {
   try {
@@ -161,6 +206,7 @@ router.post("/operations/:id/cancel", mutationLimit, async (req, res) => {
       if (current.status === "cancelled") return current;
       if (!["draft", "quoted", "queued"].includes(current.status)) throw failure("LOCKED");
       if (current.held) await CreditService.refund(current.creditRequestId, "Assistant request cancelled before generation");
+      await releaseAssistantTrial(tx, current.teacherId, current.id, "cancelled");
       const [updated] = await tx.update(operations).set({ status: "cancelled", leaseUntil: null, updatedAt: new Date() }).where(eq(operations.id, current.id)).returning();
       return updated;
     });

@@ -2,6 +2,24 @@ import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle
 import { createInsertSchema } from "drizzle-zod";
 import { teachersTable } from "./teachers";
 import { worksheetsTable } from "./worksheets";
+import { bigserial } from "drizzle-orm/pg-core";
+
+export const assistantExecutionTrialsTable = pgTable("assistant_execution_trials", {
+  teacherId: integer("teacher_id").primaryKey().references(() => teachersTable.id, { onDelete: "cascade" }),
+  reservedOperationId: uuid("reserved_operation_id"),
+  consumedOperationId: uuid("consumed_operation_id"),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const assistantExecutionEventsTable = pgTable("assistant_execution_events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
+  eventName: text("event_name").notNull(),
+  operationId: uuid("operation_id"),
+  eventKey: text("event_key").notNull().unique(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const assistantOperationsTable = pgTable("assistant_worksheet_operations", {
   id: uuid("id").primaryKey(),

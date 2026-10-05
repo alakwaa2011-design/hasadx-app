@@ -5,6 +5,8 @@ import {
   getListAdminAssistantOperationsQueryKey,
   useListAdminAssistantOperations,
   useUpdateAssistantAvailability,
+  useGetAssistantExecutionMetrics,
+  getGetAssistantExecutionMetricsQueryKey,
 } from "@workspace/api-client-react";
 
 export function AssistantAdminPanel({ lang }: { lang: string }) {
@@ -12,6 +14,7 @@ export function AssistantAdminPanel({ lang }: { lang: string }) {
   const tr = (a: string, e: string) => (ar ? a : e);
   const qc = useQueryClient();
   const q = useListAdminAssistantOperations();
+  const metrics = useGetAssistantExecutionMetrics({ query: { queryKey: getGetAssistantExecutionMetricsQueryKey(), refetchInterval: 15000 } });
   const update = useUpdateAssistantAvailability();
   const [teacherIds, setTeacherIds] = useState("");
   useEffect(() => { if (q.data) setTeacherIds((q.data.teacherIds ?? []).join(", ")); }, [q.data]);
@@ -44,6 +47,18 @@ export function AssistantAdminPanel({ lang }: { lang: string }) {
       {q.isLoading && <div className="h-16 rounded-xl bg-muted animate-pulse" />}
       {q.isError && <p className="text-xs text-destructive">{tr("تعذّر تحميل العمليات", "Could not load operations")}</p>}
       {!q.isLoading && !q.isError && ops.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">{tr("لا توجد عمليات بعد", "No operations yet")}</p>}
+      <div className="rounded-xl border p-3 space-y-2 text-xs" data-testid="assistant-execution-metrics">
+        <h4 className="font-bold">{tr("التنفيذ المباشر والترقية — آخر 30 يومًا", "Direct execution and upgrades — last 30 days")}</h4>
+        {metrics.isError && <button className="underline" onClick={() => metrics.refetch()}>{tr("تعذر تحميل القياس. إعادة المحاولة", "Could not load metrics. Retry")}</button>}
+        {metrics.data && <>
+          <p>{tr("مجرّبو التنفيذ الناجح", "Successful trial users")}: {metrics.data.trialUsers} · {tr("ترقيات مدفوعة مرتبطة بالمساعد", "Assistant-attributed paid upgrades")}: {metrics.data.convertedUsers} · {tr("التحويل", "Conversion")}: {metrics.data.trialUsers ? (100 * metrics.data.convertedUsers / metrics.data.trialUsers).toFixed(1) : "0"}%</p>
+          <p className="text-muted-foreground">{tr("مجموعة القياس: التجارب الناجحة خلال آخر 30 يومًا، والترقية المدفوعة خلال 30 يومًا من التجربة. شراء النقاط والنقر على الترقية لا يُحسبان اشتراكًا.", "Cohort: successful trials in the last 30 days and paid upgrades within 30 days of trial completion. Credit purchases and upgrade clicks are not subscriptions.")}</p>
+          {metrics.data.stages.map(s => <div key={s.event_name} className="flex justify-between gap-2">
+            <span>{ar ? ({ execution_requested: "طلبات التنفيذ", execution_started: "بدء التنفيذ", execution_completed: "حفظ الناتج", execution_failed: "فشل التنفيذ", execution_blocked: "طلبات محجوبة بالاشتراك", trial_started: "حجز التجربة", trial_completed: "نجاح التجربة", trial_failed: "فشل التجربة دون استهلاكها", trial_cancelled: "إلغاء التجربة دون استهلاكها", upgrade_viewed: "ظهور الترقية", upgrade_clicked: "النقر على الترقية", upgrade_checkout_started: "بدء دفع الاشتراك", upgrade_paid: "اشتراك مدفوع مؤكد" } as Record<string,string>)[s.event_name] ?? s.event_name : s.event_name}
+            </span><span>{s.users} {tr("حسابًا", "users")} · {s.events} {tr("حدثًا", "events")}</span>
+          </div>)}
+        </>}
+      </div>
       <div className="max-h-72 overflow-y-auto divide-y divide-border">
         {ops.map((o) => (
           <div key={o.id} className="flex items-center gap-3 py-2 text-xs" data-testid={`row-admin-operation-${o.id}`}>

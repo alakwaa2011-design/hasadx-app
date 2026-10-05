@@ -20,6 +20,29 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /assistant/admin/execution-metrics:
+    get:
+      operationId: getAssistantExecutionMetrics
+      responses:
+        "200":
+          description: Direct execution funnel, last 30 days.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantExecutionMetrics" }
+  /assistant/execution-events:
+    post:
+      operationId: trackAssistantExecutionEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssistantExecutionEventInput" }
+      responses:
+        "200":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantExecutionEventReceipt" }
   /assistant/operations:
     get:
       operationId: listAssistantOperations
@@ -3111,6 +3134,7 @@ components:
       required: [enabled, operations]
       properties:
         enabled: { type: boolean }
+        executionAccess: { $ref: "#/components/schemas/AssistantExecutionAccess" }
         pilotOnly: { type: boolean }
         teacherIds:
           type: array
@@ -3118,6 +3142,42 @@ components:
         operations:
           type: array
           items: { $ref: "#/components/schemas/AssistantOperation" }
+    AssistantExecutionAccess:
+      type: object
+      required: [status, canExecute, planCode, reservedOperationId]
+      properties:
+        status: { type: string, enum: [subscription, trial_available, trial_reserved, upgrade_required] }
+        canExecute: { type: boolean }
+        planCode: { type: string }
+        reservedOperationId: { type: ["string", "null"], format: uuid }
+        consumedOperationId: { type: ["string", "null"], format: uuid }
+    AssistantExecutionEventInput:
+      type: object
+      required: [event, operationId]
+      properties:
+        event: { type: string, enum: [upgrade_viewed, upgrade_clicked] }
+        operationId: { type: string, format: uuid }
+    AssistantExecutionEventReceipt:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+    AssistantExecutionMetrics:
+      type: object
+      required: [days, stages, trialUsers, convertedUsers]
+      properties:
+        days: { type: integer }
+        trialUsers: { type: integer }
+        convertedUsers: { type: integer }
+        stages:
+          type: array
+          items:
+            type: object
+            required: [event_name, events, users]
+            properties:
+              event_name: { type: string }
+              events: { type: integer }
+              users: { type: integer }
     WorksheetActivityConstraints:
       type: object
       description: Only explicitly selected settings are present; omitted settings are inferred by AI.

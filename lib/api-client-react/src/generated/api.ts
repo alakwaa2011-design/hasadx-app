@@ -33,6 +33,9 @@ import type {
   AssignmentWithQuestions,
   AssistantAvailability,
   AssistantConfirmation,
+  AssistantExecutionEventInput,
+  AssistantExecutionEventReceipt,
+  AssistantExecutionMetrics,
   AssistantHistory,
   AssistantOperation,
   AssistantPreparation,
@@ -186,6 +189,151 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAssistantExecutionMetricsUrl = () => {
+
+
+
+
+  return `/api/assistant/admin/execution-metrics`
+}
+
+export const getAssistantExecutionMetrics = async ( options?: Parameters<typeof customFetch>[1]): Promise<AssistantExecutionMetrics> => {
+
+  return customFetch<AssistantExecutionMetrics>(getGetAssistantExecutionMetricsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAssistantExecutionMetricsQueryKey = () => {
+    return [
+    `/api/assistant/admin/execution-metrics`
+    ] as const;
+    }
+
+
+export const getGetAssistantExecutionMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getAssistantExecutionMetrics>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssistantExecutionMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAssistantExecutionMetricsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssistantExecutionMetrics>>> = ({ signal }) => getAssistantExecutionMetrics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAssistantExecutionMetrics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAssistantExecutionMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getAssistantExecutionMetrics>>>
+export type GetAssistantExecutionMetricsQueryError = ErrorType<unknown>
+
+
+
+export function useGetAssistantExecutionMetrics<TData = Awaited<ReturnType<typeof getAssistantExecutionMetrics>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssistantExecutionMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAssistantExecutionMetricsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTrackAssistantExecutionEventUrl = () => {
+
+
+
+
+  return `/api/assistant/execution-events`
+}
+
+export const trackAssistantExecutionEvent = async (assistantExecutionEventInput: AssistantExecutionEventInput, options?: Parameters<typeof customFetch>[1]): Promise<AssistantExecutionEventReceipt> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<AssistantExecutionEventReceipt>(getTrackAssistantExecutionEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantExecutionEventInput)
+  }
+);}
+
+
+
+
+
+export const getTrackAssistantExecutionEventMutationKey = () => ['trackAssistantExecutionEvent'] as const;
+
+export const getTrackAssistantExecutionEventMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackAssistantExecutionEvent>>, TError,TrackAssistantExecutionEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof trackAssistantExecutionEvent>>, TError,TrackAssistantExecutionEventMutationVariables, TContext> => {
+
+const mutationKey = getTrackAssistantExecutionEventMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof trackAssistantExecutionEvent>>, TrackAssistantExecutionEventMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  trackAssistantExecutionEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TrackAssistantExecutionEventMutationResult = NonNullable<Awaited<ReturnType<typeof trackAssistantExecutionEvent>>>
+    export type TrackAssistantExecutionEventMutationBody = BodyType<AssistantExecutionEventInput>
+    export type TrackAssistantExecutionEventMutationError = ErrorType<unknown>
+    export type TrackAssistantExecutionEventMutationVariables = {data: BodyType<AssistantExecutionEventInput>}
+
+    export const useTrackAssistantExecutionEvent = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof trackAssistantExecutionEvent>>, TError,TrackAssistantExecutionEventMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof trackAssistantExecutionEvent>>,
+        TError,
+        TrackAssistantExecutionEventMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTrackAssistantExecutionEventMutationOptions(options));
+    }
 
 export const getListAssistantOperationsUrl = () => {
 

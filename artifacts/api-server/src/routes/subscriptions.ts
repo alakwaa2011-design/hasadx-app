@@ -12,6 +12,7 @@ import { eq, asc, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { createCheckout, frontendOrigin } from "../lib/lemonsqueezy";
+import { recordAssistantEvent } from "../lib/assistant-execution-access";
 
 const router: IRouter = Router();
 
@@ -124,7 +125,14 @@ router.post("/subscriptions/checkout", async (req, res) => {
     return;
   }
 
-  const { planCode, billingInterval = "month" } = req.body ?? {};
+  const { planCode, billingInterval = "month", assistantOperationId } = req.body ?? {};
+  if (assistantOperationId !== undefined) {
+    if (typeof assistantOperationId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assistantOperationId)) {
+      res.status(400).json({ code: "INVALID_ASSISTANT_OPERATION" }); return;
+    }
+    const owned = await db.execute(sql`SELECT id FROM assistant_worksheet_operations WHERE id=${assistantOperationId} AND teacher_id=${teacherId}`);
+    if (!owned.rows.length) { res.status(404).json({ code: "ASSISTANT_OPERATION_NOT_FOUND" }); return; }
+  }
   if (!planCode || !["basic", "pro"].includes(planCode)) {
     res.status(400).json({ message: "كود الباقة غير صحيح" });
     return;
@@ -171,9 +179,11 @@ router.post("/subscriptions/checkout", async (req, res) => {
       customData: {
         user_id: String(teacherId),
         billing_interval: billingInterval,
+        ...(assistantOperationId ? { assistant_operation_id: assistantOperationId } : {}),
       },
     });
 
+    if (assistantOperationId) await recordAssistantEvent(teacherId, "upgrade_checkout_started", assistantOperationId, { planCode });
     res.json({ checkoutUrl });
   } catch (err) {
     logger.error(err, "POST /subscriptions/checkout failed");

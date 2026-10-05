@@ -31,6 +31,7 @@ import {
 import { THEMES } from "@/pages/teacher/worksheet-themes";
 import { INSUFFICIENT_CREDITS_EVENT } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
+import { ExecutionAccess } from "./execution-access";
 
 const ACTIVE = ["queued", "running", "saving"];
 const TERMINAL = ["completed", "failed", "cancelled"];
@@ -60,6 +61,8 @@ const OPTS = {
 } as const;
 
 const ERR: Record<string, [string, string]> = {
+  EXECUTION_SUBSCRIPTION_REQUIRED: ["يلزم اشتراك Basic أو Pro بعد تجربة التنفيذ الأولى. شراء النقاط وحده لا يفتح التنفيذ.", "After your first execution, Basic or Pro is required. Buying credits alone does not unlock execution."],
+  EXECUTION_TRIAL_IN_PROGRESS: ["تجربتك محجوزة لعملية أخرى. انتظر اكتمالها أو ألغِها قبل بدء طلب جديد.", "Your trial is reserved for another operation. Wait for it to finish or cancel it before starting a new request."],
   PRICE_CHANGED: ["تغيّر السعر. راجع السعر الجديد ثم أكّد.", "The price changed. Review the new price, then confirm."],
   QUOTE_EXPIRED: ["انتهت صلاحية السعر. اطلب سعراً جديداً.", "The quote expired. Get a new quote."],
   DISABLED: ["المساعد غير متاح حالياً. استخدم منشئ أوراق العمل مباشرة.", "The assistant is unavailable. Use the worksheet builder directly."],
@@ -143,7 +146,7 @@ export function AssistantCreate({
   const hide = useHideAssistantOperation();
 
   const listKey = [...getListAssistantOperationsQueryKey(), scope] as const;
-  const history = useListAssistantOperations({ query: { queryKey: listKey, enabled: teacherId !== null } as any });
+  const history = useListAssistantOperations({ query: { queryKey: listKey, enabled: teacherId !== null, refetchInterval: 5000, refetchOnWindowFocus: true } as any });
 
   useEffect(() => {
     if (history.data && history.data.enabled === false) setDisabled(true);
@@ -195,6 +198,7 @@ export function AssistantCreate({
 
   function fail(e: unknown) {
     const i = errInfo(e);
+    if (i.code === "EXECUTION_SUBSCRIPTION_REQUIRED" || i.code === "EXECUTION_TRIAL_IN_PROGRESS") void history.refetch();
     if (i.status === 402) {
       window.dispatchEvent(new CustomEvent(INSUFFICIENT_CREDITS_EVENT, { detail: { required: typeof i.data?.required === "number" ? i.data.required : undefined, balance: typeof i.data?.balance === "number" ? i.data.balance : undefined } }));
       setErrorCode("INSUFFICIENT_CREDITS");
@@ -331,6 +335,11 @@ export function AssistantCreate({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
+      {teacherId !== null && <div className="mx-3 mt-3 max-h-52 overflow-y-auto shrink-0">
+        <ExecutionAccess key={scope} teacherId={teacherId} ar={lang === "ar"}
+          access={history.data?.executionAccess}
+          operationId={op?.id ?? history.data?.executionAccess?.consumedOperationId ?? history.data?.operations[0]?.id} />
+      </div>}
       {disabled && <div className="mx-3 mt-3 rounded-xl border bg-muted/40 p-3 space-y-2" data-testid="panel-assistant-disabled">
         <p className="text-xs font-bold">{tr("الإنشاء بالمساعد غير متاح لهذا الحساب حاليًا", "Assistant creation is currently unavailable for this account")}</p>
         <p className="text-[11px] text-muted-foreground">{tr("يبقى سجلك ونتائجك متاحين. يمكنك استخدام منشئ أوراق العمل مباشرة.", "Your history and results remain available. You can use the worksheet builder directly.")}</p>

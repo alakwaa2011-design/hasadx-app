@@ -4,6 +4,24 @@ import { sql } from "drizzle-orm";
 /** Additive startup migration; preserves all existing Guide and worksheet data. */
 export async function migrateAssistantSchema() {
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS assistant_execution_trials (
+      teacher_id INTEGER PRIMARY KEY REFERENCES teachers(id) ON DELETE CASCADE,
+      reserved_operation_id UUID,
+      consumed_operation_id UUID,
+      consumed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS assistant_execution_events (
+      id BIGSERIAL PRIMARY KEY,
+      teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+      event_name TEXT NOT NULL,
+      operation_id UUID,
+      event_key TEXT NOT NULL UNIQUE,
+      metadata JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS assistant_execution_events_teacher_time
+      ON assistant_execution_events(teacher_id, created_at);
     CREATE TABLE IF NOT EXISTS assistant_configuration (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
       enabled BOOLEAN NOT NULL DEFAULT TRUE,

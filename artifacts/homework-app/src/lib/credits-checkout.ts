@@ -151,10 +151,12 @@ export async function beginSubscriptionCheckout(
   billingIntervalOrOptions: "month" | "year" | {
     snapshotCreditBalance?: boolean;
     redirect?: (checkoutUrl: string) => void | Promise<void>;
+    assistantOperationId?: string;
   } = "month",
   options: {
     snapshotCreditBalance?: boolean;
     redirect?: (checkoutUrl: string) => void | Promise<void>;
+    assistantOperationId?: string;
   } = {},
 ) {
   const billingInterval = typeof billingIntervalOrOptions === "string" ? billingIntervalOrOptions : "month";
@@ -176,7 +178,7 @@ export async function beginSubscriptionCheckout(
 
   const response = await creditsApiFetch("/api/subscriptions/checkout", {
     method: "POST",
-    body: JSON.stringify({ planCode, billingInterval }),
+    body: JSON.stringify({ planCode, billingInterval, ...(checkoutOptions.assistantOperationId ? { assistantOperationId: checkoutOptions.assistantOperationId } : {}) }),
   });
   if (!response.ok) throw await responseError(response, fallbackError);
 

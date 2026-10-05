@@ -6,6 +6,59 @@
  * OpenAPI spec version: 0.1.0
  */
 import * as zodV3 from 'zod';
+export declare const GetAssistantExecutionMetricsResponse: zodV3.ZodObject<{
+    days: zodV3.ZodNumber;
+    trialUsers: zodV3.ZodNumber;
+    convertedUsers: zodV3.ZodNumber;
+    stages: zodV3.ZodArray<zodV3.ZodObject<{
+        event_name: zodV3.ZodString;
+        events: zodV3.ZodNumber;
+        users: zodV3.ZodNumber;
+    }, "strip", zodV3.ZodTypeAny, {
+        event_name: string;
+        events: number;
+        users: number;
+    }, {
+        event_name: string;
+        events: number;
+        users: number;
+    }>, "many">;
+}, "strip", zodV3.ZodTypeAny, {
+    days: number;
+    trialUsers: number;
+    convertedUsers: number;
+    stages: {
+        event_name: string;
+        events: number;
+        users: number;
+    }[];
+}, {
+    days: number;
+    trialUsers: number;
+    convertedUsers: number;
+    stages: {
+        event_name: string;
+        events: number;
+        users: number;
+    }[];
+}>;
+export declare const TrackAssistantExecutionEventBody: zodV3.ZodObject<{
+    event: zodV3.ZodEnum<["upgrade_viewed", "upgrade_clicked"]>;
+    operationId: zodV3.ZodString;
+}, "strip", zodV3.ZodTypeAny, {
+    event: "upgrade_viewed" | "upgrade_clicked";
+    operationId: string;
+}, {
+    event: "upgrade_viewed" | "upgrade_clicked";
+    operationId: string;
+}>;
+export declare const TrackAssistantExecutionEventResponse: zodV3.ZodObject<{
+    ok: zodV3.ZodBoolean;
+}, "strip", zodV3.ZodTypeAny, {
+    ok: boolean;
+}, {
+    ok: boolean;
+}>;
 export declare const listAssistantOperationsResponseOperationsItemParametersLanguageDefault = "ar";
 export declare const listAssistantOperationsResponseOperationsItemParametersTopicMax = 500;
 export declare const listAssistantOperationsResponseOperationsItemParametersSourceTextMax = 12000;
@@ -27,6 +80,25 @@ export declare const listAssistantOperationsResponseOperationsItemParametersCoun
 export declare const listAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0;
 export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
     enabled: zodV3.ZodBoolean;
+    executionAccess: zodV3.ZodOptional<zodV3.ZodObject<{
+        status: zodV3.ZodEnum<["subscription", "trial_available", "trial_reserved", "upgrade_required"]>;
+        canExecute: zodV3.ZodBoolean;
+        planCode: zodV3.ZodString;
+        reservedOperationId: zodV3.ZodNullable<zodV3.ZodString>;
+        consumedOperationId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    }, {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    }>>;
     pilotOnly: zodV3.ZodOptional<zodV3.ZodBoolean>;
     teacherIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     operations: zodV3.ZodArray<zodV3.ZodObject<{
@@ -325,6 +397,13 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
         }[];
         teacherId?: number | undefined;
     }[];
+    executionAccess?: {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    } | undefined;
     pilotOnly?: boolean | undefined;
     teacherIds?: number[] | undefined;
 }, {
@@ -381,6 +460,13 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
         }[];
         teacherId?: number | undefined;
     }[];
+    executionAccess?: {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    } | undefined;
     pilotOnly?: boolean | undefined;
     teacherIds?: number[] | undefined;
 }>;
@@ -2218,6 +2304,25 @@ export declare const listAdminAssistantOperationsResponseOperationsItemParameter
 export declare const listAdminAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0;
 export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
     enabled: zodV3.ZodBoolean;
+    executionAccess: zodV3.ZodOptional<zodV3.ZodObject<{
+        status: zodV3.ZodEnum<["subscription", "trial_available", "trial_reserved", "upgrade_required"]>;
+        canExecute: zodV3.ZodBoolean;
+        planCode: zodV3.ZodString;
+        reservedOperationId: zodV3.ZodNullable<zodV3.ZodString>;
+        consumedOperationId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
+    }, "strip", zodV3.ZodTypeAny, {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    }, {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    }>>;
     pilotOnly: zodV3.ZodOptional<zodV3.ZodBoolean>;
     teacherIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodNumber, "many">>;
     operations: zodV3.ZodArray<zodV3.ZodObject<{
@@ -2516,6 +2621,13 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
         }[];
         teacherId?: number | undefined;
     }[];
+    executionAccess?: {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    } | undefined;
     pilotOnly?: boolean | undefined;
     teacherIds?: number[] | undefined;
 }, {
@@ -2572,6 +2684,13 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
         }[];
         teacherId?: number | undefined;
     }[];
+    executionAccess?: {
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        canExecute: boolean;
+        planCode: string;
+        reservedOperationId: string | null;
+        consumedOperationId?: string | null | undefined;
+    } | undefined;
     pilotOnly?: boolean | undefined;
     teacherIds?: number[] | undefined;
 }>;
@@ -4384,8 +4503,6 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         showAnswersAfterResult: boolean;
         mode: "continuous" | "staged";
         showStageNames: boolean;
-        questionsPerSession?: number | undefined;
-        skills?: string[] | undefined;
         stages?: {
             id: string;
             questionCount: number;
@@ -4401,7 +4518,24 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
             name?: string | undefined;
             durationMinutes?: number | undefined;
         }[] | undefined;
+        questionsPerSession?: number | undefined;
+        skills?: string[] | undefined;
     }, {
+        stages?: {
+            id: string;
+            questionCount: number;
+            skills: string[];
+            passRule: {
+                type: "percent" | "correctCount";
+                threshold: number;
+            };
+            difficulties: (1 | 2 | 3)[];
+            failureAction: "support" | "repeat" | "continue" | "finish";
+            supportQuestionCount: number;
+            maxRepeats: number;
+            name?: string | undefined;
+            durationMinutes?: number | undefined;
+        }[] | undefined;
         questionsPerSession?: number | undefined;
         skills?: string[] | undefined;
         allowRetry?: boolean | undefined;
@@ -4409,21 +4543,6 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         showAnswersAfterResult?: boolean | undefined;
         mode?: "continuous" | "staged" | undefined;
         showStageNames?: boolean | undefined;
-        stages?: {
-            id: string;
-            questionCount: number;
-            skills: string[];
-            passRule: {
-                type: "percent" | "correctCount";
-                threshold: number;
-            };
-            difficulties: (1 | 2 | 3)[];
-            failureAction: "support" | "repeat" | "continue" | "finish";
-            supportQuestionCount: number;
-            maxRepeats: number;
-            name?: string | undefined;
-            durationMinutes?: number | undefined;
-        }[] | undefined;
     }>>>;
     activityType: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     listeningAudioText: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -4510,8 +4629,6 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
         showAnswersAfterResult: boolean;
         mode: "continuous" | "staged";
         showStageNames: boolean;
-        questionsPerSession?: number | undefined;
-        skills?: string[] | undefined;
         stages?: {
             id: string;
             questionCount: number;
@@ -4527,6 +4644,8 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
             name?: string | undefined;
             durationMinutes?: number | undefined;
         }[] | undefined;
+        questionsPerSession?: number | undefined;
+        skills?: string[] | undefined;
     } | null | undefined;
     activityType?: string | null | undefined;
     listeningAudioText?: string | null | undefined;
@@ -4568,13 +4687,6 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
     categoryId?: number | null | undefined;
     isAdaptive?: boolean | undefined;
     adaptiveConfig?: {
-        questionsPerSession?: number | undefined;
-        skills?: string[] | undefined;
-        allowRetry?: boolean | undefined;
-        showImmediateFeedback?: boolean | undefined;
-        showAnswersAfterResult?: boolean | undefined;
-        mode?: "continuous" | "staged" | undefined;
-        showStageNames?: boolean | undefined;
         stages?: {
             id: string;
             questionCount: number;
@@ -4590,6 +4702,13 @@ export declare const CreateAssignmentBody: zodV3.ZodObject<{
             name?: string | undefined;
             durationMinutes?: number | undefined;
         }[] | undefined;
+        questionsPerSession?: number | undefined;
+        skills?: string[] | undefined;
+        allowRetry?: boolean | undefined;
+        showImmediateFeedback?: boolean | undefined;
+        showAnswersAfterResult?: boolean | undefined;
+        mode?: "continuous" | "staged" | undefined;
+        showStageNames?: boolean | undefined;
     } | null | undefined;
     activityType?: string | null | undefined;
     listeningAudioText?: string | null | undefined;
@@ -18892,8 +19011,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
         recitationScore: zodV3.ZodNullable<zodV3.ZodNumber>;
     }, "strip", zodV3.ZodTypeAny, {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -18902,8 +19021,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
         memorizationScore: number | null;
         recitationScore: number | null;
     }, {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -18980,8 +19099,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     };
     activeDates: string[];
     recentActivities: {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;
@@ -19032,8 +19151,8 @@ export declare const GetQuranJourneyResponse: zodV3.ZodObject<{
     };
     activeDates: string[];
     recentActivities: {
-        type: "submission" | "recitation";
         status: string;
+        type: "submission" | "recitation";
         date: string;
         surahName: string;
         startAyah: number;

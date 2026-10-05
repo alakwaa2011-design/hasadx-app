@@ -10,6 +10,7 @@ import { createWorksheetDraft, generateWorksheetQuestions } from "../routes/work
 import { CreditService } from "../lib/credit-service";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
 import { migrateAssistantSchema } from "../lib/assistant-schema";
+import { getAssistantExecutionAccess, recordAssistantPaidUpgrade, recordAssistantEvent, getAssistantExecutionMetrics } from "../lib/assistant-execution-access";
 
 vi.mock("../lib/assistant-worksheet", async importOriginal => ({
   ...await importOriginal<any>(),
@@ -71,11 +72,17 @@ describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
     else await db.execute(sql`INSERT INTO platform_settings(credits_enabled,admin_credit_test_mode) VALUES(TRUE,FALSE)`);
     invalidateCreditsSettingsCache();
     await db.update(config).set({ enabled: true, pilotOnly: false, teacherIds: [] }).where(eq(config.id, 1));
-    teacher = await createTeacher(); other = await createTeacher(); admin = await createTeacher(true);
   });
   beforeEach(async () => {
     vi.clearAllMocks();
     await db.update(config).set({ enabled: true, pilotOnly: false, teacherIds: [] }).where(eq(config.id, 1));
+    if (teachers.length) {
+      const ids = sql.join(teachers.map(id => sql`${id}`), sql`,`);
+      await db.execute(sql`DELETE FROM assistant_execution_trials WHERE teacher_id IN (${ids})`);
+      await db.execute(sql`DELETE FROM assistant_execution_events WHERE teacher_id IN (${ids})`);
+      await db.execute(sql`UPDATE assistant_worksheet_operations SET status='cancelled' WHERE teacher_id IN (${ids}) AND status IN ('queued','running','saving')`);
+    }
+    teacher = await createTeacher(); other = await createTeacher(); admin = await createTeacher(true);
   });
   afterAll(async () => {
     if (teachers.length) {
@@ -101,6 +108,101 @@ describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
     expect(parsed.parameters.counts.mcq).toBe(0);
     expect(parsed.parameters.counts.short_answer).toBe(1);
     expect(generateWorksheetQuestions).not.toHaveBeenCalled();
+  });
+
+  it("charges the one Free execution once, then blocks even a purchased-credit balance", async () => {
+    const before = await CreditService.getBalance(teacher);
+    const op = await quoted();
+    await confirm(op).expect(200);
+    await confirm(op).expect(200);
+    await runAssistantJob();
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+    const after = await CreditService.getBalance(teacher);
+    expect(before - after).toBe(2);
+    await request(app).post("/api/assistant/prepare").set(header()).send({ message: "ورقة أخرى", language: "ar" }).expect(403);
+    expect(await CreditService.getBalance(teacher)).toBe(after);
+    expect(vi.mocked(generateWorksheetQuestions)).toHaveBeenCalledTimes(1);
+    await request(app).delete(`/api/assistant/operations/${op.id}`).set(header()).expect(204);
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+  });
+
+  it("reserves one trial across different operations and releases it on cancellation", async () => {
+    const first = await quoted(), second = await quoted();
+    const responses = await Promise.all([confirm(first), confirm(second)]);
+    expect(responses.map(r => r.status).sort()).toEqual([200, 403]);
+    const winner = responses[0].status === 200 ? first : second;
+    const loser = winner.id === first.id ? second : first;
+    await request(app).post(`/api/assistant/operations/${winner.id}/cancel`).set(header()).expect(200);
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("trial_available");
+    await confirm(loser).expect(200);
+  });
+
+  it("keeps the trial reserved while saving, and consumes it only after a saved draft", async () => {
+    const op = await quoted(); await confirm(op).expect(200);
+    vi.mocked(createWorksheetDraft).mockRejectedValueOnce(new Error("Save delayed"));
+    await runAssistantJob();
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("trial_reserved");
+    const refreshed = await request(app).post(`/api/assistant/operations/${op.id}/quote`).set(header()).send(settings).expect(200);
+    await confirm(refreshed.body).expect(200);
+    await runAssistantJob();
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+    expect(vi.mocked(generateWorksheetQuestions)).toHaveBeenCalledTimes(1);
+  });
+
+  it("refunds failed generation and leaves the paid trial unused", async () => {
+    const op = await quoted(); await confirm(op).expect(200);
+    const before = await CreditService.getBalance(teacher);
+    vi.mocked(generateWorksheetQuestions).mockRejectedValueOnce(new Error("Provider failure"));
+    await runAssistantJob();
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("trial_available");
+    expect(await CreditService.getBalance(teacher)).toBe(before + 2);
+  });
+
+  it("records only provider-confirmed paid upgrades, idempotently, within the attribution window", async () => {
+    const op = await quoted();
+    await recordAssistantEvent(teacher, "upgrade_checkout_started", op.id, { planCode: "basic" });
+    expect((await db.execute(sql`SELECT id FROM assistant_execution_events WHERE teacher_id=${teacher} AND event_name='upgrade_paid'`)).rows).toHaveLength(0);
+    await recordAssistantPaidUpgrade(db, teacher, `${RUN}-invoice`, "basic", new Date(Date.now() + 1000));
+    await recordAssistantPaidUpgrade(db, teacher, `${RUN}-invoice`, "basic", new Date(Date.now() + 1000));
+    const events = await db.execute(sql`SELECT * FROM assistant_execution_events WHERE teacher_id=${teacher} AND event_name='upgrade_paid'`);
+    expect(events.rows).toHaveLength(1);
+    await request(app).get("/api/assistant/admin/execution-metrics").set(header()).expect(403);
+    await request(app).get("/api/assistant/admin/execution-metrics").set(header(admin)).expect(200);
+    await request(app).post("/api/assistant/execution-events").set(header(other)).send({ operationId: op.id, event: "upgrade_paid" }).expect(400);
+    await request(app).post("/api/assistant/execution-events").set(header(other)).send({ operationId: op.id, event: "upgrade_viewed" }).expect(404);
+  });
+  it("allows Basic and Pro at normal tool cost, keeps cancelled paid terms, and never resets a used trial", async () => {
+    const first = await quoted(); await confirm(first).expect(200); await runAssistantJob();
+    const balance = await CreditService.getBalance(teacher);
+    for (const code of ["basic", "pro"]) {
+      await db.execute(sql`
+        INSERT INTO subscriptions(teacher_id,plan_id,status,payment_status,started_at,paid_through,current_period_end)
+        SELECT ${teacher},id,${code === "basic" ? "canceled" : "active"},'active',NOW(),NOW()+INTERVAL '1 day',NOW()+INTERVAL '1 day'
+        FROM plans WHERE code=${code}
+        ON CONFLICT(teacher_id) DO UPDATE SET plan_id=EXCLUDED.plan_id,status=EXCLUDED.status,
+          payment_status='active',paid_through=EXCLUDED.paid_through,current_period_end=EXCLUDED.current_period_end
+      `);
+      expect((await getAssistantExecutionAccess(teacher)).status).toBe("subscription");
+      const op = await quoted(); await confirm(op).expect(200); await runAssistantJob();
+    }
+    expect(balance - await CreditService.getBalance(teacher)).toBe(4);
+    await db.execute(sql`UPDATE subscriptions SET paid_through=NOW()-INTERVAL '1 day', current_period_end=NOW()-INTERVAL '1 day' WHERE teacher_id=${teacher}`);
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+    await db.execute(sql`UPDATE subscriptions SET plan_id=(SELECT id FROM plans WHERE code='free'),status='active',paid_through=NULL,current_period_end=NULL WHERE teacher_id=${teacher}`);
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+  });
+  it("does not grant subscription execution to an unpaid provider subscription or unlimited points", async () => {
+    const op = await quoted(); await confirm(op).expect(200); await runAssistantJob();
+    await db.execute(sql`
+      INSERT INTO subscriptions(teacher_id,plan_id,status,payment_status,started_at,current_period_end,external_subscription_id)
+      SELECT ${teacher},id,'active','active',NOW(),NOW()+INTERVAL '1 day',${RUN + "-unpaid"} FROM plans WHERE code='basic'
+      ON CONFLICT(teacher_id) DO UPDATE SET plan_id=EXCLUDED.plan_id,status='active',payment_status='active',
+        current_period_end=EXCLUDED.current_period_end,paid_through=NULL,external_subscription_id=EXCLUDED.external_subscription_id
+    `);
+    await db.execute(sql`UPDATE teachers SET unlimited_credits=TRUE WHERE id=${teacher}`);
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+    const response = await request(app).post("/api/assistant/prepare").set(header()).send({ message: "ورقة أخرى", language: "ar" }).expect(403);
+    expect(response.body.code).toBe("EXECUTION_SUBSCRIPTION_REQUIRED");
   });
   it("requires a current quote and rejects changed prices before any hold", async () => {
     const op = await quoted();
