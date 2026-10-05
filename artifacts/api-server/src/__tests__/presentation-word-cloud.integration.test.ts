@@ -281,4 +281,102 @@ describe.skipIf(!ready)("durable live word clouds (real PostgreSQL and Socket.IO
     const history = await db.execute(sql`SELECT count(*)::integer AS n FROM presentation_word_cloud_runs WHERE session_id = ${sid}`);
     expect(Number(history.rows[0].n)).toBeGreaterThan(2);
   });
+
+  it("rehydrates self-paced clouds and each device's submission after a cold restart, without live runs or scores", async () => {
+    const [deck] = await db.insert(presentationsTable).values({
+      teacherId, title: "Self-paced recovery",
+      slides: [
+        { id: "one", elements: [{ id: "sp-cloud", kind: "activity", activityKind: "word_cloud" }] },
+        { id: "two", elements: [{ id: "sp-other", kind: "activity", activityKind: "word_cloud" }] },
+        { id: "three", elements: [{ id: "sp-quiz", kind: "activity", activityKind: "mcq", options: ["a", "b"] }] },
+      ],
+    }).returning();
+    const [session] = await db.insert(sessions).values({
+      teacherId, presentationId: deck.id, pin: "818181", sessionMode: "self_paced", status: "running",
+    }).returning();
+    const spSid = session.id;
+    const nav = async (socket: Socket, index = 0) => {
+      const slide = event(socket, "self_paced:slide");
+      socket.emit("student:slide-change", { sessionId: spSid, slideIndex: index });
+      return slide;
+    };
+    const submit = async (socket: Socket, text: string, response = "answer:accepted", id = "sp-cloud") => {
+      const received = event(socket, response);
+      socket.emit("word_cloud:submit", { sessionId: spSid, elementId: id, text });
+      return received;
+    };
+    // A legacy answer with no report event must remain a real duplicate.
+    await db.insert(presentationResponsesTable).values({
+      sessionId: spSid, slideIndex: 0, elementId: "sp-cloud", studentKey: "sp-a", studentName: "طالب", answerText: "  SCIENCE  ",
+    });
+    const a = await student("sp-a", spSid);
+    const b = await student("sp-b", spSid);
+    expect((await nav(a.socket)).wordCloud).toMatchObject({ submitted: true, words: [{ text: "science", count: 1 }] });
+    expect((await nav(b.socket)).wordCloud.submitted).toBe(false);
+    await submit(a.socket, "changed", "answer:already");
+    const { recordPresentationAnswer } = await import("../lib/presentation-report-data");
+    const result = await Promise.all(Array.from({ length: 8 }, () => recordPresentationAnswer(
+      spSid, { studentKey: "sp-b", name: "طالب", classStudentId: null },
+      { id: "sp-cloud", activityKind: "word_cloud" }, 0, { answerText: "science", mirrorLegacy: true },
+    )));
+    expect(result.filter(r => r === "saved")).toHaveLength(1);
+    expect(result.filter(r => r === "already")).toHaveLength(7);
+    await stop();
+    await start(true);
+    const restoredA = await student("sp-a", spSid);
+    const restoredB = await student("sp-b", spSid);
+    const c = await student("sp-c", spSid);
+    for (const socket of [restoredA.socket, restoredB.socket]) {
+      expect(await nav(socket)).toMatchObject({
+        activitiesCompleted: 1, wordCloud: { submitted: true, words: [{ text: "science", count: 2 }] },
+      });
+    }
+    expect((await nav(c.socket)).wordCloud.submitted).toBe(false);
+    const update = event(restoredA.socket, "word_cloud:update");
+    await submit(c.socket, "علم");
+    expect((await update).words).toEqual([{ text: "science", count: 2 }, { text: "علم", count: 1 }]);
+    await submit(restoredB.socket, "ignored", "answer:already");
+    expect((await nav(restoredB.socket, 1)).wordCloud).toMatchObject({ submitted: false, words: [] });
+    await submit(restoredB.socket, "science", "answer:accepted", "sp-other");
+    expect((await nav(restoredB.socket, 0)).wordCloud.words).toEqual([{ text: "science", count: 2 }, { text: "علم", count: 1 }]);
+    await nav(c.socket, 2);
+    expect((await submit(c.socket, "invalid", "answer:rejected", "sp-quiz")).reason).toBe("not-active");
+    expect(await db.select().from(runs).where(eq(runs.sessionId, spSid))).toHaveLength(0);
+    expect(await getWordCloudSnapshot(spSid)).toBeNull();
+    const saved = await db.select().from(presentationResponsesTable).where(eq(presentationResponsesTable.sessionId, spSid));
+    expect(saved).toHaveLength(4);
+    expect(saved.every(row => row.isCorrect === null && row.answerIndex === null)).toBe(true);
+    const reports = await db.select().from(presentationSessionEventsTable).where(and(
+      eq(presentationSessionEventsTable.sessionId, spSid), eq(presentationSessionEventsTable.kind, "answer"),
+    ));
+    expect(reports).toHaveLength(3); // no phantom legacy-duplicate event
+    expect(reports.every(row => row.payload.isCorrect === null)).toBe(true);
+
+    // Force a genuine PostgreSQL write error, not a mocked rejected promise.
+    const failing = await student("sp-storage-fail", spSid);
+    await nav(failing.socket);
+    await db.execute(sql`ALTER TABLE presentation_responses ADD CONSTRAINT sp_cloud_test_failure
+      CHECK (student_key <> 'sp-storage-fail') NOT VALID`);
+    try {
+      expect((await submit(failing.socket, "retry", "answer:rejected")).reason).toBe("storage-failed");
+      expect((await nav(failing.socket)).wordCloud.submitted).toBe(false);
+      const failedReports = await db.select().from(presentationSessionEventsTable).where(and(
+        eq(presentationSessionEventsTable.sessionId, spSid), eq(presentationSessionEventsTable.kind, "answer"),
+      ));
+      expect(failedReports).toHaveLength(3); // transaction rolled back
+    } finally {
+      await db.execute(sql`ALTER TABLE presentation_responses DROP CONSTRAINT sp_cloud_test_failure`);
+    }
+    await submit(failing.socket, "retry");
+    expect((await nav(failing.socket)).wordCloud.submitted).toBe(true);
+    // A delayed self-paced write cannot become a teacher-paced answer merely
+    // because the teacher opened the same element during takeover.
+    await db.update(sessions).set({ sessionMode: "teacher", activeElementId: "sp-cloud" }).where(eq(sessions.id, spSid));
+    expect(await recordPresentationAnswer(spSid, { studentKey: "late-takeover", name: "طالب", classStudentId: null },
+      { id: "sp-cloud", activityKind: "word_cloud" }, 0,
+      { answerText: "late", mirrorLegacy: true, expectedSessionMode: "self_paced" })).toBe("closed");
+    await db.update(sessions).set({ sessionMode: "self_paced" }).where(eq(sessions.id, spSid));
+    await db.update(sessions).set({ status: "ended" }).where(eq(sessions.id, spSid));
+    expect((await submit(c.socket, "late", "answer:rejected")).reason).toBe("not-active");
+  });
 });

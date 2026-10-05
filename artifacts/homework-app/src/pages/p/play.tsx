@@ -4,6 +4,7 @@ import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
 import { Loader2, CheckCircle2, LogOut, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { LiveWordCloud, type CloudWord } from "@/components/presentations/live-word-cloud";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -57,6 +58,8 @@ export default function PresentationPlay() {
   const [mySummary, setMySummary] = useState<{ correct: number; total: number } | null>(null);
   const [textInput, setTextInput] = useState("");
   const [textSubmitted, setTextSubmitted] = useState(false);
+  const [textError, setTextError] = useState(false);
+  const [selfPacedWords, setSelfPacedWords] = useState<CloudWord[]>([]);
   /* Self-Paced Mode state */
   const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
   const [selfPacedIdx, setSelfPacedIdx] = useState<number | null>(null);
@@ -69,6 +72,8 @@ export default function PresentationPlay() {
   /* Tracks whether we've already initialized self-paced navigation so we
      don't re-trigger a slide request on every state:sync event. */
   const selfPacedInitRef = useRef(false);
+  const selfPacedIndexRef = useRef(0);
+  const selfPacedElementRef = useRef<string | null>(null);
   const wordCloudRunRef = useRef<string | null>(null);
   const wallRunRef = useRef<string | null>(null);
   const hasSocketSyncRef = useRef(false);
@@ -174,7 +179,7 @@ export default function PresentationPlay() {
           slide: st?.slide ?? prev?.slide ?? null,
           activeElement: st?.activeElement ?? prev?.activeElement ?? null,
         };
-        if (st?.activeElementId !== prev?.activeElementId || st?.wordCloudRunId !== prev?.wordCloudRunId || st?.wallRunId !== prev?.wallRunId) {
+        if (st?.sessionMode !== "self_paced" && (st?.activeElementId !== prev?.activeElementId || st?.wordCloudRunId !== prev?.wordCloudRunId || st?.wallRunId !== prev?.wallRunId)) {
           setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
           setTextInput(""); setTextSubmitted(false);
         }
@@ -183,11 +188,13 @@ export default function PresentationPlay() {
       });
       /* Self-Paced Mode: on first state:sync that carries the mode, request
          slide 0 so the student starts from the beginning of the deck. */
-      if (st?.sessionMode === "self_paced" && !selfPacedInitRef.current) {
+      if (st?.sessionMode === "self_paced") {
         selfPacedInitRef.current = true;
         setSessionMode("self_paced");
-        getSocket().emit("student:slide-change", { sessionId: sid, slideIndex: 0 });
+        getSocket().emit("student:slide-change", { sessionId: sid, slideIndex: selfPacedIndexRef.current });
       } else if (st?.sessionMode === "teacher") {
+        selfPacedInitRef.current = false;
+        selfPacedElementRef.current = null;
         setSessionMode("teacher");
       }
     };
@@ -250,31 +257,45 @@ export default function PresentationPlay() {
     };
     const onDist = (d: any) => { setDist({ counts: d.counts, total: d.total }); setTotalAnswered(d.total); };
     const onTotal = (d: any) => setTotalAnswered(d.total);
-    const onAccepted = (payload?: { runId?: string }) => {
+    const onAccepted = (payload?: { runId?: string; selfPaced?: boolean; elementId?: string }) => {
+      if (payload?.selfPaced && payload.elementId !== selfPacedElementRef.current) return;
       if (payload?.runId && payload.runId !== (wallRunRef.current ?? wordCloudRunRef.current)) return;
       setSubmitted(true);
       /* Mark text-based activities (word_cloud, open_wall) as submitted here —
          the onClick no longer optimistically sets this so we never show "sent"
          before the server confirms. */
       setTextSubmitted(true);
+      setTextError(false);
       /* In self-paced mode, count each accepted answer as a completed activity. */
       if (selfPacedInitRef.current) {
         setActivitiesCompleted((n) => n + 1);
       }
     };
-    const onAlready = (payload?: { runId?: string }) => {
+    const onAlready = (payload?: { runId?: string; selfPaced?: boolean; elementId?: string }) => {
+      if (payload?.selfPaced && payload.elementId !== selfPacedElementRef.current) return;
       if (payload?.runId && payload.runId !== (wallRunRef.current ?? wordCloudRunRef.current)) return;
       setSubmitted(true); setTextSubmitted(true);
+      setTextError(false);
     };
-    const onRejected = (payload?: { runId?: string }) => {
+    const onRejected = (payload?: { runId?: string; elementId?: string; reason?: string }) => {
+      if (selfPacedInitRef.current && payload?.elementId && payload.elementId !== selfPacedElementRef.current) return;
       if (payload?.runId && payload.runId !== (wallRunRef.current ?? wordCloudRunRef.current)) return;
       setSubmitted(false);
       setTextSubmitted(false);
+      setTextError(payload?.reason === "storage-failed");
+    };
+    const onWordCloud = (payload: { selfPaced?: boolean; elementId: string; slideIndex?: number; words: CloudWord[] }) => {
+      if (!selfPacedInitRef.current || !payload.selfPaced || payload.elementId !== selfPacedElementRef.current || payload.slideIndex !== selfPacedIndexRef.current) return;
+      // Concurrent reads may arrive out of order; self-paced answers never shrink.
+      setSelfPacedWords(prev => payload.words.reduce((n, w) => n + w.count, 0) < prev.reduce((n, w) => n + w.count, 0) ? prev : payload.words);
     };
     /* Self-Paced Mode: server sends back the requested slide + count + optional activity. */
-    const onSelfPacedSlide = ({ slideIndex, slide, slideCount, activeElement, activitiesCompleted: ac }: {
+    const onSelfPacedSlide = ({ slideIndex, slide, slideCount, activeElement, activitiesCompleted: ac, wordCloud }: {
       slideIndex: number; slide: any; slideCount: number; activeElement?: any; activitiesCompleted?: number;
+      wordCloud?: { submitted: boolean; words: CloudWord[] } | null;
     }) => {
+      selfPacedIndexRef.current = slideIndex;
+      selfPacedElementRef.current = activeElement?.id ?? null;
       setSelfPacedIdx(slideIndex);
       setSelfPacedCount(slideCount);
       setSelfPacedSlide(slide);
@@ -284,6 +305,10 @@ export default function PresentationPlay() {
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       setInlineActivity(null); setMySummary(null); setTextInput(""); setTextSubmitted(false);
       setGameLaunch(null);
+      setTextSubmitted(!!wordCloud?.submitted);
+      setSubmitted(!!wordCloud?.submitted);
+      setSelfPacedWords(wordCloud?.words ?? []);
+      setTextError(false);
     };
     /* Self-Paced Mode: teacher reclaimed control — lock back to teacher pace. */
     const onSelfPacedEnded = ({ currentSlideIndex, slide }: { currentSlideIndex: number; slide: any }) => {
@@ -317,6 +342,7 @@ export default function PresentationPlay() {
     s.on("answer:accepted", onAccepted);
     s.on("answer:already", onAlready);
     s.on("answer:rejected", onRejected);
+    s.on("word_cloud:update", onWordCloud);
     s.on("session:ended", onEnded);
     s.on("game:launch", onGameLaunch);
     s.on("connect", onReconnect);
@@ -395,6 +421,7 @@ export default function PresentationPlay() {
       s.off("answer:accepted", onAccepted);
       s.off("answer:already", onAlready);
       s.off("answer:rejected", onRejected);
+      s.off("word_cloud:update", onWordCloud);
       s.off("session:ended", onEnded);
       s.off("game:launch", onGameLaunch);
       s.off("activity:state", onInlineState);
@@ -954,9 +981,17 @@ export default function PresentationPlay() {
                           ? (isAr ? "سيظهر ردك على الشاشة عند موافقة المعلم" : "Your response will appear when the teacher approves it")
                           : (isAr ? "تم حفظ إجابتك المفتوحة" : "Your open answer was saved")}
                     </div>
+                    {sessionMode === "self_paced" && el.activityKind === "word_cloud" && (
+                      <div className="relative w-full h-64 overflow-hidden rounded-xl">
+                        <LiveWordCloud words={selfPacedWords} isAr={isAr} />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
+                    {textError && <div role="alert" className="text-sm text-red-700">
+                      {isAr ? "تعذر حفظ ردك. حاول الإرسال مجددًا." : "Your response could not be saved. Please try again."}
+                    </div>}
                     <textarea
                       value={textInput}
                       onChange={(e) => setTextInput(e.target.value.slice(0, el.activityKind === "word_cloud" ? 60 : 500))}

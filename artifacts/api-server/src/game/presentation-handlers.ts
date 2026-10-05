@@ -6,6 +6,7 @@ import { hydrateActivityQuestions } from "../routes/presentations";
 import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
 import { recordPresentationJoin, recordPresentationOpen, recordPresentationAnswer, recordPresentationEvent } from "../lib/presentation-report-data";
 import { getWordCloudSnapshot, hasWordCloudSubmission, openWordCloud, submitWordCloud } from "../lib/presentation-word-cloud";
+import { getSelfPacedCloud } from "../lib/presentation-self-paced-cloud";
 import { getWallSnapshot, hasWallSubmission, openWall, submitWall, toggleWallCard } from "../lib/presentation-wall";
 
 /**
@@ -59,8 +60,6 @@ interface LiveSession {
   selfPacedProgress?: Map<string, number>;
   /** Self-paced activity completions: studentKey -> count of answered activities. */
   selfPacedActivitiesCompleted?: Map<string, number>;
-  /** Self-paced word_cloud submissions: elementId -> { words, submitted }. */
-  selfPacedWordClouds?: Map<string, { words: Map<string, number>; submitted: Set<string> }>;
   /** Self-paced open_wall submissions: elementId -> { cards, nextId, submitted }. */
   selfPacedOpenWalls?: Map<string, { cards: WallCard[]; nextId: number; submitted: Set<string> }>;
   /** Stage Mode — professional cinematic display mode for the projector. */
@@ -423,7 +422,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
      payload. */
   const safeActive = isTeacher ? active : sanitizeElementForStudents(active);
   const liveSess = sessions.get(sid);
-  const wordCloud = sess.activeWordCloudRunId ? await getWordCloudSnapshot(sid) : null;
+  const wordCloud = sess.sessionMode !== "self_paced" && sess.activeWordCloudRunId ? await getWordCloudSnapshot(sid) : null;
   const wall = sess.activeWallRunId ? await getWallSnapshot(sid, isTeacher) : null;
   const participant = liveSess?.participants.get(socket.id);
   const wordCloudSubmitted = wordCloud && participant && !participant.isShow
@@ -827,24 +826,25 @@ export function setupPresentationSocket(io: Server) {
            student's current slide and persist answer to DB directly. */
         if (live.sessionMode === "self_paced") {
           const spSess = await loadSessionRow(sid);
-          if (!spSess) return;
+          if (!spSess || spSess.status === "ended" || spSess.sessionMode !== "self_paced") return socket.emit("answer:rejected", { reason: "not-active" });
           const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
           const spDeck = await loadDeckRow(spSess.presentationId);
           const spEl = await resolveActiveElement(spDeck?.slides, studentSlideIdx, String(elementId));
-          if (!spEl) return;
+          if (spEl?.kind !== "activity" || spEl.activityKind !== "word_cloud") return socket.emit("answer:rejected", { reason: "not-active" });
           const word = String(text ?? "").trim().slice(0, 60);
           if (!word) return;
-          const recorded = await recordPresentationAnswer(sid, me, spEl, studentSlideIdx, { answerText: word, mirrorLegacy: true });
-          if (recorded !== "saved") return socket.emit(recorded === "already" ? "answer:already" : "answer:rejected", { reason: "not-active" });
-          socket.emit("answer:accepted");
-          /* Also maintain an in-memory per-element word map so the
-             student sees an updated cloud immediately. */
-          if (!live.selfPacedWordClouds) live.selfPacedWordClouds = new Map();
-          let wc = live.selfPacedWordClouds.get(String(elementId));
-          if (!wc) { wc = { words: new Map(), submitted: new Set() }; live.selfPacedWordClouds.set(String(elementId), wc); }
-          wc.words.set(word.toLowerCase(), (wc.words.get(word.toLowerCase()) ?? 0) + 1);
-          wc.submitted.add(me.studentKey);
-          socket.emit("word_cloud:update", { elementId: String(elementId), words: Array.from(wc.words.entries()).map(([w, c]) => ({ text: w, count: c })) });
+          const recorded = await recordPresentationAnswer(sid, me, spEl, studentSlideIdx, { answerText: word, mirrorLegacy: true, expectedSessionMode: "self_paced" });
+          if (recorded === "closed") return socket.emit("answer:rejected", { reason: "not-active", elementId, selfPaced: true });
+          const cloud = await getSelfPacedCloud(sid, String(elementId), studentSlideIdx, me.studentKey);
+          socket.emit(recorded === "saved" ? "answer:accepted" : "answer:already", { elementId, selfPaced: true });
+          // Only students currently viewing this element receive its aggregate.
+          // Each recipient's submission flag is private to their own identity.
+          for (const [sockId, participant] of live.participants) {
+            if (participant.isShow || (live.selfPacedProgress?.get(participant.studentKey) ?? 0) !== studentSlideIdx) continue;
+            const { submitted: _private, ...aggregate } = cloud;
+            io.to(sockId).emit("word_cloud:update", aggregate);
+          }
+          if (recorded === "already") return;
           /* Track completion and notify teacher. */
           if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
           const prevWc = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
@@ -868,7 +868,10 @@ export function setupPresentationSocket(io: Server) {
         if (cloud) io.to(room(sid)).emit("word_cloud:update", cloud);
       } catch (err) {
         logger.error({ err }, "word_cloud:submit failed");
-        socket.emit("answer:rejected", { reason: "storage-failed", runId });
+        socket.emit("answer:rejected", {
+          reason: "storage-failed", runId,
+          ...(sessions.get(Number(sessionId))?.sessionMode === "self_paced" ? { elementId, selfPaced: true } : {}),
+        });
       }
     });
 
@@ -1147,7 +1150,7 @@ export function setupPresentationSocket(io: Server) {
         if (live.sessionMode !== "self_paced") return;
 
         const sess = await loadSessionRow(sid);
-        if (!sess) return;
+        if (!sess || sess.status === "ended" || sess.sessionMode !== "self_paced") return;
         const deck = await loadDeckRow(sess.presentationId);
         const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
         const slideCount = slides.length;
@@ -1164,13 +1167,21 @@ export function setupPresentationSocket(io: Server) {
         const firstActivity = rawElements.find(
           (e: any) => e?.kind === "activity" || e?.kind === "hasad-game",
         ) ?? null;
-        const activitiesCompleted = live.selfPacedActivitiesCompleted?.get(me.studentKey) ?? 0;
+        const savedAnswers = await db.select({ id: presentationResponsesTable.id }).from(presentationResponsesTable).where(and(
+          eq(presentationResponsesTable.sessionId, sid), eq(presentationResponsesTable.studentKey, me.studentKey),
+        ));
+        const activitiesCompleted = savedAnswers.length;
+        if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+        live.selfPacedActivitiesCompleted.set(me.studentKey, activitiesCompleted);
+        const wordCloud = firstActivity?.activityKind === "word_cloud"
+          ? await getSelfPacedCloud(sid, firstActivity.id, idx, me.studentKey) : null;
         socket.emit("self_paced:slide", {
           slideIndex: idx,
           slide: sanitizeSlide(rawSlide),
           slideCount,
           activeElement: firstActivity ? sanitizeElementForStudents(firstActivity) : null,
           activitiesCompleted,
+          wordCloud,
         });
 
         /* Broadcast progress to all teacher sockets. */

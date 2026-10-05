@@ -26,11 +26,12 @@ export async function recordPresentationOpen(sessionId: number, element: any, sl
 /** Commit before acknowledging. Serialize with session:end so a late answer
  * cannot be added to an already-saved ended session. */
 export async function recordPresentationAnswer(sessionId: number, me: { studentKey: string; name: string; classStudentId: number | null },
-  element: any, slideIndex: number, answer: { answerIndex?: number; answerText?: string; questionIndex?: number; mirrorLegacy?: boolean }) {
+  element: any, slideIndex: number, answer: { answerIndex?: number; answerText?: string; questionIndex?: number; mirrorLegacy?: boolean; expectedSessionMode?: "self_paced" }) {
   if (!element) return "closed" as const;
   return db.transaction(async tx => {
     const [session] = await tx.select().from(presentationSessionsTable).where(eq(presentationSessionsTable.id, sessionId)).for("share");
     if (!session || session.status === "ended" || (session.sessionMode !== "self_paced" && session.activeElementId !== element.id)) return "closed" as const;
+    if (answer.expectedSessionMode && session.sessionMode !== answer.expectedSessionMode) return "closed" as const;
     const opens = await tx.select().from(events).where(and(eq(events.sessionId, sessionId), inArray(events.kind, ["open", "question-open"])));
     const runOpening = opens.filter(e => e.kind === "open" && e.payload.elementId === element.id).sort((a, b) => b.id - a.id)[0];
     const runKey = session.sessionMode === "self_paced" ? "self-paced" : runOpening?.eventKey ?? "legacy";
@@ -47,6 +48,16 @@ export async function recordPresentationAnswer(sessionId: number, me: { studentK
     const responseSec = timing && session.sessionMode !== "self_paced"
       ? Math.max(0, Math.round((now.getTime() - Number(timing.payload.openedAt)) / 1000)) : null;
     const reportElementId = answer.questionIndex == null ? element.id : `${element.id}::q:${answer.questionIndex}`;
+    // Pre-reporting self-paced submissions exist only in the legacy table.
+    // Their unique answer is a real duplicate, not a new reporting event.
+    if (answer.mirrorLegacy && session.sessionMode === "self_paced") {
+      const [existing] = await tx.select({ id: presentationResponsesTable.id }).from(presentationResponsesTable).where(and(
+        eq(presentationResponsesTable.sessionId, sessionId),
+        eq(presentationResponsesTable.elementId, reportElementId),
+        eq(presentationResponsesTable.studentKey, me.studentKey),
+      )).limit(1);
+      if (existing) return "already" as const;
+    }
     const payload = { elementId: reportElementId, baseElementId: element.id, slideIndex, studentKey: me.studentKey,
         studentName: me.name, classStudentId: me.classStudentId, answerIndex: answer.answerIndex ?? null,
         answerText: answer.answerText ?? null, isCorrect, responseSec,
@@ -54,13 +65,18 @@ export async function recordPresentationAnswer(sessionId: number, me: { studentK
     const inserted = await tx.insert(events).values({
       sessionId, kind: "answer", eventKey: `${runKey}:${reportElementId}:${me.studentKey}`, payload,
       createdAt: now,
-    }).onConflictDoNothing().returning({ id: events.id });
+    }).onConflictDoNothing({ target: [events.sessionId, events.kind, events.eventKey] }).returning({ id: events.id });
     if (inserted.length && answer.mirrorLegacy) {
       const [legacy] = await tx.insert(presentationResponsesTable).values({
         sessionId, slideIndex, elementId: reportElementId, studentKey: me.studentKey, studentName: me.name,
         classStudentId: me.classStudentId, answerIndex: answer.answerIndex ?? null,
         answerText: answer.answerText ?? null, isCorrect, createdAt: now,
-      }).onConflictDoNothing().returning({ id: presentationResponsesTable.id });
+      }).onConflictDoNothing({ target: [presentationResponsesTable.sessionId, presentationResponsesTable.elementId, presentationResponsesTable.studentKey] }).returning({ id: presentationResponsesTable.id });
+      if (!legacy && session.sessionMode === "self_paced") {
+        // A concurrent legacy writer won: do not leave a phantom report answer.
+        await tx.delete(events).where(eq(events.id, inserted[0].id));
+        return "already" as const;
+      }
       if (legacy) await tx.update(events).set({ payload: { ...payload, legacyResponseId: legacy.id } }).where(eq(events.id, inserted[0].id));
     }
     return inserted.length ? "saved" as const : "already" as const;
