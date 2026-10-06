@@ -11,6 +11,7 @@ import { CreditService } from "../lib/credit-service";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
 import { migrateAssistantSchema } from "../lib/assistant-schema";
 import { getAssistantExecutionAccess, recordAssistantPaidUpgrade, recordAssistantEvent, getAssistantExecutionMetrics } from "../lib/assistant-execution-access";
+import { generateAssistantToolOutput, saveAssistantToolOutput } from "../lib/assistant-tools";
 
 vi.mock("../lib/assistant-worksheet", async importOriginal => ({
   ...await importOriginal<any>(),
@@ -20,6 +21,17 @@ vi.mock("../routes/worksheets", async importOriginal => ({
   ...await importOriginal<any>(),
   generateWorksheetQuestions: vi.fn(async () => ({ language: "ar", questions: [{ id: "q1", type: "short_answer", prompt: "اشرح دورة الماء", lines: 3, answer: "تبخر وتكاثف وهطول" }] })),
   createWorksheetDraft: vi.fn(async (...args: any[]) => (await importOriginal<any>()).createWorksheetDraft(...args)),
+}));
+vi.mock("../lib/assistant-tools", async importOriginal => ({
+  ...await importOriginal<any>(),
+  generateAssistantToolOutput: vi.fn(async (_req: unknown, row: any) => row.tool === "lesson-plan"
+    ? { language: "ar", sections: { objectives: ["فهم الدرس"], materials: [], vocabulary: [],
+      warmUp: { description: "تمهيد" }, introduction: { description: "شرح" }, activities: [],
+      assessment: { description: "تقويم" }, closure: { description: "ختام" } } }
+    : { language: "ar", questions: Array.from({ length: row.parameters.questionCount ?? 5 }, (_, i) => ({
+      text: `سؤال ${i + 1}`, questionType: "mcq", optionA: "أ", optionB: "ب", optionC: "ج", optionD: "د", correctAnswer: "A", points: 1,
+    })) }),
+  saveAssistantToolOutput: vi.fn(async (...args: any[]) => (await importOriginal<any>()).saveAssistantToolOutput(...args)),
 }));
 
 const RUN = `assistant-${randomUUID()}`;
@@ -36,6 +48,7 @@ app.use("/api/assistant", assistantRouter);
 let teacher = 0, other = 0, admin = 0;
 let oldConfig: typeof config.$inferSelect | undefined;
 let oldSettings: any, oldPrice: any;
+let otherPrices: Array<any> = [];
 const header = (id = teacher) => ({ "x-teacher": String(id) });
 const settings = { title: "دورة الماء", template: "geometric", parameters: { topic: "دورة الماء", subject: "العلوم", gradeLevel: "الخامس", language: "ar", pages: 1, questionSelection: "manual", counts: { short_answer: 1 } } };
 
@@ -64,6 +77,11 @@ async function getOperation(id: string) {
 describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
   beforeAll(async () => {
     await migrateAssistantSchema();
+    await db.execute(sql`ALTER TABLE assistant_worksheet_operations ADD COLUMN IF NOT EXISTS tool TEXT NOT NULL DEFAULT 'worksheet', ADD COLUMN IF NOT EXISTS result_id INTEGER`);
+    otherPrices = (await db.execute(sql`SELECT * FROM credit_tool_prices WHERE tool_key IN ('ai-questions','lesson-plan')`)).rows;
+    for (const key of ["ai-questions", "lesson-plan"]) {
+      await db.execute(sql`INSERT INTO credit_tool_prices(tool_key,tool_name_ar,tool_name_en,credits_cost,timeout_seconds) VALUES(${key},${key},${key},2,120) ON CONFLICT(tool_key) DO UPDATE SET credits_cost=2,timeout_seconds=120`);
+    }
     [oldConfig] = await db.select().from(config);
     oldSettings = (await db.execute(sql`SELECT id,credits_enabled,admin_credit_test_mode FROM platform_settings LIMIT 1`)).rows[0];
     oldPrice = (await db.execute(sql`SELECT credits_cost,timeout_seconds FROM credit_tool_prices WHERE tool_key='worksheet'`)).rows[0];
@@ -88,12 +106,18 @@ describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
     if (teachers.length) {
       const ids = sql.join(teachers.map(id => sql`${id}`), sql`,`);
       await db.execute(sql`DELETE FROM worksheets WHERE teacher_id IN (${ids})`);
+      await db.execute(sql`DELETE FROM lesson_plans WHERE teacher_id IN (${ids})`);
       await db.execute(sql`DELETE FROM notifications WHERE teacher_id IN (${ids})`);
       await db.execute(sql`DELETE FROM teachers WHERE id IN (${ids})`);
     }
     if (oldConfig) await db.update(config).set(oldConfig).where(eq(config.id, 1));
     if (oldSettings) await db.execute(sql`UPDATE platform_settings SET credits_enabled=${oldSettings.credits_enabled},admin_credit_test_mode=${oldSettings.admin_credit_test_mode} WHERE id=${oldSettings.id}`);
     if (oldPrice) await db.execute(sql`UPDATE credit_tool_prices SET credits_cost=${oldPrice.credits_cost},timeout_seconds=${oldPrice.timeout_seconds} WHERE tool_key='worksheet'`);
+    for (const key of ["ai-questions", "lesson-plan"]) {
+      const old = otherPrices.find(p => p.tool_key === key);
+      if (old) await db.execute(sql`UPDATE credit_tool_prices SET credits_cost=${old.credits_cost},timeout_seconds=${old.timeout_seconds} WHERE tool_key=${key}`);
+      else await db.execute(sql`DELETE FROM credit_tool_prices WHERE tool_key=${key}`);
+    }
     invalidateCreditsSettingsCache();
   });
 
@@ -108,6 +132,75 @@ describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
     expect(parsed.parameters.counts.mcq).toBe(0);
     expect(parsed.parameters.counts.short_answer).toBe(1);
     expect(generateWorksheetQuestions).not.toHaveBeenCalled();
+  });
+
+  async function toolQuote(tool: string, gameType = "solo") {
+    const draft = (await request(app).post("/api/assistant/prepare").set(header()).send({
+      message: "محتوى عن دورة الماء للصف الخامس", language: "ar", tool,
+    }).expect(200)).body;
+    return (await request(app).post(`/api/assistant/operations/${draft.id}/quote`).set(header()).send({
+      title: draft.title, template: "geometric",
+      parameters: { ...draft.parameters, questionCount: gameType === "xo" ? 9 : 5, gameType, durationMinutes: 45, pedagogy: "mixed" },
+    }).expect(200)).body;
+  }
+  it.each(["game", "quiz", "lesson-plan"])("saves %s privately, bills once and consumes the shared successful trial", async tool => {
+    const op = await toolQuote(tool);
+    expect(op.tool).toBe(tool);
+    expect(op.quote.credits).toBe(2);
+    await confirm(op).expect(200);
+    await confirm(op).expect(200);
+    expect(await runAssistantJob()).toBe(true);
+    const done = await getOperation(op.id);
+    expect(done.status).toBe("completed");
+    expect(done.resultId).toBeGreaterThan(0);
+    expect(done.resultUrl).toContain(tool === "game" ? "savedGameId=" : tool === "quiz" ? "/teacher/assignment/" : "/lesson-plans/create?edit=");
+    const table = tool === "game" ? "saved_game_activities" : tool === "quiz" ? "assignments" : "lesson_plans";
+    const saved = (await db.execute(sql.raw(`SELECT * FROM ${table} WHERE id=${Number(done.resultId)}`))).rows[0] as any;
+    expect(saved.teacher_id).toBe(teacher);
+    expect(saved.is_shared).toBe(false);
+    if (tool === "quiz") {
+      expect(saved.access_mode).toBe("private");
+      expect(saved.submission_mode).toBe("electronic");
+      expect(Number((await db.execute(sql`SELECT COUNT(*) AS count FROM questions WHERE assignment_id=${done.resultId}`)).rows[0]?.count)).toBe(5);
+    }
+    if (tool === "game") {
+      expect(saved.play_count).toBe(0);
+      expect(saved.settings.timePerQuestion).toBe(20);
+      expect(saved.settings.leaderboardDisplay).toBe("top3");
+    }
+    expect(await CreditService.getBalance(teacher)).toBe(48);
+    expect(vi.mocked(generateAssistantToolOutput)).toHaveBeenCalledTimes(1);
+    expect((await getAssistantExecutionAccess(teacher)).status).toBe("upgrade_required");
+    await request(app).post("/api/assistant/prepare").set(header()).send({ message: "طلب آخر", language: "ar", tool: "worksheet" }).expect(403);
+  });
+  it("serializes game and quiz starts against the same one-trial entitlement", async () => {
+    const game = await toolQuote("game"), quiz = await toolQuote("quiz");
+    const results = await Promise.all([confirm(game), confirm(quiz)]);
+    expect(results.map(r => r.status).sort()).toEqual([200, 403]);
+    expect(await db.select().from(creditHoldsTable).where(eq(creditHoldsTable.teacherId, teacher))).toHaveLength(1);
+  });
+  it("retries a lesson-plan save without regenerating or holding twice", async () => {
+    const op = await toolQuote("lesson-plan");
+    vi.mocked(saveAssistantToolOutput).mockRejectedValueOnce(new Error("Controlled save failure"));
+    await confirm(op).expect(200); await runAssistantJob();
+    let retry = await getOperation(op.id);
+    expect(retry.errorCode).toBe("SAVE_RETRY");
+    retry = (await request(app).post(`/api/assistant/operations/${op.id}/quote`).set(header()).send({
+      title: retry.title, template: retry.template, parameters: retry.parameters,
+    }).expect(200)).body;
+    await confirm(retry).expect(200); await runAssistantJob();
+    expect((await getOperation(op.id)).status).toBe("completed");
+    expect(vi.mocked(generateAssistantToolOutput)).toHaveBeenCalledTimes(1);
+    expect(await CreditService.getBalance(teacher)).toBe(48);
+    expect(await db.select().from(creditHoldsTable).where(eq(creditHoldsTable.teacherId, teacher))).toHaveLength(1);
+  });
+  it.each(["tug", "xo"])("persists compatible %s questions and its real editor link", async gameType => {
+    const op = await toolQuote("game", gameType); await confirm(op).expect(200); await runAssistantJob();
+    const done = await getOperation(op.id);
+    expect(done.resultUrl).toContain(`/game/${gameType}/create?savedGameId=`);
+    const saved = (await db.execute(sql`SELECT content FROM saved_game_activities WHERE id=${done.resultId}`)).rows[0] as any;
+    expect(saved.content.questions[0].options).toHaveLength(4);
+    expect(saved.content.questions[0].correct).toBe(0);
   });
 
   it("charges the one Free execution once, then blocks even a purchased-credit balance", async () => {

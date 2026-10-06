@@ -11,7 +11,7 @@ import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
-import { saveGameActivity, createSavedGamePlayLink, savedGamePlayUrl } from "@/lib/saved-game-activities";
+import { saveGameActivity, getSavedGameActivity, createSavedGamePlayLink, savedGamePlayUrl } from "@/lib/saved-game-activities";
 import { copyGameShortUrl } from "@/lib/game-share-url";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,26 @@ export default function TugCreate() {
   const [targetClass, setTargetClass] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
   const [setupStep, setSetupStep] = useState<"questions" | "settings">("questions");
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("savedGameId");
+    if (!id) return;
+    let active = true;
+    void getSavedGameActivity(id).then(activity => {
+      if (!active) return;
+      if (activity.gameType !== "tug") throw new Error("Wrong game");
+      const content = activity.content as any;
+      const raw = Array.isArray(content) ? content : content?.questions;
+      if (!Array.isArray(raw) || !raw.length || raw.some(q => !q || typeof q.text !== "string"
+        || !Array.isArray(q.options) || q.options.length < 2 || !Number.isInteger(q.correct)
+        || q.correct < 0 || q.correct >= q.options.length)) throw new Error("Invalid saved questions");
+      setQuestions(raw);
+      setSourceTitle(activity.title);
+      setIsShared(activity.isShared);
+      setSetupStep("settings");
+    }).catch(() => { if (active) toast.error(ar ? "تعذر فتح اللعبة المحفوظة. حاول مجددًا." : "Could not open the saved game. Please retry."); });
+    return () => { active = false; };
+  }, []);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
 

@@ -6,16 +6,24 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AssistantMessage } from './assistantMessage';
+import type { AssistantOperationStage } from './assistantOperationStage';
 import type { AssistantOperationStatus } from './assistantOperationStatus';
+import type { AssistantOperationTool } from './assistantOperationTool';
+import type { AssistantParameters } from './assistantParameters';
 import type { AssistantQuote } from './assistantQuote';
-import type { WorksheetActivityInput } from './worksheetActivityInput';
 export interface AssistantOperation {
+    tool?: AssistantOperationTool;
+    /** @nullable */
+    resultId?: number | null;
+    /** @nullable */
+    resultUrl?: string | null;
+    stage?: AssistantOperationStage;
     id: string;
     teacherId?: number;
     title: string;
     requestText: string;
     reply: string;
-    parameters: WorksheetActivityInput;
+    parameters: AssistantParameters;
     template: string;
     status: AssistantOperationStatus;
     missingFields: string[];

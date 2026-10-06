@@ -25,6 +25,8 @@ export const assistantOperationsTable = pgTable("assistant_worksheet_operations"
   id: uuid("id").primaryKey(),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
+  tool: text("tool").notNull().default("worksheet"),
+  resultId: integer("result_id"),
   requestText: text("request_text").notNull(),
   reply: text("reply").notNull(),
   parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull(),

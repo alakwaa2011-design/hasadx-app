@@ -26,13 +26,25 @@ import {
   usePrepareAssistantWorksheet,
   useQuoteAssistantWorksheet,
   type AssistantOperation,
-  type WorksheetActivityInput,
+  type AssistantParameters,
+  type AssistantPreparation,
 } from "@workspace/api-client-react";
 import { THEMES } from "@/pages/teacher/worksheet-themes";
 import { INSUFFICIENT_CREDITS_EVENT } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { ExecutionAccess } from "./execution-access";
 
+type Tool = "worksheet" | "game" | "quiz" | "lesson-plan";
+const TOOLS: [Tool, string, string][] = [["worksheet", "ورقة عمل", "Worksheet"], ["game", "لعبة", "Game"], ["quiz", "اختبار", "Quiz"], ["lesson-plan", "خطة درس", "Lesson plan"]];
+const TOOL_EXAMPLES: Record<Tool, [string, string][]> = {
+  worksheet: [["ورقة عمل عن الكسور للصف الرابع", "A fractions worksheet for grade 4"], ["ورقة مراجعة عن دورة الماء، 10 أسئلة", "A water-cycle review, 10 questions"]],
+  game: [["لعبة مراجعة عن الجمع للصف الثاني", "A review game on addition for grade 2"], ["لعبة فريقين عن أجزاء النبات", "A two-team game on plant parts"]],
+  quiz: [["اختبار قصير عن الكسور للصف الخامس", "A short fractions quiz for grade 5"], ["اختبار عن الحروف الهجائية، 5 أسئلة", "A 5-question alphabet quiz"]],
+  "lesson-plan": [["خطة درس عن دورة الماء للصف الثالث", "A water-cycle lesson plan for grade 3"], ["خطة درس عن الفاعل في النحو، 45 دقيقة", "A 45-minute grammar lesson plan"]],
+};
+const GAME_TYPES: [string, string, string][] = [["solo", "فردي (وميض)", "Individual (Wameeth)"], ["tug", "شد الحبل", "Tug of war"], ["xo", "إكس أو", "XO"]];
+const PEDAGOGY: [string, string, string][] = [["direct", "مباشر", "Direct"], ["inquiry", "استقصاء", "Inquiry"], ["project", "مشروع", "Project"], ["flipped", "مقلوب", "Flipped"], ["mixed", "مزيج", "Mixed"]];
+const STAGES: [string, string, string][] = [["prepare", "التحضير", "Prepare"], ["queued", "في الانتظار", "Queued"], ["generating", "التوليد", "Generating"], ["saving", "الحفظ", "Saving"], ["completed", "اكتمل", "Done"]];
 const ACTIVE = ["queued", "running", "saving"];
 const TERMINAL = ["completed", "failed", "cancelled"];
 const CANCELLABLE = ["draft", "quoted", "queued"];
@@ -63,8 +75,8 @@ const OPTS = {
 const ERR: Record<string, [string, string]> = {
   EXECUTION_SUBSCRIPTION_REQUIRED: ["يلزم اشتراك Basic أو Pro بعد تجربة التنفيذ الأولى. شراء النقاط وحده لا يفتح التنفيذ.", "After your first execution, Basic or Pro is required. Buying credits alone does not unlock execution."],
   EXECUTION_TRIAL_IN_PROGRESS: ["تجربتك محجوزة لعملية أخرى. انتظر اكتمالها أو ألغِها قبل بدء طلب جديد.", "Your trial is reserved for another operation. Wait for it to finish or cancel it before starting a new request."],
-  PRICE_CHANGED: ["تغيّر السعر. راجع السعر الجديد ثم أكّد.", "The price changed. Review the new price, then confirm."],
-  QUOTE_EXPIRED: ["انتهت صلاحية السعر. اطلب سعراً جديداً.", "The quote expired. Get a new quote."],
+  PRICE_CHANGED: ["تغيّر السعر. راجع السعر الجديد ثم اضغط تأكيد من جديد.", "The price changed. Review the new price, then confirm again."],
+  QUOTE_EXPIRED: ["انتهت صلاحية السعر وجرى تحديثه. اضغط تأكيد من جديد.", "The price expired and was refreshed. Confirm again."],
   DISABLED: ["المساعد غير متاح حالياً. استخدم منشئ أوراق العمل مباشرة.", "The assistant is unavailable. Use the worksheet builder directly."],
   SAVE_RETRY: ["اكتمل التوليد وتعذّر الحفظ. أعد المحاولة دون إعادة التوليد.", "Generated, but saving failed. Retry without regenerating."],
   FAILED: ["تعذّر إنشاء الورقة. ابدأ محاولة جديدة.", "Could not create the worksheet. Start a fresh attempt."],
@@ -93,13 +105,19 @@ function errInfo(e: unknown): { status?: number; code?: string; data?: any } {
   return { status: x?.status, code: typeof d?.code === "string" ? d.code : typeof d?.errorCode === "string" ? d.errorCode : undefined, data: d };
 }
 
-type Form = { title: string; template: string; params: WorksheetActivityInput };
+type Form = { title: string; template: string; params: AssistantParameters };
 
 function toForm(op: AssistantOperation): Form {
   return { title: op.title || "", template: op.template || "", params: { ...(op.parameters || {}) } };
 }
 
 const field = "w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/35";
+
+function resultHref(op: AssistantOperation): string | null {
+  if (typeof op.resultUrl === "string" && op.resultUrl.startsWith("/") && !op.resultUrl.startsWith("//")) return op.resultUrl;
+  if ((!op.tool || op.tool === "worksheet") && op.worksheetId) return `/teacher/worksheets/create?edit=${op.worksheetId}`;
+  return null;
+}
 
 export function AssistantCreate({
   lang,
@@ -132,6 +150,9 @@ export function AssistantCreate({
   const [request, setRequest] = useState("");
   const [op, setOp] = useState<AssistantOperation | null>(null);
   const [form, setForm] = useState<Form | null>(null);
+  const [tool, setTool] = useState<Tool>("worksheet");
+  const [detail, setDetail] = useState(false);
+  const [priceNote, setPriceNote] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -159,7 +180,7 @@ export function AssistantCreate({
 
   // Reset all local state when the account changes.
   useEffect(() => {
-    setOp(null); setForm(null); setStale(false); setNotice(null); setErrorCode(null); setBusy(null); setRequest(""); setView("compose");
+    setOp(null); setForm(null); setStale(false); setNotice(null); setErrorCode(null); setBusy(null); setRequest(""); setView("compose"); setDetail(false); setPriceNote(null); setTool("worksheet");
     restoredRef.current = false;
   }, [scope]);
   useEffect(() => {
@@ -210,8 +231,8 @@ export function AssistantCreate({
     }
     if (i.code === "DISABLED") setDisabled(true);
     const c = i.code && ERR[i.code] ? i.code : "FAILED";
+    if (c === "QUOTE_EXPIRED" || c === "PRICE_CHANGED") { setStale(true); setErrorCode(null); setPriceNote(tr(ERR[c][0], ERR[c][1])); return; }
     setErrorCode(c);
-    if (c === "QUOTE_EXPIRED" || c === "PRICE_CHANGED") setStale(true);
   }
 
   const terminalOrNew = !op || TERMINAL.includes(op.status);
@@ -222,7 +243,7 @@ export function AssistantCreate({
     const s = scope;
     setBusy("prepare"); setErrorCode(null); setNotice(null);
     prepare.mutate(
-      { data: { message, language: ar ? "ar" : "en", ...(op && !terminalOrNew ? { operationId: op.id, ...(form ? { settings: requestBody() } : {}) } : {}) } },
+      { data: { message, language: ar ? "ar" : "en", ...(op && !terminalOrNew ? { operationId: op.id, ...(form ? { settings: requestBody() } : {}) } : { tool }) } satisfies AssistantPreparation },
       {
         onSuccess: (r) => { if (!alive(s)) return; applyOp(r); setRequest(""); void qc.invalidateQueries({ queryKey: listKey }); },
         onError: (e) => { if (alive(s)) fail(e); },
@@ -231,8 +252,9 @@ export function AssistantCreate({
     );
   }
 
-  function edit(patch: Partial<WorksheetActivityInput>, title?: string, template?: string) {
+  function edit(patch: Partial<AssistantParameters>, title?: string, template?: string) {
     setForm((f) => (f ? { title: title ?? f.title, template: template ?? f.template, params: { ...f.params, ...patch } } : f));
+    setPriceNote(null);
     setStale(true); // any change invalidates the local quote immediately
   }
 
@@ -243,15 +265,16 @@ export function AssistantCreate({
     if (!p.topic?.trim() && !p.sourceText?.trim()) m.push("topic");
     if (!p.subject?.trim()) m.push("subject");
     if (!p.gradeLevel?.trim()) m.push("gradeLevel");
+    if (op?.tool === "game" && p.gameType === "xo" && p.questionCount !== undefined && p.questionCount < 9) m.push("xo");
     if (p.questionSelection === "manual" && Object.values(p.counts ?? {}).reduce((a, b) => a + b, 0) < 1) m.push("counts");
     return m;
-  }, [p]);
+  }, [p, op?.tool]);
 
   const requestBody = () => ({ title: form!.title.trim() || op!.title || "ورقة عمل", template: form!.template || "geometric", parameters: form!.params });
 
   // Quote automatically; the price is information, not a separate user action.
   useEffect(() => {
-    if (!op || !form || busy || disabled || missing.length || errorCode) return;
+    if (!op || !form || busy || disabled || missing.length || (errorCode && errorCode !== "PRICE_CHANGED" && errorCode !== "QUOTE_EXPIRED")) return;
     if (!["draft", "quoted"].includes(op.status) && !(op.status === "saving" && op.errorCode === "SAVE_RETRY")) return;
     if (!stale && op.quote && new Date(op.quote.expiresAt).getTime() > Date.now()) return;
     const timer = window.setTimeout(() => getQuote(), stale ? 250 : 0);
@@ -288,8 +311,9 @@ export function AssistantCreate({
 
   function confirmNow() {
     if (!op || !form || busy || missing.length) return;
-    const shown = stale ? undefined : op.quote?.credits;
-    // Always refresh the quote before confirming; fail closed on any change.
+    setPriceNote(null);
+    // Valid current quote: confirm directly. The server rechecks price and expiry.
+    if (quoteValid && op.quote) { setErrorCode(null); startConfirm(op.quote.id); return; }
     const s = scope;
     const requestedId = op.id, requestedForm = form;
     setBusy("quote"); setErrorCode(null);
@@ -298,11 +322,7 @@ export function AssistantCreate({
         if (!alive(s)) return;
         if (currentOperationRef.current !== requestedId || currentFormRef.current !== requestedForm) { setBusy(null); return; }
         applyOp(r, true);
-        if (!r.quote || (typeof shown === "number" && r.quote.credits !== shown)) {
-          setErrorCode("PRICE_CHANGED");
-          setBusy(null);
-          return;
-        }
+        if (!r.quote) { setBusy(null); return; }
         startConfirm(r.quote.id);
       },
       onError: (e) => { if (alive(s)) { fail(e); setBusy(null); } },
@@ -326,10 +346,11 @@ export function AssistantCreate({
     });
   }
 
-  function reset() { restoredRef.current = true; setOp(null); setForm(null); setStale(false); setErrorCode(null); setNotice(null); setView("compose"); }
+  function reset() { setDetail(false); setPriceNote(null); setTool("worksheet"); restoredRef.current = true; setOp(null); setForm(null); setStale(false); setErrorCode(null); setNotice(null); setView("compose"); }
 
   function openOp(o: AssistantOperation) { applyOp(o); setView("compose"); }
 
+  const opTool: Tool = (op?.tool as Tool|undefined) ?? (op ? "worksheet" : tool);
   const quoteValid = !!op?.quote && !stale && new Date(op.quote.expiresAt).getTime() > Date.now();
   const inSetup = !!op && !!form && (op.status === "draft" || op.status === "quoted");
   const editing = inSetup;
@@ -337,13 +358,14 @@ export function AssistantCreate({
   function ErrBanner() {
     if (!errorCode) return null;
     const m = ERR[errorCode] ?? ERR.FAILED;
+    const sub = (x: string) => x.replace("الورقة الناتجة", `${noun(opTool)} الناتج`).replace("إنشاء الورقة", `إنشاء ${noun(opTool)}`).replace("لهذه الورقة", `لهذا الطلب`).replace("the resulting worksheet", `the resulting ${noun(opTool)}`).replace("create the worksheet", `create the ${noun(opTool)}`).replace("for this worksheet", "for this request");
     return (
       <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive flex items-start gap-2" data-testid="text-assistant-error">
         <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         <div className="flex-1 space-y-1.5">
-          <p>{tr(m[0], m[1])}</p>
+          <p>{tr(sub(m[0]), sub(m[1]))}</p>
           {op && ["FAILED", "INTERRUPTED", "UNSUPPORTED", "CAPACITY"].includes(errorCode) && (
-            <button type="button" onClick={() => onAskGuide(`${tr("أحتاج مساعدة في عملية إنشاء ورقة", "I need help with a worksheet creation")} (${op.id} / ${errorCode})`)} className="inline-flex items-center gap-1 font-bold underline" data-testid="button-assistant-ask-guide">
+            <button type="button" onClick={() => onAskGuide(`${tr("أحتاج مساعدة في عملية إنشاء", "I need help with a creation request")} (${op.id} / ${errorCode})`)} className="inline-flex items-center gap-1 font-bold underline" data-testid="button-assistant-ask-guide">
               <Headphones className="w-3 h-3" />{tr("اسأل المرشد عن المشكلة", "Ask the Guide about this")}
             </button>
           )}
@@ -352,6 +374,8 @@ export function AssistantCreate({
     );
   }
 
+  const noun = (t?: string) => t === "game" ? tr("اللعبة", "game") : t === "quiz" ? tr("الاختبار", "quiz") : t === "lesson-plan" ? tr("خطة الدرس", "lesson plan") : tr("الورقة", "worksheet");
+  const toolLabel = (t?: string) => { const x = TOOLS.find(k => k[0] === (t ?? "worksheet")) ?? TOOLS[0]; return tr(x[1], x[2]); };
   const ops = history.data?.operations ?? [];
 
   return (
@@ -382,19 +406,19 @@ export function AssistantCreate({
               <button type="button" onClick={() => history.refetch()} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 font-bold"><RefreshCw className="w-3 h-3" />{tr("إعادة المحاولة", "Retry")}</button></div>
           )}
           {!history.isLoading && !history.isError && ops.length === 0 && (
-            <div className="text-center text-xs text-muted-foreground py-10">{tr("لا توجد طلبات إنشاء بعد. صف الورقة التي تريدها وسأجهّز إعدادها.", "No creation requests yet. Describe the worksheet you want.")}</div>
+            <div className="text-center text-xs text-muted-foreground py-10">{tr("لا توجد طلبات إنشاء بعد. اختر أداة وصف ما تريده وسأجهّز إعداده.", "No creation requests yet. Pick a tool and describe what you want.")}</div>
           )}
           {ops.map((o) => (
             <div key={o.id} className="rounded-xl border border-border bg-card p-2.5 flex items-center gap-2" data-testid={`row-operation-${o.id}`}>
               <button type="button" onClick={() => openOp(o)} className="min-w-0 flex-1 text-start">
                 <div className="truncate text-xs font-bold">{o.title || o.requestText}</div>
-                <div className="text-[10px] text-muted-foreground">{tr(STATUS[o.status]?.[0] ?? o.status, STATUS[o.status]?.[1] ?? o.status)}{o.credits > 0 ? ` · ${o.credits} ${tr("نقطة", "cr")}` : ""}</div>
+                <div className="text-[10px] text-muted-foreground">{toolLabel(o.tool)} · {tr(STATUS[o.status]?.[0] ?? o.status, STATUS[o.status]?.[1] ?? o.status)}{o.credits > 0 ? ` · ${o.credits} ${tr("نقطة", "cr")}` : ""}</div>
               </button>
               {CANCELLABLE.includes(o.status) && <button type="button" onClick={() => doCancel(o)} className="text-[11px] font-bold text-muted-foreground hover:text-destructive px-1.5">{tr("إلغاء", "Cancel")}</button>}
-               {TERMINAL.includes(o.status) && <button type="button" onClick={() => { if (window.confirm(tr("إخفاء الطلب من السجل؟ لن تُحذف الورقة أو سجلات النقاط.", "Hide this request? Its worksheet and credit records will remain."))) doHide(o); }} className="p-1.5 text-muted-foreground hover:text-destructive" aria-label={tr("إخفاء من السجل", "Hide from history")} data-testid={`button-hide-${o.id}`}><Trash2 className="w-3.5 h-3.5" /></button>}
+               {TERMINAL.includes(o.status) && <button type="button" onClick={() => { if (window.confirm(tr("إخفاء الطلب من السجل؟ لن يُحذف الناتج أو سجلات النقاط.", "Hide this request? Its saved result and credit records will remain."))) doHide(o); }} className="p-1.5 text-muted-foreground hover:text-destructive" aria-label={tr("إخفاء من السجل", "Hide from history")} data-testid={`button-hide-${o.id}`}><Trash2 className="w-3.5 h-3.5" /></button>}
             </div>
           ))}
-          {ops.length > 0 && <p className="text-[10px] text-muted-foreground text-center">{tr("الإخفاء لا يحذف الورقة المحفوظة ولا سجل النقاط.", "Hiding keeps the saved worksheet and credit records.")}</p>}
+          {ops.length > 0 && <p className="text-[10px] text-muted-foreground text-center">{tr("الإخفاء لا يحذف الناتج المحفوظ ولا سجل النقاط.", "Hiding keeps the saved result and credit records.")}</p>}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -402,6 +426,12 @@ export function AssistantCreate({
             <div className="text-center py-4 space-y-1">
               <div className="text-sm font-bold">{tr("ماذا تريد أن تُجهّز؟", "What should we prepare?")}</div>
               <p className="text-[11px] text-muted-foreground">{tr("اكتب طلبك بحرية، ثم راجع الإعدادات والسعر قبل أي خصم.", "Describe it freely, then review settings and price before any charge.")}</p>
+              <div className="flex flex-wrap justify-center gap-1.5 pt-2" role="group" aria-label={tr("الأداة", "Tool")}>
+                {TOOLS.map(([v, a, e]) => <button key={v} type="button" onClick={() => setTool(v)} aria-pressed={tool === v} className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold ${tool === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`} data-testid={`button-tool-${v}`}>{tr(a, e)}</button>)}
+              </div>
+              <div className="flex flex-wrap justify-center gap-1.5 pt-1">
+                {TOOL_EXAMPLES[tool].map(([a, e], i) => <button key={i} type="button" onClick={() => setRequest(tr(a, e))} className="rounded-full bg-muted px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground" data-testid={`button-example-${i}`}>{tr(a, e)}</button>)}
+              </div>
               <p className="text-[10px] text-muted-foreground">{tr("التحضير مجاني. يُخصم رصيد ورقة العمل فقط عند التأكيد.", "Preparing is free. Credits are charged only when you confirm.")}</p>
             </div>
           )}
@@ -415,10 +445,30 @@ export function AssistantCreate({
           ) : op?.reply ? <div className="rounded-xl bg-muted px-3 py-2 text-xs whitespace-pre-wrap">{op.reply}</div> : null}
 
           <ErrBanner />
+          {priceNote && <p role="status" className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-bold text-primary" data-testid="text-assistant-price-note">{priceNote}</p>}
 
           {editing && form && p && (
             <div className="rounded-xl border border-border bg-card p-3 space-y-2.5" data-testid="form-assistant-setup">
-              <div className="text-xs font-bold">{tr("إعدادات الورقة", "Worksheet setup")}</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-bold" data-testid="text-assistant-tool">{tr(TOOLS.find(t => t[0] === opTool)![1], TOOLS.find(t => t[0] === opTool)![2])}</div>
+                <button type="button" onClick={() => setDetail(d => !d)} className="text-[11px] font-bold text-primary" aria-expanded={detail} data-testid="button-assistant-toggle-detail">{detail ? tr("إخفاء التفاصيل", "Hide details") : tr("تعديل التفاصيل", "Edit details")}</button>
+              </div>
+              <div className="flex flex-wrap gap-1 text-[11px]" data-testid="text-assistant-summary">
+                {[form.title, p.subject, p.gradeLevel, p.topic].filter(Boolean).map((t, i) => <span key={i} className="rounded-md bg-muted px-1.5 py-0.5 max-w-full truncate">{t}</span>)}
+                {(opTool === "quiz" || opTool === "game") && <span className="rounded-md bg-muted px-1.5 py-0.5">{tr(`${p.questionCount ?? 5} أسئلة`, `${p.questionCount ?? 5} questions`)}</span>}
+                {opTool === "lesson-plan" && <span className="rounded-md bg-muted px-1.5 py-0.5">{tr(`${p.durationMinutes ?? 45} دقيقة`, `${p.durationMinutes ?? 45} min`)}</span>}
+              </div>
+              {missing.length > 0 && <p className="text-[11px] text-destructive">{tr("أكمل الحقول المطلوبة المعلّمة بنجمة.", "Fill the required fields marked with *.")}</p>}
+              {(detail || missing.length > 0) && <div className="space-y-2.5" data-testid="form-assistant-detail">
+              {opTool !== "worksheet" && <label className="block text-[11px] font-bold">{tr("متطلبات إضافية", "Additional requirements")}<textarea maxLength={800} rows={2} className={`${field} mt-1`} value={p.notes ?? ""} onChange={e => edit({ notes: e.target.value })} data-testid="input-assistant-notes" /></label>}
+              {opTool === "game" && <div className="flex gap-1.5" role="group">{GAME_TYPES.map(([v, a, e]) => <button key={v} type="button" onClick={() => edit({ gameType: v as AssistantParameters["gameType"], ...(v === "xo" && p.questionCount === undefined ? { questionCount: 9 } : {}) })} aria-pressed={(p.gameType ?? "solo") === v} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold ${(p.gameType ?? "solo") === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{tr(a, e)}</button>)}</div>}
+              {opTool === "game" && (p.gameType === "xo") && p.questionCount !== undefined && p.questionCount < 9 && <p className="text-[11px] text-destructive" data-testid="text-assistant-xo-min">{tr("إكس أو يحتاج 9 أسئلة على الأقل.", "XO needs at least 9 questions.")}</p>}
+              {opTool === "game" && <label className="block text-[11px] font-bold">{tr("عدد الأسئلة", "Question count")}<input type="number" min={1} max={30} className={`${field} mt-1`} value={p.questionCount ?? (p.gameType === "xo" ? 9 : "")} onChange={(e) => edit({ questionCount: e.target.value ? Math.max(1, Math.min(30, Number(e.target.value))) : undefined })} data-testid="input-assistant-game-count" /></label>}
+              {opTool === "quiz" && <label className="block text-[11px] font-bold">{tr("عدد الأسئلة", "Question count")}<input type="number" min={1} max={30} className={`${field} mt-1`} value={p.questionCount ?? 5} onChange={(e) => edit({ questionCount: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })} data-testid="input-assistant-question-count" /></label>}
+              {opTool === "lesson-plan" && <div className="grid grid-cols-2 gap-2">
+                <label className="block text-[11px] font-bold">{tr("المدة (دقيقة)", "Duration (min)")}<input type="number" min={15} max={180} className={`${field} mt-1`} value={p.durationMinutes ?? 45} onChange={(e) => edit({ durationMinutes: Math.max(15, Math.min(180, Number(e.target.value) || 15)) })} data-testid="input-assistant-duration" /></label>
+                <label className="block text-[11px] font-bold">{tr("أسلوب التدريس", "Pedagogy")}<select className={`${field} mt-1`} value={p.pedagogy ?? "mixed"} onChange={(e) => edit({ pedagogy: e.target.value as AssistantParameters["pedagogy"] })}>{PEDAGOGY.map(([v, a, e]) => <option key={v} value={v}>{tr(a, e)}</option>)}</select></label>
+              </div>}
               <label className="block text-[11px] font-bold">{tr("العنوان", "Title")}
                 <input className={`${field} mt-1`} value={form.title} maxLength={200} onChange={(e) => edit({}, e.target.value)} data-testid="input-assistant-title" />
               </label>
@@ -453,6 +503,7 @@ export function AssistantCreate({
                 </select>
               </label>
 
+              {opTool === "worksheet" && <>
               <div className="text-[11px] font-bold">{tr("الأسئلة", "Questions")}{missing.includes("counts") && <span className="text-destructive"> *</span>}</div>
               <div className="flex gap-1.5">
                 {(["auto", "manual"] as const).map((m) => (
@@ -473,6 +524,7 @@ export function AssistantCreate({
                 </div>
               )}
 
+              </>}
               <details className="group rounded-lg border border-border">
                 <summary className="flex cursor-pointer list-none items-center justify-between px-2.5 py-1.5 text-[11px] font-bold">{tr("إعدادات تدريس متقدمة", "Advanced teaching settings")}<ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" /></summary>
                 <div className="grid grid-cols-2 gap-2 p-2.5 pt-1">
@@ -501,7 +553,7 @@ export function AssistantCreate({
                 </div>
               </details>
 
-              {missing.length > 0 && <p className="text-[11px] text-destructive">{tr("أكمل الحقول المطلوبة المعلّمة بنجمة.", "Fill the required fields marked with *.")}</p>}
+              </div>}
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {quoteValid && op?.quote ? (
@@ -529,13 +581,18 @@ export function AssistantCreate({
                 <div className="min-w-0 flex-1"><div className="truncate text-xs font-bold">{op.title}</div>
                   <div className="text-[10px] text-muted-foreground" data-testid="text-assistant-status">{tr(STATUS[op.status]?.[0] ?? op.status, STATUS[op.status]?.[1] ?? op.status)}{op.credits > 0 ? ` · ${op.credits} ${tr("نقطة", "credits")}` : ""}</div></div>
               </div>
-              {op.status === "completed" && op.worksheetId && (
+              {op.status === "completed" && (resultHref(op) ? (
                 <>
-                  <button type="button" onClick={() => { onNavigate(); setLocation(`/teacher/worksheets/create?edit=${op.worksheetId}`); }} className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground" data-testid="button-assistant-open-draft">
-                    <ArrowUpRight className="w-3.5 h-3.5" />{tr("فتح المسودة الخاصة للمراجعة", "Open private draft to review")}
+                  <button type="button" onClick={() => { const h = resultHref(op)!; onNavigate(); setLocation(h); }} className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground" data-testid="button-assistant-open-draft">
+                    <ArrowUpRight className="w-3.5 h-3.5" />{opTool === "worksheet" ? tr("فتح المسودة الخاصة للمراجعة", "Open private draft to review") : tr("فتح الناتج الخاص للمراجعة", "Open private result to review")}
                   </button>
-                  <p className="text-[10px] text-muted-foreground">{tr("تحقق من تقسيم الصفحات الفعلي عند الطباعة قبل الاستخدام.", "Check the actual print pagination before use.")}</p>
+                  <p className="text-[10px] text-muted-foreground">{tr("الناتج خاص بك ولم يُشارك أو يُسند لأحد.", "The result is private; nothing is shared or assigned.")}</p>
                 </>
+              ) : null)}
+              {ACTIVE.includes(op.status) && (
+                <ol className="flex items-center gap-1 text-[10px]" data-testid="text-assistant-stages">
+                  {STAGES.map(([v, a, e]) => { const cur = op.stage ?? (op.status === "queued" ? "queued" : op.status === "saving" ? "saving" : "generating"); const on = v === cur; return <li key={v} className={`rounded-md px-1.5 py-0.5 ${on ? "bg-primary/10 font-bold text-primary" : "text-muted-foreground"}`} aria-current={on ? "step" : undefined}>{tr(a, e)}</li>; })}
+                </ol>
               )}
               {op.status === "saving" && op.errorCode === "SAVE_RETRY" && (
                 <p className="text-xs text-muted-foreground">{tr(`تكلفة الطلب: ${op.quote?.credits ?? op.credits} نقطة. سيُستكمل الحفظ دون توليد جديد.`, `Request cost: ${op.quote?.credits ?? op.credits} credits. Resume saving without regenerating.`)}</p>
@@ -560,7 +617,7 @@ export function AssistantCreate({
         <div className="border-t border-border p-3 shrink-0 flex items-end gap-2">
           <textarea value={request} onChange={(e) => setRequest(e.target.value)} rows={2} maxLength={12000}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={editing ? tr("اطلب تعديلاً على الإعدادات…", "Ask to adjust the setup…") : tr("مثال: ورقة عمل عن الكسور للصف الرابع، 10 أسئلة…", "e.g. a fractions worksheet for grade 4, 10 questions…")}
+            placeholder={editing ? tr("اطلب تعديلاً على الإعدادات…", "Ask to adjust the setup…") : tr(TOOL_EXAMPLES[tool][0][0], TOOL_EXAMPLES[tool][0][1])}
             className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35 max-h-32" data-testid="input-assistant-request" />
           <button type="button" onClick={send} disabled={!!busy || request.trim().length < 2} className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40" aria-label={tr("إرسال", "Send")} data-testid="button-assistant-send">
             {busy === "prepare" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

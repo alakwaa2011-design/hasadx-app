@@ -5,7 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { WorksheetActivityInput } from './worksheetActivityInput';
+import type { AssistantParameters } from './assistantParameters';
 
 export interface AssistantWorksheetRequest {
   /**
@@ -15,5 +15,5 @@ export interface AssistantWorksheetRequest {
   title: string;
   /** @maxLength 80 */
   template: string;
-  parameters: WorksheetActivityInput;
+  parameters: AssistantParameters;
 }

@@ -15,6 +15,16 @@ export interface AssistantAvailability {
   teacherIds?: number[];
 }
 
+export type AssistantPreparationTool = typeof AssistantPreparationTool[keyof typeof AssistantPreparationTool];
+
+
+export const AssistantPreparationTool = {
+  worksheet: 'worksheet',
+  game: 'game',
+  quiz: 'quiz',
+  'lesson-plan': 'lesson-plan',
+} as const;
+
 export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
 
 
@@ -242,6 +252,56 @@ export interface WorksheetActivityInput {
   counts?: WorksheetActivityInputCounts;
 }
 
+export type AssistantParametersQuestionTypesItem = typeof AssistantParametersQuestionTypesItem[keyof typeof AssistantParametersQuestionTypesItem];
+
+
+export const AssistantParametersQuestionTypesItem = {
+  mcq: 'mcq',
+  true_false: 'true_false',
+} as const;
+
+export type AssistantParametersGameType = typeof AssistantParametersGameType[keyof typeof AssistantParametersGameType];
+
+
+export const AssistantParametersGameType = {
+  solo: 'solo',
+  tug: 'tug',
+  xo: 'xo',
+} as const;
+
+export type AssistantParametersPedagogy = typeof AssistantParametersPedagogy[keyof typeof AssistantParametersPedagogy];
+
+
+export const AssistantParametersPedagogy = {
+  direct: 'direct',
+  inquiry: 'inquiry',
+  project: 'project',
+  flipped: 'flipped',
+  mixed: 'mixed',
+} as const;
+
+export type AssistantParameters = WorksheetActivityInput & {
+  /**
+     * @minimum 1
+     * @maximum 30
+     */
+  questionCount?: number;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     */
+  questionTypes?: AssistantParametersQuestionTypesItem[];
+  /**
+     * @minimum 15
+     * @maximum 180
+     */
+  durationMinutes?: number;
+  /** @maxLength 800 */
+  notes?: string;
+  gameType?: AssistantParametersGameType;
+  pedagogy?: AssistantParametersPedagogy;
+};
+
 export interface AssistantWorksheetRequest {
   /**
      * @minLength 2
@@ -250,10 +310,11 @@ export interface AssistantWorksheetRequest {
   title: string;
   /** @maxLength 80 */
   template: string;
-  parameters: WorksheetActivityInput;
+  parameters: AssistantParameters;
 }
 
 export interface AssistantPreparation {
+  tool?: AssistantPreparationTool;
   /**
      * @minLength 2
      * @maxLength 12000
@@ -274,6 +335,27 @@ export interface AssistantQuote {
   credits: number;
   expiresAt: string;
 }
+
+export type AssistantOperationTool = typeof AssistantOperationTool[keyof typeof AssistantOperationTool];
+
+
+export const AssistantOperationTool = {
+  worksheet: 'worksheet',
+  game: 'game',
+  quiz: 'quiz',
+  'lesson-plan': 'lesson-plan',
+} as const;
+
+export type AssistantOperationStage = typeof AssistantOperationStage[keyof typeof AssistantOperationStage];
+
+
+export const AssistantOperationStage = {
+  prepare: 'prepare',
+  queued: 'queued',
+  generating: 'generating',
+  saving: 'saving',
+  completed: 'completed',
+} as const;
 
 export type AssistantOperationStatus = typeof AssistantOperationStatus[keyof typeof AssistantOperationStatus];
 
@@ -303,12 +385,18 @@ export interface AssistantMessage {
 }
 
 export interface AssistantOperation {
+  tool?: AssistantOperationTool;
+  /** @nullable */
+  resultId?: number | null;
+  /** @nullable */
+  resultUrl?: string | null;
+  stage?: AssistantOperationStage;
   id: string;
   teacherId?: number;
   title: string;
   requestText: string;
   reply: string;
-  parameters: WorksheetActivityInput;
+  parameters: AssistantParameters;
   template: string;
   status: AssistantOperationStatus;
   missingFields: string[];

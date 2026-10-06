@@ -77,7 +77,7 @@ export async function releaseAssistantTrial(executor: Executor, teacherId: numbe
   }
 }
 
-export async function completeAssistantExecution(executor: Executor, teacherId: number, operationId: string) {
+export async function completeAssistantExecution(executor: Executor, teacherId: number, operationId: string, tool = "worksheet") {
   const result = await executor.execute(sql`
     UPDATE assistant_execution_trials
     SET consumed_operation_id=${operationId}, consumed_at=NOW(),reserved_operation_id=NULL,updated_at=NOW()
@@ -85,7 +85,7 @@ export async function completeAssistantExecution(executor: Executor, teacherId: 
     RETURNING teacher_id
   `);
   if (result.rows.length) await recordAssistantEvent(teacherId, "trial_completed", operationId, {}, `trial_completed:${operationId}`, executor);
-  await recordAssistantEvent(teacherId, "execution_completed", operationId, { tool: "worksheet" }, `execution_completed:${operationId}`, executor);
+  await recordAssistantEvent(teacherId, "execution_completed", operationId, { tool }, `execution_completed:${operationId}`, executor);
 }
 
 /** Called only within the provider-verified initial paid-invoice transaction. */

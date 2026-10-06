@@ -14,6 +14,13 @@ export interface AssistantAvailability {
        */
     teacherIds?: number[];
 }
+export type AssistantPreparationTool = typeof AssistantPreparationTool[keyof typeof AssistantPreparationTool];
+export declare const AssistantPreparationTool: {
+    readonly worksheet: "worksheet";
+    readonly game: "game";
+    readonly quiz: "quiz";
+    readonly 'lesson-plan': "lesson-plan";
+};
 export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
 export declare const AssistantPreparationLanguage: {
     readonly ar: "ar";
@@ -195,6 +202,46 @@ export interface WorksheetActivityInput {
     assessmentMode?: WorksheetActivityInputAssessmentMode;
     counts?: WorksheetActivityInputCounts;
 }
+export type AssistantParametersQuestionTypesItem = typeof AssistantParametersQuestionTypesItem[keyof typeof AssistantParametersQuestionTypesItem];
+export declare const AssistantParametersQuestionTypesItem: {
+    readonly mcq: "mcq";
+    readonly true_false: "true_false";
+};
+export type AssistantParametersGameType = typeof AssistantParametersGameType[keyof typeof AssistantParametersGameType];
+export declare const AssistantParametersGameType: {
+    readonly solo: "solo";
+    readonly tug: "tug";
+    readonly xo: "xo";
+};
+export type AssistantParametersPedagogy = typeof AssistantParametersPedagogy[keyof typeof AssistantParametersPedagogy];
+export declare const AssistantParametersPedagogy: {
+    readonly direct: "direct";
+    readonly inquiry: "inquiry";
+    readonly project: "project";
+    readonly flipped: "flipped";
+    readonly mixed: "mixed";
+};
+export type AssistantParameters = WorksheetActivityInput & {
+    /**
+       * @minimum 1
+       * @maximum 30
+       */
+    questionCount?: number;
+    /**
+       * @minItems 1
+       * @maxItems 30
+       */
+    questionTypes?: AssistantParametersQuestionTypesItem[];
+    /**
+       * @minimum 15
+       * @maximum 180
+       */
+    durationMinutes?: number;
+    /** @maxLength 800 */
+    notes?: string;
+    gameType?: AssistantParametersGameType;
+    pedagogy?: AssistantParametersPedagogy;
+};
 export interface AssistantWorksheetRequest {
     /**
        * @minLength 2
@@ -203,9 +250,10 @@ export interface AssistantWorksheetRequest {
     title: string;
     /** @maxLength 80 */
     template: string;
-    parameters: WorksheetActivityInput;
+    parameters: AssistantParameters;
 }
 export interface AssistantPreparation {
+    tool?: AssistantPreparationTool;
     /**
        * @minLength 2
        * @maxLength 12000
@@ -224,6 +272,21 @@ export interface AssistantQuote {
     credits: number;
     expiresAt: string;
 }
+export type AssistantOperationTool = typeof AssistantOperationTool[keyof typeof AssistantOperationTool];
+export declare const AssistantOperationTool: {
+    readonly worksheet: "worksheet";
+    readonly game: "game";
+    readonly quiz: "quiz";
+    readonly 'lesson-plan': "lesson-plan";
+};
+export type AssistantOperationStage = typeof AssistantOperationStage[keyof typeof AssistantOperationStage];
+export declare const AssistantOperationStage: {
+    readonly prepare: "prepare";
+    readonly queued: "queued";
+    readonly generating: "generating";
+    readonly saving: "saving";
+    readonly completed: "completed";
+};
 export type AssistantOperationStatus = typeof AssistantOperationStatus[keyof typeof AssistantOperationStatus];
 export declare const AssistantOperationStatus: {
     readonly draft: "draft";
@@ -245,12 +308,18 @@ export interface AssistantMessage {
     text: string;
 }
 export interface AssistantOperation {
+    tool?: AssistantOperationTool;
+    /** @nullable */
+    resultId?: number | null;
+    /** @nullable */
+    resultUrl?: string | null;
+    stage?: AssistantOperationStage;
     id: string;
     teacherId?: number;
     title: string;
     requestText: string;
     reply: string;
-    parameters: WorksheetActivityInput;
+    parameters: AssistantParameters;
     template: string;
     status: AssistantOperationStatus;
     missingFields: string[];

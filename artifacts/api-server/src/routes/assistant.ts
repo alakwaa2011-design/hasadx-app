@@ -9,6 +9,7 @@ import { estimateCreditsForToolRequest, holdCreditsForToolRequest, InsufficientC
 import { CreditService } from "../lib/credit-service";
 import { canonicalJson, editableStatuses, activeStatuses, missingWorksheetFields, prepareWorksheetRequest, publicAssistantOperation, validateWorksheetRequest } from "../lib/assistant-worksheet";
 import { getAssistantExecutionAccess, authorizeAssistantExecution, executionAccessError, recordAssistantEvent, releaseAssistantTrial, getAssistantExecutionMetrics } from "../lib/assistant-execution-access";
+import { assistantCreditTool, toolSchema, validateAssistantToolRequest } from "../lib/assistant-tools";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -83,7 +84,7 @@ router.post("/prepare", prepareLimit, async (req, res) => {
     if (!await isEnabled(req.session.teacherId!)) throw failure("DISABLED");
     const body = PrepareAssistantWorksheetBody.parse({ ...req.body, message: typeof req.body.message === "string" ? req.body.message.trim() : req.body.message });
     const teacherId = req.session.teacherId!;
-    if (!body.operationId) await recordAssistantEvent(teacherId, "execution_requested", null, { tool: "worksheet" });
+    if (!body.operationId) await recordAssistantEvent(teacherId, "execution_requested", null, { tool: body.tool ?? "worksheet" });
     const access = await getAssistantExecutionAccess(teacherId);
     if (!access.canExecute) {
       await recordAssistantEvent(teacherId, "execution_blocked", null, { reason: access.status });
@@ -91,15 +92,16 @@ router.post("/prepare", prepareLimit, async (req, res) => {
     }
     const [previous] = body.operationId ? await db.select().from(operations).where(and(eq(operations.id, body.operationId), eq(operations.teacherId, teacherId), eq(operations.archived, false))) : [];
     if (body.operationId && !previous) throw failure("NOT_FOUND", 404);
+    const tool = toolSchema.parse(previous?.tool ?? body.tool ?? "worksheet");
     if (previous && !editableStatuses.includes(previous.status)) throw failure("LOCKED");
     if (previous && previous.messages.length >= 30) throw failure("RATE_LIMITED", 429);
     const base = previous && body.settings ? { ...previous, parameters: body.settings.parameters as Record<string, unknown>, template: worksheetThemeIdSchema.parse(body.settings.template), title: body.settings.title } : previous;
-    const prepared = await prepareWorksheetRequest(req, body.message, body.language, base);
+    const prepared = await prepareWorksheetRequest(req, body.message, body.language, base, tool);
     const fields = {
-      title: prepared.title, requestText: body.message, reply: prepared.reply,
+      title: prepared.title, tool, requestText: body.message, reply: prepared.reply,
       parameters: prepared.parameters as Record<string, unknown>,
       template: base?.template ?? "geometric", status: "draft", quote: null,
-      missingFields: missingWorksheetFields(prepared.parameters), errorCode: prepared.supported ? null : "UNSUPPORTED",
+      missingFields: missingWorksheetFields(prepared.parameters, tool), errorCode: prepared.supported ? null : "UNSUPPORTED",
       messages: [...previous?.messages ?? [], { role: "user" as const, text: body.message }, { role: "assistant" as const, text: prepared.reply }],
       updatedAt: new Date(),
     };
@@ -115,9 +117,9 @@ router.post("/operations/:id/quote", mutationLimit, async (req, res) => {
   try {
     if (!await isEnabled(req.session.teacherId!)) throw failure("DISABLED");
     const id = operationId(req.params.id);
-    const request = validateWorksheetRequest(req.body);
     const row = await db.transaction(async tx => {
       const current = await ownedOperation(tx, id, req.session.teacherId!);
+      const request = current.tool === "worksheet" ? validateWorksheetRequest(req.body) : validateAssistantToolRequest(req.body, current.tool);
       const saveRetry = current.status === "saving" && !!current.output;
       if (!saveRetry) {
         const access = await getAssistantExecutionAccess(current.teacherId, tx);
@@ -129,7 +131,7 @@ router.post("/operations/:id/quote", mutationLimit, async (req, res) => {
       if (saveRetry && (current.title !== request.title || current.template !== request.template || canonicalJson(current.parameters) !== canonicalJson(request.parameters))) throw failure("LOCKED");
       const [hold] = saveRetry && current.held ? await tx.select().from(creditHoldsTable).where(eq(creditHoldsTable.requestId, current.creditRequestId)) : [];
       const credits = saveRetry && (!current.held || hold && ["pending", "completed"].includes(hold.status))
-        ? current.credits : await estimateCreditsForToolRequest(req.session.teacherId!, "worksheet");
+        ? current.credits : await estimateCreditsForToolRequest(req.session.teacherId!, assistantCreditTool(current.tool));
       const [updated] = await tx.update(operations).set({
         title: request.title, parameters: request.parameters, template: request.template,
         quote: { id: randomUUID(), credits, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() },
@@ -157,7 +159,7 @@ router.post("/operations/:id/confirm", mutationLimit, async (req, res) => {
       if (new Date(current.quote.expiresAt).getTime() < Date.now()) throw failure("QUOTE_EXPIRED");
       const [oldHold] = await tx.select().from(creditHoldsTable).where(eq(creditHoldsTable.requestId, current.creditRequestId));
       const acceptedAccounting = !!current.output && (!current.held || oldHold && ["pending", "completed"].includes(oldHold.status));
-      const expectedPrice = acceptedAccounting ? current.credits : await estimateCreditsForToolRequest(current.teacherId, "worksheet");
+      const expectedPrice = acceptedAccounting ? current.credits : await estimateCreditsForToolRequest(current.teacherId, assistantCreditTool(current.tool));
       if (expectedPrice !== current.quote.credits) throw failure("PRICE_CHANGED");
       // Serialize starts for a teacher even across separate operation IDs / server instances.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"assistant:start:" + current.teacherId}))`);
@@ -166,7 +168,7 @@ router.post("/operations/:id/confirm", mutationLimit, async (req, res) => {
       if (active.length >= 2) throw failure("CAPACITY");
       let creditRequestId = current.creditRequestId;
       if (oldHold && !["pending", "completed"].includes(oldHold.status)) creditRequestId = `assistant:${current.teacherId}:${randomUUID()}`;
-      const hold = acceptedAccounting ? { creditsHeld: current.credits } : await holdCreditsForToolRequest(current.teacherId, "worksheet", creditRequestId);
+      const hold = acceptedAccounting ? { creditsHeld: current.credits } : await holdCreditsForToolRequest(current.teacherId, assistantCreditTool(current.tool), creditRequestId);
       if (!acceptedAccounting && hold.creditsHeld > 0 && !("existingStatus" in hold && hold.existingStatus)) newlyHeldRequest = creditRequestId;
       if (hold.creditsHeld !== current.quote.credits) {
         if (hold.creditsHeld > 0) await CreditService.refund(creditRequestId, "Assistant price changed before execution");
@@ -177,7 +179,7 @@ router.post("/operations/:id/confirm", mutationLimit, async (req, res) => {
         status: current.output ? "saving" : "queued", leaseUntil: null, errorCode: null,
         creditRequestId, credits: hold.creditsHeld, held: hold.creditsHeld > 0, updatedAt: new Date(),
       }).where(eq(operations.id, id)).returning();
-      await recordAssistantEvent(current.teacherId, "execution_started", id, { tool: "worksheet", mode: executionMode, credits: hold.creditsHeld }, `execution_started:${id}`, tx);
+      await recordAssistantEvent(current.teacherId, "execution_started", id, { tool: current.tool, mode: executionMode, credits: hold.creditsHeld }, `execution_started:${id}`, tx);
       if (executionMode === "trial") await recordAssistantEvent(current.teacherId, "trial_started", id, { credits: hold.creditsHeld }, `trial_started:${id}`, tx);
       return updated;
     });

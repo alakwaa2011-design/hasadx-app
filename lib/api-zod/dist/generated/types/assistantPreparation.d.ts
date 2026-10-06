@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AssistantPreparationLanguage } from './assistantPreparationLanguage';
+import type { AssistantPreparationTool } from './assistantPreparationTool';
 import type { AssistantWorksheetRequest } from './assistantWorksheetRequest';
 export interface AssistantPreparation {
+    tool?: AssistantPreparationTool;
     /**
        * @minLength 2
        * @maxLength 12000

@@ -37,35 +37,44 @@ export const TrackAssistantExecutionEventResponse = zod.object({
 })
 
 
-export const listAssistantOperationsResponseOperationsItemParametersLanguageDefault = `ar`;
-export const listAssistantOperationsResponseOperationsItemParametersTopicMax = 500;
+export const listAssistantOperationsResponseOperationsItemParametersOneLanguageDefault = `ar`;
+export const listAssistantOperationsResponseOperationsItemParametersOneTopicMax = 500;
 
-export const listAssistantOperationsResponseOperationsItemParametersSourceTextMax = 12000;
+export const listAssistantOperationsResponseOperationsItemParametersOneSourceTextMax = 12000;
 
-export const listAssistantOperationsResponseOperationsItemParametersSubjectMax = 100;
+export const listAssistantOperationsResponseOperationsItemParametersOneSubjectMax = 100;
 
-export const listAssistantOperationsResponseOperationsItemParametersGradeLevelMax = 50;
+export const listAssistantOperationsResponseOperationsItemParametersOneGradeLevelMax = 50;
 
-export const listAssistantOperationsResponseOperationsItemParametersPagesDefault = 1;
-export const listAssistantOperationsResponseOperationsItemParametersGroupSizeMin = 2;
-export const listAssistantOperationsResponseOperationsItemParametersGroupSizeMax = 6;
+export const listAssistantOperationsResponseOperationsItemParametersOnePagesDefault = 1;
+export const listAssistantOperationsResponseOperationsItemParametersOneGroupSizeMin = 2;
+export const listAssistantOperationsResponseOperationsItemParametersOneGroupSizeMax = 6;
 
-export const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMin = 5;
-export const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMax = 90;
+export const listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsItemCountMax = 12;
+export const listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsAllowedTypesMax = 10;
+export const listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const listAssistantOperationsResponseOperationsItemParametersLearningObjectiveMax = 500;
+export const listAssistantOperationsResponseOperationsItemParametersOneLearningObjectiveMax = 500;
 
-export const listAssistantOperationsResponseOperationsItemParametersActivityDurationMin = 5;
-export const listAssistantOperationsResponseOperationsItemParametersActivityDurationMax = 90;
+export const listAssistantOperationsResponseOperationsItemParametersOneActivityDurationMin = 5;
+export const listAssistantOperationsResponseOperationsItemParametersOneActivityDurationMax = 90;
 
-export const listAssistantOperationsResponseOperationsItemParametersCountsMinOne = 0;
-export const listAssistantOperationsResponseOperationsItemParametersCountsMaxOne = 40;
+export const listAssistantOperationsResponseOperationsItemParametersOneCountsMinOne = 0;
+export const listAssistantOperationsResponseOperationsItemParametersOneCountsMaxOne = 40;
+
+export const listAssistantOperationsResponseOperationsItemParametersTwoQuestionCountMax = 30;
+
+export const listAssistantOperationsResponseOperationsItemParametersTwoQuestionTypesMax = 30;
+
+export const listAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMin = 15;
+export const listAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMax = 180;
+
+export const listAssistantOperationsResponseOperationsItemParametersTwoNotesMax = 800;
 
 export const listAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0;
 
@@ -83,6 +92,10 @@ export const ListAssistantOperationsResponse = zod.object({
   "pilotOnly": zod.boolean().optional(),
   "teacherIds": zod.array(zod.int()).optional(),
   "operations": zod.array(zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -90,33 +103,40 @@ export const ListAssistantOperationsResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(listAssistantOperationsResponseOperationsItemParametersLanguageDefault),
-  "topic": zod.string().max(listAssistantOperationsResponseOperationsItemParametersTopicMax).optional(),
-  "sourceText": zod.string().max(listAssistantOperationsResponseOperationsItemParametersSourceTextMax).optional(),
-  "subject": zod.string().max(listAssistantOperationsResponseOperationsItemParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(listAssistantOperationsResponseOperationsItemParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(listAssistantOperationsResponseOperationsItemParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(listAssistantOperationsResponseOperationsItemParametersOneLanguageDefault),
+  "topic": zod.string().max(listAssistantOperationsResponseOperationsItemParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(listAssistantOperationsResponseOperationsItemParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(listAssistantOperationsResponseOperationsItemParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(listAssistantOperationsResponseOperationsItemParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(listAssistantOperationsResponseOperationsItemParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(listAssistantOperationsResponseOperationsItemParametersGroupSizeMin).max(listAssistantOperationsResponseOperationsItemParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(listAssistantOperationsResponseOperationsItemParametersOneGroupSizeMin).max(listAssistantOperationsResponseOperationsItemParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMin).max(listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMin).max(listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(listAssistantOperationsResponseOperationsItemParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(listAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(listAssistantOperationsResponseOperationsItemParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(listAssistantOperationsResponseOperationsItemParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(listAssistantOperationsResponseOperationsItemParametersActivityDurationMin).max(listAssistantOperationsResponseOperationsItemParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(listAssistantOperationsResponseOperationsItemParametersOneActivityDurationMin).max(listAssistantOperationsResponseOperationsItemParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(listAssistantOperationsResponseOperationsItemParametersCountsMinOne).max(listAssistantOperationsResponseOperationsItemParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(listAssistantOperationsResponseOperationsItemParametersOneCountsMinOne).max(listAssistantOperationsResponseOperationsItemParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(listAssistantOperationsResponseOperationsItemParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(listAssistantOperationsResponseOperationsItemParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(listAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMin).max(listAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(listAssistantOperationsResponseOperationsItemParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),
@@ -137,6 +157,7 @@ export const ListAssistantOperationsResponse = zod.object({
 })
 
 
+export const prepareAssistantWorksheetBodyToolDefault = `worksheet`;
 export const prepareAssistantWorksheetBodyMessageMin = 2;
 export const prepareAssistantWorksheetBodyMessageMax = 12000;
 
@@ -145,39 +166,49 @@ export const prepareAssistantWorksheetBodySettingsTitleMax = 200;
 
 export const prepareAssistantWorksheetBodySettingsTemplateMax = 80;
 
-export const prepareAssistantWorksheetBodySettingsParametersLanguageDefault = `ar`;
-export const prepareAssistantWorksheetBodySettingsParametersTopicMax = 500;
+export const prepareAssistantWorksheetBodySettingsParametersOneLanguageDefault = `ar`;
+export const prepareAssistantWorksheetBodySettingsParametersOneTopicMax = 500;
 
-export const prepareAssistantWorksheetBodySettingsParametersSourceTextMax = 12000;
+export const prepareAssistantWorksheetBodySettingsParametersOneSourceTextMax = 12000;
 
-export const prepareAssistantWorksheetBodySettingsParametersSubjectMax = 100;
+export const prepareAssistantWorksheetBodySettingsParametersOneSubjectMax = 100;
 
-export const prepareAssistantWorksheetBodySettingsParametersGradeLevelMax = 50;
+export const prepareAssistantWorksheetBodySettingsParametersOneGradeLevelMax = 50;
 
-export const prepareAssistantWorksheetBodySettingsParametersPagesDefault = 1;
-export const prepareAssistantWorksheetBodySettingsParametersGroupSizeMin = 2;
-export const prepareAssistantWorksheetBodySettingsParametersGroupSizeMax = 6;
+export const prepareAssistantWorksheetBodySettingsParametersOnePagesDefault = 1;
+export const prepareAssistantWorksheetBodySettingsParametersOneGroupSizeMin = 2;
+export const prepareAssistantWorksheetBodySettingsParametersOneGroupSizeMax = 6;
 
-export const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsActivityDurationMin = 5;
-export const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsActivityDurationMax = 90;
+export const prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsItemCountMax = 12;
+export const prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsAllowedTypesMax = 10;
+export const prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const prepareAssistantWorksheetBodySettingsParametersLearningObjectiveMax = 500;
+export const prepareAssistantWorksheetBodySettingsParametersOneLearningObjectiveMax = 500;
 
-export const prepareAssistantWorksheetBodySettingsParametersActivityDurationMin = 5;
-export const prepareAssistantWorksheetBodySettingsParametersActivityDurationMax = 90;
+export const prepareAssistantWorksheetBodySettingsParametersOneActivityDurationMin = 5;
+export const prepareAssistantWorksheetBodySettingsParametersOneActivityDurationMax = 90;
 
-export const prepareAssistantWorksheetBodySettingsParametersCountsMinOne = 0;
-export const prepareAssistantWorksheetBodySettingsParametersCountsMaxOne = 40;
+export const prepareAssistantWorksheetBodySettingsParametersOneCountsMinOne = 0;
+export const prepareAssistantWorksheetBodySettingsParametersOneCountsMaxOne = 40;
+
+export const prepareAssistantWorksheetBodySettingsParametersTwoQuestionCountMax = 30;
+
+export const prepareAssistantWorksheetBodySettingsParametersTwoQuestionTypesMax = 30;
+
+export const prepareAssistantWorksheetBodySettingsParametersTwoDurationMinutesMin = 15;
+export const prepareAssistantWorksheetBodySettingsParametersTwoDurationMinutesMax = 180;
+
+export const prepareAssistantWorksheetBodySettingsParametersTwoNotesMax = 800;
 
 
 
 export const PrepareAssistantWorksheetBody = zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).default(prepareAssistantWorksheetBodyToolDefault),
   "message": zod.string().min(prepareAssistantWorksheetBodyMessageMin).max(prepareAssistantWorksheetBodyMessageMax),
   "language": zod.enum(['ar', 'en']),
   "operationId": zod.uuid().optional(),
@@ -186,71 +217,91 @@ export const PrepareAssistantWorksheetBody = zod.object({
   "template": zod.string().max(prepareAssistantWorksheetBodySettingsTemplateMax),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(prepareAssistantWorksheetBodySettingsParametersLanguageDefault),
-  "topic": zod.string().max(prepareAssistantWorksheetBodySettingsParametersTopicMax).optional(),
-  "sourceText": zod.string().max(prepareAssistantWorksheetBodySettingsParametersSourceTextMax).optional(),
-  "subject": zod.string().max(prepareAssistantWorksheetBodySettingsParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(prepareAssistantWorksheetBodySettingsParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(prepareAssistantWorksheetBodySettingsParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(prepareAssistantWorksheetBodySettingsParametersOneLanguageDefault),
+  "topic": zod.string().max(prepareAssistantWorksheetBodySettingsParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(prepareAssistantWorksheetBodySettingsParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(prepareAssistantWorksheetBodySettingsParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(prepareAssistantWorksheetBodySettingsParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(prepareAssistantWorksheetBodySettingsParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(prepareAssistantWorksheetBodySettingsParametersGroupSizeMin).max(prepareAssistantWorksheetBodySettingsParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(prepareAssistantWorksheetBodySettingsParametersOneGroupSizeMin).max(prepareAssistantWorksheetBodySettingsParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsActivityDurationMin).max(prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsActivityDurationMin).max(prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(prepareAssistantWorksheetBodySettingsParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(prepareAssistantWorksheetBodySettingsParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(prepareAssistantWorksheetBodySettingsParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(prepareAssistantWorksheetBodySettingsParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(prepareAssistantWorksheetBodySettingsParametersActivityDurationMin).max(prepareAssistantWorksheetBodySettingsParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(prepareAssistantWorksheetBodySettingsParametersOneActivityDurationMin).max(prepareAssistantWorksheetBodySettingsParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(prepareAssistantWorksheetBodySettingsParametersCountsMinOne).max(prepareAssistantWorksheetBodySettingsParametersCountsMaxOne)).optional()
-})
+  "counts": zod.record(zod.string(), zod.int().min(prepareAssistantWorksheetBodySettingsParametersOneCountsMinOne).max(prepareAssistantWorksheetBodySettingsParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(prepareAssistantWorksheetBodySettingsParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(prepareAssistantWorksheetBodySettingsParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(prepareAssistantWorksheetBodySettingsParametersTwoDurationMinutesMin).max(prepareAssistantWorksheetBodySettingsParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(prepareAssistantWorksheetBodySettingsParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+}))
 }).optional()
 })
 
-export const prepareAssistantWorksheetResponseParametersLanguageDefault = `ar`;
-export const prepareAssistantWorksheetResponseParametersTopicMax = 500;
+export const prepareAssistantWorksheetResponseParametersOneLanguageDefault = `ar`;
+export const prepareAssistantWorksheetResponseParametersOneTopicMax = 500;
 
-export const prepareAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export const prepareAssistantWorksheetResponseParametersOneSourceTextMax = 12000;
 
-export const prepareAssistantWorksheetResponseParametersSubjectMax = 100;
+export const prepareAssistantWorksheetResponseParametersOneSubjectMax = 100;
 
-export const prepareAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export const prepareAssistantWorksheetResponseParametersOneGradeLevelMax = 50;
 
-export const prepareAssistantWorksheetResponseParametersPagesDefault = 1;
-export const prepareAssistantWorksheetResponseParametersGroupSizeMin = 2;
-export const prepareAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export const prepareAssistantWorksheetResponseParametersOnePagesDefault = 1;
+export const prepareAssistantWorksheetResponseParametersOneGroupSizeMin = 2;
+export const prepareAssistantWorksheetResponseParametersOneGroupSizeMax = 6;
 
-export const prepareAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const prepareAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const prepareAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
-export const prepareAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export const prepareAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const prepareAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const prepareAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export const prepareAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const prepareAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export const prepareAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const prepareAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export const prepareAssistantWorksheetResponseParametersOneLearningObjectiveMax = 500;
 
-export const prepareAssistantWorksheetResponseParametersActivityDurationMin = 5;
-export const prepareAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export const prepareAssistantWorksheetResponseParametersOneActivityDurationMin = 5;
+export const prepareAssistantWorksheetResponseParametersOneActivityDurationMax = 90;
 
-export const prepareAssistantWorksheetResponseParametersCountsMinOne = 0;
-export const prepareAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export const prepareAssistantWorksheetResponseParametersOneCountsMinOne = 0;
+export const prepareAssistantWorksheetResponseParametersOneCountsMaxOne = 40;
+
+export const prepareAssistantWorksheetResponseParametersTwoQuestionCountMax = 30;
+
+export const prepareAssistantWorksheetResponseParametersTwoQuestionTypesMax = 30;
+
+export const prepareAssistantWorksheetResponseParametersTwoDurationMinutesMin = 15;
+export const prepareAssistantWorksheetResponseParametersTwoDurationMinutesMax = 180;
+
+export const prepareAssistantWorksheetResponseParametersTwoNotesMax = 800;
 
 export const prepareAssistantWorksheetResponseQuoteOneCreditsMin = 0;
 
 
 
 export const PrepareAssistantWorksheetResponse = zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -258,33 +309,40 @@ export const PrepareAssistantWorksheetResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(prepareAssistantWorksheetResponseParametersLanguageDefault),
-  "topic": zod.string().max(prepareAssistantWorksheetResponseParametersTopicMax).optional(),
-  "sourceText": zod.string().max(prepareAssistantWorksheetResponseParametersSourceTextMax).optional(),
-  "subject": zod.string().max(prepareAssistantWorksheetResponseParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(prepareAssistantWorksheetResponseParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(prepareAssistantWorksheetResponseParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(prepareAssistantWorksheetResponseParametersOneLanguageDefault),
+  "topic": zod.string().max(prepareAssistantWorksheetResponseParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(prepareAssistantWorksheetResponseParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(prepareAssistantWorksheetResponseParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(prepareAssistantWorksheetResponseParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(prepareAssistantWorksheetResponseParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(prepareAssistantWorksheetResponseParametersGroupSizeMin).max(prepareAssistantWorksheetResponseParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(prepareAssistantWorksheetResponseParametersOneGroupSizeMin).max(prepareAssistantWorksheetResponseParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(prepareAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(prepareAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(prepareAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin).max(prepareAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(prepareAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin).max(prepareAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(prepareAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(prepareAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(prepareAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(prepareAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(prepareAssistantWorksheetResponseParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(prepareAssistantWorksheetResponseParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(prepareAssistantWorksheetResponseParametersActivityDurationMin).max(prepareAssistantWorksheetResponseParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(prepareAssistantWorksheetResponseParametersOneActivityDurationMin).max(prepareAssistantWorksheetResponseParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(prepareAssistantWorksheetResponseParametersCountsMinOne).max(prepareAssistantWorksheetResponseParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(prepareAssistantWorksheetResponseParametersOneCountsMinOne).max(prepareAssistantWorksheetResponseParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(prepareAssistantWorksheetResponseParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(prepareAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(prepareAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(prepareAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(prepareAssistantWorksheetResponseParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),
@@ -308,41 +366,54 @@ export const GetAssistantOperationParams = zod.object({
   "id": zod.uuid()
 })
 
-export const getAssistantOperationResponseParametersLanguageDefault = `ar`;
-export const getAssistantOperationResponseParametersTopicMax = 500;
+export const getAssistantOperationResponseParametersOneLanguageDefault = `ar`;
+export const getAssistantOperationResponseParametersOneTopicMax = 500;
 
-export const getAssistantOperationResponseParametersSourceTextMax = 12000;
+export const getAssistantOperationResponseParametersOneSourceTextMax = 12000;
 
-export const getAssistantOperationResponseParametersSubjectMax = 100;
+export const getAssistantOperationResponseParametersOneSubjectMax = 100;
 
-export const getAssistantOperationResponseParametersGradeLevelMax = 50;
+export const getAssistantOperationResponseParametersOneGradeLevelMax = 50;
 
-export const getAssistantOperationResponseParametersPagesDefault = 1;
-export const getAssistantOperationResponseParametersGroupSizeMin = 2;
-export const getAssistantOperationResponseParametersGroupSizeMax = 6;
+export const getAssistantOperationResponseParametersOnePagesDefault = 1;
+export const getAssistantOperationResponseParametersOneGroupSizeMin = 2;
+export const getAssistantOperationResponseParametersOneGroupSizeMax = 6;
 
-export const getAssistantOperationResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const getAssistantOperationResponseParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const getAssistantOperationResponseParametersGenerationConstraintsActivityDurationMin = 5;
-export const getAssistantOperationResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export const getAssistantOperationResponseParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const getAssistantOperationResponseParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const getAssistantOperationResponseParametersGenerationConstraintsItemCountMax = 12;
+export const getAssistantOperationResponseParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const getAssistantOperationResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export const getAssistantOperationResponseParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const getAssistantOperationResponseParametersLearningObjectiveMax = 500;
+export const getAssistantOperationResponseParametersOneLearningObjectiveMax = 500;
 
-export const getAssistantOperationResponseParametersActivityDurationMin = 5;
-export const getAssistantOperationResponseParametersActivityDurationMax = 90;
+export const getAssistantOperationResponseParametersOneActivityDurationMin = 5;
+export const getAssistantOperationResponseParametersOneActivityDurationMax = 90;
 
-export const getAssistantOperationResponseParametersCountsMinOne = 0;
-export const getAssistantOperationResponseParametersCountsMaxOne = 40;
+export const getAssistantOperationResponseParametersOneCountsMinOne = 0;
+export const getAssistantOperationResponseParametersOneCountsMaxOne = 40;
+
+export const getAssistantOperationResponseParametersTwoQuestionCountMax = 30;
+
+export const getAssistantOperationResponseParametersTwoQuestionTypesMax = 30;
+
+export const getAssistantOperationResponseParametersTwoDurationMinutesMin = 15;
+export const getAssistantOperationResponseParametersTwoDurationMinutesMax = 180;
+
+export const getAssistantOperationResponseParametersTwoNotesMax = 800;
 
 export const getAssistantOperationResponseQuoteOneCreditsMin = 0;
 
 
 
 export const GetAssistantOperationResponse = zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -350,33 +421,40 @@ export const GetAssistantOperationResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(getAssistantOperationResponseParametersLanguageDefault),
-  "topic": zod.string().max(getAssistantOperationResponseParametersTopicMax).optional(),
-  "sourceText": zod.string().max(getAssistantOperationResponseParametersSourceTextMax).optional(),
-  "subject": zod.string().max(getAssistantOperationResponseParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(getAssistantOperationResponseParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(getAssistantOperationResponseParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(getAssistantOperationResponseParametersOneLanguageDefault),
+  "topic": zod.string().max(getAssistantOperationResponseParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(getAssistantOperationResponseParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(getAssistantOperationResponseParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(getAssistantOperationResponseParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(getAssistantOperationResponseParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(getAssistantOperationResponseParametersGroupSizeMin).max(getAssistantOperationResponseParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(getAssistantOperationResponseParametersOneGroupSizeMin).max(getAssistantOperationResponseParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(getAssistantOperationResponseParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(getAssistantOperationResponseParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(getAssistantOperationResponseParametersGenerationConstraintsActivityDurationMin).max(getAssistantOperationResponseParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(getAssistantOperationResponseParametersOneGenerationConstraintsActivityDurationMin).max(getAssistantOperationResponseParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(getAssistantOperationResponseParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(getAssistantOperationResponseParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(getAssistantOperationResponseParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(getAssistantOperationResponseParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(getAssistantOperationResponseParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(getAssistantOperationResponseParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(getAssistantOperationResponseParametersActivityDurationMin).max(getAssistantOperationResponseParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(getAssistantOperationResponseParametersOneActivityDurationMin).max(getAssistantOperationResponseParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(getAssistantOperationResponseParametersCountsMinOne).max(getAssistantOperationResponseParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(getAssistantOperationResponseParametersOneCountsMinOne).max(getAssistantOperationResponseParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(getAssistantOperationResponseParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(getAssistantOperationResponseParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(getAssistantOperationResponseParametersTwoDurationMinutesMin).max(getAssistantOperationResponseParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(getAssistantOperationResponseParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),
@@ -412,35 +490,44 @@ export const quoteAssistantWorksheetBodyTitleMax = 200;
 
 export const quoteAssistantWorksheetBodyTemplateMax = 80;
 
-export const quoteAssistantWorksheetBodyParametersLanguageDefault = `ar`;
-export const quoteAssistantWorksheetBodyParametersTopicMax = 500;
+export const quoteAssistantWorksheetBodyParametersOneLanguageDefault = `ar`;
+export const quoteAssistantWorksheetBodyParametersOneTopicMax = 500;
 
-export const quoteAssistantWorksheetBodyParametersSourceTextMax = 12000;
+export const quoteAssistantWorksheetBodyParametersOneSourceTextMax = 12000;
 
-export const quoteAssistantWorksheetBodyParametersSubjectMax = 100;
+export const quoteAssistantWorksheetBodyParametersOneSubjectMax = 100;
 
-export const quoteAssistantWorksheetBodyParametersGradeLevelMax = 50;
+export const quoteAssistantWorksheetBodyParametersOneGradeLevelMax = 50;
 
-export const quoteAssistantWorksheetBodyParametersPagesDefault = 1;
-export const quoteAssistantWorksheetBodyParametersGroupSizeMin = 2;
-export const quoteAssistantWorksheetBodyParametersGroupSizeMax = 6;
+export const quoteAssistantWorksheetBodyParametersOnePagesDefault = 1;
+export const quoteAssistantWorksheetBodyParametersOneGroupSizeMin = 2;
+export const quoteAssistantWorksheetBodyParametersOneGroupSizeMax = 6;
 
-export const quoteAssistantWorksheetBodyParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const quoteAssistantWorksheetBodyParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const quoteAssistantWorksheetBodyParametersGenerationConstraintsActivityDurationMin = 5;
-export const quoteAssistantWorksheetBodyParametersGenerationConstraintsActivityDurationMax = 90;
+export const quoteAssistantWorksheetBodyParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const quoteAssistantWorksheetBodyParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const quoteAssistantWorksheetBodyParametersGenerationConstraintsItemCountMax = 12;
+export const quoteAssistantWorksheetBodyParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const quoteAssistantWorksheetBodyParametersGenerationConstraintsAllowedTypesMax = 10;
+export const quoteAssistantWorksheetBodyParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const quoteAssistantWorksheetBodyParametersLearningObjectiveMax = 500;
+export const quoteAssistantWorksheetBodyParametersOneLearningObjectiveMax = 500;
 
-export const quoteAssistantWorksheetBodyParametersActivityDurationMin = 5;
-export const quoteAssistantWorksheetBodyParametersActivityDurationMax = 90;
+export const quoteAssistantWorksheetBodyParametersOneActivityDurationMin = 5;
+export const quoteAssistantWorksheetBodyParametersOneActivityDurationMax = 90;
 
-export const quoteAssistantWorksheetBodyParametersCountsMinOne = 0;
-export const quoteAssistantWorksheetBodyParametersCountsMaxOne = 40;
+export const quoteAssistantWorksheetBodyParametersOneCountsMinOne = 0;
+export const quoteAssistantWorksheetBodyParametersOneCountsMaxOne = 40;
+
+export const quoteAssistantWorksheetBodyParametersTwoQuestionCountMax = 30;
+
+export const quoteAssistantWorksheetBodyParametersTwoQuestionTypesMax = 30;
+
+export const quoteAssistantWorksheetBodyParametersTwoDurationMinutesMin = 15;
+export const quoteAssistantWorksheetBodyParametersTwoDurationMinutesMax = 180;
+
+export const quoteAssistantWorksheetBodyParametersTwoNotesMax = 800;
 
 
 
@@ -449,70 +536,90 @@ export const QuoteAssistantWorksheetBody = zod.object({
   "template": zod.string().max(quoteAssistantWorksheetBodyTemplateMax),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(quoteAssistantWorksheetBodyParametersLanguageDefault),
-  "topic": zod.string().max(quoteAssistantWorksheetBodyParametersTopicMax).optional(),
-  "sourceText": zod.string().max(quoteAssistantWorksheetBodyParametersSourceTextMax).optional(),
-  "subject": zod.string().max(quoteAssistantWorksheetBodyParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(quoteAssistantWorksheetBodyParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(quoteAssistantWorksheetBodyParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(quoteAssistantWorksheetBodyParametersOneLanguageDefault),
+  "topic": zod.string().max(quoteAssistantWorksheetBodyParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(quoteAssistantWorksheetBodyParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(quoteAssistantWorksheetBodyParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(quoteAssistantWorksheetBodyParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(quoteAssistantWorksheetBodyParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(quoteAssistantWorksheetBodyParametersGroupSizeMin).max(quoteAssistantWorksheetBodyParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(quoteAssistantWorksheetBodyParametersOneGroupSizeMin).max(quoteAssistantWorksheetBodyParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(quoteAssistantWorksheetBodyParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(quoteAssistantWorksheetBodyParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(quoteAssistantWorksheetBodyParametersGenerationConstraintsActivityDurationMin).max(quoteAssistantWorksheetBodyParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(quoteAssistantWorksheetBodyParametersOneGenerationConstraintsActivityDurationMin).max(quoteAssistantWorksheetBodyParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(quoteAssistantWorksheetBodyParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(quoteAssistantWorksheetBodyParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(quoteAssistantWorksheetBodyParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(quoteAssistantWorksheetBodyParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(quoteAssistantWorksheetBodyParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(quoteAssistantWorksheetBodyParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(quoteAssistantWorksheetBodyParametersActivityDurationMin).max(quoteAssistantWorksheetBodyParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(quoteAssistantWorksheetBodyParametersOneActivityDurationMin).max(quoteAssistantWorksheetBodyParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(quoteAssistantWorksheetBodyParametersCountsMinOne).max(quoteAssistantWorksheetBodyParametersCountsMaxOne)).optional()
+  "counts": zod.record(zod.string(), zod.int().min(quoteAssistantWorksheetBodyParametersOneCountsMinOne).max(quoteAssistantWorksheetBodyParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(quoteAssistantWorksheetBodyParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(quoteAssistantWorksheetBodyParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(quoteAssistantWorksheetBodyParametersTwoDurationMinutesMin).max(quoteAssistantWorksheetBodyParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(quoteAssistantWorksheetBodyParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+}))
 })
-})
 
-export const quoteAssistantWorksheetResponseParametersLanguageDefault = `ar`;
-export const quoteAssistantWorksheetResponseParametersTopicMax = 500;
+export const quoteAssistantWorksheetResponseParametersOneLanguageDefault = `ar`;
+export const quoteAssistantWorksheetResponseParametersOneTopicMax = 500;
 
-export const quoteAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export const quoteAssistantWorksheetResponseParametersOneSourceTextMax = 12000;
 
-export const quoteAssistantWorksheetResponseParametersSubjectMax = 100;
+export const quoteAssistantWorksheetResponseParametersOneSubjectMax = 100;
 
-export const quoteAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export const quoteAssistantWorksheetResponseParametersOneGradeLevelMax = 50;
 
-export const quoteAssistantWorksheetResponseParametersPagesDefault = 1;
-export const quoteAssistantWorksheetResponseParametersGroupSizeMin = 2;
-export const quoteAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export const quoteAssistantWorksheetResponseParametersOnePagesDefault = 1;
+export const quoteAssistantWorksheetResponseParametersOneGroupSizeMin = 2;
+export const quoteAssistantWorksheetResponseParametersOneGroupSizeMax = 6;
 
-export const quoteAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const quoteAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const quoteAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
-export const quoteAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export const quoteAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const quoteAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const quoteAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export const quoteAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const quoteAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export const quoteAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const quoteAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export const quoteAssistantWorksheetResponseParametersOneLearningObjectiveMax = 500;
 
-export const quoteAssistantWorksheetResponseParametersActivityDurationMin = 5;
-export const quoteAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export const quoteAssistantWorksheetResponseParametersOneActivityDurationMin = 5;
+export const quoteAssistantWorksheetResponseParametersOneActivityDurationMax = 90;
 
-export const quoteAssistantWorksheetResponseParametersCountsMinOne = 0;
-export const quoteAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export const quoteAssistantWorksheetResponseParametersOneCountsMinOne = 0;
+export const quoteAssistantWorksheetResponseParametersOneCountsMaxOne = 40;
+
+export const quoteAssistantWorksheetResponseParametersTwoQuestionCountMax = 30;
+
+export const quoteAssistantWorksheetResponseParametersTwoQuestionTypesMax = 30;
+
+export const quoteAssistantWorksheetResponseParametersTwoDurationMinutesMin = 15;
+export const quoteAssistantWorksheetResponseParametersTwoDurationMinutesMax = 180;
+
+export const quoteAssistantWorksheetResponseParametersTwoNotesMax = 800;
 
 export const quoteAssistantWorksheetResponseQuoteOneCreditsMin = 0;
 
 
 
 export const QuoteAssistantWorksheetResponse = zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -520,33 +627,40 @@ export const QuoteAssistantWorksheetResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(quoteAssistantWorksheetResponseParametersLanguageDefault),
-  "topic": zod.string().max(quoteAssistantWorksheetResponseParametersTopicMax).optional(),
-  "sourceText": zod.string().max(quoteAssistantWorksheetResponseParametersSourceTextMax).optional(),
-  "subject": zod.string().max(quoteAssistantWorksheetResponseParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(quoteAssistantWorksheetResponseParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(quoteAssistantWorksheetResponseParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(quoteAssistantWorksheetResponseParametersOneLanguageDefault),
+  "topic": zod.string().max(quoteAssistantWorksheetResponseParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(quoteAssistantWorksheetResponseParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(quoteAssistantWorksheetResponseParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(quoteAssistantWorksheetResponseParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(quoteAssistantWorksheetResponseParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(quoteAssistantWorksheetResponseParametersGroupSizeMin).max(quoteAssistantWorksheetResponseParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(quoteAssistantWorksheetResponseParametersOneGroupSizeMin).max(quoteAssistantWorksheetResponseParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(quoteAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(quoteAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(quoteAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin).max(quoteAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(quoteAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin).max(quoteAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(quoteAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(quoteAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(quoteAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(quoteAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(quoteAssistantWorksheetResponseParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(quoteAssistantWorksheetResponseParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(quoteAssistantWorksheetResponseParametersActivityDurationMin).max(quoteAssistantWorksheetResponseParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(quoteAssistantWorksheetResponseParametersOneActivityDurationMin).max(quoteAssistantWorksheetResponseParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(quoteAssistantWorksheetResponseParametersCountsMinOne).max(quoteAssistantWorksheetResponseParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(quoteAssistantWorksheetResponseParametersOneCountsMinOne).max(quoteAssistantWorksheetResponseParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(quoteAssistantWorksheetResponseParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(quoteAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(quoteAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(quoteAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(quoteAssistantWorksheetResponseParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),
@@ -574,41 +688,54 @@ export const ConfirmAssistantWorksheetBody = zod.object({
   "quoteId": zod.uuid()
 })
 
-export const confirmAssistantWorksheetResponseParametersLanguageDefault = `ar`;
-export const confirmAssistantWorksheetResponseParametersTopicMax = 500;
+export const confirmAssistantWorksheetResponseParametersOneLanguageDefault = `ar`;
+export const confirmAssistantWorksheetResponseParametersOneTopicMax = 500;
 
-export const confirmAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export const confirmAssistantWorksheetResponseParametersOneSourceTextMax = 12000;
 
-export const confirmAssistantWorksheetResponseParametersSubjectMax = 100;
+export const confirmAssistantWorksheetResponseParametersOneSubjectMax = 100;
 
-export const confirmAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export const confirmAssistantWorksheetResponseParametersOneGradeLevelMax = 50;
 
-export const confirmAssistantWorksheetResponseParametersPagesDefault = 1;
-export const confirmAssistantWorksheetResponseParametersGroupSizeMin = 2;
-export const confirmAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export const confirmAssistantWorksheetResponseParametersOnePagesDefault = 1;
+export const confirmAssistantWorksheetResponseParametersOneGroupSizeMin = 2;
+export const confirmAssistantWorksheetResponseParametersOneGroupSizeMax = 6;
 
-export const confirmAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const confirmAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const confirmAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
-export const confirmAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export const confirmAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const confirmAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const confirmAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export const confirmAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const confirmAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export const confirmAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const confirmAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export const confirmAssistantWorksheetResponseParametersOneLearningObjectiveMax = 500;
 
-export const confirmAssistantWorksheetResponseParametersActivityDurationMin = 5;
-export const confirmAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export const confirmAssistantWorksheetResponseParametersOneActivityDurationMin = 5;
+export const confirmAssistantWorksheetResponseParametersOneActivityDurationMax = 90;
 
-export const confirmAssistantWorksheetResponseParametersCountsMinOne = 0;
-export const confirmAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export const confirmAssistantWorksheetResponseParametersOneCountsMinOne = 0;
+export const confirmAssistantWorksheetResponseParametersOneCountsMaxOne = 40;
+
+export const confirmAssistantWorksheetResponseParametersTwoQuestionCountMax = 30;
+
+export const confirmAssistantWorksheetResponseParametersTwoQuestionTypesMax = 30;
+
+export const confirmAssistantWorksheetResponseParametersTwoDurationMinutesMin = 15;
+export const confirmAssistantWorksheetResponseParametersTwoDurationMinutesMax = 180;
+
+export const confirmAssistantWorksheetResponseParametersTwoNotesMax = 800;
 
 export const confirmAssistantWorksheetResponseQuoteOneCreditsMin = 0;
 
 
 
 export const ConfirmAssistantWorksheetResponse = zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -616,33 +743,40 @@ export const ConfirmAssistantWorksheetResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(confirmAssistantWorksheetResponseParametersLanguageDefault),
-  "topic": zod.string().max(confirmAssistantWorksheetResponseParametersTopicMax).optional(),
-  "sourceText": zod.string().max(confirmAssistantWorksheetResponseParametersSourceTextMax).optional(),
-  "subject": zod.string().max(confirmAssistantWorksheetResponseParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(confirmAssistantWorksheetResponseParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(confirmAssistantWorksheetResponseParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(confirmAssistantWorksheetResponseParametersOneLanguageDefault),
+  "topic": zod.string().max(confirmAssistantWorksheetResponseParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(confirmAssistantWorksheetResponseParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(confirmAssistantWorksheetResponseParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(confirmAssistantWorksheetResponseParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(confirmAssistantWorksheetResponseParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(confirmAssistantWorksheetResponseParametersGroupSizeMin).max(confirmAssistantWorksheetResponseParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(confirmAssistantWorksheetResponseParametersOneGroupSizeMin).max(confirmAssistantWorksheetResponseParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(confirmAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(confirmAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(confirmAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin).max(confirmAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(confirmAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin).max(confirmAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(confirmAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(confirmAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(confirmAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(confirmAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(confirmAssistantWorksheetResponseParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(confirmAssistantWorksheetResponseParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(confirmAssistantWorksheetResponseParametersActivityDurationMin).max(confirmAssistantWorksheetResponseParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(confirmAssistantWorksheetResponseParametersOneActivityDurationMin).max(confirmAssistantWorksheetResponseParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(confirmAssistantWorksheetResponseParametersCountsMinOne).max(confirmAssistantWorksheetResponseParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(confirmAssistantWorksheetResponseParametersOneCountsMinOne).max(confirmAssistantWorksheetResponseParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(confirmAssistantWorksheetResponseParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(confirmAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(confirmAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(confirmAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(confirmAssistantWorksheetResponseParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),
@@ -666,41 +800,54 @@ export const CancelAssistantWorksheetParams = zod.object({
   "id": zod.uuid()
 })
 
-export const cancelAssistantWorksheetResponseParametersLanguageDefault = `ar`;
-export const cancelAssistantWorksheetResponseParametersTopicMax = 500;
+export const cancelAssistantWorksheetResponseParametersOneLanguageDefault = `ar`;
+export const cancelAssistantWorksheetResponseParametersOneTopicMax = 500;
 
-export const cancelAssistantWorksheetResponseParametersSourceTextMax = 12000;
+export const cancelAssistantWorksheetResponseParametersOneSourceTextMax = 12000;
 
-export const cancelAssistantWorksheetResponseParametersSubjectMax = 100;
+export const cancelAssistantWorksheetResponseParametersOneSubjectMax = 100;
 
-export const cancelAssistantWorksheetResponseParametersGradeLevelMax = 50;
+export const cancelAssistantWorksheetResponseParametersOneGradeLevelMax = 50;
 
-export const cancelAssistantWorksheetResponseParametersPagesDefault = 1;
-export const cancelAssistantWorksheetResponseParametersGroupSizeMin = 2;
-export const cancelAssistantWorksheetResponseParametersGroupSizeMax = 6;
+export const cancelAssistantWorksheetResponseParametersOnePagesDefault = 1;
+export const cancelAssistantWorksheetResponseParametersOneGroupSizeMin = 2;
+export const cancelAssistantWorksheetResponseParametersOneGroupSizeMax = 6;
 
-export const cancelAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const cancelAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const cancelAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin = 5;
-export const cancelAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax = 90;
+export const cancelAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const cancelAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const cancelAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax = 12;
+export const cancelAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const cancelAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax = 10;
+export const cancelAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const cancelAssistantWorksheetResponseParametersLearningObjectiveMax = 500;
+export const cancelAssistantWorksheetResponseParametersOneLearningObjectiveMax = 500;
 
-export const cancelAssistantWorksheetResponseParametersActivityDurationMin = 5;
-export const cancelAssistantWorksheetResponseParametersActivityDurationMax = 90;
+export const cancelAssistantWorksheetResponseParametersOneActivityDurationMin = 5;
+export const cancelAssistantWorksheetResponseParametersOneActivityDurationMax = 90;
 
-export const cancelAssistantWorksheetResponseParametersCountsMinOne = 0;
-export const cancelAssistantWorksheetResponseParametersCountsMaxOne = 40;
+export const cancelAssistantWorksheetResponseParametersOneCountsMinOne = 0;
+export const cancelAssistantWorksheetResponseParametersOneCountsMaxOne = 40;
+
+export const cancelAssistantWorksheetResponseParametersTwoQuestionCountMax = 30;
+
+export const cancelAssistantWorksheetResponseParametersTwoQuestionTypesMax = 30;
+
+export const cancelAssistantWorksheetResponseParametersTwoDurationMinutesMin = 15;
+export const cancelAssistantWorksheetResponseParametersTwoDurationMinutesMax = 180;
+
+export const cancelAssistantWorksheetResponseParametersTwoNotesMax = 800;
 
 export const cancelAssistantWorksheetResponseQuoteOneCreditsMin = 0;
 
 
 
 export const CancelAssistantWorksheetResponse = zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -708,33 +855,40 @@ export const CancelAssistantWorksheetResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(cancelAssistantWorksheetResponseParametersLanguageDefault),
-  "topic": zod.string().max(cancelAssistantWorksheetResponseParametersTopicMax).optional(),
-  "sourceText": zod.string().max(cancelAssistantWorksheetResponseParametersSourceTextMax).optional(),
-  "subject": zod.string().max(cancelAssistantWorksheetResponseParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(cancelAssistantWorksheetResponseParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(cancelAssistantWorksheetResponseParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(cancelAssistantWorksheetResponseParametersOneLanguageDefault),
+  "topic": zod.string().max(cancelAssistantWorksheetResponseParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(cancelAssistantWorksheetResponseParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(cancelAssistantWorksheetResponseParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(cancelAssistantWorksheetResponseParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(cancelAssistantWorksheetResponseParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(cancelAssistantWorksheetResponseParametersGroupSizeMin).max(cancelAssistantWorksheetResponseParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(cancelAssistantWorksheetResponseParametersOneGroupSizeMin).max(cancelAssistantWorksheetResponseParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(cancelAssistantWorksheetResponseParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(cancelAssistantWorksheetResponseParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(cancelAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMin).max(cancelAssistantWorksheetResponseParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(cancelAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMin).max(cancelAssistantWorksheetResponseParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(cancelAssistantWorksheetResponseParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(cancelAssistantWorksheetResponseParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(cancelAssistantWorksheetResponseParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(cancelAssistantWorksheetResponseParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(cancelAssistantWorksheetResponseParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(cancelAssistantWorksheetResponseParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(cancelAssistantWorksheetResponseParametersActivityDurationMin).max(cancelAssistantWorksheetResponseParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(cancelAssistantWorksheetResponseParametersOneActivityDurationMin).max(cancelAssistantWorksheetResponseParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(cancelAssistantWorksheetResponseParametersCountsMinOne).max(cancelAssistantWorksheetResponseParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(cancelAssistantWorksheetResponseParametersOneCountsMinOne).max(cancelAssistantWorksheetResponseParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(cancelAssistantWorksheetResponseParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(cancelAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(cancelAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(cancelAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(cancelAssistantWorksheetResponseParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),
@@ -754,35 +908,44 @@ export const CancelAssistantWorksheetResponse = zod.object({
 })
 
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersLanguageDefault = `ar`;
-export const listAdminAssistantOperationsResponseOperationsItemParametersTopicMax = 500;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneLanguageDefault = `ar`;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneTopicMax = 500;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersSourceTextMax = 12000;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneSourceTextMax = 12000;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersSubjectMax = 100;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneSubjectMax = 100;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersGradeLevelMax = 50;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGradeLevelMax = 50;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersPagesDefault = 1;
-export const listAdminAssistantOperationsResponseOperationsItemParametersGroupSizeMin = 2;
-export const listAdminAssistantOperationsResponseOperationsItemParametersGroupSizeMax = 6;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOnePagesDefault = 1;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGroupSizeMin = 2;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGroupSizeMax = 6;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsLearningObjectiveMax = 500;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsLearningObjectiveMax = 500;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMin = 5;
-export const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMax = 90;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMin = 5;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMax = 90;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsItemCountMax = 12;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsItemCountMax = 12;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsAllowedTypesMax = 10;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsAllowedTypesMax = 10;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersLearningObjectiveMax = 500;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneLearningObjectiveMax = 500;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersActivityDurationMin = 5;
-export const listAdminAssistantOperationsResponseOperationsItemParametersActivityDurationMax = 90;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneActivityDurationMin = 5;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneActivityDurationMax = 90;
 
-export const listAdminAssistantOperationsResponseOperationsItemParametersCountsMinOne = 0;
-export const listAdminAssistantOperationsResponseOperationsItemParametersCountsMaxOne = 40;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneCountsMinOne = 0;
+export const listAdminAssistantOperationsResponseOperationsItemParametersOneCountsMaxOne = 40;
+
+export const listAdminAssistantOperationsResponseOperationsItemParametersTwoQuestionCountMax = 30;
+
+export const listAdminAssistantOperationsResponseOperationsItemParametersTwoQuestionTypesMax = 30;
+
+export const listAdminAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMin = 15;
+export const listAdminAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMax = 180;
+
+export const listAdminAssistantOperationsResponseOperationsItemParametersTwoNotesMax = 800;
 
 export const listAdminAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0;
 
@@ -800,6 +963,10 @@ export const ListAdminAssistantOperationsResponse = zod.object({
   "pilotOnly": zod.boolean().optional(),
   "teacherIds": zod.array(zod.int()).optional(),
   "operations": zod.array(zod.object({
+  "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).optional(),
+  "resultId": zod.int().nullish(),
+  "resultUrl": zod.string().nullish(),
+  "stage": zod.enum(['prepare', 'queued', 'generating', 'saving', 'completed']).optional(),
   "id": zod.uuid(),
   "teacherId": zod.int().optional(),
   "title": zod.string(),
@@ -807,33 +974,40 @@ export const ListAdminAssistantOperationsResponse = zod.object({
   "reply": zod.string(),
   "parameters": zod.object({
   "questionSelection": zod.enum(['auto', 'manual']).optional(),
-  "language": zod.enum(['ar', 'en']).default(listAdminAssistantOperationsResponseOperationsItemParametersLanguageDefault),
-  "topic": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersTopicMax).optional(),
-  "sourceText": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersSourceTextMax).optional(),
-  "subject": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersSubjectMax).nullish(),
-  "gradeLevel": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersGradeLevelMax).nullish(),
-  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(listAdminAssistantOperationsResponseOperationsItemParametersPagesDefault),
+  "language": zod.enum(['ar', 'en']).default(listAdminAssistantOperationsResponseOperationsItemParametersOneLanguageDefault),
+  "topic": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersOneTopicMax).optional(),
+  "sourceText": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersOneSourceTextMax).optional(),
+  "subject": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersOneSubjectMax).nullish(),
+  "gradeLevel": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersOneGradeLevelMax).nullish(),
+  "pages": zod.union([zod.literal(1),zod.literal(2),zod.literal(3)]).default(listAdminAssistantOperationsResponseOperationsItemParametersOnePagesDefault),
   "activityStyle": zod.enum(['auto', 'concept_map', 'drawing', 'coloring', 'sorting', 'sequencing', 'group_task', 'practice']).optional(),
   "executionMode": zod.enum(['individual', 'group']).optional(),
-  "groupSize": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersGroupSizeMin).max(listAdminAssistantOperationsResponseOperationsItemParametersGroupSizeMax).optional(),
+  "groupSize": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersOneGroupSizeMin).max(listAdminAssistantOperationsResponseOperationsItemParametersOneGroupSizeMax).optional(),
   "generationConstraints": zod.object({
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMin).max(listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMin).max(listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "itemCount": zod.int().min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsItemCountMax).optional(),
-  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersGenerationConstraintsAllowedTypesMax).optional()
+  "itemCount": zod.int().min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsItemCountMax).optional(),
+  "allowedTypes": zod.array(zod.enum(['mcq', 'true_false', 'short_answer', 'fill_blank', 'matching', 'worked_problem', 'extended_response', 'error_correction', 'word_bank', 'compare'])).min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersOneGenerationConstraintsAllowedTypesMax).optional()
 }).optional().describe('Only explicitly selected settings are present; omitted settings are inferred by AI.'),
   "difficulty": zod.enum(['easy', 'medium', 'hard', 'mixed']).optional(),
-  "learningObjective": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersLearningObjectiveMax).optional(),
+  "learningObjective": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersOneLearningObjectiveMax).optional(),
   "cognitiveSkill": zod.enum(['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create', 'mixed']).optional(),
-  "activityDuration": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersActivityDurationMin).max(listAdminAssistantOperationsResponseOperationsItemParametersActivityDurationMax).optional(),
+  "activityDuration": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersOneActivityDurationMin).max(listAdminAssistantOperationsResponseOperationsItemParametersOneActivityDurationMax).optional(),
   "differentiation": zod.enum(['none', 'support', 'enrichment', 'scaffolded']).optional(),
   "assessmentMode": zod.enum(['diagnostic', 'formative', 'summative']).optional(),
-  "counts": zod.record(zod.string(), zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersCountsMinOne).max(listAdminAssistantOperationsResponseOperationsItemParametersCountsMaxOne)).optional()
-}),
+  "counts": zod.record(zod.string(), zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersOneCountsMinOne).max(listAdminAssistantOperationsResponseOperationsItemParametersOneCountsMaxOne)).optional()
+}).and(zod.object({
+  "questionCount": zod.int().min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersTwoQuestionCountMax).optional(),
+  "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersTwoQuestionTypesMax).optional(),
+  "durationMinutes": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMin).max(listAdminAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMax).optional(),
+  "notes": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersTwoNotesMax).optional(),
+  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
+})),
   "template": zod.string(),
   "status": zod.enum(['draft', 'quoted', 'queued', 'running', 'saving', 'completed', 'failed', 'cancelled']),
   "missingFields": zod.array(zod.string()),

@@ -389,6 +389,19 @@ const aiGenerateBody = z.object({
   path: ["topic"],
 });
 
+export async function generateLessonPlanContent(req: Request, input: unknown) {
+  const parsedBody = aiGenerateBody.parse(input);
+  const body = { ...parsedBody, language: resolveAiContentLanguage({
+    preferredLanguage: parsedBody.language, primaryText: parsedBody.sourceText || parsedBody.topic,
+    detailTexts: [parsedBody.subject, parsedBody.gradeLevel, parsedBody.notes],
+  }) };
+  const tier = await resolveTier(req.session.teacherId!);
+  const text = await runTierCompletion({ tier, prompt: buildLessonPlanPrompt(body), maxTokens: 8000,
+    usage: { req, toolKey: "lesson-plan", callKey: "generate:completion" } });
+  const sections = sectionsSchema.parse(sanitizeGeneratedSections(parseJsonLoose(text), body));
+  return { sections, language: body.language };
+}
+
 router.post("/lesson-plans/ai/generate", requireTeacher, checkCredits("lesson-plan"), async (req, res) => {
   let language: "ar" | "en" = "ar";
   try {
